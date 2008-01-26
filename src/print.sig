@@ -25,45 +25,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Laconic = struct
+(* Pretty-printing *)
 
-type 'a located = 'a ErrorMsg.located
+signature PRINT = sig
+    structure PD : PP_DESC
+                       where type PPS.token = string
 
-datatype kind' =
-         KType
-       | KArrow of kind * kind
-       | KName
-       | KRecord of kind
+    type 'a printer = 'a -> PD.pp_desc
 
-withtype kind = kind' located
+    val box : PD.pp_desc list -> PD.pp_desc
+    val parenIf : bool -> PD.pp_desc -> PD.pp_desc
+    val space : PD.pp_desc
 
-datatype explicitness =
-         Explicit
-       | Implicit
+    val p_list_sep : PD.pp_desc -> 'a printer -> 'a list printer
+    val p_list : 'a printer -> 'a list printer
 
-datatype con' =
-         CAnnot of con * kind
+    val fprint : PD.PPS.stream -> PD.pp_desc -> unit
+    val print : PD.pp_desc -> unit
+    val eprint : PD.pp_desc -> unit
 
-       | TFun of con * con
-       | TCFun of explicitness * string * kind * con
-       | TRecord of con
+    val fpreface : PD.PPS.stream -> string * PD.pp_desc -> unit
+    val preface : string * PD.pp_desc -> unit
+    val epreface : string * PD.pp_desc -> unit
 
-       | CVar of string
-       | CApp of con * con
-       | CAbs of explicitness * string * kind * con
-
-       | CName of string
-
-       | CRecord of (con * con) list
-       | CConcat of con * con
-
-withtype con = con' located
-
-datatype decl' =
-         DCon of string * kind option * con
-
-withtype decl = decl' located
-
-type file = decl list
-
+    val fprefaces : PD.PPS.stream -> (string * PD.pp_desc) list -> unit
+    val prefaces : (string * PD.pp_desc) list -> unit
+    val eprefaces : (string * PD.pp_desc) list -> unit
 end

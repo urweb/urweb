@@ -25,45 +25,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Laconic = struct
+(* Laconic/Web main compiler interface *)
 
-type 'a located = 'a ErrorMsg.located
+signature COMPILER = sig
 
-datatype kind' =
-         KType
-       | KArrow of kind * kind
-       | KName
-       | KRecord of kind
+    val parse : string -> Laconic.file option
 
-withtype kind = kind' located
-
-datatype explicitness =
-         Explicit
-       | Implicit
-
-datatype con' =
-         CAnnot of con * kind
-
-       | TFun of con * con
-       | TCFun of explicitness * string * kind * con
-       | TRecord of con
-
-       | CVar of string
-       | CApp of con * con
-       | CAbs of explicitness * string * kind * con
-
-       | CName of string
-
-       | CRecord of (con * con) list
-       | CConcat of con * con
-
-withtype con = con' located
-
-datatype decl' =
-         DCon of string * kind option * con
-
-withtype decl = decl' located
-
-type file = decl list
+    val testParse : string -> unit
 
 end

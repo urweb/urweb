@@ -1,0 +1,126 @@
+(* Copyright (c) 2008, Adam Chlipala
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * - The names of contributors may not be used to endorse or promote products
+ *   derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *)
+
+(* Grammar for Laconic/Web programs *)
+
+open Laconic
+
+val s = ErrorMsg.spanOf
+
+%%
+%header (functor LacwebLrValsFn(structure Token : TOKEN))
+
+%term 
+   EOF
+ | SYMBOL of string | CSYMBOL of string
+ | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
+ | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH
+ | CON | TYPE | NAME
+ | ARROW | LARROW | DARROW
+ | FN | PLUSPLUS | DOLLAR
+
+%nonterm 
+   file of decl list
+ | decls of decl list
+ | decl of decl
+
+ | kind of kind
+ | kcolon of explicitness
+
+ | cexp of con
+ | capps of con
+ | cterm of con
+ | ident of con
+ | rcon of (con * con) list
+ | rcone of (con * con) list
+
+%verbose                                (* print summary of errors *)
+%pos int                                (* positions *)
+%start file
+%pure
+%eop EOF
+%noshift EOF
+
+%name Lacweb
+
+%nonassoc DARROW
+%nonassoc COLON
+%right COMMA
+%right ARROW LARROW
+%right PLUSPLUS
+%nonassoc DOLLAR
+%left DOT
+
+%%
+
+file   : decls                          (decls)
+
+decls  :                                ([])
+       | decl decls                     (decl :: decls)
+
+decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, cexpright))
+       | CON SYMBOL DCOLON kind EQ cexp (DCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
+
+kind   : TYPE                           (KType, s (TYPEleft, TYPEright))
+       | NAME                           (KName, s (NAMEleft, NAMEright))
+       | LBRACE kind RBRACE             (KRecord kind, s (LBRACEleft, RBRACEright))
+       | kind ARROW kind                (KArrow (kind1, kind2), s (kind1left, kind2right))
+       | LPAREN kind RPAREN             (#1 kind, s (LPARENleft, RPARENright))
+
+capps  : cterm                          (cterm)
+       | capps cterm                    (CApp (capps, cterm), s (cappsleft, ctermright))
+
+cexp   : capps                          (capps)
+       | cexp ARROW cexp                (TFun (cexp1, cexp2), s (cexp1left, cexp2right))
+       | SYMBOL kcolon kind ARROW cexp (TCFun (kcolon, SYMBOL, kind, cexp), s (SYMBOLleft, cexpright))
+
+       | cexp PLUSPLUS cexp             (CConcat (cexp1, cexp2), s (cexp1left, cexp1right))
+
+       | FN SYMBOL kcolon kind DARROW cexp (CAbs (kcolon, SYMBOL, kind, cexp), s (FNleft, cexpright))
+
+kcolon : DCOLON                         (Explicit)
+       | TCOLON                         (Implicit)
+
+cterm  : LPAREN cexp RPAREN             (#1 cexp, s (LPARENleft, RPARENright))
+       | LBRACK rcon RBRACK             (CRecord rcon, s (LBRACKleft, RBRACKright))
+       | LBRACE rcone RBRACE            (TRecord (CRecord rcone, s (LBRACEleft, RBRACEright)),
+					 s (LBRACEleft, RBRACEright))
+       | DOLLAR cterm                   (TRecord cterm, s (DOLLARleft, ctermright))
+       | HASH CSYMBOL                   (CName CSYMBOL, s (HASHleft, CSYMBOLright))
+
+       | SYMBOL                         (CVar SYMBOL, s (SYMBOLleft, SYMBOLright))
+
+rcon   :                                ([])
+       | ident EQ cexp                  ([(ident, cexp)])
+       | ident EQ cexp COMMA rcon       ((ident, cexp) :: rcon)
+
+rcone  :                                ([])
+       | ident COLON cexp               ([(ident, cexp)])
+       | ident COLON cexp COMMA rcone   ((ident, cexp) :: rcone)
+
+ident  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | SYMBOL                         (CVar SYMBOL, s (SYMBOLleft, SYMBOLright))

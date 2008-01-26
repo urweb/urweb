@@ -2,3 +2,15 @@ errormsg.sig
 errormsg.sml
 
 laconic.sml
+
+lacweb.grm
+lacweb.lex
+
+print.sig
+print.sml
+
+laconic_print.sig
+laconic_print.sml
+
+compiler.sig
+compiler.sml

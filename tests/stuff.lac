@@ -1,0 +1,10 @@
+con c1 = t :: Type -> t
+con c2 :: Type = t :: Type -> t
+con c3 = fn t :: Type => c1
+con c4 = c3 c1
+con c5 = (fn t :: Type => c1) c1
+
+con name = #MyName
+
+con c6 = {A : c1, name : c2}
+con c7 = [A = c1, name = c2]

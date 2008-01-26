@@ -36,4 +36,61 @@ type span = {file : string,
 
 type 'a located = 'a * span
 
+
+fun posToString {line, char} =
+    String.concat [Int.toString line, ":", Int.toString char]
+
+fun spanToString {file, first, last} =
+    String.concat [file, ":", posToString first, "-", posToString last]
+
+
+val file = ref ""
+val numLines = ref 1
+val lines : int list ref = ref []
+
+fun resetPositioning fname = (file := fname;
+                              numLines := 1;
+                              lines := [])
+
+fun newline pos = (numLines := !numLines + 1;
+                   lines := pos :: !lines)
+
+fun lastLineStart () =
+    case !lines of
+        [] => 0
+      | n :: _ => n+1
+
+fun posOf n =
+    let
+        fun search lineNum lines =
+            case lines of
+                [] => {line = 1,
+                       char = n}
+              | bound :: rest =>
+                if n > bound then
+                    {line = lineNum,
+                     char = n - bound - 1}
+                else
+                    search (lineNum - 1) rest
+    in
+        search (!numLines) (!lines)
+    end
+
+fun spanOf (pos1, pos2) = {file = !file,
+                           first = posOf pos1,
+                           last = posOf pos2}
+
+
+val errors = ref false
+
+fun resetErrors () = errors := false
+fun anyErrors () = !errors
+fun error s = (TextIO.output (TextIO.stdErr, s);
+               TextIO.output1 (TextIO.stdErr, #"\n");
+               errors := true)
+fun errorAt span s = (TextIO.output (TextIO.stdErr, spanToString span);
+                      TextIO.output1 (TextIO.stdErr, #" ");
+                      error s)
+fun errorAt' span s = errorAt (spanOf span) s
+
 end

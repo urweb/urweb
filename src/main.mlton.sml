@@ -25,3 +25,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
+val () = case CommandLine.arguments () of
+             [filename] => Compiler.testParse filename
+           | _ => print "Bad arguments"

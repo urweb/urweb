@@ -25,45 +25,40 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Laconic = struct
+(* Laconic/Web language parser *)
 
-type 'a located = 'a ErrorMsg.located
+structure Compiler :> COMPILER = struct 
 
-datatype kind' =
-         KType
-       | KArrow of kind * kind
-       | KName
-       | KRecord of kind
+structure LacwebLrVals = LacwebLrValsFn(structure Token = LrParser.Token)
+structure Lex = LacwebLexFn(structure Tokens = LacwebLrVals.Tokens)
+structure LacwebP = Join(structure ParserData = LacwebLrVals.ParserData
+                         structure Lex = Lex
+                         structure LrParser = LrParser)
 
-withtype kind = kind' located
+(* The main parsing routine *)
+fun parse filename =
+    let
+        val () = (ErrorMsg.resetErrors ();
+                  ErrorMsg.resetPositioning filename)
+	val file = TextIO.openIn filename
+	fun get _ = TextIO.input file
+	fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
+	val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
+	val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
+    in
+        TextIO.closeIn file;
+        SOME absyn
+    end
+    handle LrParser.ParseError => NONE
 
-datatype explicitness =
-         Explicit
-       | Implicit
-
-datatype con' =
-         CAnnot of con * kind
-
-       | TFun of con * con
-       | TCFun of explicitness * string * kind * con
-       | TRecord of con
-
-       | CVar of string
-       | CApp of con * con
-       | CAbs of explicitness * string * kind * con
-
-       | CName of string
-
-       | CRecord of (con * con) list
-       | CConcat of con * con
-
-withtype con = con' located
-
-datatype decl' =
-         DCon of string * kind option * con
-
-withtype decl = decl' located
-
-type file = decl list
+fun testParse filename =
+    case parse filename of
+        NONE => print "Parse error\n"
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            print "Recoverable parse error\n"
+        else
+            (Print.print (LaconicPrint.p_file file);
+             print "\n")
 
 end

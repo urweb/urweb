@@ -37,5 +37,7 @@ ifdef DEBUG
 	MLTON += -const 'Exn.keepHistory true'
 endif
 
-bin/lacweb: src/lacweb.mlb src/*.sig src/*.sml
+bin/lacweb: src/lacweb.mlb src/*.sig src/*.sml \
+		src/lacweb.mlton.lex.sml \
+		src/lacweb.mlton.grm.sig src/lacweb.mlton.grm.sml
 	$(MLTON) -output $@ src/lacweb.mlb

@@ -36,4 +36,18 @@ signature ERROR_MSG = sig
 
     type 'a located = 'a * span
 
+    val posToString : pos -> string
+    val spanToString : span -> string
+
+    val resetPositioning : string -> unit
+    val newline : int -> unit
+    val lastLineStart : unit -> int
+    val posOf : int -> pos
+    val spanOf : int * int -> span
+
+    val resetErrors : unit -> unit
+    val anyErrors : unit -> bool
+    val error : string -> unit
+    val errorAt : span -> string -> unit
+    val errorAt' : int * int -> string -> unit
 end
