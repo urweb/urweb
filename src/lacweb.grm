@@ -39,7 +39,7 @@ val s = ErrorMsg.spanOf
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH
- | CON | LTYPE
+ | CON | LTYPE | VAL
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR
@@ -58,6 +58,10 @@ val s = ErrorMsg.spanOf
  | ident of con
  | rcon of (con * con) list
  | rcone of (con * con) list
+
+ | eexp of exp
+ | eapps of exp
+ | eterm of exp
 
 %verbose                                (* print summary of errors *)
 %pos int                                (* positions *)
@@ -88,6 +92,8 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
        | CON SYMBOL DCOLON kind EQ cexp (DCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
        | LTYPE SYMBOL EQ cexp           (DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
+       | VAL SYMBOL EQ eexp             (DVal (SYMBOL, NONE, eexp), s (VALleft, eexpright))
+       | VAL SYMBOL COLON cexp EQ eexp  (DVal (SYMBOL, SOME cexp, eexp), s (VALleft, eexpright))
 
 kind   : TYPE                           (KType, s (TYPEleft, TYPEright))
        | NAME                           (KName, s (NAMEleft, NAMEright))
@@ -104,9 +110,9 @@ cexp   : capps                          (capps)
 
        | cexp PLUSPLUS cexp             (CConcat (cexp1, cexp2), s (cexp1left, cexp1right))
 
-       | FN SYMBOL kcolon kind DARROW cexp (CAbs (kcolon, SYMBOL, kind, cexp), s (FNleft, cexpright))
+       | FN SYMBOL DCOLON kind DARROW cexp (CAbs (SYMBOL, kind, cexp), s (FNleft, cexpright))
 
-       | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, RPARENright))
+       | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, kindright))
 
 kcolon : DCOLON                         (Explicit)
        | TCOLON                         (Implicit)
@@ -130,3 +136,18 @@ rcone  :                                ([])
 
 ident  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | SYMBOL                         (CVar SYMBOL, s (SYMBOLleft, SYMBOLright))
+
+eapps  : eterm                          (eterm)
+       | eapps eterm                    (EApp (eapps, eterm), s (eappsleft, etermright))
+       | eapps LBRACK cexp RBRACK       (ECApp (eapps, cexp), s (eappsleft, RBRACKright))
+
+eexp   : eapps                          (eapps)
+       | FN SYMBOL kcolon kind DARROW eexp (ECAbs (kcolon, SYMBOL, kind, eexp), s (FNleft, eexpright))
+       | FN SYMBOL COLON cexp DARROW eexp (EAbs (SYMBOL, SOME cexp, eexp), s (FNleft, eexpright))
+       | FN SYMBOL DARROW eexp          (EAbs (SYMBOL, NONE, eexp), s (FNleft, eexpright))
+
+       | LPAREN eexp RPAREN DCOLON cexp (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
+
+eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
+
+       | SYMBOL                         (EVar SYMBOL, s (SYMBOLleft, SYMBOLright))

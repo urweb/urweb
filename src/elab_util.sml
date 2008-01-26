@@ -111,12 +111,12 @@ fun mapfold {kind = fk, con = fc} =
                          S.map2 (mfc c2,
                               fn c2' =>
                                  (CApp (c1', c2'), loc)))
-              | CAbs (e, x, k, c) =>
+              | CAbs (x, k, c) =>
                 S.bind2 (mfk k,
                       fn k' =>
                          S.map2 (mfc c,
                               fn c' =>
-                                 (CAbs (e, x, k', c'), loc)))
+                                 (CAbs (x, k', c'), loc)))
 
               | CName _ => S.return2 cAll
 

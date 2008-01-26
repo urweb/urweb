@@ -91,17 +91,17 @@ fun p_con' par (c, _) =
       | CApp (c1, c2) => parenIf par (box [p_con c1,
                                            space,
                                            p_con' true c2])
-      | CAbs (e, x, k, c) => parenIf par (box [string "fn",
-                                               space,
-                                               string x,
-                                               space,
-                                               p_explicitness e,
-                                               space,
-                                               p_kind k,
-                                               space,
-                                               string "=>",
-                                               space,
-                                               p_con c])
+      | CAbs (x, k, c) => parenIf par (box [string "fn",
+                                            space,
+                                            string x,
+                                            space,
+                                            string "::",
+                                            space,
+                                            p_kind k,
+                                            space,
+                                            string "=>",
+                                            space,
+                                            p_con c])
 
       | CName s => box [string "#", string s]
 
@@ -120,6 +120,57 @@ fun p_con' par (c, _) =
                                               p_con c2])
         
 and p_con c = p_con' false c
+
+fun p_exp' par (e, _) =
+    case e of
+        EAnnot (e, t) => box [string "(",
+                              p_exp e,
+                              space,
+                              string ":",
+                              space,
+                              p_con t,
+                              string ")"]        
+
+      | EVar s => string s
+      | EApp (e1, e2) => parenIf par (box [p_exp e1,
+                                           space,
+                                           p_exp' true e2])
+      | EAbs (x, NONE, e) => parenIf par (box [string "fn",
+                                               space,
+                                               string x,
+                                               space,
+                                               string "=>",
+                                               space,
+                                               p_exp e])
+      | EAbs (x, SOME t, e) => parenIf par (box [string "fn",
+                                                 space,
+                                                 string x,
+                                                 space,
+                                                 string ":",
+                                                 space,
+                                                 p_con t,
+                                                 space,
+                                                 string "=>",
+                                                 space,
+                                                 p_exp e])
+      | ECApp (e, c) => parenIf par (box [p_exp e,
+                                          space,
+                                          string "[",
+                                          p_con c,
+                                          string "]"])
+      | ECAbs (exp, x, k, e) => parenIf par (box [string "fn",
+                                                  space,
+                                                  string x,
+                                                  space,
+                                                  p_explicitness exp,
+                                                  space,
+                                                  p_kind k,
+                                                  space,
+                                                  string "=>",
+                                                  space,
+                                                  p_exp e])
+
+and p_exp e = p_exp' false e
 
 fun p_decl ((d, _) : decl) =
     case d of
@@ -141,6 +192,24 @@ fun p_decl ((d, _) : decl) =
                                     string "=",
                                     space,
                                     p_con c]
+      | DVal (x, NONE, e) => box [string "val",
+                                  space,
+                                  string x,
+                                  space,
+                                  string "=",
+                                  space,
+                                  p_exp e]
+      | DVal (x, SOME t, e) => box [string "val",
+                                    space,
+                                    string x,
+                                    space,
+                                    string ":",
+                                    space,
+                                    p_con t,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_exp e]
 
 val p_file = p_list_sep newline p_decl
 

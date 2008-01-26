@@ -52,7 +52,7 @@ datatype con' =
        | CRel of int
        | CNamed of int
        | CApp of con * con
-       | CAbs of explicitness * string * kind * con
+       | CAbs of string * kind * con
 
        | CName of string
 

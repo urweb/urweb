@@ -91,17 +91,17 @@ fun p_con' par env (c, _) =
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
                                            space,
                                            p_con' true env c2])
-      | CAbs (e, x, k, c) => parenIf par (box [string "fn",
-                                               space,
-                                               string x,
-                                               space,
-                                               p_explicitness e,
-                                               space,
-                                               p_kind k,
-                                               space,
-                                               string "=>",
-                                               space,
-                                               p_con (E.pushCRel env x k) c])
+      | CAbs (x, k, c) => parenIf par (box [string "fn",
+                                            space,
+                                            string x,
+                                            space,
+                                            string "::",
+                                            space,
+                                            p_kind k,
+                                            space,
+                                            string "=>",
+                                            space,
+                                            p_con (E.pushCRel env x k) c])
 
       | CName s => box [string "#", string s]
 

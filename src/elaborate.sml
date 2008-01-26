@@ -219,14 +219,13 @@ fun elabCon env (c, loc) =
             checkKind env c2' k2 dom;
             ((L'.CApp (c1', c2'), loc), ran)
         end
-      | L.CAbs (e, x, k, t) =>
+      | L.CAbs (x, k, t) =>
         let
-            val e' = elabExplicitness e
             val k' = elabKind k
             val env' = E.pushCRel env x k'
             val (t', tk) = elabCon env' t
         in
-            ((L'.CAbs (e', x, k', t'), loc),
+            ((L'.CAbs (x, k', t'), loc),
              (L'.KArrow (k', tk), loc))
         end
 

@@ -50,7 +50,7 @@ datatype con' =
 
        | CVar of string
        | CApp of con * con
-       | CAbs of explicitness * string * kind * con
+       | CAbs of string * kind * con
 
        | CName of string
 
@@ -59,8 +59,20 @@ datatype con' =
 
 withtype con = con' located
 
+datatype exp' =
+         EAnnot of exp * con
+
+       | EVar of string
+       | EApp of exp * exp
+       | EAbs of string * con option * exp
+       | ECApp of exp * con
+       | ECAbs of explicitness * string * kind * exp
+
+withtype exp = exp' located
+
 datatype decl' =
          DCon of string * kind option * con
+       | DVal of string * con option * exp
 
 withtype decl = decl' located
 

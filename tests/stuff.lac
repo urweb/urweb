@@ -13,3 +13,6 @@ con c8 = fn t :: Type => t
 
 con c9 = {}
 con c10 = ([]) :: {Type}
+
+val v1 = fn t :: Type => fn x : t => x
+val v2 = v1 [c1] (fn y => y)
