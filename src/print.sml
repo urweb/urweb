@@ -66,7 +66,7 @@ val eprint = fprint err
 
 fun fpreface f (s, d) =
     fprint f (PD.hovBox (PD.PPS.Rel 0,
-		         [PD.string s, PD.space 1, d]))
+		         [PD.string s, PD.space 1, d, PD.newline]))
 
 val preface = fpreface out
 val epreface = fpreface err

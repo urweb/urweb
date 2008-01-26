@@ -116,20 +116,21 @@ datatype con_error =
          UnboundCon of ErrorMsg.span * string
        | WrongKind of L'.con * L'.kind * L'.kind * kunify_error
 
-fun conError err =
+fun conError env err =
     case err of
         UnboundCon (loc, s) =>
         ErrorMsg.errorAt loc ("Unbound constructor variable " ^ s)
       | WrongKind (c, k1, k2, kerr) =>
         (ErrorMsg.errorAt (#2 c) "Wrong kind";
-         eprefaces' [("Have", p_kind k1),
-                     ("Need", p_kind k2)];
+         eprefaces' [("Constructor", p_con env c),
+                     ("Have kind", p_kind k1),
+                     ("Need kind", p_kind k2)];
          kunifyError kerr)
 
-fun checkKind c k1 k2 =
+fun checkKind env c k1 k2 =
     unifyKinds k1 k2
     handle KUnify (k1, k2, err) =>
-           conError (WrongKind (c, k1, k2, err))
+           conError env (WrongKind (c, k1, k2, err))
 
 val dummy = ErrorMsg.dummySpan
 
@@ -166,7 +167,7 @@ fun elabCon env (c, loc) =
             val k' = elabKind k
             val (c', ck) = elabCon env c
         in
-            checkKind c' ck k';
+            checkKind env c' ck k';
             (c', k')
         end
 
@@ -175,8 +176,8 @@ fun elabCon env (c, loc) =
             val (t1', k1) = elabCon env t1
             val (t2', k2) = elabCon env t2
         in
-            checkKind t1' k1 ktype;
-            checkKind t2' k2 ktype;
+            checkKind env t1' k1 ktype;
+            checkKind env t2' k2 ktype;
             ((L'.TFun (t1', t2'), loc), ktype)
         end
       | L.TCFun (e, x, k, t) =>
@@ -186,7 +187,7 @@ fun elabCon env (c, loc) =
             val env' = E.pushCRel env x k'
             val (t', tk) = elabCon env' t
         in
-            checkKind t' tk ktype;
+            checkKind env t' tk ktype;
             ((L'.TCFun (e', x, k', t'), loc), ktype)
         end
       | L.TRecord c =>
@@ -194,14 +195,14 @@ fun elabCon env (c, loc) =
             val (c', ck) = elabCon env c
             val k = (L'.KRecord ktype, loc)
         in
-            checkKind c' ck k;
+            checkKind env c' ck k;
             ((L'.TRecord c', loc), ktype)
         end
 
       | L.CVar s =>
         (case E.lookupC env s of
              E.CNotBound =>
-             (conError (UnboundCon (loc, s));
+             (conError env (UnboundCon (loc, s));
               (cerror, kerror))
            | E.CRel (n, k) =>
              ((L'.CRel n, loc), k)
@@ -214,8 +215,8 @@ fun elabCon env (c, loc) =
             val dom = kunif ()
             val ran = kunif ()
         in
-            checkKind c1' k1 (L'.KArrow (dom, ran), loc);
-            checkKind c2' k2 dom;
+            checkKind env c1' k1 (L'.KArrow (dom, ran), loc);
+            checkKind env c2' k2 dom;
             ((L'.CApp (c1', c2'), loc), ran)
         end
       | L.CAbs (e, x, k, t) =>
@@ -241,12 +242,12 @@ fun elabCon env (c, loc) =
                                    val (x', xk) = elabCon env x
                                    val (c', ck) = elabCon env c
                                in
-                                   checkKind x' xk kname;
-                                   checkKind c' ck k;
+                                   checkKind env x' xk kname;
+                                   checkKind env c' ck k;
                                    (x', c')
                                end) xcs
         in
-            ((L'.CRecord (k, xcs'), loc), k)
+            ((L'.CRecord (k, xcs'), loc), (L'.KRecord k, loc))
         end
       | L.CConcat (c1, c2) =>
         let
@@ -255,26 +256,29 @@ fun elabCon env (c, loc) =
             val ku = kunif ()
             val k = (L'.KRecord ku, loc)
         in
-            checkKind c1' k1 k;
-            checkKind c2' k2 k;
+            checkKind env c1' k1 k;
+            checkKind env c2' k2 k;
             ((L'.CConcat (c1', c2'), loc), k)
         end
 
 fun elabDecl env (d, loc) =
-    case d of
-        L.DCon (x, ko, c) =>
-        let
-            val k' = case ko of
-                         NONE => kunif ()
-                       | SOME k => elabKind k
+    (resetKunif ();
+     case d of
+         L.DCon (x, ko, c) =>
+         let
+             val k' = case ko of
+                          NONE => kunif ()
+                        | SOME k => elabKind k
 
-            val (c', ck) = elabCon env c
-        in
-            checkKind c' ck k';
-            (E.pushCNamed env x k',
-             L'.DCon (x, k', c'))
-        end
+             val (c', ck) = elabCon env c
+             val (env', n) = E.pushCNamed env x k'
+         in
+             checkKind env c' ck k';
+             (env',
+              (L'.DCon (x, n, k', c'), loc))
+         end)
 
-fun elabFile _ = raise Fail ""
+fun elabFile env ds =
+    ListUtil.mapfoldl (fn (d, env) => elabDecl env d) env ds
 
 end

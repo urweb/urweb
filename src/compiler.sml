@@ -47,18 +47,41 @@ fun parse filename =
 	val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
     in
         TextIO.closeIn file;
-        SOME absyn
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME absyn
     end
     handle LrParser.ParseError => NONE
 
+fun elaborate env filename =
+    case parse filename of
+        NONE => NONE
+      | SOME file =>
+        let
+            val out = Elaborate.elabFile env file
+        in
+            if ErrorMsg.anyErrors () then
+                NONE
+            else
+                SOME out
+        end
+            
+
 fun testParse filename =
     case parse filename of
-        NONE => print "Parse error\n"
+        NONE => print "Failed\n"
       | SOME file =>
-        if ErrorMsg.anyErrors () then
-            print "Recoverable parse error\n"
-        else
-            (Print.print (SourcePrint.p_file file);
-             print "\n")
+        (Print.print (SourcePrint.p_file file);
+         print "\n")
+
+fun testElaborate filename =
+    (case elaborate ElabEnv.empty filename of
+         NONE => print "Failed\n"
+       | SOME (_, file) =>
+         (Print.print (ElabPrint.p_file ElabEnv.empty file);
+          print "\n"))
+    handle ElabEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
 
 end

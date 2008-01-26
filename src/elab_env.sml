@@ -75,15 +75,17 @@ fun lookupCRel (env : env) n =
     (List.nth (#relC env, n))
     handle Subscript => raise UnboundRel n
 
-fun pushCNamed (env : env) x k =
+fun pushCNamedAs (env : env) x n k =
+    {renameC = SM.insert (#renameC env, x, CNamed' (n, k)),
+     relC = #relC env,
+     namedC = IM.insert (#namedC env, n, (x, k))}
+
+fun pushCNamed env x k =
     let
         val n = !namedCounter
     in
         namedCounter := n + 1;
-        ({renameC = SM.insert (#renameC env, x, CNamed' (n, k)),
-          relC = #relC env,
-          namedC = IM.insert (#namedC env, n, (x, k))},
-         n)
+        (pushCNamedAs env x n k, n)
     end
 
 fun lookupCNamed (env : env) n =

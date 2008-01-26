@@ -65,7 +65,7 @@ datatype con' =
 withtype con = con' located
 
 datatype decl' =
-         DCon of string * kind * con
+         DCon of string * int * kind * con
 
 withtype decl = decl' located
 

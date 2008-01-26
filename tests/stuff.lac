@@ -8,3 +8,5 @@ con name = #MyName
 
 con c6 = {A : c1, name : c2}
 con c7 = [A = c1, name = c2]
+
+con c8 = fn t :: Type => t

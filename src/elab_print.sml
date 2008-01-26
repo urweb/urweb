@@ -128,24 +128,26 @@ and p_con env = p_con' false env
 
 fun p_decl env ((d, _) : decl) =
     case d of
-        DCon (x, k, c) => box [string "con",
-                                    space,
-                                    string x,
-                                    space,
-                                    string "::",
-                                    space,
-                                    p_kind k,
-                                    space,
-                                    string "=",
-                                    space,
-                                    p_con env c]
+        DCon (x, n, k, c) => box [string "con",
+                                  space,
+                                  string x,
+                                  string "__",
+                                  string (Int.toString n),
+                                  space,
+                                  string "::",
+                                  space,
+                                  p_kind k,
+                                  space,
+                                  string "=",
+                                  space,
+                                  p_con env c]
 
 fun p_file env file =
     let
-        val (_, pds) = foldr (fn (d, (env, pds)) =>
-                                 (ElabUtil.declBinds env d,
-                                  p_decl env d :: pds))
-                             (env, []) file
+        val (_, pds) = ListUtil.mapfoldl (fn (d, env) =>
+                                             (ElabUtil.declBinds env d,
+                                              p_decl env d))
+                             env file
     in
         p_list_sep newline (fn x => x) pds
     end

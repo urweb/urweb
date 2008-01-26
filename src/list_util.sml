@@ -25,14 +25,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+structure ListUtil :> LIST_UTIL = struct
 
-signature COMPILER = sig
-
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-
-    val testParse : string -> unit
-    val testElaborate : string -> unit
+fun mapfoldl f i =
+    let
+        fun mf s ls' ls =
+            case ls of
+                nil => (s, rev ls')
+              | h :: t =>
+                let
+                    val (s, h') = f (h, s)
+                in
+                    mf s (h' :: ls') t
+                end
+    in
+        mf i []
+    end
 
 end

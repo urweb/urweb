@@ -25,14 +25,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+signature LIST_UTIL = sig
 
-signature COMPILER = sig
-
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-
-    val testParse : string -> unit
-    val testElaborate : string -> unit
+    val mapfoldl : ('data1 * 'state -> 'state * 'data2) -> 'state -> 'data1 list
+                   -> 'state * 'data2 list
 
 end
