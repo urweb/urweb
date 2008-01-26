@@ -42,4 +42,22 @@ fun mapfoldl f i =
         mf i []
     end
 
+structure S = Search
+
+fun mapfold f =
+    let
+        fun mf ls s =
+            case ls of
+                nil => S.Continue (nil, s)
+              | h :: t =>
+                case f h s of
+                    S.Return x => S.Return x
+                  | S.Continue (h', s) =>
+                    case mf t s of
+                        S.Return x => S.Return x
+                      | S.Continue (t', s) => S.Continue (h' :: t', s)
+    in
+        mf
+    end
+
 end

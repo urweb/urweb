@@ -121,8 +121,10 @@ fun p_con' par env (c, _) =
                                               p_con env c2])
 
       | CError => string "<ERROR>"
-      | CUnif (_, ref (SOME c)) => p_con' par env c
-      | CUnif (s, _) => string ("<UNIF:" ^ s ^ ">")
+      | CUnif (_, _, ref (SOME c)) => p_con' par env c
+      | CUnif (k, s, _) => box [string ("<UNIF:" ^ s ^ "::"),
+                               p_kind k,
+                               string ">"]
         
 and p_con env = p_con' false env
 

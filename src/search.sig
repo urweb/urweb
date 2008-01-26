@@ -31,9 +31,6 @@ signature SEARCH = sig
              Return of 'abort
            | Continue of 'state
 
-    type ('data, 'state, 'abort) mapfold_arg =
-         'data * 'state -> ('data * 'state, 'abort) result
-
     type ('data, 'state, 'abort) mapfolder =
          'data -> 'state -> ('data * 'state, 'abort) result
 
@@ -52,11 +49,11 @@ signature SEARCH = sig
                -> ('state2, 'abort) result
 
     val bind2 : ('state2 -> ('state1 * 'state2, 'abort) result)
-               * ('state1 -> 'state2 -> ('state1 * 'state2, 'abort) result)
-               -> ('state2 -> ('state1 * 'state2, 'abort) result)
+               * ('state1 -> 'state2 -> ('state1' * 'state2, 'abort) result)
+               -> ('state2 -> ('state1' * 'state2, 'abort) result)
 
     val bindP : (('state11 * 'state12) * 'state2, 'abort) result
-                * ('state11 * 'state2 -> ('state11 * 'state2, 'abort) result)
+                * ('state11 -> 'state2 -> ('state11 * 'state2, 'abort) result)
                 -> (('state11 * 'state12) * 'state2, 'abort) result
 
 end

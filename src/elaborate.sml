@@ -261,6 +261,28 @@ fun elabCon env (c, loc) =
             ((L'.CConcat (c1', c2'), loc), k)
         end
 
+fun kunifsRemain k =
+    case k of
+        L'.KUnif (_, ref NONE) => true
+      | _ => false
+
+val kunifsInKind = U.Kind.exists kunifsRemain
+val kunifsInCon = U.Con.exists {kind = kunifsRemain,
+                                con = fn _ => false}
+
+datatype decl_error =
+         KunifsRemainKind of ErrorMsg.span * L'.kind
+       | KunifsRemainCon of ErrorMsg.span * L'.con
+
+fun declError env err =
+    case err of
+        KunifsRemainKind (loc, k) =>
+        (ErrorMsg.errorAt loc "Some kind unification variables are undetermined in kind";
+         eprefaces' [("Kind", p_kind k)])
+      | KunifsRemainCon (loc, c) =>
+        (ErrorMsg.errorAt loc "Some kind unification variables are undetermined in constructor";
+         eprefaces' [("Constructor", p_con env c)])
+
 fun elabDecl env (d, loc) =
     (resetKunif ();
      case d of
@@ -274,6 +296,17 @@ fun elabDecl env (d, loc) =
              val (env', n) = E.pushCNamed env x k'
          in
              checkKind env c' ck k';
+
+             if kunifsInKind k' then
+                 declError env (KunifsRemainKind (loc, k'))
+             else
+                 ();
+
+             if kunifsInCon c' then
+                 declError env (KunifsRemainCon (loc, c'))
+             else
+                 ();
+
              (env',
               (L'.DCon (x, n, k', c'), loc))
          end)

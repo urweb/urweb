@@ -33,7 +33,7 @@ structure S = Search
 
 structure Kind = struct
 
-fun mapfold (f : (Elab.kind', 'state, 'abort) S.mapfold_arg) : (Elab.kind, 'state, 'abort) S.mapfolder =
+fun mapfold f =
     let
         fun mfk k acc =
             S.bindP (mfk' k acc, f)
@@ -65,11 +65,98 @@ fun mapfold (f : (Elab.kind', 'state, 'abort) S.mapfold_arg) : (Elab.kind, 'stat
     end
 
 fun exists f k =
-    case mapfold (fn (k, ()) =>
-                     if f k then
-                         S.Return ()
-                     else
-                         S.Continue (k, ())) k () of
+    case mapfold (fn k => fn () =>
+                             if f k then
+                                 S.Return ()
+                             else
+                                 S.Continue (k, ())) k () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+end
+
+structure Con = struct
+
+fun mapfold {kind = fk, con = fc} =
+    let
+        val mfk = Kind.mapfold fk
+
+        fun mfc c acc =
+            S.bindP (mfc' c acc, fc)
+
+        and mfc' (cAll as (c, loc)) =
+            case c of
+                TFun (c1, c2) =>
+                S.bind2 (mfc c1,
+                      fn c1' =>
+                         S.map2 (mfc c2,
+                              fn c2' =>
+                                 (TFun (c1', c2'), loc)))
+              | TCFun (e, x, k, c) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (mfc c,
+                              fn c' =>
+                                 (TCFun (e, x, k', c'), loc)))
+              | TRecord c =>
+                S.map2 (mfc c,
+                        fn c' =>
+                           (TRecord c', loc))
+
+              | CRel _ => S.return2 cAll
+              | CNamed _ => S.return2 cAll
+              | CApp (c1, c2) =>
+                S.bind2 (mfc c1,
+                      fn c1' =>
+                         S.map2 (mfc c2,
+                              fn c2' =>
+                                 (CApp (c1', c2'), loc)))
+              | CAbs (e, x, k, c) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (mfc c,
+                              fn c' =>
+                                 (CAbs (e, x, k', c'), loc)))
+
+              | CName _ => S.return2 cAll
+
+              | CRecord (k, xcs) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (ListUtil.mapfold (fn (x, c) =>
+                                                      S.bind2 (mfc x,
+                                                            fn x' =>
+                                                               S.map2 (mfc c,
+                                                                    fn c' =>
+                                                                       (x', c'))))
+                                 xcs,
+                              fn xcs' =>
+                                 (CRecord (k', xcs'), loc)))
+              | CConcat (c1, c2) =>
+                S.bind2 (mfc c1,
+                      fn c1' =>
+                         S.map2 (mfc c2,
+                              fn c2' =>
+                                 (CConcat (c1', c2'), loc)))
+
+              | CError => S.return2 cAll
+              | CUnif (_, _, ref (SOME c)) => mfc' c
+              | CUnif _ => S.return2 cAll
+    in
+        mfc
+    end
+
+fun exists {kind, con} k =
+    case mapfold {kind = fn k => fn () =>
+                                    if kind k then
+                                        S.Return ()
+                                    else
+                                        S.Continue (k, ()),
+                  con = fn c => fn () =>
+                                    if con c then
+                                        S.Return ()
+                                    else
+                                        S.Continue (c, ())} k () of
         S.Return _ => true
       | S.Continue _ => false
 

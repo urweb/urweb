@@ -60,7 +60,7 @@ datatype con' =
        | CConcat of con * con
 
        | CError
-       | CUnif of string * con option ref
+       | CUnif of kind * string * con option ref
 
 withtype con = con' located
 

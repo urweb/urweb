@@ -69,6 +69,7 @@ val s = ErrorMsg.spanOf
 
 %nonassoc DARROW
 %nonassoc COLON
+%nonassoc DCOLON TCOLON
 %right COMMA
 %right ARROW LARROW
 %right PLUSPLUS
@@ -101,6 +102,8 @@ cexp   : capps                          (capps)
        | cexp PLUSPLUS cexp             (CConcat (cexp1, cexp2), s (cexp1left, cexp1right))
 
        | FN SYMBOL kcolon kind DARROW cexp (CAbs (kcolon, SYMBOL, kind, cexp), s (FNleft, cexpright))
+
+       | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, RPARENright))
 
 kcolon : DCOLON                         (Explicit)
        | TCOLON                         (Implicit)

@@ -62,7 +62,7 @@ fun bind2 (r, f) acc =
 fun bindP (r, f) =
     case r of
         Continue ((x, pos), acc) =>
-        map (f (x, acc),
+        map (f x acc,
           fn (x', acc') =>
              ((x', pos), acc'))
       | Return x => Return x

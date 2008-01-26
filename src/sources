@@ -1,3 +1,6 @@
+search.sig
+search.sml
+
 list_util.sig
 list_util.sml
 
@@ -16,9 +19,6 @@ source_print.sig
 source_print.sml
 
 elab.sml
-
-search.sig
-search.sml
 
 elab_util.sig
 elab_util.sml

@@ -28,9 +28,17 @@
 signature ELAB_UTIL = sig
 
 structure Kind : sig
-    val mapfold : (Elab.kind', 'state, 'abort) Search.mapfold_arg
+    val mapfold : (Elab.kind', 'state, 'abort) Search.mapfolder
                   -> (Elab.kind, 'state, 'abort) Search.mapfolder
     val exists : (Elab.kind' -> bool) -> Elab.kind -> bool
+end
+
+structure Con : sig
+    val mapfold : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+                      con : (Elab.con', 'state, 'abort) Search.mapfolder}
+                  -> (Elab.con, 'state, 'abort) Search.mapfolder
+    val exists : {kind : Elab.kind' -> bool,
+                  con : Elab.con' -> bool} -> Elab.con -> bool
 end
 
 val declBinds : ElabEnv.env -> Elab.decl -> ElabEnv.env

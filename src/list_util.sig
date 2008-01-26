@@ -30,4 +30,7 @@ signature LIST_UTIL = sig
     val mapfoldl : ('data1 * 'state -> 'state * 'data2) -> 'state -> 'data1 list
                    -> 'state * 'data2 list
 
+    val mapfold : ('data, 'state, 'abort) Search.mapfolder
+                  -> ('data list, 'state, 'abort) Search.mapfolder
+
 end
