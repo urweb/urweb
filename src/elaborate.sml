@@ -27,7 +27,7 @@
 
 structure Elaborate :> ELABORATE = struct
 
-structure L = Laconic
+structure L = Source
 structure L' = Elab
 structure E = ElabEnv
 structure U = ElabUtil

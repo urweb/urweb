@@ -29,7 +29,7 @@
 
 signature COMPILER = sig
 
-    val parse : string -> Laconic.file option
+    val parse : string -> Source.file option
 
     val testParse : string -> unit
 

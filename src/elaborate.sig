@@ -27,6 +27,6 @@
 
 signature ELABORATE = sig
 
-    val elabFile : Laconic.file -> Elab.file
+    val elabFile : Source.file -> Elab.file
 
 end

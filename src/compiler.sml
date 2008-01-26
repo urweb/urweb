@@ -58,7 +58,7 @@ fun testParse filename =
         if ErrorMsg.anyErrors () then
             print "Recoverable parse error\n"
         else
-            (Print.print (LaconicPrint.p_file file);
+            (Print.print (SourcePrint.p_file file);
              print "\n")
 
 end

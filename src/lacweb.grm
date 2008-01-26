@@ -27,7 +27,7 @@
 
 (* Grammar for Laconic/Web programs *)
 
-open Laconic
+open Source
 
 val s = ErrorMsg.spanOf
 

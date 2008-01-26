@@ -1,7 +1,7 @@
 errormsg.sig
 errormsg.sml
 
-laconic.sml
+source.sml
 
 lacweb.grm
 lacweb.lex
@@ -9,8 +9,8 @@ lacweb.lex
 print.sig
 print.sml
 
-laconic_print.sig
-laconic_print.sml
+source_print.sig
+source_print.sml
 
 elab.sml
 

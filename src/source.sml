@@ -25,12 +25,45 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing Laconic/Web *)
+structure Source = struct
 
-signature LACONIC_PRINT = sig
-    val p_kind : Laconic.kind Print.printer
-    val p_explicitness : Laconic.explicitness Print.printer
-    val p_con : Laconic.con Print.printer
-    val p_decl : Laconic.decl Print.printer
-    val p_file : Laconic.file Print.printer
+type 'a located = 'a ErrorMsg.located
+
+datatype kind' =
+         KType
+       | KArrow of kind * kind
+       | KName
+       | KRecord of kind
+
+withtype kind = kind' located
+
+datatype explicitness =
+         Explicit
+       | Implicit
+
+datatype con' =
+         CAnnot of con * kind
+
+       | TFun of con * con
+       | TCFun of explicitness * string * kind * con
+       | TRecord of con
+
+       | CVar of string
+       | CApp of con * con
+       | CAbs of explicitness * string * kind * con
+
+       | CName of string
+
+       | CRecord of (con * con) list
+       | CConcat of con * con
+
+withtype con = con' located
+
+datatype decl' =
+         DCon of string * kind option * con
+
+withtype decl = decl' located
+
+type file = decl list
+
 end

@@ -27,12 +27,12 @@
 
 (* Pretty-printing Laconic/Web *)
 
-structure LaconicPrint :> LACONIC_PRINT = struct
+structure SourcePrint :> SOURCE_PRINT = struct
 
 open Print.PD
 open Print
 
-open Laconic
+open Source
 
 fun p_kind' par (k, _) =
     case k of
