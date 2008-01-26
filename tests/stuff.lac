@@ -1,4 +1,4 @@
-con c1 = t :: Type -> t
+type c1 = t :: Type -> t
 con c2 :: Type = t :: Type -> t
 con c3 = fn t :: Type => c1
 con c4 = c3 c1

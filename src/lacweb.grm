@@ -39,7 +39,8 @@ val s = ErrorMsg.spanOf
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH
- | CON | TYPE | NAME
+ | CON | LTYPE
+ | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR
 
@@ -85,6 +86,8 @@ decls  :                                ([])
 
 decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, cexpright))
        | CON SYMBOL DCOLON kind EQ cexp (DCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
+       | LTYPE SYMBOL EQ cexp           (DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
+                                         s (LTYPEleft, cexpright))
 
 kind   : TYPE                           (KType, s (TYPEleft, TYPEright))
        | NAME                           (KName, s (NAMEleft, NAMEright))

@@ -109,6 +109,7 @@ ws = [\ \t\012];
 <INITIAL> "#"         => (Tokens.HASH (yypos, yypos + size yytext));
 
 <INITIAL> "con"       => (Tokens.CON (yypos, yypos + size yytext));
+<INITIAL> "type"      => (Tokens.LTYPE (yypos, yypos + size yytext));
 <INITIAL> "fn"        => (Tokens.FN (yypos, yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (yypos, yypos + size yytext));
