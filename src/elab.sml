@@ -64,8 +64,21 @@ datatype con' =
 
 withtype con = con' located
 
+datatype exp' =
+         ERel of int
+       | ENamed of int
+       | EApp of exp * exp
+       | EAbs of string * con * exp
+       | ECApp of exp * con
+       | ECAbs of explicitness * string * kind * exp
+
+       | EError
+
+withtype exp = exp' located
+
 datatype decl' =
          DCon of string * int * kind * con
+       | DVal of string * int * con * exp
 
 withtype decl = decl' located
 

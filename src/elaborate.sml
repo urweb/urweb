@@ -201,12 +201,12 @@ fun elabCon env (c, loc) =
 
       | L.CVar s =>
         (case E.lookupC env s of
-             E.CNotBound =>
+             E.NotBound =>
              (conError env (UnboundCon (loc, s));
               (cerror, kerror))
-           | E.CRel (n, k) =>
+           | E.Rel (n, k) =>
              ((L'.CRel n, loc), k)
-           | E.CNamed (n, k) =>
+           | E.Named (n, k) =>
              ((L'.CNamed n, loc), k))
       | L.CApp (c1, c2) =>
         let

@@ -34,17 +34,27 @@ signature ELAB_ENV = sig
     exception UnboundRel of int
     exception UnboundNamed of int
 
+    datatype 'a var =
+             NotBound
+           | Rel of int * 'a
+           | Named of int * 'a
+
     val pushCRel : env -> string -> Elab.kind -> env
     val lookupCRel : env -> int -> string * Elab.kind
 
     val pushCNamed : env -> string -> Elab.kind -> env * int
     val pushCNamedAs : env -> string -> int -> Elab.kind -> env
     val lookupCNamed : env -> int -> string * Elab.kind
+
+    val lookupC : env -> string -> Elab.kind var
+
+    val pushERel : env -> string -> Elab.con -> env
+    val lookupERel : env -> int -> string * Elab.con
+
+    val pushENamed : env -> string -> Elab.con -> env * int
+    val pushENamedAs : env -> string -> int -> Elab.con -> env
+    val lookupENamed : env -> int -> string * Elab.con
                                                  
-    datatype var =
-             CNotBound
-           | CRel of int * Elab.kind
-           | CNamed of int * Elab.kind
-    val lookupC : env -> string -> var
+    val lookupE : env -> string -> Elab.con var
 
 end

@@ -167,5 +167,6 @@ structure E = ElabEnv
 fun declBinds env (d, _) =
     case d of
         DCon (x, n, k, _) => E.pushCNamedAs env x n k
+      | DVal (x, n, t, _) => E.pushENamedAs env x n t
 
 end

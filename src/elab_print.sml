@@ -128,6 +128,45 @@ fun p_con' par env (c, _) =
         
 and p_con env = p_con' false env
 
+fun p_exp' par env (e, _) =
+    case e of
+        ERel n => string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
+      | ENamed n => string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+      | EApp (e1, e2) => parenIf par (box [p_exp env e1,
+                                           space,
+                                           p_exp' true env e2])
+      | EAbs (x, t, e) => parenIf par (box [string "fn",
+                                            space,
+                                            string x,
+                                            space,
+                                            string ":",
+                                            space,
+                                            p_con env t,
+                                            space,
+                                            string "=>",
+                                            space,
+                                            p_exp (E.pushERel env x t) e])
+      | ECApp (e, c) => parenIf par (box [p_exp env e,
+                                          space,
+                                          string "[",
+                                          p_con env c,
+                                          string "]"])
+      | ECAbs (exp, x, k, e) => parenIf par (box [string "fn",
+                                                  space,
+                                                  string x,
+                                                  space,
+                                                  p_explicitness exp,
+                                                  space,
+                                                  p_kind k,
+                                                  space,
+                                                  string "=>",
+                                                  space,
+                                                  p_exp (E.pushCRel env x k) e])
+
+      | EError => string "<ERROR>"
+
+and p_exp env = p_exp' false env
+
 fun p_decl env ((d, _) : decl) =
     case d of
         DCon (x, n, k, c) => box [string "con",
@@ -143,6 +182,19 @@ fun p_decl env ((d, _) : decl) =
                                   string "=",
                                   space,
                                   p_con env c]
+      | DVal (x, n, t, e) => box [string "val",
+                                  space,
+                                  string x,
+                                  string "__",
+                                  string (Int.toString n),
+                                  space,
+                                  string ":",
+                                  space,
+                                  p_con env t,
+                                  space,
+                                  string "=",
+                                  space,
+                                  p_exp env e]
 
 fun p_file env file =
     let

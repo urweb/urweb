@@ -38,19 +38,23 @@ structure SM = BinaryMapFn(struct
 exception UnboundRel of int
 exception UnboundNamed of int
 
-datatype var' =
-         CRel' of int * kind
-       | CNamed' of int * kind
+datatype 'a var' =
+         Rel' of int * 'a
+       | Named' of int * 'a
 
-datatype var =
-         CNotBound
-       | CRel of int * kind
-       | CNamed of int * kind
+datatype 'a var =
+         NotBound
+       | Rel of int * 'a
+       | Named of int * 'a
 
 type env = {
-     renameC : var' SM.map,
+     renameC : kind var' SM.map,
      relC : (string * kind) list,
-     namedC : (string * kind) IM.map
+     namedC : (string * kind) IM.map,
+
+     renameE : con var' SM.map,
+     relE : (string * con) list,
+     namedE : (string * con) IM.map
 }
 
 val namedCounter = ref 0
@@ -58,17 +62,25 @@ val namedCounter = ref 0
 val empty = {
     renameC = SM.empty,
     relC = [],
-    namedC = IM.empty
+    namedC = IM.empty,
+
+    renameE = SM.empty,
+    relE = [],
+    namedE = IM.empty
 }
 
 fun pushCRel (env : env) x k =
     let
-        val renameC = SM.map (fn CRel' (n, k) => CRel' (n+1, k)
+        val renameC = SM.map (fn Rel' (n, k) => Rel' (n+1, k)
                                | x => x) (#renameC env)
     in
-        {renameC = SM.insert (renameC, x, CRel' (0, k)),
+        {renameC = SM.insert (renameC, x, Rel' (0, k)),
          relC = (x, k) :: #relC env,
-         namedC = #namedC env}
+         namedC = #namedC env,
+
+         renameE = #renameE env,
+         relE = #relE env,
+         namedE = #namedE env}
     end
 
 fun lookupCRel (env : env) n =
@@ -76,9 +88,13 @@ fun lookupCRel (env : env) n =
     handle Subscript => raise UnboundRel n
 
 fun pushCNamedAs (env : env) x n k =
-    {renameC = SM.insert (#renameC env, x, CNamed' (n, k)),
+    {renameC = SM.insert (#renameC env, x, Named' (n, k)),
      relC = #relC env,
-     namedC = IM.insert (#namedC env, n, (x, k))}
+     namedC = IM.insert (#namedC env, n, (x, k)),
+
+     renameE = #renameE env,
+     relE = #relE env,
+     namedE = #namedE env}
 
 fun pushCNamed env x k =
     let
@@ -95,8 +111,54 @@ fun lookupCNamed (env : env) n =
 
 fun lookupC (env : env) x =
     case SM.find (#renameC env, x) of
-        NONE => CNotBound
-      | SOME (CRel' x) => CRel x
-      | SOME (CNamed' x) => CNamed x
+        NONE => NotBound
+      | SOME (Rel' x) => Rel x
+      | SOME (Named' x) => Named x
+
+fun pushERel (env : env) x t =
+    let
+        val renameE = SM.map (fn Rel' (n, t) => Rel' (n+1, t)
+                               | x => x) (#renameE env)
+    in
+        {renameC = #renameC env,
+         relC = #relC env,
+         namedC = #namedC env,
+
+         renameE = SM.insert (renameE, x, Rel' (0, t)),
+         relE = (x, t) :: #relE env,
+         namedE = #namedE env}
+    end
+
+fun lookupERel (env : env) n =
+    (List.nth (#relE env, n))
+    handle Subscript => raise UnboundRel n
+
+fun pushENamedAs (env : env) x n t =
+    {renameC = #renameC env,
+     relC = #relC env,
+     namedC = #namedC env,
+
+     renameE = SM.insert (#renameE env, x, Named' (n, t)),
+     relE = #relE env,
+     namedE = IM.insert (#namedE env, n, (x, t))}
+
+fun pushENamed env x t =
+    let
+        val n = !namedCounter
+    in
+        namedCounter := n + 1;
+        (pushENamedAs env x n t, n)
+    end
+
+fun lookupENamed (env : env) n =
+    case IM.find (#namedE env, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
+fun lookupE (env : env) x =
+    case SM.find (#renameE env, x) of
+        NONE => NotBound
+      | SOME (Rel' x) => Rel x
+      | SOME (Named' x) => Named x
 
 end
