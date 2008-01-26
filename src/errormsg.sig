@@ -39,6 +39,9 @@ signature ERROR_MSG = sig
     val posToString : pos -> string
     val spanToString : span -> string
 
+    val dummyPos : pos
+    val dummySpan : span
+
     val resetPositioning : string -> unit
     val newline : int -> unit
     val lastLineStart : unit -> int

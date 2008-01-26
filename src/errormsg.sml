@@ -43,6 +43,12 @@ fun posToString {line, char} =
 fun spanToString {file, first, last} =
     String.concat [file, ":", posToString first, "-", posToString last]
 
+val dummyPos = {line = 0,
+                char = 0}
+val dummySpan = {file = "",
+                 first = dummyPos,
+                 last = dummyPos}
+
 
 val file = ref ""
 val numLines = ref 1

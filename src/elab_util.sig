@@ -33,4 +33,6 @@ structure Kind : sig
     val exists : (Elab.kind' -> bool) -> Elab.kind -> bool
 end
 
+val declBinds : ElabEnv.env -> Elab.decl -> ElabEnv.env
+
 end

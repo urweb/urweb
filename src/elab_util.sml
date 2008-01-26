@@ -75,4 +75,10 @@ fun exists f k =
 
 end
 
+structure E = ElabEnv
+
+fun declBinds env (d, _) =
+    case d of
+        DCon (x, k, _) => #1 (E.pushCNamed env x k)
+
 end

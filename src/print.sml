@@ -71,7 +71,27 @@ fun fpreface f (s, d) =
 val preface = fpreface out
 val epreface = fpreface err
 
-fun fprefaces f ls =
+fun fprefaces f s ls =
+    let
+        val len = foldl (fn ((s, _), best) =>
+                            Int.max (size s, best)) 0 ls
+    in
+        fprint f (PD.string s);
+        fprint f PD.newline;
+        app (fn (s, d) =>
+                let
+                    val s = CharVector.tabulate (len - size s,
+                                                 fn _ => #" ")
+                            ^ s ^ ": "
+                in
+                    fpreface f (s, d)
+                end) ls
+    end
+
+val prefaces = fprefaces out
+val eprefaces = fprefaces err
+
+fun fprefaces' f ls =
     let
         val len = foldl (fn ((s, _), best) =>
                             Int.max (size s, best)) 0 ls
@@ -86,7 +106,7 @@ fun fprefaces f ls =
                 end) ls
     end
 
-val prefaces = fprefaces out
-val eprefaces = fprefaces err
+val prefaces' = fprefaces' out
+val eprefaces' = fprefaces' err
 
 end

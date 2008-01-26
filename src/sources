@@ -23,6 +23,9 @@ elab_util.sml
 elab_env.sig
 elab_env.sml
 
+elab_print.sig
+elab_print.sml
+
 elaborate.sig
 elaborate.sml
 
