@@ -1,0 +1,10 @@
+syntax: glob
+
+*~
+.cm
+src/.cm
+
+bin/*
+
+src/lacweb.cm
+src/lacweb.mlb
