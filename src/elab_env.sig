@@ -42,9 +42,9 @@ signature ELAB_ENV = sig
     val pushCRel : env -> string -> Elab.kind -> env
     val lookupCRel : env -> int -> string * Elab.kind
 
-    val pushCNamed : env -> string -> Elab.kind -> env * int
-    val pushCNamedAs : env -> string -> int -> Elab.kind -> env
-    val lookupCNamed : env -> int -> string * Elab.kind
+    val pushCNamed : env -> string -> Elab.kind -> Elab.con option -> env * int
+    val pushCNamedAs : env -> string -> int -> Elab.kind -> Elab.con option -> env
+    val lookupCNamed : env -> int -> string * Elab.kind * Elab.con option
 
     val lookupC : env -> string -> Elab.kind var
 

@@ -336,7 +336,21 @@ fun cunifyError env err =
                   [("Con 1", p_con env c1),
                    ("Con 2", p_con env c2)]
 
-fun unifyCons' env (c1All as (c1, _)) (c2All as (c2, _)) =
+fun hnormCon env (cAll as (c, _)) =
+    case c of
+        L'.CUnif (_, _, ref (SOME c)) => hnormCon env c
+
+      | L'.CNamed xn =>
+        (case E.lookupCNamed env xn of
+             (_, _, SOME c') => hnormCon env c'
+           | _ => cAll)
+
+      | _ => cAll
+
+fun unifyCons' env c1 c2 =
+    unifyCons'' env (hnormCon env c1) (hnormCon env c2)
+    
+and unifyCons'' env (c1All as (c1, _)) (c2All as (c2, _)) =
     let
         fun err f = raise CUnify' (f (c1All, c2All))
     in
@@ -424,6 +438,8 @@ fun unifyCons env c1 c2 =
 datatype exp_error =
        UnboundExp of ErrorMsg.span * string
      | Unify of L'.exp * L'.con * L'.con * cunify_error
+     | Unif of string * L'.con
+     | WrongForm of string * L'.exp * L'.con
 
 fun expError env err =
     case err of
@@ -435,12 +451,49 @@ fun expError env err =
                      ("Have con", p_con env c1),
                      ("Need con", p_con env c2)];
          cunifyError env uerr)
+      | Unif (action, c) =>
+        (ErrorMsg.errorAt (#2 c) ("Unification variable blocks " ^ action);
+         eprefaces' [("Con", p_con env c)])
+      | WrongForm (variety, e, t) =>
+        (ErrorMsg.errorAt (#2 e) ("Expression is not a " ^ variety);
+         eprefaces' [("Expression", p_exp env e),
+                     ("Type", p_con env t)])
 
 fun checkCon env e c1 c2 =
     unifyCons env c1 c2
     handle CUnify (c1, c2, err) =>
            expError env (Unify (e, c1, c2, err))
 
+exception SynUnif
+
+val liftConInCon =
+    U.Con.mapB {kind = fn k => k,
+                con = fn bound => fn c =>
+                                     case c of
+                                         L'.CRel xn =>
+                                         if xn < bound then
+                                             c
+                                         else
+                                             L'.CRel (xn + 1)
+                                       | L'.CUnif _ => raise SynUnif
+                                       | _ => c,
+                bind = fn (bound, U.Con.Rel _) => bound + 1
+                        | (bound, _) => bound}
+
+val subConInCon =
+    U.Con.mapB {kind = fn k => k,
+                con = fn (xn, rep) => fn c =>
+                                  case c of
+                                      L'.CRel xn' =>
+                                      if xn = xn' then
+                                          #1 rep
+                                      else
+                                          c
+                                    | L'.CUnif _ => raise SynUnif
+                                    | _ => c,
+                bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
+                        | (ctx, _) => ctx}
+                                                         
 fun elabExp env (e, loc) =
     case e of
         L.EAnnot (e, t) =>
@@ -493,9 +546,35 @@ fun elabExp env (e, loc) =
             val (e', et) = elabExp env e
             val (c', ck) = elabCon env c
         in
-            raise Fail "ECApp"
+            case #1 (hnormCon env et) of
+                L'.CError => (eerror, cerror)
+              | L'.TCFun (_, _, k, eb) =>
+                let
+                    val () = checkKind env c' ck k
+                    val eb' = subConInCon (0, c') eb
+                              handle SynUnif => (expError env (Unif ("substitution", eb));
+                                                 cerror)
+                in
+                    ((L'.ECApp (e', c'), loc), eb')
+                end
+
+              | L'.CUnif _ =>
+                (expError env (Unif ("application", et));
+                 (eerror, cerror))
+
+              | _ =>
+                (expError env (WrongForm ("constructor function", e', et));
+                 (eerror, cerror))
         end
-      | L.ECAbs _ => raise Fail "ECAbs"
+      | L.ECAbs (expl, x, k, e) =>
+        let
+            val expl' = elabExplicitness expl
+            val k' = elabKind k
+            val (e', et) = elabExp (E.pushCRel env x k') e
+        in
+            ((L'.ECAbs (expl', x, k', e'), loc),
+             (L'.TCFun (expl', x, k', et), loc))
+        end
 
 datatype decl_error =
          KunifsRemainKind of ErrorMsg.span * L'.kind
@@ -532,7 +611,7 @@ fun elabDecl env (d, loc) =
                         | SOME k => elabKind k
 
              val (c', ck) = elabCon env c
-             val (env', n) = E.pushCNamed env x k'
+             val (env', n) = E.pushCNamed env x k' (SOME c')
          in
              checkKind env c' ck k';
 

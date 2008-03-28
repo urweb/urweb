@@ -34,7 +34,10 @@ signature SEARCH = sig
     type ('data, 'state, 'abort) mapfolder =
          'data -> 'state -> ('data * 'state, 'abort) result
 
-    val return2 : 'state1 -> 'state2 -> ('state1 * 'state2, 'abort) result
+    type ('context, 'data, 'state, 'abort) mapfolderB =
+         'context -> 'data -> 'state -> ('data * 'state, 'abort) result
+
+    val return2 : 'data -> 'state -> ('data * 'state, 'abort) result
 
     val map : ('state1, 'abort) result
               * ('state1 -> 'state2)
@@ -43,7 +46,7 @@ signature SEARCH = sig
     val map2 : ('state2 -> ('state1 * 'state2, 'abort) result)
                * ('state1 -> 'state1')
                -> ('state2 -> ('state1' * 'state2, 'abort) result)
-                         
+
     val bind : ('state1, 'abort) result
                * ('state1 -> ('state2, 'abort) result)
                -> ('state2, 'abort) result

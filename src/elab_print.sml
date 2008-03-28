@@ -36,6 +36,8 @@ open Elab
 
 structure E = ElabEnv
 
+val debug = ref false
+
 fun p_kind' par (k, _) =
     case k of
         KType => string "Type"
@@ -85,8 +87,16 @@ fun p_con' par env (c, _) =
       | TRecord c => box [string "$",
                           p_con' true env c]
 
-      | CRel n => string (#1 (E.lookupCRel env n) ^ "_" ^ Int.toString n)
-      | CNamed n => string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
+      | CRel n =>
+        if !debug then
+            string (#1 (E.lookupCRel env n) ^ "_" ^ Int.toString n)
+        else
+            string (#1 (E.lookupCRel env n))
+      | CNamed n =>
+        if !debug then
+            string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
+        else
+            string (#1 (E.lookupCNamed env n))
 
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
                                            space,
@@ -130,8 +140,16 @@ and p_con env = p_con' false env
 
 fun p_exp' par env (e, _) =
     case e of
-        ERel n => string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
-      | ENamed n => string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+        ERel n =>
+        if !debug then
+            string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
+        else
+            string (#1 (E.lookupERel env n))
+      | ENamed n =>
+        if !debug then
+            string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+        else
+            string (#1 (E.lookupENamed env n))
       | EApp (e1, e2) => parenIf par (box [p_exp env e1,
                                            space,
                                            p_exp' true env e2])
@@ -169,32 +187,48 @@ and p_exp env = p_exp' false env
 
 fun p_decl env ((d, _) : decl) =
     case d of
-        DCon (x, n, k, c) => box [string "con",
-                                  space,
-                                  string x,
-                                  string "__",
-                                  string (Int.toString n),
-                                  space,
-                                  string "::",
-                                  space,
-                                  p_kind k,
-                                  space,
-                                  string "=",
-                                  space,
-                                  p_con env c]
-      | DVal (x, n, t, e) => box [string "val",
-                                  space,
-                                  string x,
-                                  string "__",
-                                  string (Int.toString n),
-                                  space,
-                                  string ":",
-                                  space,
-                                  p_con env t,
-                                  space,
-                                  string "=",
-                                  space,
-                                  p_exp env e]
+        DCon (x, n, k, c) =>
+        let
+            val xp = if !debug then
+                         box [string x,
+                              string "__",
+                              string (Int.toString n)]
+                     else
+                         string x
+        in
+            box [string "con",
+                 space,
+                 xp,
+                 space,
+                 string "::",
+                 space,
+                 p_kind k,
+                 space,
+                 string "=",
+                 space,
+                 p_con env c]
+        end
+      | DVal (x, n, t, e) =>
+        let
+            val xp = if !debug then
+                         box [string x,
+                              string "__",
+                              string (Int.toString n)]
+                     else
+                         string x        
+        in
+            box [string "val",
+                 space,
+                 xp,
+                 space,
+                 string ":",
+                 space,
+                 p_con env t,
+                 space,
+                 string "=",
+                 space,
+                 p_exp env e]
+        end
 
 fun p_file env file =
     let

@@ -50,7 +50,7 @@ datatype 'a var =
 type env = {
      renameC : kind var' SM.map,
      relC : (string * kind) list,
-     namedC : (string * kind) IM.map,
+     namedC : (string * kind * con option) IM.map,
 
      renameE : con var' SM.map,
      relE : (string * con) list,
@@ -87,21 +87,21 @@ fun lookupCRel (env : env) n =
     (List.nth (#relC env, n))
     handle Subscript => raise UnboundRel n
 
-fun pushCNamedAs (env : env) x n k =
+fun pushCNamedAs (env : env) x n k co =
     {renameC = SM.insert (#renameC env, x, Named' (n, k)),
      relC = #relC env,
-     namedC = IM.insert (#namedC env, n, (x, k)),
+     namedC = IM.insert (#namedC env, n, (x, k, co)),
 
      renameE = #renameE env,
      relE = #relE env,
      namedE = #namedE env}
 
-fun pushCNamed env x k =
+fun pushCNamed env x k co =
     let
         val n = !namedCounter
     in
         namedCounter := n + 1;
-        (pushCNamedAs env x n k, n)
+        (pushCNamedAs env x n k co, n)
     end
 
 fun lookupCNamed (env : env) n =

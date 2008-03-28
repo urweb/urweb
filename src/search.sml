@@ -37,6 +37,9 @@ type ('data, 'state, 'abort) mapfold_arg =
 type ('data, 'state, 'abort) mapfolder =
      'data -> 'state -> ('data * 'state, 'abort) result
 
+type ('context, 'data, 'state, 'abort) mapfolderB =
+     'context -> 'data -> 'state -> ('data * 'state, 'abort) result
+
 fun return2 v acc = Continue (v, acc)
 
 fun map (r, f) =
