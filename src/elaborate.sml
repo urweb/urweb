@@ -139,6 +139,7 @@ val kname = (L'.KName, dummy)
 
 val cerror = (L'.CError, dummy)
 val kerror = (L'.KError, dummy)
+val eerror = (L'.EError, dummy)
 
 local
     val count = ref 0
@@ -156,6 +157,26 @@ fun kunif () =
     in
         count := n + 1;
         (L'.KUnif (s, ref NONE), dummy)
+    end
+
+end
+
+local
+    val count = ref 0
+in
+
+fun resetCunif () = count := 0
+
+fun cunif k =
+    let
+        val n = !count
+        val s = if n <= 26 then
+                    str (chr (ord #"A" + n))
+                else
+                    "U" ^ Int.toString (n - 26)
+    in
+        count := n + 1;
+        (L'.CUnif (k, s, ref NONE), dummy)
     end
 
 end
@@ -264,14 +285,224 @@ fun kunifsRemain k =
     case k of
         L'.KUnif (_, ref NONE) => true
       | _ => false
+fun cunifsRemain c =
+    case c of
+        L'.CUnif (_, _, ref NONE) => true
+      | _ => false
 
 val kunifsInKind = U.Kind.exists kunifsRemain
 val kunifsInCon = U.Con.exists {kind = kunifsRemain,
                                 con = fn _ => false}
+val kunifsInExp = U.Exp.exists {kind = kunifsRemain,
+                                con = fn _ => false,
+                                exp = fn _ => false}
+
+val cunifsInCon = U.Con.exists {kind = fn _ => false,
+                                con = cunifsRemain}
+val cunifsInExp = U.Exp.exists {kind = fn _ => false,
+                                con = cunifsRemain,
+                                exp = fn _ => false}
+
+fun occursCon r =
+    U.Con.exists {kind = fn _ => false,
+                  con = fn L'.CUnif (_, _, r') => r = r'
+                         | _ => false}
+
+datatype cunify_error =
+         CKind of L'.kind * L'.kind * kunify_error
+       | COccursCheckFailed of L'.con * L'.con
+       | CIncompatible of L'.con * L'.con
+       | CExplicitness of L'.con * L'.con
+
+exception CUnify' of cunify_error
+
+fun cunifyError env err =
+    case err of
+        CKind (k1, k2, kerr) =>
+        (eprefaces "Kind unification failure"
+                   [("Kind 1", p_kind k1),
+                    ("Kind 2", p_kind k2)];
+         kunifyError kerr)
+      | COccursCheckFailed (c1, c2) =>
+        eprefaces "Constructor occurs check failed"
+                  [("Con 1", p_con env c1),
+                   ("Con 2", p_con env c2)]
+      | CIncompatible (c1, c2) =>
+        eprefaces "Incompatible constructors"
+                  [("Con 1", p_con env c1),
+                   ("Con 2", p_con env c2)]
+      | CExplicitness (c1, c2) =>
+        eprefaces "Differing constructor function explicitness"
+                  [("Con 1", p_con env c1),
+                   ("Con 2", p_con env c2)]
+
+fun unifyCons' env (c1All as (c1, _)) (c2All as (c2, _)) =
+    let
+        fun err f = raise CUnify' (f (c1All, c2All))
+    in
+        case (c1, c2) of
+            (L'.TFun (d1, r1), L'.TFun (d2, r2)) =>
+            (unifyCons' env d1 d2;
+             unifyCons' env r1 r2)
+          | (L'.TCFun (expl1, x1, d1, r1), L'.TCFun (expl2, _, d2, r2)) =>
+            if expl1 <> expl2 then
+                err CExplicitness
+            else
+                (unifyKinds d1 d2;
+                 unifyCons' (E.pushCRel env x1 d1) r1 r2)
+          | (L'.TRecord r1, L'.TRecord r2) => unifyCons' env r1 r2
+
+          | (L'.CRel n1, L'.CRel n2) =>
+            if n1 = n2 then
+                ()
+            else
+                err CIncompatible
+          | (L'.CNamed n1, L'.CNamed n2) =>
+            if n1 = n2 then
+                ()
+            else
+                err CIncompatible
+
+          | (L'.CApp (d1, r1), L'.CApp (d2, r2)) =>
+            (unifyCons' env d1 d2;
+             unifyCons' env r1 r2)
+          | (L'.CAbs (x1, k1, c1), L'.CAbs (_, k2, c2)) =>
+            (unifyKinds k1 k2;
+             unifyCons' (E.pushCRel env x1 k1) c1 c2)
+
+          | (L'.CName n1, L'.CName n2) =>
+            if n1 = n2 then
+                ()
+            else
+                err CIncompatible
+
+          | (L'.CRecord (k1, rs1), L'.CRecord (k2, rs2)) =>
+            (unifyKinds k1 k2;
+             ((ListPair.appEq (fn ((n1, v1), (n2, v2)) =>
+                                  (unifyCons' env n1 n2;
+                                   unifyCons' env v1 v2)) (rs1, rs2))
+              handle ListPair.UnequalLengths => err CIncompatible))
+          | (L'.CConcat (d1, r1), L'.CConcat (d2, r2)) =>
+            (unifyCons' env d1 d2;
+             unifyCons' env r1 r2)
+             
+
+          | (L'.CError, _) => ()
+          | (_, L'.CError) => ()
+
+          | (L'.CUnif (_, _, ref (SOME c1All)), _) => unifyCons' env c1All c2All
+          | (_, L'.CUnif (_, _, ref (SOME c2All))) => unifyCons' env c1All c2All
+
+          | (L'.CUnif (k1, _, r1), L'.CUnif (k2, _, r2)) =>
+            if r1 = r2 then
+                ()
+            else
+                (unifyKinds k1 k2;
+                 r1 := SOME c2All)
+
+          | (L'.CUnif (_, _, r), _) =>
+            if occursCon r c2All then
+                err COccursCheckFailed
+            else
+                r := SOME c2All
+          | (_, L'.CUnif (_, _, r)) =>
+            if occursCon r c1All then
+                err COccursCheckFailed
+            else
+                r := SOME c1All
+
+          | _ => err CIncompatible
+    end
+
+exception CUnify of L'.con * L'.con * cunify_error
+
+fun unifyCons env c1 c2 =
+    unifyCons' env c1 c2
+    handle CUnify' err => raise CUnify (c1, c2, err)
+         | KUnify args => raise CUnify (c1, c2, CKind args)
+
+datatype exp_error =
+       UnboundExp of ErrorMsg.span * string
+     | Unify of L'.exp * L'.con * L'.con * cunify_error
+
+fun expError env err =
+    case err of
+        UnboundExp (loc, s) =>
+        ErrorMsg.errorAt loc ("Unbound expression variable " ^ s)
+      | Unify (e, c1, c2, uerr) =>
+        (ErrorMsg.errorAt (#2 e) "Unification failure";
+         eprefaces' [("Expression", p_exp env e),
+                     ("Have con", p_con env c1),
+                     ("Need con", p_con env c2)];
+         cunifyError env uerr)
+
+fun checkCon env e c1 c2 =
+    unifyCons env c1 c2
+    handle CUnify (c1, c2, err) =>
+           expError env (Unify (e, c1, c2, err))
+
+fun elabExp env (e, loc) =
+    case e of
+        L.EAnnot (e, t) =>
+        let
+            val (e', et) = elabExp env e
+            val (t', _) = elabCon env t
+        in
+            checkCon env e' et t';
+            (e', t')
+        end
+
+      | L.EVar s =>
+        (case E.lookupE env s of
+             E.NotBound =>
+             (expError env (UnboundExp (loc, s));
+              (eerror, cerror))
+           | E.Rel (n, t) => ((L'.ERel n, loc), t)
+           | E.Named (n, t) => ((L'.ENamed n, loc), t))
+      | L.EApp (e1, e2) =>
+        let
+            val (e1', t1) = elabExp env e1
+            val (e2', t2) = elabExp env e2
+
+            val dom = cunif ktype
+            val ran = cunif ktype
+            val t = (L'.TFun (dom, ran), dummy)
+        in
+            checkCon env e1' t1 t;
+            checkCon env e2' t2 dom;
+            ((L'.EApp (e1', e2'), loc), ran)
+        end
+      | L.EAbs (x, to, e) =>
+        let
+            val t' = case to of
+                         NONE => cunif ktype
+                       | SOME t =>
+                         let
+                             val (t', tk) = elabCon env t
+                         in
+                             checkKind env t' tk ktype;
+                             t'
+                         end
+            val (e', et) = elabExp (E.pushERel env x t') e
+        in
+            ((L'.EAbs (x, t', e'), loc),
+             (L'.TFun (t', et), loc))
+        end
+      | L.ECApp (e, c) =>
+        let
+            val (e', et) = elabExp env e
+            val (c', ck) = elabCon env c
+        in
+            raise Fail "ECApp"
+        end
+      | L.ECAbs _ => raise Fail "ECAbs"
 
 datatype decl_error =
          KunifsRemainKind of ErrorMsg.span * L'.kind
        | KunifsRemainCon of ErrorMsg.span * L'.con
+       | KunifsRemainExp of ErrorMsg.span * L'.exp
+       | CunifsRemainCon of ErrorMsg.span * L'.con
+       | CunifsRemainExp of ErrorMsg.span * L'.exp
 
 fun declError env err =
     case err of
@@ -281,6 +512,15 @@ fun declError env err =
       | KunifsRemainCon (loc, c) =>
         (ErrorMsg.errorAt loc "Some kind unification variables are undetermined in constructor";
          eprefaces' [("Constructor", p_con env c)])
+      | KunifsRemainExp (loc, e) =>
+        (ErrorMsg.errorAt loc "Some kind unification variables are undetermined in expression";
+         eprefaces' [("Expression", p_exp env e)])
+      | CunifsRemainCon (loc, c) =>
+        (ErrorMsg.errorAt loc "Some constructor unification variables are undetermined in constructor";
+         eprefaces' [("Constructor", p_con env c)])
+      | CunifsRemainExp (loc, e) =>
+        (ErrorMsg.errorAt loc "Some constructor unification variables are undetermined in expression";
+         eprefaces' [("Expression", p_exp env e)])
 
 fun elabDecl env (d, loc) =
     (resetKunif ();
@@ -308,6 +548,40 @@ fun elabDecl env (d, loc) =
 
              (env',
               (L'.DCon (x, n, k', c'), loc))
+         end
+       | L.DVal (x, co, e) =>
+         let
+             val (c', ck) = case co of
+                                NONE => (cunif ktype, ktype)
+                              | SOME c => elabCon env c
+
+             val (e', et) = elabExp env e
+             val (env', n) = E.pushENamed env x c'
+         in
+             checkCon env e' et c';
+
+             if kunifsInCon c' then
+                 declError env (KunifsRemainCon (loc, c'))
+             else
+                 ();
+
+             if cunifsInCon c' then
+                 declError env (CunifsRemainCon (loc, c'))
+             else
+                 ();
+
+             if kunifsInExp e' then
+                 declError env (KunifsRemainExp (loc, e'))
+             else
+                 ();
+
+             if cunifsInExp e' then
+                 declError env (CunifsRemainExp (loc, e'))
+             else
+                 ();
+
+             (env',
+              (L'.DVal (x, n, c', e'), loc))
          end)
 
 fun elabFile env ds =

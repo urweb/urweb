@@ -31,6 +31,7 @@ signature ELAB_PRINT = sig
     val p_kind : Elab.kind Print.printer
     val p_explicitness : Elab.explicitness Print.printer
     val p_con : ElabEnv.env -> Elab.con Print.printer
+    val p_exp : ElabEnv.env -> Elab.exp Print.printer
     val p_decl : ElabEnv.env -> Elab.decl Print.printer
     val p_file : ElabEnv.env -> Elab.file Print.printer
 end

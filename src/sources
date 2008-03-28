@@ -20,11 +20,11 @@ source_print.sml
 
 elab.sml
 
-elab_util.sig
-elab_util.sml
-
 elab_env.sig
 elab_env.sml
+
+elab_util.sig
+elab_util.sml
 
 elab_print.sig
 elab_print.sml

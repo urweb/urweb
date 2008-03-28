@@ -162,6 +162,72 @@ fun exists {kind, con} k =
 
 end
 
+structure Exp = struct
+
+fun mapfold {kind = fk, con = fc, exp = fe} =
+    let
+        val mfk = Kind.mapfold fk
+        val mfc = Con.mapfold {kind = fk, con = fc}
+
+        fun mfe e acc =
+            S.bindP (mfe' e acc, fe)
+
+        and mfe' (eAll as (e, loc)) =
+            case e of
+                ERel _ => S.return2 eAll
+              | ENamed _ => S.return2 eAll
+              | EApp (e1, e2) =>
+                S.bind2 (mfe e1,
+                      fn e1' =>
+                         S.map2 (mfe e2,
+                              fn e2' =>
+                                 (EApp (e1', e2'), loc)))
+              | EAbs (x, t, e) =>
+                S.bind2 (mfc t,
+                      fn t' =>
+                         S.map2 (mfe e,
+                              fn e' =>
+                                 (EAbs (x, t', e'), loc)))
+
+              | ECApp (e, c) =>
+                S.bind2 (mfe e,
+                      fn e' =>
+                         S.map2 (mfc c,
+                              fn c' =>
+                                 (ECApp (e', c'), loc)))
+              | ECAbs (expl, x, k, e) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (mfe e,
+                              fn e' =>
+                                 (ECAbs (expl, x, k', e'), loc)))
+
+              | EError => S.return2 eAll
+    in
+        mfe
+    end
+
+fun exists {kind, con, exp} k =
+    case mapfold {kind = fn k => fn () =>
+                                    if kind k then
+                                        S.Return ()
+                                    else
+                                        S.Continue (k, ()),
+                  con = fn c => fn () =>
+                                    if con c then
+                                        S.Return ()
+                                    else
+                                        S.Continue (c, ()),
+                  exp = fn e => fn () =>
+                                    if exp e then
+                                        S.Return ()
+                                    else
+                                        S.Continue (e, ())} k () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+end
+
 structure E = ElabEnv
 
 fun declBinds env (d, _) =

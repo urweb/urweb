@@ -35,10 +35,20 @@ end
 
 structure Con : sig
     val mapfold : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
-                      con : (Elab.con', 'state, 'abort) Search.mapfolder}
+                   con : (Elab.con', 'state, 'abort) Search.mapfolder}
                   -> (Elab.con, 'state, 'abort) Search.mapfolder
     val exists : {kind : Elab.kind' -> bool,
                   con : Elab.con' -> bool} -> Elab.con -> bool
+end
+
+structure Exp : sig
+    val mapfold : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+                   con : (Elab.con', 'state, 'abort) Search.mapfolder,
+                   exp : (Elab.exp', 'state, 'abort) Search.mapfolder}
+                  -> (Elab.exp, 'state, 'abort) Search.mapfolder
+    val exists : {kind : Elab.kind' -> bool,
+                  con : Elab.con' -> bool,
+                  exp : Elab.exp' -> bool} -> Elab.exp -> bool
 end
 
 val declBinds : ElabEnv.env -> Elab.decl -> ElabEnv.env
