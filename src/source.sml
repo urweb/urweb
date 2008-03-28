@@ -68,6 +68,9 @@ datatype exp' =
        | ECApp of exp * con
        | ECAbs of explicitness * string * kind * exp
 
+       | ERecord of (con * exp) list
+       | EField of exp * con
+
 withtype exp = exp' located
 
 datatype decl' =

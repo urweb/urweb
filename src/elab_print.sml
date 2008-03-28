@@ -115,15 +115,26 @@ fun p_con' par env (c, _) =
 
       | CName s => box [string "#", string s]
 
-      | CRecord (k, xcs) => parenIf par (box [string "[",
-                                              p_list (fn (x, c) =>
-                                                         box [p_con env x,
-                                                              space,
-                                                              string "=",
-                                                              space,
-                                                              p_con env c]) xcs,
-                                              string "]::",
-                                              p_kind k])
+      | CRecord (k, xcs) =>
+        if !debug then
+            parenIf par (box [string "[",
+                              p_list (fn (x, c) =>
+                                         box [p_con env x,
+                                              space,
+                                              string "=",
+                                              space,
+                                              p_con env c]) xcs,
+                              string "]::",
+                              p_kind k])
+        else
+            parenIf par (box [string "[",
+                              p_list (fn (x, c) =>
+                                         box [p_con env x,
+                                              space,
+                                              string "=",
+                                              space,
+                                              p_con env c]) xcs,
+                              string "]"])
       | CConcat (c1, c2) => parenIf par (box [p_con' true env c1,
                                               space,
                                               string "++",
@@ -181,6 +192,32 @@ fun p_exp' par env (e, _) =
                                                   space,
                                                   p_exp (E.pushCRel env x k) e])
 
+      | ERecord xes => box [string "{",
+                            p_list (fn (x, e) =>
+                                       box [p_con env x,
+                                            space,
+                                            string "=",
+                                            space,
+                                            p_exp env e]) xes,
+                            string "}"]
+      | EField (e, c, {field, rest}) =>
+        if !debug then
+            box [p_exp' true env e,
+                 string ".",
+                 p_con' true env c,
+                 space,
+                 string "[",
+                 p_con env field,
+                 space,
+                 string " in ",
+                 space,
+                 p_con env rest,
+                 string "]"]
+        else
+            box [p_exp' true env e,
+                 string ".",
+                 p_con' true env c]
+            
       | EError => string "<ERROR>"
 
 and p_exp env = p_exp' false env

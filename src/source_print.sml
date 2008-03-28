@@ -170,6 +170,19 @@ fun p_exp' par (e, _) =
                                                   space,
                                                   p_exp e])
 
+      | ERecord xes => box [string "{",
+                            p_list (fn (x, e) =>
+                                       box [p_con x,
+                                            space,
+                                            string "=",
+                                            space,
+                                            p_exp e]) xes,
+                            string "}"]
+      | EField (e, c) => box [p_exp' true e,
+                              string ".",
+                              p_con' true c]
+
+
 and p_exp e = p_exp' false e
 
 fun p_decl ((d, _) : decl) =

@@ -233,6 +233,27 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                               fn e' =>
                                  (ECAbs (expl, x, k', e'), loc)))
 
+              | ERecord xes =>
+                S.map2 (ListUtil.mapfold (fn (x, e) =>
+                                             S.bind2 (mfc ctx x,
+                                                   fn x' =>
+                                                      S.map2 (mfe ctx e,
+                                                           fn e' =>
+                                                              (x', e'))))
+                                         xes,
+                     fn xes' =>
+                        (ERecord xes', loc))
+              | EField (e, c, {field, rest}) =>
+                S.bind2 (mfe ctx e,
+                      fn e' =>
+                         S.bind2 (mfc ctx c,
+                              fn c' =>
+                                 S.bind2 (mfc ctx field,
+                                          fn field' =>
+                                             S.map2 (mfc ctx rest,
+                                                  fn rest' =>
+                                                     (EField (e', c', {field = field', rest = rest'}), loc)))))
+
               | EError => S.return2 eAll
     in
         mfe

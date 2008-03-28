@@ -62,6 +62,7 @@ val s = ErrorMsg.spanOf
  | eexp of exp
  | eapps of exp
  | eterm of exp
+ | rexp of (con * exp) list
 
 %verbose                                (* print summary of errors *)
 %pos int                                (* positions *)
@@ -147,7 +148,13 @@ eexp   : eapps                          (eapps)
        | FN SYMBOL DARROW eexp          (EAbs (SYMBOL, NONE, eexp), s (FNleft, eexpright))
 
        | LPAREN eexp RPAREN DCOLON cexp (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
+       | eterm DOT ident                (EField (eterm, ident), s (etermleft, identright))
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
        | SYMBOL                         (EVar SYMBOL, s (SYMBOLleft, SYMBOLright))
+       | LBRACE rexp RBRACE             (ERecord rexp, s (LBRACEleft, RBRACEright))
+
+rexp   :                                ([])
+       | ident EQ eexp                  ([(ident, eexp)])
+       | ident EQ eexp COMMA rexp       ((ident, eexp) :: rexp)
