@@ -59,14 +59,19 @@ in
     end
 end
 
+val str = ref ([] : char list)
+val strStart = ref 0
+
 %%
 %header (functor LacwebLexFn(structure Tokens : Lacweb_TOKENS));
 %full
-%s COMMENT;
+%s COMMENT STRING;
 
 id = [a-z_][A-Za-z0-9_]*;
 cid = [A-Z][A-Za-z0-9_]*;
 ws = [\ \t\012];
+intconst = [0-9]+;
+realconst = [0-9]+\.[0-9]*;
 
 %%
 
@@ -87,6 +92,14 @@ ws = [\ \t\012];
                           continue ());
 <COMMENT> "*)"        => (if exitComment () then YYBEGIN INITIAL else ();
 			  continue ());
+
+<INITIAL> "\""        => (YYBEGIN STRING; strStart := yypos; str := []; continue());
+<STRING> "\\\""       => (str := #"\"" :: !str; continue());
+<STRING> "\""         => (YYBEGIN INITIAL;
+			  Tokens.STRING (String.implode (List.rev (!str)), !strStart, yypos + 1));
+<STRING> "\n"         => (ErrorMsg.newline yypos;
+			  str := #"\n" :: !str; continue());
+<STRING> .            => (str := String.sub (yytext, 0) :: !str; continue());
 
 <INITIAL> "("         => (Tokens.LPAREN (yypos, yypos + size yytext));
 <INITIAL> ")"         => (Tokens.RPAREN (yypos, yypos + size yytext));
@@ -118,6 +131,17 @@ ws = [\ \t\012];
 
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, yypos, yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, yypos, yypos + size yytext));
+
+<INITIAL> {intconst}  => (case Int64.fromString yytext of
+                            SOME x => Tokens.INT (x, yypos, yypos + size yytext)
+                          | NONE   => (ErrorMsg.errorAt' (yypos, yypos)
+                                       ("Expected int, received: " ^ yytext);
+                                       continue ()));
+<INITIAL> {realconst} => (case Real64.fromString yytext of
+                            SOME x => Tokens.FLOAT (x, yypos, yypos + size yytext)
+                          | NONE   => (ErrorMsg.errorAt' (yypos, yypos)
+                                       ("Expected float, received: " ^ yytext);
+                                       continue ()));
 
 <COMMENT> .           => (continue());
 

@@ -151,7 +151,8 @@ and p_con env = p_con' false env
 
 fun p_exp' par env (e, _) =
     case e of
-        ERel n =>
+        EPrim p => Prim.p_t p
+      | ERel n =>
         if !debug then
             string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
         else

@@ -25,6 +25,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-val () = case CommandLine.arguments () of
-             [filename] => Compiler.testElaborate filename
-           | _ => print "Bad arguments"
+structure Prim :> PRIM = struct
+
+datatype t =
+         Int of Int64.int
+       | Float of Real64.real
+       | String of string
+
+open Print.PD
+open Print
+
+fun p_t t =
+    case t of
+        Int n => string (Int64.toString n)
+      | Float n => string (Real64.toString n)
+      | String s => box [string "\"", string s, string "\""]
+
+end

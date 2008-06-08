@@ -131,6 +131,7 @@ fun p_exp' par (e, _) =
                               p_con t,
                               string ")"]        
 
+      | EPrim p => Prim.p_t p
       | EVar s => string s
       | EApp (e1, e2) => parenIf par (box [p_exp e1,
                                            space,

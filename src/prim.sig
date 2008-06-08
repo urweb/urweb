@@ -25,6 +25,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-val () = case CommandLine.arguments () of
-             [filename] => Compiler.testElaborate filename
-           | _ => print "Bad arguments"
+signature PRIM = sig
+
+    datatype t =
+             Int of Int64.int
+           | Float of Real64.real
+           | String of string
+
+    val p_t : t Print.printer
+
+end

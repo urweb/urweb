@@ -7,13 +7,16 @@ list_util.sml
 errormsg.sig
 errormsg.sml
 
+print.sig
+print.sml
+
+prim.sig
+prim.sml
+
 source.sml
 
 lacweb.grm
 lacweb.lex
-
-print.sig
-print.sml
 
 source_print.sig
 source_print.sml

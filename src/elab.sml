@@ -65,7 +65,8 @@ datatype con' =
 withtype con = con' located
 
 datatype exp' =
-         ERel of int
+         EPrim of Prim.t
+       | ERel of int
        | ENamed of int
        | EApp of exp * exp
        | EAbs of string * con * exp

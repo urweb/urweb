@@ -27,6 +27,7 @@
 
 structure Elaborate :> ELABORATE = struct
 
+structure P = Prim
 structure L = Source
 structure L' = Elab
 structure E = ElabEnv
@@ -440,8 +441,8 @@ and consEq env (c1, c2) =
 
 and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
     let
-        val () = eprefaces "Summaries" [("#1", p_summary env s1),
-                                        ("#2", p_summary env s2)]
+        (*val () = eprefaces "Summaries" [("#1", p_summary env s1),
+                                          ("#2", p_summary env s2)]*)
 
         fun eatMatching p (ls1, ls2) =
             let
@@ -471,8 +472,8 @@ and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
                                               true)
                                          else
                                              false) (#fields s1, #fields s2)
-        val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
-                                         ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]
+        (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
+                                           ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
         val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
         val (others1, others2) = eatMatching (consEq env) (#others s1, #others s2)
 
@@ -665,6 +666,20 @@ fun checkCon env e c1 c2 =
     handle CUnify (c1, c2, err) =>
            expError env (Unify (e, c1, c2, err))
 
+fun primType env p =
+    let
+        val s = case p of
+                    P.Int _ => "int"
+                  | P.Float _ => "float"
+                  | P.String _ => "string"
+    in
+        case E.lookupC env s of
+            E.NotBound => raise Fail ("Primitive type " ^ s ^ " unbound")
+          | E.Rel _ => raise Fail ("Primitive type " ^ s ^ " bound as relative")
+          | E.Named (n, (L'.KType, _)) => L'.CNamed n
+          | E.Named _ => raise Fail ("Primitive type " ^ s ^ " bound at non-Type kind")
+    end
+
 fun elabExp env (e, loc) =
     case e of
         L.EAnnot (e, t) =>
@@ -676,6 +691,7 @@ fun elabExp env (e, loc) =
             (e', t')
         end
 
+      | L.EPrim p => ((L'.EPrim p, loc), (primType env p, loc))
       | L.EVar s =>
         (case E.lookupE env s of
              E.NotBound =>

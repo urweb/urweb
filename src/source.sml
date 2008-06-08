@@ -62,6 +62,7 @@ withtype con = con' located
 datatype exp' =
          EAnnot of exp * con
 
+       | EPrim of Prim.t
        | EVar of string
        | EApp of exp * exp
        | EAbs of string * con option * exp

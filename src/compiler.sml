@@ -76,10 +76,10 @@ fun testParse filename =
          print "\n")
 
 fun testElaborate filename =
-    (case elaborate ElabEnv.empty filename of
+    (case elaborate ElabEnv.basis filename of
          NONE => print "Failed\n"
        | SOME (_, file) =>
-         (Print.print (ElabPrint.p_file ElabEnv.empty file);
+         (Print.print (ElabPrint.p_file ElabEnv.basis file);
           print "\n"))
     handle ElabEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")

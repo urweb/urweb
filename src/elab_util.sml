@@ -205,7 +205,8 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
 
         and mfe' ctx (eAll as (e, loc)) =
             case e of
-                ERel _ => S.return2 eAll
+                EPrim _ => S.return2 eAll
+              | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
               | EApp (e1, e2) =>
                 S.bind2 (mfe ctx e1,

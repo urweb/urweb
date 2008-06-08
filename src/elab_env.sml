@@ -193,4 +193,13 @@ fun declBinds env (d, _) =
         DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
       | DVal (x, n, t, _) => pushENamedAs env x n t
 
+val ktype = (KType, ErrorMsg.dummySpan)
+
+fun bbind env x = #1 (pushCNamed env x ktype NONE)
+
+val basis = empty
+val basis = bbind basis "int"
+val basis = bbind basis "float"
+val basis = bbind basis "string"
+
 end

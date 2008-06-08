@@ -36,6 +36,7 @@ val s = ErrorMsg.spanOf
 
 %term 
    EOF
+ | STRING of string | INT of Int64.int | FLOAT of Real64.real
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH
@@ -154,6 +155,10 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
        | SYMBOL                         (EVar SYMBOL, s (SYMBOLleft, SYMBOLright))
        | LBRACE rexp RBRACE             (ERecord rexp, s (LBRACEleft, RBRACEright))
+
+       | INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
+       | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
+       | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
 
 rexp   :                                ([])
        | ident EQ eexp                  ([(ident, eexp)])
