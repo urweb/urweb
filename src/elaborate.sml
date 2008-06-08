@@ -36,13 +36,6 @@ structure U = ElabUtil
 open Print
 open ElabPrint
 
-fun elabKind (k, loc) =
-    case k of
-        L.KType => (L'.KType, loc)
-      | L.KArrow (k1, k2) => (L'.KArrow (elabKind k1, elabKind k2), loc)
-      | L.KName => (L'.KName, loc)
-      | L.KRecord k => (L'.KRecord (elabKind k), loc)
-
 fun elabExplicitness e =
     case e of
         L.Explicit => L'.Explicit
@@ -183,6 +176,14 @@ fun cunif k =
 
 end
 
+fun elabKind (k, loc) =
+    case k of
+        L.KType => (L'.KType, loc)
+      | L.KArrow (k1, k2) => (L'.KArrow (elabKind k1, elabKind k2), loc)
+      | L.KName => (L'.KName, loc)
+      | L.KRecord k => (L'.KRecord (elabKind k), loc)
+      | L.KWild => kunif ()
+
 fun elabCon env (c, loc) =
     case c of
         L.CAnnot (c, k) =>
@@ -281,6 +282,13 @@ fun elabCon env (c, loc) =
             checkKind env c1' k1 k;
             checkKind env c2' k2 k;
             ((L'.CConcat (c1', c2'), loc), k)
+        end
+
+      | L.CWild k =>
+        let
+            val k' = elabKind k
+        in
+            (cunif k', k')
         end
 
 fun kunifsRemain k =

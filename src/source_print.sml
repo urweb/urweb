@@ -44,6 +44,7 @@ fun p_kind' par (k, _) =
                                              p_kind k2])
       | KName => string "Name"
       | KRecord k => box [string "{", p_kind k, string "}"]
+      | KWild => string "_"
 
 and p_kind k = p_kind' false k
 
@@ -118,6 +119,11 @@ fun p_con' par (c, _) =
                                               string "++",
                                               space,
                                               p_con c2])
+      | CWild k => box [string "(_",
+                        space,
+                        string "::",
+                        space,
+                        p_kind k]
         
 and p_con c = p_con' false c
 

@@ -120,6 +120,8 @@ realconst = [0-9]+\.[0-9]*;
 <INITIAL> "."         => (Tokens.DOT (yypos, yypos + size yytext));
 <INITIAL> "$"         => (Tokens.DOLLAR (yypos, yypos + size yytext));
 <INITIAL> "#"         => (Tokens.HASH (yypos, yypos + size yytext));
+<INITIAL> "__"        => (Tokens.UNDERUNDER (yypos, yypos + size yytext));
+<INITIAL> "_"         => (Tokens.UNDER (yypos, yypos + size yytext));
 
 <INITIAL> "con"       => (Tokens.CON (yypos, yypos + size yytext));
 <INITIAL> "type"      => (Tokens.LTYPE (yypos, yypos + size yytext));
