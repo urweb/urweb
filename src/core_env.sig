@@ -25,16 +25,28 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+signature CORE_ENV = sig
 
-signature COMPILER = sig
+    type env
 
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-    val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
+    val empty : env
+    val basis : env
 
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testCorify : string -> unit
+    exception UnboundRel of int
+    exception UnboundNamed of int
 
+    val pushCRel : env -> string -> Core.kind -> env
+    val lookupCRel : env -> int -> string * Core.kind
+
+    val pushCNamed : env -> string -> int -> Core.kind -> Core.con option -> env
+    val lookupCNamed : env -> int -> string * Core.kind * Core.con option
+
+    val pushERel : env -> string -> Core.con -> env
+    val lookupERel : env -> int -> string * Core.con
+
+    val pushENamed : env -> string -> int -> Core.con -> env
+    val lookupENamed : env -> int -> string * Core.con
+
+    val declBinds : env -> Core.decl -> env
+                                                 
 end

@@ -66,7 +66,11 @@ fun elaborate env filename =
             else
                 SOME out
         end
-            
+
+fun corify eenv cenv filename =
+    case elaborate eenv filename of
+        NONE => NONE
+      | SOME (_, file) => SOME (Corify.corify file)
 
 fun testParse filename =
     case parse filename of
@@ -82,6 +86,15 @@ fun testElaborate filename =
          (Print.print (ElabPrint.p_file ElabEnv.basis file);
           print "\n"))
     handle ElabEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testCorify filename =
+    (case corify ElabEnv.basis CoreEnv.basis filename of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (CorePrint.p_file CoreEnv.basis file);
+          print "\n"))
+    handle CoreEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
 end

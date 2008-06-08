@@ -25,16 +25,55 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+structure Core = struct
 
-signature COMPILER = sig
+type 'a located = 'a ErrorMsg.located
 
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-    val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
+datatype kind' =
+         KType
+       | KArrow of kind * kind
+       | KName
+       | KRecord of kind
 
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testCorify : string -> unit
+withtype kind = kind' located
+
+datatype con' =
+         TFun of con * con
+       | TCFun of string * kind * con
+       | TRecord of con
+
+       | CRel of int
+       | CNamed of int
+       | CApp of con * con
+       | CAbs of string * kind * con
+
+       | CName of string
+
+       | CRecord of kind * (con * con) list
+       | CConcat of con * con
+
+withtype con = con' located
+
+datatype exp' =
+         EPrim of Prim.t
+       | ERel of int
+       | ENamed of int
+       | EApp of exp * exp
+       | EAbs of string * con * exp
+       | ECApp of exp * con
+       | ECAbs of string * kind * exp
+
+       | ERecord of (con * exp) list
+       | EField of exp * con * { field : con, rest : con }
+
+withtype exp = exp' located
+
+datatype decl' =
+         DCon of string * int * kind * con
+       | DVal of string * int * con * exp
+
+withtype decl = decl' located
+
+type file = decl list
 
 end

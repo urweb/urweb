@@ -25,16 +25,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+(* Pretty-printing Laconic/Web internal language *)
 
-signature COMPILER = sig
+signature CORE_PRINT = sig
+    val p_kind : Core.kind Print.printer
+    val p_con : CoreEnv.env -> Core.con Print.printer
+    val p_exp : CoreEnv.env -> Core.exp Print.printer
+    val p_decl : CoreEnv.env -> Core.decl Print.printer
+    val p_file : CoreEnv.env -> Core.file Print.printer
 
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-    val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testCorify : string -> unit
-
+    val debug : bool ref
 end
+

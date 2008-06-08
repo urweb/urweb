@@ -25,25 +25,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure ElabEnv :> ELAB_ENV = struct
+structure CoreEnv :> CORE_ENV = struct
 
-open Elab
+open Core
 
-structure U = ElabUtil
+structure U = CoreUtil
 
 structure IM = IntBinaryMap
-structure SM = BinaryMapFn(struct
-                           type ord_key = string
-                           val compare = String.compare
-                           end)
-
-exception UnboundRel of int
-exception UnboundNamed of int
 
 
 (* AST utility functions *)
-
-exception SynUnif
 
 val liftConInCon =
     U.Con.mapB {kind = fn k => k,
@@ -54,7 +45,6 @@ val liftConInCon =
                                              c
                                          else
                                              CRel (xn + 1)
-                                       | CUnif _ => raise SynUnif
                                        | _ => c,
                 bind = fn (bound, U.Con.Rel _) => bound + 1
                         | (bound, _) => bound}
@@ -64,137 +54,83 @@ val lift = liftConInCon 0
 
 (* Back to environments *)
 
-datatype 'a var' =
-         Rel' of int * 'a
-       | Named' of int * 'a
-
-datatype 'a var =
-         NotBound
-       | Rel of int * 'a
-       | Named of int * 'a
+exception UnboundRel of int
+exception UnboundNamed of int
 
 type env = {
-     renameC : kind var' SM.map,
      relC : (string * kind) list,
      namedC : (string * kind * con option) IM.map,
 
-     renameE : con var' SM.map,
      relE : (string * con) list,
      namedE : (string * con) IM.map
 }
 
-val namedCounter = ref 0
-
 val empty = {
-    renameC = SM.empty,
     relC = [],
     namedC = IM.empty,
 
-    renameE = SM.empty,
     relE = [],
     namedE = IM.empty
 }
 
 fun pushCRel (env : env) x k =
-    let
-        val renameC = SM.map (fn Rel' (n, k) => Rel' (n+1, k)
-                               | x => x) (#renameC env)
-    in
-        {renameC = SM.insert (renameC, x, Rel' (0, k)),
-         relC = (x, k) :: #relC env,
-         namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
+    {relC = (x, k) :: #relC env,
+     namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
 
-         renameE = #renameE env,
-         relE = map (fn (x, c) => (x, lift c)) (#relE env),
-         namedE = IM.map (fn (x, c) => (x, lift c)) (#namedE env)}
-    end
+     relE = map (fn (x, c) => (x, lift c)) (#relE env),
+     namedE = IM.map (fn (x, c) => (x, lift c)) (#namedE env)}
 
 fun lookupCRel (env : env) n =
     (List.nth (#relC env, n))
     handle Subscript => raise UnboundRel n
 
-fun pushCNamedAs (env : env) x n k co =
-    {renameC = SM.insert (#renameC env, x, Named' (n, k)),
-     relC = #relC env,
+fun pushCNamed (env : env) x n k co =
+    {relC = #relC env,
      namedC = IM.insert (#namedC env, n, (x, k, co)),
 
-     renameE = #renameE env,
      relE = #relE env,
      namedE = #namedE env}
-
-fun pushCNamed env x k co =
-    let
-        val n = !namedCounter
-    in
-        namedCounter := n + 1;
-        (pushCNamedAs env x n k co, n)
-    end
 
 fun lookupCNamed (env : env) n =
     case IM.find (#namedC env, n) of
         NONE => raise UnboundNamed n
       | SOME x => x
 
-fun lookupC (env : env) x =
-    case SM.find (#renameC env, x) of
-        NONE => NotBound
-      | SOME (Rel' x) => Rel x
-      | SOME (Named' x) => Named x
-
 fun pushERel (env : env) x t =
-    let
-        val renameE = SM.map (fn Rel' (n, t) => Rel' (n+1, t)
-                               | x => x) (#renameE env)
-    in
-        {renameC = #renameC env,
-         relC = #relC env,
-         namedC = #namedC env,
+    {relC = #relC env,
+     namedC = #namedC env,
 
-         renameE = SM.insert (renameE, x, Rel' (0, t)),
-         relE = (x, t) :: #relE env,
-         namedE = #namedE env}
-    end
+     relE = (x, t) :: #relE env,
+     namedE = #namedE env}
 
 fun lookupERel (env : env) n =
     (List.nth (#relE env, n))
     handle Subscript => raise UnboundRel n
 
-fun pushENamedAs (env : env) x n t =
-    {renameC = #renameC env,
-     relC = #relC env,
+fun pushENamed (env : env) x n t =
+    {relC = #relC env,
      namedC = #namedC env,
 
-     renameE = SM.insert (#renameE env, x, Named' (n, t)),
      relE = #relE env,
      namedE = IM.insert (#namedE env, n, (x, t))}
-
-fun pushENamed env x t =
-    let
-        val n = !namedCounter
-    in
-        namedCounter := n + 1;
-        (pushENamedAs env x n t, n)
-    end
 
 fun lookupENamed (env : env) n =
     case IM.find (#namedE env, n) of
         NONE => raise UnboundNamed n
       | SOME x => x
 
-fun lookupE (env : env) x =
-    case SM.find (#renameE env, x) of
-        NONE => NotBound
-      | SOME (Rel' x) => Rel x
-      | SOME (Named' x) => Named x
-
 fun declBinds env (d, _) =
     case d of
-        DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
-      | DVal (x, n, t, _) => pushENamedAs env x n t
+        DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
+      | DVal (x, n, t, _) => pushENamed env x n t
 
 val ktype = (KType, ErrorMsg.dummySpan)
 
-fun bbind env x = #1 (pushCNamed env x ktype NONE)
+fun bbind env x =
+    case ElabEnv.lookupC ElabEnv.basis x of
+        ElabEnv.NotBound => raise Fail "CoreEnv.bbind: Not bound"
+      | ElabEnv.Rel _ => raise Fail "CoreEnv.bbind: Rel"
+      | ElabEnv.Named (n, _) => pushCNamed env x n ktype NONE
 
 val basis = empty
 val basis = bbind basis "int"
