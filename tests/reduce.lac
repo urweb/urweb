@@ -14,7 +14,12 @@ con apply = fn f :: Type -> Type => fn t :: Type => f t
 con c6 = apply id int
 con c7 = apply (fst int) string
 
-val grab = fn n :: Name => fn t :: Type => fn fs :: {Type} =>
+val tickle = fn n :: Name => fn t :: Type => fn fs :: {Type} =>
         fn x : $([n = t] ++ fs) => x
-val grabA = grab[#A][int][[B = string]]
-val test_grabA = grabA {A = 6, B = "13"}
+val tickleA = tickle[#A][int][[B = string]]
+val test_tickleA = tickleA {A = 6, B = "13"}
+
+val grab = fn n :: Name => fn t ::: Type => fn fs ::: {Type} =>
+        fn x : $([n = t] ++ fs) => x.n
+val test_grab1 = grab[#A] {A = 6, B = "13"}
+val test_grab2 = grab[#B] {A = 6, B = "13"}

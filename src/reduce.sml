@@ -144,6 +144,12 @@ fun exp env e =
       | ECApp ((ECAbs (_, _, e1), loc), c) =>
         #1 (reduceExp env (subConInExp (0, c) e1))
 
+      | EField ((ERecord xes, _), (CName x, _), _) =>
+        (case List.find (fn ((CName x', _), _) => x' = x
+                          | _ => false) xes of
+             SOME (_, e) => #1 e
+           | NONE => e)
+
       | _ => e
 
 and reduceExp env = U.Exp.mapB {kind = kind, con = con, exp = exp, bind = bind} env
