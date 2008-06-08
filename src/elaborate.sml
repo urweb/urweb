@@ -344,21 +344,8 @@ fun cunifyError env err =
       | CRecordFailure =>
         eprefaces "Can't unify record constructors" []
 
-exception SynUnif
-
-val liftConInCon =
-    U.Con.mapB {kind = fn k => k,
-                con = fn bound => fn c =>
-                                     case c of
-                                         L'.CRel xn =>
-                                         if xn < bound then
-                                             c
-                                         else
-                                             L'.CRel (xn + 1)
-                                       | L'.CUnif _ => raise SynUnif
-                                       | _ => c,
-                bind = fn (bound, U.Con.Rel _) => bound + 1
-                        | (bound, _) => bound}
+exception SynUnif = E.SynUnif
+val liftConInCon = E.liftConInCon
 
 val subConInCon =
     U.Con.mapB {kind = fn k => k,

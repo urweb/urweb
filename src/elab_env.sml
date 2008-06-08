@@ -29,6 +29,9 @@ structure ElabEnv :> ELAB_ENV = struct
 
 open Elab
 
+structure L' = Elab
+structure U = ElabUtil
+
 structure IM = IntBinaryMap
 structure SM = BinaryMapFn(struct
                            type ord_key = string
@@ -37,6 +40,30 @@ structure SM = BinaryMapFn(struct
 
 exception UnboundRel of int
 exception UnboundNamed of int
+
+
+(* AST utility functions *)
+
+exception SynUnif
+
+val liftConInCon =
+    U.Con.mapB {kind = fn k => k,
+                con = fn bound => fn c =>
+                                     case c of
+                                         L'.CRel xn =>
+                                         if xn < bound then
+                                             c
+                                         else
+                                             L'.CRel (xn + 1)
+                                       | L'.CUnif _ => raise SynUnif
+                                       | _ => c,
+                bind = fn (bound, U.Con.Rel _) => bound + 1
+                        | (bound, _) => bound}
+
+val lift = liftConInCon 0
+
+
+(* Back to environments *)
 
 datatype 'a var' =
          Rel' of int * 'a
@@ -76,11 +103,11 @@ fun pushCRel (env : env) x k =
     in
         {renameC = SM.insert (renameC, x, Rel' (0, k)),
          relC = (x, k) :: #relC env,
-         namedC = #namedC env,
+         namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
 
          renameE = #renameE env,
-         relE = #relE env,
-         namedE = #namedE env}
+         relE = map (fn (x, c) => (x, lift c)) (#relE env),
+         namedE = IM.map (fn (x, c) => (x, lift c)) (#namedE env)}
     end
 
 fun lookupCRel (env : env) n =
@@ -160,5 +187,10 @@ fun lookupE (env : env) x =
         NONE => NotBound
       | SOME (Rel' x) => Rel x
       | SOME (Named' x) => Named x
+
+fun declBinds env (d, _) =
+    case d of
+        DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
+      | DVal (x, n, t, _) => pushENamedAs env x n t
 
 end

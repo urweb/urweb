@@ -75,6 +75,4 @@ structure Exp : sig
                   exp : Elab.exp' -> bool} -> Elab.exp -> bool
 end
 
-val declBinds : ElabEnv.env -> Elab.decl -> ElabEnv.env
-
 end

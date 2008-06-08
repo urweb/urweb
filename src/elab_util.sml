@@ -286,11 +286,4 @@ fun exists {kind, con, exp} k =
 
 end
 
-structure E = ElabEnv
-
-fun declBinds env (d, _) =
-    case d of
-        DCon (x, n, k, c) => E.pushCNamedAs env x n k (SOME c)
-      | DVal (x, n, t, _) => E.pushENamedAs env x n t
-
 end

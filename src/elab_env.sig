@@ -27,6 +27,9 @@
 
 signature ELAB_ENV = sig
 
+    exception SynUnif
+    val liftConInCon : int -> Elab.con -> Elab.con
+
     type env
 
     val empty : env
@@ -56,5 +59,7 @@ signature ELAB_ENV = sig
     val lookupENamed : env -> int -> string * Elab.con
                                                  
     val lookupE : env -> string -> Elab.con var
+
+    val declBinds : env -> Elab.decl -> env
 
 end

@@ -270,7 +270,7 @@ fun p_decl env ((d, _) : decl) =
 fun p_file env file =
     let
         val (_, pds) = ListUtil.mapfoldl (fn (d, env) =>
-                                             (ElabUtil.declBinds env d,
+                                             (E.declBinds env d,
                                               p_decl env d))
                              env file
     in
