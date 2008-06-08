@@ -17,3 +17,4 @@ con c7 = apply (fst int) string
 val grab = fn n :: Name => fn t :: Type => fn fs :: {Type} =>
         fn x : $([n = t] ++ fs) => x
 val grabA = grab[#A][int][[B = string]]
+val test_grabA = grabA {A = 6, B = "13"}

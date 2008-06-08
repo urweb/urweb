@@ -266,6 +266,14 @@ fun mapfold {kind = fk, con = fc, exp = fe} =
               exp = fn () => fe,
               bind = fn ((), _) => ()} ()
 
+fun mapB {kind, con, exp, bind} ctx e =
+    case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
+                   con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
+                   exp = fn ctx => fn e => fn () => S.Continue (exp ctx e, ()),
+                   bind = bind} ctx e () of
+        S.Continue (e, ()) => e
+      | S.Return _ => raise Fail "CoreUtil.Exp.mapB: Impossible"
+
 fun map {kind, con, exp} e =
     case mapfold {kind = fn k => fn () => S.Continue (kind k, ()),
                   con = fn c => fn () => S.Continue (con c, ()),

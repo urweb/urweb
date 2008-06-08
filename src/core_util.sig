@@ -80,6 +80,11 @@ structure Exp : sig
                con : Core.con' -> Core.con',
                exp : Core.exp' -> Core.exp'}
               -> Core.exp -> Core.exp
+    val mapB : {kind : Core.kind' -> Core.kind',
+                con : 'context -> Core.con' -> Core.con',
+                exp : 'context -> Core.exp' -> Core.exp',
+                bind : 'context * binder -> 'context}
+               -> 'context -> (Core.exp -> Core.exp)
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool,
                   exp : Core.exp' -> bool} -> Core.exp -> bool

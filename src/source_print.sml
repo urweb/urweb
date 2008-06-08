@@ -184,7 +184,7 @@ fun p_exp' par (e, _) =
 
       | ERecord xes => box [string "{",
                             p_list (fn (x, e) =>
-                                       box [p_con x,
+                                       box [p_name x,
                                             space,
                                             string "=",
                                             space,

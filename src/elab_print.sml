@@ -200,7 +200,7 @@ fun p_exp' par env (e, _) =
 
       | ERecord xes => box [string "{",
                             p_list (fn (x, e) =>
-                                       box [p_con env x,
+                                       box [p_name env x,
                                             space,
                                             string "=",
                                             space,

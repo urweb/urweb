@@ -49,6 +49,62 @@ val subConInCon =
                 bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
                         | (ctx, _) => ctx}
 
+val liftExpInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn _ => fn c => c,
+                exp = fn bound => fn e =>
+                                     case e of
+                                         ERel xn =>
+                                         if xn < bound then
+                                             e
+                                         else
+                                             ERel (xn + 1)
+                                       | _ => e,
+                bind = fn (bound, U.Exp.RelE _) => bound + 1
+                        | (bound, _) => bound}
+
+val subExpInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn _ => fn c => c,
+                exp = fn (xn, rep) => fn e =>
+                                  case e of
+                                      ERel xn' =>
+                                      if xn = xn' then
+                                          #1 rep
+                                      else
+                                          e
+                                    | _ => e,
+                bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
+                        | (ctx, _) => ctx}
+
+val liftConInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn bound => fn c =>
+                                     case c of
+                                         CRel xn =>
+                                         if xn < bound then
+                                             c
+                                         else
+                                             CRel (xn + 1)
+                                       | _ => c,
+                exp = fn _ => fn e => e,
+                bind = fn (bound, U.Exp.RelC _) => bound + 1
+                        | (bound, _) => bound}
+
+val subConInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn (xn, rep) => fn c =>
+                                  case c of
+                                      CRel xn' =>
+                                      if xn = xn' then
+                                          #1 rep
+                                      else
+                                          c
+                                    | _ => c,
+                exp = fn _ => fn e => e,
+                bind = fn ((xn, rep), U.Exp.RelC _) => (xn+1, liftConInCon 0 rep)
+                        | (ctx, _) => ctx}
+
 fun bindC (env, b) =
     case b of
         U.Con.Rel (x, k) => E.pushCRel env x k
@@ -76,7 +132,21 @@ fun con env c =
 
 and reduceCon env = U.Con.mapB {kind = kind, con = con, bind = bindC} env
 
-fun exp env e = e
+fun exp env e =
+    case e of
+        ENamed n =>
+        (case E.lookupENamed env n of
+             (_, _, SOME e') => #1 e'
+           | _ => e)
+
+      | EApp ((EAbs (_, _, e1), loc), e2) =>
+        #1 (reduceExp env (subExpInExp (0, e2) e1))
+      | ECApp ((ECAbs (_, _, e1), loc), c) =>
+        #1 (reduceExp env (subConInExp (0, c) e1))
+
+      | _ => e
+
+and reduceExp env = U.Exp.mapB {kind = kind, con = con, exp = exp, bind = bind} env
 
 fun decl env d = d
 
