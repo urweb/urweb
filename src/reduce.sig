@@ -25,30 +25,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature CORE_ENV = sig
+(* Simplify a Core program algebraically *)
 
-    val liftConInCon : int -> Core.con -> Core.con
+signature REDUCE = sig
 
-    type env
-
-    val empty : env
-    val basis : env
-
-    exception UnboundRel of int
-    exception UnboundNamed of int
-
-    val pushCRel : env -> string -> Core.kind -> env
-    val lookupCRel : env -> int -> string * Core.kind
-
-    val pushCNamed : env -> string -> int -> Core.kind -> Core.con option -> env
-    val lookupCNamed : env -> int -> string * Core.kind * Core.con option
-
-    val pushERel : env -> string -> Core.con -> env
-    val lookupERel : env -> int -> string * Core.con
-
-    val pushENamed : env -> string -> int -> Core.con -> Core.exp option -> env
-    val lookupENamed : env -> int -> string * Core.con * Core.exp option
-
-    val declBinds : env -> Core.decl -> env
-                                                 
+    val reduce : Core.file -> Core.file
+    
 end

@@ -79,7 +79,7 @@ fun p_con' par (c, _) =
                                                 p_con c])
       | TRecord (CRecord xcs, _) => box [string "{",
                                          p_list (fn (x, c) =>
-                                                    box [p_con x,
+                                                    box [p_name x,
                                                          space,
                                                          string ":",
                                                          space,
@@ -126,6 +126,11 @@ fun p_con' par (c, _) =
                         p_kind k]
         
 and p_con c = p_con' false c
+
+and p_name (all as (c, _)) =
+    case c of
+        CName s => string s
+      | _ => p_con all
 
 fun p_exp' par (e, _) =
     case e of

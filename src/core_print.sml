@@ -69,7 +69,7 @@ fun p_con' par env (c, _) =
                                              p_con (E.pushCRel env x k) c])
       | TRecord (CRecord (_, xcs), _) => box [string "{",
                                               p_list (fn (x, c) =>
-                                                         box [p_con env x,
+                                                         box [p_name env x,
                                                               space,
                                                               string ":",
                                                               space,
@@ -133,6 +133,11 @@ fun p_con' par env (c, _) =
                                               p_con env c2])
         
 and p_con env = p_con' false env
+
+and p_name env (all as (c, _)) =
+    case c of
+        CName s => string s
+      | _ => p_con env all
 
 fun p_exp' par env (e, _) =
     case e of

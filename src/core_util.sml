@@ -79,7 +79,7 @@ structure Con = struct
 
 datatype binder =
          Rel of string * kind
-       | Named of string * kind
+       | Named of string * int * kind * con option
 
 fun mapfoldB {kind = fk, con = fc, bind} =
     let
@@ -162,7 +162,7 @@ fun mapB {kind, con, bind} ctx c =
                    con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
                    bind = bind} ctx c () of
         S.Continue (c, ()) => c
-      | S.Return _ => raise Fail "Con.mapB: Impossible"
+      | S.Return _ => raise Fail "CoreUtil.Con.mapB: Impossible"
 
 fun exists {kind, con} k =
     case mapfold {kind = fn k => fn () =>
@@ -184,9 +184,9 @@ structure Exp = struct
 
 datatype binder =
          RelC of string * kind
-       | NamedC of string * kind
+       | NamedC of string * int * kind * con option
        | RelE of string * con
-       | NamedE of string * con
+       | NamedE of string * int * con * exp option
 
 fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
     let
@@ -291,6 +291,89 @@ fun exists {kind, con, exp} k =
                                         S.Continue (e, ())} k () of
         S.Return _ => true
       | S.Continue _ => false
+
+end
+
+structure Decl = struct
+
+datatype binder = datatype Exp.binder
+
+fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
+    let
+        val mfk = Kind.mapfold fk
+
+        fun bind' (ctx, b) =
+            let
+                val b' = case b of
+                             Con.Rel x => RelC x
+                           | Con.Named x => NamedC x
+            in
+                bind (ctx, b')
+            end
+        val mfc = Con.mapfoldB {kind = fk, con = fc, bind = bind'}
+
+        val mfe = Exp.mapfoldB {kind = fk, con = fc, exp = fe, bind = bind}
+
+        fun mfd ctx d acc =
+            S.bindP (mfd' ctx d acc, fd ctx)
+
+        and mfd' ctx (dAll as (d, loc)) =
+            case d of
+                DCon (x, n, k, c) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (mfc ctx c,
+                              fn c' =>
+                                 (DCon (x, n, k', c'), loc)))
+              | DVal (x, n, t, e) =>
+                S.bind2 (mfc ctx t,
+                      fn t' =>
+                         S.map2 (mfe ctx e,
+                              fn e' =>
+                                 (DVal (x, n, t', e'), loc)))
+    in
+        mfd
+    end    
+
+end
+
+structure File = struct
+
+datatype binder = datatype Exp.binder
+
+fun mapfoldB (all as {bind, ...}) =
+    let
+        val mfd = Decl.mapfoldB all
+
+        fun mff ctx ds =
+            case ds of
+                nil => S.return2 nil
+              | d :: ds' =>
+                S.bind2 (mfd ctx d,
+                         fn d' =>
+                            let
+                                val b =
+                                    case #1 d' of
+                                        DCon (x, n, k, c) => NamedC (x, n, k, SOME c)
+                                      | DVal (x, n, t, e) => NamedE (x, n, t, SOME e)
+                                val ctx' = bind (ctx, b)
+                            in
+                                S.map2 (mff ctx' ds',
+                                     fn ds' =>
+                                        d' :: ds')
+                            end)
+    in
+        mff
+    end
+
+fun mapB {kind, con, exp, decl, bind} ctx ds =
+    case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
+                   con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
+                   exp = fn ctx => fn e => fn () => S.Continue (exp ctx e, ()),
+                   decl = fn ctx => fn d => fn () => S.Continue (decl ctx d, ()),
+                   bind = bind} ctx ds () of
+        S.Continue (ds, ()) => ds
+      | S.Return _ => raise Fail "CoreUtil.File.mapB: Impossible"
 
 end
 
