@@ -23,3 +23,5 @@ val grab = fn n :: Name => fn t ::: Type => fn fs ::: {Type} =>
         fn x : $([n = t] ++ fs) => x.n
 val test_grab1 = grab[#A] {A = 6, B = "13"}
 val test_grab2 = grab[#B] {A = 6, B = "13"}
+
+val main = {A = test_grab1, B = test_grab2}

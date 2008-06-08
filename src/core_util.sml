@@ -164,6 +164,12 @@ fun mapB {kind, con, bind} ctx c =
         S.Continue (c, ()) => c
       | S.Return _ => raise Fail "CoreUtil.Con.mapB: Impossible"
 
+fun fold {kind, con} s c =
+    case mapfold {kind = fn k => fn s => S.Continue (k, kind (k, s)),
+                  con = fn c => fn s => S.Continue (c, con (c, s))} c s of
+        S.Continue (_, s) => s
+      | S.Return _ => raise Fail "CoreUtil.Con.fold: Impossible"
+
 fun exists {kind, con} k =
     case mapfold {kind = fn k => fn () =>
                                     if kind k then
@@ -281,6 +287,13 @@ fun map {kind, con, exp} e =
         S.Return () => raise Fail "Core_util.Exp.map"
       | S.Continue (e, ()) => e
 
+fun fold {kind, con, exp} s e =
+    case mapfold {kind = fn k => fn s => S.Continue (k, kind (k, s)),
+                  con = fn c => fn s => S.Continue (c, con (c, s)),
+                  exp = fn e => fn s => S.Continue (e, exp (e, s))} e s of
+        S.Continue (_, s) => s
+      | S.Return _ => raise Fail "CoreUtil.Exp.fold: Impossible"
+
 fun exists {kind, con, exp} k =
     case mapfold {kind = fn k => fn () =>
                                     if kind k then
@@ -343,6 +356,21 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
         mfd
     end    
 
+fun mapfold {kind = fk, con = fc, exp = fe, decl = fd} =
+    mapfoldB {kind = fk,
+              con = fn () => fc,
+              exp = fn () => fe,
+              decl = fn () => fd,
+              bind = fn ((), _) => ()} ()
+
+fun fold {kind, con, exp, decl} s d =
+    case mapfold {kind = fn k => fn s => S.Continue (k, kind (k, s)),
+                  con = fn c => fn s => S.Continue (c, con (c, s)),
+                  exp = fn e => fn s => S.Continue (e, exp (e, s)),
+                  decl = fn d => fn s => S.Continue (d, decl (d, s))} d s of
+        S.Continue (_, s) => s
+      | S.Return _ => raise Fail "CoreUtil.Decl.fold: Impossible"
+
 end
 
 structure File = struct
@@ -374,6 +402,13 @@ fun mapfoldB (all as {bind, ...}) =
         mff
     end
 
+fun mapfold {kind = fk, con = fc, exp = fe, decl = fd} =
+    mapfoldB {kind = fk,
+              con = fn () => fc,
+              exp = fn () => fe,
+              decl = fn () => fd,
+              bind = fn ((), _) => ()} ()
+
 fun mapB {kind, con, exp, decl, bind} ctx ds =
     case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
                    con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
@@ -382,6 +417,14 @@ fun mapB {kind, con, exp, decl, bind} ctx ds =
                    bind = bind} ctx ds () of
         S.Continue (ds, ()) => ds
       | S.Return _ => raise Fail "CoreUtil.File.mapB: Impossible"
+
+fun fold {kind, con, exp, decl} s d =
+    case mapfold {kind = fn k => fn s => S.Continue (k, kind (k, s)),
+                  con = fn c => fn s => S.Continue (c, con (c, s)),
+                  exp = fn e => fn s => S.Continue (e, exp (e, s)),
+                  decl = fn d => fn s => S.Continue (d, decl (d, s))} d s of
+        S.Continue (_, s) => s
+      | S.Return _ => raise Fail "CoreUtil.File.fold: Impossible"
 
 end
 

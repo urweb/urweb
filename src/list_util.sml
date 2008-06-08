@@ -60,4 +60,17 @@ fun mapfold f =
         mf
     end
 
+fun search f =
+    let
+        fun s ls =
+            case ls of
+                [] => NONE
+              | h :: t =>
+                case f h of
+                    NONE => s t
+                  | v => v
+    in
+        s
+    end
+
 end

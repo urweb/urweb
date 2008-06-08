@@ -26,5 +26,5 @@
  *)
 
 val () = case CommandLine.arguments () of
-             [filename] => Compiler.testReduce filename
+             [filename] => Compiler.testShake filename
            | _ => print "Bad arguments"

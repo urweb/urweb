@@ -77,6 +77,11 @@ fun reduce eenv cenv filename =
         NONE => NONE
       | SOME file => SOME (Reduce.reduce file)
 
+fun shake eenv cenv filename =
+    case reduce eenv cenv filename of
+        NONE => NONE
+      | SOME file => SOME (Shake.shake file)
+
 fun testParse filename =
     case parse filename of
         NONE => print "Failed\n"
@@ -104,6 +109,15 @@ fun testCorify filename =
 
 fun testReduce filename =
     (case reduce ElabEnv.basis CoreEnv.basis filename of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (CorePrint.p_file CoreEnv.basis file);
+          print "\n"))
+    handle CoreEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testShake filename =
+    (case shake ElabEnv.basis CoreEnv.basis filename of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (CorePrint.p_file CoreEnv.basis file);

@@ -55,6 +55,11 @@ structure Con : sig
                 con : 'context -> Core.con' -> Core.con',
                 bind : 'context * binder -> 'context}
                -> 'context -> (Core.con -> Core.con)
+
+    val fold : {kind : Core.kind' * 'state -> 'state,
+               con : Core.con' * 'state -> 'state}
+              -> 'state -> Core.con -> 'state
+
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool} -> Core.con -> bool
 end
@@ -85,6 +90,12 @@ structure Exp : sig
                 exp : 'context -> Core.exp' -> Core.exp',
                 bind : 'context * binder -> 'context}
                -> 'context -> (Core.exp -> Core.exp)
+
+    val fold : {kind : Core.kind' * 'state -> 'state,
+                con : Core.con' * 'state -> 'state,
+                exp : Core.exp' * 'state -> 'state}
+               -> 'state -> Core.exp -> 'state
+                                        
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool,
                   exp : Core.exp' -> bool} -> Core.exp -> bool
@@ -99,6 +110,17 @@ structure Decl : sig
                     decl : ('context, Core.decl', 'state, 'abort) Search.mapfolderB,
                     bind : 'context * binder -> 'context}
                    -> ('context, Core.decl, 'state, 'abort) Search.mapfolderB
+    val mapfold : {kind : (Core.kind', 'state, 'abort) Search.mapfolder,
+                   con : (Core.con', 'state, 'abort) Search.mapfolder,
+                   exp : (Core.exp', 'state, 'abort) Search.mapfolder,
+                   decl : (Core.decl', 'state, 'abort) Search.mapfolder}
+                  -> (Core.decl, 'state, 'abort) Search.mapfolder
+
+    val fold : {kind : Core.kind' * 'state -> 'state,
+                con : Core.con' * 'state -> 'state,
+                exp : Core.exp' * 'state -> 'state,
+                decl : Core.decl' * 'state -> 'state}
+               -> 'state -> Core.decl -> 'state
 end
 
 structure File : sig
@@ -111,12 +133,24 @@ structure File : sig
                     bind : 'context * binder -> 'context}
                    -> ('context, Core.file, 'state, 'abort) Search.mapfolderB
 
+    val mapfold : {kind : (Core.kind', 'state, 'abort) Search.mapfolder,
+                   con : (Core.con', 'state, 'abort) Search.mapfolder,
+                   exp : (Core.exp', 'state, 'abort) Search.mapfolder,
+                   decl : (Core.decl', 'state, 'abort) Search.mapfolder}
+                  -> (Core.file, 'state, 'abort) Search.mapfolder
+
     val mapB : {kind : Core.kind' -> Core.kind',
                 con : 'context -> Core.con' -> Core.con',
                 exp : 'context -> Core.exp' -> Core.exp',
                 decl : 'context -> Core.decl' -> Core.decl',
                 bind : 'context * binder -> 'context}
                -> 'context -> Core.file -> Core.file
+
+    val fold : {kind : Core.kind' * 'state -> 'state,
+                con : Core.con' * 'state -> 'state,
+                exp : Core.exp' * 'state -> 'state,
+                decl : Core.decl' * 'state -> 'state}
+               -> 'state -> Core.file -> 'state
 end
 
 end

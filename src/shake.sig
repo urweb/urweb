@@ -25,14 +25,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature LIST_UTIL = sig
+(* Remove unused definitions from a file *)
 
-    val mapfoldl : ('data1 * 'state -> 'state * 'data2) -> 'state -> 'data1 list
-                   -> 'state * 'data2 list
+signature SHAKE = sig
 
-    val mapfold : ('data, 'state, 'abort) Search.mapfolder
-                  -> ('data list, 'state, 'abort) Search.mapfolder
-
-    val search : ('a -> 'b option) -> 'a list -> 'b option
+    val shake : Core.file -> Core.file
 
 end

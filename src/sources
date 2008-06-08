@@ -52,5 +52,8 @@ corify.sml
 reduce.sig
 reduce.sml
 
+shake.sig
+shake.sml
+
 compiler.sig
 compiler.sml
