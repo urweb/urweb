@@ -75,7 +75,7 @@ fun corify eenv cenv filename =
 fun reduce eenv cenv filename =
     case corify eenv cenv filename of
         NONE => NONE
-      | SOME file => SOME (Reduce.reduce file)
+      | SOME file => SOME (Reduce.reduce (Shake.shake file))
 
 fun shake eenv cenv filename =
     case reduce eenv cenv filename of
