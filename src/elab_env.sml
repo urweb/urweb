@@ -54,7 +54,7 @@ val liftConInCon =
                                              c
                                          else
                                              CRel (xn + 1)
-                                       | CUnif _ => raise SynUnif
+                                       (*| CUnif _ => raise SynUnif*)
                                        | _ => c,
                 bind = fn (bound, U.Con.Rel _) => bound + 1
                         | (bound, _) => bound}

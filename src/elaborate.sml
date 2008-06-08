@@ -357,7 +357,7 @@ val subConInCon =
                                           #1 rep
                                       else
                                           c
-                                    | L'.CUnif _ => raise SynUnif
+                                    (*| L'.CUnif _ => raise SynUnif*)
                                     | _ => c,
                 bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
                         | (ctx, _) => ctx}
