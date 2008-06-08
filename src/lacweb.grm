@@ -108,7 +108,7 @@ capps  : cterm                          (cterm)
 
 cexp   : capps                          (capps)
        | cexp ARROW cexp                (TFun (cexp1, cexp2), s (cexp1left, cexp2right))
-       | SYMBOL kcolon kind ARROW cexp (TCFun (kcolon, SYMBOL, kind, cexp), s (SYMBOLleft, cexpright))
+       | SYMBOL kcolon kind ARROW cexp  (TCFun (kcolon, SYMBOL, kind, cexp), s (SYMBOLleft, cexpright))
 
        | cexp PLUSPLUS cexp             (CConcat (cexp1, cexp2), s (cexp1left, cexp1right))
 

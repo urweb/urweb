@@ -1,0 +1,5 @@
+val id = fn t :: Type => fn x : t => x
+val id_self = id [t :: Type -> t -> t] id
+
+val idi = fn t ::: Type => fn x : t => x
+val idi_self = idi idi

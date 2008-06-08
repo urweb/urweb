@@ -680,6 +680,43 @@ fun primType env p =
           | E.Named _ => raise Fail ("Primitive type " ^ s ^ " bound at non-Type kind")
     end
 
+fun typeof env (e, loc) =
+    case e of
+        L'.EPrim p => (primType env p, loc)
+      | L'.ERel n => #2 (E.lookupERel env n)
+      | L'.ENamed n => #2 (E.lookupENamed env n)
+      | L'.EApp (e1, _) =>
+        (case #1 (typeof env e1) of
+             L'.TFun (_, c) => c
+           | _ => raise Fail "typeof: Bad EApp")
+      | L'.EAbs (x, t, e1) => (L'.TFun (t, typeof (E.pushERel env x t) e1), loc)
+      | L'.ECApp (e1, c) =>
+        (case #1 (typeof env e1) of
+             L'.TCFun (_, _, _, c1) => subConInCon (0, c) c1
+           | _ => raise Fail "typeof: Bad ECApp")
+      | L'.ECAbs (expl, x, k, e1) => (L'.TCFun (expl, x, k, typeof (E.pushCRel env x k) e1), loc)
+
+      | L'.ERecord xes => (L'.TRecord (L'.CRecord (ktype, map (fn (x, e) => (x, typeof env e)) xes), loc), loc)
+      | L'.EField (_, _, {field, ...}) => field
+
+      | L'.EError => cerror
+
+fun elabHead env (e as (_, loc)) t =
+    let
+        fun unravel (t, e) =
+            case hnormCon env t of
+                (L'.TCFun (L'.Implicit, x, k, t'), _) =>
+                let
+                    val u = cunif k
+                in
+                    unravel (subConInCon (0, u) t',
+                             (L'.ECApp (e, u), loc))
+                end
+              | _ => (e, t)
+    in
+        unravel (t, e)
+    end
+
 fun elabExp env (e, loc) =
     case e of
         L.EAnnot (e, t) =>
@@ -702,6 +739,7 @@ fun elabExp env (e, loc) =
       | L.EApp (e1, e2) =>
         let
             val (e1', t1) = elabExp env e1
+            val (e1', t1) = elabHead env e1' t1
             val (e2', t2) = elabExp env e2
 
             val dom = cunif ktype
@@ -731,6 +769,7 @@ fun elabExp env (e, loc) =
       | L.ECApp (e, c) =>
         let
             val (e', et) = elabExp env e
+            val (e', et) = elabHead env e' et
             val (c', ck) = elabCon env c
         in
             case #1 (hnormCon env et) of
@@ -832,15 +871,19 @@ fun elabDecl env (d, loc) =
          in
              checkKind env c' ck k';
 
-             if kunifsInKind k' then
-                 declError env (KunifsRemainKind (loc, k'))
-             else
-                 ();
+             if ErrorMsg.anyErrors () then
+                 ()
+             else (
+                 if kunifsInKind k' then
+                     declError env (KunifsRemainKind (loc, k'))
+                 else
+                     ();
 
-             if kunifsInCon c' then
-                 declError env (KunifsRemainCon (loc, c'))
-             else
-                 ();
+                 if kunifsInCon c' then
+                     declError env (KunifsRemainCon (loc, c'))
+                 else
+                     ()
+                 );
 
              (env',
               (L'.DCon (x, n, k', c'), loc))
@@ -856,25 +899,28 @@ fun elabDecl env (d, loc) =
          in
              checkCon env e' et c';
 
-             if kunifsInCon c' then
-                 declError env (KunifsRemainCon (loc, c'))
-             else
-                 ();
+             if ErrorMsg.anyErrors () then
+                 ()
+             else (
+                 if kunifsInCon c' then
+                     declError env (KunifsRemainCon (loc, c'))
+                 else
+                     ();
 
-             if cunifsInCon c' then
-                 declError env (CunifsRemainCon (loc, c'))
-             else
-                 ();
+                 if cunifsInCon c' then
+                     declError env (CunifsRemainCon (loc, c'))
+                 else
+                     ();
 
-             if kunifsInExp e' then
-                 declError env (KunifsRemainExp (loc, e'))
-             else
-                 ();
+                 if kunifsInExp e' then
+                     declError env (KunifsRemainExp (loc, e'))
+                 else
+                     ();
 
-             if cunifsInExp e' then
-                 declError env (CunifsRemainExp (loc, e'))
-             else
-                 ();
+                 if cunifsInExp e' then
+                     declError env (CunifsRemainExp (loc, e'))
+                 else
+                     ());
 
              (env',
               (L'.DVal (x, n, c', e'), loc))
