@@ -28,6 +28,9 @@
 signature FLAT_UTIL = sig
 
 structure Typ : sig
+    val compare : Flat.typ * Flat.typ -> order
+    val sortFields : (string * Flat.typ) list -> (string * Flat.typ) list
+
     val mapfold : (Flat.typ', 'state, 'abort) Search.mapfolder
                   -> (Flat.typ, 'state, 'abort) Search.mapfolder
 

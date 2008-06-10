@@ -33,6 +33,49 @@ structure S = Search
 
 structure Typ = struct
 
+fun join (o1, o2) =
+    case o1 of
+        EQUAL => o2 ()
+      | v => v
+
+fun joinL f (os1, os2) =
+    case (os1, os2) of
+        (nil, nil) => EQUAL
+      | (nil, _) => LESS
+      | (h1 :: t1, h2 :: t2) =>
+        join (f (h1, h2), fn () => joinL f (t1, t2))
+      | (_ :: _, nil) => GREATER
+
+fun compare ((t1, _), (t2, _)) =
+    case (t1, t2) of
+        (TFun (d1, r1), TFun (d2, r2)) =>
+        join (compare (d1, d2), fn () => compare (r1, r2))
+      | (TCode (d1, r1), TCode (d2, r2)) =>
+        join (compare (d1, d2), fn () => compare (r1, r2))
+      | (TRecord xts1, TRecord xts2) =>
+        let
+            val xts2 = sortFields xts1
+            val xts2 = sortFields xts2
+        in
+            joinL compareFields (xts1, xts2)
+        end
+      | (TNamed n1, TNamed n2) => Int.compare (n1, n2)
+
+      | (TFun _, _) => LESS
+      | (_, TFun _) => GREATER
+
+      | (TCode _, _) => LESS
+      | (_, TCode _) => GREATER
+
+      | (TRecord _, _) => LESS
+      | (_, TRecord _) => GREATER
+
+and compareFields ((x1, t1), (x2, t2)) =
+    join (String.compare (x1, x2),
+          fn () => compare (t1, t2))
+
+and sortFields xts = ListMergeSort.sort (fn (x, y) => compareFields (x, y) = GREATER) xts
+
 fun mapfold fc =
     let
         fun mft c acc =
