@@ -70,17 +70,38 @@ fun elaborate env filename =
 fun corify eenv cenv filename =
     case elaborate eenv filename of
         NONE => NONE
-      | SOME (_, file) => SOME (Corify.corify file)
+      | SOME (_, file) =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Corify.corify file)
 
 fun reduce eenv cenv filename =
     case corify eenv cenv filename of
         NONE => NONE
-      | SOME file => SOME (Reduce.reduce (Shake.shake file))
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Reduce.reduce (Shake.shake file))
 
 fun shake eenv cenv filename =
     case reduce eenv cenv filename of
         NONE => NONE
-      | SOME file => SOME (Shake.shake file)
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Shake.shake file)
+
+fun monoize eenv cenv filename =
+    case shake eenv cenv filename of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Monoize.monoize cenv file)
 
 fun testParse filename =
     case parse filename of
@@ -123,6 +144,15 @@ fun testShake filename =
          (Print.print (CorePrint.p_file CoreEnv.basis file);
           print "\n"))
     handle CoreEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testMonoize filename =
+    (case monoize ElabEnv.basis CoreEnv.basis filename of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (MonoPrint.p_file MonoEnv.basis file);
+          print "\n"))
+    handle MonoEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
 end

@@ -25,22 +25,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+signature MONO_ENV = sig
 
-signature COMPILER = sig
+    type env
 
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-    val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val reduce : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val shake : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
+    val empty : env
+    val basis : env
 
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testCorify : string -> unit
-    val testReduce : string -> unit
-    val testShake : string -> unit
-    val testMonoize : string -> unit
+    exception UnboundRel of int
+    exception UnboundNamed of int
 
+    val pushTNamed : env -> string -> int -> Mono.typ option -> env
+    val lookupTNamed : env -> int -> string * Mono.typ option
+
+    val pushERel : env -> string -> Mono.typ -> env
+    val lookupERel : env -> int -> string * Mono.typ
+
+    val pushENamed : env -> string -> int -> Mono.typ -> Mono.exp option -> env
+    val lookupENamed : env -> int -> string * Mono.typ * Mono.exp option
+
+    val declBinds : env -> Mono.decl -> env
+                                                 
 end

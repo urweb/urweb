@@ -55,5 +55,16 @@ reduce.sml
 shake.sig
 shake.sml
 
+mono.sml
+
+monoize.sig
+monoize.sml
+
+mono_env.sig
+mono_env.sml
+
+mono_print.sig
+mono_print.sml
+
 compiler.sig
 compiler.sml

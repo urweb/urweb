@@ -25,22 +25,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+(* Pretty-printing Laconic/Web monomorphic language *)
 
-signature COMPILER = sig
+signature MONO_PRINT = sig
+    val p_typ : MonoEnv.env -> Mono.typ Print.printer
+    val p_exp : MonoEnv.env -> Mono.exp Print.printer
+    val p_decl : MonoEnv.env -> Mono.decl Print.printer
+    val p_file : MonoEnv.env -> Mono.file Print.printer
 
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-    val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val reduce : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val shake : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
-
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testCorify : string -> unit
-    val testReduce : string -> unit
-    val testShake : string -> unit
-    val testMonoize : string -> unit
-
+    val debug : bool ref
 end
+
