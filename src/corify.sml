@@ -68,7 +68,7 @@ fun corifyExp (e, loc) =
       | L.ERel n => (L'.ERel n, loc)
       | L.ENamed n => (L'.ENamed n, loc)
       | L.EApp (e1, e2) => (L'.EApp (corifyExp e1, corifyExp e2), loc)
-      | L.EAbs (x, t, e1) => (L'.EAbs (x, corifyCon t, corifyExp e1), loc)
+      | L.EAbs (x, dom, ran, e1) => (L'.EAbs (x, corifyCon dom, corifyCon ran, corifyExp e1), loc)
       | L.ECApp (e1, c) => (L'.ECApp (corifyExp e1, corifyCon c), loc)
       | L.ECAbs (_, x, k, e1) => (L'.ECAbs (x, corifyKind k, corifyExp e1), loc)
 

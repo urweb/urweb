@@ -139,7 +139,7 @@ fun exp env e =
              (_, _, SOME e') => #1 e'
            | _ => e)
 
-      | EApp ((EAbs (_, _, e1), loc), e2) =>
+      | EApp ((EAbs (_, _, _, e1), loc), e2) =>
         #1 (reduceExp env (subExpInExp (0, e2) e1))
       | ECApp ((ECAbs (_, _, e1), loc), c) =>
         #1 (reduceExp env (subConInExp (0, c) e1))

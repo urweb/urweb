@@ -60,6 +60,21 @@ fun mapfold f =
         mf
     end
 
+fun foldlMap f s =
+    let
+        fun fm (ls', s) ls =
+            case ls of
+                nil => (rev ls', s)
+              | h :: t =>
+                let
+                    val (h', s') = f (h, s)
+                in
+                    fm (h' :: ls', s') t
+                end
+    in
+        fm ([], s)
+    end
+
 fun search f =
     let
         fun s ls =

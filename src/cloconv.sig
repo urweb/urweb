@@ -25,24 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+signature CLOCONV = sig
 
-signature COMPILER = sig
-
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-    val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val reduce : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val shake : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
-    val cloconv : ElabEnv.env -> CoreEnv.env -> string -> Flat.file option
-
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testCorify : string -> unit
-    val testReduce : string -> unit
-    val testShake : string -> unit
-    val testMonoize : string -> unit
-    val testCloconv : string -> unit
+    val cloconv : Mono.file -> Flat.file
 
 end

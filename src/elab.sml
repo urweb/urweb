@@ -69,7 +69,7 @@ datatype exp' =
        | ERel of int
        | ENamed of int
        | EApp of exp * exp
-       | EAbs of string * con * exp
+       | EAbs of string * con * con * exp
        | ECApp of exp * con
        | ECAbs of explicitness * string * kind * exp
 

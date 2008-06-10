@@ -60,11 +60,28 @@ mono.sml
 monoize.sig
 monoize.sml
 
+mono_util.sig
+mono_util.sml
+
 mono_env.sig
 mono_env.sml
 
 mono_print.sig
 mono_print.sml
+
+flat.sml
+
+flat_util.sig
+flat_util.sml
+
+flat_env.sig
+flat_env.sml
+
+flat_print.sig
+flat_print.sml
+
+cloconv.sig
+cloconv.sml
 
 compiler.sig
 compiler.sml

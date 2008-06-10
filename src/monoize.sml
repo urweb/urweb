@@ -86,8 +86,8 @@ fun monoExp env (all as (e, loc)) =
           | L.ERel n => (L'.ERel n, loc)
           | L.ENamed n => (L'.ENamed n, loc)
           | L.EApp (e1, e2) => (L'.EApp (monoExp env e1, monoExp env e2), loc)
-          | L.EAbs (x, t, e) =>
-            (L'.EAbs (x, monoType env t, monoExp (Env.pushERel env x t) e), loc)
+          | L.EAbs (x, dom, ran, e) =>
+            (L'.EAbs (x, monoType env dom, monoType env ran, monoExp (Env.pushERel env x dom) e), loc)
           | L.ECApp _ => poly ()
           | L.ECAbs _ => poly ()
 

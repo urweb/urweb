@@ -103,6 +103,15 @@ fun monoize eenv cenv filename =
         else
             SOME (Monoize.monoize cenv file)
 
+fun cloconv eenv cenv filename =
+    case monoize eenv cenv filename of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Cloconv.cloconv file)
+
 fun testParse filename =
     case parse filename of
         NONE => print "Failed\n"
@@ -153,6 +162,15 @@ fun testMonoize filename =
          (Print.print (MonoPrint.p_file MonoEnv.basis file);
           print "\n"))
     handle MonoEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testCloconv filename =
+    (case cloconv ElabEnv.basis CoreEnv.basis filename of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (FlatPrint.p_file FlatEnv.basis file);
+          print "\n"))
+    handle FlatEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
 end

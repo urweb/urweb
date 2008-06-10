@@ -41,7 +41,7 @@ datatype exp' =
        | ERel of int
        | ENamed of int
        | EApp of exp * exp
-       | EAbs of string * typ * exp
+       | EAbs of string * typ * typ * exp
 
        | ERecord of (string * exp) list
        | EField of exp * string

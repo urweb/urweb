@@ -222,12 +222,14 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                          S.map2 (mfe ctx e2,
                               fn e2' =>
                                  (EApp (e1', e2'), loc)))
-              | EAbs (x, t, e) =>
-                S.bind2 (mfc ctx t,
-                      fn t' =>
-                         S.map2 (mfe (bind (ctx, RelE (x, t))) e,
-                              fn e' =>
-                                 (EAbs (x, t', e'), loc)))
+              | EAbs (x, dom, ran, e) =>
+                S.bind2 (mfc ctx dom,
+                      fn dom' =>
+                         S.bind2 (mfc ctx ran,
+                               fn ran' =>
+                                  S.map2 (mfe (bind (ctx, RelE (x, dom'))) e,
+                                       fn e' =>
+                                          (EAbs (x, dom', ran', e'), loc))))
 
               | ECApp (e, c) =>
                 S.bind2 (mfe ctx e,

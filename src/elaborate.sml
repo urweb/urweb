@@ -697,7 +697,7 @@ fun typeof env (e, loc) =
         (case #1 (typeof env e1) of
              L'.TFun (_, c) => c
            | _ => raise Fail "typeof: Bad EApp")
-      | L'.EAbs (x, t, e1) => (L'.TFun (t, typeof (E.pushERel env x t) e1), loc)
+      | L'.EAbs (_, _, ran, _) => ran
       | L'.ECApp (e1, c) =>
         (case #1 (typeof env e1) of
              L'.TCFun (_, _, _, c1) => subConInCon (0, c) c1
@@ -771,7 +771,7 @@ fun elabExp env (e, loc) =
                          end
             val (e', et) = elabExp (E.pushERel env x t') e
         in
-            ((L'.EAbs (x, t', e'), loc),
+            ((L'.EAbs (x, t', et, e'), loc),
              (L'.TFun (t', et), loc))
         end
       | L.ECApp (e, c) =>

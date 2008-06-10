@@ -33,6 +33,8 @@ signature LIST_UTIL = sig
     val mapfold : ('data, 'state, 'abort) Search.mapfolder
                   -> ('data list, 'state, 'abort) Search.mapfolder
 
+    val foldlMap : ('data1 * 'state -> 'data2 * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
+
     val search : ('a -> 'b option) -> 'a list -> 'b option
 
 end

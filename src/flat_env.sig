@@ -25,24 +25,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+signature FLAT_ENV = sig
 
-signature COMPILER = sig
+    type env
 
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
-    val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val reduce : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val shake : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
-    val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
-    val cloconv : ElabEnv.env -> CoreEnv.env -> string -> Flat.file option
+    val empty : env
+    val basis : env
 
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testCorify : string -> unit
-    val testReduce : string -> unit
-    val testShake : string -> unit
-    val testMonoize : string -> unit
-    val testCloconv : string -> unit
+    exception UnboundRel of int
+    exception UnboundNamed of int
+    exception UnboundF of int
 
+    val pushTNamed : env -> string -> int -> Flat.typ option -> env
+    val lookupTNamed : env -> int -> string * Flat.typ option
+
+    val pushERel : env -> string -> Flat.typ -> env
+    val lookupERel : env -> int -> string * Flat.typ
+    val listERels : env -> (string * Flat.typ) list
+
+    val pushENamed : env -> string -> int -> Flat.typ -> env
+    val lookupENamed : env -> int -> string * Flat.typ
+
+    val pushF : env -> int -> string -> Flat.typ -> Flat.typ -> env
+    val lookupF : env -> int -> string * Flat.typ * Flat.typ
+
+    val declBinds : env -> Flat.decl -> env
+                                                 
 end
