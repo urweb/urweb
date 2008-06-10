@@ -25,36 +25,31 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing *)
+signature CJR_ENV = sig
 
-signature PRINT = sig
-    structure PD : PP_DESC
-                       where type PPS.token = string
-          and type PPS.device = TextIOPP.device
-          and type PPS.stream = TextIOPP.stream
+    type env
 
-    type 'a printer = 'a -> PD.pp_desc
+    val empty : env
+    val basis : env
 
-    val box : PD.pp_desc list -> PD.pp_desc
-    val parenIf : bool -> PD.pp_desc -> PD.pp_desc
-    val space : PD.pp_desc
+    exception UnboundRel of int
+    exception UnboundNamed of int
+    exception UnboundF of int
 
-    val p_list_sep : PD.pp_desc -> 'a printer -> 'a list printer
-    val p_list : 'a printer -> 'a list printer
+    val pushTNamed : env -> string -> int -> Cjr.typ option -> env
+    val lookupTNamed : env -> int -> string * Cjr.typ option
 
-    val fprint : PD.PPS.stream -> PD.pp_desc -> unit
-    val print : PD.pp_desc -> unit
-    val eprint : PD.pp_desc -> unit
+    val pushERel : env -> string -> Cjr.typ -> env
+    val lookupERel : env -> int -> string * Cjr.typ
+    val listERels : env -> (string * Cjr.typ) list
+    val countERels : env -> int
 
-    val fpreface : PD.PPS.stream -> string * PD.pp_desc -> unit
-    val preface : string * PD.pp_desc -> unit
-    val epreface : string * PD.pp_desc -> unit
+    val pushENamed : env -> string -> int -> Cjr.typ -> env
+    val lookupENamed : env -> int -> string * Cjr.typ
 
-    val fprefaces : PD.PPS.stream -> string -> (string * PD.pp_desc) list -> unit
-    val prefaces : string -> (string * PD.pp_desc) list -> unit
-    val eprefaces : string -> (string * PD.pp_desc) list -> unit
+    val pushF : env -> int -> string -> Cjr.typ -> Cjr.typ -> env
+    val lookupF : env -> int -> string * Cjr.typ * Cjr.typ
 
-    val fprefaces' : PD.PPS.stream -> (string * PD.pp_desc) list -> unit
-    val prefaces' : (string * PD.pp_desc) list -> unit
-    val eprefaces' : (string * PD.pp_desc) list -> unit
+    val declBinds : env -> Cjr.decl -> env
+                                                 
 end

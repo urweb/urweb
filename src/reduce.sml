@@ -145,9 +145,9 @@ fun exp env e =
         #1 (reduceExp env (subConInExp (0, c) e1))
 
       | EField ((ERecord xes, _), (CName x, _), _) =>
-        (case List.find (fn ((CName x', _), _) => x' = x
+        (case List.find (fn ((CName x', _), _, _) => x' = x
                           | _ => false) xes of
-             SOME (_, e) => #1 e
+             SOME (_, e, _) => #1 e
            | NONE => e)
 
       | _ => e

@@ -42,7 +42,8 @@ val dummyTyp = (TNamed 0, ErrorMsg.dummySpan)
 
 fun p_typ' par env (t, _) =
     case t of
-        TFun (t1, t2) => parenIf par (box [p_typ' true env t1,
+        TTop => string "?"
+      | TFun (t1, t2) => parenIf par (box [p_typ' true env t1,
                                            space,
                                            string "->",
                                            space,
@@ -88,7 +89,7 @@ fun p_exp' par env (e, _) =
                                            p_exp' true env e2])
 
       | ERecord xes => box [string "{",
-                            p_list (fn (x, e) =>
+                            p_list (fn (x, e, _) =>
                                        box [string x,
                                             space,
                                             string "=",
@@ -102,7 +103,7 @@ fun p_exp' par env (e, _) =
 
       | ELet (xes, e) =>
         let
-            val (env, pps) = foldl (fn ((x, e), (env, pps)) =>
+            val (env, pps) = foldl (fn ((x, _, e), (env, pps)) =>
                                        (E.pushERel env x dummyTyp,
                                         List.revAppend ([space,
                                                         string "val",

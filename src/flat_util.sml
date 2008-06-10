@@ -48,7 +48,8 @@ fun joinL f (os1, os2) =
 
 fun compare ((t1, _), (t2, _)) =
     case (t1, t2) of
-        (TFun (d1, r1), TFun (d2, r2)) =>
+        (TTop, TTop) => EQUAL
+      | (TFun (d1, r1), TFun (d2, r2)) =>
         join (compare (d1, d2), fn () => compare (r1, r2))
       | (TCode (d1, r1), TCode (d2, r2)) =>
         join (compare (d1, d2), fn () => compare (r1, r2))
@@ -60,6 +61,9 @@ fun compare ((t1, _), (t2, _)) =
             joinL compareFields (xts1, xts2)
         end
       | (TNamed n1, TNamed n2) => Int.compare (n1, n2)
+
+      | (TTop, _) => LESS
+      | (_, TTop) => GREATER
 
       | (TFun _, _) => LESS
       | (_, TFun _) => GREATER
@@ -83,7 +87,8 @@ fun mapfold fc =
 
         and mft' (cAll as (c, loc)) =
             case c of
-                TFun (t1, t2) =>
+                TTop => S.return2 cAll
+              | TFun (t1, t2) =>
                 S.bind2 (mft t1,
                       fn t1' =>
                          S.map2 (mft t2,
@@ -156,10 +161,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                 (EApp (e1', e2'), loc)))
 
               | ERecord xes =>
-                S.map2 (ListUtil.mapfold (fn (x, e) =>
-                                             S.map2 (mfe ctx e,
+                S.map2 (ListUtil.mapfold (fn (x, e, t) =>
+                                             S.bind2 (mfe ctx e,
                                                   fn e' =>
-                                                     (x, e')))
+                                                     S.map2 (mft t,
+                                                          fn t' =>
+                                                             (x, e', t'))))
                                          xes,
                      fn xes' =>
                         (ERecord xes', loc))
@@ -169,10 +176,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                          (EField (e', x), loc))
 
               | ELet (xes, e) =>
-                S.bind2 (ListUtil.mapfold (fn (x, e) =>
-                                              S.map2 (mfe ctx e,
-                                                   fn e' =>
-                                                      (x, e')))
+                S.bind2 (ListUtil.mapfold (fn (x, t, e) =>
+                                              S.bind2 (mft t,
+                                                       fn t' =>
+                                                          S.map2 (mfe ctx e,
+                                                               fn e' =>
+                                                                  (x, t', e'))))
                                           xes,
                       fn xes' =>
                          S.map2 (mfe ctx e,

@@ -29,6 +29,8 @@
 
 signature COMPILER = sig
 
+    val compile : string -> unit
+
     val parse : string -> Source.file option
     val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
     val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
@@ -36,6 +38,7 @@ signature COMPILER = sig
     val shake : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
     val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
     val cloconv : ElabEnv.env -> CoreEnv.env -> string -> Flat.file option
+    val cjrize : ElabEnv.env -> CoreEnv.env -> string -> Cjr.file option
 
     val testParse : string -> unit
     val testElaborate : string -> unit
@@ -44,5 +47,6 @@ signature COMPILER = sig
     val testShake : string -> unit
     val testMonoize : string -> unit
     val testCloconv : string -> unit
+    val testCjrize : string -> unit
 
 end

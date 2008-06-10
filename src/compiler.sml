@@ -112,6 +112,15 @@ fun cloconv eenv cenv filename =
         else
             SOME (Cloconv.cloconv file)
 
+fun cjrize eenv cenv filename =
+    case cloconv eenv cenv filename of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Cjrize.cjrize file)
+
 fun testParse filename =
     case parse filename of
         NONE => print "Failed\n"
@@ -172,5 +181,26 @@ fun testCloconv filename =
           print "\n"))
     handle FlatEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testCjrize filename =
+    (case cjrize ElabEnv.basis CoreEnv.basis filename of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (CjrPrint.p_file CjrEnv.basis file);
+          print "\n"))
+    handle CjrEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun compile filename =
+    case cjrize ElabEnv.basis CoreEnv.basis filename of
+        NONE => ()
+      | SOME file =>
+        let
+            val outf = TextIO.openOut "/tmp/lacweb.c"
+            val s = TextIOPP.openOut {dst = outf, wid = 80}
+        in
+            Print.fprint s (CjrPrint.p_file CjrEnv.basis file);
+            TextIO.closeOut outf
+        end
 
 end

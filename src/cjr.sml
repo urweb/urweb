@@ -25,36 +25,40 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing *)
+structure Cjr = struct
 
-signature PRINT = sig
-    structure PD : PP_DESC
-                       where type PPS.token = string
-          and type PPS.device = TextIOPP.device
-          and type PPS.stream = TextIOPP.stream
+type 'a located = 'a ErrorMsg.located
 
-    type 'a printer = 'a -> PD.pp_desc
+datatype typ' =
+         TTop
+       | TFun
+       | TCode of typ * typ
+       | TRecord of int
+       | TNamed of int
 
-    val box : PD.pp_desc list -> PD.pp_desc
-    val parenIf : bool -> PD.pp_desc -> PD.pp_desc
-    val space : PD.pp_desc
+withtype typ = typ' located
 
-    val p_list_sep : PD.pp_desc -> 'a printer -> 'a list printer
-    val p_list : 'a printer -> 'a list printer
+datatype exp' =
+         EPrim of Prim.t
+       | ERel of int
+       | ENamed of int
+       | ECode of int
+       | EApp of exp * exp
 
-    val fprint : PD.PPS.stream -> PD.pp_desc -> unit
-    val print : PD.pp_desc -> unit
-    val eprint : PD.pp_desc -> unit
+       | ERecord of int * (string * exp) list
+       | EField of exp * string
 
-    val fpreface : PD.PPS.stream -> string * PD.pp_desc -> unit
-    val preface : string * PD.pp_desc -> unit
-    val epreface : string * PD.pp_desc -> unit
+       | ELet of (string * typ * exp) list * exp
 
-    val fprefaces : PD.PPS.stream -> string -> (string * PD.pp_desc) list -> unit
-    val prefaces : string -> (string * PD.pp_desc) list -> unit
-    val eprefaces : string -> (string * PD.pp_desc) list -> unit
+withtype exp = exp' located
 
-    val fprefaces' : PD.PPS.stream -> (string * PD.pp_desc) list -> unit
-    val prefaces' : (string * PD.pp_desc) list -> unit
-    val eprefaces' : (string * PD.pp_desc) list -> unit
+datatype decl' =
+         DStruct of int * (string * typ) list
+       | DVal of string * int * typ * exp
+       | DFun of int * string * typ * typ * exp
+
+withtype decl = decl' located
+
+type file = decl list
+
 end

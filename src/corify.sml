@@ -72,7 +72,7 @@ fun corifyExp (e, loc) =
       | L.ECApp (e1, c) => (L'.ECApp (corifyExp e1, corifyCon c), loc)
       | L.ECAbs (_, x, k, e1) => (L'.ECAbs (x, corifyKind k, corifyExp e1), loc)
 
-      | L.ERecord xes => (L'.ERecord (map (fn (c, e) => (corifyCon c, corifyExp e)) xes), loc)
+      | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) => (corifyCon c, corifyExp e, corifyCon t)) xes), loc)
       | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp e1, corifyCon c,
                                                        {field = corifyCon field, rest = corifyCon rest}), loc)
 

@@ -114,10 +114,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                           (EAbs (x, dom', ran', e'), loc))))
 
               | ERecord xes =>
-                S.map2 (ListUtil.mapfold (fn (x, e) =>
-                                             S.map2 (mfe ctx e,
+                S.map2 (ListUtil.mapfold (fn (x, e, t) =>
+                                             S.bind2 (mfe ctx e,
                                                   fn e' =>
-                                                     (x, e')))
+                                                     S.map2 (mft t,
+                                                             fn t' =>
+                                                                (x, e', t'))))
                                          xes,
                      fn xes' =>
                         (ERecord xes', loc))

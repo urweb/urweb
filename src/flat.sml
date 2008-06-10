@@ -30,7 +30,8 @@ structure Flat = struct
 type 'a located = 'a ErrorMsg.located
 
 datatype typ' =
-         TFun of typ * typ
+         TTop
+       | TFun of typ * typ
        | TCode of typ * typ
        | TRecord of (string * typ) list
        | TNamed of int
@@ -44,10 +45,10 @@ datatype exp' =
        | ECode of int
        | EApp of exp * exp
 
-       | ERecord of (string * exp) list
+       | ERecord of (string * exp * typ) list
        | EField of exp * string
 
-       | ELet of (string * exp) list * exp
+       | ELet of (string * typ * exp) list * exp
 
 withtype exp = exp' located
 

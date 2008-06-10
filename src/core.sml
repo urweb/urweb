@@ -63,7 +63,7 @@ datatype exp' =
        | ECApp of exp * con
        | ECAbs of string * kind * exp
 
-       | ERecord of (con * exp) list
+       | ERecord of (con * exp * con) list
        | EField of exp * con * { field : con, rest : con }
 
 withtype exp = exp' located

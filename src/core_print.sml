@@ -184,7 +184,7 @@ fun p_exp' par env (e, _) =
                                              p_exp (E.pushCRel env x k) e])
 
       | ERecord xes => box [string "{",
-                            p_list (fn (x, e) =>
+                            p_list (fn (x, e, _) =>
                                        box [p_name env x,
                                             space,
                                             string "=",

@@ -91,7 +91,7 @@ fun monoExp env (all as (e, loc)) =
           | L.ECApp _ => poly ()
           | L.ECAbs _ => poly ()
 
-          | L.ERecord xes => (L'.ERecord (map (fn (x, e) => (monoName env x, monoExp env e)) xes), loc)
+          | L.ERecord xes => (L'.ERecord (map (fn (x, e, t) => (monoName env x, monoExp env e, monoType env t)) xes), loc)
           | L.EField (e, x, _) => (L'.EField (monoExp env e, monoName env x), loc)
     end
 

@@ -704,7 +704,7 @@ fun typeof env (e, loc) =
            | _ => raise Fail "typeof: Bad ECApp")
       | L'.ECAbs (expl, x, k, e1) => (L'.TCFun (expl, x, k, typeof (E.pushCRel env x k) e1), loc)
 
-      | L'.ERecord xes => (L'.TRecord (L'.CRecord (ktype, map (fn (x, e) => (x, typeof env e)) xes), loc), loc)
+      | L'.ERecord xes => (L'.TRecord (L'.CRecord (ktype, map (fn (x, _, t) => (x, t)) xes), loc), loc)
       | L'.EField (_, _, {field, ...}) => field
 
       | L'.EError => cerror
@@ -821,7 +821,7 @@ fun elabExp env (e, loc) =
                                    (x', e', et)
                                end) xes
         in
-            ((L'.ERecord (map (fn (x', e', _) => (x', e')) xes'), loc),
+            ((L'.ERecord xes', loc),
              (L'.TRecord (L'.CRecord (ktype, map (fn (x', _, et) => (x', et)) xes'), loc), loc))
         end
 

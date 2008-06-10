@@ -43,7 +43,7 @@ datatype exp' =
        | EApp of exp * exp
        | EAbs of string * typ * typ * exp
 
-       | ERecord of (string * exp) list
+       | ERecord of (string * exp * typ) list
        | EField of exp * string
 
 withtype exp = exp' located

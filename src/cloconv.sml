@@ -115,13 +115,13 @@ fun ccExp env ((e, loc), D) =
             val (e1, D) = ccExp env (e1, D)
             val (e2, D) = ccExp env (e2, D)
         in
-            ((L'.ELet ([("closure", e1),
-                        ("arg", liftExpInExp 0 e2),
-                        ("code", (L'.EField ((L'.ERel 1, loc), "func"), loc)),
-                        ("env", (L'.EField ((L'.ERel 2, loc), "env"), loc))],
+            ((L'.ELet ([("closure", (L'.TTop, loc), e1),
+                        ("arg", (L'.TTop, loc), liftExpInExp 0 e2),
+                        ("code", (L'.TTop, loc), (L'.EField ((L'.ERel 1, loc), "func"), loc)),
+                        ("env", (L'.TTop, loc), (L'.EField ((L'.ERel 2, loc), "env"), loc))],
                        (L'.EApp ((L'.ERel 1, loc),
-                                 (L'.ERecord [("env", (L'.ERel 0, loc)),
-                                              ("arg", (L'.ERel 2, loc))], loc)), loc)), loc), D)
+                                 (L'.ERecord [("env", (L'.ERel 0, loc), (L'.TTop, loc)),
+                                              ("arg", (L'.ERel 2, loc), (L'.TTop, loc))], loc)), loc)), loc), D)
         end
       | L.EAbs (x, dom, ran, e) =>
         let
@@ -145,25 +145,27 @@ fun ccExp env ((e, loc), D) =
                                  subExpInExp (n, (L'.EField ((L'.ERel 1, loc), "fv" ^ Int.toString n), loc)) e)
                              e ns
             (*val () = Print.preface (" After", FlatPrint.p_exp FlatEnv.basis body)*)
-            val body = (L'.ELet ([("env", (L'.EField ((L'.ERel 0, loc), "env"), loc)),
-                                  ("arg", (L'.EField ((L'.ERel 1, loc), "arg"), loc))],
+            val body = (L'.ELet ([("env", (L'.TTop, loc), (L'.EField ((L'.ERel 0, loc), "env"), loc)),
+                                  ("arg", (L'.TTop, loc), (L'.EField ((L'.ERel 1, loc), "arg"), loc))],
                                  body), loc)
                               
             val envT = (L'.TRecord (map (fn n => ("fv" ^ Int.toString n, #2 (E.lookupERel env (n-1)))) ns), loc)
             val (D, fi) = Ds.func D (x, (L'.TRecord [("env", envT), ("arg", dom)], loc), ran, body)
         in
-            ((L'.ERecord [("code", (L'.ECode fi, loc)),
+            ((L'.ERecord [("code", (L'.ECode fi, loc), (L'.TTop, loc)),
                           ("env", (L'.ERecord (map (fn n => ("fv" ^ Int.toString n,
-                                                             (L'.ERel (n-1), loc))) ns), loc))], loc), D)
+                                                             (L'.ERel (n-1), loc),
+                                                             #2 (E.lookupERel env (n-1)))) ns), loc),
+                           envT)], loc), D)
         end
 
       | L.ERecord xes =>
         let
-            val (xes, D) = ListUtil.foldlMap (fn ((x, e), D) =>
+            val (xes, D) = ListUtil.foldlMap (fn ((x, e, t), D) =>
                                                  let
                                                      val (e, D) = ccExp env (e, D)
                                                  in
-                                                     ((x, e), D)
+                                                     ((x, e, ccTyp t), D)
                                                  end) D xes
         in
             ((L'.ERecord xes, loc), D)

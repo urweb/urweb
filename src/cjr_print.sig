@@ -25,36 +25,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing *)
+(* Pretty-printing Laconic/Web C jr. language *)
 
-signature PRINT = sig
-    structure PD : PP_DESC
-                       where type PPS.token = string
-          and type PPS.device = TextIOPP.device
-          and type PPS.stream = TextIOPP.stream
+signature CJR_PRINT = sig
+    val p_typ : CjrEnv.env -> Cjr.typ Print.printer
+    val p_exp : CjrEnv.env -> Cjr.exp Print.printer
+    val p_decl : CjrEnv.env -> Cjr.decl Print.printer
+    val p_file : CjrEnv.env -> Cjr.file Print.printer
 
-    type 'a printer = 'a -> PD.pp_desc
-
-    val box : PD.pp_desc list -> PD.pp_desc
-    val parenIf : bool -> PD.pp_desc -> PD.pp_desc
-    val space : PD.pp_desc
-
-    val p_list_sep : PD.pp_desc -> 'a printer -> 'a list printer
-    val p_list : 'a printer -> 'a list printer
-
-    val fprint : PD.PPS.stream -> PD.pp_desc -> unit
-    val print : PD.pp_desc -> unit
-    val eprint : PD.pp_desc -> unit
-
-    val fpreface : PD.PPS.stream -> string * PD.pp_desc -> unit
-    val preface : string * PD.pp_desc -> unit
-    val epreface : string * PD.pp_desc -> unit
-
-    val fprefaces : PD.PPS.stream -> string -> (string * PD.pp_desc) list -> unit
-    val prefaces : string -> (string * PD.pp_desc) list -> unit
-    val eprefaces : string -> (string * PD.pp_desc) list -> unit
-
-    val fprefaces' : PD.PPS.stream -> (string * PD.pp_desc) list -> unit
-    val prefaces' : (string * PD.pp_desc) list -> unit
-    val eprefaces' : (string * PD.pp_desc) list -> unit
+    val debug : bool ref
 end

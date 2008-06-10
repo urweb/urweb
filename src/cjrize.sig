@@ -25,36 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing *)
+signature CJRIZE = sig
 
-signature PRINT = sig
-    structure PD : PP_DESC
-                       where type PPS.token = string
-          and type PPS.device = TextIOPP.device
-          and type PPS.stream = TextIOPP.stream
+    val cjrize : Flat.file -> Cjr.file
 
-    type 'a printer = 'a -> PD.pp_desc
-
-    val box : PD.pp_desc list -> PD.pp_desc
-    val parenIf : bool -> PD.pp_desc -> PD.pp_desc
-    val space : PD.pp_desc
-
-    val p_list_sep : PD.pp_desc -> 'a printer -> 'a list printer
-    val p_list : 'a printer -> 'a list printer
-
-    val fprint : PD.PPS.stream -> PD.pp_desc -> unit
-    val print : PD.pp_desc -> unit
-    val eprint : PD.pp_desc -> unit
-
-    val fpreface : PD.PPS.stream -> string * PD.pp_desc -> unit
-    val preface : string * PD.pp_desc -> unit
-    val epreface : string * PD.pp_desc -> unit
-
-    val fprefaces : PD.PPS.stream -> string -> (string * PD.pp_desc) list -> unit
-    val prefaces : string -> (string * PD.pp_desc) list -> unit
-    val eprefaces : string -> (string * PD.pp_desc) list -> unit
-
-    val fprefaces' : PD.PPS.stream -> (string * PD.pp_desc) list -> unit
-    val prefaces' : (string * PD.pp_desc) list -> unit
-    val eprefaces' : (string * PD.pp_desc) list -> unit
 end
