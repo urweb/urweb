@@ -44,11 +44,18 @@ val s = ErrorMsg.spanOf
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END
 
-%nonterm 
+%nonterm
    file of decl list
  | decls of decl list
  | decl of decl
+
+ | sgn of sgn
+ | sgi of sgn_item
+ | sgis of sgn_item list
+
+ | str of str
 
  | kind of kind
  | kcolon of explicitness
@@ -96,6 +103,30 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                          s (LTYPEleft, cexpright))
        | VAL SYMBOL EQ eexp             (DVal (SYMBOL, NONE, eexp), s (VALleft, eexpright))
        | VAL SYMBOL COLON cexp EQ eexp  (DVal (SYMBOL, SOME cexp, eexp), s (VALleft, eexpright))
+
+       | SIGNATURE CSYMBOL EQ sgn       (DSgn (CSYMBOL, sgn), s (SIGNATUREleft, sgnright))
+       | STRUCTURE CSYMBOL EQ str       (DStr (CSYMBOL, NONE, str), s (STRUCTUREleft, strright))
+       | STRUCTURE CSYMBOL COLON sgn EQ str (DStr (CSYMBOL, SOME sgn, str), s (STRUCTUREleft, strright))
+
+sgn    : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
+       | CSYMBOL                        (SgnVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+
+sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, kindright))
+       | LTYPE SYMBOL                   (SgiConAbs (SYMBOL, (KType, s (LTYPEleft, SYMBOLright))),
+                                         s (LTYPEleft, SYMBOLright))
+       | CON SYMBOL EQ cexp             (SgiCon (SYMBOL, NONE, cexp), s (CONleft, cexpright))
+       | CON SYMBOL DCOLON kind EQ cexp (SgiCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
+       | LTYPE SYMBOL EQ cexp           (SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
+                                         s (LTYPEleft, cexpright))
+       | VAL SYMBOL COLON cexp          (SgiVal (SYMBOL, cexp), s (VALleft, cexpright))
+
+       | STRUCTURE CSYMBOL COLON sgn    (SgiStr (CSYMBOL, sgn), s (STRUCTUREleft, sgnright))
+
+sgis   :                                ([])
+       | sgi sgis                       (sgi :: sgis)
+
+str    : STRUCT decls END               (StrConst decls, s (STRUCTleft, ENDright))
+       | CSYMBOL                        (StrVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
 
 kind   : TYPE                           (KType, s (TYPEleft, TYPEright))
        | NAME                           (KName, s (NAMEleft, NAMEright))

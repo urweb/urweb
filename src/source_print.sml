@@ -197,6 +197,57 @@ fun p_exp' par (e, _) =
 
 and p_exp e = p_exp' false e
 
+fun p_sgn_item (sgi, _) =
+    case sgi of
+        SgiConAbs (x, k) => box [string "con",
+                                 space,
+                                 string x,
+                                 space,
+                                 string "::",
+                                 space,
+                                 p_kind k]
+      | SgiCon (x, NONE, c) => box [string "con",
+                                    space,
+                                    string x,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_con c]
+      | SgiCon (x, SOME k, c) => box [string "con",
+                                      space,
+                                      string x,
+                                      space,
+                                      string "::",
+                                      space,
+                                      p_kind k,
+                                      space,
+                                      string "=",
+                                      space,
+                                      p_con c]
+      | SgiVal (x, c) => box [string "val",
+                              space,
+                              string x,
+                              space,
+                              string ":",
+                              space,
+                              p_con c]
+      | SgiStr (x, sgn) => box [string "structure",
+                                space,
+                                string x,
+                                space,
+                                string ":",
+                                space,
+                                p_sgn sgn]
+
+and p_sgn (sgn, _) =
+    case sgn of
+        SgnConst sgis => box [string "sig",
+                              newline,
+                              p_list_sep newline p_sgn_item sgis,
+                              newline,
+                              string "end"]
+      | SgnVar x => string x
+                                 
 fun p_decl ((d, _) : decl) =
     case d of
         DCon (x, NONE, c) => box [string "con",
@@ -235,6 +286,41 @@ fun p_decl ((d, _) : decl) =
                                     string "=",
                                     space,
                                     p_exp e]
+
+      | DSgn (x, sgn) => box [string "signature",
+                              space,
+                              string x,
+                              space,
+                              string "=",
+                              space,
+                              p_sgn sgn]
+      | DStr (x, NONE, str) => box [string "structure",
+                                    space,
+                                    string x,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_str str]
+      | DStr (x, SOME sgn, str) => box [string "structure",
+                                        space,
+                                        string x,
+                                        space,
+                                        string ":",
+                                        space,
+                                        p_sgn sgn,
+                                        space,
+                                        string "=",
+                                        space,
+                                        p_str str]
+
+and p_str (str, _) =
+    case str of
+        StrConst ds => box [string "struct",
+                            newline,
+                            p_list_sep newline p_decl ds,
+                            newline,
+                            string "end"]
+      | StrVar x => string x
 
 val p_file = p_list_sep newline p_decl
 

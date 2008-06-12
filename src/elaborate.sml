@@ -865,74 +865,81 @@ fun declError env err =
          eprefaces' [("Expression", p_exp env e)])
 
 fun elabDecl env (d, loc) =
-    (resetKunif ();
-     resetCunif ();
-     case d of
-         L.DCon (x, ko, c) =>
-         let
-             val k' = case ko of
-                          NONE => kunif ()
-                        | SOME k => elabKind k
+    let
+        
+    in
+        resetKunif ();
+        resetCunif ();
+        case d of
+            L.DCon (x, ko, c) =>
+            let
+                val k' = case ko of
+                             NONE => kunif ()
+                           | SOME k => elabKind k
 
-             val (c', ck) = elabCon env c
-             val (env', n) = E.pushCNamed env x k' (SOME c')
-         in
-             checkKind env c' ck k';
+                val (c', ck) = elabCon env c
+                val (env', n) = E.pushCNamed env x k' (SOME c')
+            in
+                checkKind env c' ck k';
 
-             if ErrorMsg.anyErrors () then
-                 ()
-             else (
-                 if kunifsInKind k' then
-                     declError env (KunifsRemainKind (loc, k'))
-                 else
-                     ();
+                if ErrorMsg.anyErrors () then
+                    ()
+                else (
+                    if kunifsInKind k' then
+                        declError env (KunifsRemainKind (loc, k'))
+                    else
+                        ();
 
-                 if kunifsInCon c' then
-                     declError env (KunifsRemainCon (loc, c'))
-                 else
-                     ()
-                 );
+                    if kunifsInCon c' then
+                        declError env (KunifsRemainCon (loc, c'))
+                    else
+                        ()
+                    );
 
-             (env',
-              (L'.DCon (x, n, k', c'), loc))
-         end
-       | L.DVal (x, co, e) =>
-         let
-             val (c', ck) = case co of
-                                NONE => (cunif ktype, ktype)
-                              | SOME c => elabCon env c
+                (env',
+                 (L'.DCon (x, n, k', c'), loc))
+            end
+          | L.DVal (x, co, e) =>
+            let
+                val (c', ck) = case co of
+                                   NONE => (cunif ktype, ktype)
+                                 | SOME c => elabCon env c
 
-             val (e', et) = elabExp env e
-             val (env', n) = E.pushENamed env x c'
-         in
-             checkCon env e' et c';
+                val (e', et) = elabExp env e
+                val (env', n) = E.pushENamed env x c'
+            in
+                checkCon env e' et c';
 
-             if ErrorMsg.anyErrors () then
-                 ()
-             else (
-                 if kunifsInCon c' then
-                     declError env (KunifsRemainCon (loc, c'))
-                 else
-                     ();
+                if ErrorMsg.anyErrors () then
+                    ()
+                else (
+                    if kunifsInCon c' then
+                        declError env (KunifsRemainCon (loc, c'))
+                    else
+                        ();
 
-                 if cunifsInCon c' then
-                     declError env (CunifsRemainCon (loc, c'))
-                 else
-                     ();
+                    if cunifsInCon c' then
+                        declError env (CunifsRemainCon (loc, c'))
+                    else
+                        ();
 
-                 if kunifsInExp e' then
-                     declError env (KunifsRemainExp (loc, e'))
-                 else
-                     ();
+                    if kunifsInExp e' then
+                        declError env (KunifsRemainExp (loc, e'))
+                    else
+                        ();
 
-                 if cunifsInExp e' then
-                     declError env (CunifsRemainExp (loc, e'))
-                 else
-                     ());
+                    if cunifsInExp e' then
+                        declError env (CunifsRemainExp (loc, e'))
+                    else
+                        ());
 
-             (env',
-              (L'.DVal (x, n, c', e'), loc))
-         end)
+                (env',
+                 (L'.DVal (x, n, c', e'), loc))
+            end
+
+          | L.DSgn _ => raise Fail "Not ready to elaborate signature"
+          | L.DStr _ => raise Fail "Not ready to elaborate structure"
+    end
 
 fun elabFile env ds =
     ListUtil.mapfoldl (fn (d, env) => elabDecl env d) env ds

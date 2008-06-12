@@ -77,11 +77,31 @@ datatype exp' =
 
 withtype exp = exp' located
 
+datatype sgn_item' =
+         SgiConAbs of string * kind
+       | SgiCon of string * kind option * con
+       | SgiVal of string * con
+       | SgiStr of string * sgn
+
+and sgn' =
+    SgnConst of sgn_item list
+  | SgnVar of string
+
+withtype sgn_item = sgn_item' located
+and sgn = sgn' located
+
 datatype decl' =
          DCon of string * kind option * con
        | DVal of string * con option * exp
+       | DSgn of string * sgn
+       | DStr of string * sgn option * str
+
+     and str' =
+         StrConst of decl list
+       | StrVar of string
 
 withtype decl = decl' located
+     and str = str' located
 
 type file = decl list
 
