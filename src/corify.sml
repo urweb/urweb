@@ -83,6 +83,9 @@ fun corifyDecl (d, loc : EM.span) =
         L.DCon (x, n, k, c) => (L'.DCon (x, n, corifyKind k, corifyCon c), loc)
       | L.DVal (x, n, t, e) => (L'.DVal (x, n, corifyCon t, corifyExp e), loc)
 
+      | L.DSgn _ => raise Fail "Not ready to corify signature"
+      | L.DStr _ => raise Fail "Not ready to corify structure"
+
 val corify = map corifyDecl
 
 end

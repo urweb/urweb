@@ -1,0 +1,28 @@
+signature A = sig end
+structure A = struct end
+structure Ao : A = A
+
+
+structure B = struct
+        type t = int
+end
+structure Bo0 : sig end = B
+structure BoA : A = B
+
+signature B1 = sig
+        type t
+end
+structure Bo1 : B1 = B
+(*structure AoB1 : B1 = A*)
+
+signature B2 = sig
+        type t = int
+end
+structure Bo2 : B2 = B
+
+
+structure C = struct
+        type t = float
+end
+structure CoB1 : B1 = C
+(*structure CoB2 : B2 = C*)

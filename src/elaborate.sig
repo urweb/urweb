@@ -27,6 +27,6 @@
 
 signature ELABORATE = sig
 
-    val elabFile : ElabEnv.env -> Source.file -> ElabEnv.env * Elab.file
+    val elabFile : ElabEnv.env -> Source.file -> Elab.file * ElabEnv.env
 
 end

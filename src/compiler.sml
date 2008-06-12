@@ -70,7 +70,7 @@ fun elaborate env filename =
 fun corify eenv cenv filename =
     case elaborate eenv filename of
         NONE => NONE
-      | SOME (_, file) =>
+      | SOME (file, _) =>
         if ErrorMsg.anyErrors () then
             NONE
         else
@@ -131,7 +131,7 @@ fun testParse filename =
 fun testElaborate filename =
     (case elaborate ElabEnv.basis filename of
          NONE => print "Failed\n"
-       | SOME (_, file) =>
+       | SOME (file, _) =>
          (Print.print (ElabPrint.p_file ElabEnv.basis file);
           print "\n"))
     handle ElabEnv.UnboundNamed n =>

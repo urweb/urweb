@@ -228,57 +228,119 @@ fun p_exp' par env (e, _) =
 
 and p_exp env = p_exp' false env
 
+fun p_named x n =
+    if !debug then
+        box [string x,
+             string "__",
+             string (Int.toString n)]
+    else
+        string x
+
+fun p_sgn_item env (sgi, _) =
+    case sgi of
+        SgiConAbs (x, n, k) => box [string "con",
+                                    space,
+                                    p_named x n,
+                                    space,
+                                    string "::",
+                                    space,
+                                    p_kind k]
+      | SgiCon (x, n, k, c) => box [string "con",
+                                    space,
+                                    p_named x n,
+                                    space,
+                                    string "::",
+                                    space,
+                                    p_kind k,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_con env c]
+      | SgiVal (x, n, c) => box [string "val",
+                                 space,
+                                 p_named x n,
+                                 space,
+                                 string ":",
+                                 space,
+                                 p_con env c]
+      | SgiStr (x, n, sgn) => box [string "structure",
+                                   space,
+                                   p_named x n,
+                                   space,
+                                   string ":",
+                                   space,
+                                   p_sgn env sgn]
+
+and p_sgn env (sgn, _) =
+    case sgn of
+        SgnConst sgis => box [string "sig",
+                              newline,
+                              p_list_sep newline (p_sgn_item env) sgis,
+                              newline,
+                              string "end"]
+      | SgnVar n => string (#1 (E.lookupSgnNamed env n))
+      | SgnError => string "<ERROR>"
+
 fun p_decl env ((d, _) : decl) =
     case d of
-        DCon (x, n, k, c) =>
-        let
-            val xp = if !debug then
-                         box [string x,
-                              string "__",
-                              string (Int.toString n)]
-                     else
-                         string x
-        in
-            box [string "con",
-                 space,
-                 xp,
-                 space,
-                 string "::",
-                 space,
-                 p_kind k,
-                 space,
-                 string "=",
-                 space,
-                 p_con env c]
-        end
-      | DVal (x, n, t, e) =>
-        let
-            val xp = if !debug then
-                         box [string x,
-                              string "__",
-                              string (Int.toString n)]
-                     else
-                         string x        
-        in
-            box [string "val",
-                 space,
-                 xp,
-                 space,
-                 string ":",
-                 space,
-                 p_con env t,
-                 space,
-                 string "=",
-                 space,
-                 p_exp env e]
-        end
+        DCon (x, n, k, c) => box [string "con",
+                                  space,
+                                  p_named x n,
+                                  space,
+                                  string "::",
+                                  space,
+                                  p_kind k,
+                                  space,
+                                  string "=",
+                                  space,
+                                  p_con env c]
+      | DVal (x, n, t, e) => box [string "val",
+                                  space,
+                                  p_named x n,
+                                  space,
+                                  string ":",
+                                  space,
+                                  p_con env t,
+                                  space,
+                                  string "=",
+                                  space,
+                                  p_exp env e]
+                             
+      | DSgn (x, n, sgn) => box [string "signature",
+                                 space,
+                                 p_named x n,
+                                 space,
+                                 string "=",
+                                 space,
+                                 p_sgn env sgn]
+      | DStr (x, n, sgn, str) => box [string "structure",
+                                      space,
+                                      p_named x n,
+                                      space,
+                                      string ":",
+                                      space,
+                                      p_sgn env sgn,
+                                      space,
+                                      string "=",
+                                      space,
+                                      p_str env str]
+
+and p_str env (str, _) =
+    case str of
+        StrConst ds => box [string "struct",
+                            newline,
+                            p_list_sep newline (p_decl env) ds,
+                            newline,
+                            string "end"]
+      | StrVar n => string (#1 (E.lookupStrNamed env n))
+      | StrError => string "<ERROR>"
 
 fun p_file env file =
     let
-        val (_, pds) = ListUtil.mapfoldl (fn (d, env) =>
-                                             (E.declBinds env d,
-                                              p_decl env d))
-                             env file
+        val (pds, _) = ListUtil.foldlMap (fn (d, env) =>
+                                             (p_decl env d,
+                                              E.declBinds env d))
+                                         env file
     in
         p_list_sep newline (fn x => x) pds
     end

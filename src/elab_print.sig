@@ -33,6 +33,7 @@ signature ELAB_PRINT = sig
     val p_con : ElabEnv.env -> Elab.con Print.printer
     val p_exp : ElabEnv.env -> Elab.exp Print.printer
     val p_decl : ElabEnv.env -> Elab.decl Print.printer
+    val p_sgn_item : ElabEnv.env -> Elab.sgn_item Print.printer
     val p_file : ElabEnv.env -> Elab.file Print.printer
 
     val debug : bool ref

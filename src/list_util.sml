@@ -27,21 +27,6 @@
 
 structure ListUtil :> LIST_UTIL = struct
 
-fun mapfoldl f i =
-    let
-        fun mf s ls' ls =
-            case ls of
-                nil => (s, rev ls')
-              | h :: t =>
-                let
-                    val (s, h') = f (h, s)
-                in
-                    mf s (h' :: ls') t
-                end
-    in
-        mf i []
-    end
-
 structure S = Search
 
 fun mapfold f =

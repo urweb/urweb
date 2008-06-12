@@ -80,7 +80,13 @@ type env = {
 
      renameE : con var' SM.map,
      relE : (string * con) list,
-     namedE : (string * con) IM.map
+     namedE : (string * con) IM.map,
+
+     renameSgn : (int * sgn) SM.map,
+     sgn : (string * sgn) IM.map,
+
+     renameStr : (int * sgn) SM.map,
+     str : (string * sgn) IM.map
 }
 
 val namedCounter = ref 0
@@ -92,7 +98,13 @@ val empty = {
 
     renameE = SM.empty,
     relE = [],
-    namedE = IM.empty
+    namedE = IM.empty,
+
+    renameSgn = SM.empty,
+    sgn = IM.empty,
+
+    renameStr = SM.empty,
+    str = IM.empty
 }
 
 fun pushCRel (env : env) x k =
@@ -106,7 +118,14 @@ fun pushCRel (env : env) x k =
 
          renameE = #renameE env,
          relE = map (fn (x, c) => (x, lift c)) (#relE env),
-         namedE = IM.map (fn (x, c) => (x, lift c)) (#namedE env)}
+         namedE = IM.map (fn (x, c) => (x, lift c)) (#namedE env),
+
+         renameSgn = #renameSgn env,
+         sgn = #sgn env,
+
+         renameStr = #renameStr env,
+         str = #str env
+        }
     end
 
 fun lookupCRel (env : env) n =
@@ -120,7 +139,13 @@ fun pushCNamedAs (env : env) x n k co =
 
      renameE = #renameE env,
      relE = #relE env,
-     namedE = #namedE env}
+     namedE = #namedE env,
+
+     renameSgn = #renameSgn env,
+     sgn = #sgn env,
+     
+     renameStr = #renameStr env,
+     str = #str env}
 
 fun pushCNamed env x k co =
     let
@@ -152,7 +177,13 @@ fun pushERel (env : env) x t =
 
          renameE = SM.insert (renameE, x, Rel' (0, t)),
          relE = (x, t) :: #relE env,
-         namedE = #namedE env}
+         namedE = #namedE env,
+
+         renameSgn = #renameSgn env,
+         sgn = #sgn env,
+
+         renameStr = #renameStr env,
+         str = #str env}
     end
 
 fun lookupERel (env : env) n =
@@ -166,7 +197,13 @@ fun pushENamedAs (env : env) x n t =
 
      renameE = SM.insert (#renameE env, x, Named' (n, t)),
      relE = #relE env,
-     namedE = IM.insert (#namedE env, n, (x, t))}
+     namedE = IM.insert (#namedE env, n, (x, t)),
+
+     renameSgn = #renameSgn env,
+     sgn = #sgn env,
+     
+     renameStr = #renameStr env,
+     str = #str env}
 
 fun pushENamed env x t =
     let
@@ -187,10 +224,80 @@ fun lookupE (env : env) x =
       | SOME (Rel' x) => Rel x
       | SOME (Named' x) => Named x
 
+fun pushSgnNamedAs (env : env) x n sgis =
+    {renameC = #renameC env,
+     relC = #relC env,
+     namedC = #namedC env,
+
+     renameE = #renameE env,
+     relE = #relE env,
+     namedE = #namedE env,
+
+     renameSgn = SM.insert (#renameSgn env, x, (n, sgis)),
+     sgn = IM.insert (#sgn env, n, (x, sgis)),
+     
+     renameStr = #renameStr env,
+     str = #str env}
+
+fun pushSgnNamed env x sgis =
+    let
+        val n = !namedCounter
+    in
+        namedCounter := n + 1;
+        (pushSgnNamedAs env x n sgis, n)
+    end
+
+fun lookupSgnNamed (env : env) n =
+    case IM.find (#sgn env, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
+fun lookupSgn (env : env) x = SM.find (#renameSgn env, x)
+
+fun pushStrNamedAs (env : env) x n sgis =
+    {renameC = #renameC env,
+     relC = #relC env,
+     namedC = #namedC env,
+
+     renameE = #renameE env,
+     relE = #relE env,
+     namedE = #namedE env,
+
+     renameSgn = #renameSgn env,
+     sgn = #sgn env,
+
+     renameStr = SM.insert (#renameStr env, x, (n, sgis)),
+     str = IM.insert (#str env, n, (x, sgis))}
+
+fun pushStrNamed env x sgis =
+    let
+        val n = !namedCounter
+    in
+        namedCounter := n + 1;
+        (pushStrNamedAs env x n sgis, n)
+    end
+
+fun lookupStrNamed (env : env) n =
+    case IM.find (#str env, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
+fun lookupStr (env : env) x = SM.find (#renameStr env, x)
+
 fun declBinds env (d, _) =
     case d of
         DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
       | DVal (x, n, t, _) => pushENamedAs env x n t
+      | DSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
+      | DStr (x, n, sgn, _) => pushStrNamedAs env x n sgn
+
+fun sgiBinds env (sgi, _) =
+    case sgi of
+        SgiConAbs (x, n, k) => pushCNamedAs env x n k NONE
+      | SgiCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
+      | SgiVal (x, n, t) => pushENamedAs env x n t
+      | SgiStr (x, n, sgn) => pushStrNamedAs env x n sgn
+
 
 val ktype = (KType, ErrorMsg.dummySpan)
 

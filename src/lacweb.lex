@@ -129,7 +129,7 @@ realconst = [0-9]+\.[0-9]*;
 <INITIAL> "fn"        => (Tokens.FN (yypos, yypos + size yytext));
 
 <INITIAL> "structure" => (Tokens.STRUCTURE (yypos, yypos + size yytext));
-<INITIAL> "signature" => (Tokens.STRUCTURE (yypos, yypos + size yytext));
+<INITIAL> "signature" => (Tokens.SIGNATURE (yypos, yypos + size yytext));
 <INITIAL> "struct"    => (Tokens.STRUCT (yypos, yypos + size yytext));
 <INITIAL> "sig"       => (Tokens.SIG (yypos, yypos + size yytext));
 <INITIAL> "end"       => (Tokens.END (yypos, yypos + size yytext));

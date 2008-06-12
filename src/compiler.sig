@@ -32,7 +32,7 @@ signature COMPILER = sig
     val compile : string -> unit
 
     val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (ElabEnv.env * Elab.file) option
+    val elaborate : ElabEnv.env -> string -> (Elab.file * ElabEnv.env) option
     val corify : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
     val reduce : ElabEnv.env -> CoreEnv.env -> string -> Core.file option
     val shake : ElabEnv.env -> CoreEnv.env -> string -> Core.file option

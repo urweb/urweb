@@ -258,9 +258,9 @@ fun p_decl env ((d, _) : decl) =
 
 fun p_file env file =
     let
-        val (_, pds) = ListUtil.mapfoldl (fn (d, env) =>
-                                             (E.declBinds env d,
-                                              p_decl env d))
+        val (pds, _) = ListUtil.foldlMap (fn (d, env) =>
+                                             (p_decl env d,
+                                              E.declBinds env d))
                              env file
     in
         p_list_sep newline (fn x => x) pds

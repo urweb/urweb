@@ -135,6 +135,8 @@ val ktype_record = (L'.KRecord ktype, dummy)
 val cerror = (L'.CError, dummy)
 val kerror = (L'.KError, dummy)
 val eerror = (L'.EError, dummy)
+val sgnerror = (L'.SgnError, dummy)
+val strerror = (L'.StrError, dummy)
 
 local
     val count = ref 0
@@ -864,7 +866,220 @@ fun declError env err =
         (ErrorMsg.errorAt loc "Some constructor unification variables are undetermined in expression";
          eprefaces' [("Expression", p_exp env e)])
 
-fun elabDecl env (d, loc) =
+datatype sgn_error =
+         UnboundSgn of ErrorMsg.span * string
+       | UnmatchedSgi of L'.sgn_item
+       | SgiWrongKind of L'.sgn_item * L'.kind * L'.sgn_item * L'.kind * kunify_error
+       | SgiWrongCon of L'.sgn_item * L'.con * L'.sgn_item * L'.con * cunify_error
+
+fun sgnError env err =
+    case err of
+        UnboundSgn (loc, s) =>
+        ErrorMsg.errorAt loc ("Unbound signature variable " ^ s)
+      | UnmatchedSgi (sgi as (_, loc)) =>
+        (ErrorMsg.errorAt loc "Unmatched signature item";
+         eprefaces' [("Item", p_sgn_item env sgi)])
+      | SgiWrongKind (sgi1, k1, sgi2, k2, kerr) =>
+        (ErrorMsg.errorAt (#2 sgi1) "Kind unification failure in signature matching:";
+         eprefaces' [("Item 1", p_sgn_item env sgi1),
+                     ("Item 2", p_sgn_item env sgi2),
+                     ("Kind 1", p_kind k1),
+                     ("Kind 2", p_kind k2)];
+         kunifyError kerr)
+      | SgiWrongCon (sgi1, c1, sgi2, c2, cerr) =>
+        (ErrorMsg.errorAt (#2 sgi1) "Constructor unification failure in signature matching:";
+         eprefaces' [("Item 1", p_sgn_item env sgi1),
+                     ("Item 2", p_sgn_item env sgi2),
+                     ("Con 1", p_con env c1),
+                     ("Con 2", p_con env c2)];
+         cunifyError env cerr)
+
+datatype str_error =
+         UnboundStr of ErrorMsg.span * string
+
+fun strError env err =
+    case err of
+        UnboundStr (loc, s) =>
+        ErrorMsg.errorAt loc ("Unbound structure variable " ^ s)
+
+
+fun elabSgn_item ((sgi, loc), env) =
+    let
+        
+    in
+        resetKunif ();
+        resetCunif ();
+        case sgi of
+            L.SgiConAbs (x, k) =>
+            let
+                val k' = elabKind k
+
+                val (env', n) = E.pushCNamed env x k' NONE
+            in
+                if ErrorMsg.anyErrors () then
+                    ()
+                else (
+                    if kunifsInKind k' then
+                        declError env (KunifsRemainKind (loc, k'))
+                    else
+                        ()
+                    );
+
+                ((L'.SgiConAbs (x, n, k'), loc), env')
+            end
+
+          | L.SgiCon (x, ko, c) =>
+            let
+                val k' = case ko of
+                             NONE => kunif ()
+                           | SOME k => elabKind k
+
+                val (c', ck) = elabCon env c
+                val (env', n) = E.pushCNamed env x k' (SOME c')
+            in
+                checkKind env c' ck k';
+
+                if ErrorMsg.anyErrors () then
+                    ()
+                else (
+                    if kunifsInKind k' then
+                        declError env (KunifsRemainKind (loc, k'))
+                    else
+                        ();
+
+                    if kunifsInCon c' then
+                        declError env (KunifsRemainCon (loc, c'))
+                    else
+                        ()
+                    );
+
+                ((L'.SgiCon (x, n, k', c'), loc), env')
+            end
+
+          | L.SgiVal (x, c) =>
+            let
+                val (c', ck) = elabCon env c
+
+                val (env', n) = E.pushENamed env x c'
+            in
+                unifyKinds ck ktype;
+
+                if ErrorMsg.anyErrors () then
+                    ()
+                else (
+                    if kunifsInCon c' then
+                        declError env (KunifsRemainCon (loc, c'))
+                    else
+                        ()
+                    );
+
+                ((L'.SgiVal (x, n, c'), loc), env')
+            end
+
+          | L.SgiStr (x, sgn) =>
+            let
+                val sgn' = elabSgn env sgn
+                val (env', n) = E.pushStrNamed env x sgn'
+            in
+                ((L'.SgiStr (x, n, sgn'), loc), env')
+            end
+            
+    end
+
+and elabSgn env (sgn, loc) =
+    case sgn of
+        L.SgnConst sgis =>
+        let
+            val (sgis', _) = ListUtil.foldlMap elabSgn_item env sgis
+        in
+            (L'.SgnConst sgis', loc)
+        end
+      | L.SgnVar x =>
+        (case E.lookupSgn env x of
+             NONE =>
+             (sgnError env (UnboundSgn (loc, x));
+              (L'.SgnError, loc))
+           | SOME (n, sgis) => (L'.SgnVar n, loc))
+
+fun sgiOfDecl (d, loc) =
+    case d of
+        L'.DCon (x, n, k, c) => SOME (L'.SgiCon (x, n, k, c), loc)
+      | L'.DVal (x, n, t, _) => SOME (L'.SgiVal (x, n, t), loc)
+      | L'.DSgn _ => NONE
+      | L'.DStr (x, n, sgn, _) => SOME (L'.SgiStr (x, n, sgn), loc)
+
+fun subSgn env (all1 as (sgn1, _)) (all2 as (sgn2, loc2)) =
+    case (sgn1, sgn2) of
+        (L'.SgnError, _) => ()
+      | (_, L'.SgnError) => ()
+
+      | (L'.SgnVar n, _) =>
+        subSgn env (#2 (E.lookupSgnNamed env n)) all2
+      | (_, L'.SgnVar n) =>
+        subSgn env all1 (#2 (E.lookupSgnNamed env n))
+
+      | (L'.SgnConst sgis1, L'.SgnConst sgis2) =>
+        let
+            fun folder (sgi2All as (sgi, _), env) =
+                let
+                    fun seek p =
+                        let
+                            fun seek env ls =
+                                case ls of
+                                    [] => (sgnError env (UnmatchedSgi sgi2All);
+                                           env)
+                                  | h :: t =>
+                                    case p h of
+                                        NONE => seek (E.sgiBinds env h) t
+                                      | SOME env => env
+                        in
+                            seek env sgis1
+                        end
+                in
+                    case sgi of
+                        L'.SgiConAbs (x, n2, k2) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 let
+                                     fun found (x, n1, k1, co1) =
+                                         let
+                                             val () = unifyKinds k1 k2
+                                                 handle KUnify (k1, k2, err) =>
+                                                        sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
+                                             val env = E.pushCNamedAs env x n1 k1 co1
+                                         in
+                                             SOME (if n1 = n2 then
+                                                       env
+                                                   else
+                                                       E.pushCNamedAs env x n2 k2 (SOME (L'.CNamed n1, loc2)))
+                                         end
+                                 in
+                                     case sgi1 of
+                                         L'.SgiConAbs (x, n1, k1) => found (x, n1, k1, NONE)
+                                       | L'.SgiCon (x, n1, k1, c1) => found (x, n1, k1, SOME c1)
+                                       | _ => NONE
+                                 end)
+
+                      | L'.SgiCon (x, n2, k2, c2) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 case sgi1 of
+                                     L'.SgiCon (x, n1, k1, c1) =>
+                                     let
+                                         val () = unifyCons env c1 c2
+                                             handle CUnify (c1, c2, err) =>
+                                                    sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err))
+                                     in
+                                         SOME (E.pushCNamedAs env x n2 k2 (SOME c2))
+                                     end
+                                   | _ => NONE)
+
+                      | _ => raise Fail "Not ready for more sig matching"
+                end
+        in
+            ignore (foldl folder env sgis2)
+        end
+                                                               
+
+fun elabDecl ((d, loc), env) =
     let
         
     in
@@ -896,8 +1111,7 @@ fun elabDecl env (d, loc) =
                         ()
                     );
 
-                (env',
-                 (L'.DCon (x, n, k', c'), loc))
+                ((L'.DCon (x, n, k', c'), loc), env')
             end
           | L.DVal (x, co, e) =>
             let
@@ -933,15 +1147,50 @@ fun elabDecl env (d, loc) =
                     else
                         ());
 
-                (env',
-                 (L'.DVal (x, n, c', e'), loc))
+                ((L'.DVal (x, n, c', e'), loc), env')
             end
 
-          | L.DSgn _ => raise Fail "Not ready to elaborate signature"
-          | L.DStr _ => raise Fail "Not ready to elaborate structure"
+          | L.DSgn (x, sgn) =>
+            let
+                val sgn' = elabSgn env sgn
+                val (env', n) = E.pushSgnNamed env x sgn'
+            in
+                ((L'.DSgn (x, n, sgn'), loc), env')
+            end
+
+          | L.DStr (x, sgno, str) =>
+            let
+                val formal = Option.map (elabSgn env) sgno
+                val (str', actual) = elabStr env str
+
+                val sgn' = case formal of
+                               NONE => actual
+                             | SOME formal =>
+                               (subSgn env actual formal;
+                                formal)
+
+                val (env', n) = E.pushStrNamed env x sgn'
+            in
+                ((L'.DStr (x, n, sgn', str'), loc), env')
+            end
     end
 
-fun elabFile env ds =
-    ListUtil.mapfoldl (fn (d, env) => elabDecl env d) env ds
+and elabStr env (str, loc) =
+    case str of
+        L.StrConst ds =>
+        let
+            val (ds', env') = ListUtil.foldlMap elabDecl env ds
+            val sgis = List.mapPartial sgiOfDecl ds'
+        in
+            ((L'.StrConst ds', loc), (L'.SgnConst sgis, loc))
+        end
+      | L.StrVar x =>
+        (case E.lookupStr env x of
+             NONE =>
+             (strError env (UnboundStr (loc, x));
+              (strerror, sgnerror))
+           | SOME (n, sgn) => ((L'.StrVar n, loc), sgn))
+
+val elabFile = ListUtil.foldlMap elabDecl
 
 end
