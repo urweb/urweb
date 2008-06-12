@@ -26,3 +26,34 @@ structure C = struct
 end
 structure CoB1 : B1 = C
 (*structure CoB2 : B2 = C*)
+
+
+signature NAT = sig
+        type t
+        val zero : t
+end
+structure Nat : NAT = struct
+        type t = int
+        val zero = 0
+end
+(*structure NotNat : NAT = struct
+        type t = int
+        val zero = 0.0
+end*)
+(*structure NotNat : NAT = struct
+        val zero = 0
+end*)
+
+
+signature WOBBLE = sig
+        type t
+        type s
+end
+structure Wobble1 = struct
+        type t = int
+        type s = float
+end
+structure Wobble2 = struct
+        type s = int
+        type t = float
+end

@@ -1072,12 +1072,24 @@ fun subSgn env (all1 as (sgn1, _)) (all2 as (sgn2, loc2)) =
                                      end
                                    | _ => NONE)
 
+                      | L'.SgiVal (x, n2, c2) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 case sgi1 of
+                                     L'.SgiVal (x, n1, c1) =>
+                                     let
+                                         val () = unifyCons env c1 c2
+                                             handle CUnify (c1, c2, err) =>
+                                                    sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err))
+                                     in
+                                         SOME env
+                                     end
+                                   | _ => NONE)
+
                       | _ => raise Fail "Not ready for more sig matching"
                 end
         in
             ignore (foldl folder env sgis2)
         end
-                                                               
 
 fun elabDecl ((d, loc), env) =
     let

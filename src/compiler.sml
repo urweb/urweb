@@ -132,7 +132,8 @@ fun testElaborate filename =
     (case elaborate ElabEnv.basis filename of
          NONE => print "Failed\n"
        | SOME (file, _) =>
-         (Print.print (ElabPrint.p_file ElabEnv.basis file);
+         (print "Succeeded\n";
+          Print.print (ElabPrint.p_file ElabEnv.basis file);
           print "\n"))
     handle ElabEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")

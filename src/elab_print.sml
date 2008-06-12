@@ -275,7 +275,14 @@ and p_sgn env (sgn, _) =
     case sgn of
         SgnConst sgis => box [string "sig",
                               newline,
-                              p_list_sep newline (p_sgn_item env) sgis,
+                              let
+                                  val (psgis, _) = ListUtil.foldlMap (fn (sgi, env) =>
+                                                                         (p_sgn_item env sgi,
+                                                                          E.sgiBinds env sgi))
+                                                                     env sgis
+                              in
+                                  p_list_sep newline (fn x => x) psgis
+                              end,
                               newline,
                               string "end"]
       | SgnVar n => string (#1 (E.lookupSgnNamed env n))
@@ -329,13 +336,13 @@ and p_str env (str, _) =
     case str of
         StrConst ds => box [string "struct",
                             newline,
-                            p_list_sep newline (p_decl env) ds,
+                            p_file env ds,
                             newline,
                             string "end"]
       | StrVar n => string (#1 (E.lookupStrNamed env n))
       | StrError => string "<ERROR>"
 
-fun p_file env file =
+and p_file env file =
     let
         val (pds, _) = ListUtil.foldlMap (fn (d, env) =>
                                              (p_decl env d,
