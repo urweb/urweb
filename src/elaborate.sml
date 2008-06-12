@@ -1085,7 +1085,14 @@ fun subSgn env (all1 as (sgn1, _)) (all2 as (sgn2, loc2)) =
                                      end
                                    | _ => NONE)
 
-                      | _ => raise Fail "Not ready for more sig matching"
+                      | L'.SgiStr (x, n2, sgn2) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 case sgi1 of
+                                     L'.SgiStr (x, n1, sgn1) =>
+                                     (subSgn env sgn1 sgn2;
+                                      SOME env)
+                                   | _ => NONE)
+                        (* Add type equations between structures here some day. *)
                 end
         in
             ignore (foldl folder env sgis2)

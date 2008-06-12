@@ -57,3 +57,19 @@ structure Wobble2 = struct
         type s = int
         type t = float
 end
+
+
+structure N = struct
+        type t = string
+        structure N2 = struct
+                type t = int
+                val zero = 0
+        end
+        val x = "Hi"
+end
+signature N = sig
+        structure N2 : NAT
+        type t
+        val x : t
+end
+structure No : N = N
