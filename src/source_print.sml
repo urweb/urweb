@@ -88,7 +88,7 @@ fun p_con' par (c, _) =
       | TRecord c => box [string "$",
                           p_con' true c]
 
-      | CVar s => string s
+      | CVar (ss, s) => p_list_sep (string ".") string (ss @ [s])
       | CApp (c1, c2) => parenIf par (box [p_con c1,
                                            space,
                                            p_con' true c2])
@@ -143,7 +143,7 @@ fun p_exp' par (e, _) =
                               string ")"]        
 
       | EPrim p => Prim.p_t p
-      | EVar s => string s
+      | EVar (ss, s) => p_list_sep (string ".") string (ss @ [s])
       | EApp (e1, e2) => parenIf par (box [p_exp e1,
                                            space,
                                            p_exp' true e2])
@@ -321,6 +321,9 @@ and p_str (str, _) =
                             newline,
                             string "end"]
       | StrVar x => string x
+      | StrProj (str, x) => box [p_str str,
+                                 string ".",
+                                 string x]
 
 val p_file = p_list_sep newline p_decl
 

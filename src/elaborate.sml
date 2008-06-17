@@ -108,12 +108,15 @@ fun unifyKinds k1 k2 =
 
 datatype con_error =
          UnboundCon of ErrorMsg.span * string
+       | UnboundStrInCon of ErrorMsg.span * string
        | WrongKind of L'.con * L'.kind * L'.kind * kunify_error
 
 fun conError env err =
     case err of
         UnboundCon (loc, s) =>
         ErrorMsg.errorAt loc ("Unbound constructor variable " ^ s)
+      | UnboundStrInCon (loc, s) =>
+        ErrorMsg.errorAt loc ("Unbound structure " ^ s)
       | WrongKind (c, k1, k2, kerr) =>
         (ErrorMsg.errorAt (#2 c) "Wrong kind";
          eprefaces' [("Constructor", p_con env c),
@@ -225,7 +228,7 @@ fun elabCon env (c, loc) =
             ((L'.TRecord c', loc), ktype)
         end
 
-      | L.CVar s =>
+      | L.CVar ([], s) =>
         (case E.lookupC env s of
              E.NotBound =>
              (conError env (UnboundCon (loc, s));
@@ -234,6 +237,27 @@ fun elabCon env (c, loc) =
              ((L'.CRel n, loc), k)
            | E.Named (n, k) =>
              ((L'.CNamed n, loc), k))
+      | L.CVar (m1 :: ms, s) =>
+        (case E.lookupStr env m1 of
+             NONE => (conError env (UnboundStrInCon (loc, s));
+                      (cerror, kerror))
+           | SOME (n, sgn) =>
+             let
+                 val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                     case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                         NONE => (conError env (UnboundStrInCon (loc, m));
+                                                  (strerror, sgnerror))
+                                       | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                  ((L'.StrVar n, loc), sgn) ms
+
+                 val k = case E.projectCon env {sgn = sgn, str = str, field = s} of
+                             NONE => (conError env (UnboundCon (loc, s));
+                                      kerror)
+                           | SOME (k, _) => k
+             in
+                 ((L'.CModProj (n, ms, s), loc), k)
+             end)
+                                                                       
       | L.CApp (c1, c2) =>
         let
             val (c1', k1) = elabCon env c1
@@ -404,6 +428,20 @@ fun kindof env (c, loc) =
 
       | L'.CRel xn => #2 (E.lookupCRel env xn)
       | L'.CNamed xn => #2 (E.lookupCNamed env xn)
+      | L'.CModProj (n, ms, x) =>
+        let
+            val (_, sgn) = E.lookupStrNamed env n
+            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                       case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                           NONE => raise Fail "kindof: Unknown substructure"
+                                         | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                             ((L'.StrVar n, loc), sgn) ms
+        in
+            case E.projectCon env {sgn = sgn, str = str, field = x} of
+                NONE => raise Fail "kindof: Unknown con in structure"
+              | SOME (k, _) => k
+        end
+
       | L'.CApp (c, _) =>
         (case #1 (hnormKind (kindof env c)) of
              L'.KArrow (_, k) => k
@@ -541,7 +579,7 @@ and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
         pairOffUnifs (unifs1, unifs2)
     end
 
-and hnormCon env (cAll as (c, _)) =
+and hnormCon env (cAll as (c, loc)) =
     case c of
         L'.CUnif (_, _, ref (SOME c)) => hnormCon env c
 
@@ -549,6 +587,21 @@ and hnormCon env (cAll as (c, _)) =
         (case E.lookupCNamed env xn of
              (_, _, SOME c') => hnormCon env c'
            | _ => cAll)
+
+      | L'.CModProj (n, ms, x) =>
+        let
+            val (_, sgn) = E.lookupStrNamed env n
+            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                       case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                           NONE => raise Fail "hnormCon: Unknown substructure"
+                                         | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                             ((L'.StrVar n, loc), sgn) ms
+        in
+            case E.projectCon env {sgn = sgn, str = str, field = x} of
+                NONE => raise Fail "kindof: Unknown con in structure"
+              | SOME (_, NONE) => cAll
+              | SOME (_, SOME c) => hnormCon env c
+        end
 
       | L'.CApp (c1, c2) =>
         (case hnormCon env c1 of
@@ -610,6 +663,12 @@ and unifyCons'' env (c1All as (c1, _)) (c2All as (c2, _)) =
             else
                 err CIncompatible
 
+          | (L'.CModProj (n1, ms1, x1), L'.CModProj (n2, ms2, x2)) =>
+            if n1 = n2 andalso ms1 = ms2 andalso x1 = x2 then
+                ()
+            else
+                err CIncompatible
+
           | (L'.CError, _) => ()
           | (_, L'.CError) => ()
 
@@ -649,6 +708,7 @@ and unifyCons env c1 c2 =
 
 datatype exp_error =
        UnboundExp of ErrorMsg.span * string
+     | UnboundStrInExp of ErrorMsg.span * string
      | Unify of L'.exp * L'.con * L'.con * cunify_error
      | Unif of string * L'.con
      | WrongForm of string * L'.exp * L'.con
@@ -657,6 +717,8 @@ fun expError env err =
     case err of
         UnboundExp (loc, s) =>
         ErrorMsg.errorAt loc ("Unbound expression variable " ^ s)
+      | UnboundStrInExp (loc, s) =>
+        ErrorMsg.errorAt loc ("Unbound structure " ^ s)
       | Unify (e, c1, c2, uerr) =>
         (ErrorMsg.errorAt (#2 e) "Unification failure";
          eprefaces' [("Expression", p_exp env e),
@@ -695,6 +757,20 @@ fun typeof env (e, loc) =
         L'.EPrim p => (primType env p, loc)
       | L'.ERel n => #2 (E.lookupERel env n)
       | L'.ENamed n => #2 (E.lookupENamed env n)
+      | L'.EModProj (n, ms, x) =>
+        let
+            val (_, sgn) = E.lookupStrNamed env n
+            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                       case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                           NONE => raise Fail "kindof: Unknown substructure"
+                                         | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                             ((L'.StrVar n, loc), sgn) ms
+        in
+            case E.projectVal env {sgn = sgn, str = str, field = x} of
+                NONE => raise Fail "typeof: Unknown val in structure"
+              | SOME t => t
+        end
+
       | L'.EApp (e1, _) =>
         (case #1 (typeof env e1) of
              L'.TFun (_, c) => c
@@ -739,13 +815,34 @@ fun elabExp env (e, loc) =
         end
 
       | L.EPrim p => ((L'.EPrim p, loc), (primType env p, loc))
-      | L.EVar s =>
+      | L.EVar ([], s) =>
         (case E.lookupE env s of
              E.NotBound =>
              (expError env (UnboundExp (loc, s));
               (eerror, cerror))
            | E.Rel (n, t) => ((L'.ERel n, loc), t)
            | E.Named (n, t) => ((L'.ENamed n, loc), t))
+      | L.EVar (m1 :: ms, s) =>
+        (case E.lookupStr env m1 of
+             NONE => (expError env (UnboundStrInExp (loc, s));
+                      (eerror, cerror))
+           | SOME (n, sgn) =>
+             let
+                 val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                     case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                         NONE => (conError env (UnboundStrInCon (loc, m));
+                                                  (strerror, sgnerror))
+                                       | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                  ((L'.StrVar n, loc), sgn) ms
+
+                 val t = case E.projectVal env {sgn = sgn, str = str, field = s} of
+                             NONE => (expError env (UnboundExp (loc, s));
+                                      cerror)
+                           | SOME t => t
+             in
+                 ((L'.EModProj (n, ms, s), loc), t)
+             end)
+
       | L.EApp (e1, e2) =>
         let
             val (e1', t1) = elabExp env e1
@@ -1209,6 +1306,15 @@ and elabStr env (str, loc) =
              (strError env (UnboundStr (loc, x));
               (strerror, sgnerror))
            | SOME (n, sgn) => ((L'.StrVar n, loc), sgn))
+      | L.StrProj (str, x) =>
+        let
+            val (str', sgn) = elabStr env str
+        in
+            case E.projectStr env {str = str', sgn = sgn, field = x} of
+                NONE => (strError env (UnboundStr (loc, x));
+                         (strerror, sgnerror))
+              | SOME sgn => ((L'.StrProj (str', x), loc), sgn)
+        end
 
 val elabFile = ListUtil.foldlMap elabDecl
 

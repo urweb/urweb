@@ -45,6 +45,26 @@ fun mapfold f =
         mf
     end
 
+fun mapfoldB f =
+    let
+        fun mf ctx ls s =
+            case ls of
+                nil => S.Continue (nil, s)
+              | h :: t =>
+                let
+                    val (ctx, r) = f (ctx, h)
+                in
+                    case r s of
+                        S.Return x => S.Return x
+                      | S.Continue (h', s) =>
+                        case mf ctx t s of
+                            S.Return x => S.Return x
+                          | S.Continue (t', s) => S.Continue (h' :: t', s)
+                end
+    in
+        mf
+    end
+
 fun foldlMap f s =
     let
         fun fm (ls', s) ls =

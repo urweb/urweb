@@ -109,6 +109,7 @@ fun mapfoldB {kind = fk, con = fc, bind} =
 
               | CRel _ => S.return2 cAll
               | CNamed _ => S.return2 cAll
+              | CModProj _ => S.return2 cAll
               | CApp (c1, c2) =>
                 S.bind2 (mfc ctx c1,
                       fn c1' =>
@@ -160,7 +161,13 @@ fun mapB {kind, con, bind} ctx c =
                    con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
                    bind = bind} ctx c () of
         S.Continue (c, ()) => c
-      | S.Return _ => raise Fail "Con.mapB: Impossible"
+      | S.Return _ => raise Fail "ElabUtil.Con.mapB: Impossible"
+
+fun map {kind, con} s =
+    case mapfold {kind = fn k => fn () => S.Continue (kind k, ()),
+                  con = fn c => fn () => S.Continue (con c, ())} s () of
+        S.Return () => raise Fail "ElabUtil.Con.map: Impossible"
+      | S.Continue (s, ()) => s
 
 fun exists {kind, con} k =
     case mapfold {kind = fn k => fn () =>
@@ -208,6 +215,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                 EPrim _ => S.return2 eAll
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
+              | EModProj _ => S.return2 eAll
               | EApp (e1, e2) =>
                 S.bind2 (mfe ctx e1,
                       fn e1' =>
@@ -288,6 +296,93 @@ fun exists {kind, con, exp} k =
                                         S.Continue (e, ())} k () of
         S.Return _ => true
       | S.Continue _ => false
+
+end
+
+structure Sgn = struct
+
+datatype binder =
+         RelC of string * Elab.kind
+       | NamedC of string * Elab.kind
+       | Str of string * Elab.sgn
+
+fun mapfoldB {kind, con, sgn_item, sgn, bind} =
+    let
+        fun bind' (ctx, b) =
+            let
+                val b' = case b of
+                             Con.Rel x => RelC x
+                           | Con.Named x => NamedC x
+            in
+                bind (ctx, b')
+            end
+        val con = Con.mapfoldB {kind = kind, con = con, bind = bind'}
+
+        val kind = Kind.mapfold kind
+
+        fun sgi ctx si acc =
+            S.bindP (sgi' ctx si acc, sgn_item ctx)
+
+        and sgi' ctx (si, loc) =
+            case si of
+                SgiConAbs (x, n, k) =>
+                S.map2 (kind k,
+                     fn k' =>
+                        (SgiConAbs (x, n, k'), loc))
+              | SgiCon (x, n, k, c) =>
+                S.bind2 (kind k,
+                     fn k' =>
+                        S.map2 (con ctx c,
+                             fn c' =>
+                                (SgiCon (x, n, k', c'), loc)))
+              | SgiVal (x, n, c) =>
+                S.map2 (con ctx c,
+                     fn c' =>
+                        (SgiVal (x, n, c'), loc))
+              | SgiStr (x, n, s) =>
+                S.map2 (sg ctx s,
+                     fn s' =>
+                        (SgiStr (x, n, s'), loc))
+
+        and sg ctx s acc =
+            S.bindP (sg' ctx s acc, sgn ctx)
+
+        and sg' ctx (sAll as (s, loc)) =
+            case s of
+                SgnConst sgis =>
+                S.map2 (ListUtil.mapfoldB (fn (ctx, si)  =>
+                                              (case #1 si of
+                                                   SgiConAbs (x, _, k) =>
+                                                   bind (ctx, NamedC (x, k))
+                                                 | SgiCon (x, _, k, _) =>
+                                                   bind (ctx, NamedC (x, k))
+                                                 | SgiVal _ => ctx
+                                                 | SgiStr (x, _, sgn) =>
+                                                   bind (ctx, Str (x, sgn)),
+                                               sgi ctx si)) ctx sgis,
+                     fn sgis' =>
+                        (SgnConst sgis', loc))
+                
+              | SgnVar _ => S.return2 sAll
+              | SgnError => S.return2 sAll
+    in
+        sg
+    end
+
+fun mapfold {kind, con, sgn_item, sgn} =
+    mapfoldB {kind = kind,
+              con = fn () => con,
+              sgn_item = fn () => sgn_item,
+              sgn = fn () => sgn,
+              bind = fn ((), _) => ()} ()
+
+fun map {kind, con, sgn_item, sgn} s =
+    case mapfold {kind = fn k => fn () => S.Continue (kind k, ()),
+                  con = fn c => fn () => S.Continue (con c, ()),
+                  sgn_item = fn si => fn () => S.Continue (sgn_item si, ()),
+                  sgn = fn s => fn () => S.Continue (sgn s, ())} s () of
+        S.Return () => raise Fail "Elab_util.Sgn.map"
+      | S.Continue (s, ()) => s
 
 end
 

@@ -298,6 +298,113 @@ fun sgiBinds env (sgi, _) =
       | SgiVal (x, n, t) => pushENamedAs env x n t
       | SgiStr (x, n, sgn) => pushStrNamedAs env x n sgn
 
+fun sgnSeek f sgis =
+    let
+        fun seek (sgis, strs, cons) =
+            case sgis of
+                [] => NONE
+              | (sgi, _) :: sgis =>
+                case f sgi of
+                    SOME v => SOME (v, (strs, cons))
+                    | NONE =>
+                      case sgi of
+                          SgiConAbs (x, n, _) => seek (sgis, strs, IM.insert (cons, n, x))
+                        | SgiCon (x, n, _, _) => seek (sgis, strs, IM.insert (cons, n, x))
+                        | SgiVal _ => seek (sgis, strs, cons)
+                        | SgiStr (x, n, _) => seek (sgis, IM.insert (strs, n, x), cons)
+    in
+        seek (sgis, IM.empty, IM.empty)
+    end
+
+fun id x = x
+
+fun unravelStr (str, _) =
+    case str of
+        StrVar x => (x, [])
+      | StrProj (str, m) =>
+        let
+            val (x, ms) = unravelStr str
+        in
+            (x, ms @ [m])
+        end
+      | _ => raise Fail "unravelStr"
+
+fun sgnS_con (str, (strs, cons)) c =
+    case c of
+        CModProj (m1, ms, x) =>
+        (case IM.find (strs, m1) of
+             NONE => c
+           | SOME m1x =>
+             let
+                 val (m1, ms') = unravelStr str
+             in
+                 CModProj (m1, ms' @ m1x :: ms, x)
+             end)
+      | CNamed n =>
+        (case IM.find (cons, n) of
+             NONE => c
+           | SOME nx =>
+             let
+                 val (m1, ms) = unravelStr str
+             in
+                 CModProj (m1, ms, nx)
+             end)
+      | _ => c
+
+fun sgnSubCon (str, (strs, cons)) =
+    ElabUtil.Con.map {kind = id,
+                      con = sgnS_con (str, (strs, cons))}
+
+fun sgnSubSgn (str, (strs, cons)) =
+    ElabUtil.Sgn.map {kind = id,
+                      con = sgnS_con (str, (strs, cons)),
+                      sgn_item = id,
+                      sgn = id}
+
+fun projectCon env {sgn = (sgn, _), str, field} =
+    case sgn of
+        SgnConst sgis =>
+        (case sgnSeek (fn SgiConAbs (x, _, k) => if x = field then SOME (k, NONE) else NONE
+                        | SgiCon (x, _, k, c) => if x = field then SOME (k, SOME c) else NONE
+                        | _ => NONE) sgis of
+             NONE => NONE
+           | SOME ((k, co), subs) => SOME (k, Option.map (sgnSubCon (str, subs)) co))
+      | SgnVar n =>
+        let
+            val (_, sgn) = lookupSgnNamed env n
+        in
+            projectCon env {sgn = sgn, str = str, field = field}
+        end
+      | SgnError => SOME ((KError, ErrorMsg.dummySpan), SOME (CError, ErrorMsg.dummySpan))
+
+fun projectVal env {sgn = (sgn, _), str, field} =
+    case sgn of
+        SgnConst sgis =>
+        (case sgnSeek (fn SgiVal (x, _, c) => if x = field then SOME c else NONE | _ => NONE) sgis of
+             NONE => NONE
+           | SOME (c, subs) => SOME (sgnSubCon (str, subs) c))
+      | SgnVar n =>
+        let
+            val (_, sgn) = lookupSgnNamed env n
+        in
+            projectVal env {sgn = sgn, str = str, field = field}
+        end
+      | SgnError => SOME (CError, ErrorMsg.dummySpan)
+
+fun projectStr env {sgn = (sgn, _), str, field} =
+    case sgn of
+        SgnConst sgis =>
+        (case sgnSeek (fn SgiStr (x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
+             NONE => NONE
+           | SOME (sgn, subs) => SOME (sgnSubSgn (str, subs) sgn))
+      | SgnVar n =>
+        let
+            val (_, sgn) = lookupSgnNamed env n
+        in
+            projectStr env {sgn = sgn, str = str, field = field}
+        end
+      | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
+
 
 val ktype = (KType, ErrorMsg.dummySpan)
 

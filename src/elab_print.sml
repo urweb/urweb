@@ -93,10 +93,22 @@ fun p_con' par env (c, _) =
         else
             string (#1 (E.lookupCRel env n))
       | CNamed n =>
-        if !debug then
-            string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
-        else
-            string (#1 (E.lookupCNamed env n))
+        ((if !debug then
+              string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
+          else
+              string (#1 (E.lookupCNamed env n)))
+         handle E.UnboundNamed _ => string ("UNBOUND_NAMED" ^ Int.toString n))
+      | CModProj (m1, ms, x) =>
+        let
+            val (m1x, sgn) = E.lookupStrNamed env m1
+
+            val m1s = if !debug then
+                          m1x ^ "__" ^ Int.toString m1
+                      else
+                          m1x
+        in
+            p_list_sep (string ".") string (m1x :: ms @ [x])
+        end
 
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
                                            space,
@@ -167,6 +179,18 @@ fun p_exp' par env (e, _) =
             string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
         else
             string (#1 (E.lookupENamed env n))
+      | EModProj (m1, ms, x) =>
+        let
+            val (m1x, sgn) = E.lookupStrNamed env m1
+
+            val m1s = if !debug then
+                          m1x ^ "__" ^ Int.toString m1
+                      else
+                          m1x
+        in
+            p_list_sep (string ".") string (m1x :: ms @ [x])
+        end
+                                         
       | EApp (e1, e2) => parenIf par (box [p_exp env e1,
                                            space,
                                            p_exp' true env e2])
@@ -340,6 +364,9 @@ and p_str env (str, _) =
                             newline,
                             string "end"]
       | StrVar n => string (#1 (E.lookupStrNamed env n))
+      | StrProj (str, s) => box [p_str env str,
+                                 string ".",
+                                 string s]
       | StrError => string "<ERROR>"
 
 and p_file env file =

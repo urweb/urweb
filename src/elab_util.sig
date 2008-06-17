@@ -50,6 +50,9 @@ structure Con : sig
                 con : 'context -> Elab.con' -> Elab.con',
                 bind : 'context * binder -> 'context}
                -> 'context -> (Elab.con -> Elab.con)
+    val map : {kind : Elab.kind' -> Elab.kind',
+               con : Elab.con' -> Elab.con'}
+              -> Elab.con -> Elab.con
     val exists : {kind : Elab.kind' -> bool,
                   con : Elab.con' -> bool} -> Elab.con -> bool
 end
@@ -73,6 +76,34 @@ structure Exp : sig
     val exists : {kind : Elab.kind' -> bool,
                   con : Elab.con' -> bool,
                   exp : Elab.exp' -> bool} -> Elab.exp -> bool
+end
+
+structure Sgn : sig
+    datatype binder =
+             RelC of string * Elab.kind
+           | NamedC of string * Elab.kind
+           | Str of string * Elab.sgn
+
+    val mapfoldB : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+                    con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
+                    sgn_item : ('context, Elab.sgn_item', 'state, 'abort) Search.mapfolderB,
+                    sgn : ('context, Elab.sgn', 'state, 'abort) Search.mapfolderB,
+                    bind : 'context * binder -> 'context}
+                   -> ('context, Elab.sgn, 'state, 'abort) Search.mapfolderB
+
+
+    val mapfold : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+                   con : (Elab.con', 'state, 'abort) Search.mapfolder,
+                   sgn_item : (Elab.sgn_item', 'state, 'abort) Search.mapfolder,
+                   sgn : (Elab.sgn', 'state, 'abort) Search.mapfolder}
+                  -> (Elab.sgn, 'state, 'abort) Search.mapfolder
+
+    val map : {kind : Elab.kind' -> Elab.kind',
+               con : Elab.con' -> Elab.con',
+               sgn_item : Elab.sgn_item' -> Elab.sgn_item',
+               sgn : Elab.sgn' -> Elab.sgn'}
+              -> Elab.sgn -> Elab.sgn
+
 end
 
 end

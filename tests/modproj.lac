@@ -1,0 +1,11 @@
+signature S = sig
+        type t
+        val zero : t
+end
+structure S : S = struct
+        type t = int
+        val zero = 0
+end
+
+type t = S.t
+val zero : t = S.zero

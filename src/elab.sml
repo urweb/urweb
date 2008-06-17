@@ -51,6 +51,7 @@ datatype con' =
 
        | CRel of int
        | CNamed of int
+       | CModProj of int * string list * string
        | CApp of con * con
        | CAbs of string * kind * con
 
@@ -68,6 +69,7 @@ datatype exp' =
          EPrim of Prim.t
        | ERel of int
        | ENamed of int
+       | EModProj of int * string list * string
        | EApp of exp * exp
        | EAbs of string * con * con * exp
        | ECApp of exp * con
@@ -103,6 +105,7 @@ datatype decl' =
      and str' =
          StrConst of decl list
        | StrVar of int
+       | StrProj of str * string
        | StrError
 
 withtype decl = decl' located

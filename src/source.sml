@@ -49,7 +49,7 @@ datatype con' =
        | TCFun of explicitness * string * kind * con
        | TRecord of con
 
-       | CVar of string
+       | CVar of string list * string
        | CApp of con * con
        | CAbs of string * kind * con
 
@@ -61,21 +61,6 @@ datatype con' =
        | CWild of kind
 
 withtype con = con' located
-
-datatype exp' =
-         EAnnot of exp * con
-
-       | EPrim of Prim.t
-       | EVar of string
-       | EApp of exp * exp
-       | EAbs of string * con option * exp
-       | ECApp of exp * con
-       | ECAbs of explicitness * string * kind * exp
-
-       | ERecord of (con * exp) list
-       | EField of exp * con
-
-withtype exp = exp' located
 
 datatype sgn_item' =
          SgiConAbs of string * kind
@@ -90,6 +75,21 @@ and sgn' =
 withtype sgn_item = sgn_item' located
 and sgn = sgn' located
 
+datatype exp' =
+         EAnnot of exp * con
+
+       | EPrim of Prim.t
+       | EVar of string list * string
+       | EApp of exp * exp
+       | EAbs of string * con option * exp
+       | ECApp of exp * con
+       | ECAbs of explicitness * string * kind * exp
+
+       | ERecord of (con * exp) list
+       | EField of exp * con
+
+withtype exp = exp' located
+
 datatype decl' =
          DCon of string * kind option * con
        | DVal of string * con option * exp
@@ -99,6 +99,7 @@ datatype decl' =
      and str' =
          StrConst of decl list
        | StrVar of string
+       | StrProj of str * string
 
 withtype decl = decl' located
      and str = str' located

@@ -50,6 +50,8 @@ fun corifyCon (c, loc) =
 
       | L.CRel n => (L'.CRel n, loc)
       | L.CNamed n => (L'.CNamed n, loc)
+      | L.CModProj _ => raise Fail "Corify CModProj"
+
       | L.CApp (c1, c2) => (L'.CApp (corifyCon c1, corifyCon c2), loc)
       | L.CAbs (x, k, c) => (L'.CAbs (x, corifyKind k, corifyCon c), loc)
 
@@ -67,6 +69,7 @@ fun corifyExp (e, loc) =
         L.EPrim p => (L'.EPrim p, loc)
       | L.ERel n => (L'.ERel n, loc)
       | L.ENamed n => (L'.ENamed n, loc)
+      | L.EModProj _ => raise Fail "Corify EModProj"
       | L.EApp (e1, e2) => (L'.EApp (corifyExp e1, corifyExp e2), loc)
       | L.EAbs (x, dom, ran, e1) => (L'.EAbs (x, corifyCon dom, corifyCon ran, corifyExp e1), loc)
       | L.ECApp (e1, c) => (L'.ECApp (corifyExp e1, corifyCon c), loc)
