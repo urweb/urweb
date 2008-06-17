@@ -1105,15 +1105,19 @@ fun sgiOfDecl (d, loc) =
       | L'.DSgn _ => NONE
       | L'.DStr (x, n, sgn, _) => SOME (L'.SgiStr (x, n, sgn), loc)
 
-fun subSgn env (all1 as (sgn1, _)) (all2 as (sgn2, loc2)) =
-    case (sgn1, sgn2) of
+fun hnormSgn env (all as (sgn, _)) =
+    case sgn of
+        L'.SgnError => all
+      | L'.SgnVar n => hnormSgn env (#2 (E.lookupSgnNamed env n))
+      | L'.SgnConst _ => all
+
+fun subSgn env sgn1 (sgn2 as (_, loc2)) =
+    case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
         (L'.SgnError, _) => ()
       | (_, L'.SgnError) => ()
 
-      | (L'.SgnVar n, _) =>
-        subSgn env (#2 (E.lookupSgnNamed env n)) all2
-      | (_, L'.SgnVar n) =>
-        subSgn env all1 (#2 (E.lookupSgnNamed env n))
+      | (L'.SgnVar n, _) => raise Fail "subSgn: Variable remains"
+      | (_, L'.SgnVar n) => raise Fail "subSgn: Variable remains"
 
       | (L'.SgnConst sgis1, L'.SgnConst sgis2) =>
         let
@@ -1194,6 +1198,18 @@ fun subSgn env (all1 as (sgn1, _)) (all2 as (sgn2, loc2)) =
         in
             ignore (foldl folder env sgis2)
         end
+
+fun selfify env {str, strs, sgn} =
+    case #1 (hnormSgn env sgn) of
+        L'.SgnError => sgn
+      | L'.SgnVar _ => sgn
+
+      | L'.SgnConst sgis =>
+        (L'.SgnConst (map (fn (L'.SgiConAbs (x, n, k), loc) =>
+                              (L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
+                            | (L'.SgiStr (x, n, sgn), loc) =>
+                              (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
+                            | x => x) sgis), #2 sgn)
 
 fun elabDecl ((d, loc), env) =
     let
@@ -1279,8 +1295,20 @@ fun elabDecl ((d, loc), env) =
                 val formal = Option.map (elabSgn env) sgno
                 val (str', actual) = elabStr env str
 
+                fun self (str, _) =
+                    case str of
+                        L'.StrVar x => SOME (x, [])
+                      | L'.StrProj (str, x) =>
+                        (case self str of
+                             NONE => NONE
+                           | SOME (m, ms) => SOME (m, ms @ [x]))
+                      | _ => NONE
+
                 val sgn' = case formal of
-                               NONE => actual
+                               NONE =>
+                               (case self str' of
+                                    NONE => actual
+                                  | SOME (str, strs) => selfify env {sgn = actual, str = str, strs = strs})
                              | SOME formal =>
                                (subSgn env actual formal;
                                 formal)
