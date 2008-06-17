@@ -5,6 +5,10 @@ signature S = sig
         structure Q : sig
                 type q
                 val y : q
+
+                structure V : sig
+                        type v
+                end
         end
 end
 
@@ -15,6 +19,11 @@ structure S = struct
         structure Q = struct
                 type q = float
                 val y = 0.0
+
+                structure V = struct
+                        type v = string
+                        val hi = "Hi"
+                end
         end
 end
 
