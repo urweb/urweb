@@ -1,0 +1,23 @@
+signature S = sig
+        type t
+        val x : t
+
+        structure Q : sig
+                type q
+                val y : q
+        end
+end
+
+structure S = struct
+        type t = int
+        val x = 0
+
+        structure Q = struct
+                type q = float
+                val y = 0.0
+        end
+end
+
+structure S1 = S
+structure S2 : S = S
+structure S3 = S2
