@@ -79,6 +79,8 @@ datatype sgn_item' =
 and sgn' =
     SgnConst of sgn_item list
   | SgnVar of int
+  | SgnFun of string * int * sgn * sgn
+  | SgnWhere of sgn * string * con
 
 withtype sgn_item = sgn_item' located
 and sgn = sgn' located
@@ -93,6 +95,8 @@ datatype decl' =
          StrConst of decl list
        | StrVar of int
        | StrProj of str * string
+       | StrFun of string * int * sgn * sgn * str
+       | StrApp of str * str
 
 withtype decl = decl' located
      and str = str' located

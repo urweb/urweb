@@ -293,6 +293,30 @@ and p_sgn env (sgn, _) =
                               newline,
                               string "end"]
       | SgnVar n => string (#1 (E.lookupSgnNamed env n))
+      | SgnFun (x, n, sgn, sgn') => box [string "functor",
+                                         space,
+                                         string "(",
+                                         string x,
+                                         space,
+                                         string ":",
+                                         space,
+                                         p_sgn env sgn,
+                                         string ")",
+                                         space,
+                                         string ":",
+                                         space,
+                                         p_sgn (E.pushStrNamed env x n sgn) sgn']
+      | SgnWhere (sgn, x, c) => box [p_sgn env sgn,
+                                     space,
+                                     string "where",
+                                     space,
+                                     string "con",
+                                     space,
+                                     string x,
+                                     space,
+                                     string "=",
+                                     space,
+                                     p_con env c]
 
 fun p_decl env ((d, _) : decl) =
     case d of
@@ -349,6 +373,32 @@ and p_str env (str, _) =
       | StrProj (str, s) => box [p_str env str,
                                  string ".",
                                  string s]
+      | StrFun (x, n, sgn, sgn', str) =>
+        let
+            val env' = E.pushStrNamed env x n sgn
+        in
+            box [string "functor",
+                 space,
+                 string "(",
+                 string x,
+                 space,
+                 string ":",
+                 space,
+                 p_sgn env sgn,
+                 string ")",
+                 space,
+                 string ":",
+                 space,
+                 p_sgn env' sgn',
+                 space,
+                 string "=>",
+                 space,
+                 p_str env' str]
+        end
+      | StrApp (str1, str2) => box [p_str env str1,
+                                    string "(",
+                                    p_str env str2,
+                                    string ")"]
 
 and p_file env file =
     let

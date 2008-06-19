@@ -257,6 +257,8 @@ and corifyStr ((str, _), st) =
         in
             (ds, {inner = St.lookupStrByName (x, inner), outer = outer})
         end
+      | L.StrFun _ => raise Fail "Corify functor"
+      | L.StrApp _ => raise Fail "Corify functor app"
 
 fun maxName ds = foldl (fn ((d, _), n) =>
                            case d of
@@ -271,6 +273,8 @@ and maxNameStr (str, _) =
         L.StrConst ds => maxName ds
       | L.StrVar n => n
       | L.StrProj (str, _) => maxNameStr str
+      | L.StrFun (_, _, _, _, str) => maxNameStr str
+      | L.StrApp (str1, str2) => Int.max (maxNameStr str1, maxNameStr str2)
 
 fun corify ds =
     let

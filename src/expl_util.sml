@@ -353,6 +353,19 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                         (SgnConst sgis', loc))
                 
               | SgnVar _ => S.return2 sAll
+
+              | SgnFun (m, n, s1, s2) =>
+                S.bind2 (sg ctx s1,
+                         fn s1' =>
+                            S.map2 (sg (bind (ctx, Str (m, s1'))) s2,
+                                    fn s2' =>
+                                       (SgnFun (m, n, s1', s2'), loc)))
+              | SgnWhere (sgn, x, c) =>
+                S.bind2 (sg ctx sgn,
+                      fn sgn' =>
+                         S.map2 (con ctx c,
+                              fn c' =>
+                                 (SgnWhere (sgn', x, c'), loc)))
     in
         sg
     end
