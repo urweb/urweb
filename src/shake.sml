@@ -42,10 +42,10 @@ type free = {
 }
 
 fun shake file =
-    case List.foldl (fn ((DVal ("main", n, _, e), _), _) => SOME (n, e)
+    case List.foldl (fn ((DVal ("main", n, t, e), _), _) => SOME (n, t, e)
                       | (_, s) => s) NONE file of
         NONE => []
-      | SOME (main, body) =>
+      | SOME (main, mainT, body) =>
         let
             val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, c), edef)
                                        | ((DVal (_, n, t, e), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e))))
@@ -92,6 +92,7 @@ fun shake file =
             val s = {con = IS.empty,
                      exp = IS.singleton main}
                     
+            val s = U.Con.fold {kind = kind, con = con} s mainT
             val s = U.Exp.fold {kind = kind, con = con, exp = exp} s body
         in
             List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)

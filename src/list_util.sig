@@ -33,6 +33,8 @@ signature LIST_UTIL = sig
                    -> ('context, 'data list, 'state, 'abort) Search.mapfolderB
 
     val foldlMap : ('data1 * 'state -> 'data2 * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
+    val foldlMapPartial : ('data1 * 'state -> 'data2 option * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
+    val foldlMapConcat : ('data1 * 'state -> 'data2 list * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
 
     val search : ('a -> 'b option) -> 'a list -> 'b option
 

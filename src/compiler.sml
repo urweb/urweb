@@ -77,13 +77,22 @@ fun explify eenv filename =
             SOME (Explify.explify file)
 
 fun corify eenv filename =
-    case elaborate eenv filename of
+    case explify eenv filename of
         NONE => NONE
-      | SOME (file, _) =>
+      | SOME file =>
         if ErrorMsg.anyErrors () then
             NONE
         else
             SOME (Corify.corify file)
+
+fun shake' eenv filename =
+    case corify eenv filename of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Shake.shake file)
 
 fun reduce eenv filename =
     case corify eenv filename of
@@ -158,6 +167,15 @@ fun testExplify filename =
 
 fun testCorify filename =
     (case corify ElabEnv.basis filename of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (CorePrint.p_file CoreEnv.basis file);
+          print "\n"))
+    handle CoreEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testShake' filename =
+    (case shake' ElabEnv.basis filename of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (CorePrint.p_file CoreEnv.basis file);

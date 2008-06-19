@@ -28,8 +28,132 @@
 structure Corify :> CORIFY = struct
 
 structure EM = ErrorMsg
-structure L = Elab
+structure L = Expl
 structure L' = Core
+
+structure IM = IntBinaryMap
+structure SM = BinaryMapFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
+local
+    val count = ref 0
+in
+
+fun reset v = count := v
+
+fun alloc () =
+    let
+        val r = !count
+    in
+        count := r + 1;
+        r
+end
+
+end
+
+structure St : sig
+    type t
+
+    val empty : t
+
+    val enter : t -> t
+    val leave : t -> {outer : t, inner : t}
+
+    val bindCore : t -> string -> int -> t * int
+    val lookupCoreById : t -> int -> int option
+    val lookupCoreByName : t -> string -> int
+
+    val bindStr : t -> string -> int -> t -> t
+    val lookupStrById : t -> int -> t
+    val lookupStrByName : string * t -> t
+end = struct
+
+datatype flattening = F of {
+         core : int SM.map,
+         strs : flattening SM.map
+}
+                           
+type t = {
+     core : int IM.map,
+     strs : flattening IM.map,
+     current : flattening,
+     nested : flattening list
+}
+
+val empty = {
+    core = IM.empty,
+    strs = IM.empty,
+    current = F { core = SM.empty, strs = SM.empty },
+    nested = []
+}
+
+fun bindCore {core, strs, current, nested} s n =
+    let
+        val n' = alloc ()
+
+        val current =
+            let
+                val F {core, strs} = current
+            in
+                F {core = SM.insert (core, s, n'),
+                   strs = strs}
+            end
+    in
+        ({core = IM.insert (core, n, n'),
+          strs = strs,
+          current = current,
+          nested = nested},
+         n')
+    end
+
+fun lookupCoreById ({core, ...} : t) n = IM.find (core, n)
+
+fun lookupCoreByName ({current = F {core, ...}, ...} : t) x =
+    case SM.find (core, x) of
+        NONE => raise Fail "Corify.St.lookupCoreByName"
+      | SOME n => n
+
+fun enter {core, strs, current, nested} =
+    {core = core,
+     strs = strs,
+     current = F {core = SM.empty,
+                  strs = SM.empty},
+     nested = current :: nested}
+
+fun dummy f = {core = IM.empty,
+               strs = IM.empty,
+               current = f,
+               nested = []}
+
+fun leave {core, strs, current, nested = m1 :: rest} =
+        {outer = {core = core,
+                  strs = strs,
+                  current = m1,
+                  nested = rest},
+         inner = dummy current}
+  | leave _ = raise Fail "Corify.St.leave"
+
+fun bindStr ({core, strs, current = F {core = mcore, strs = mstrs}, nested} : t) x n ({current = f, ...} : t) =
+    {core = core,
+     strs = IM.insert (strs, n, f),
+     current = F {core = mcore,
+                  strs = SM.insert (mstrs, x, f)},
+     nested = nested}
+
+fun lookupStrById ({strs, ...} : t) n =
+    case IM.find (strs, n) of
+        NONE => raise Fail "Corify.St.lookupStr"
+      | SOME f => dummy f
+
+fun lookupStrByName (m, {current = F {strs, ...}, ...} : t) =
+    case SM.find (strs, m) of
+        NONE => raise Fail "Corify.St.lookupStrByName"
+      | SOME f => dummy f
+
+end
+
 
 fun corifyKind (k, loc) =
     case k of
@@ -38,57 +162,122 @@ fun corifyKind (k, loc) =
       | L.KName => (L'.KName, loc)
       | L.KRecord k => (L'.KRecord (corifyKind k), loc)
 
-      | L.KError => raise Fail ("corifyKind: KError at " ^ EM.spanToString loc)
-      | L.KUnif (_, ref (SOME k)) => corifyKind k
-      | L.KUnif _ => raise Fail ("corifyKind: KUnif at " ^ EM.spanToString loc)
-
-fun corifyCon (c, loc) =
+fun corifyCon st (c, loc) =
     case c of
-        L.TFun (t1, t2) => (L'.TFun (corifyCon t1, corifyCon t2), loc)
-      | L.TCFun (_, x, k, t) => (L'.TCFun (x, corifyKind k, corifyCon t), loc)
-      | L.TRecord c => (L'.TRecord (corifyCon c), loc)
+        L.TFun (t1, t2) => (L'.TFun (corifyCon st t1, corifyCon st t2), loc)
+      | L.TCFun (x, k, t) => (L'.TCFun (x, corifyKind k, corifyCon st t), loc)
+      | L.TRecord c => (L'.TRecord (corifyCon st c), loc)
 
       | L.CRel n => (L'.CRel n, loc)
-      | L.CNamed n => (L'.CNamed n, loc)
-      | L.CModProj _ => raise Fail "Corify CModProj"
+      | L.CNamed n =>
+        (case St.lookupCoreById st n of
+             NONE => (L'.CNamed n, loc)
+           | SOME n => (L'.CNamed n, loc))
+      | L.CModProj (m, ms, x) =>
+        let
+            val st = St.lookupStrById st m
+            val st = foldl St.lookupStrByName st ms
+            val n = St.lookupCoreByName st x
+        in
+            (L'.CNamed n, loc)
+        end
 
-      | L.CApp (c1, c2) => (L'.CApp (corifyCon c1, corifyCon c2), loc)
-      | L.CAbs (x, k, c) => (L'.CAbs (x, corifyKind k, corifyCon c), loc)
+      | L.CApp (c1, c2) => (L'.CApp (corifyCon st c1, corifyCon st c2), loc)
+      | L.CAbs (x, k, c) => (L'.CAbs (x, corifyKind k, corifyCon st c), loc)
 
       | L.CName s => (L'.CName s, loc)
 
-      | L.CRecord (k, xcs) => (L'.CRecord (corifyKind k, map (fn (c1, c2) => (corifyCon c1, corifyCon c2)) xcs), loc)
-      | L.CConcat (c1, c2) => (L'.CConcat (corifyCon c1, corifyCon c2), loc)
+      | L.CRecord (k, xcs) =>
+        (L'.CRecord (corifyKind k, map (fn (c1, c2) => (corifyCon st c1, corifyCon st c2)) xcs), loc)
+      | L.CConcat (c1, c2) => (L'.CConcat (corifyCon st c1, corifyCon st c2), loc)
 
-      | L.CError => raise Fail ("corifyCon: CError at " ^ EM.spanToString loc)
-      | L.CUnif (_, _, ref (SOME c)) => corifyCon c
-      | L.CUnif _ => raise Fail ("corifyCon: CUnif at " ^ EM.spanToString loc)
-
-fun corifyExp (e, loc) =
+fun corifyExp st (e, loc) =
     case e of
         L.EPrim p => (L'.EPrim p, loc)
       | L.ERel n => (L'.ERel n, loc)
-      | L.ENamed n => (L'.ENamed n, loc)
-      | L.EModProj _ => raise Fail "Corify EModProj"
-      | L.EApp (e1, e2) => (L'.EApp (corifyExp e1, corifyExp e2), loc)
-      | L.EAbs (x, dom, ran, e1) => (L'.EAbs (x, corifyCon dom, corifyCon ran, corifyExp e1), loc)
-      | L.ECApp (e1, c) => (L'.ECApp (corifyExp e1, corifyCon c), loc)
-      | L.ECAbs (_, x, k, e1) => (L'.ECAbs (x, corifyKind k, corifyExp e1), loc)
+      | L.ENamed n =>
+        (case St.lookupCoreById st n of
+             NONE => (L'.ENamed n, loc)
+           | SOME n => (L'.ENamed n, loc))
+      | L.EModProj (m, ms, x) =>
+        let
+            val st = St.lookupStrById st m
+            val st = foldl St.lookupStrByName st ms
+            val n = St.lookupCoreByName st x
+        in
+            (L'.ENamed n, loc)
+        end
+      | L.EApp (e1, e2) => (L'.EApp (corifyExp st e1, corifyExp st e2), loc)
+      | L.EAbs (x, dom, ran, e1) => (L'.EAbs (x, corifyCon st dom, corifyCon st ran, corifyExp st e1), loc)
+      | L.ECApp (e1, c) => (L'.ECApp (corifyExp st e1, corifyCon st c), loc)
+      | L.ECAbs (x, k, e1) => (L'.ECAbs (x, corifyKind k, corifyExp st e1), loc)
 
-      | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) => (corifyCon c, corifyExp e, corifyCon t)) xes), loc)
-      | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp e1, corifyCon c,
-                                                       {field = corifyCon field, rest = corifyCon rest}), loc)
+      | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) => (corifyCon st c, corifyExp st e, corifyCon st t)) xes), loc)
+      | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp st e1, corifyCon st c,
+                                                       {field = corifyCon st field, rest = corifyCon st rest}), loc)
 
-      | L.EError => raise Fail ("corifyExp: EError at " ^ EM.spanToString loc)
-
-fun corifyDecl (d, loc : EM.span) =
+fun corifyDecl ((d, loc : EM.span), st) =
     case d of
-        L.DCon (x, n, k, c) => (L'.DCon (x, n, corifyKind k, corifyCon c), loc)
-      | L.DVal (x, n, t, e) => (L'.DVal (x, n, corifyCon t, corifyExp e), loc)
+        L.DCon (x, n, k, c) =>
+        let
+            val (st, n) = St.bindCore st x n
+        in
+            ([(L'.DCon (x, n, corifyKind k, corifyCon st c), loc)], st)
+        end
+      | L.DVal (x, n, t, e) =>
+        let
+            val (st, n) = St.bindCore st x n
+        in
+            ([(L'.DVal (x, n, corifyCon st t, corifyExp st e), loc)], st)
+        end
+                                                                        
+      | L.DSgn _ => ([], st)
 
-      | L.DSgn _ => raise Fail "Not ready to corify signature"
-      | L.DStr _ => raise Fail "Not ready to corify structure"
+      | L.DStr (x, n, _, str) =>
+        let
+            val (ds, {inner, outer}) = corifyStr (str, st)
+            val st = St.bindStr outer x n inner
+        in
+            (ds, st)
+        end
 
-val corify = map corifyDecl
+and corifyStr ((str, _), st) =
+    case str of
+        L.StrConst ds =>
+        let
+            val st = St.enter st
+            val (ds, st) = ListUtil.foldlMapConcat corifyDecl st ds
+        in
+            (ds, St.leave st)
+        end
+      | L.StrVar n => ([], {inner = St.lookupStrById st n, outer = st})
+      | L.StrProj (str, x) =>
+        let
+            val (ds, {inner, outer}) = corifyStr (str, st)
+        in
+            (ds, {inner = St.lookupStrByName (x, inner), outer = outer})
+        end
+
+fun maxName ds = foldl (fn ((d, _), n) =>
+                           case d of
+                               L.DCon (_, n', _, _) => Int.max (n, n')
+                             | L.DVal (_, n', _ , _) => Int.max (n, n')
+                             | L.DSgn (_, n', _) => Int.max (n, n')
+                             | L.DStr (_, n', _, str) => Int.max (n, Int.max (n', maxNameStr str)))
+                 0 ds
+
+and maxNameStr (str, _) =
+    case str of
+        L.StrConst ds => maxName ds
+      | L.StrVar n => n
+      | L.StrProj (str, _) => maxNameStr str
+
+fun corify ds =
+    let
+        val () = reset (maxName ds + 1)
+        val (ds, _) = ListUtil.foldlMapConcat corifyDecl St.empty ds
+    in
+        ds
+    end
 
 end

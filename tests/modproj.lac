@@ -20,4 +20,4 @@ type t = S2.t
 val zero : int = S2.zero
 
 structure T = S1
-val zero : S1.t = T.zero
+val main : S1.t = T.zero

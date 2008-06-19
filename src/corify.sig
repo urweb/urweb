@@ -27,6 +27,6 @@
 
 signature CORIFY = sig
 
-    val corify : Elab.file -> Core.file
+    val corify : Expl.file -> Core.file
 
 end

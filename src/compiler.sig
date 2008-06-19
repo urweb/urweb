@@ -35,6 +35,7 @@ signature COMPILER = sig
     val elaborate : ElabEnv.env -> string -> (Elab.file * ElabEnv.env) option
     val explify : ElabEnv.env -> string -> Expl.file option
     val corify : ElabEnv.env -> string -> Core.file option
+    val shake' : ElabEnv.env  -> string -> Core.file option
     val reduce : ElabEnv.env -> string -> Core.file option
     val shake : ElabEnv.env  -> string -> Core.file option
     val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
@@ -45,6 +46,7 @@ signature COMPILER = sig
     val testElaborate : string -> unit
     val testExplify : string -> unit
     val testCorify : string -> unit
+    val testShake' : string -> unit
     val testReduce : string -> unit
     val testShake : string -> unit
     val testMonoize : string -> unit

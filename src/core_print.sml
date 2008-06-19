@@ -79,15 +79,17 @@ fun p_con' par env (c, _) =
                           p_con' true env c]
 
       | CRel n =>
-        if !debug then
-            string (#1 (E.lookupCRel env n) ^ "_" ^ Int.toString n)
-        else
-            string (#1 (E.lookupCRel env n))
+        ((if !debug then
+              string (#1 (E.lookupCRel env n) ^ "_" ^ Int.toString n)
+          else
+              string (#1 (E.lookupCRel env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_" ^ Int.toString n))
       | CNamed n =>
-        if !debug then
-            string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
-        else
-            string (#1 (E.lookupCNamed env n))
+        ((if !debug then
+              string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
+          else
+              string (#1 (E.lookupCNamed env n)))
+         handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n))
 
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
                                            space,
@@ -143,15 +145,17 @@ fun p_exp' par env (e, _) =
     case e of
         EPrim p => Prim.p_t p
       | ERel n =>
-        if !debug then
-            string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
-        else
-            string (#1 (E.lookupERel env n))
+        ((if !debug then
+              string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
+          else
+              string (#1 (E.lookupERel env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_" ^ Int.toString n))
       | ENamed n =>
-        if !debug then
-            string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
-        else
-            string (#1 (E.lookupENamed env n))
+        ((if !debug then
+              string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+          else
+              string (#1 (E.lookupENamed env n)))
+         handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n))
       | EApp (e1, e2) => parenIf par (box [p_exp env e1,
                                            space,
                                            p_exp' true env e2])

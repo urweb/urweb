@@ -30,3 +30,5 @@ end
 structure S1 = S
 structure S2 : S = S
 structure S3 = S2
+
+val main = S3.Q.y

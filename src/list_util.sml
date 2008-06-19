@@ -80,6 +80,39 @@ fun foldlMap f s =
         fm ([], s)
     end
 
+fun foldlMapConcat f s =
+    let
+        fun fm (ls', s) ls =
+            case ls of
+                nil => (rev ls', s)
+              | h :: t =>
+                let
+                    val (h', s') = f (h, s)
+                in
+                    fm (List.revAppend (h', ls'), s') t
+                end
+    in
+        fm ([], s)
+    end
+
+fun foldlMapPartial f s =
+    let
+        fun fm (ls', s) ls =
+            case ls of
+                nil => (rev ls', s)
+              | h :: t =>
+                let
+                    val (h', s') = f (h, s)
+                    val ls' = case h' of
+                                  NONE => ls'
+                                | SOME h' => h' :: ls'
+                in
+                    fm (ls', s') t
+                end
+    in
+        fm ([], s)
+    end
+
 fun search f =
     let
         fun s ls =
