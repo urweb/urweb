@@ -968,6 +968,7 @@ datatype sgn_error =
        | UnmatchedSgi of L'.sgn_item
        | SgiWrongKind of L'.sgn_item * L'.kind * L'.sgn_item * L'.kind * kunify_error
        | SgiWrongCon of L'.sgn_item * L'.con * L'.sgn_item * L'.con * cunify_error
+       | SgnWrongForm of L'.sgn * L'.sgn
 
 fun sgnError env err =
     case err of
@@ -990,6 +991,10 @@ fun sgnError env err =
                      ("Con 1", p_con env c1),
                      ("Con 2", p_con env c2)];
          cunifyError env cerr)
+      | SgnWrongForm (sgn1, sgn2) =>
+        (ErrorMsg.errorAt (#2 sgn1) "Incompatible signatures:";
+         eprefaces' [("Sig 1", p_sgn env sgn1),
+                     ("Sig 2", p_sgn env sgn2)])
 
 datatype str_error =
          UnboundStr of ErrorMsg.span * string
@@ -1097,7 +1102,14 @@ and elabSgn env (sgn, loc) =
              (sgnError env (UnboundSgn (loc, x));
               (L'.SgnError, loc))
            | SOME (n, sgis) => (L'.SgnVar n, loc))
-      | L.SgnFun _ => raise Fail "Elaborate functor sig"
+      | L.SgnFun (m, dom, ran) =>
+        let
+            val dom' = elabSgn env dom
+            val (env', n) = E.pushStrNamed env m dom'
+            val ran' = elabSgn env' ran
+        in
+            (L'.SgnFun (m, n, dom', ran'), loc)
+        end
 
 fun sgiOfDecl (d, loc) =
     case d of
@@ -1111,14 +1123,12 @@ fun hnormSgn env (all as (sgn, _)) =
         L'.SgnError => all
       | L'.SgnVar n => hnormSgn env (#2 (E.lookupSgnNamed env n))
       | L'.SgnConst _ => all
+      | L'.SgnFun _ => all
 
 fun subSgn env sgn1 (sgn2 as (_, loc2)) =
     case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
         (L'.SgnError, _) => ()
       | (_, L'.SgnError) => ()
-
-      | (L'.SgnVar n, _) => raise Fail "subSgn: Variable remains"
-      | (_, L'.SgnVar n) => raise Fail "subSgn: Variable remains"
 
       | (L'.SgnConst sgis1, L'.SgnConst sgis2) =>
         let
@@ -1142,63 +1152,81 @@ fun subSgn env sgn1 (sgn2 as (_, loc2)) =
                         L'.SgiConAbs (x, n2, k2) =>
                         seek (fn sgi1All as (sgi1, _) =>
                                  let
-                                     fun found (x, n1, k1, co1) =
-                                         let
-                                             val () = unifyKinds k1 k2
-                                                 handle KUnify (k1, k2, err) =>
-                                                        sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
-                                             val env = E.pushCNamedAs env x n1 k1 co1
-                                         in
-                                             SOME (if n1 = n2 then
-                                                       env
-                                                   else
-                                                       E.pushCNamedAs env x n2 k2 (SOME (L'.CNamed n1, loc2)))
-                                         end
+                                     fun found (x', n1, k1, co1) =
+                                         if x = x' then
+                                             let
+                                                 val () = unifyKinds k1 k2
+                                                     handle KUnify (k1, k2, err) =>
+                                                            sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
+                                                 val env = E.pushCNamedAs env x n1 k1 co1
+                                             in
+                                                 SOME (if n1 = n2 then
+                                                           env
+                                                       else
+                                                           E.pushCNamedAs env x n2 k2 (SOME (L'.CNamed n1, loc2)))
+                                             end
+                                         else
+                                             NONE
                                  in
                                      case sgi1 of
-                                         L'.SgiConAbs (x, n1, k1) => found (x, n1, k1, NONE)
-                                       | L'.SgiCon (x, n1, k1, c1) => found (x, n1, k1, SOME c1)
+                                         L'.SgiConAbs (x', n1, k1) => found (x', n1, k1, NONE)
+                                       | L'.SgiCon (x', n1, k1, c1) => found (x', n1, k1, SOME c1)
                                        | _ => NONE
                                  end)
 
                       | L'.SgiCon (x, n2, k2, c2) =>
                         seek (fn sgi1All as (sgi1, _) =>
                                  case sgi1 of
-                                     L'.SgiCon (x, n1, k1, c1) =>
-                                     let
-                                         val () = unifyCons env c1 c2
-                                             handle CUnify (c1, c2, err) =>
-                                                    sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err))
-                                     in
-                                         SOME (E.pushCNamedAs env x n2 k2 (SOME c2))
-                                     end
+                                     L'.SgiCon (x', n1, k1, c1) =>
+                                     if x = x' then
+                                         let
+                                             val () = unifyCons env c1 c2
+                                                 handle CUnify (c1, c2, err) =>
+                                                        sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err))
+                                         in
+                                             SOME (E.pushCNamedAs env x n2 k2 (SOME c2))
+                                         end
+                                     else
+                                         NONE
                                    | _ => NONE)
 
                       | L'.SgiVal (x, n2, c2) =>
                         seek (fn sgi1All as (sgi1, _) =>
                                  case sgi1 of
-                                     L'.SgiVal (x, n1, c1) =>
-                                     let
-                                         val () = unifyCons env c1 c2
-                                             handle CUnify (c1, c2, err) =>
-                                                    sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err))
-                                     in
-                                         SOME env
-                                     end
+                                     L'.SgiVal (x', n1, c1) =>
+                                     if x = x' then
+                                         let
+                                             val () = unifyCons env c1 c2
+                                                 handle CUnify (c1, c2, err) =>
+                                                        sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err))
+                                         in
+                                             SOME env
+                                         end
+                                     else
+                                         NONE
                                    | _ => NONE)
 
                       | L'.SgiStr (x, n2, sgn2) =>
                         seek (fn sgi1All as (sgi1, _) =>
                                  case sgi1 of
-                                     L'.SgiStr (x, n1, sgn1) =>
-                                     (subSgn env sgn1 sgn2;
-                                      SOME env)
+                                     L'.SgiStr (x', n1, sgn1) =>
+                                     if x = x' then
+                                         (subSgn env sgn1 sgn2;
+                                          SOME env)
+                                     else
+                                         NONE
                                    | _ => NONE)
                         (* Add type equations between structures here some day. *)
                 end
         in
             ignore (foldl folder env sgis2)
         end
+
+      | (L'.SgnFun (m1, n1, dom1, ran1), L'.SgnFun (m2, n2, dom2, ran2)) =>
+        (subSgn env dom2 dom1;
+         subSgn env ran1 ran2)
+
+      | _ => sgnError env (SgnWrongForm (sgn1, sgn2))
 
 fun selfify env {str, strs, sgn} =
     case #1 (hnormSgn env sgn) of
@@ -1211,6 +1239,7 @@ fun selfify env {str, strs, sgn} =
                             | (L'.SgiStr (x, n, sgn), loc) =>
                               (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
                             | x => x) sgis), #2 sgn)
+      | L'.SgnFun _ => sgn
 
 fun elabDecl ((d, loc), env) =
     let
@@ -1344,7 +1373,26 @@ and elabStr env (str, loc) =
                          (strerror, sgnerror))
               | SOME sgn => ((L'.StrProj (str', x), loc), sgn)
         end
-      | L.StrFun _ => raise Fail "Elaborate functor"
+      | L.StrFun (m, dom, ranO, str) =>
+        let
+            val dom' = elabSgn env dom
+            val (env', n) = E.pushStrNamed env m dom'
+            val (str', actual) = elabStr env' str
+
+            val formal =
+                case ranO of
+                    NONE => actual
+                  | SOME ran =>
+                    let
+                        val ran' = elabSgn env ran
+                    in
+                        subSgn env' actual ran';
+                        ran'
+                    end
+        in
+            ((L'.StrFun (m, n, dom', formal, str'), loc),
+             (L'.SgnFun (m, n, dom', formal), loc))
+        end
 
 val elabFile = ListUtil.foldlMap elabDecl
 

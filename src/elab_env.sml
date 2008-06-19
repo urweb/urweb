@@ -376,6 +376,7 @@ fun projectCon env {sgn = (sgn, _), str, field} =
             projectCon env {sgn = sgn, str = str, field = field}
         end
       | SgnError => SOME ((KError, ErrorMsg.dummySpan), SOME (CError, ErrorMsg.dummySpan))
+      | SgnFun _ => NONE
 
 fun projectVal env {sgn = (sgn, _), str, field} =
     case sgn of
@@ -390,6 +391,7 @@ fun projectVal env {sgn = (sgn, _), str, field} =
             projectVal env {sgn = sgn, str = str, field = field}
         end
       | SgnError => SOME (CError, ErrorMsg.dummySpan)
+      | SgnFun _ => NONE
 
 fun projectStr env {sgn = (sgn, _), str, field} =
     case sgn of
@@ -404,6 +406,7 @@ fun projectStr env {sgn = (sgn, _), str, field} =
             projectStr env {sgn = sgn, str = str, field = field}
         end
       | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
+      | SgnFun _ => NONE
 
 
 val ktype = (KType, ErrorMsg.dummySpan)

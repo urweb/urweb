@@ -92,6 +92,7 @@ and explifySgn (sgn, loc) =
     case sgn of
         L.SgnConst sgis => (L'.SgnConst (map explifySgi sgis), loc)
       | L.SgnVar n => (L'.SgnVar n, loc)
+      | L.SgnFun _ => raise Fail "Explify functor signature"
       | L.SgnError => raise Fail ("explifySgn: SgnError at " ^ EM.spanToString loc)
 
 fun explifyDecl (d, loc : EM.span) =
@@ -107,6 +108,7 @@ and explifyStr (str, loc) =
         L.StrConst ds => (L'.StrConst (map explifyDecl ds), loc)
       | L.StrVar n => (L'.StrVar n, loc)
       | L.StrProj (str, s) => (L'.StrProj (explifyStr str, s), loc)
+      | L.StrFun _ => raise Fail "Explify functor"
       | L.StrError => raise Fail ("explifyStr: StrError at " ^ EM.spanToString loc)
 
 val explify = map explifyDecl
