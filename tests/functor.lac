@@ -33,3 +33,5 @@ val three : int = SO.three
 structure SS : S = S
 structure SSO = F (SS)
 val three : SS.t = SSO.three
+
+val main = three
