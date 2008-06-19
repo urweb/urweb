@@ -110,6 +110,7 @@ and explifyStr (str, loc) =
       | L.StrVar n => (L'.StrVar n, loc)
       | L.StrProj (str, s) => (L'.StrProj (explifyStr str, s), loc)
       | L.StrFun _ => raise Fail "Explify functor"
+      | L.StrApp _ => raise Fail "Explify functor app"
       | L.StrError => raise Fail ("explifyStr: StrError at " ^ EM.spanToString loc)
 
 val explify = map explifyDecl

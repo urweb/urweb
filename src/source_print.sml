@@ -375,6 +375,10 @@ and p_str (str, _) =
                                                 string "=>",
                                                 space,
                                                 p_str str]
+      | StrApp (str1, str2) => box [p_str str1,
+                                    string "(",
+                                    p_str str2,
+                                    string ")"]
 
 val p_file = p_list_sep newline p_decl
 

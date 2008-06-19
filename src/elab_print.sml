@@ -413,6 +413,10 @@ and p_str env (str, _) =
                  space,
                  p_str env' str]
         end
+      | StrApp (str1, str2) => box [p_str env str1,
+                                    string "(",
+                                    p_str env str2,
+                                    string ")"]
       | StrError => string "<ERROR>"
 
 and p_file env file =

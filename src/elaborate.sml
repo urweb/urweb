@@ -1014,11 +1014,15 @@ fun sgnError env err =
 
 datatype str_error =
          UnboundStr of ErrorMsg.span * string
+       | NotFunctor of L'.sgn
 
 fun strError env err =
     case err of
         UnboundStr (loc, s) =>
         ErrorMsg.errorAt loc ("Unbound structure variable " ^ s)
+      | NotFunctor sgn =>
+        (ErrorMsg.errorAt (#2 sgn) "Application of non-functor";
+         eprefaces' [("Signature", p_sgn env sgn)])
 
 val hnormSgn = E.hnormSgn
 
@@ -1279,6 +1283,22 @@ fun selfify env {str, strs, sgn} =
       | L'.SgnFun _ => sgn
       | L'.SgnWhere _ => sgn
 
+fun selfifyAt env {str, sgn} =
+    let
+        fun self (str, _) =
+            case str of
+                L'.StrVar x => SOME (x, [])
+              | L'.StrProj (str, x) =>
+                (case self str of
+                     NONE => NONE
+                   | SOME (m, ms) => SOME (m, ms @ [x]))
+              | _ => NONE
+    in
+        case self str of
+            NONE => sgn
+          | SOME (str, strs) => selfify env {sgn = sgn, str = str, strs = strs}
+    end
+
 fun elabDecl ((d, loc), env) =
     let
         
@@ -1363,20 +1383,8 @@ fun elabDecl ((d, loc), env) =
                 val formal = Option.map (elabSgn env) sgno
                 val (str', actual) = elabStr env str
 
-                fun self (str, _) =
-                    case str of
-                        L'.StrVar x => SOME (x, [])
-                      | L'.StrProj (str, x) =>
-                        (case self str of
-                             NONE => NONE
-                           | SOME (m, ms) => SOME (m, ms @ [x]))
-                      | _ => NONE
-
                 val sgn' = case formal of
-                               NONE =>
-                               (case self str' of
-                                    NONE => actual
-                                  | SOME (str, strs) => selfify env {sgn = actual, str = str, strs = strs})
+                               NONE => selfifyAt env {str = str', sgn = actual}
                              | SOME formal =>
                                (subSgn env actual formal;
                                 formal)
@@ -1430,6 +1438,24 @@ and elabStr env (str, loc) =
         in
             ((L'.StrFun (m, n, dom', formal, str'), loc),
              (L'.SgnFun (m, n, dom', formal), loc))
+        end
+      | L.StrApp (str1, str2) =>
+        let
+            val (str1', sgn1) = elabStr env str1
+            val (str2', sgn2) = elabStr env str2
+        in
+            case #1 (hnormSgn env sgn1) of
+                L'.SgnError => (strerror, sgnerror)
+              | L'.SgnFun (m, n, dom, ran) =>
+                (subSgn env sgn2 dom;
+                 case #1 (hnormSgn env ran) of
+                     L'.SgnError => (strerror, sgnerror)
+                   | L'.SgnConst sgis =>
+                     ((L'.StrApp (str1', str2'), loc),
+                      (L'.SgnConst ((L'.SgiStr (m, n, selfifyAt env {str = str2', sgn = sgn2}), loc) :: sgis), loc))
+                   | _ => raise Fail "Unable to hnormSgn in functor application")
+              | _ => (strError env (NotFunctor sgn1);
+                      (strerror, sgnerror))
         end
 
 val elabFile = ListUtil.foldlMap elabDecl

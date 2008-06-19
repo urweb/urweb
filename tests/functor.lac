@@ -18,3 +18,23 @@ structure F2 : functor (M : S) : T where type t = M.t = F
 structure F3 : functor (M : S) : T = F
 (*structure F4 : functor (M : S) : sig type q end = F*)
 (*structure F5 : functor (M : S) : T where type t = int = F*)
+
+
+structure O = F (struct
+        type t = int
+        val z = 0
+        val s = fn x : t => x
+end)
+val three : int = O.three
+
+structure S = struct
+        type t = int
+        val z = 0
+        val s = fn x : t => x
+end
+structure SO = F (S)
+val three : int = SO.three
+
+structure SS : S = S
+structure SSO = F (SS)
+val three : SS.t = SSO.three

@@ -109,6 +109,7 @@ datatype decl' =
        | StrVar of int
        | StrProj of str * string
        | StrFun of string * int * sgn * sgn * str
+       | StrApp of str * str
        | StrError
 
 withtype decl = decl' located

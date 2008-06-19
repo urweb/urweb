@@ -103,6 +103,7 @@ datatype decl' =
        | StrVar of string
        | StrProj of str * string
        | StrFun of string * sgn * sgn option * str
+       | StrApp of str * str
 
 withtype decl = decl' located
      and str = str' located

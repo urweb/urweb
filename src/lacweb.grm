@@ -154,6 +154,7 @@ str    : STRUCT decls END               (StrConst decls, s (STRUCTleft, ENDright
                                         (StrFun (CSYMBOL, sgn, NONE, str), s (FUNCTORleft, strright))
        | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn DARROW str
                                         (StrFun (CSYMBOL, sgn1, SOME sgn2, str), s (FUNCTORleft, strright))
+       | spath LPAREN str RPAREN        (StrApp (spath, str), s (spathleft, RPARENright))
 
 spath  : CSYMBOL                        (StrVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | spath DOT CSYMBOL              (StrProj (spath, CSYMBOL), s (spathleft, CSYMBOLright))
