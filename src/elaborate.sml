@@ -239,7 +239,7 @@ fun elabCon env (c, loc) =
              ((L'.CNamed n, loc), k))
       | L.CVar (m1 :: ms, s) =>
         (case E.lookupStr env m1 of
-             NONE => (conError env (UnboundStrInCon (loc, s));
+             NONE => (conError env (UnboundStrInCon (loc, m1));
                       (cerror, kerror))
            | SOME (n, sgn) =>
              let
@@ -824,7 +824,7 @@ fun elabExp env (e, loc) =
            | E.Named (n, t) => ((L'.ENamed n, loc), t))
       | L.EVar (m1 :: ms, s) =>
         (case E.lookupStr env m1 of
-             NONE => (expError env (UnboundStrInExp (loc, s));
+             NONE => (expError env (UnboundStrInExp (loc, m1));
                       (eerror, cerror))
            | SOME (n, sgn) =>
              let
@@ -969,6 +969,7 @@ datatype sgn_error =
        | SgiWrongKind of L'.sgn_item * L'.kind * L'.sgn_item * L'.kind * kunify_error
        | SgiWrongCon of L'.sgn_item * L'.con * L'.sgn_item * L'.con * cunify_error
        | SgnWrongForm of L'.sgn * L'.sgn
+       | UnWhereable of L'.sgn * string
 
 fun sgnError env err =
     case err of
@@ -995,6 +996,10 @@ fun sgnError env err =
         (ErrorMsg.errorAt (#2 sgn1) "Incompatible signatures:";
          eprefaces' [("Sig 1", p_sgn env sgn1),
                      ("Sig 2", p_sgn env sgn2)])
+      | UnWhereable (sgn, x) =>
+        (ErrorMsg.errorAt (#2 sgn) "Unavailable field for 'where'";
+         eprefaces' [("Signature", p_sgn env sgn),
+                     ("Field", PD.string x)])
 
 datatype str_error =
          UnboundStr of ErrorMsg.span * string
@@ -1004,6 +1009,7 @@ fun strError env err =
         UnboundStr (loc, s) =>
         ErrorMsg.errorAt loc ("Unbound structure variable " ^ s)
 
+val hnormSgn = E.hnormSgn
 
 fun elabSgn_item ((sgi, loc), env) =
     let
@@ -1110,6 +1116,25 @@ and elabSgn env (sgn, loc) =
         in
             (L'.SgnFun (m, n, dom', ran'), loc)
         end
+      | L.SgnWhere (sgn, x, c) =>
+        let
+            val sgn' = elabSgn env sgn
+            val (c', ck) = elabCon env c
+        in
+            case #1 (hnormSgn env sgn') of
+                L'.SgnError => sgnerror
+              | L'.SgnConst sgis =>
+                if List.exists (fn (L'.SgiConAbs (x, _, k), _) =>
+                                   (unifyKinds k ck;
+                                    true)
+                                 | _ => false) sgis then
+                    (L'.SgnWhere (sgn', x, c'), loc)
+                else
+                    (sgnError env (UnWhereable (sgn', x));
+                     sgnerror)
+              | _ => (sgnError env (UnWhereable (sgn', x));
+                      sgnerror)
+        end
 
 fun sgiOfDecl (d, loc) =
     case d of
@@ -1117,13 +1142,6 @@ fun sgiOfDecl (d, loc) =
       | L'.DVal (x, n, t, _) => SOME (L'.SgiVal (x, n, t), loc)
       | L'.DSgn _ => NONE
       | L'.DStr (x, n, sgn, _) => SOME (L'.SgiStr (x, n, sgn), loc)
-
-fun hnormSgn env (all as (sgn, _)) =
-    case sgn of
-        L'.SgnError => all
-      | L'.SgnVar n => hnormSgn env (#2 (E.lookupSgnNamed env n))
-      | L'.SgnConst _ => all
-      | L'.SgnFun _ => all
 
 fun subSgn env sgn1 (sgn2 as (_, loc2)) =
     case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
@@ -1240,6 +1258,7 @@ fun selfify env {str, strs, sgn} =
                               (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
                             | x => x) sgis), #2 sgn)
       | L'.SgnFun _ => sgn
+      | L'.SgnWhere _ => sgn
 
 fun elabDecl ((d, loc), env) =
     let
@@ -1384,7 +1403,7 @@ and elabStr env (str, loc) =
                     NONE => actual
                   | SOME ran =>
                     let
-                        val ran' = elabSgn env ran
+                        val ran' = elabSgn env' ran
                     in
                         subSgn env' actual ran';
                         ran'

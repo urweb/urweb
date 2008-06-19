@@ -92,6 +92,7 @@ and sgn' =
     SgnConst of sgn_item list
   | SgnVar of int
   | SgnFun of string * int * sgn * sgn
+  | SgnWhere of sgn * string * con
   | SgnError
 
 withtype sgn_item = sgn_item' located

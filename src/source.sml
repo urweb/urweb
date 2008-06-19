@@ -72,6 +72,7 @@ and sgn' =
     SgnConst of sgn_item list
   | SgnVar of string
   | SgnFun of string * sgn * sgn
+  | SgnWhere of sgn * string * con
 
 withtype sgn_item = sgn_item' located
 and sgn = sgn' located

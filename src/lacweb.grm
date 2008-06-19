@@ -44,7 +44,7 @@ val s = ErrorMsg.spanOf
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR
- | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE
 
 %nonterm
    file of decl list
@@ -52,6 +52,7 @@ val s = ErrorMsg.spanOf
  | decl of decl
 
  | sgn of sgn
+ | sgntm of sgn
  | sgi of sgn_item
  | sgis of sgn_item list
 
@@ -110,11 +111,24 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
        | SIGNATURE CSYMBOL EQ sgn       (DSgn (CSYMBOL, sgn), s (SIGNATUREleft, sgnright))
        | STRUCTURE CSYMBOL EQ str       (DStr (CSYMBOL, NONE, str), s (STRUCTUREleft, strright))
        | STRUCTURE CSYMBOL COLON sgn EQ str (DStr (CSYMBOL, SOME sgn, str), s (STRUCTUREleft, strright))
+       | FUNCTOR CSYMBOL LPAREN CSYMBOL COLON sgn RPAREN EQ str
+                                        (DStr (CSYMBOL1, NONE,
+                                               (StrFun (CSYMBOL2, sgn1, NONE, str), s (FUNCTORleft, strright))),
+                                         s (FUNCTORleft, strright))
+       | FUNCTOR CSYMBOL LPAREN CSYMBOL COLON sgn RPAREN COLON sgn EQ str
+                                        (DStr (CSYMBOL1, NONE,
+                                               (StrFun (CSYMBOL2, sgn1, SOME sgn2, str), s (FUNCTORleft, strright))),
+                                         s (FUNCTORleft, strright))
 
-sgn    : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
-       | CSYMBOL                        (SgnVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+sgn    : sgntm                          (sgntm)
        | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn
                                         (SgnFun (CSYMBOL, sgn1, sgn2), s (FUNCTORleft, sgn2right))
+
+sgntm  : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
+       | CSYMBOL                        (SgnVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | sgntm WHERE CON SYMBOL EQ cexp (SgnWhere (sgntm, SYMBOL, cexp), s (sgntmleft, cexpright))
+       | sgntm WHERE LTYPE SYMBOL EQ cexp(SgnWhere (sgntm, SYMBOL, cexp), s (sgntmleft, cexpright))
+       | LPAREN sgn RPAREN              (sgn)
 
 sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, kindright))
        | LTYPE SYMBOL                   (SgiConAbs (SYMBOL, (KType, s (LTYPEleft, SYMBOLright))),
@@ -126,6 +140,10 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
        | VAL SYMBOL COLON cexp          (SgiVal (SYMBOL, cexp), s (VALleft, cexpright))
 
        | STRUCTURE CSYMBOL COLON sgn    (SgiStr (CSYMBOL, sgn), s (STRUCTUREleft, sgnright))
+       | FUNCTOR CSYMBOL LPAREN CSYMBOL COLON sgn RPAREN COLON sgn
+                                        (SgiStr (CSYMBOL1,
+                                                 (SgnFun (CSYMBOL2, sgn1, sgn2), s (FUNCTORleft, sgn2right))),
+                                         s (FUNCTORleft, sgn2right))
 
 sgis   :                                ([])
        | sgi sgis                       (sgi :: sgis)

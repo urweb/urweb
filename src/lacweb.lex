@@ -134,6 +134,7 @@ realconst = [0-9]+\.[0-9]*;
 <INITIAL> "sig"       => (Tokens.SIG (yypos, yypos + size yytext));
 <INITIAL> "end"       => (Tokens.END (yypos, yypos + size yytext));
 <INITIAL> "functor"   => (Tokens.FUNCTOR (yypos, yypos + size yytext));
+<INITIAL> "where"     => (Tokens.WHERE (yypos, yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (yypos, yypos + size yytext));
 <INITIAL> "Name"      => (Tokens.NAME (yypos, yypos + size yytext));

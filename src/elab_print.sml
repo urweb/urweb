@@ -323,6 +323,17 @@ and p_sgn env (sgn, _) =
                                          string ":",
                                          space,
                                          p_sgn (E.pushStrNamedAs env x n sgn) sgn']
+      | SgnWhere (sgn, x, c) => box [p_sgn env sgn,
+                                     space,
+                                     string "where",
+                                     space,
+                                     string "con",
+                                     space,
+                                     string x,
+                                     space,
+                                     string "=",
+                                     space,
+                                     p_con env c]
       | SgnError => string "<ERROR>"
 
 fun p_decl env ((d, _) : decl) =

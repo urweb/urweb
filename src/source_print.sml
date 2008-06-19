@@ -259,7 +259,18 @@ and p_sgn (sgn, _) =
                                       string ":",
                                       space,
                                       p_sgn sgn']
-                                 
+      | SgnWhere (sgn, x, c) => box [p_sgn sgn,
+                                     space,
+                                     string "where",
+                                     space,
+                                     string "con",
+                                     space,
+                                     string x,
+                                     space,
+                                     string "=",
+                                     space,
+                                     p_con c]
+
 fun p_decl ((d, _) : decl) =
     case d of
         DCon (x, NONE, c) => box [string "con",

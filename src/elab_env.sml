@@ -361,52 +361,61 @@ fun sgnSubSgn (str, (strs, cons)) =
                       sgn_item = id,
                       sgn = id}
 
-fun projectCon env {sgn = (sgn, _), str, field} =
+fun hnormSgn env (all as (sgn, loc)) =
     case sgn of
+        SgnError => all
+      | SgnVar n => hnormSgn env (#2 (lookupSgnNamed env n))
+      | SgnConst _ => all
+      | SgnFun _ => all
+      | SgnWhere (sgn, x, c) =>
+        case #1 (hnormSgn env sgn) of
+            SgnError => (SgnError, loc)
+          | SgnConst sgis =>
+            let
+                fun traverse (pre, post) =
+                    case post of
+                        [] => raise Fail "ElabEnv.hnormSgn: Can't reduce 'where' [1]"
+                      | (sgi as (SgiConAbs (x', n, k), loc)) :: rest =>
+                        if x = x' then
+                            List.revAppend (pre, (SgiCon (x', n, k, c), loc) :: rest)
+                        else
+                            traverse (sgi :: pre, rest)
+                      | sgi :: rest => traverse (sgi :: pre, rest)
+
+                val sgis = traverse ([], sgis)
+            in
+                (SgnConst sgis, loc)
+            end
+          | _ => raise Fail "ElabEnv.hnormSgn: Can't reduce 'where' [2]"
+
+fun projectCon env {sgn, str, field} =
+    case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         (case sgnSeek (fn SgiConAbs (x, _, k) => if x = field then SOME (k, NONE) else NONE
                         | SgiCon (x, _, k, c) => if x = field then SOME (k, SOME c) else NONE
                         | _ => NONE) sgis of
              NONE => NONE
            | SOME ((k, co), subs) => SOME (k, Option.map (sgnSubCon (str, subs)) co))
-      | SgnVar n =>
-        let
-            val (_, sgn) = lookupSgnNamed env n
-        in
-            projectCon env {sgn = sgn, str = str, field = field}
-        end
       | SgnError => SOME ((KError, ErrorMsg.dummySpan), SOME (CError, ErrorMsg.dummySpan))
-      | SgnFun _ => NONE
+      | _ => NONE
 
-fun projectVal env {sgn = (sgn, _), str, field} =
-    case sgn of
+fun projectVal env {sgn, str, field} =
+    case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         (case sgnSeek (fn SgiVal (x, _, c) => if x = field then SOME c else NONE | _ => NONE) sgis of
              NONE => NONE
            | SOME (c, subs) => SOME (sgnSubCon (str, subs) c))
-      | SgnVar n =>
-        let
-            val (_, sgn) = lookupSgnNamed env n
-        in
-            projectVal env {sgn = sgn, str = str, field = field}
-        end
       | SgnError => SOME (CError, ErrorMsg.dummySpan)
-      | SgnFun _ => NONE
+      | _ => NONE
 
-fun projectStr env {sgn = (sgn, _), str, field} =
-    case sgn of
+fun projectStr env {sgn, str, field} =
+    case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         (case sgnSeek (fn SgiStr (x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
              NONE => NONE
            | SOME (sgn, subs) => SOME (sgnSubSgn (str, subs) sgn))
-      | SgnVar n =>
-        let
-            val (_, sgn) = lookupSgnNamed env n
-        in
-            projectStr env {sgn = sgn, str = str, field = field}
-        end
       | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
-      | SgnFun _ => NONE
+      | _ => NONE
 
 
 val ktype = (KType, ErrorMsg.dummySpan)

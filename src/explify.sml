@@ -93,6 +93,7 @@ and explifySgn (sgn, loc) =
         L.SgnConst sgis => (L'.SgnConst (map explifySgi sgis), loc)
       | L.SgnVar n => (L'.SgnVar n, loc)
       | L.SgnFun _ => raise Fail "Explify functor signature"
+      | L.SgnWhere _ => raise Fail "Explify where"
       | L.SgnError => raise Fail ("explifySgn: SgnError at " ^ EM.spanToString loc)
 
 fun explifyDecl (d, loc : EM.span) =

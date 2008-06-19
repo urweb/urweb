@@ -9,11 +9,7 @@ signature T = sig
         val three : t
 end
 
-signature F = functor (M : S) : T
-
-structure F = functor (M : S) : T => struct
+functor F (M : S) : T where type t = M.t = struct
         type t = M.t
         val three = M.s (M.s (M.s M.z))
 end
-
-structure F2 : F = F
