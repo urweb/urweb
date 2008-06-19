@@ -44,7 +44,7 @@ val s = ErrorMsg.spanOf
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR
- | STRUCTURE | SIGNATURE | STRUCT | SIG | END
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR
 
 %nonterm
    file of decl list
@@ -113,6 +113,8 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
 
 sgn    : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
        | CSYMBOL                        (SgnVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn
+                                        (SgnFun (CSYMBOL, sgn1, sgn2), s (FUNCTORleft, sgn2right))
 
 sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, kindright))
        | LTYPE SYMBOL                   (SgiConAbs (SYMBOL, (KType, s (LTYPEleft, SYMBOLright))),
@@ -130,6 +132,10 @@ sgis   :                                ([])
 
 str    : STRUCT decls END               (StrConst decls, s (STRUCTleft, ENDright))
        | spath                          (spath)
+       | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN DARROW str
+                                        (StrFun (CSYMBOL, sgn, NONE, str), s (FUNCTORleft, strright))
+       | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn DARROW str
+                                        (StrFun (CSYMBOL, sgn1, SOME sgn2, str), s (FUNCTORleft, strright))
 
 spath  : CSYMBOL                        (StrVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | spath DOT CSYMBOL              (StrProj (spath, CSYMBOL), s (spathleft, CSYMBOLright))

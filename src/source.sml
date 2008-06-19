@@ -71,6 +71,7 @@ datatype sgn_item' =
 and sgn' =
     SgnConst of sgn_item list
   | SgnVar of string
+  | SgnFun of string * sgn * sgn
 
 withtype sgn_item = sgn_item' located
 and sgn = sgn' located
@@ -100,6 +101,7 @@ datatype decl' =
          StrConst of decl list
        | StrVar of string
        | StrProj of str * string
+       | StrFun of string * sgn * sgn option * str
 
 withtype decl = decl' located
      and str = str' located

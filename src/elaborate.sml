@@ -1097,6 +1097,7 @@ and elabSgn env (sgn, loc) =
              (sgnError env (UnboundSgn (loc, x));
               (L'.SgnError, loc))
            | SOME (n, sgis) => (L'.SgnVar n, loc))
+      | L.SgnFun _ => raise Fail "Elaborate functor sig"
 
 fun sgiOfDecl (d, loc) =
     case d of
@@ -1343,6 +1344,7 @@ and elabStr env (str, loc) =
                          (strerror, sgnerror))
               | SOME sgn => ((L'.StrProj (str', x), loc), sgn)
         end
+      | L.StrFun _ => raise Fail "Elaborate functor"
 
 val elabFile = ListUtil.foldlMap elabDecl
 

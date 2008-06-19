@@ -1,0 +1,15 @@
+signature S = sig
+        type t
+        val z : t
+        val s : t -> t
+end
+
+signature T = sig
+        type t
+        val three : t
+end
+
+structure F = functor (M : S) : T => struct
+        val t = M.t
+        val three = M.s (M.s (M.s M.z))
+end

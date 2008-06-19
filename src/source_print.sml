@@ -247,6 +247,18 @@ and p_sgn (sgn, _) =
                               newline,
                               string "end"]
       | SgnVar x => string x
+      | SgnFun (x, sgn, sgn') => box [string "functor",
+                                      space,
+                                      string "(",
+                                      string x,
+                                      space,
+                                      string ":",
+                                      p_sgn sgn,
+                                      string ")",
+                                      space,
+                                      string ":",
+                                      space,
+                                      p_sgn sgn']
                                  
 fun p_decl ((d, _) : decl) =
     case d of
@@ -324,6 +336,34 @@ and p_str (str, _) =
       | StrProj (str, x) => box [p_str str,
                                  string ".",
                                  string x]
+      | StrFun (x, sgn, NONE, str) => box [string "functor",
+                                           space,
+                                           string "(",
+                                           string x,
+                                           space,
+                                           string ":",
+                                           p_sgn sgn,
+                                           string ")",
+                                           space,
+                                           string "=>",
+                                           space,
+                                           p_str str]
+      | StrFun (x, sgn, SOME sgn', str) => box [string "functor",
+                                                space,
+                                                string "(",
+                                                string x,
+                                                space,
+                                                string ":",
+                                                p_sgn sgn,
+                                                string ")",
+                                                space,
+                                                string ":",
+                                                space,
+                                                p_sgn sgn',
+                                                space,
+                                                string "=>",
+                                                space,
+                                                p_str str]
 
 val p_file = p_list_sep newline p_decl
 
