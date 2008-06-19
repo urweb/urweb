@@ -68,16 +68,22 @@ structure St : sig
     val bindStr : t -> string -> int -> t -> t
     val lookupStrById : t -> int -> t
     val lookupStrByName : string * t -> t
+
+    val bindFunctor : t -> string -> int -> int -> L.str -> t
+    val lookupFunctorById : t -> int -> int * L.str
+    val lookupFunctorByName : string * t -> int * L.str
 end = struct
 
 datatype flattening = F of {
          core : int SM.map,
-         strs : flattening SM.map
+         strs : flattening SM.map,
+         funs : (int * L.str) SM.map
 }
                            
 type t = {
      core : int IM.map,
      strs : flattening IM.map,
+     funs : (int * L.str) IM.map,
      current : flattening,
      nested : flattening list
 }
@@ -85,24 +91,27 @@ type t = {
 val empty = {
     core = IM.empty,
     strs = IM.empty,
-    current = F { core = SM.empty, strs = SM.empty },
+    funs = IM.empty,
+    current = F { core = SM.empty, strs = SM.empty, funs = SM.empty },
     nested = []
 }
 
-fun bindCore {core, strs, current, nested} s n =
+fun bindCore {core, strs, funs, current, nested} s n =
     let
         val n' = alloc ()
 
         val current =
             let
-                val F {core, strs} = current
+                val F {core, strs, funs} = current
             in
                 F {core = SM.insert (core, s, n'),
-                   strs = strs}
+                   strs = strs,
+                   funs = funs}
             end
     in
         ({core = IM.insert (core, n, n'),
           strs = strs,
+          funs = funs,
           current = current,
           nested = nested},
          n')
@@ -115,42 +124,69 @@ fun lookupCoreByName ({current = F {core, ...}, ...} : t) x =
         NONE => raise Fail "Corify.St.lookupCoreByName"
       | SOME n => n
 
-fun enter {core, strs, current, nested} =
+fun enter {core, strs, funs, current, nested} =
     {core = core,
      strs = strs,
+     funs = funs,
      current = F {core = SM.empty,
-                  strs = SM.empty},
+                  strs = SM.empty,
+                  funs = SM.empty},
      nested = current :: nested}
 
 fun dummy f = {core = IM.empty,
                strs = IM.empty,
+               funs = IM.empty,
                current = f,
                nested = []}
 
-fun leave {core, strs, current, nested = m1 :: rest} =
+fun leave {core, strs, funs, current, nested = m1 :: rest} =
         {outer = {core = core,
                   strs = strs,
+                  funs = funs,
                   current = m1,
                   nested = rest},
          inner = dummy current}
   | leave _ = raise Fail "Corify.St.leave"
 
-fun bindStr ({core, strs, current = F {core = mcore, strs = mstrs}, nested} : t) x n ({current = f, ...} : t) =
+fun bindStr ({core, strs, funs, current = F {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
+            x n ({current = f, ...} : t) =
     {core = core,
      strs = IM.insert (strs, n, f),
+     funs = funs,
      current = F {core = mcore,
-                  strs = SM.insert (mstrs, x, f)},
+                  strs = SM.insert (mstrs, x, f),
+                  funs = mfuns},
      nested = nested}
 
 fun lookupStrById ({strs, ...} : t) n =
     case IM.find (strs, n) of
-        NONE => raise Fail "Corify.St.lookupStr"
+        NONE => raise Fail "Corify.St.lookupStrById"
       | SOME f => dummy f
 
 fun lookupStrByName (m, {current = F {strs, ...}, ...} : t) =
     case SM.find (strs, m) of
         NONE => raise Fail "Corify.St.lookupStrByName"
       | SOME f => dummy f
+
+fun bindFunctor ({core, strs, funs, current = F {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
+                x n na str =
+    {core = core,
+     strs = strs,
+     funs = IM.insert (funs, n, (na, str)),
+     current = F {core = mcore,
+                  strs = mstrs,
+                  funs = SM.insert (mfuns, x, (na, str))},
+     nested = nested}
+
+fun lookupFunctorById ({funs, ...} : t) n =
+    case IM.find (funs, n) of
+        NONE => raise Fail "Corify.St.lookupFunctorById"
+      | SOME v => v
+
+fun lookupFunctorByName (m, {current = F {funs, ...}, ...} : t) =
+    case SM.find (funs, m) of
+        NONE => raise Fail "Corify.St.lookupFunctorByName"
+      | SOME v => v
 
 end
 
@@ -233,6 +269,9 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                                                         
       | L.DSgn _ => ([], st)
 
+      | L.DStr (x, n, _, (L.StrFun (_, na, _, _, str), _)) =>
+        ([], St.bindFunctor st x n na str)
+
       | L.DStr (x, n, _, str) =>
         let
             val (ds, {inner, outer}) = corifyStr (str, st)
@@ -257,8 +296,28 @@ and corifyStr ((str, _), st) =
         in
             (ds, {inner = St.lookupStrByName (x, inner), outer = outer})
         end
-      | L.StrFun _ => raise Fail "Corify functor"
-      | L.StrApp _ => raise Fail "Corify functor app"
+      | L.StrFun _ => raise Fail "Corify of nested functor definition"
+      | L.StrApp (str1, str2) =>
+        let
+            fun unwind' (str, _) =
+                case str of
+                    L.StrVar n => St.lookupStrById st n
+                  | L.StrProj (str, x) => St.lookupStrByName (x, unwind' str)
+                  | _ => raise Fail "Corify of fancy functor application [1]"
+
+            fun unwind (str, _) =
+                case str of
+                    L.StrVar n => St.lookupFunctorById st n
+                  | L.StrProj (str, x) => St.lookupFunctorByName (x, unwind' str)
+                  | _ => raise Fail "Corify of fancy functor application [2]"
+
+            val (na, body) = unwind str1
+
+            val (ds1, {inner, outer}) = corifyStr (str2, st)
+            val (ds2, sts) = corifyStr (body, St.bindStr outer "ARG" na inner)
+        in
+            (ds1 @ ds2, sts)
+        end
 
 fun maxName ds = foldl (fn ((d, _), n) =>
                            case d of

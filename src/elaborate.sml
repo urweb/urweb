@@ -1015,6 +1015,7 @@ fun sgnError env err =
 datatype str_error =
          UnboundStr of ErrorMsg.span * string
        | NotFunctor of L'.sgn
+       | FunctorRebind of ErrorMsg.span
 
 fun strError env err =
     case err of
@@ -1023,6 +1024,8 @@ fun strError env err =
       | NotFunctor sgn =>
         (ErrorMsg.errorAt (#2 sgn) "Application of non-functor";
          eprefaces' [("Signature", p_sgn env sgn)])
+      | FunctorRebind loc =>
+        ErrorMsg.errorAt loc "Attempt to rebind functor"
 
 val hnormSgn = E.hnormSgn
 
@@ -1391,6 +1394,13 @@ fun elabDecl ((d, loc), env) =
 
                 val (env', n) = E.pushStrNamed env x sgn'
             in
+                case #1 (hnormSgn env sgn') of
+                    L'.SgnFun _ =>
+                    (case #1 str' of
+                         L'.StrFun _ => ()
+                       | _ => strError env (FunctorRebind loc))
+                  | _ => ();
+
                 ((L'.DStr (x, n, sgn', str'), loc), env')
             end
     end
