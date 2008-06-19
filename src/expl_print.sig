@@ -25,30 +25,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+signature EXPL_PRINT = sig
+    val p_kind : Expl.kind Print.printer
+    val p_con : ExplEnv.env -> Expl.con Print.printer
+    val p_exp : ExplEnv.env -> Expl.exp Print.printer
+    val p_decl : ExplEnv.env -> Expl.decl Print.printer
+    val p_sgn_item : ExplEnv.env -> Expl.sgn_item Print.printer
+    val p_file : ExplEnv.env -> Expl.file Print.printer
 
-signature COMPILER = sig
-
-    val compile : string -> unit
-
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (Elab.file * ElabEnv.env) option
-    val explify : ElabEnv.env -> string -> Expl.file option
-    val corify : ElabEnv.env -> string -> Core.file option
-    val reduce : ElabEnv.env -> string -> Core.file option
-    val shake : ElabEnv.env  -> string -> Core.file option
-    val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
-    val cloconv : ElabEnv.env -> CoreEnv.env -> string -> Flat.file option
-    val cjrize : ElabEnv.env -> CoreEnv.env -> string -> Cjr.file option
-
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testExplify : string -> unit
-    val testCorify : string -> unit
-    val testReduce : string -> unit
-    val testShake : string -> unit
-    val testMonoize : string -> unit
-    val testCloconv : string -> unit
-    val testCjrize : string -> unit
-
+    val debug : bool ref
 end
+

@@ -25,30 +25,43 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+signature EXPL_ENV = sig
 
-signature COMPILER = sig
+    exception SynUnif
+    val liftConInCon : int -> Expl.con -> Expl.con
 
-    val compile : string -> unit
+    type env
 
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (Elab.file * ElabEnv.env) option
-    val explify : ElabEnv.env -> string -> Expl.file option
-    val corify : ElabEnv.env -> string -> Core.file option
-    val reduce : ElabEnv.env -> string -> Core.file option
-    val shake : ElabEnv.env  -> string -> Core.file option
-    val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
-    val cloconv : ElabEnv.env -> CoreEnv.env -> string -> Flat.file option
-    val cjrize : ElabEnv.env -> CoreEnv.env -> string -> Cjr.file option
+    val empty : env
+    val basis : env
 
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testExplify : string -> unit
-    val testCorify : string -> unit
-    val testReduce : string -> unit
-    val testShake : string -> unit
-    val testMonoize : string -> unit
-    val testCloconv : string -> unit
-    val testCjrize : string -> unit
+    exception UnboundRel of int
+    exception UnboundNamed of int
+
+    datatype 'a var =
+             NotBound
+           | Rel of int * 'a
+           | Named of int * 'a
+
+    val pushCRel : env -> string -> Expl.kind -> env
+    val lookupCRel : env -> int -> string * Expl.kind
+
+    val pushCNamed : env -> string -> int -> Expl.kind -> Expl.con option -> env
+    val lookupCNamed : env -> int -> string * Expl.kind * Expl.con option
+
+    val pushERel : env -> string -> Expl.con -> env
+    val lookupERel : env -> int -> string * Expl.con
+
+    val pushENamed : env -> string -> int -> Expl.con -> env
+    val lookupENamed : env -> int -> string * Expl.con
+
+    val pushSgnNamed : env -> string -> int -> Expl.sgn -> env
+    val lookupSgnNamed : env -> int -> string * Expl.sgn
+
+    val pushStrNamed : env -> string -> int -> Expl.sgn -> env
+    val lookupStrNamed : env -> int -> string * Expl.sgn
+
+    val declBinds : env -> Expl.decl -> env
+    val sgiBinds : env -> Expl.sgn_item -> env
 
 end

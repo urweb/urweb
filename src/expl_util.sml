@@ -1,0 +1,377 @@
+(* Copyright (c) 2008, Adam Chlipala
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * - The names of contributors may not be used to endorse or promote products
+ *   derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *)
+
+structure ExplUtil :> EXPL_UTIL = struct
+
+open Expl
+
+structure S = Search
+
+structure Kind = struct
+
+fun mapfold f =
+    let
+        fun mfk k acc =
+            S.bindP (mfk' k acc, f)
+
+        and mfk' (kAll as (k, loc)) =
+            case k of
+                KType => S.return2 kAll
+
+              | KArrow (k1, k2) =>
+                S.bind2 (mfk k1,
+                      fn k1' =>
+                         S.map2 (mfk k2,
+                              fn k2' =>
+                                 (KArrow (k1', k2'), loc)))
+
+              | KName => S.return2 kAll
+
+              | KRecord k =>
+                S.map2 (mfk k,
+                        fn k' =>
+                           (KRecord k', loc))
+    in
+        mfk
+    end
+
+fun exists f k =
+    case mapfold (fn k => fn () =>
+                             if f k then
+                                 S.Return ()
+                             else
+                                 S.Continue (k, ())) k () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+end
+
+structure Con = struct
+
+datatype binder =
+         Rel of string * Expl.kind
+       | Named of string * Expl.kind
+
+fun mapfoldB {kind = fk, con = fc, bind} =
+    let
+        val mfk = Kind.mapfold fk
+
+        fun mfc ctx c acc =
+            S.bindP (mfc' ctx c acc, fc ctx)
+
+        and mfc' ctx (cAll as (c, loc)) =
+            case c of
+                TFun (c1, c2) =>
+                S.bind2 (mfc ctx c1,
+                      fn c1' =>
+                         S.map2 (mfc ctx c2,
+                              fn c2' =>
+                                 (TFun (c1', c2'), loc)))
+              | TCFun (x, k, c) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (mfc (bind (ctx, Rel (x, k))) c,
+                              fn c' =>
+                                 (TCFun (x, k', c'), loc)))
+              | TRecord c =>
+                S.map2 (mfc ctx c,
+                        fn c' =>
+                           (TRecord c', loc))
+
+              | CRel _ => S.return2 cAll
+              | CNamed _ => S.return2 cAll
+              | CModProj _ => S.return2 cAll
+              | CApp (c1, c2) =>
+                S.bind2 (mfc ctx c1,
+                      fn c1' =>
+                         S.map2 (mfc ctx c2,
+                              fn c2' =>
+                                 (CApp (c1', c2'), loc)))
+              | CAbs (x, k, c) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (mfc (bind (ctx, Rel (x, k))) c,
+                              fn c' =>
+                                 (CAbs (x, k', c'), loc)))
+
+              | CName _ => S.return2 cAll
+
+              | CRecord (k, xcs) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (ListUtil.mapfold (fn (x, c) =>
+                                                      S.bind2 (mfc ctx x,
+                                                            fn x' =>
+                                                               S.map2 (mfc ctx c,
+                                                                    fn c' =>
+                                                                       (x', c'))))
+                                 xcs,
+                              fn xcs' =>
+                                 (CRecord (k', xcs'), loc)))
+              | CConcat (c1, c2) =>
+                S.bind2 (mfc ctx c1,
+                      fn c1' =>
+                         S.map2 (mfc ctx c2,
+                              fn c2' =>
+                                 (CConcat (c1', c2'), loc)))
+    in
+        mfc
+    end
+
+fun mapfold {kind = fk, con = fc} =
+    mapfoldB {kind = fk,
+              con = fn () => fc,
+              bind = fn ((), _) => ()} ()
+
+fun mapB {kind, con, bind} ctx c =
+    case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
+                   con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
+                   bind = bind} ctx c () of
+        S.Continue (c, ()) => c
+      | S.Return _ => raise Fail "ExplUtil.Con.mapB: Impossible"
+
+fun map {kind, con} s =
+    case mapfold {kind = fn k => fn () => S.Continue (kind k, ()),
+                  con = fn c => fn () => S.Continue (con c, ())} s () of
+        S.Return () => raise Fail "ExplUtil.Con.map: Impossible"
+      | S.Continue (s, ()) => s
+
+fun exists {kind, con} k =
+    case mapfold {kind = fn k => fn () =>
+                                    if kind k then
+                                        S.Return ()
+                                    else
+                                        S.Continue (k, ()),
+                  con = fn c => fn () =>
+                                    if con c then
+                                        S.Return ()
+                                    else
+                                        S.Continue (c, ())} k () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+end
+
+structure Exp = struct
+
+datatype binder =
+         RelC of string * Expl.kind
+       | NamedC of string * Expl.kind
+       | RelE of string * Expl.con
+       | NamedE of string * Expl.con
+
+fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
+    let
+        val mfk = Kind.mapfold fk
+
+        fun bind' (ctx, b) =
+            let
+                val b' = case b of
+                             Con.Rel x => RelC x
+                           | Con.Named x => NamedC x
+            in
+                bind (ctx, b')
+            end
+        val mfc = Con.mapfoldB {kind = fk, con = fc, bind = bind'}
+
+        fun mfe ctx e acc =
+            S.bindP (mfe' ctx e acc, fe ctx)
+
+        and mfe' ctx (eAll as (e, loc)) =
+            case e of
+                EPrim _ => S.return2 eAll
+              | ERel _ => S.return2 eAll
+              | ENamed _ => S.return2 eAll
+              | EModProj _ => S.return2 eAll
+              | EApp (e1, e2) =>
+                S.bind2 (mfe ctx e1,
+                      fn e1' =>
+                         S.map2 (mfe ctx e2,
+                              fn e2' =>
+                                 (EApp (e1', e2'), loc)))
+              | EAbs (x, dom, ran, e) =>
+                S.bind2 (mfc ctx dom,
+                      fn dom' =>
+                         S.bind2 (mfc ctx ran,
+                                  fn ran' =>
+                                     S.map2 (mfe (bind (ctx, RelE (x, dom'))) e,
+                                          fn e' =>
+                                             (EAbs (x, dom', ran', e'), loc))))
+                         
+              | ECApp (e, c) =>
+                S.bind2 (mfe ctx e,
+                      fn e' =>
+                         S.map2 (mfc ctx c,
+                              fn c' =>
+                                 (ECApp (e', c'), loc)))
+              | ECAbs (x, k, e) =>
+                S.bind2 (mfk k,
+                      fn k' =>
+                         S.map2 (mfe (bind (ctx, RelC (x, k))) e,
+                              fn e' =>
+                                 (ECAbs (x, k', e'), loc)))
+
+              | ERecord xes =>
+                S.map2 (ListUtil.mapfold (fn (x, e, t) =>
+                                             S.bind2 (mfc ctx x,
+                                                   fn x' =>
+                                                      S.bind2 (mfe ctx e,
+                                                           fn e' =>
+                                                              S.map2 (mfc ctx t,
+                                                                   fn t' =>
+                                                                      (x', e', t')))))
+                                         xes,
+                     fn xes' =>
+                        (ERecord xes', loc))
+              | EField (e, c, {field, rest}) =>
+                S.bind2 (mfe ctx e,
+                      fn e' =>
+                         S.bind2 (mfc ctx c,
+                              fn c' =>
+                                 S.bind2 (mfc ctx field,
+                                          fn field' =>
+                                             S.map2 (mfc ctx rest,
+                                                  fn rest' =>
+                                                     (EField (e', c', {field = field', rest = rest'}), loc)))))
+    in
+        mfe
+    end
+
+fun mapfold {kind = fk, con = fc, exp = fe} =
+    mapfoldB {kind = fk,
+              con = fn () => fc,
+              exp = fn () => fe,
+              bind = fn ((), _) => ()} ()
+
+fun exists {kind, con, exp} k =
+    case mapfold {kind = fn k => fn () =>
+                                    if kind k then
+                                        S.Return ()
+                                    else
+                                        S.Continue (k, ()),
+                  con = fn c => fn () =>
+                                    if con c then
+                                        S.Return ()
+                                    else
+                                        S.Continue (c, ()),
+                  exp = fn e => fn () =>
+                                    if exp e then
+                                        S.Return ()
+                                    else
+                                        S.Continue (e, ())} k () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+end
+
+structure Sgn = struct
+
+datatype binder =
+         RelC of string * Expl.kind
+       | NamedC of string * Expl.kind
+       | Str of string * Expl.sgn
+
+fun mapfoldB {kind, con, sgn_item, sgn, bind} =
+    let
+        fun bind' (ctx, b) =
+            let
+                val b' = case b of
+                             Con.Rel x => RelC x
+                           | Con.Named x => NamedC x
+            in
+                bind (ctx, b')
+            end
+        val con = Con.mapfoldB {kind = kind, con = con, bind = bind'}
+
+        val kind = Kind.mapfold kind
+
+        fun sgi ctx si acc =
+            S.bindP (sgi' ctx si acc, sgn_item ctx)
+
+        and sgi' ctx (si, loc) =
+            case si of
+                SgiConAbs (x, n, k) =>
+                S.map2 (kind k,
+                     fn k' =>
+                        (SgiConAbs (x, n, k'), loc))
+              | SgiCon (x, n, k, c) =>
+                S.bind2 (kind k,
+                     fn k' =>
+                        S.map2 (con ctx c,
+                             fn c' =>
+                                (SgiCon (x, n, k', c'), loc)))
+              | SgiVal (x, n, c) =>
+                S.map2 (con ctx c,
+                     fn c' =>
+                        (SgiVal (x, n, c'), loc))
+              | SgiStr (x, n, s) =>
+                S.map2 (sg ctx s,
+                     fn s' =>
+                        (SgiStr (x, n, s'), loc))
+
+        and sg ctx s acc =
+            S.bindP (sg' ctx s acc, sgn ctx)
+
+        and sg' ctx (sAll as (s, loc)) =
+            case s of
+                SgnConst sgis =>
+                S.map2 (ListUtil.mapfoldB (fn (ctx, si)  =>
+                                              (case #1 si of
+                                                   SgiConAbs (x, _, k) =>
+                                                   bind (ctx, NamedC (x, k))
+                                                 | SgiCon (x, _, k, _) =>
+                                                   bind (ctx, NamedC (x, k))
+                                                 | SgiVal _ => ctx
+                                                 | SgiStr (x, _, sgn) =>
+                                                   bind (ctx, Str (x, sgn)),
+                                               sgi ctx si)) ctx sgis,
+                     fn sgis' =>
+                        (SgnConst sgis', loc))
+                
+              | SgnVar _ => S.return2 sAll
+    in
+        sg
+    end
+
+fun mapfold {kind, con, sgn_item, sgn} =
+    mapfoldB {kind = kind,
+              con = fn () => con,
+              sgn_item = fn () => sgn_item,
+              sgn = fn () => sgn,
+              bind = fn ((), _) => ()} ()
+
+fun map {kind, con, sgn_item, sgn} s =
+    case mapfold {kind = fn k => fn () => S.Continue (kind k, ()),
+                  con = fn c => fn () => S.Continue (con c, ()),
+                  sgn_item = fn si => fn () => S.Continue (sgn_item si, ()),
+                  sgn = fn s => fn () => S.Continue (sgn s, ())} s () of
+        S.Return () => raise Fail "Expl_util.Sgn.map"
+      | S.Continue (s, ()) => s
+
+end
+
+end

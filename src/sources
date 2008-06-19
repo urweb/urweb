@@ -35,6 +35,20 @@ elab_print.sml
 elaborate.sig
 elaborate.sml
 
+expl.sml
+
+expl_util.sig
+expl_util.sml
+
+expl_env.sig
+expl_env.sml
+
+expl_print.sig
+expl_print.sml
+
+explify.sig
+explify.sml
+
 core.sml
 
 core_util.sig
