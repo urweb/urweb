@@ -13,3 +13,8 @@ functor F (M : S) : T where type t = M.t = struct
         type t = M.t
         val three = M.s (M.s (M.s M.z))
 end
+
+structure F2 : functor (M : S) : T where type t = M.t = F
+structure F3 : functor (M : S) : T = F
+(*structure F4 : functor (M : S) : sig type q end = F*)
+(*structure F5 : functor (M : S) : T where type t = int = F*)

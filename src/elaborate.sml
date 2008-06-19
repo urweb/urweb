@@ -396,6 +396,17 @@ val subConInCon =
                 bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
                         | (ctx, _) => ctx}
 
+fun subStrInSgn (m1, m2) =
+    U.Sgn.map {kind = fn k => k,
+               con = fn c as L'.CModProj (m1', ms, x) =>
+                        if m1 = m1' then
+                            L'.CModProj (m2, ms, x)
+                        else
+                            c
+                      | c => c,
+               sgn_item = fn sgi => sgi,
+               sgn = fn sgn => sgn}
+
 type record_summary = {
      fields : (L'.con * L'.con) list,
      unifs : (L'.con * L'.con option ref) list,
@@ -1241,8 +1252,16 @@ fun subSgn env sgn1 (sgn2 as (_, loc2)) =
         end
 
       | (L'.SgnFun (m1, n1, dom1, ran1), L'.SgnFun (m2, n2, dom2, ran2)) =>
-        (subSgn env dom2 dom1;
-         subSgn env ran1 ran2)
+        let
+            val ran1 =
+                if n1 = n2 then
+                    ran1
+                else
+                    subStrInSgn (n1, n2) ran1
+        in
+            subSgn env dom2 dom1;
+            subSgn (E.pushStrNamedAs env m2 n2 dom2) ran1 ran2
+        end
 
       | _ => sgnError env (SgnWrongForm (sgn1, sgn2))
 
