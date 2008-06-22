@@ -60,14 +60,14 @@ structure St : sig
 
     val enter : t -> t
     val leave : t -> {outer : t, inner : t}
-    val ffi : string -> t
+    val ffi : string -> L'.con SM.map -> t
 
     val bindCore : t -> string -> int -> t * int
     val lookupCoreById : t -> int -> int option
 
     datatype core =
              Normal of int
-           | Ffi of string
+           | Ffi of string * L'.con option
     val lookupCoreByName : t -> string -> core
 
     val bindStr : t -> string -> int -> t -> t
@@ -83,7 +83,7 @@ datatype flattening =
          FNormal of {core : int SM.map,
                      strs : flattening SM.map,
                      funs : (int * L.str) SM.map}
-       | FFfi of string
+       | FFfi of string * L'.con SM.map
                            
 type t = {
      core : int IM.map,
@@ -103,7 +103,7 @@ val empty = {
 
 datatype core =
          Normal of int
-       | Ffi of string
+       | Ffi of string * L'.con option
 
 fun bindCore {core, strs, funs, current, nested} s n =
     let
@@ -129,7 +129,7 @@ fun lookupCoreById ({core, ...} : t) n = IM.find (core, n)
 
 fun lookupCoreByName ({current, ...} : t) x =
     case current of
-        FFfi m => Ffi m
+        FFfi (m, cmap) => Ffi (m, SM.find (cmap, x))
       | FNormal {core, ...} =>
         case SM.find (core, x) of
             NONE => raise Fail "Corify.St.lookupCoreByName"
@@ -159,7 +159,7 @@ fun leave {core, strs, funs, current, nested = m1 :: rest} =
          inner = dummy current}
   | leave _ = raise Fail "Corify.St.leave"
 
-fun ffi m = dummy (FFfi m)
+fun ffi m cmap = dummy (FFfi (m, cmap))
 
 fun bindStr ({core, strs, funs, current = FNormal {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
             x n ({current = f, ...} : t) =
@@ -233,7 +233,7 @@ fun corifyCon st (c, loc) =
         in
             case St.lookupCoreByName st x of
                 St.Normal n => (L'.CNamed n, loc)
-              | St.Ffi m => (L'.CFfi (m, x), loc)
+              | St.Ffi (m, _) => (L'.CFfi (m, x), loc)
         end
 
       | L.CApp (c1, c2) => (L'.CApp (corifyCon st c1, corifyCon st c2), loc)
@@ -260,7 +260,33 @@ fun corifyExp st (e, loc) =
         in
             case St.lookupCoreByName st x of
                 St.Normal n => (L'.ENamed n, loc)
-              | St.Ffi m => (L'.EFfi (m, x), loc)
+              | St.Ffi (_, NONE) => raise Fail "corifyExp: Unknown type for FFI expression variable"
+              | St.Ffi (m, SOME t) =>
+                case t of
+                    t as (L'.TFun _, _) =>
+                    let
+                        fun getArgs (all as (t, _), args) =
+                            case t of
+                                L'.TFun (dom, ran) => getArgs (ran, dom :: args)
+                              | _ => (all, rev args)
+                                     
+                        val (result, args) = getArgs (t, [])
+
+                        val (app, _) = foldl (fn (_, (app, n)) =>
+                                                 ((L'.EApp (app, (L'.ERel n, loc)), loc),
+                                                  n - 1)) ((L'.EFfi (m, x), loc),
+                                                           length args - 1) args
+                        val (abs, _, _) = foldr (fn (t, (abs, ran, n)) =>
+                                                    ((L'.EAbs ("arg" ^ Int.toString n,
+                                                               t,
+                                                               ran,
+                                                               abs), loc),
+                                                     (L'.TFun (t, ran), loc),
+                                                     n - 1)) (app, result, length args - 1) args
+                    in
+                        abs
+                    end
+                  | _ => (L'.EFfi (m, x), loc)
         end
       | L.EApp (e1, e2) => (L'.EApp (corifyExp st e1, corifyExp st e2), loc)
       | L.EAbs (x, dom, ran, e1) => (L'.EAbs (x, corifyCon st dom, corifyCon st ran, corifyExp st e1), loc)
@@ -299,12 +325,41 @@ fun corifyDecl ((d, loc : EM.span), st) =
             (ds, st)
         end
 
-      | L.DFfiStr (x, n, _) =>
-        let
-            val st = St.bindStr st x n (St.ffi x)
-        in
-            ([], st)
-        end
+      | L.DFfiStr (m, n, (sgn, _)) =>
+        (case sgn of
+             L.SgnConst sgis =>
+             let
+                 val (ds, cmap, st) =
+                     foldl (fn ((sgi, _), (ds, cmap, st)) =>
+                               case sgi of
+                                   L.SgiConAbs (x, n, k) =>
+                                   let
+                                       val (st, n') = St.bindCore st x n
+                                   in
+                                       ((L'.DCon (x, n', corifyKind k, (L'.CFfi (m, x), loc)), loc) :: ds,
+                                        cmap,
+                                        st)
+                                   end
+                                 | L.SgiCon (x, n, k, _) =>
+                                   let
+                                       val (st, n') = St.bindCore st x n
+                                   in
+                                       ((L'.DCon (x, n', corifyKind k, (L'.CFfi (m, x), loc)), loc) :: ds,
+                                        cmap,
+                                        st)
+                                   end
+
+                                 | L.SgiVal (x, _, c) =>
+                                   (ds,
+                                    SM.insert (cmap, x, corifyCon st c),
+                                    st)
+                                 | _ => (ds, cmap, st)) ([], SM.empty, st) sgis
+
+                 val st = St.bindStr st m n (St.ffi m cmap)
+             in
+                 (rev ds, st)
+             end
+           | _ => raise Fail "Non-const signature for FFI structure")
 
 
 and corifyStr ((str, _), st) =

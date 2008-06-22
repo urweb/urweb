@@ -1,10 +1,15 @@
 extern structure Lib : sig
         type t
+        type u
         val x : t
+        val f1 : t -> t
+        val f2 : t -> u -> t
 end
 
 type t' = Lib.t
 val x' : t' = Lib.x
+val f1' = Lib.f1
+val f2' = Lib.f2
 
 structure Lib' = Lib
 
