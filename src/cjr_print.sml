@@ -63,6 +63,7 @@ fun p_typ' par env (t, loc) =
       | TNamed n =>
         (string ("__lwt_" ^ #1 (E.lookupTNamed env n) ^ "_" ^ Int.toString n)
          handle CjrEnv.UnboundNamed _ => string ("__lwt_UNBOUND__" ^ Int.toString n))
+      | TFfi (m, x) => box [string "lw_", string m, string "_", string x]
 
 and p_typ env = p_typ' false env
 
@@ -76,6 +77,14 @@ fun p_exp' par env (e, _) =
       | ENamed n =>
         (string ("__lwn_" ^ #1 (E.lookupENamed env n) ^ "_" ^ Int.toString n)
          handle CjrEnv.UnboundNamed _ => string ("__lwn_UNBOUND_" ^ Int.toString n))
+      | EFfi (m, x) => box [string "lw_", string m, string "_", string x]
+      | EFfiApp (m, x, es) => box [string "lw_",
+                                   string m,
+                                   string "_",
+                                   string x,
+                                   string "(",
+                                   p_list (p_exp env) es,
+                                   string ")"]
       | ECode n => string ("__lwc_" ^ Int.toString n)
       | EApp (e1, e2) => parenIf par (box [p_exp' true env e1,
                                            string "(",
