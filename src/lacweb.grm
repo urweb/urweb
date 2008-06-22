@@ -97,6 +97,8 @@ val s = ErrorMsg.spanOf
 %%
 
 file   : decls                          (decls)
+       | SIG sgis                       ([(DSgn ("?", (SgnConst sgis, s (SIGleft, sgisright))),
+                                           s (SIGleft, sgisright))])
 
 decls  :                                ([])
        | decl decls                     (decl :: decls)

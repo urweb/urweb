@@ -62,6 +62,25 @@ end
 val str = ref ([] : char list)
 val strStart = ref 0
 
+local
+    val initSig = ref false
+    val offset = ref 0
+in
+
+fun initialSig () = initSig := true
+
+fun pos yypos = yypos - !offset
+
+fun newline yypos =
+    if !initSig then
+        (initSig := false;
+         offset := yypos + 1)
+    else
+        ErrorMsg.newline (pos yypos)
+
+end
+
+
 %%
 %header (functor LacwebLexFn(structure Tokens : Lacweb_TOKENS));
 %full
@@ -75,87 +94,87 @@ realconst = [0-9]+\.[0-9]*;
 
 %%
 
-<INITIAL> \n          => (ErrorMsg.newline yypos;
+<INITIAL> \n          => (newline yypos;
                           continue ());
-<COMMENT> \n          => (ErrorMsg.newline yypos;
+<COMMENT> \n          => (newline yypos;
                           continue ());
 
 <INITIAL> {ws}+       => (lex ());
 
 <INITIAL> "(*"        => (YYBEGIN COMMENT;
-                          enterComment yypos;
+                          enterComment (pos yypos);
                           continue ());
-<INITIAL> "*)"        => (ErrorMsg.errorAt' (yypos, yypos) "Unbalanced comments";
+<INITIAL> "*)"        => (ErrorMsg.errorAt' (pos yypos, pos yypos) "Unbalanced comments";
 			  continue ());
 
-<COMMENT> "(*"        => (enterComment yypos;
+<COMMENT> "(*"        => (enterComment (pos yypos);
                           continue ());
 <COMMENT> "*)"        => (if exitComment () then YYBEGIN INITIAL else ();
 			  continue ());
 
-<INITIAL> "\""        => (YYBEGIN STRING; strStart := yypos; str := []; continue());
+<INITIAL> "\""        => (YYBEGIN STRING; strStart := pos yypos; str := []; continue());
 <STRING> "\\\""       => (str := #"\"" :: !str; continue());
 <STRING> "\""         => (YYBEGIN INITIAL;
-			  Tokens.STRING (String.implode (List.rev (!str)), !strStart, yypos + 1));
-<STRING> "\n"         => (ErrorMsg.newline yypos;
+			  Tokens.STRING (String.implode (List.rev (!str)), !strStart, pos yypos + 1));
+<STRING> "\n"         => (newline yypos;
 			  str := #"\n" :: !str; continue());
 <STRING> .            => (str := String.sub (yytext, 0) :: !str; continue());
 
-<INITIAL> "("         => (Tokens.LPAREN (yypos, yypos + size yytext));
-<INITIAL> ")"         => (Tokens.RPAREN (yypos, yypos + size yytext));
-<INITIAL> "["         => (Tokens.LBRACK (yypos, yypos + size yytext));
-<INITIAL> "]"         => (Tokens.RBRACK (yypos, yypos + size yytext));
-<INITIAL> "{"         => (Tokens.LBRACE (yypos, yypos + size yytext));
-<INITIAL> "}"         => (Tokens.RBRACE (yypos, yypos + size yytext));
+<INITIAL> "("         => (Tokens.LPAREN (pos yypos, pos yypos + size yytext));
+<INITIAL> ")"         => (Tokens.RPAREN (pos yypos, pos yypos + size yytext));
+<INITIAL> "["         => (Tokens.LBRACK (pos yypos, pos yypos + size yytext));
+<INITIAL> "]"         => (Tokens.RBRACK (pos yypos, pos yypos + size yytext));
+<INITIAL> "{"         => (Tokens.LBRACE (pos yypos, pos yypos + size yytext));
+<INITIAL> "}"         => (Tokens.RBRACE (pos yypos, pos yypos + size yytext));
 
-<INITIAL> "->"        => (Tokens.ARROW (yypos, yypos + size yytext));
-<INITIAL> "=>"        => (Tokens.DARROW (yypos, yypos + size yytext));
-<INITIAL> "++"        => (Tokens.PLUSPLUS (yypos, yypos + size yytext));
+<INITIAL> "->"        => (Tokens.ARROW (pos yypos, pos yypos + size yytext));
+<INITIAL> "=>"        => (Tokens.DARROW (pos yypos, pos yypos + size yytext));
+<INITIAL> "++"        => (Tokens.PLUSPLUS (pos yypos, pos yypos + size yytext));
 
-<INITIAL> "="         => (Tokens.EQ (yypos, yypos + size yytext));
-<INITIAL> ","         => (Tokens.COMMA (yypos, yypos + size yytext));
-<INITIAL> ":::"       => (Tokens.TCOLON (yypos, yypos + size yytext));
-<INITIAL> "::"        => (Tokens.DCOLON (yypos, yypos + size yytext));
-<INITIAL> ":"         => (Tokens.COLON (yypos, yypos + size yytext));
-<INITIAL> "."         => (Tokens.DOT (yypos, yypos + size yytext));
-<INITIAL> "$"         => (Tokens.DOLLAR (yypos, yypos + size yytext));
-<INITIAL> "#"         => (Tokens.HASH (yypos, yypos + size yytext));
-<INITIAL> "__"        => (Tokens.UNDERUNDER (yypos, yypos + size yytext));
-<INITIAL> "_"         => (Tokens.UNDER (yypos, yypos + size yytext));
+<INITIAL> "="         => (Tokens.EQ (pos yypos, pos yypos + size yytext));
+<INITIAL> ","         => (Tokens.COMMA (pos yypos, pos yypos + size yytext));
+<INITIAL> ":::"       => (Tokens.TCOLON (pos yypos, pos yypos + size yytext));
+<INITIAL> "::"        => (Tokens.DCOLON (pos yypos, pos yypos + size yytext));
+<INITIAL> ":"         => (Tokens.COLON (pos yypos, pos yypos + size yytext));
+<INITIAL> "."         => (Tokens.DOT (pos yypos, pos yypos + size yytext));
+<INITIAL> "$"         => (Tokens.DOLLAR (pos yypos, pos yypos + size yytext));
+<INITIAL> "#"         => (Tokens.HASH (pos yypos, pos yypos + size yytext));
+<INITIAL> "__"        => (Tokens.UNDERUNDER (pos yypos, pos yypos + size yytext));
+<INITIAL> "_"         => (Tokens.UNDER (pos yypos, pos yypos + size yytext));
 
-<INITIAL> "con"       => (Tokens.CON (yypos, yypos + size yytext));
-<INITIAL> "type"      => (Tokens.LTYPE (yypos, yypos + size yytext));
-<INITIAL> "val"       => (Tokens.VAL (yypos, yypos + size yytext));
-<INITIAL> "fn"        => (Tokens.FN (yypos, yypos + size yytext));
+<INITIAL> "con"       => (Tokens.CON (pos yypos, pos yypos + size yytext));
+<INITIAL> "type"      => (Tokens.LTYPE (pos yypos, pos yypos + size yytext));
+<INITIAL> "val"       => (Tokens.VAL (pos yypos, pos yypos + size yytext));
+<INITIAL> "fn"        => (Tokens.FN (pos yypos, pos yypos + size yytext));
 
-<INITIAL> "structure" => (Tokens.STRUCTURE (yypos, yypos + size yytext));
-<INITIAL> "signature" => (Tokens.SIGNATURE (yypos, yypos + size yytext));
-<INITIAL> "struct"    => (Tokens.STRUCT (yypos, yypos + size yytext));
-<INITIAL> "sig"       => (Tokens.SIG (yypos, yypos + size yytext));
-<INITIAL> "end"       => (Tokens.END (yypos, yypos + size yytext));
-<INITIAL> "functor"   => (Tokens.FUNCTOR (yypos, yypos + size yytext));
-<INITIAL> "where"     => (Tokens.WHERE (yypos, yypos + size yytext));
-<INITIAL> "extern"    => (Tokens.EXTERN (yypos, yypos + size yytext));
+<INITIAL> "structure" => (Tokens.STRUCTURE (pos yypos, pos yypos + size yytext));
+<INITIAL> "signature" => (Tokens.SIGNATURE (pos yypos, pos yypos + size yytext));
+<INITIAL> "struct"    => (Tokens.STRUCT (pos yypos, pos yypos + size yytext));
+<INITIAL> "sig"       => (if yypos = 2 then initialSig () else (); Tokens.SIG (pos yypos, pos yypos + size yytext));
+<INITIAL> "end"       => (Tokens.END (pos yypos, pos yypos + size yytext));
+<INITIAL> "functor"   => (Tokens.FUNCTOR (pos yypos, pos yypos + size yytext));
+<INITIAL> "where"     => (Tokens.WHERE (pos yypos, pos yypos + size yytext));
+<INITIAL> "extern"    => (Tokens.EXTERN (pos yypos, pos yypos + size yytext));
 
-<INITIAL> "Type"      => (Tokens.TYPE (yypos, yypos + size yytext));
-<INITIAL> "Name"      => (Tokens.NAME (yypos, yypos + size yytext));
+<INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));
+<INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));
 
-<INITIAL> {id}        => (Tokens.SYMBOL (yytext, yypos, yypos + size yytext));
-<INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, yypos, yypos + size yytext));
+<INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
+<INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));
 
 <INITIAL> {intconst}  => (case Int64.fromString yytext of
-                            SOME x => Tokens.INT (x, yypos, yypos + size yytext)
-                          | NONE   => (ErrorMsg.errorAt' (yypos, yypos)
+                            SOME x => Tokens.INT (x, pos yypos, pos yypos + size yytext)
+                          | NONE   => (ErrorMsg.errorAt' (pos yypos, pos yypos)
                                        ("Expected int, received: " ^ yytext);
                                        continue ()));
 <INITIAL> {realconst} => (case Real64.fromString yytext of
-                            SOME x => Tokens.FLOAT (x, yypos, yypos + size yytext)
-                          | NONE   => (ErrorMsg.errorAt' (yypos, yypos)
+                            SOME x => Tokens.FLOAT (x, pos yypos, pos yypos + size yytext)
+                          | NONE   => (ErrorMsg.errorAt' (pos yypos, pos yypos)
                                        ("Expected float, received: " ^ yytext);
                                        continue ()));
 
 <COMMENT> .           => (continue());
 
-<INITIAL> .           => (ErrorMsg.errorAt' (yypos, yypos)
+<INITIAL> .           => (ErrorMsg.errorAt' (pos yypos, pos yypos)
                                             ("illegal character: \"" ^ yytext ^ "\"");
                           continue ());

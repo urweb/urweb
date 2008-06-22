@@ -26,5 +26,5 @@
  *)
 
 val () = case CommandLine.arguments () of
-             [filename] => Compiler.testCloconv filename
+             [filename] => Compiler.testCjrize filename
            | _ => print "Bad arguments"
