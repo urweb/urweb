@@ -61,6 +61,7 @@ fun compare ((t1, _), (t2, _)) =
             joinL compareFields (xts1, xts2)
         end
       | (TNamed n1, TNamed n2) => Int.compare (n1, n2)
+      | (TFfi (m1, x1), TFfi (m2, x2)) => join (String.compare (m1, m2), fn () => String.compare (x1, x2))
 
       | (TTop, _) => LESS
       | (_, TTop) => GREATER
@@ -73,6 +74,9 @@ fun compare ((t1, _), (t2, _)) =
 
       | (TRecord _, _) => LESS
       | (_, TRecord _) => GREATER
+
+      | (TNamed _, _) => LESS
+      | (_, TNamed _) => GREATER
 
 and compareFields ((x1, t1), (x2, t2)) =
     join (String.compare (x1, x2),
@@ -108,6 +112,7 @@ fun mapfold fc =
                                          xts,
                      fn xts' => (TRecord xts', loc))
               | TNamed _ => S.return2 cAll
+              | TFfi _ => S.return2 cAll
     in
         mft
     end
@@ -152,6 +157,11 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 EPrim _ => S.return2 eAll
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
+              | EFfi _ => S.return2 eAll
+              | EFfiApp (m, x, es) =>
+                S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,
+                     fn es' =>
+                        (EFfiApp (m, x, es'), loc))
               | ECode _ => S.return2 eAll
               | EApp (e1, e2) =>
                 S.bind2 (mfe ctx e1,

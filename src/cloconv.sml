@@ -69,7 +69,7 @@ fun ccTyp (t, loc) =
         L.TFun (t1, t2) => (L'.TFun (ccTyp t1, ccTyp t2), loc)
       | L.TRecord xts => (L'.TRecord (map (fn (x, t) => (x, ccTyp t)) xts), loc)
       | L.TNamed n => (L'.TNamed n, loc)
-      | L.TFfi _ => raise Fail "Cloconv TFfi"
+      | L.TFfi mx => (L'.TFfi mx, loc)
 
 structure Ds :> sig
     type t
@@ -111,8 +111,13 @@ fun ccExp env ((e, loc), D) =
         L.EPrim p => ((L'.EPrim p, loc), D)
       | L.ERel n => ((L'.ERel n, loc), Ds.used (D, n))
       | L.ENamed n => ((L'.ENamed n, loc), D)
-      | L.EFfi _ => raise Fail "Cloconv EFfi"
-      | L.EFfiApp _ => raise Fail "Cloconv EFfiApp"
+      | L.EFfi mx => ((L'.EFfi mx, loc), D)
+      | L.EFfiApp (m, x, es) =>
+        let
+            val (es, D) = ListUtil.foldlMap (ccExp env) D es
+        in
+            ((L'.EFfiApp (m, x, es), loc), D)
+        end
       | L.EApp (e1, e2) =>
         let
             val (e1, D) = ccExp env (e1, D)

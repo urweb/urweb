@@ -93,12 +93,15 @@ fun cifyTyp ((t, loc), sm) =
             ((L'.TRecord si, loc), sm)
         end
       | L.TNamed n => ((L'.TNamed n, loc), sm)
+      | L.TFfi _ => raise Fail "Cjrize TFfi"
 
 fun cifyExp ((e, loc), sm) =
     case e of
         L.EPrim p => ((L'.EPrim p, loc), sm)
       | L.ERel n => ((L'.ERel n, loc), sm)
       | L.ENamed n => ((L'.ENamed n, loc), sm)
+      | L.EFfi _ => raise Fail "Cjrize EFfi"
+      | L.EFfiApp _ => raise Fail "Cjrize EFfiApp"
       | L.ECode n => ((L'.ECode n, loc), sm)
       | L.EApp (e1, e2) =>
         let

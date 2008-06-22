@@ -35,6 +35,7 @@ datatype typ' =
        | TCode of typ * typ
        | TRecord of (string * typ) list
        | TNamed of int
+       | TFfi of string * string
 
 withtype typ = typ' located
 
@@ -42,6 +43,8 @@ datatype exp' =
          EPrim of Prim.t
        | ERel of int
        | ENamed of int
+       | EFfi of string * string
+       | EFfiApp of string * string * exp list
        | ECode of int
        | EApp of exp * exp
 
