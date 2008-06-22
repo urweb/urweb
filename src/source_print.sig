@@ -32,5 +32,6 @@ signature SOURCE_PRINT = sig
     val p_explicitness : Source.explicitness Print.printer
     val p_con : Source.con Print.printer
     val p_decl : Source.decl Print.printer
+    val p_sgn_item : Source.sgn_item Print.printer
     val p_file : Source.file Print.printer
 end

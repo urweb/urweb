@@ -31,6 +31,9 @@ signature COMPILER = sig
 
     val compile : string -> unit
 
+    val parseLig : string -> Source.sgn_item list option
+    val testLig : string -> unit
+
     val parse : string -> Source.file option
     val elaborate : ElabEnv.env -> string -> (Elab.file * ElabEnv.env) option
     val explify : ElabEnv.env -> string -> Expl.file option

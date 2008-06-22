@@ -35,6 +35,46 @@ structure LacwebP = Join(structure ParserData = LacwebLrVals.ParserData
                          structure Lex = Lex
                          structure LrParser = LrParser)
 
+fun parseLig filename =
+    let
+        val fname = OS.FileSys.tmpName ()
+        val outf = TextIO.openOut fname
+        val () = TextIO.output (outf, "sig\n")
+        val inf = TextIO.openIn filename
+        fun loop () =
+            case TextIO.inputLine inf of
+                NONE => ()
+              | SOME line => (TextIO.output (outf, line);
+                              loop ())
+        val () = loop ()
+        val () = TextIO.closeIn inf
+        val () = TextIO.closeOut outf
+
+        val () = (ErrorMsg.resetErrors ();
+                  ErrorMsg.resetPositioning filename)
+	val file = TextIO.openIn fname
+	fun get _ = TextIO.input file
+	fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
+	val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
+	val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
+    in
+        TextIO.closeIn file;
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            case absyn of
+                [(Source.DSgn ("?", (Source.SgnConst sgis, _)), _)] => SOME sgis
+              | _ => NONE
+    end
+    handle LrParser.ParseError => NONE
+
+fun testLig fname =
+    case parseLig fname of
+        NONE => ()
+      | SOME sgis =>
+        app (fn sgi => (Print.print (SourcePrint.p_sgn_item sgi);
+                        print "\n")) sgis
+
 (* The main parsing routine *)
 fun parse filename =
     let
@@ -50,7 +90,11 @@ fun parse filename =
         if ErrorMsg.anyErrors () then
             NONE
         else
-            SOME absyn
+            case absyn of
+                [(Source.DSgn ("?", _), _)] =>
+                (ErrorMsg.error "File starts with 'sig'";
+                 NONE)
+              | _ => SOME absyn
     end
     handle LrParser.ParseError => NONE
 
