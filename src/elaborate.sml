@@ -988,15 +988,15 @@ fun sgnError env err =
          eprefaces' [("Item", p_sgn_item env sgi)])
       | SgiWrongKind (sgi1, k1, sgi2, k2, kerr) =>
         (ErrorMsg.errorAt (#2 sgi1) "Kind unification failure in signature matching:";
-         eprefaces' [("Item 1", p_sgn_item env sgi1),
-                     ("Item 2", p_sgn_item env sgi2),
+         eprefaces' [("Have", p_sgn_item env sgi1),
+                     ("Need", p_sgn_item env sgi2),
                      ("Kind 1", p_kind k1),
                      ("Kind 2", p_kind k2)];
          kunifyError kerr)
       | SgiWrongCon (sgi1, c1, sgi2, c2, cerr) =>
         (ErrorMsg.errorAt (#2 sgi1) "Constructor unification failure in signature matching:";
-         eprefaces' [("Item 1", p_sgn_item env sgi1),
-                     ("Item 2", p_sgn_item env sgi2),
+         eprefaces' [("Have", p_sgn_item env sgi1),
+                     ("Need", p_sgn_item env sgi2),
                      ("Con 1", p_con env c1),
                      ("Con 2", p_con env c2)];
          cunifyError env cerr)
@@ -1110,6 +1110,14 @@ fun elabSgn_item ((sgi, loc), env) =
                 ([(L'.SgiStr (x, n, sgn'), loc)], env')
             end
 
+          | L.SgiSgn (x, sgn) =>
+            let
+                val sgn' = elabSgn env sgn
+                val (env', n) = E.pushSgnNamed env x sgn'
+            in
+                ([(L'.SgiSgn (x, n, sgn'), loc)], env')
+            end
+
           | L.SgiInclude sgn =>
             let
                 val sgn' = elabSgn env sgn
@@ -1120,6 +1128,7 @@ fun elabSgn_item ((sgi, loc), env) =
                   | _ => (sgnError env (NotIncludable sgn');
                           ([], env))
             end
+
     end
 
 and elabSgn env (sgn, loc) =
@@ -1163,14 +1172,33 @@ and elabSgn env (sgn, loc) =
               | _ => (sgnError env (UnWhereable (sgn', x));
                       sgnerror)
         end
+      | L.SgnProj (m, ms, x) =>
+        (case E.lookupStr env m of
+             NONE => (strError env (UnboundStr (loc, m));
+                      sgnerror)
+           | SOME (n, sgn) =>
+             let
+                 val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                          case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                              NONE => (strError env (UnboundStr (loc, m));
+                                                       (strerror, sgnerror))
+                                            | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                ((L'.StrVar n, loc), sgn) ms
+             in
+                 case E.projectSgn env {sgn = sgn, str = str, field = x} of
+                     NONE => (sgnError env (UnboundSgn (loc, x));
+                              sgnerror)
+                   | SOME _ => (L'.SgnProj (n, ms, x), loc)
+             end)
+                                                              
 
 fun sgiOfDecl (d, loc) =
     case d of
-        L'.DCon (x, n, k, c) => SOME (L'.SgiCon (x, n, k, c), loc)
-      | L'.DVal (x, n, t, _) => SOME (L'.SgiVal (x, n, t), loc)
-      | L'.DSgn _ => NONE
-      | L'.DStr (x, n, sgn, _) => SOME (L'.SgiStr (x, n, sgn), loc)
-      | L'.DFfiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, sgn), loc)
+        L'.DCon (x, n, k, c) => (L'.SgiCon (x, n, k, c), loc)
+      | L'.DVal (x, n, t, _) => (L'.SgiVal (x, n, t), loc)
+      | L'.DSgn (x, n, sgn) => (L'.SgiSgn (x, n, sgn), loc)
+      | L'.DStr (x, n, sgn, _) => (L'.SgiStr (x, n, sgn), loc)
+      | L'.DFfiStr (x, n, sgn) => (L'.SgiStr (x, n, sgn), loc)
 
 fun subSgn env sgn1 (sgn2 as (_, loc2)) =
     case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
@@ -1264,6 +1292,18 @@ fun subSgn env sgn1 (sgn2 as (_, loc2)) =
                                          NONE
                                    | _ => NONE)
                         (* Add type equations between structures here some day. *)
+
+                      | L'.SgiSgn (x, n2, sgn2) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 case sgi1 of
+                                     L'.SgiSgn (x', n1, sgn1) =>
+                                     if x = x' then
+                                         (subSgn env sgn1 sgn2;
+                                          subSgn env sgn2 sgn1;
+                                          SOME env)
+                                     else
+                                         NONE
+                                   | _ => NONE)
                 end
         in
             ignore (foldl folder env sgis2)
@@ -1296,6 +1336,13 @@ fun selfify env {str, strs, sgn} =
                             | x => x) sgis), #2 sgn)
       | L'.SgnFun _ => sgn
       | L'.SgnWhere _ => sgn
+      | L'.SgnProj (m, ms, x) =>
+        case E.projectSgn env {str = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
+                                           (L'.StrVar m, #2 sgn) ms,
+                               sgn = #2 (E.lookupStrNamed env m),
+                               field = x} of
+            NONE => raise Fail "Elaborate.selfify: projectSgn returns NONE"
+          | SOME sgn => selfify env {str = str, strs = strs, sgn = sgn}
 
 fun selfifyAt env {str, sgn} =
     let
@@ -1430,7 +1477,7 @@ and elabStr env (str, loc) =
         L.StrConst ds =>
         let
             val (ds', env') = ListUtil.foldlMap elabDecl env ds
-            val sgis = List.mapPartial sgiOfDecl ds'
+            val sgis = map sgiOfDecl ds'
         in
             ((L'.StrConst ds', loc), (L'.SgnConst sgis, loc))
         end
@@ -1509,7 +1556,10 @@ fun elabFile basis env file =
                                            E.pushENamedAs env' x n t)
                                         | L'.SgiStr (x, n, sgn) =>
                                           ((L'.DStr (x, n, sgn, (L'.StrProj ((L'.StrVar basis_n, loc), x), loc)), loc),
-                                           E.pushStrNamedAs env' x n sgn))
+                                           E.pushStrNamedAs env' x n sgn)
+                                        | L'.SgiSgn (x, n, sgn) =>
+                                          ((L'.DSgn (x, n, (L'.SgnProj (basis_n, [], x), loc)), loc),
+                                           E.pushSgnNamedAs env' x n sgn))
                 env' sgis
               | _ => raise Fail "Non-constant Basis signature"
 

@@ -294,6 +294,13 @@ fun p_sgn_item env (sgi, _) =
                                    string ":",
                                    space,
                                    p_sgn env sgn]
+      | SgiSgn (x, n, sgn) => box [string "signature",
+                                   space,
+                                   p_named x n,
+                                   space,
+                                   string "=",
+                                   space,
+                                   p_sgn env sgn]
 
 and p_sgn env (sgn, _) =
     case sgn of
@@ -334,6 +341,17 @@ and p_sgn env (sgn, _) =
                                      string "=",
                                      space,
                                      p_con env c]
+      | SgnProj (m1, ms, x) =>
+        let
+            val (m1x, sgn) = E.lookupStrNamed env m1
+
+            val m1s = if !debug then
+                          m1x ^ "__" ^ Int.toString m1
+                      else
+                          m1x
+        in
+            p_list_sep (string ".") string (m1x :: ms @ [x])
+        end
       | SgnError => string "<ERROR>"
 
 fun p_decl env ((d, _) : decl) =

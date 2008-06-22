@@ -87,12 +87,14 @@ datatype sgn_item' =
        | SgiCon of string * int * kind * con
        | SgiVal of string * int * con
        | SgiStr of string * int * sgn
+       | SgiSgn of string * int * sgn
 
 and sgn' =
     SgnConst of sgn_item list
   | SgnVar of int
   | SgnFun of string * int * sgn * sgn
   | SgnWhere of sgn * string * con
+  | SgnProj of int * string list * string
   | SgnError
 
 withtype sgn_item = sgn_item' located

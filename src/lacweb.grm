@@ -63,6 +63,7 @@ val s = ErrorMsg.spanOf
 
  | path of string list * string
  | spath of str
+ | mpath of string list
 
  | cexp of con
  | capps of con
@@ -128,7 +129,13 @@ sgn    : sgntm                          (sgntm)
                                         (SgnFun (CSYMBOL, sgn1, sgn2), s (FUNCTORleft, sgn2right))
 
 sgntm  : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
-       | CSYMBOL                        (SgnVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | mpath                          (case mpath of
+                                             [] => raise Fail "Impossible mpath parse"
+                                           | [x] => SgnVar x
+                                           | m :: ms => SgnProj (m,
+                                                                 List.take (ms, length ms - 1),
+                                                                 List.nth (ms, length ms - 1)),
+                                         s (mpathleft, mpathright))
        | sgntm WHERE CON SYMBOL EQ cexp (SgnWhere (sgntm, SYMBOL, cexp), s (sgntmleft, cexpright))
        | sgntm WHERE LTYPE SYMBOL EQ cexp(SgnWhere (sgntm, SYMBOL, cexp), s (sgntmleft, cexpright))
        | LPAREN sgn RPAREN              (sgn)
@@ -143,6 +150,7 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
        | VAL SYMBOL COLON cexp          (SgiVal (SYMBOL, cexp), s (VALleft, cexpright))
 
        | STRUCTURE CSYMBOL COLON sgn    (SgiStr (CSYMBOL, sgn), s (STRUCTUREleft, sgnright))
+       | SIGNATURE CSYMBOL EQ sgn       (SgiSgn (CSYMBOL, sgn), s (SIGNATUREleft, sgnright))
        | FUNCTOR CSYMBOL LPAREN CSYMBOL COLON sgn RPAREN COLON sgn
                                         (SgiStr (CSYMBOL1,
                                                  (SgnFun (CSYMBOL2, sgn1, sgn2), s (FUNCTORleft, sgn2right))),
@@ -190,6 +198,9 @@ kcolon : DCOLON                         (Explicit)
 
 path   : SYMBOL                         ([], SYMBOL)
        | CSYMBOL DOT path               (let val (ms, x) = path in (CSYMBOL :: ms, x) end)
+
+mpath  : CSYMBOL                        ([CSYMBOL])
+       | CSYMBOL DOT mpath              (CSYMBOL :: mpath)
 
 cterm  : LPAREN cexp RPAREN             (#1 cexp, s (LPARENleft, RPARENright))
        | LBRACK rcon RBRACK             (CRecord rcon, s (LBRACKleft, RBRACKright))

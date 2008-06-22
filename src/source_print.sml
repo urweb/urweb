@@ -238,6 +238,13 @@ fun p_sgn_item (sgi, _) =
                                 string ":",
                                 space,
                                 p_sgn sgn]
+      | SgiSgn (x, sgn) => box [string "signature",
+                                space,
+                                string x,
+                                space,
+                                string "=",
+                                space,
+                                p_sgn sgn]
       | SgiInclude sgn => box [string "include",
                                space,
                                p_sgn sgn]
@@ -273,6 +280,8 @@ and p_sgn (sgn, _) =
                                      string "=",
                                      space,
                                      p_con c]
+      | SgnProj (m, ms, x) => p_list_sep (string ".") string (m :: ms @ [x])
+                                   
 
 fun p_decl ((d, _) : decl) =
     case d of

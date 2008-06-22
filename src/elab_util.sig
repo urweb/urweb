@@ -83,6 +83,7 @@ structure Sgn : sig
              RelC of string * Elab.kind
            | NamedC of string * Elab.kind
            | Str of string * Elab.sgn
+           | Sgn of string * Elab.sgn
 
     val mapfoldB : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,

@@ -298,23 +298,25 @@ fun sgiBinds env (sgi, _) =
       | SgiCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
       | SgiVal (x, n, t) => pushENamedAs env x n t
       | SgiStr (x, n, sgn) => pushStrNamedAs env x n sgn
+      | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
 
 fun sgnSeek f sgis =
     let
-        fun seek (sgis, strs, cons) =
+        fun seek (sgis, sgns, strs, cons) =
             case sgis of
                 [] => NONE
               | (sgi, _) :: sgis =>
                 case f sgi of
-                    SOME v => SOME (v, (strs, cons))
+                    SOME v => SOME (v, (sgns, strs, cons))
                     | NONE =>
                       case sgi of
-                          SgiConAbs (x, n, _) => seek (sgis, strs, IM.insert (cons, n, x))
-                        | SgiCon (x, n, _, _) => seek (sgis, strs, IM.insert (cons, n, x))
-                        | SgiVal _ => seek (sgis, strs, cons)
-                        | SgiStr (x, n, _) => seek (sgis, IM.insert (strs, n, x), cons)
+                          SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                        | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                        | SgiVal _ => seek (sgis, sgns, strs, cons)
+                        | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons)
+                        | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons)
     in
-        seek (sgis, IM.empty, IM.empty)
+        seek (sgis, IM.empty, IM.empty, IM.empty)
     end
 
 fun id x = x
@@ -330,7 +332,7 @@ fun unravelStr (str, _) =
         end
       | _ => raise Fail "unravelStr"
 
-fun sgnS_con (str, (strs, cons)) c =
+fun sgnS_con (str, (sgns, strs, cons)) c =
     case c of
         CModProj (m1, ms, x) =>
         (case IM.find (strs, m1) of
@@ -352,15 +354,37 @@ fun sgnS_con (str, (strs, cons)) c =
              end)
       | _ => c
 
-fun sgnSubCon (str, (strs, cons)) =
-    ElabUtil.Con.map {kind = id,
-                      con = sgnS_con (str, (strs, cons))}
+fun sgnS_sgn (str, (sgns, strs, cons)) sgn =
+    case sgn of
+        SgnProj (m1, ms, x) =>
+        (case IM.find (strs, m1) of
+             NONE => sgn
+           | SOME m1x =>
+             let
+                 val (m1, ms') = unravelStr str
+             in
+                 SgnProj (m1, ms' @ m1x :: ms, x)
+             end)
+      | SgnVar n =>
+        (case IM.find (sgns, n) of
+             NONE => sgn
+           | SOME nx =>
+             let
+                 val (m1, ms) = unravelStr str
+             in
+                 SgnProj (m1, ms, nx)
+             end)
+      | _ => sgn
 
-fun sgnSubSgn (str, (strs, cons)) =
+fun sgnSubCon x =
+    ElabUtil.Con.map {kind = id,
+                      con = sgnS_con x}
+
+fun sgnSubSgn x =
     ElabUtil.Sgn.map {kind = id,
-                      con = sgnS_con (str, (strs, cons)),
+                      con = sgnS_con x,
                       sgn_item = id,
-                      sgn = id}
+                      sgn = sgnS_sgn x}
 
 fun hnormSgn env (all as (sgn, loc)) =
     case sgn of
@@ -368,6 +392,16 @@ fun hnormSgn env (all as (sgn, loc)) =
       | SgnVar n => hnormSgn env (#2 (lookupSgnNamed env n))
       | SgnConst _ => all
       | SgnFun _ => all
+      | SgnProj (m, ms, x) =>
+        let
+            val (_, sgn) = lookupStrNamed env m
+        in
+            case projectSgn env {str = foldl (fn (m, str) => (StrProj (str, m), loc)) (StrVar m, loc) ms,
+                                 sgn = sgn,
+                                 field = x} of
+                NONE => raise Fail "ElabEnv.hnormSgn: projectSgn failed"
+              | SOME sgn => sgn
+        end
       | SgnWhere (sgn, x, c) =>
         case #1 (hnormSgn env sgn) of
             SgnError => (SgnError, loc)
@@ -389,6 +423,24 @@ fun hnormSgn env (all as (sgn, loc)) =
             end
           | _ => raise Fail "ElabEnv.hnormSgn: Can't reduce 'where' [2]"
 
+and projectSgn env {sgn, str, field} =
+    case #1 (hnormSgn env sgn) of
+        SgnConst sgis =>
+        (case sgnSeek (fn SgiSgn (x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
+             NONE => NONE
+           | SOME (sgn, subs) => SOME (sgnSubSgn (str, subs) sgn))
+      | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
+      | _ => NONE
+
+fun projectStr env {sgn, str, field} =
+    case #1 (hnormSgn env sgn) of
+        SgnConst sgis =>
+        (case sgnSeek (fn SgiStr (x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
+             NONE => NONE
+           | SOME (sgn, subs) => SOME (sgnSubSgn (str, subs) sgn))
+      | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
+      | _ => NONE
+
 fun projectCon env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
@@ -409,13 +461,5 @@ fun projectVal env {sgn, str, field} =
       | SgnError => SOME (CError, ErrorMsg.dummySpan)
       | _ => NONE
 
-fun projectStr env {sgn, str, field} =
-    case #1 (hnormSgn env sgn) of
-        SgnConst sgis =>
-        (case sgnSeek (fn SgiStr (x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
-             NONE => NONE
-           | SOME (sgn, subs) => SOME (sgnSubSgn (str, subs) sgn))
-      | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
-      | _ => NONE
 
 end

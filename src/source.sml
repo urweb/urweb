@@ -67,6 +67,7 @@ datatype sgn_item' =
        | SgiCon of string * kind option * con
        | SgiVal of string * con
        | SgiStr of string * sgn
+       | SgiSgn of string * sgn
        | SgiInclude of sgn
 
 and sgn' =
@@ -74,6 +75,7 @@ and sgn' =
   | SgnVar of string
   | SgnFun of string * sgn * sgn
   | SgnWhere of sgn * string * con
+  | SgnProj of string * string list * string
 
 withtype sgn_item = sgn_item' located
 and sgn = sgn' located
