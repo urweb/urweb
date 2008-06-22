@@ -29,31 +29,35 @@
 
 signature COMPILER = sig
 
-    val compile : string -> unit
+    type job = string list
+    val compile : job -> unit
 
     val parseLig : string -> Source.sgn_item list option
     val testLig : string -> unit
 
-    val parse : string -> Source.file option
-    val elaborate : ElabEnv.env -> string -> (Elab.file * ElabEnv.env) option
-    val explify : ElabEnv.env -> string -> Expl.file option
-    val corify : ElabEnv.env -> string -> Core.file option
-    val shake' : ElabEnv.env  -> string -> Core.file option
-    val reduce : ElabEnv.env -> string -> Core.file option
-    val shake : ElabEnv.env  -> string -> Core.file option
-    val monoize : ElabEnv.env -> CoreEnv.env -> string -> Mono.file option
-    val cloconv : ElabEnv.env -> CoreEnv.env -> string -> Flat.file option
-    val cjrize : ElabEnv.env -> CoreEnv.env -> string -> Cjr.file option
+    val parseLac : string -> Source.file option
+    val testLac : string -> unit
 
-    val testParse : string -> unit
-    val testElaborate : string -> unit
-    val testExplify : string -> unit
-    val testCorify : string -> unit
-    val testShake' : string -> unit
-    val testReduce : string -> unit
-    val testShake : string -> unit
-    val testMonoize : string -> unit
-    val testCloconv : string -> unit
-    val testCjrize : string -> unit
+    val parse : job -> Source.file option
+    val elaborate : job -> Elab.file option
+    val explify : job -> Expl.file option
+    val corify : job -> Core.file option
+    val shake' : job -> Core.file option
+    val reduce : job -> Core.file option
+    val shake : job -> Core.file option
+    val monoize : job -> Mono.file option
+    val cloconv : job -> Flat.file option
+    val cjrize : job -> Cjr.file option
+
+    val testParse : job -> unit
+    val testElaborate : job -> unit
+    val testExplify : job -> unit
+    val testCorify : job -> unit
+    val testShake' : job -> unit
+    val testReduce : job -> unit
+    val testShake : job -> unit
+    val testMonoize : job -> unit
+    val testCloconv : job -> unit
+    val testCjrize : job -> unit
 
 end

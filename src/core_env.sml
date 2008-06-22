@@ -124,17 +124,4 @@ fun declBinds env (d, _) =
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
       | DVal (x, n, t, e) => pushENamed env x n t (SOME e)
 
-val ktype = (KType, ErrorMsg.dummySpan)
-
-fun bbind env x =
-    case ElabEnv.lookupC ElabEnv.basis x of
-        ElabEnv.NotBound => raise Fail "CoreEnv.bbind: Not bound"
-      | ElabEnv.Rel _ => raise Fail "CoreEnv.bbind: Rel"
-      | ElabEnv.Named (n, _) => pushCNamed env x n ktype NONE
-
-val basis = empty
-val basis = bbind basis "int"
-val basis = bbind basis "float"
-val basis = bbind basis "string"
-
 end

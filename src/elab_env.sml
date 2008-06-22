@@ -418,14 +418,4 @@ fun projectStr env {sgn, str, field} =
       | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
       | _ => NONE
 
-
-val ktype = (KType, ErrorMsg.dummySpan)
-
-fun bbind env x = #1 (pushCNamed env x ktype NONE)
-
-val basis = empty
-val basis = bbind basis "int"
-val basis = bbind basis "float"
-val basis = bbind basis "string"
-
 end

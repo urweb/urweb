@@ -156,6 +156,6 @@ and reduceExp env = U.Exp.mapB {kind = kind, con = con, exp = exp, bind = bind} 
 
 fun decl env d = d
 
-val reduce = U.File.mapB {kind = kind, con = con, exp = exp, decl = decl, bind = bind} CoreEnv.basis
+val reduce = U.File.mapB {kind = kind, con = con, exp = exp, decl = decl, bind = bind} CoreEnv.empty
 
 end

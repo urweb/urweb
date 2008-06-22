@@ -76,7 +76,7 @@ fun testLig fname =
                         print "\n")) sgis
 
 (* The main parsing routine *)
-fun parse filename =
+fun parseLac filename =
     let
         val () = (ErrorMsg.resetErrors ();
                   ErrorMsg.resetPositioning filename)
@@ -98,30 +98,80 @@ fun parse filename =
     end
     handle LrParser.ParseError => NONE
 
-fun elaborate env filename =
-    case parse filename of
+fun testLac fname =
+    case parseLac fname of
+        NONE => ()
+      | SOME file => (Print.print (SourcePrint.p_file file);
+                      print "\n")
+
+type job = string list
+
+fun capitalize "" = ""
+  | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
+fun parse fnames =
+    let
+        fun parseOne fname =
+            let
+                val mname = capitalize (OS.Path.file fname)
+                val lac = OS.Path.joinBaseExt {base = fname, ext = SOME "lac"}
+                val lig = OS.Path.joinBaseExt {base = fname, ext = SOME "lig"}
+
+                val sgnO =
+                    if Posix.FileSys.access (lig, []) then
+                        case parseLig lig of
+                            NONE => NONE
+                          | SOME sgis => SOME (Source.SgnConst sgis, {file = lig,
+                                                                      first = ErrorMsg.dummyPos,
+                                                                      last = ErrorMsg.dummyPos})
+                    else
+                        NONE
+
+                val loc = {file = lac,
+                           first = ErrorMsg.dummyPos,
+                           last = ErrorMsg.dummyPos}
+            in
+                case parseLac lac of
+                    NONE => NONE
+                  | SOME ds =>
+                    SOME (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
+            end
+
+        val ds = List.mapPartial parseOne fnames            
+    in
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME ds
+    end
+
+fun elaborate job =
+    case parseLig "lib/basis.lig" of
+        NONE => NONE
+      | SOME empty =>
+        case parse job of
+            NONE => NONE
+          | SOME file =>
+            let
+                val out = Elaborate.elabFile empty ElabEnv.empty file
+            in
+                if ErrorMsg.anyErrors () then
+                    NONE
+                else
+                    SOME out
+            end
+
+fun explify job =
+    case elaborate job of
         NONE => NONE
       | SOME file =>
-        let
-            val out = Elaborate.elabFile env file
-        in
-            if ErrorMsg.anyErrors () then
-                NONE
-            else
-                SOME out
-        end
-
-fun explify eenv filename =
-    case elaborate eenv filename of
-        NONE => NONE
-      | SOME (file, _) =>
         if ErrorMsg.anyErrors () then
             NONE
         else
             SOME (Explify.explify file)
 
-fun corify eenv filename =
-    case explify eenv filename of
+fun corify job =
+    case explify job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -129,8 +179,8 @@ fun corify eenv filename =
         else
             SOME (Corify.corify file)
 
-fun shake' eenv filename =
-    case corify eenv filename of
+fun shake' job =
+    case corify job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -138,8 +188,8 @@ fun shake' eenv filename =
         else
             SOME (Shake.shake file)
 
-fun reduce eenv filename =
-    case corify eenv filename of
+fun reduce job =
+    case corify job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -147,8 +197,8 @@ fun reduce eenv filename =
         else
             SOME (Reduce.reduce (Shake.shake file))
 
-fun shake eenv filename =
-    case reduce eenv filename of
+fun shake job =
+    case reduce job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -156,17 +206,17 @@ fun shake eenv filename =
         else
             SOME (Shake.shake file)
 
-fun monoize eenv cenv filename =
-    case shake eenv filename of
+fun monoize job =
+    case shake job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
             NONE
         else
-            SOME (Monoize.monoize cenv file)
+            SOME (Monoize.monoize CoreEnv.empty file)
 
-fun cloconv eenv cenv filename =
-    case monoize eenv cenv filename of
+fun cloconv job =
+    case monoize job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -174,8 +224,8 @@ fun cloconv eenv cenv filename =
         else
             SOME (Cloconv.cloconv file)
 
-fun cjrize eenv cenv filename =
-    case cloconv eenv cenv filename of
+fun cjrize job =
+    case cloconv job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -183,104 +233,104 @@ fun cjrize eenv cenv filename =
         else
             SOME (Cjrize.cjrize file)
 
-fun testParse filename =
-    case parse filename of
+fun testParse job =
+    case parse job of
         NONE => print "Failed\n"
       | SOME file =>
         (Print.print (SourcePrint.p_file file);
          print "\n")
 
-fun testElaborate filename =
-    (case elaborate ElabEnv.basis filename of
+fun testElaborate job =
+    (case elaborate job of
          NONE => print "Failed\n"
-       | SOME (file, _) =>
+       | SOME file =>
          (print "Succeeded\n";
-          Print.print (ElabPrint.p_file ElabEnv.basis file);
+          Print.print (ElabPrint.p_file ElabEnv.empty file);
           print "\n"))
     handle ElabEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testExplify filename =
-    (case explify ElabEnv.basis filename of
+fun testExplify job =
+    (case explify job of
          NONE => print "Failed\n"
        | SOME file =>
-         (Print.print (ExplPrint.p_file ExplEnv.basis file);
+         (Print.print (ExplPrint.p_file ExplEnv.empty file);
           print "\n"))
     handle ExplEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testCorify filename =
-    (case corify ElabEnv.basis filename of
+fun testCorify job =
+    (case corify job of
          NONE => print "Failed\n"
        | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.basis file);
+         (Print.print (CorePrint.p_file CoreEnv.empty file);
           print "\n"))
     handle CoreEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testShake' filename =
-    (case shake' ElabEnv.basis filename of
+fun testShake' job =
+    (case shake' job of
          NONE => print "Failed\n"
        | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.basis file);
+         (Print.print (CorePrint.p_file CoreEnv.empty file);
           print "\n"))
     handle CoreEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testReduce filename =
-    (case reduce ElabEnv.basis filename of
+fun testReduce job =
+    (case reduce job of
          NONE => print "Failed\n"
        | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.basis file);
+         (Print.print (CorePrint.p_file CoreEnv.empty file);
           print "\n"))
     handle CoreEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testShake filename =
-    (case shake ElabEnv.basis filename of
+fun testShake job =
+    (case shake job of
          NONE => print "Failed\n"
        | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.basis file);
+         (Print.print (CorePrint.p_file CoreEnv.empty file);
           print "\n"))
     handle CoreEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testMonoize filename =
-    (case monoize ElabEnv.basis CoreEnv.basis filename of
+fun testMonoize job =
+    (case monoize job of
          NONE => print "Failed\n"
        | SOME file =>
-         (Print.print (MonoPrint.p_file MonoEnv.basis file);
+         (Print.print (MonoPrint.p_file MonoEnv.empty file);
           print "\n"))
     handle MonoEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testCloconv filename =
-    (case cloconv ElabEnv.basis CoreEnv.basis filename of
+fun testCloconv job =
+    (case cloconv job of
          NONE => print "Failed\n"
        | SOME file =>
-         (Print.print (FlatPrint.p_file FlatEnv.basis file);
+         (Print.print (FlatPrint.p_file FlatEnv.empty file);
           print "\n"))
     handle FlatEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testCjrize filename =
-    (case cjrize ElabEnv.basis CoreEnv.basis filename of
+fun testCjrize job =
+    (case cjrize job of
          NONE => print "Failed\n"
        | SOME file =>
-         (Print.print (CjrPrint.p_file CjrEnv.basis file);
+         (Print.print (CjrPrint.p_file CjrEnv.empty file);
           print "\n"))
     handle CjrEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun compile filename =
-    case cjrize ElabEnv.basis CoreEnv.basis filename of
+fun compile job =
+    case cjrize job of
         NONE => ()
       | SOME file =>
         let
             val outf = TextIO.openOut "/tmp/lacweb.c"
             val s = TextIOPP.openOut {dst = outf, wid = 80}
         in
-            Print.fprint s (CjrPrint.p_file CjrEnv.basis file);
+            Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
             TextIO.closeOut outf
         end
 

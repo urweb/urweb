@@ -141,6 +141,10 @@ val eerror = (L'.EError, dummy)
 val sgnerror = (L'.SgnError, dummy)
 val strerror = (L'.StrError, dummy)
 
+val int = ref cerror
+val float = ref cerror
+val string = ref cerror
+
 local
     val count = ref 0
 in
@@ -750,22 +754,14 @@ fun checkCon env e c1 c2 =
            expError env (Unify (e, c1, c2, err))
 
 fun primType env p =
-    let
-        val s = case p of
-                    P.Int _ => "int"
-                  | P.Float _ => "float"
-                  | P.String _ => "string"
-    in
-        case E.lookupC env s of
-            E.NotBound => raise Fail ("Primitive type " ^ s ^ " unbound")
-          | E.Rel _ => raise Fail ("Primitive type " ^ s ^ " bound as relative")
-          | E.Named (n, (L'.KType, _)) => L'.CNamed n
-          | E.Named _ => raise Fail ("Primitive type " ^ s ^ " bound at non-Type kind")
-    end
+    case p of
+        P.Int _ => !int
+      | P.Float _ => !float
+      | P.String _ => !string
 
 fun typeof env (e, loc) =
     case e of
-        L'.EPrim p => (primType env p, loc)
+        L'.EPrim p => primType env p
       | L'.ERel n => #2 (E.lookupERel env n)
       | L'.ENamed n => #2 (E.lookupENamed env n)
       | L'.EModProj (n, ms, x) =>
@@ -825,7 +821,7 @@ fun elabExp env (e, loc) =
             (e', t')
         end
 
-      | L.EPrim p => ((L'.EPrim p, loc), (primType env p, loc))
+      | L.EPrim p => ((L'.EPrim p, loc), primType env p)
       | L.EVar ([], s) =>
         (case E.lookupE env s of
              E.NotBound =>
@@ -1478,6 +1474,44 @@ and elabStr env (str, loc) =
                       (strerror, sgnerror))
         end
 
-val elabFile = ListUtil.foldlMap elabDecl
+fun elabFile basis env file =
+    let
+        val sgn = elabSgn env (L.SgnConst basis, ErrorMsg.dummySpan)
+        val (env', basis_n) = E.pushStrNamed env "Basis" sgn
+
+        val (ds, env') =
+            case #1 (hnormSgn env' sgn) of
+                L'.SgnConst sgis =>
+                ListUtil.foldlMap (fn ((sgi, loc), env') =>
+                                      case sgi of
+                                          L'.SgiConAbs (x, n, k) =>
+                                          ((L'.DCon (x, n, k, (L'.CModProj (basis_n, [], x), loc)), loc),
+                                           E.pushCNamedAs env' x n k NONE)
+                                        | L'.SgiCon (x, n, k, c) =>
+                                          ((L'.DCon (x, n, k, (L'.CModProj (basis_n, [], x), loc)), loc),
+                                           E.pushCNamedAs env' x n k (SOME c))
+                                        | L'.SgiVal (x, n, t) =>
+                                          ((L'.DVal (x, n, t, (L'.EModProj (basis_n, [], x), loc)), loc),
+                                           E.pushENamedAs env' x n t)
+                                        | L'.SgiStr (x, n, sgn) =>
+                                          ((L'.DStr (x, n, sgn, (L'.StrProj ((L'.StrVar basis_n, loc), x), loc)), loc),
+                                           E.pushStrNamedAs env' x n sgn))
+                env' sgis
+              | _ => raise Fail "Non-constant Basis signature"
+
+        fun discoverC r x =
+            case E.lookupC env' x of
+                E.NotBound => raise Fail ("Constructor " ^ x ^ " unbound in Basis")
+              | E.Rel _ => raise Fail ("Constructor " ^ x ^ " bound relatively in Basis")
+              | E.Named (n, (_, loc)) => r := (L'.CNamed n, loc)
+
+        val () = discoverC int "int"
+        val () = discoverC float "float"
+        val () = discoverC string "string"
+
+        val (file, _) = ListUtil.foldlMap elabDecl env' file
+    in
+        (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan) :: ds @ file
+    end
 
 end

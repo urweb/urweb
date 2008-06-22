@@ -190,7 +190,7 @@ fun ccDecl ((d, loc), D) =
         L.DVal (x, n, t, e) =>
         let
             val t = ccTyp t
-            val (e, D) = ccExp E.basis (e, D)
+            val (e, D) = ccExp E.empty (e, D)
         in
             Ds.exp D (x, n, t, e)
         end

@@ -85,15 +85,4 @@ fun declBinds env (d, _) =
     case d of
         DVal (x, n, t, e) => pushENamed env x n t (SOME e)
 
-fun bbind env x =
-    case ElabEnv.lookupC ElabEnv.basis x of
-        ElabEnv.NotBound => raise Fail "MonoEnv.bbind: Not bound"
-      | ElabEnv.Rel _ => raise Fail "MonoEnv.bbind: Rel"
-      | ElabEnv.Named (n, _) => pushTNamed env x n NONE
-
-val basis = empty
-val basis = bbind basis "int"
-val basis = bbind basis "float"
-val basis = bbind basis "string"
-
 end

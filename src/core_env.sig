@@ -32,7 +32,6 @@ signature CORE_ENV = sig
     type env
 
     val empty : env
-    val basis : env
 
     exception UnboundRel of int
     exception UnboundNamed of int
