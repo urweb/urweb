@@ -67,6 +67,7 @@ datatype sgn_item' =
        | SgiCon of string * kind option * con
        | SgiVal of string * con
        | SgiStr of string * sgn
+       | SgiInclude of sgn
 
 and sgn' =
     SgnConst of sgn_item list

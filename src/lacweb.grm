@@ -44,7 +44,7 @@ val s = ErrorMsg.spanOf
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR
- | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | INCLUDE | OPEN
 
 %nonterm
    file of decl list
@@ -147,6 +147,7 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
                                         (SgiStr (CSYMBOL1,
                                                  (SgnFun (CSYMBOL2, sgn1, sgn2), s (FUNCTORleft, sgn2right))),
                                          s (FUNCTORleft, sgn2right))
+       | INCLUDE sgn                    (SgiInclude sgn, s (INCLUDEleft, sgnright))
 
 sgis   :                                ([])
        | sgi sgis                       (sgi :: sgis)

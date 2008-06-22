@@ -238,6 +238,9 @@ fun p_sgn_item (sgi, _) =
                                 string ":",
                                 space,
                                 p_sgn sgn]
+      | SgiInclude sgn => box [string "include",
+                               space,
+                               p_sgn sgn]
 
 and p_sgn (sgn, _) =
     case sgn of

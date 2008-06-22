@@ -977,6 +977,7 @@ datatype sgn_error =
        | SgiWrongCon of L'.sgn_item * L'.con * L'.sgn_item * L'.con * cunify_error
        | SgnWrongForm of L'.sgn * L'.sgn
        | UnWhereable of L'.sgn * string
+       | NotIncludable of L'.sgn
 
 fun sgnError env err =
     case err of
@@ -1007,6 +1008,9 @@ fun sgnError env err =
         (ErrorMsg.errorAt (#2 sgn) "Unavailable field for 'where'";
          eprefaces' [("Signature", p_sgn env sgn),
                      ("Field", PD.string x)])
+      | NotIncludable sgn =>
+        (ErrorMsg.errorAt (#2 sgn) "Invalid signature to 'include'";
+         eprefaces' [("Signature", p_sgn env sgn)])
 
 datatype str_error =
          UnboundStr of ErrorMsg.span * string
@@ -1047,7 +1051,7 @@ fun elabSgn_item ((sgi, loc), env) =
                         ()
                     );
 
-                ((L'.SgiConAbs (x, n, k'), loc), env')
+                ([(L'.SgiConAbs (x, n, k'), loc)], env')
             end
 
           | L.SgiCon (x, ko, c) =>
@@ -1075,7 +1079,7 @@ fun elabSgn_item ((sgi, loc), env) =
                         ()
                     );
 
-                ((L'.SgiCon (x, n, k', c'), loc), env')
+                ([(L'.SgiCon (x, n, k', c'), loc)], env')
             end
 
           | L.SgiVal (x, c) =>
@@ -1095,7 +1099,7 @@ fun elabSgn_item ((sgi, loc), env) =
                         ()
                     );
 
-                ((L'.SgiVal (x, n, c'), loc), env')
+                ([(L'.SgiVal (x, n, c'), loc)], env')
             end
 
           | L.SgiStr (x, sgn) =>
@@ -1103,16 +1107,26 @@ fun elabSgn_item ((sgi, loc), env) =
                 val sgn' = elabSgn env sgn
                 val (env', n) = E.pushStrNamed env x sgn'
             in
-                ((L'.SgiStr (x, n, sgn'), loc), env')
+                ([(L'.SgiStr (x, n, sgn'), loc)], env')
             end
-            
+
+          | L.SgiInclude sgn =>
+            let
+                val sgn' = elabSgn env sgn
+            in
+                case #1 (hnormSgn env sgn') of
+                    L'.SgnConst sgis =>
+                    (sgis, foldl (fn (sgi, env) => E.sgiBinds env sgi) env sgis)
+                  | _ => (sgnError env (NotIncludable sgn');
+                          ([], env))
+            end
     end
 
 and elabSgn env (sgn, loc) =
     case sgn of
         L.SgnConst sgis =>
         let
-            val (sgis', _) = ListUtil.foldlMap elabSgn_item env sgis
+            val (sgis', _) = ListUtil.foldlMapConcat elabSgn_item env sgis
         in
             (L'.SgnConst sgis', loc)
         end
