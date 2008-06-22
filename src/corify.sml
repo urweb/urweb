@@ -263,7 +263,9 @@ fun corifyExp st (e, loc) =
               | St.Ffi (_, NONE) => raise Fail "corifyExp: Unknown type for FFI expression variable"
               | St.Ffi (m, SOME t) =>
                 case t of
-                    t as (L'.TFun _, _) =>
+                    (L'.TFun (dom as (L'.TRecord (L'.CRecord (_, []), _), _), ran), _) =>
+                    (L'.EAbs ("arg", dom, ran, (L'.EFfiApp (m, x, []), loc)), loc)
+                  | t as (L'.TFun _, _) =>
                     let
                         fun getArgs (all as (t, _), args) =
                             case t of
@@ -272,10 +274,10 @@ fun corifyExp st (e, loc) =
                                      
                         val (result, args) = getArgs (t, [])
 
-                        val (app, _) = foldl (fn (_, (app, n)) =>
-                                                 ((L'.EApp (app, (L'.ERel n, loc)), loc),
-                                                  n - 1)) ((L'.EFfi (m, x), loc),
-                                                           length args - 1) args
+                        val (actuals, _) = foldr (fn (_, (actuals, n)) =>
+                                                     ((L'.ERel n, loc) :: actuals,
+                                                      n + 1)) ([], 0) args
+                        val app = (L'.EFfiApp (m, x, actuals), loc)
                         val (abs, _, _) = foldr (fn (t, (abs, ran, n)) =>
                                                     ((L'.EAbs ("arg" ^ Int.toString n,
                                                                t,
