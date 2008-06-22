@@ -109,6 +109,7 @@ fun mapfoldB {kind = fk, con = fc, bind} =
 
               | CRel _ => S.return2 cAll
               | CNamed _ => S.return2 cAll
+              | CFfi _ => S.return2 cAll
               | CApp (c1, c2) =>
                 S.bind2 (mfc ctx c1,
                       fn c1' =>
@@ -216,6 +217,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                 EPrim _ => S.return2 eAll
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
+              | EFfi _ => S.return2 eAll
+              | EFfiApp (m, x, es) =>
+                S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,
+                     fn es' =>
+                        (EFfiApp (m, x, es'), loc))
               | EApp (e1, e2) =>
                 S.bind2 (mfe ctx e1,
                       fn e1' =>

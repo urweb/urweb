@@ -97,6 +97,7 @@ datatype decl' =
        | DVal of string * con option * exp
        | DSgn of string * sgn
        | DStr of string * sgn option * str
+       | DFfiStr of string * sgn
 
      and str' =
          StrConst of decl list

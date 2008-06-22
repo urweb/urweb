@@ -90,6 +90,7 @@ datatype decl' =
        | DVal of string * int * con * exp
        | DSgn of string * int * sgn
        | DStr of string * int * sgn * str
+       | DFfiStr of string * int * sgn
 
      and str' =
          StrConst of decl list

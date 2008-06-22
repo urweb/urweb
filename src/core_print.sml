@@ -90,6 +90,7 @@ fun p_con' par env (c, _) =
           else
               string (#1 (E.lookupCNamed env n)))
          handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n))
+      | CFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
 
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
                                            space,
@@ -156,6 +157,14 @@ fun p_exp' par env (e, _) =
           else
               string (#1 (E.lookupENamed env n)))
          handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n))
+      | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
+      | EFfiApp (m, x, es) => box [string "FFI(",
+                                   string m,
+                                   string ".",
+                                   string x,
+                                   string "(",
+                                   p_list (p_exp env) es,
+                                   string "))"]
       | EApp (e1, e2) => parenIf par (box [p_exp env e1,
                                            space,
                                            p_exp' true env e2])

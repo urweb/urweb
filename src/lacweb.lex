@@ -67,8 +67,8 @@ val strStart = ref 0
 %full
 %s COMMENT STRING;
 
-id = [a-z_][A-Za-z0-9_]*;
-cid = [A-Z][A-Za-z0-9_]*;
+id = [a-z_][A-Za-z0-9_']*;
+cid = [A-Z][A-Za-z0-9_']*;
 ws = [\ \t\012];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
@@ -135,6 +135,7 @@ realconst = [0-9]+\.[0-9]*;
 <INITIAL> "end"       => (Tokens.END (yypos, yypos + size yytext));
 <INITIAL> "functor"   => (Tokens.FUNCTOR (yypos, yypos + size yytext));
 <INITIAL> "where"     => (Tokens.WHERE (yypos, yypos + size yytext));
+<INITIAL> "extern"    => (Tokens.EXTERN (yypos, yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (yypos, yypos + size yytext));
 <INITIAL> "Name"      => (Tokens.NAME (yypos, yypos + size yytext));

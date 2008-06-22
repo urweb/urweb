@@ -335,6 +335,15 @@ fun p_decl ((d, _) : decl) =
                                         string "=",
                                         space,
                                         p_str str]
+      | DFfiStr (x, sgn) => box [string "extern",
+                                 space,
+                                 string "structure",
+                                 space,
+                                 string x,
+                                 space,
+                                 string ":",
+                                 space,
+                                 p_sgn sgn]
 
 and p_str (str, _) =
     case str of

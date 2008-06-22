@@ -379,6 +379,15 @@ fun p_decl env ((d, _) : decl) =
                                       string "=",
                                       space,
                                       p_str env str]
+      | DFfiStr (x, n, sgn) => box [string "extern",
+                                    space,
+                                    string "structure",
+                                    space,
+                                    p_named x n,
+                                    space,
+                                    string ":",
+                                    space,
+                                    p_sgn env sgn]
 
 and p_str env (str, _) =
     case str of

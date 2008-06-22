@@ -1,0 +1,12 @@
+extern structure Lib : sig
+        type t
+        val x : t
+end
+
+type t' = Lib.t
+val x' : t' = Lib.x
+
+structure Lib' = Lib
+
+type t'' = Lib'.t
+val x'' : t'' = Lib'.x

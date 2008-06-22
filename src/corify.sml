@@ -60,10 +60,15 @@ structure St : sig
 
     val enter : t -> t
     val leave : t -> {outer : t, inner : t}
+    val ffi : string -> t
 
     val bindCore : t -> string -> int -> t * int
     val lookupCoreById : t -> int -> int option
-    val lookupCoreByName : t -> string -> int
+
+    datatype core =
+             Normal of int
+           | Ffi of string
+    val lookupCoreByName : t -> string -> core
 
     val bindStr : t -> string -> int -> t -> t
     val lookupStrById : t -> int -> t
@@ -74,11 +79,11 @@ structure St : sig
     val lookupFunctorByName : string * t -> int * L.str
 end = struct
 
-datatype flattening = F of {
-         core : int SM.map,
-         strs : flattening SM.map,
-         funs : (int * L.str) SM.map
-}
+datatype flattening =
+         FNormal of {core : int SM.map,
+                     strs : flattening SM.map,
+                     funs : (int * L.str) SM.map}
+       | FFfi of string
                            
 type t = {
      core : int IM.map,
@@ -92,22 +97,25 @@ val empty = {
     core = IM.empty,
     strs = IM.empty,
     funs = IM.empty,
-    current = F { core = SM.empty, strs = SM.empty, funs = SM.empty },
+    current = FNormal { core = SM.empty, strs = SM.empty, funs = SM.empty },
     nested = []
 }
+
+datatype core =
+         Normal of int
+       | Ffi of string
 
 fun bindCore {core, strs, funs, current, nested} s n =
     let
         val n' = alloc ()
 
         val current =
-            let
-                val F {core, strs, funs} = current
-            in
-                F {core = SM.insert (core, s, n'),
-                   strs = strs,
-                   funs = funs}
-            end
+            case current of
+                FFfi _ => raise Fail "Binding inside FFfi"
+              | FNormal {core, strs, funs} =>
+                FNormal {core = SM.insert (core, s, n'),
+                         strs = strs,
+                         funs = funs}
     in
         ({core = IM.insert (core, n, n'),
           strs = strs,
@@ -119,18 +127,21 @@ fun bindCore {core, strs, funs, current, nested} s n =
 
 fun lookupCoreById ({core, ...} : t) n = IM.find (core, n)
 
-fun lookupCoreByName ({current = F {core, ...}, ...} : t) x =
-    case SM.find (core, x) of
-        NONE => raise Fail "Corify.St.lookupCoreByName"
-      | SOME n => n
+fun lookupCoreByName ({current, ...} : t) x =
+    case current of
+        FFfi m => Ffi m
+      | FNormal {core, ...} =>
+        case SM.find (core, x) of
+            NONE => raise Fail "Corify.St.lookupCoreByName"
+          | SOME n => Normal n
 
 fun enter {core, strs, funs, current, nested} =
     {core = core,
      strs = strs,
      funs = funs,
-     current = F {core = SM.empty,
-                  strs = SM.empty,
-                  funs = SM.empty},
+     current = FNormal {core = SM.empty,
+                        strs = SM.empty,
+                        funs = SM.empty},
      nested = current :: nested}
 
 fun dummy f = {core = IM.empty,
@@ -148,45 +159,51 @@ fun leave {core, strs, funs, current, nested = m1 :: rest} =
          inner = dummy current}
   | leave _ = raise Fail "Corify.St.leave"
 
-fun bindStr ({core, strs, funs, current = F {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
+fun ffi m = dummy (FFfi m)
+
+fun bindStr ({core, strs, funs, current = FNormal {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
             x n ({current = f, ...} : t) =
     {core = core,
      strs = IM.insert (strs, n, f),
      funs = funs,
-     current = F {core = mcore,
+     current = FNormal {core = mcore,
                   strs = SM.insert (mstrs, x, f),
                   funs = mfuns},
      nested = nested}
+  | bindStr _ _ _ _ = raise Fail "Corify.St.bindStr"
 
 fun lookupStrById ({strs, ...} : t) n =
     case IM.find (strs, n) of
         NONE => raise Fail "Corify.St.lookupStrById"
       | SOME f => dummy f
 
-fun lookupStrByName (m, {current = F {strs, ...}, ...} : t) =
-    case SM.find (strs, m) of
-        NONE => raise Fail "Corify.St.lookupStrByName"
-      | SOME f => dummy f
+fun lookupStrByName (m, {current = FNormal {strs, ...}, ...} : t) =
+    (case SM.find (strs, m) of
+         NONE => raise Fail "Corify.St.lookupStrByName"
+       | SOME f => dummy f)
+  | lookupStrByName _ = raise Fail "Corify.St.lookupStrByName"
 
-fun bindFunctor ({core, strs, funs, current = F {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
+fun bindFunctor ({core, strs, funs, current = FNormal {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
                 x n na str =
     {core = core,
      strs = strs,
      funs = IM.insert (funs, n, (na, str)),
-     current = F {core = mcore,
-                  strs = mstrs,
-                  funs = SM.insert (mfuns, x, (na, str))},
+     current = FNormal {core = mcore,
+                        strs = mstrs,
+                        funs = SM.insert (mfuns, x, (na, str))},
      nested = nested}
+  | bindFunctor _ _ _ _ _ = raise Fail "Corify.St.bindFunctor"
 
 fun lookupFunctorById ({funs, ...} : t) n =
     case IM.find (funs, n) of
         NONE => raise Fail "Corify.St.lookupFunctorById"
       | SOME v => v
 
-fun lookupFunctorByName (m, {current = F {funs, ...}, ...} : t) =
-    case SM.find (funs, m) of
-        NONE => raise Fail "Corify.St.lookupFunctorByName"
-      | SOME v => v
+fun lookupFunctorByName (m, {current = FNormal {funs, ...}, ...} : t) =
+    (case SM.find (funs, m) of
+         NONE => raise Fail "Corify.St.lookupFunctorByName"
+       | SOME v => v)
+  | lookupFunctorByName _ = raise Fail "Corify.St.lookupFunctorByName"
 
 end
 
@@ -213,9 +230,10 @@ fun corifyCon st (c, loc) =
         let
             val st = St.lookupStrById st m
             val st = foldl St.lookupStrByName st ms
-            val n = St.lookupCoreByName st x
         in
-            (L'.CNamed n, loc)
+            case St.lookupCoreByName st x of
+                St.Normal n => (L'.CNamed n, loc)
+              | St.Ffi m => (L'.CFfi (m, x), loc)
         end
 
       | L.CApp (c1, c2) => (L'.CApp (corifyCon st c1, corifyCon st c2), loc)
@@ -239,9 +257,10 @@ fun corifyExp st (e, loc) =
         let
             val st = St.lookupStrById st m
             val st = foldl St.lookupStrByName st ms
-            val n = St.lookupCoreByName st x
         in
-            (L'.ENamed n, loc)
+            case St.lookupCoreByName st x of
+                St.Normal n => (L'.ENamed n, loc)
+              | St.Ffi m => (L'.EFfi (m, x), loc)
         end
       | L.EApp (e1, e2) => (L'.EApp (corifyExp st e1, corifyExp st e2), loc)
       | L.EAbs (x, dom, ran, e1) => (L'.EAbs (x, corifyCon st dom, corifyCon st ran, corifyExp st e1), loc)
@@ -279,6 +298,14 @@ fun corifyDecl ((d, loc : EM.span), st) =
         in
             (ds, st)
         end
+
+      | L.DFfiStr (x, n, _) =>
+        let
+            val st = St.bindStr st x n (St.ffi x)
+        in
+            ([], st)
+        end
+
 
 and corifyStr ((str, _), st) =
     case str of
@@ -324,7 +351,8 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                                L.DCon (_, n', _, _) => Int.max (n, n')
                              | L.DVal (_, n', _ , _) => Int.max (n, n')
                              | L.DSgn (_, n', _) => Int.max (n, n')
-                             | L.DStr (_, n', _, str) => Int.max (n, Int.max (n', maxNameStr str)))
+                             | L.DStr (_, n', _, str) => Int.max (n, Int.max (n', maxNameStr str))
+                             | L.DFfiStr (_, n', _) => Int.max (n, n'))
                  0 ds
 
 and maxNameStr (str, _) =

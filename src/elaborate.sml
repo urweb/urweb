@@ -1160,6 +1160,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DVal (x, n, t, _) => SOME (L'.SgiVal (x, n, t), loc)
       | L'.DSgn _ => NONE
       | L'.DStr (x, n, sgn, _) => SOME (L'.SgiStr (x, n, sgn), loc)
+      | L'.DFfiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, sgn), loc)
 
 fun subSgn env sgn1 (sgn2 as (_, loc2)) =
     case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
@@ -1402,6 +1403,15 @@ fun elabDecl ((d, loc), env) =
                   | _ => ();
 
                 ((L'.DStr (x, n, sgn', str'), loc), env')
+            end
+
+          | L.DFfiStr (x, sgn) =>
+            let
+                val sgn' = elabSgn env sgn
+
+                val (env', n) = E.pushStrNamed env x sgn'
+            in
+                ((L'.DFfiStr (x, n, sgn'), loc), env')
             end
     end
 

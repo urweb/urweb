@@ -44,7 +44,7 @@ val s = ErrorMsg.spanOf
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR
- | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
 
 %nonterm
    file of decl list
@@ -119,6 +119,7 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                         (DStr (CSYMBOL1, NONE,
                                                (StrFun (CSYMBOL2, sgn1, SOME sgn2, str), s (FUNCTORleft, strright))),
                                          s (FUNCTORleft, strright))
+       | EXTERN STRUCTURE CSYMBOL COLON sgn (DFfiStr (CSYMBOL, sgn), s (EXTERNleft, sgnright))
 
 sgn    : sgntm                          (sgntm)
        | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn

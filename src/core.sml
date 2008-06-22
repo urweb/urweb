@@ -44,6 +44,7 @@ datatype con' =
 
        | CRel of int
        | CNamed of int
+       | CFfi of string * string
        | CApp of con * con
        | CAbs of string * kind * con
 
@@ -58,6 +59,8 @@ datatype exp' =
          EPrim of Prim.t
        | ERel of int
        | ENamed of int
+       | EFfi of string * string
+       | EFfiApp of string * string * exp list
        | EApp of exp * exp
        | EAbs of string * con * con * exp
        | ECApp of exp * con

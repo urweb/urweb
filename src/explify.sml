@@ -103,6 +103,7 @@ fun explifyDecl (d, loc : EM.span) =
 
       | L.DSgn (x, n, sgn) => (L'.DSgn (x, n, explifySgn sgn), loc)
       | L.DStr (x, n, sgn, str) => (L'.DStr (x, n, explifySgn sgn, explifyStr str), loc)
+      | L.DFfiStr (x, n, sgn) => (L'.DFfiStr (x, n, explifySgn sgn), loc)
 
 and explifyStr (str, loc) =
     case str of
