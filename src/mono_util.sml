@@ -54,6 +54,7 @@ fun mapfold fc =
                                          xts,
                      fn xts' => (TRecord xts', loc))
               | TNamed _ => S.return2 cAll
+              | TFfi _ => S.return2 cAll
     in
         mft
     end
@@ -98,6 +99,11 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 EPrim _ => S.return2 eAll
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
+              | EFfi _ => S.return2 eAll
+              | EFfiApp (m, x, es) =>
+                S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,
+                     fn es' =>
+                        (EFfiApp (m, x, es'), loc))
               | EApp (e1, e2) =>
                 S.bind2 (mfe ctx e1,
                       fn e1' =>

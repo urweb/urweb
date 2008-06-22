@@ -63,7 +63,7 @@ fun monoType env (all as (c, loc)) =
 
           | L.CRel _ => poly ()
           | L.CNamed n => (L'.TNamed n, loc)
-          | L.CFfi _ => raise Fail "Monoize CFfi"
+          | L.CFfi mx => (L'.TFfi mx, loc)
           | L.CApp _ => poly ()
           | L.CAbs _ => poly ()
 
@@ -86,8 +86,8 @@ fun monoExp env (all as (e, loc)) =
             L.EPrim p => (L'.EPrim p, loc)
           | L.ERel n => (L'.ERel n, loc)
           | L.ENamed n => (L'.ENamed n, loc)
-          | L.EFfi _ => raise Fail "Monoize EFfi"
-          | L.EFfiApp _ => raise Fail "Monoize EFfiApp"
+          | L.EFfi mx => (L'.EFfi mx, loc)
+          | L.EFfiApp (m, x, es) => (L'.EFfiApp (m, x, map (monoExp env) es), loc)
           | L.EApp (e1, e2) => (L'.EApp (monoExp env e1, monoExp env e2), loc)
           | L.EAbs (x, dom, ran, e) =>
             (L'.EAbs (x, monoType env dom, monoType env ran, monoExp (Env.pushERel env x dom) e), loc)

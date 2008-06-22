@@ -58,6 +58,7 @@ fun p_typ' par env (t, _) =
             string (#1 (E.lookupTNamed env n) ^ "__" ^ Int.toString n)
         else
             string (#1 (E.lookupTNamed env n))
+      | TFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
 
 and p_typ env = p_typ' false env
 
@@ -74,6 +75,14 @@ fun p_exp' par env (e, _) =
             string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
         else
             string (#1 (E.lookupENamed env n))
+      | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
+      | EFfiApp (m, x, es) => box [string "FFI(",
+                                   string m,
+                                   string ".",
+                                   string x,
+                                   string "(",
+                                   p_list (p_exp env) es,
+                                   string "))"]
       | EApp (e1, e2) => parenIf par (box [p_exp env e1,
                                            space,
                                            p_exp' true env e2])
