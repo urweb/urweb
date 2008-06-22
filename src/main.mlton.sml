@@ -25,6 +25,4 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-val () = case CommandLine.arguments () of
-             [filename] => Compiler.testCjrize filename
-           | _ => print "Bad arguments"
+val () = Compiler.testCjrize (CommandLine.arguments ())
