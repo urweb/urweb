@@ -1016,6 +1016,7 @@ datatype str_error =
          UnboundStr of ErrorMsg.span * string
        | NotFunctor of L'.sgn
        | FunctorRebind of ErrorMsg.span
+       | UnOpenable of L'.sgn
 
 fun strError env err =
     case err of
@@ -1026,6 +1027,9 @@ fun strError env err =
          eprefaces' [("Signature", p_sgn env sgn)])
       | FunctorRebind loc =>
         ErrorMsg.errorAt loc "Attempt to rebind functor"
+      | UnOpenable sgn =>
+        (ErrorMsg.errorAt (#2 sgn) "Un-openable structure";
+         eprefaces' [("Signature", p_sgn env sgn)])
 
 val hnormSgn = E.hnormSgn
 
@@ -1360,6 +1364,35 @@ fun selfifyAt env {str, sgn} =
           | SOME (str, strs) => selfify env {sgn = sgn, str = str, strs = strs}
     end
 
+fun dopen env {str, strs, sgn} =
+    let
+        val m = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
+                (L'.StrVar str, #2 sgn) strs
+    in
+        case #1 (hnormSgn env sgn) of
+            L'.SgnConst sgis =>
+            ListUtil.foldlMap (fn ((sgi, loc), env') =>
+                                  case sgi of
+                                      L'.SgiConAbs (x, n, k) =>
+                                      ((L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc),
+                                       E.pushCNamedAs env' x n k NONE)
+                                    | L'.SgiCon (x, n, k, c) =>
+                                      ((L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc),
+                                       E.pushCNamedAs env' x n k (SOME c))
+                                    | L'.SgiVal (x, n, t) =>
+                                      ((L'.DVal (x, n, t, (L'.EModProj (str, strs, x), loc)), loc),
+                                       E.pushENamedAs env' x n t)
+                                    | L'.SgiStr (x, n, sgn) =>
+                                      ((L'.DStr (x, n, sgn, (L'.StrProj (m, x), loc)), loc),
+                                       E.pushStrNamedAs env' x n sgn)
+                                    | L'.SgiSgn (x, n, sgn) =>
+                                      ((L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc),
+                                       E.pushSgnNamedAs env' x n sgn))
+                              env sgis
+          | _ => (strError env (UnOpenable sgn);
+                  ([], env))
+    end
+
 fun elabDecl ((d, loc), env) =
     let
         
@@ -1392,7 +1425,7 @@ fun elabDecl ((d, loc), env) =
                         ()
                     );
 
-                ((L'.DCon (x, n, k', c'), loc), env')
+                ([(L'.DCon (x, n, k', c'), loc)], env')
             end
           | L.DVal (x, co, e) =>
             let
@@ -1428,7 +1461,7 @@ fun elabDecl ((d, loc), env) =
                     else
                         ());
 
-                ((L'.DVal (x, n, c', e'), loc), env')
+                ([(L'.DVal (x, n, c', e'), loc)], env')
             end
 
           | L.DSgn (x, sgn) =>
@@ -1436,7 +1469,7 @@ fun elabDecl ((d, loc), env) =
                 val sgn' = elabSgn env sgn
                 val (env', n) = E.pushSgnNamed env x sgn'
             in
-                ((L'.DSgn (x, n, sgn'), loc), env')
+                ([(L'.DSgn (x, n, sgn'), loc)], env')
             end
 
           | L.DStr (x, sgno, str) =>
@@ -1459,7 +1492,7 @@ fun elabDecl ((d, loc), env) =
                        | _ => strError env (FunctorRebind loc))
                   | _ => ();
 
-                ((L'.DStr (x, n, sgn', str'), loc), env')
+                ([(L'.DStr (x, n, sgn', str'), loc)], env')
             end
 
           | L.DFfiStr (x, sgn) =>
@@ -1468,15 +1501,31 @@ fun elabDecl ((d, loc), env) =
 
                 val (env', n) = E.pushStrNamed env x sgn'
             in
-                ((L'.DFfiStr (x, n, sgn'), loc), env')
+                ([(L'.DFfiStr (x, n, sgn'), loc)], env')
             end
+
+          | L.DOpen (m, ms) =>
+            (case E.lookupStr env m of
+                 NONE => (strError env (UnboundStr (loc, m));
+                          ([], env))
+               | SOME (n, sgn) =>
+                 let
+                     val (_, sgn) = foldl (fn (m, (str, sgn)) =>
+                                              case E.projectStr env {str = str, sgn = sgn, field = m} of
+                                                  NONE => (strError env (UnboundStr (loc, m));
+                                                           (strerror, sgnerror))
+                                                | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                          ((L'.StrVar n, loc), sgn) ms
+                 in
+                     dopen env {str = n, strs = ms, sgn = sgn}
+                 end)
     end
 
 and elabStr env (str, loc) =
     case str of
         L.StrConst ds =>
         let
-            val (ds', env') = ListUtil.foldlMap elabDecl env ds
+            val (ds', env') = ListUtil.foldlMapConcat elabDecl env ds
             val sgis = map sgiOfDecl ds'
         in
             ((L'.StrConst ds', loc), (L'.SgnConst sgis, loc))
@@ -1540,28 +1589,7 @@ fun elabFile basis env file =
         val sgn = elabSgn env (L.SgnConst basis, ErrorMsg.dummySpan)
         val (env', basis_n) = E.pushStrNamed env "Basis" sgn
 
-        val (ds, env') =
-            case #1 (hnormSgn env' sgn) of
-                L'.SgnConst sgis =>
-                ListUtil.foldlMap (fn ((sgi, loc), env') =>
-                                      case sgi of
-                                          L'.SgiConAbs (x, n, k) =>
-                                          ((L'.DCon (x, n, k, (L'.CModProj (basis_n, [], x), loc)), loc),
-                                           E.pushCNamedAs env' x n k NONE)
-                                        | L'.SgiCon (x, n, k, c) =>
-                                          ((L'.DCon (x, n, k, (L'.CModProj (basis_n, [], x), loc)), loc),
-                                           E.pushCNamedAs env' x n k (SOME c))
-                                        | L'.SgiVal (x, n, t) =>
-                                          ((L'.DVal (x, n, t, (L'.EModProj (basis_n, [], x), loc)), loc),
-                                           E.pushENamedAs env' x n t)
-                                        | L'.SgiStr (x, n, sgn) =>
-                                          ((L'.DStr (x, n, sgn, (L'.StrProj ((L'.StrVar basis_n, loc), x), loc)), loc),
-                                           E.pushStrNamedAs env' x n sgn)
-                                        | L'.SgiSgn (x, n, sgn) =>
-                                          ((L'.DSgn (x, n, (L'.SgnProj (basis_n, [], x), loc)), loc),
-                                           E.pushSgnNamedAs env' x n sgn))
-                env' sgis
-              | _ => raise Fail "Non-constant Basis signature"
+        val (ds, env') = dopen env' {str = basis_n, strs = [], sgn = sgn}
 
         fun discoverC r x =
             case E.lookupC env' x of
@@ -1573,7 +1601,7 @@ fun elabFile basis env file =
         val () = discoverC float "float"
         val () = discoverC string "string"
 
-        val (file, _) = ListUtil.foldlMap elabDecl env' file
+        val (file, _) = ListUtil.foldlMapConcat elabDecl env' file
     in
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan) :: ds @ file
     end

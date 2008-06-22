@@ -101,6 +101,7 @@ datatype decl' =
        | DSgn of string * sgn
        | DStr of string * sgn option * str
        | DFfiStr of string * sgn
+       | DOpen of string * string list
 
      and str' =
          StrConst of decl list

@@ -356,6 +356,9 @@ fun p_decl ((d, _) : decl) =
                                  string ":",
                                  space,
                                  p_sgn sgn]
+      | DOpen (m, ms) => box [string "open",
+                              space,
+                              p_list_sep (string ".") string (m :: ms)]
 
 and p_str (str, _) =
     case str of

@@ -123,6 +123,9 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                                (StrFun (CSYMBOL2, sgn1, SOME sgn2, str), s (FUNCTORleft, strright))),
                                          s (FUNCTORleft, strright))
        | EXTERN STRUCTURE CSYMBOL COLON sgn (DFfiStr (CSYMBOL, sgn), s (EXTERNleft, sgnright))
+       | OPEN mpath                     (case mpath of
+                                             [] => raise Fail "Impossible mpath parse [1]"
+                                           | m :: ms => (DOpen (m, ms), s (OPENleft, mpathright)))
 
 sgn    : sgntm                          (sgntm)
        | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn
@@ -130,7 +133,7 @@ sgn    : sgntm                          (sgntm)
 
 sgntm  : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
        | mpath                          (case mpath of
-                                             [] => raise Fail "Impossible mpath parse"
+                                             [] => raise Fail "Impossible mpath parse [2]"
                                            | [x] => SgnVar x
                                            | m :: ms => SgnProj (m,
                                                                  List.take (ms, length ms - 1),
