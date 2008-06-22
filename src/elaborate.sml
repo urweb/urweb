@@ -36,6 +36,11 @@ structure U = ElabUtil
 open Print
 open ElabPrint
 
+structure SS = BinarySetFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
 fun elabExplicitness e =
     case e of
         L.Explicit => L'.Explicit
@@ -978,6 +983,10 @@ datatype sgn_error =
        | SgnWrongForm of L'.sgn * L'.sgn
        | UnWhereable of L'.sgn * string
        | NotIncludable of L'.sgn
+       | DuplicateCon of ErrorMsg.span * string
+       | DuplicateVal of ErrorMsg.span * string
+       | DuplicateSgn of ErrorMsg.span * string
+       | DuplicateStr of ErrorMsg.span * string
 
 fun sgnError env err =
     case err of
@@ -1011,6 +1020,14 @@ fun sgnError env err =
       | NotIncludable sgn =>
         (ErrorMsg.errorAt (#2 sgn) "Invalid signature to 'include'";
          eprefaces' [("Signature", p_sgn env sgn)])
+      | DuplicateCon (loc, s) =>
+        ErrorMsg.errorAt loc ("Duplicate constructor " ^ s ^ " in signature")
+      | DuplicateVal (loc, s) =>
+        ErrorMsg.errorAt loc ("Duplicate value " ^ s ^ " in signature")
+      | DuplicateSgn (loc, s) =>
+        ErrorMsg.errorAt loc ("Duplicate signature " ^ s ^ " in signature")
+      | DuplicateStr (loc, s) =>
+        ErrorMsg.errorAt loc ("Duplicate structure " ^ s ^ " in signature")
 
 datatype str_error =
          UnboundStr of ErrorMsg.span * string
@@ -1140,6 +1157,40 @@ and elabSgn env (sgn, loc) =
         L.SgnConst sgis =>
         let
             val (sgis', _) = ListUtil.foldlMapConcat elabSgn_item env sgis
+
+            val _ = foldl (fn ((sgi, loc), (cons, vals, sgns, strs)) =>
+                              case sgi of
+                                  L'.SgiConAbs (x, _, _) =>
+                                  (if SS.member (cons, x) then
+                                       sgnError env (DuplicateCon (loc, x))
+                                   else
+                                       ();
+                                   (SS.add (cons, x), vals, sgns, strs))
+                                | L'.SgiCon (x, _, _, _) =>
+                                  (if SS.member (cons, x) then
+                                       sgnError env (DuplicateCon (loc, x))
+                                   else
+                                       ();
+                                   (SS.add (cons, x), vals, sgns, strs))
+                                | L'.SgiVal (x, _, _) =>
+                                  (if SS.member (vals, x) then
+                                       sgnError env (DuplicateVal (loc, x))
+                                   else
+                                       ();
+                                   (cons, SS.add (vals, x), sgns, strs))
+                                | L'.SgiSgn (x, _, _) =>
+                                  (if SS.member (sgns, x) then
+                                       sgnError env (DuplicateSgn (loc, x))
+                                   else
+                                       ();
+                                   (cons, vals, SS.add (sgns, x), strs))
+                                | L'.SgiStr (x, _, _) =>
+                                  (if SS.member (strs, x) then
+                                       sgnError env (DuplicateStr (loc, x))
+                                   else
+                                       ();
+                                   (cons, vals, sgns, SS.add (strs, x))))
+                    (SS.empty, SS.empty, SS.empty, SS.empty) sgis'
         in
             (L'.SgnConst sgis', loc)
         end
