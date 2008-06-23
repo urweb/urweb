@@ -1,0 +1,11 @@
+val x = 0
+val x = 1
+
+type t = int
+(*type t = int*)
+
+signature S = sig end
+(*signature S = sig end*)
+
+structure S = struct end
+(*structure S = struct end*)

@@ -1578,6 +1578,40 @@ and elabStr env (str, loc) =
         let
             val (ds', env') = ListUtil.foldlMapConcat elabDecl env ds
             val sgis = map sgiOfDecl ds'
+
+            val (sgis, _, _, _, _) =
+                foldr (fn (sgall as (sgi, loc), (sgis, cons, vals, sgns, strs)) =>
+                          case sgi of
+                              L'.SgiConAbs (x, _, _) =>
+                              (if SS.member (cons, x) then
+                                   sgnError env (DuplicateCon (loc, x))
+                               else
+                                   ();
+                               (sgall :: sgis, SS.add (cons, x), vals, sgns, strs))
+                            | L'.SgiCon (x, _, _, _) =>
+                              (if SS.member (cons, x) then
+                                   sgnError env (DuplicateCon (loc, x))
+                               else
+                                   ();
+                               (sgall :: sgis, SS.add (cons, x), vals, sgns, strs))
+                            | L'.SgiVal (x, _, _) =>
+                              if SS.member (vals, x) then
+                                  (sgis, cons, vals, sgns, strs)
+                              else
+                                  (sgall :: sgis, cons, SS.add (vals, x), sgns, strs)
+                            | L'.SgiSgn (x, _, _) =>
+                              (if SS.member (sgns, x) then
+                                   sgnError env (DuplicateSgn (loc, x))
+                               else
+                                   ();
+                               (sgall :: sgis, cons, vals, SS.add (sgns, x), strs))
+                            | L'.SgiStr (x, _, _) =>
+                              (if SS.member (strs, x) then
+                                   sgnError env (DuplicateStr (loc, x))
+                               else
+                                   ();
+                               (sgall :: sgis, cons, vals, sgns, SS.add (strs, x))))
+                ([], SS.empty, SS.empty, SS.empty, SS.empty) sgis
         in
             ((L'.StrConst ds', loc), (L'.SgnConst sgis, loc))
         end
