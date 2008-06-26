@@ -249,7 +249,7 @@ fun p_exp' par env (e, _) =
             box [p_exp' true env e,
                  string ".",
                  p_con' true env c]
-      | EFold _ => string "fold"            
+      | EFold _ => string "fold"
 
       | EError => string "<ERROR>"
 

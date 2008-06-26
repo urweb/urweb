@@ -299,6 +299,7 @@ fun corifyExp st (e, loc) =
       | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) => (corifyCon st c, corifyExp st e, corifyCon st t)) xes), loc)
       | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp st e1, corifyCon st c,
                                                        {field = corifyCon st field, rest = corifyCon st rest}), loc)
+      | L.EFold _ => raise Fail "Corify EFold"
 
 fun corifyDecl ((d, loc : EM.span), st) =
     case d of

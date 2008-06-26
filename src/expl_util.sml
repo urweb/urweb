@@ -263,6 +263,10 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                              S.map2 (mfc ctx rest,
                                                   fn rest' =>
                                                      (EField (e', c', {field = field', rest = rest'}), loc)))))
+              | EFold k =>
+                S.map2 (mfk k,
+                         fn k' =>
+                            (EFold k', loc))
     in
         mfe
     end
