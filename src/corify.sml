@@ -62,13 +62,19 @@ structure St : sig
     val leave : t -> {outer : t, inner : t}
     val ffi : string -> L'.con SM.map -> t
 
-    val bindCore : t -> string -> int -> t * int
-    val lookupCoreById : t -> int -> int option
+    datatype core_con =
+             CNormal of int
+           | CFfi of string
+    val bindCon : t -> string -> int -> t * int
+    val lookupConById : t -> int -> int option
+    val lookupConByName : t -> string -> core_con
 
-    datatype core =
-             Normal of int
-           | Ffi of string * L'.con option
-    val lookupCoreByName : t -> string -> core
+    datatype core_val =
+             ENormal of int
+           | EFfi of string * L'.con
+    val bindVal : t -> string -> int -> t * int
+    val lookupValById : t -> int -> int option
+    val lookupValByName : t -> string -> core_val
 
     val bindStr : t -> string -> int -> t -> t
     val lookupStrById : t -> int -> t
@@ -80,13 +86,16 @@ structure St : sig
 end = struct
 
 datatype flattening =
-         FNormal of {core : int SM.map,
+         FNormal of {cons : int SM.map,
+                     vals : int SM.map,
                      strs : flattening SM.map,
                      funs : (int * L.str) SM.map}
-       | FFfi of string * L'.con SM.map
+       | FFfi of {mod : string,
+                  vals : L'.con SM.map}
                            
 type t = {
-     core : int IM.map,
+     cons : int IM.map,
+     vals : int IM.map,
      strs : flattening IM.map,
      funs : (int * L.str) IM.map,
      current : flattening,
@@ -94,30 +103,37 @@ type t = {
 }
 
 val empty = {
-    core = IM.empty,
+    cons = IM.empty,
+    vals = IM.empty,
     strs = IM.empty,
     funs = IM.empty,
-    current = FNormal { core = SM.empty, strs = SM.empty, funs = SM.empty },
+    current = FNormal { cons = SM.empty, vals = SM.empty, strs = SM.empty, funs = SM.empty },
     nested = []
 }
 
-datatype core =
-         Normal of int
-       | Ffi of string * L'.con option
+datatype core_con =
+         CNormal of int
+       | CFfi of string
 
-fun bindCore {core, strs, funs, current, nested} s n =
+datatype core_val =
+         ENormal of int
+       | EFfi of string * L'.con
+
+fun bindCon {cons, vals, strs, funs, current, nested} s n =
     let
         val n' = alloc ()
 
         val current =
             case current of
                 FFfi _ => raise Fail "Binding inside FFfi"
-              | FNormal {core, strs, funs} =>
-                FNormal {core = SM.insert (core, s, n'),
+              | FNormal {cons, vals, strs, funs} =>
+                FNormal {cons = SM.insert (cons, s, n'),
+                         vals = vals,
                          strs = strs,
                          funs = funs}
     in
-        ({core = IM.insert (core, n, n'),
+        ({cons = IM.insert (cons, n, n'),
+          vals = vals,
           strs = strs,
           funs = funs,
           current = current,
@@ -125,33 +141,72 @@ fun bindCore {core, strs, funs, current, nested} s n =
          n')
     end
 
-fun lookupCoreById ({core, ...} : t) n = IM.find (core, n)
+fun lookupConById ({cons, ...} : t) n = IM.find (cons, n)
 
-fun lookupCoreByName ({current, ...} : t) x =
+fun lookupConByName ({current, ...} : t) x =
     case current of
-        FFfi (m, cmap) => Ffi (m, SM.find (cmap, x))
-      | FNormal {core, ...} =>
-        case SM.find (core, x) of
-            NONE => raise Fail "Corify.St.lookupCoreByName"
-          | SOME n => Normal n
+        FFfi {mod = m, ...} => CFfi m
+      | FNormal {cons, ...} =>
+        case SM.find (cons, x) of
+            NONE => raise Fail "Corify.St.lookupConByName"
+          | SOME n => CNormal n
 
-fun enter {core, strs, funs, current, nested} =
-    {core = core,
+fun bindVal {cons, vals, strs, funs, current, nested} s n =
+    let
+        val n' = alloc ()
+
+        val current =
+            case current of
+                FFfi _ => raise Fail "Binding inside FFfi"
+              | FNormal {cons, vals, strs, funs} =>
+                FNormal {cons = cons,
+                         vals = SM.insert (vals, s, n'),
+                         strs = strs,
+                         funs = funs}
+    in
+        ({cons = cons,
+          vals = IM.insert (vals, n, n'),
+          strs = strs,
+          funs = funs,
+          current = current,
+          nested = nested},
+         n')
+    end
+
+fun lookupValById ({vals, ...} : t) n = IM.find (vals, n)
+
+fun lookupValByName ({current, ...} : t) x =
+    case current of
+        FFfi {mod = m, vals, ...} =>
+        (case SM.find (vals, x) of
+             NONE => raise Fail "Corify.St.lookupValByName: no type for FFI val"
+           | SOME t => EFfi (m, t))
+      | FNormal {vals, ...} =>
+        case SM.find (vals, x) of
+            NONE => raise Fail "Corify.St.lookupValByName"
+          | SOME n => ENormal n
+
+fun enter {cons, vals, strs, funs, current, nested} =
+    {cons = cons,
+     vals = vals,
      strs = strs,
      funs = funs,
-     current = FNormal {core = SM.empty,
+     current = FNormal {cons = SM.empty,
+                        vals = SM.empty,
                         strs = SM.empty,
                         funs = SM.empty},
      nested = current :: nested}
 
-fun dummy f = {core = IM.empty,
+fun dummy f = {cons = IM.empty,
+               vals = IM.empty,
                strs = IM.empty,
                funs = IM.empty,
                current = f,
                nested = []}
 
-fun leave {core, strs, funs, current, nested = m1 :: rest} =
-        {outer = {core = core,
+fun leave {cons, vals, strs, funs, current, nested = m1 :: rest} =
+        {outer = {cons = cons,
+                  vals = vals,
                   strs = strs,
                   funs = funs,
                   current = m1,
@@ -159,16 +214,19 @@ fun leave {core, strs, funs, current, nested = m1 :: rest} =
          inner = dummy current}
   | leave _ = raise Fail "Corify.St.leave"
 
-fun ffi m cmap = dummy (FFfi (m, cmap))
+fun ffi m vals = dummy (FFfi {mod = m, vals = vals})
 
-fun bindStr ({core, strs, funs, current = FNormal {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
+fun bindStr ({cons, vals, strs, funs,
+              current = FNormal {cons = mcons, vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
             x n ({current = f, ...} : t) =
-    {core = core,
+    {cons = cons,
+     vals = vals,
      strs = IM.insert (strs, n, f),
      funs = funs,
-     current = FNormal {core = mcore,
-                  strs = SM.insert (mstrs, x, f),
-                  funs = mfuns},
+     current = FNormal {cons = mcons,
+                        vals = mvals,
+                        strs = SM.insert (mstrs, x, f),
+                        funs = mfuns},
      nested = nested}
   | bindStr _ _ _ _ = raise Fail "Corify.St.bindStr"
 
@@ -183,12 +241,15 @@ fun lookupStrByName (m, {current = FNormal {strs, ...}, ...} : t) =
        | SOME f => dummy f)
   | lookupStrByName _ = raise Fail "Corify.St.lookupStrByName"
 
-fun bindFunctor ({core, strs, funs, current = FNormal {core = mcore, strs = mstrs, funs = mfuns}, nested} : t)
+fun bindFunctor ({cons, vals, strs, funs,
+                  current = FNormal {cons = mcons, vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
                 x n na str =
-    {core = core,
+    {cons = cons,
+     vals = vals,
      strs = strs,
      funs = IM.insert (funs, n, (na, str)),
-     current = FNormal {core = mcore,
+     current = FNormal {cons = mcons,
+                        vals = mvals,
                         strs = mstrs,
                         funs = SM.insert (mfuns, x, (na, str))},
      nested = nested}
@@ -223,7 +284,7 @@ fun corifyCon st (c, loc) =
 
       | L.CRel n => (L'.CRel n, loc)
       | L.CNamed n =>
-        (case St.lookupCoreById st n of
+        (case St.lookupConById st n of
              NONE => (L'.CNamed n, loc)
            | SOME n => (L'.CNamed n, loc))
       | L.CModProj (m, ms, x) =>
@@ -231,9 +292,9 @@ fun corifyCon st (c, loc) =
             val st = St.lookupStrById st m
             val st = foldl St.lookupStrByName st ms
         in
-            case St.lookupCoreByName st x of
-                St.Normal n => (L'.CNamed n, loc)
-              | St.Ffi (m, _) => (L'.CFfi (m, x), loc)
+            case St.lookupConByName st x of
+                St.CNormal n => (L'.CNamed n, loc)
+              | St.CFfi m => (L'.CFfi (m, x), loc)
         end
 
       | L.CApp (c1, c2) => (L'.CApp (corifyCon st c1, corifyCon st c2), loc)
@@ -251,7 +312,7 @@ fun corifyExp st (e, loc) =
         L.EPrim p => (L'.EPrim p, loc)
       | L.ERel n => (L'.ERel n, loc)
       | L.ENamed n =>
-        (case St.lookupCoreById st n of
+        (case St.lookupValById st n of
              NONE => (L'.ENamed n, loc)
            | SOME n => (L'.ENamed n, loc))
       | L.EModProj (m, ms, x) =>
@@ -259,10 +320,9 @@ fun corifyExp st (e, loc) =
             val st = St.lookupStrById st m
             val st = foldl St.lookupStrByName st ms
         in
-            case St.lookupCoreByName st x of
-                St.Normal n => (L'.ENamed n, loc)
-              | St.Ffi (_, NONE) => raise Fail "corifyExp: Unknown type for FFI expression variable"
-              | St.Ffi (m, SOME t) =>
+            case St.lookupValByName st x of
+                St.ENormal n => (L'.ENamed n, loc)
+              | St.EFfi (m, t) =>
                 case t of
                     (L'.TFun (dom as (L'.TRecord (L'.CRecord (_, []), _), _), ran), _) =>
                     (L'.EAbs ("arg", dom, ran, (L'.EFfiApp (m, x, []), loc)), loc)
@@ -299,19 +359,19 @@ fun corifyExp st (e, loc) =
       | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) => (corifyCon st c, corifyExp st e, corifyCon st t)) xes), loc)
       | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp st e1, corifyCon st c,
                                                        {field = corifyCon st field, rest = corifyCon st rest}), loc)
-      | L.EFold _ => raise Fail "Corify EFold"
+      | L.EFold k => (L'.EFold (corifyKind k), loc)
 
 fun corifyDecl ((d, loc : EM.span), st) =
     case d of
         L.DCon (x, n, k, c) =>
         let
-            val (st, n) = St.bindCore st x n
+            val (st, n) = St.bindCon st x n
         in
             ([(L'.DCon (x, n, corifyKind k, corifyCon st c), loc)], st)
         end
       | L.DVal (x, n, t, e) =>
         let
-            val (st, n) = St.bindCore st x n
+            val (st, n) = St.bindVal st x n
         in
             ([(L'.DVal (x, n, corifyCon st t, corifyExp st e), loc)], st)
         end
@@ -338,7 +398,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                case sgi of
                                    L.SgiConAbs (x, n, k) =>
                                    let
-                                       val (st, n') = St.bindCore st x n
+                                       val (st, n') = St.bindCon st x n
                                    in
                                        ((L'.DCon (x, n', corifyKind k, (L'.CFfi (m, x), loc)), loc) :: ds,
                                         cmap,
@@ -346,7 +406,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                    end
                                  | L.SgiCon (x, n, k, _) =>
                                    let
-                                       val (st, n') = St.bindCore st x n
+                                       val (st, n') = St.bindCon st x n
                                    in
                                        ((L'.DCon (x, n', corifyKind k, (L'.CFfi (m, x), loc)), loc) :: ds,
                                         cmap,

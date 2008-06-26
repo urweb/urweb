@@ -222,6 +222,7 @@ fun p_exp' par env (e, _) =
             box [p_exp' true env e,
                  string ".",
                  p_con' true env c]
+      | EFold _ => string "fold"
 
 and p_exp env = p_exp' false env
 
