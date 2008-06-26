@@ -249,6 +249,7 @@ fun sgiBinds env (sgi, _) =
         SgiConAbs (x, n, k) => pushCNamed env x n k NONE
       | SgiCon (x, n, k, c) => pushCNamed env x n k (SOME c)
       | SgiVal (x, n, t) => pushENamed env x n t
+      | SgiSgn (x, n, sgn) => pushSgnNamed env x n sgn
       | SgiStr (x, n, sgn) => pushStrNamed env x n sgn
 
 end

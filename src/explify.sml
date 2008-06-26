@@ -87,7 +87,7 @@ fun explifySgi (sgi, loc) =
       | L.SgiCon (x, n, k, c) => (L'.SgiCon (x, n, explifyKind k, explifyCon c), loc)
       | L.SgiVal (x, n, c) => (L'.SgiVal (x, n, explifyCon c), loc)
       | L.SgiStr (x, n, sgn) => (L'.SgiStr (x, n, explifySgn sgn), loc)
-      | L.SgiSgn _ => raise Fail "Explify SgiSgn"
+      | L.SgiSgn (x, n, sgn) => (L'.SgiSgn (x, n, explifySgn sgn), loc)
 
 and explifySgn (sgn, loc) =
     case sgn of
@@ -95,7 +95,7 @@ and explifySgn (sgn, loc) =
       | L.SgnVar n => (L'.SgnVar n, loc)
       | L.SgnFun (m, n, dom, ran) => (L'.SgnFun (m, n, explifySgn dom, explifySgn ran), loc)
       | L.SgnWhere (sgn, x, c) => (L'.SgnWhere (explifySgn sgn, x, explifyCon c), loc)
-      | L.SgnProj _ => raise Fail "Explify SgnProj"
+      | L.SgnProj x => (L'.SgnProj x, loc)
       | L.SgnError => raise Fail ("explifySgn: SgnError at " ^ EM.spanToString loc)
 
 fun explifyDecl (d, loc : EM.span) =

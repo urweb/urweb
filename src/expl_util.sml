@@ -294,6 +294,7 @@ datatype binder =
          RelC of string * Expl.kind
        | NamedC of string * Expl.kind
        | Str of string * Expl.sgn
+       | Sgn of string * Expl.sgn
 
 fun mapfoldB {kind, con, sgn_item, sgn, bind} =
     let
@@ -332,6 +333,10 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                 S.map2 (sg ctx s,
                      fn s' =>
                         (SgiStr (x, n, s'), loc))
+              | SgiSgn (x, n, s) =>
+                S.map2 (sg ctx s,
+                     fn s' =>
+                        (SgiSgn (x, n, s'), loc))
 
         and sg ctx s acc =
             S.bindP (sg' ctx s acc, sgn ctx)
@@ -347,7 +352,9 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                    bind (ctx, NamedC (x, k))
                                                  | SgiVal _ => ctx
                                                  | SgiStr (x, _, sgn) =>
-                                                   bind (ctx, Str (x, sgn)),
+                                                   bind (ctx, Str (x, sgn))
+                                                 | SgiSgn (x, _, sgn) =>
+                                                   bind (ctx, Sgn (x, sgn)),
                                                sgi ctx si)) ctx sgis,
                      fn sgis' =>
                         (SgnConst sgis', loc))
@@ -366,6 +373,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                          S.map2 (con ctx c,
                               fn c' =>
                                  (SgnWhere (sgn', x, c'), loc)))
+              | SgnProj _ => S.return2 sAll
     in
         sg
     end

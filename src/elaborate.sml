@@ -1580,37 +1580,60 @@ and elabStr env (str, loc) =
             val sgis = map sgiOfDecl ds'
 
             val (sgis, _, _, _, _) =
-                foldr (fn (sgall as (sgi, loc), (sgis, cons, vals, sgns, strs)) =>
+                foldr (fn ((sgi, loc), (sgis, cons, vals, sgns, strs)) =>
                           case sgi of
-                              L'.SgiConAbs (x, _, _) =>
-                              (if SS.member (cons, x) then
-                                   sgnError env (DuplicateCon (loc, x))
-                               else
-                                   ();
-                               (sgall :: sgis, SS.add (cons, x), vals, sgns, strs))
-                            | L'.SgiCon (x, _, _, _) =>
-                              (if SS.member (cons, x) then
-                                   sgnError env (DuplicateCon (loc, x))
-                               else
-                                   ();
-                               (sgall :: sgis, SS.add (cons, x), vals, sgns, strs))
-                            | L'.SgiVal (x, _, _) =>
-                              if SS.member (vals, x) then
-                                  (sgis, cons, vals, sgns, strs)
-                              else
-                                  (sgall :: sgis, cons, SS.add (vals, x), sgns, strs)
-                            | L'.SgiSgn (x, _, _) =>
-                              (if SS.member (sgns, x) then
-                                   sgnError env (DuplicateSgn (loc, x))
-                               else
-                                   ();
-                               (sgall :: sgis, cons, vals, SS.add (sgns, x), strs))
-                            | L'.SgiStr (x, _, _) =>
-                              (if SS.member (strs, x) then
-                                   sgnError env (DuplicateStr (loc, x))
-                               else
-                                   ();
-                               (sgall :: sgis, cons, vals, sgns, SS.add (strs, x))))
+                              L'.SgiConAbs (x, n, k) =>
+                              let
+                                  val (cons, x) =
+                                      if SS.member (cons, x) then
+                                          (cons, "?" ^ x)
+                                      else
+                                          (SS.add (cons, x), x)
+                              in
+                                  ((L'.SgiConAbs (x, n, k), loc) :: sgis, cons, vals, sgns, strs)
+                              end
+                            | L'.SgiCon (x, n, k, c) =>
+                              let
+                                  val (cons, x) =
+                                      if SS.member (cons, x) then
+                                          (cons, "?" ^ x)
+                                      else
+                                          (SS.add (cons, x), x)
+                              in
+                                  ((L'.SgiCon (x, n, k, c), loc) :: sgis, cons, vals, sgns, strs)
+                              end
+                            | L'.SgiVal (x, n, c) =>
+                              let
+                                  val (vals, x) =
+                                      if SS.member (vals, x) then
+                                          (vals, "?" ^ x)
+                                      else
+                                          (SS.add (vals, x), x)
+                              in
+                                  ((L'.SgiVal (x, n, c), loc) :: sgis, cons, vals, sgns, strs)
+                              end
+                            | L'.SgiSgn (x, n, sgn) =>
+                              let
+                                  val (sgns, x) =
+                                      if SS.member (sgns, x) then
+                                          (sgns, "?" ^ x)
+                                      else
+                                          (SS.add (sgns, x), x)
+                              in
+                                  ((L'.SgiSgn (x, n, sgn), loc) :: sgis, cons, vals, sgns, strs)
+                              end
+ 
+                            | L'.SgiStr (x, n, sgn) =>
+                              let
+                                  val (strs, x) =
+                                      if SS.member (strs, x) then
+                                          (strs, "?" ^ x)
+                                      else
+                                          (SS.add (strs, x), x)
+                              in
+                                  ((L'.SgiStr (x, n, sgn), loc) :: sgis, cons, vals, sgns, strs)
+                              end)
+
                 ([], SS.empty, SS.empty, SS.empty, SS.empty) sgis
         in
             ((L'.StrConst ds', loc), (L'.SgnConst sgis, loc))

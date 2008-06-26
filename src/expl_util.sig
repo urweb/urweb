@@ -82,6 +82,7 @@ structure Sgn : sig
     datatype binder =
              RelC of string * Expl.kind
            | NamedC of string * Expl.kind
+           | Sgn of string * Expl.sgn
            | Str of string * Expl.sgn
 
     val mapfoldB : {kind : (Expl.kind', 'state, 'abort) Search.mapfolder,
