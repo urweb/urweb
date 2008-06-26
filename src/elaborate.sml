@@ -1247,6 +1247,72 @@ and elabSgn env (sgn, loc) =
              end)
                                                               
 
+fun selfify env {str, strs, sgn} =
+    case #1 (hnormSgn env sgn) of
+        L'.SgnError => sgn
+      | L'.SgnVar _ => sgn
+
+      | L'.SgnConst sgis =>
+        (L'.SgnConst (map (fn (L'.SgiConAbs (x, n, k), loc) =>
+                              (L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
+                            | (L'.SgiStr (x, n, sgn), loc) =>
+                              (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
+                            | x => x) sgis), #2 sgn)
+      | L'.SgnFun _ => sgn
+      | L'.SgnWhere _ => sgn
+      | L'.SgnProj (m, ms, x) =>
+        case E.projectSgn env {str = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
+                                           (L'.StrVar m, #2 sgn) ms,
+                               sgn = #2 (E.lookupStrNamed env m),
+                               field = x} of
+            NONE => raise Fail "Elaborate.selfify: projectSgn returns NONE"
+          | SOME sgn => selfify env {str = str, strs = strs, sgn = sgn}
+
+fun selfifyAt env {str, sgn} =
+    let
+        fun self (str, _) =
+            case str of
+                L'.StrVar x => SOME (x, [])
+              | L'.StrProj (str, x) =>
+                (case self str of
+                     NONE => NONE
+                   | SOME (m, ms) => SOME (m, ms @ [x]))
+              | _ => NONE
+    in
+        case self str of
+            NONE => sgn
+          | SOME (str, strs) => selfify env {sgn = sgn, str = str, strs = strs}
+    end
+
+fun dopen env {str, strs, sgn} =
+    let
+        val m = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
+                (L'.StrVar str, #2 sgn) strs
+    in
+        case #1 (hnormSgn env sgn) of
+            L'.SgnConst sgis =>
+            ListUtil.foldlMap (fn ((sgi, loc), env') =>
+                                  case sgi of
+                                      L'.SgiConAbs (x, n, k) =>
+                                      ((L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc),
+                                       E.pushCNamedAs env' x n k NONE)
+                                    | L'.SgiCon (x, n, k, c) =>
+                                      ((L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc),
+                                       E.pushCNamedAs env' x n k (SOME c))
+                                    | L'.SgiVal (x, n, t) =>
+                                      ((L'.DVal (x, n, t, (L'.EModProj (str, strs, x), loc)), loc),
+                                       E.pushENamedAs env' x n t)
+                                    | L'.SgiStr (x, n, sgn) =>
+                                      ((L'.DStr (x, n, sgn, (L'.StrProj (m, x), loc)), loc),
+                                       E.pushStrNamedAs env' x n sgn)
+                                    | L'.SgiSgn (x, n, sgn) =>
+                                      ((L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc),
+                                       E.pushSgnNamedAs env' x n sgn))
+                              env sgis
+          | _ => (strError env (UnOpenable sgn);
+                  ([], env))
+    end
+
 fun sgiOfDecl (d, loc) =
     case d of
         L'.DCon (x, n, k, c) => (L'.SgiCon (x, n, k, c), loc)
@@ -1341,12 +1407,21 @@ fun subSgn env sgn1 (sgn2 as (_, loc2)) =
                                  case sgi1 of
                                      L'.SgiStr (x', n1, sgn1) =>
                                      if x = x' then
-                                         (subSgn env sgn1 sgn2;
-                                          SOME env)
+                                         let
+                                             val () = subSgn env sgn1 sgn2
+                                             val env = E.pushStrNamedAs env x n1 sgn1
+                                             val env = if n1 = n2 then
+                                                           env
+                                                       else
+                                                           E.pushStrNamedAs env x n2
+                                                                            (selfifyAt env {str = (L'.StrVar n1, #2 sgn2),
+                                                                                            sgn = sgn2})
+                                         in
+                                             SOME env
+                                         end
                                      else
                                          NONE
                                    | _ => NONE)
-                        (* Add type equations between structures here some day. *)
 
                       | L'.SgiSgn (x, n2, sgn2) =>
                         seek (fn sgi1All as (sgi1, _) =>
@@ -1387,71 +1462,6 @@ fun subSgn env sgn1 (sgn2 as (_, loc2)) =
 
       | _ => sgnError env (SgnWrongForm (sgn1, sgn2))
 
-fun selfify env {str, strs, sgn} =
-    case #1 (hnormSgn env sgn) of
-        L'.SgnError => sgn
-      | L'.SgnVar _ => sgn
-
-      | L'.SgnConst sgis =>
-        (L'.SgnConst (map (fn (L'.SgiConAbs (x, n, k), loc) =>
-                              (L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
-                            | (L'.SgiStr (x, n, sgn), loc) =>
-                              (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
-                            | x => x) sgis), #2 sgn)
-      | L'.SgnFun _ => sgn
-      | L'.SgnWhere _ => sgn
-      | L'.SgnProj (m, ms, x) =>
-        case E.projectSgn env {str = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
-                                           (L'.StrVar m, #2 sgn) ms,
-                               sgn = #2 (E.lookupStrNamed env m),
-                               field = x} of
-            NONE => raise Fail "Elaborate.selfify: projectSgn returns NONE"
-          | SOME sgn => selfify env {str = str, strs = strs, sgn = sgn}
-
-fun selfifyAt env {str, sgn} =
-    let
-        fun self (str, _) =
-            case str of
-                L'.StrVar x => SOME (x, [])
-              | L'.StrProj (str, x) =>
-                (case self str of
-                     NONE => NONE
-                   | SOME (m, ms) => SOME (m, ms @ [x]))
-              | _ => NONE
-    in
-        case self str of
-            NONE => sgn
-          | SOME (str, strs) => selfify env {sgn = sgn, str = str, strs = strs}
-    end
-
-fun dopen env {str, strs, sgn} =
-    let
-        val m = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
-                (L'.StrVar str, #2 sgn) strs
-    in
-        case #1 (hnormSgn env sgn) of
-            L'.SgnConst sgis =>
-            ListUtil.foldlMap (fn ((sgi, loc), env') =>
-                                  case sgi of
-                                      L'.SgiConAbs (x, n, k) =>
-                                      ((L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc),
-                                       E.pushCNamedAs env' x n k NONE)
-                                    | L'.SgiCon (x, n, k, c) =>
-                                      ((L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc),
-                                       E.pushCNamedAs env' x n k (SOME c))
-                                    | L'.SgiVal (x, n, t) =>
-                                      ((L'.DVal (x, n, t, (L'.EModProj (str, strs, x), loc)), loc),
-                                       E.pushENamedAs env' x n t)
-                                    | L'.SgiStr (x, n, sgn) =>
-                                      ((L'.DStr (x, n, sgn, (L'.StrProj (m, x), loc)), loc),
-                                       E.pushStrNamedAs env' x n sgn)
-                                    | L'.SgiSgn (x, n, sgn) =>
-                                      ((L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc),
-                                       E.pushSgnNamedAs env' x n sgn))
-                              env sgis
-          | _ => (strError env (UnOpenable sgn);
-                  ([], env))
-    end
 
 fun elabDecl ((d, loc), env) =
     let
