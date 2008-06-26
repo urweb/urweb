@@ -1082,6 +1082,7 @@ datatype sgn_error =
        | SgiWrongCon of L'.sgn_item * L'.con * L'.sgn_item * L'.con * cunify_error
        | SgnWrongForm of L'.sgn * L'.sgn
        | UnWhereable of L'.sgn * string
+       | WhereWrongKind of L'.kind * L'.kind * kunify_error
        | NotIncludable of L'.sgn
        | DuplicateCon of ErrorMsg.span * string
        | DuplicateVal of ErrorMsg.span * string
@@ -1117,6 +1118,11 @@ fun sgnError env err =
         (ErrorMsg.errorAt (#2 sgn) "Unavailable field for 'where'";
          eprefaces' [("Signature", p_sgn env sgn),
                      ("Field", PD.string x)])
+      | WhereWrongKind (k1, k2, kerr) =>
+        (ErrorMsg.errorAt (#2 k1) "Wrong kind for 'where'";
+         eprefaces' [("Have", p_kind k1),
+                     ("Need", p_kind k2)];
+         kunifyError kerr)
       | NotIncludable sgn =>
         (ErrorMsg.errorAt (#2 sgn) "Invalid signature to 'include'";
          eprefaces' [("Signature", p_sgn env sgn)])
@@ -1134,6 +1140,7 @@ datatype str_error =
        | NotFunctor of L'.sgn
        | FunctorRebind of ErrorMsg.span
        | UnOpenable of L'.sgn
+       | NotType of L'.kind * (L'.kind * L'.kind * kunify_error)
 
 fun strError env err =
     case err of
@@ -1147,6 +1154,12 @@ fun strError env err =
       | UnOpenable sgn =>
         (ErrorMsg.errorAt (#2 sgn) "Un-openable structure";
          eprefaces' [("Signature", p_sgn env sgn)])
+      | NotType (k, (k1, k2, ue)) =>
+        (ErrorMsg.errorAt (#2 k) "'val' type kind is not 'Type'";
+         eprefaces' [("Kind", p_kind k),
+                     ("Subkind 1", p_kind k1),
+                     ("Subkind 2", p_kind k2)];
+         kunifyError ue)
 
 val hnormSgn = E.hnormSgn
 
@@ -1209,7 +1222,8 @@ fun elabSgn_item ((sgi, loc), env) =
 
                 val (env', n) = E.pushENamed env x c'
             in
-                unifyKinds ck ktype;
+                (unifyKinds ck ktype
+                 handle KUnify ue => strError env (NotType (ck, ue)));
 
                 if ErrorMsg.anyErrors () then
                     ()
@@ -1316,8 +1330,10 @@ and elabSgn env (sgn, loc) =
             case #1 (hnormSgn env sgn') of
                 L'.SgnError => sgnerror
               | L'.SgnConst sgis =>
-                if List.exists (fn (L'.SgiConAbs (x, _, k), _) =>
-                                   (unifyKinds k ck;
+                if List.exists (fn (L'.SgiConAbs (x', _, k), _) =>
+                                   x' = x andalso
+                                   (unifyKinds k ck
+                                    handle KUnify x => sgnError env (WhereWrongKind x);
                                     true)
                                  | _ => false) sgis then
                     (L'.SgnWhere (sgn', x, c'), loc)
