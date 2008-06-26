@@ -420,10 +420,10 @@ val subConInCon =
                 con = fn (xn, rep) => fn c =>
                                   case c of
                                       L'.CRel xn' =>
-                                      if xn = xn' then
-                                          #1 rep
-                                      else
-                                          c
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER => L'.CRel (xn' - 1)
+                                         | LESS => c)
                                     (*| L'.CUnif _ => raise SynUnif*)
                                     | _ => c,
                 bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
@@ -650,9 +650,18 @@ and hnormCon env (cAll as (c, loc)) =
 
       | L'.CApp (c1, c2) =>
         (case #1 (hnormCon env c1) of
-             L'.CAbs (_, _, cb) =>
-             ((hnormCon env (subConInCon (0, c2) cb))
-              handle SynUnif => cAll)
+             L'.CAbs (x, k, cb) =>
+             let
+                 val sc = (hnormCon env (subConInCon (0, c2) cb))
+                     handle SynUnif => cAll
+                 (*val env' = E.pushCRel env x k*)
+             in
+                 (*eprefaces "Subst" [("x", Print.PD.string x),
+                                    ("cb", p_con env' cb),
+                                    ("c2", p_con env c2),
+                                    ("sc", p_con env sc)];*)
+                 sc
+             end
            | L'.CApp (c', i) =>
              (case #1 (hnormCon env c') of
                   L'.CApp (c', f) =>
@@ -668,7 +677,12 @@ and hnormCon env (cAll as (c, loc)) =
                           | L'.CConcat ((L'.CRecord (k, (x, c) :: rest), _), rest') =>
                             let
                                 val rest'' = (L'.CConcat ((L'.CRecord (k, rest), loc), rest'), loc)
+
+                                (*val ccc = (L'.CApp ((L'.CApp ((L'.CApp (f, x), loc), c), loc),
+                                                   (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold ks, loc), f), loc), i), loc),
+                                                             rest''), loc)), loc)*)
                             in
+                                (*eprefaces "Red to" [("ccc", p_con env ccc), ("ccc'", p_con env (hnormCon env ccc))];*)
                                 hnormCon env
                                          (L'.CApp ((L'.CApp ((L'.CApp (f, x), loc), c), loc),
                                                    (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold ks, loc), f), loc), i), loc),

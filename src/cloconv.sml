@@ -55,10 +55,10 @@ val subExpInExp =
                 exp = fn (xn, rep) => fn e =>
                                   case e of
                                       L'.ERel xn' =>
-                                      if xn = xn' then
-                                          #1 rep
-                                      else
-                                          e
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER => L'.ERel (xn' - 1)
+                                         | _ => e)
                                     | _ => e,
                 bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
                         | (ctx, _) => ctx}

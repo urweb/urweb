@@ -41,10 +41,10 @@ val subConInCon =
                 con = fn (xn, rep) => fn c =>
                                   case c of
                                       CRel xn' =>
-                                      if xn = xn' then
-                                          #1 rep
-                                      else
-                                          c
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER => CRel (xn' - 1)
+                                         | LESS => c)
                                     | _ => c,
                 bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
                         | (ctx, _) => ctx}
@@ -69,10 +69,10 @@ val subExpInExp =
                 exp = fn (xn, rep) => fn e =>
                                   case e of
                                       ERel xn' =>
-                                      if xn = xn' then
-                                          #1 rep
-                                      else
-                                          e
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER=> ERel (xn' - 1)
+                                         | LESS => e)
                                     | _ => e,
                 bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
                         | (ctx, _) => ctx}
@@ -96,10 +96,10 @@ val subConInExp =
                 con = fn (xn, rep) => fn c =>
                                   case c of
                                       CRel xn' =>
-                                      if xn = xn' then
-                                          #1 rep
-                                      else
-                                          c
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER => CRel (xn' - 1)
+                                         | LESS => c)
                                     | _ => c,
                 exp = fn _ => fn e => e,
                 bind = fn ((xn, rep), U.Exp.RelC _) => (xn+1, liftConInCon 0 rep)
@@ -145,6 +145,14 @@ fun exp env e =
         (case E.lookupENamed env n of
              (_, _, SOME e') => #1 e'
            | _ => e)
+
+      | ECApp ((EApp ((EApp ((ECApp ((EFold ks, _), ran), _), f), _), i), _), (CRecord (k, xcs), loc)) =>
+        (case xcs of
+             [] => #1 i
+           | (n, v) :: rest =>
+             #1 (reduceExp env (EApp ((ECApp ((ECApp ((ECApp (f, n), loc), v), loc), (CRecord (k, rest), loc)), loc),
+                                      (ECApp ((EApp ((EApp ((ECApp ((EFold ks, loc), ran), loc), f), loc), i), loc),
+                                              (CRecord (k, rest), loc)), loc)), loc)))
 
       | EApp ((EAbs (_, _, _, e1), loc), e2) =>
         #1 (reduceExp env (subExpInExp (0, e2) e1))
