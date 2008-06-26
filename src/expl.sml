@@ -52,6 +52,7 @@ datatype con' =
 
        | CRecord of kind * (con * con) list
        | CConcat of con * con
+       | CFold of kind * kind
 
 withtype con = con' located
 
