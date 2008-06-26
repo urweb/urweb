@@ -121,7 +121,14 @@ fun kind k = k
 
 fun con env c =
     case c of
-        CApp ((CAbs (_, _, c1), loc), c2) =>
+        CApp ((CApp ((CApp ((CFold ks, _), f), _), i), loc), (CRecord (k, xcs), _)) =>
+        (case xcs of
+             [] => #1 i
+           | (n, v) :: rest =>
+             #1 (reduceCon env (CApp ((CApp ((CApp (f, n), loc), v), loc),
+                                      (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
+                                             (CRecord (k, rest), loc)), loc)), loc)))
+      | CApp ((CAbs (_, _, c1), loc), c2) =>
         #1 (reduceCon env (subConInCon (0, c2) c1))
       | CNamed n =>
         (case E.lookupCNamed env n of

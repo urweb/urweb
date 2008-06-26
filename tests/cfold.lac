@@ -8,3 +8,5 @@ val redCurry : redCurry = fn x : int => fn y : string => {}
 
 con yellowCurry = currier [A = string, B = int, C = float]
 val yellowCurry : yellowCurry = fn x => fn y => fn z => {}
+
+val main = yellowCurry
