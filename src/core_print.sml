@@ -134,6 +134,7 @@ fun p_con' par env (c, _) =
                                               string "++",
                                               space,
                                               p_con env c2])
+      | CFold _ => string "fold"
         
 and p_con env = p_con' false env
 
