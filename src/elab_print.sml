@@ -88,10 +88,11 @@ fun p_con' par env (c, _) =
                           p_con' true env c]
 
       | CRel n =>
-        if !debug then
-            string (#1 (E.lookupCRel env n) ^ "_" ^ Int.toString n)
-        else
-            string (#1 (E.lookupCRel env n))
+        ((if !debug then
+              string (#1 (E.lookupCRel env n) ^ "_" ^ Int.toString n)
+          else
+              string (#1 (E.lookupCRel env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_REL" ^ Int.toString n))
       | CNamed n =>
         ((if !debug then
               string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
@@ -248,7 +249,8 @@ fun p_exp' par env (e, _) =
             box [p_exp' true env e,
                  string ".",
                  p_con' true env c]
-            
+      | EFold _ => string "fold"            
+
       | EError => string "<ERROR>"
 
 and p_exp env = p_exp' false env

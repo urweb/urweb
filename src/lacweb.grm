@@ -249,6 +249,8 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
 
+       | FOLD                           (EFold, s (FOLDleft, FOLDright))
+
 rexp   :                                ([])
        | ident EQ eexp                  ([(ident, eexp)])
        | ident EQ eexp COMMA rexp       ((ident, eexp) :: rexp)

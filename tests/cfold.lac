@@ -1,12 +1,15 @@
 con currier = fold (fn nm => fn t => fn acc => t -> acc) {}
 
-con greenCurry = currier []
+con greenCurryIngredients :: {Type} = []
+con greenCurry = currier greenCurryIngredients
 val greenCurry : greenCurry = {}
 
-con redCurry = currier [A = int, B = string]
+con redCurryIngredients = [A = int, B = string]
+con redCurry = currier redCurryIngredients
 val redCurry : redCurry = fn x : int => fn y : string => {}
 
-con yellowCurry = currier [A = string, B = int, C = float]
+con yellowCurryIngredients = [A = string, B = int, C = float]
+con yellowCurry = currier yellowCurryIngredients
 val yellowCurry : yellowCurry = fn x => fn y => fn z => {}
 
 val main = yellowCurry

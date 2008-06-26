@@ -665,6 +665,15 @@ and hnormCon env (cAll as (c, loc)) =
                                      (L'.CApp ((L'.CApp ((L'.CApp (f, x), loc), c), loc),
                                                (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold ks, loc), f), loc), i), loc),
                                                          (L'.CRecord (k, rest), loc)), loc)), loc)
+                          | L'.CConcat ((L'.CRecord (k, (x, c) :: rest), _), rest') =>
+                            let
+                                val rest'' = (L'.CConcat ((L'.CRecord (k, rest), loc), rest'), loc)
+                            in
+                                hnormCon env
+                                         (L'.CApp ((L'.CApp ((L'.CApp (f, x), loc), c), loc),
+                                                   (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold ks, loc), f), loc), i), loc),
+                                                             rest''), loc)), loc)
+                            end
                           | _ => cAll)
                      | _ => cAll)
                 | _ => cAll)
@@ -674,6 +683,9 @@ and hnormCon env (cAll as (c, loc)) =
         (case (hnormCon env c1, hnormCon env c2) of
              ((L'.CRecord (k, xcs1), loc), (L'.CRecord (_, xcs2), _)) =>
              (L'.CRecord (k, xcs1 @ xcs2), loc)
+           | ((L'.CRecord (_, []), _), c2') => c2'
+           | ((L'.CConcat (c11, c12), loc), c2') =>
+             hnormCon env (L'.CConcat (c11, (L'.CConcat (c12, c2'), loc)), loc)
            | _ => cAll)
 
       | _ => cAll
@@ -758,6 +770,10 @@ and unifyCons'' env (c1All as (c1, _)) (c2All as (c2, _)) =
           | (L'.CConcat _, _) => isRecord ()
           | (_, L'.CConcat _) => isRecord ()
 
+          | (L'.CFold (dom1, ran1), L'.CFold (dom2, ran2)) =>
+            (unifyKinds dom1 dom2;
+             unifyKinds ran1 ran2)
+
           | _ => err CIncompatible
     end
 
@@ -804,6 +820,28 @@ fun primType env p =
       | P.Float _ => !float
       | P.String _ => !string
 
+fun recCons (k, nm, v, rest, loc) =
+    (L'.CConcat ((L'.CRecord (k, [(nm, v)]), loc),
+                 rest), loc)
+
+fun foldType (dom, loc) =
+    (L'.TCFun (L'.Explicit, "ran", (L'.KArrow ((L'.KRecord dom, loc), (L'.KType, loc)), loc),
+               (L'.TFun ((L'.TCFun (L'.Explicit, "nm", (L'.KName, loc),
+                                    (L'.TCFun (L'.Explicit, "v", dom,
+                                               (L'.TCFun (L'.Explicit, "rest", (L'.KRecord dom, loc),
+                                                          (L'.TFun ((L'.CApp ((L'.CRel 3, loc), (L'.CRel 0, loc)), loc),
+                                                                    (L'.CApp ((L'.CRel 3, loc),
+                                                                              recCons (dom,
+                                                                                       (L'.CRel 2, loc),
+                                                                                       (L'.CRel 1, loc),
+                                                                                       (L'.CRel 0, loc),
+                                                                                       loc)), loc)), loc)),
+                                                loc)), loc)), loc),
+                         (L'.TFun ((L'.CApp ((L'.CRel 0, loc), (L'.CRecord (dom, []), loc)), loc),
+                                   (L'.TCFun (L'.Explicit, "r", (L'.KRecord dom, loc),
+                                              (L'.CApp ((L'.CRel 1, loc), (L'.CRel 0, loc)), loc)), loc)),
+                          loc)), loc)), loc)
+
 fun typeof env (e, loc) =
     case e of
         L'.EPrim p => primType env p
@@ -836,6 +874,7 @@ fun typeof env (e, loc) =
 
       | L'.ERecord xes => (L'.TRecord (L'.CRecord (ktype, map (fn (x, _, t) => (x, t)) xes), loc), loc)
       | L'.EField (_, _, {field, ...}) => field
+      | L'.EFold dom => foldType (dom, loc)
 
       | L'.EError => cerror
 
@@ -987,6 +1026,13 @@ fun elabExp env (e, loc) =
             checkKind env c' ck kname;
             checkCon env e' et (L'.TRecord (L'.CConcat ((L'.CRecord (ktype, [(c', ft)]), loc), rest), loc), loc);
             ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft)
+        end
+
+      | L.EFold =>
+        let
+            val dom = kunif ()
+        in
+            ((L'.EFold dom, loc), foldType (dom, loc))
         end
             
 
