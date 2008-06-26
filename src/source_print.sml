@@ -92,17 +92,24 @@ fun p_con' par (c, _) =
       | CApp (c1, c2) => parenIf par (box [p_con c1,
                                            space,
                                            p_con' true c2])
-      | CAbs (x, k, c) => parenIf par (box [string "fn",
-                                            space,
-                                            string x,
-                                            space,
-                                            string "::",
-                                            space,
-                                            p_kind k,
-                                            space,
-                                            string "=>",
-                                            space,
-                                            p_con c])
+      | CAbs (x, NONE, c) => parenIf par (box [string "fn",
+                                               space,
+                                               string x,
+                                               space,
+                                               string "=>",
+                                               space,
+                                               p_con c])
+      | CAbs (x, SOME k, c) => parenIf par (box [string "fn",
+                                                 space,
+                                                 string x,
+                                                 space,
+                                                 string "::",
+                                                 space,
+                                                 p_kind k,
+                                                 space,
+                                                 string "=>",
+                                                 space,
+                                                 p_con c])
 
       | CName s => box [string "#", string s]
 
@@ -119,6 +126,7 @@ fun p_con' par (c, _) =
                                               string "++",
                                               space,
                                               p_con c2])
+      | CFold => string "fold"
       | CWild k => box [string "(_",
                         space,
                         string "::",

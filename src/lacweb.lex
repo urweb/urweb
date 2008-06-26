@@ -146,6 +146,7 @@ realconst = [0-9]+\.[0-9]*;
 <INITIAL> "type"      => (Tokens.LTYPE (pos yypos, pos yypos + size yytext));
 <INITIAL> "val"       => (Tokens.VAL (pos yypos, pos yypos + size yytext));
 <INITIAL> "fn"        => (Tokens.FN (pos yypos, pos yypos + size yytext));
+<INITIAL> "fold"      => (Tokens.FOLD (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "structure" => (Tokens.STRUCTURE (pos yypos, pos yypos + size yytext));
 <INITIAL> "signature" => (Tokens.SIGNATURE (pos yypos, pos yypos + size yytext));

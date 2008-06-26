@@ -152,6 +152,7 @@ fun p_con' par env (c, _) =
                                               string "++",
                                               space,
                                               p_con env c2])
+      | CFold _ => string "fold"
 
       | CError => string "<ERROR>"
       | CUnif (_, _, ref (SOME c)) => p_con' par env c

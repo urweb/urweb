@@ -59,6 +59,7 @@ fun explifyCon (c, loc) =
 
       | L.CRecord (k, xcs) => (L'.CRecord (explifyKind k, map (fn (c1, c2) => (explifyCon c1, explifyCon c2)) xcs), loc)
       | L.CConcat (c1, c2) => (L'.CConcat (explifyCon c1, explifyCon c2), loc)
+      | L.CFold _ => raise Fail "Explify CFold"
 
       | L.CError => raise Fail ("explifyCon: CError at " ^ EM.spanToString loc)
       | L.CUnif (_, _, ref (SOME c)) => explifyCon c

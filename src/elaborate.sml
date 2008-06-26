@@ -115,6 +115,7 @@ datatype con_error =
          UnboundCon of ErrorMsg.span * string
        | UnboundStrInCon of ErrorMsg.span * string
        | WrongKind of L'.con * L'.kind * L'.kind * kunify_error
+       | DuplicateField of ErrorMsg.span * string
 
 fun conError env err =
     case err of
@@ -128,6 +129,8 @@ fun conError env err =
                      ("Have kind", p_kind k1),
                      ("Need kind", p_kind k2)];
          kunifyError kerr)
+      | DuplicateField (loc, s) =>
+        ErrorMsg.errorAt loc ("Duplicate record field " ^ s)
 
 fun checkKind env c k1 k2 =
     unifyKinds k1 k2
@@ -197,6 +200,14 @@ fun elabKind (k, loc) =
       | L.KName => (L'.KName, loc)
       | L.KRecord k => (L'.KRecord (elabKind k), loc)
       | L.KWild => kunif ()
+
+fun foldKind (dom, ran, loc)=
+    (L'.KArrow ((L'.KArrow ((L'.KName, loc),
+                            (L'.KArrow (dom,
+                                        (L'.KArrow (ran, ran), loc)), loc)), loc),
+                (L'.KArrow (ran,
+                            (L'.KArrow ((L'.KRecord dom, loc),
+                                        ran), loc)), loc)), loc)
 
 fun elabCon env (c, loc) =
     case c of
@@ -278,9 +289,11 @@ fun elabCon env (c, loc) =
             checkKind env c2' k2 dom;
             ((L'.CApp (c1', c2'), loc), ran)
         end
-      | L.CAbs (x, k, t) =>
+      | L.CAbs (x, ko, t) =>
         let
-            val k' = elabKind k
+            val k' = case ko of
+                         NONE => kunif ()
+                       | SOME k => elabKind k
             val env' = E.pushCRel env x k'
             val (t', tk) = elabCon env' t
         in
@@ -304,8 +317,11 @@ fun elabCon env (c, loc) =
                                    checkKind env c' ck k;
                                    (x', c')
                                end) xcs
+
+            val rc = (L'.CRecord (k, xcs'), loc)
+            (* Add duplicate field checking later. *)
         in
-            ((L'.CRecord (k, xcs'), loc), (L'.KRecord k, loc))
+            (rc, (L'.KRecord k, loc))
         end
       | L.CConcat (c1, c2) =>
         let
@@ -317,6 +333,14 @@ fun elabCon env (c, loc) =
             checkKind env c1' k1 k;
             checkKind env c2' k2 k;
             ((L'.CConcat (c1', c2'), loc), k)
+        end
+      | L.CFold =>
+        let
+            val dom = kunif ()
+            val ran = kunif ()
+        in
+            ((L'.CFold (dom, ran), loc),
+             foldKind (dom, ran, loc))
         end
 
       | L.CWild k =>
@@ -473,6 +497,7 @@ fun kindof env (c, loc) =
 
       | L'.CRecord (k, _) => (L'.KRecord k, loc)
       | L'.CConcat (c, _) => kindof env c
+      | L'.CFold (dom, ran) => foldKind (dom, ran, loc)
 
       | L'.CError => kerror
       | L'.CUnif (k, _, _) => k
@@ -624,10 +649,25 @@ and hnormCon env (cAll as (c, loc)) =
         end
 
       | L'.CApp (c1, c2) =>
-        (case hnormCon env c1 of
-             (L'.CAbs (_, _, cb), _) =>
+        (case #1 (hnormCon env c1) of
+             L'.CAbs (_, _, cb) =>
              ((hnormCon env (subConInCon (0, c2) cb))
               handle SynUnif => cAll)
+           | L'.CApp (c', i) =>
+             (case #1 (hnormCon env c') of
+                  L'.CApp (c', f) =>
+                  (case #1 (hnormCon env c') of
+                       L'.CFold ks =>
+                       (case #1 (hnormCon env c2) of
+                            L'.CRecord (_, []) => hnormCon env i
+                          | L'.CRecord (k, (x, c) :: rest) =>
+                            hnormCon env
+                                     (L'.CApp ((L'.CApp ((L'.CApp (f, x), loc), c), loc),
+                                               (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold ks, loc), f), loc), i), loc),
+                                                         (L'.CRecord (k, rest), loc)), loc)), loc)
+                          | _ => cAll)
+                     | _ => cAll)
+                | _ => cAll)
            | _ => cAll)
 
       | L'.CConcat (c1, c2) =>

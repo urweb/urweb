@@ -59,6 +59,7 @@ datatype con' =
 
        | CRecord of kind * (con * con) list
        | CConcat of con * con
+       | CFold of kind * kind
 
        | CError
        | CUnif of kind * string * con option ref

@@ -51,12 +51,13 @@ datatype con' =
 
        | CVar of string list * string
        | CApp of con * con
-       | CAbs of string * kind * con
+       | CAbs of string * kind option * con
 
        | CName of string
 
        | CRecord of (con * con) list
        | CConcat of con * con
+       | CFold
 
        | CWild of kind
 

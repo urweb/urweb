@@ -1,0 +1,10 @@
+con currier = fold (fn nm => fn t => fn acc => t -> acc) {}
+
+con greenCurry = currier []
+val greenCurry : greenCurry = {}
+
+con redCurry = currier [A = int, B = string]
+val redCurry : redCurry = fn x : int => fn y : string => {}
+
+con yellowCurry = currier [A = string, B = int, C = float]
+val yellowCurry : yellowCurry = fn x => fn y => fn z => {}
