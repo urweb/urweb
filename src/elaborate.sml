@@ -1353,9 +1353,18 @@ fun subSgn env sgn1 (sgn2 as (_, loc2)) =
                                  case sgi1 of
                                      L'.SgiSgn (x', n1, sgn1) =>
                                      if x = x' then
-                                         (subSgn env sgn1 sgn2;
-                                          subSgn env sgn2 sgn1;
-                                          SOME env)
+                                         let
+                                             val () = subSgn env sgn1 sgn2
+                                             val () = subSgn env sgn2 sgn1
+
+                                             val env = E.pushSgnNamedAs env x n2 sgn2
+                                             val env = if n1 = n2 then
+                                                           env
+                                                       else
+                                                           E.pushSgnNamedAs env x n1 sgn2
+                                         in
+                                             SOME env
+                                         end
                                      else
                                          NONE
                                    | _ => NONE)
