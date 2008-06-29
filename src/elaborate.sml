@@ -1569,13 +1569,56 @@ fun elabDecl ((d, loc), env) =
       | L.DStr (x, sgno, str) =>
         let
             val formal = Option.map (elabSgn env) sgno
-            val (str', actual) = elabStr env str
 
-            val sgn' = case formal of
-                           NONE => selfifyAt env {str = str', sgn = actual}
-                         | SOME formal =>
-                           (subSgn env actual formal;
-                            formal)
+            val (str', sgn') =
+                case formal of
+                    NONE =>
+                    let
+                        val (str', actual) = elabStr env str
+                    in
+                        (str', selfifyAt env {str = str', sgn = actual})
+                    end
+                  | SOME formal =>
+                    let
+                        val str =
+                            case #1 (hnormSgn env formal) of
+                                L'.SgnConst sgis =>
+                                (case #1 str of
+                                     L.StrConst ds =>
+                                     let
+                                         val needed = foldl (fn ((sgi, _), needed) =>
+                                                                case sgi of
+                                                                    L'.SgiConAbs (x, _, _) => SS.add (needed, x)
+                                                                  | _ => needed)
+                                                            SS.empty sgis
+                                                      
+                                         val needed = foldl (fn ((d, _), needed) =>
+                                                                case d of
+                                                                    L.DCon (x, _, _) => (SS.delete (needed, x)
+                                                                                         handle NotFound => needed)
+                                                                  | L.DOpen _ => SS.empty
+                                                                  | _ => needed)
+                                                            needed ds
+                                     in
+                                         case SS.listItems needed of
+                                             [] => str
+                                           | xs =>
+                                             let
+                                                 val kwild = (L.KWild, #2 str)
+                                                 val cwild = (L.CWild kwild, #2 str)
+                                                 val ds' = map (fn x => (L.DCon (x, NONE, cwild), #2 str)) xs
+                                             in
+                                                 (L.StrConst (ds @ ds'), #2 str)
+                                             end
+                                     end
+                                   | _ => str)
+                              | _ => str
+
+                        val (str', actual) = elabStr env str
+                    in
+                        subSgn env actual formal;
+                        (str', formal)
+                    end
 
             val (env', n) = E.pushStrNamed env x sgn'
         in
