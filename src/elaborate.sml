@@ -563,11 +563,8 @@ and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
             end
 
         val (fs1, fs2) = eatMatching (fn ((x1, c1), (x2, c2)) =>
-                                         if consEq env (x1, x2) then
-                                             (unifyCons env c1 c2;
-                                              true)
-                                         else
-                                             false) (#fields s1, #fields s2)
+                                         consEq env (c1, c2) andalso consEq env (x1, x2))
+                                     (#fields s1, #fields s2)
         (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
                                            ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
         val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)

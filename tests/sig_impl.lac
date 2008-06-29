@@ -25,3 +25,34 @@ end
 structure M : S = struct
         val x = fn v : int => {A = 0, B = "Hi"}
 end
+
+signature S = sig
+        con nm :: Name
+        con t :: Type
+        con r :: {Type}
+        val x : $([nm = t] ++ r)
+end
+
+structure M : S = struct
+        val x = {A = 0, B = "Hi"}
+end
+
+signature S = sig
+        con nm :: Name
+        con r :: {Type}
+        val x : $([nm = int] ++ r)
+end
+
+structure M : S = struct
+        val x = {A = 0, B = "Hi"}
+end
+
+signature S = sig
+        con nm :: Name
+        con r :: {Type}
+        val x : $([nm = string] ++ r)
+end
+
+structure M : S = struct
+        val x = {A = 0, B = "Hi"}
+end
