@@ -58,7 +58,7 @@ fun mapfold f =
 
               | KError => S.return2 kAll
 
-              | KUnif (_, ref (SOME k)) => mfk' k
+              | KUnif (_, _, ref (SOME k)) => mfk' k
               | KUnif _ => S.return2 kAll
     in
         mfk
@@ -151,7 +151,7 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                                        (CFold (k1', k2'), loc)))
 
               | CError => S.return2 cAll
-              | CUnif (_, _, ref (SOME c)) => mfc' ctx c
+              | CUnif (_, _, _, ref (SOME c)) => mfc' ctx c
               | CUnif _ => S.return2 cAll
     in
         mfc
@@ -414,6 +414,221 @@ fun map {kind, con, sgn_item, sgn} s =
                   sgn = fn s => fn () => S.Continue (sgn s, ())} s () of
         S.Return () => raise Fail "Elab_util.Sgn.map"
       | S.Continue (s, ()) => s
+
+end
+
+structure Decl = struct
+
+datatype binder =
+         RelC of string * Elab.kind
+       | NamedC of string * Elab.kind
+       | RelE of string * Elab.con
+       | NamedE of string * Elab.con
+       | Str of string * Elab.sgn
+       | Sgn of string * Elab.sgn
+
+fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = fst, decl = fd, bind} =
+    let
+        val mfk = Kind.mapfold fk
+
+        fun bind' (ctx, b) =
+            let
+                val b' = case b of
+                             Con.Rel x => RelC x
+                           | Con.Named x => NamedC x
+            in
+                bind (ctx, b')
+            end
+        val mfc = Con.mapfoldB {kind = fk, con = fc, bind = bind'}
+
+        fun bind' (ctx, b) =
+            let
+                val b' = case b of
+                             Exp.RelC x => RelC x
+                           | Exp.NamedC x => NamedC x
+                           | Exp.RelE x => RelE x
+                           | Exp.NamedE x => NamedE x
+            in
+                bind (ctx, b')
+            end
+        val mfe = Exp.mapfoldB {kind = fk, con = fc, exp = fe, bind = bind'}
+
+        fun bind' (ctx, b) =
+            let
+                val b' = case b of
+                             Sgn.RelC x => RelC x
+                           | Sgn.NamedC x => NamedC x
+                           | Sgn.Sgn x => Sgn x
+                           | Sgn.Str x => Str x
+            in
+                bind (ctx, b')
+            end
+        val mfsg = Sgn.mapfoldB {kind = fk, con = fc, sgn_item = fsgi, sgn = fsg, bind = bind'}
+
+        fun mfst ctx str acc =
+            S.bindP (mfst' ctx str acc, fst ctx)
+
+        and mfst' ctx (strAll as (str, loc)) =
+            case str of
+                StrConst ds => 
+                S.map2 (ListUtil.mapfoldB (fn (ctx, d)  =>
+                                              (case #1 d of
+                                                   DCon (x, _, k, _) =>
+                                                   bind (ctx, NamedC (x, k))
+                                                 | DVal (x, _, c, _) =>
+                                                   bind (ctx, NamedE (x, c))
+                                                 | DSgn (x, _, sgn) =>
+                                                   bind (ctx, Sgn (x, sgn))
+                                                 | DStr (x, _, sgn, _) =>
+                                                   bind (ctx, Str (x, sgn))
+                                                 | DFfiStr (x, _, sgn) =>
+                                                   bind (ctx, Str (x, sgn)),
+                                               mfd ctx d)) ctx ds,
+                     fn ds' => (StrConst ds', loc))
+              | StrVar _ => S.return2 strAll
+              | StrProj (str, x) =>
+                S.map2 (mfst ctx str,
+                        fn str' =>
+                           (StrProj (str', x), loc))
+              | StrFun (x, n, sgn1, sgn2, str) =>
+                S.bind2 (mfsg ctx sgn1,
+                         fn sgn1' =>
+                            S.bind2 (mfsg ctx sgn2,
+                                     fn sgn2' =>
+                                        S.map2 (mfst ctx str,
+                                                fn str' =>
+                                                   (StrFun (x, n, sgn1', sgn2', str'), loc))))
+              | StrApp (str1, str2) =>
+                S.bind2 (mfst ctx str1,
+                         fn str1' =>
+                            S.map2 (mfst ctx str2,
+                                    fn str2' =>
+                                       (StrApp (str1', str2'), loc)))
+              | StrError => S.return2 strAll
+
+        and mfd ctx d acc =
+            S.bindP (mfd' ctx d acc, fd ctx)
+
+        and mfd' ctx (dAll as (d, loc)) =
+            case d of
+                DCon (x, n, k, c) =>
+                S.bind2 (mfk k,
+                         fn k' =>
+                            S.map2 (mfc ctx c,
+                                    fn c' =>
+                                       (DCon (x, n, k', c'), loc)))
+              | DVal (x, n, c, e) =>
+                S.bind2 (mfc ctx c,
+                         fn c' =>
+                            S.map2 (mfe ctx e,
+                                    fn e' =>
+                                       (DVal (x, n, c', e'), loc)))
+              | DSgn (x, n, sgn) =>
+                S.map2 (mfsg ctx sgn,
+                        fn sgn' =>
+                           (DSgn (x, n, sgn'), loc))
+              | DStr (x, n, sgn, str) =>
+                S.bind2 (mfsg ctx sgn,
+                         fn sgn' =>
+                            S.map2 (mfst ctx str,
+                                    fn str' =>
+                                       (DStr (x, n, sgn', str'), loc)))
+              | DFfiStr (x, n, sgn) =>
+                S.map2 (mfsg ctx sgn,
+                        fn sgn' =>
+                           (DFfiStr (x, n, sgn'), loc))
+    in
+        mfd
+    end
+
+fun mapfold {kind, con, exp, sgn_item, sgn, str, decl} =
+    mapfoldB {kind = kind,
+              con = fn () => con,
+              exp = fn () => exp,
+              sgn_item = fn () => sgn_item,
+              sgn = fn () => sgn,
+              str = fn () => str,
+              decl = fn () => decl,
+              bind = fn ((), _) => ()} ()
+
+fun exists {kind, con, exp, sgn_item, sgn, str, decl} k =
+    case mapfold {kind = fn k => fn () =>
+                                    if kind k then
+                                        S.Return ()
+                                    else
+                                        S.Continue (k, ()),
+                  con = fn c => fn () =>
+                                    if con c then
+                                        S.Return ()
+                                    else
+                                        S.Continue (c, ()),
+                  exp = fn e => fn () =>
+                                    if exp e then
+                                        S.Return ()
+                                    else
+                                        S.Continue (e, ()),
+                  sgn_item = fn sgi => fn () =>
+                                        if sgn_item sgi then
+                                            S.Return ()
+                                        else
+                                            S.Continue (sgi, ()),
+                  sgn = fn x => fn () =>
+                                   if sgn x then
+                                       S.Return ()
+                                   else
+                                       S.Continue (x, ()),
+                  str = fn x => fn () =>
+                                   if str x then
+                                       S.Return ()
+                                   else
+                                       S.Continue (x, ()),
+                  decl = fn x => fn () =>
+                                    if decl x then
+                                        S.Return ()
+                                    else
+                                        S.Continue (x, ())} k () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+fun search {kind, con, exp, sgn_item, sgn, str, decl} k =
+    case mapfold {kind = fn x => fn () =>
+                                    case kind x of
+                                        NONE => S.Continue (x, ())
+                                      | SOME v => S.Return v,
+
+                  con = fn x => fn () =>
+                                   case con x of
+                                       NONE => S.Continue (x, ())
+                                     | SOME v => S.Return v,
+
+                  exp = fn x => fn () =>
+                                   case exp x of
+                                       NONE => S.Continue (x, ())
+                                     | SOME v => S.Return v,
+
+                  sgn_item = fn x => fn () =>
+                                        case sgn_item x of
+                                            NONE => S.Continue (x, ())
+                                          | SOME v => S.Return v,
+
+                  sgn = fn x => fn () =>
+                                   case sgn x of
+                                       NONE => S.Continue (x, ())
+                                     | SOME v => S.Return v,
+
+                  str = fn x => fn () =>
+                                   case str x of
+                                       NONE => S.Continue (x, ())
+                                     | SOME v => S.Return v,
+
+                  decl = fn x => fn () =>
+                                    case decl x of
+                                        NONE => S.Continue (x, ())
+                                      | SOME v => S.Return v
+
+                 } k () of
+        S.Return x => SOME x
+      | S.Continue _ => NONE
 
 end
 

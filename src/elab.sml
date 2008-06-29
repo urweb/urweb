@@ -36,7 +36,7 @@ datatype kind' =
        | KRecord of kind
 
        | KError
-       | KUnif of string * kind option ref
+       | KUnif of ErrorMsg.span * string * kind option ref
 
 withtype kind = kind' located
 
@@ -62,7 +62,7 @@ datatype con' =
        | CFold of kind * kind
 
        | CError
-       | CUnif of kind * string * con option ref
+       | CUnif of ErrorMsg.span * kind * string * con option ref
 
 withtype con = con' located
 

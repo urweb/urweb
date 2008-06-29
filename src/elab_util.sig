@@ -107,4 +107,48 @@ structure Sgn : sig
 
 end
 
+structure Decl : sig
+    datatype binder =
+             RelC of string * Elab.kind
+           | NamedC of string * Elab.kind
+           | RelE of string * Elab.con
+           | NamedE of string * Elab.con
+           | Str of string * Elab.sgn
+           | Sgn of string * Elab.sgn
+
+    val mapfoldB : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+                    con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
+                    exp : ('context, Elab.exp', 'state, 'abort) Search.mapfolderB,
+                    sgn_item : ('context, Elab.sgn_item', 'state, 'abort) Search.mapfolderB,
+                    sgn : ('context, Elab.sgn', 'state, 'abort) Search.mapfolderB,
+                    str : ('context, Elab.str', 'state, 'abort) Search.mapfolderB,
+                    decl : ('context, Elab.decl', 'state, 'abort) Search.mapfolderB,
+                    bind : 'context * binder -> 'context}
+                   -> ('context, Elab.decl, 'state, 'abort) Search.mapfolderB
+    val mapfold : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+                   con : (Elab.con', 'state, 'abort) Search.mapfolder,
+                   exp : (Elab.exp', 'state, 'abort) Search.mapfolder,
+                   sgn_item : (Elab.sgn_item', 'state, 'abort) Search.mapfolder,
+                   sgn : (Elab.sgn', 'state, 'abort) Search.mapfolder,
+                   str : (Elab.str', 'state, 'abort) Search.mapfolder,
+                   decl : (Elab.decl', 'state, 'abort) Search.mapfolder}
+                  -> (Elab.decl, 'state, 'abort) Search.mapfolder
+    val exists : {kind : Elab.kind' -> bool,
+                  con : Elab.con' -> bool,
+                  exp : Elab.exp' -> bool,
+                  sgn_item : Elab.sgn_item' -> bool,
+                  sgn : Elab.sgn' -> bool,
+                  str : Elab.str' -> bool,
+                  decl : Elab.decl' -> bool}
+                 -> Elab.decl -> bool
+    val search : {kind : Elab.kind' -> 'a option,
+                  con : Elab.con' -> 'a option,
+                  exp : Elab.exp' -> 'a option,
+                  sgn_item : Elab.sgn_item' -> 'a option,
+                  sgn : Elab.sgn' -> 'a option,
+                  str : Elab.str' -> 'a option,
+                  decl : Elab.decl' -> 'a option}
+                 -> Elab.decl -> 'a option
+end
+
 end

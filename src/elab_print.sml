@@ -50,8 +50,8 @@ fun p_kind' par (k, _) =
       | KRecord k => box [string "{", p_kind k, string "}"]
 
       | KError => string "<ERROR>"
-      | KUnif (_, ref (SOME k)) => p_kind' par k
-      | KUnif (s, _) => string ("<UNIF:" ^ s ^ ">")
+      | KUnif (_, _, ref (SOME k)) => p_kind' par k
+      | KUnif (_, s, _) => string ("<UNIF:" ^ s ^ ">")
 
 and p_kind k = p_kind' false k
 
@@ -156,10 +156,10 @@ fun p_con' par env (c, _) =
       | CFold _ => string "fold"
 
       | CError => string "<ERROR>"
-      | CUnif (_, _, ref (SOME c)) => p_con' par env c
-      | CUnif (k, s, _) => box [string ("<UNIF:" ^ s ^ "::"),
-                               p_kind k,
-                               string ">"]
+      | CUnif (_, _, _, ref (SOME c)) => p_con' par env c
+      | CUnif (_, k, s, _) => box [string ("<UNIF:" ^ s ^ "::"),
+                                   p_kind k,
+                                   string ">"]
         
 and p_con env = p_con' false env
 

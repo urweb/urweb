@@ -47,7 +47,7 @@ fun elabExplicitness e =
       | L.Implicit => L'.Implicit
 
 fun occursKind r =
-    U.Kind.exists (fn L'.KUnif (_, r') => r = r'
+    U.Kind.exists (fn L'.KUnif (_, _, r') => r = r'
                     | _ => false)
 
 datatype kunify_error =
@@ -82,21 +82,21 @@ fun unifyKinds' (k1All as (k1, _)) (k2All as (k2, _)) =
           | (L'.KError, _) => ()
           | (_, L'.KError) => ()
 
-          | (L'.KUnif (_, ref (SOME k1All)), _) => unifyKinds' k1All k2All
-          | (_, L'.KUnif (_, ref (SOME k2All))) => unifyKinds' k1All k2All
+          | (L'.KUnif (_, _, ref (SOME k1All)), _) => unifyKinds' k1All k2All
+          | (_, L'.KUnif (_, _, ref (SOME k2All))) => unifyKinds' k1All k2All
 
-          | (L'.KUnif (_, r1), L'.KUnif (_, r2)) =>
+          | (L'.KUnif (_, _, r1), L'.KUnif (_, _, r2)) =>
             if r1 = r2 then
                 ()
             else
                 r1 := SOME k2All
 
-          | (L'.KUnif (_, r), _) =>
+          | (L'.KUnif (_, _, r), _) =>
             if occursKind r k2All then
                 err KOccursCheckFailed
             else
                 r := SOME k2All
-          | (_, L'.KUnif (_, r)) =>
+          | (_, L'.KUnif (_, _, r)) =>
             if occursKind r k1All then
                 err KOccursCheckFailed
             else
@@ -159,7 +159,7 @@ in
 
 fun resetKunif () = count := 0
 
-fun kunif () =
+fun kunif loc =
     let
         val n = !count
         val s = if n <= 26 then
@@ -168,7 +168,7 @@ fun kunif () =
                     "U" ^ Int.toString (n - 26)
     in
         count := n + 1;
-        (L'.KUnif (s, ref NONE), dummy)
+        (L'.KUnif (loc, s, ref NONE), dummy)
     end
 
 end
@@ -179,7 +179,7 @@ in
 
 fun resetCunif () = count := 0
 
-fun cunif k =
+fun cunif (loc, k) =
     let
         val n = !count
         val s = if n <= 26 then
@@ -188,7 +188,7 @@ fun cunif k =
                     "U" ^ Int.toString (n - 26)
     in
         count := n + 1;
-        (L'.CUnif (k, s, ref NONE), dummy)
+        (L'.CUnif (loc, k, s, ref NONE), dummy)
     end
 
 end
@@ -199,7 +199,7 @@ fun elabKind (k, loc) =
       | L.KArrow (k1, k2) => (L'.KArrow (elabKind k1, elabKind k2), loc)
       | L.KName => (L'.KName, loc)
       | L.KRecord k => (L'.KRecord (elabKind k), loc)
-      | L.KWild => kunif ()
+      | L.KWild => kunif loc
 
 fun foldKind (dom, ran, loc)=
     (L'.KArrow ((L'.KArrow ((L'.KName, loc),
@@ -282,8 +282,8 @@ fun elabCon env (c, loc) =
         let
             val (c1', k1) = elabCon env c1
             val (c2', k2) = elabCon env c2
-            val dom = kunif ()
-            val ran = kunif ()
+            val dom = kunif loc
+            val ran = kunif loc
         in
             checkKind env c1' k1 (L'.KArrow (dom, ran), loc);
             checkKind env c2' k2 dom;
@@ -292,7 +292,7 @@ fun elabCon env (c, loc) =
       | L.CAbs (x, ko, t) =>
         let
             val k' = case ko of
-                         NONE => kunif ()
+                         NONE => kunif loc
                        | SOME k => elabKind k
             val env' = E.pushCRel env x k'
             val (t', tk) = elabCon env' t
@@ -306,7 +306,7 @@ fun elabCon env (c, loc) =
 
       | L.CRecord xcs =>
         let
-            val k = kunif ()
+            val k = kunif loc
 
             val xcs' = map (fn (x, c) =>
                                let
@@ -327,7 +327,7 @@ fun elabCon env (c, loc) =
         let
             val (c1', k1) = elabCon env c1
             val (c2', k2) = elabCon env c2
-            val ku = kunif ()
+            val ku = kunif loc
             val k = (L'.KRecord ku, loc)
         in
             checkKind env c1' k1 k;
@@ -336,8 +336,8 @@ fun elabCon env (c, loc) =
         end
       | L.CFold =>
         let
-            val dom = kunif ()
-            val ran = kunif ()
+            val dom = kunif loc
+            val ran = kunif loc
         in
             ((L'.CFold (dom, ran), loc),
              foldKind (dom, ran, loc))
@@ -347,34 +347,37 @@ fun elabCon env (c, loc) =
         let
             val k' = elabKind k
         in
-            (cunif k', k')
+            (cunif (loc, k'), k')
         end
 
 fun kunifsRemain k =
     case k of
-        L'.KUnif (_, ref NONE) => true
+        L'.KUnif (_, _, ref NONE) => true
       | _ => false
 fun cunifsRemain c =
     case c of
-        L'.CUnif (_, _, ref NONE) => true
-      | _ => false
+        L'.CUnif (loc, _, _, ref NONE) => SOME loc
+      | _ => NONE
 
-val kunifsInKind = U.Kind.exists kunifsRemain
-val kunifsInCon = U.Con.exists {kind = kunifsRemain,
-                                con = fn _ => false}
-val kunifsInExp = U.Exp.exists {kind = kunifsRemain,
-                                con = fn _ => false,
-                                exp = fn _ => false}
+val kunifsInDecl = U.Decl.exists {kind = kunifsRemain,
+                                  con = fn _ => false,
+                                  exp = fn _ => false,
+                                  sgn_item = fn _ => false,
+                                  sgn = fn _ => false,
+                                  str = fn _ => false,
+                                  decl = fn _ => false}
 
-val cunifsInCon = U.Con.exists {kind = fn _ => false,
-                                con = cunifsRemain}
-val cunifsInExp = U.Exp.exists {kind = fn _ => false,
-                                con = cunifsRemain,
-                                exp = fn _ => false}
+val cunifsInDecl = U.Decl.search {kind = fn _ => NONE,
+                                  con = cunifsRemain,
+                                  exp = fn _ => NONE,
+                                  sgn_item = fn _ => NONE,
+                                  sgn = fn _ => NONE,
+                                  str = fn _ => NONE,
+                                  decl = fn _ => NONE}
 
 fun occursCon r =
     U.Con.exists {kind = fn _ => false,
-                  con = fn L'.CUnif (_, _, r') => r = r'
+                  con = fn L'.CUnif (_, _, _, r') => r = r'
                          | _ => false}
 
 datatype cunify_error =
@@ -461,7 +464,7 @@ exception CUnify of L'.con * L'.con * cunify_error
 
 fun hnormKind (kAll as (k, _)) =
     case k of
-        L'.KUnif (_, ref (SOME k)) => hnormKind k
+        L'.KUnif (_, _, ref (SOME k)) => hnormKind k
       | _ => kAll
 
 fun kindof env (c, loc) =
@@ -500,7 +503,7 @@ fun kindof env (c, loc) =
       | L'.CFold (dom, ran) => foldKind (dom, ran, loc)
 
       | L'.CError => kerror
-      | L'.CUnif (k, _, _) => k
+      | L'.CUnif (_, k, _, _) => k
 
 fun unifyRecordCons env (c1, c2) =
     let
@@ -523,8 +526,8 @@ and recordSummary env c : record_summary =
              unifs = #unifs s1 @ #unifs s2,
              others = #others s1 @ #others s2}
         end
-      | (L'.CUnif (_, _, ref (SOME c)), _) => recordSummary env c
-      | c' as (L'.CUnif (_, _, r), _) => {fields = [], unifs = [(c', r)], others = []}
+      | (L'.CUnif (_, _, _, ref (SOME c)), _) => recordSummary env c
+      | c' as (L'.CUnif (_, _, _, r), _) => {fields = [], unifs = [(c', r)], others = []}
       | c' => {fields = [], unifs = [], others = [c']}
 
 and consEq env (c1, c2) =
@@ -577,7 +580,7 @@ and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
               | (_, _, (_, r) :: rest) =>
                 let
                     val r' = ref NONE
-                    val cr' = (L'.CUnif (k, "recd", r'), dummy)
+                    val cr' = (L'.CUnif (dummy, k, "recd", r'), dummy)
 
                     val prefix = case (fs, others) of
                                      ([], other :: others) =>
@@ -626,7 +629,7 @@ and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
 
 and hnormCon env (cAll as (c, loc)) =
     case c of
-        L'.CUnif (_, _, ref (SOME c)) => hnormCon env c
+        L'.CUnif (_, _, _, ref (SOME c)) => hnormCon env c
 
       | L'.CNamed xn =>
         (case E.lookupCNamed env xn of
@@ -758,22 +761,22 @@ and unifyCons'' env (c1All as (c1, _)) (c2All as (c2, _)) =
           | (L'.CError, _) => ()
           | (_, L'.CError) => ()
 
-          | (L'.CUnif (_, _, ref (SOME c1All)), _) => unifyCons' env c1All c2All
-          | (_, L'.CUnif (_, _, ref (SOME c2All))) => unifyCons' env c1All c2All
+          | (L'.CUnif (_, _, _, ref (SOME c1All)), _) => unifyCons' env c1All c2All
+          | (_, L'.CUnif (_, _, _, ref (SOME c2All))) => unifyCons' env c1All c2All
 
-          | (L'.CUnif (k1, _, r1), L'.CUnif (k2, _, r2)) =>
+          | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
             if r1 = r2 then
                 ()
             else
                 (unifyKinds k1 k2;
                  r1 := SOME c2All)
 
-          | (L'.CUnif (_, _, r), _) =>
+          | (L'.CUnif (_, _, _, r), _) =>
             if occursCon r c2All then
                 err COccursCheckFailed
             else
                 r := SOME c2All
-          | (_, L'.CUnif (_, _, r)) =>
+          | (_, L'.CUnif (_, _, _, r)) =>
             if occursCon r c1All then
                 err COccursCheckFailed
             else
@@ -898,7 +901,7 @@ fun elabHead env (e as (_, loc)) t =
             case hnormCon env t of
                 (L'.TCFun (L'.Implicit, x, k, t'), _) =>
                 let
-                    val u = cunif k
+                    val u = cunif (loc, k)
                 in
                     unravel (subConInCon (0, u) t',
                              (L'.ECApp (e, u), loc))
@@ -954,8 +957,8 @@ fun elabExp env (e, loc) =
             val (e1', t1) = elabHead env e1' t1
             val (e2', t2) = elabExp env e2
 
-            val dom = cunif ktype
-            val ran = cunif ktype
+            val dom = cunif (loc, ktype)
+            val ran = cunif (loc, ktype)
             val t = (L'.TFun (dom, ran), dummy)
         in
             checkCon env e1' t1 t;
@@ -965,7 +968,7 @@ fun elabExp env (e, loc) =
       | L.EAbs (x, to, e) =>
         let
             val t' = case to of
-                         NONE => cunif ktype
+                         NONE => cunif (loc, ktype)
                        | SOME t =>
                          let
                              val (t', tk) = elabCon env t
@@ -1034,8 +1037,8 @@ fun elabExp env (e, loc) =
             val (e', et) = elabExp env e
             val (c', ck) = elabCon env c
 
-            val ft = cunif ktype
-            val rest = cunif ktype_record
+            val ft = cunif (loc, ktype)
+            val rest = cunif (loc, ktype_record)
         in
             checkKind env c' ck kname;
             checkCon env e' et (L'.TRecord (L'.CConcat ((L'.CRecord (ktype, [(c', ft)]), loc), rest), loc), loc);
@@ -1044,36 +1047,22 @@ fun elabExp env (e, loc) =
 
       | L.EFold =>
         let
-            val dom = kunif ()
+            val dom = kunif loc
         in
             ((L'.EFold dom, loc), foldType (dom, loc))
         end
             
 
 datatype decl_error =
-         KunifsRemainKind of ErrorMsg.span * L'.kind
-       | KunifsRemainCon of ErrorMsg.span * L'.con
-       | KunifsRemainExp of ErrorMsg.span * L'.exp
-       | CunifsRemainCon of ErrorMsg.span * L'.con
-       | CunifsRemainExp of ErrorMsg.span * L'.exp
+         KunifsRemain of ErrorMsg.span
+       | CunifsRemain of ErrorMsg.span
 
 fun declError env err =
     case err of
-        KunifsRemainKind (loc, k) =>
-        (ErrorMsg.errorAt loc "Some kind unification variables are undetermined in kind";
-         eprefaces' [("Kind", p_kind k)])
-      | KunifsRemainCon (loc, c) =>
-        (ErrorMsg.errorAt loc "Some kind unification variables are undetermined in constructor";
-         eprefaces' [("Constructor", p_con env c)])
-      | KunifsRemainExp (loc, e) =>
-        (ErrorMsg.errorAt loc "Some kind unification variables are undetermined in expression";
-         eprefaces' [("Expression", p_exp env e)])
-      | CunifsRemainCon (loc, c) =>
-        (ErrorMsg.errorAt loc "Some constructor unification variables are undetermined in constructor";
-         eprefaces' [("Constructor", p_con env c)])
-      | CunifsRemainExp (loc, e) =>
-        (ErrorMsg.errorAt loc "Some constructor unification variables are undetermined in expression";
-         eprefaces' [("Expression", p_exp env e)])
+        KunifsRemain loc =>
+        ErrorMsg.errorAt loc "Some kind unification variables are undetermined in declaration"
+      | CunifsRemain loc =>
+        ErrorMsg.errorAt loc "Some constructor unification variables are undetermined in declaration"
 
 datatype sgn_error =
          UnboundSgn of ErrorMsg.span * string
@@ -1164,107 +1153,68 @@ fun strError env err =
 val hnormSgn = E.hnormSgn
 
 fun elabSgn_item ((sgi, loc), env) =
-    let
-        
-    in
-        resetKunif ();
-        resetCunif ();
-        case sgi of
-            L.SgiConAbs (x, k) =>
-            let
-                val k' = elabKind k
+    case sgi of
+        L.SgiConAbs (x, k) =>
+        let
+            val k' = elabKind k
 
-                val (env', n) = E.pushCNamed env x k' NONE
-            in
-                if ErrorMsg.anyErrors () then
-                    ()
-                else (
-                    if kunifsInKind k' then
-                        declError env (KunifsRemainKind (loc, k'))
-                    else
-                        ()
-                    );
+            val (env', n) = E.pushCNamed env x k' NONE
+        in
+            ([(L'.SgiConAbs (x, n, k'), loc)], env')
+        end
 
-                ([(L'.SgiConAbs (x, n, k'), loc)], env')
-            end
+      | L.SgiCon (x, ko, c) =>
+        let
+            val k' = case ko of
+                         NONE => kunif loc
+                       | SOME k => elabKind k
 
-          | L.SgiCon (x, ko, c) =>
-            let
-                val k' = case ko of
-                             NONE => kunif ()
-                           | SOME k => elabKind k
+            val (c', ck) = elabCon env c
+            val (env', n) = E.pushCNamed env x k' (SOME c')
+        in
+            checkKind env c' ck k';
 
-                val (c', ck) = elabCon env c
-                val (env', n) = E.pushCNamed env x k' (SOME c')
-            in
-                checkKind env c' ck k';
+            ([(L'.SgiCon (x, n, k', c'), loc)], env')
+        end
 
-                if ErrorMsg.anyErrors () then
-                    ()
-                else (
-                    if kunifsInKind k' then
-                        declError env (KunifsRemainKind (loc, k'))
-                    else
-                        ();
+      | L.SgiVal (x, c) =>
+        let
+            val (c', ck) = elabCon env c
 
-                    if kunifsInCon c' then
-                        declError env (KunifsRemainCon (loc, c'))
-                    else
-                        ()
-                    );
+            val (env', n) = E.pushENamed env x c'
+        in
+            (unifyKinds ck ktype
+             handle KUnify ue => strError env (NotType (ck, ue)));
 
-                ([(L'.SgiCon (x, n, k', c'), loc)], env')
-            end
+            ([(L'.SgiVal (x, n, c'), loc)], env')
+        end
 
-          | L.SgiVal (x, c) =>
-            let
-                val (c', ck) = elabCon env c
+      | L.SgiStr (x, sgn) =>
+        let
+            val sgn' = elabSgn env sgn
+            val (env', n) = E.pushStrNamed env x sgn'
+        in
+            ([(L'.SgiStr (x, n, sgn'), loc)], env')
+        end
 
-                val (env', n) = E.pushENamed env x c'
-            in
-                (unifyKinds ck ktype
-                 handle KUnify ue => strError env (NotType (ck, ue)));
+      | L.SgiSgn (x, sgn) =>
+        let
+            val sgn' = elabSgn env sgn
+            val (env', n) = E.pushSgnNamed env x sgn'
+        in
+            ([(L'.SgiSgn (x, n, sgn'), loc)], env')
+        end
 
-                if ErrorMsg.anyErrors () then
-                    ()
-                else (
-                    if kunifsInCon c' then
-                        declError env (KunifsRemainCon (loc, c'))
-                    else
-                        ()
-                    );
-
-                ([(L'.SgiVal (x, n, c'), loc)], env')
-            end
-
-          | L.SgiStr (x, sgn) =>
-            let
-                val sgn' = elabSgn env sgn
-                val (env', n) = E.pushStrNamed env x sgn'
-            in
-                ([(L'.SgiStr (x, n, sgn'), loc)], env')
-            end
-
-          | L.SgiSgn (x, sgn) =>
-            let
-                val sgn' = elabSgn env sgn
-                val (env', n) = E.pushSgnNamed env x sgn'
-            in
-                ([(L'.SgiSgn (x, n, sgn'), loc)], env')
-            end
-
-          | L.SgiInclude sgn =>
-            let
-                val sgn' = elabSgn env sgn
-            in
-                case #1 (hnormSgn env sgn') of
-                    L'.SgnConst sgis =>
-                    (sgis, foldl (fn (sgi, env) => E.sgiBinds env sgi) env sgis)
-                  | _ => (sgnError env (NotIncludable sgn');
-                          ([], env))
-            end
-
-    end
+      | L.SgiInclude sgn =>
+        let
+            val sgn' = elabSgn env sgn
+        in
+            case #1 (hnormSgn env sgn') of
+                L'.SgnConst sgis =>
+                (sgis, foldl (fn (sgi, env) => E.sgiBinds env sgi) env sgis)
+              | _ => (sgnError env (NotIncludable sgn');
+                      ([], env))
+        end
 
 and elabSgn env (sgn, loc) =
     case sgn of
@@ -1580,132 +1530,89 @@ fun subSgn env sgn1 (sgn2 as (_, loc2)) =
 
 
 fun elabDecl ((d, loc), env) =
-    let
-        
-    in
-        resetKunif ();
-        resetCunif ();
-        case d of
-            L.DCon (x, ko, c) =>
+    case d of
+        L.DCon (x, ko, c) =>
+        let
+            val k' = case ko of
+                         NONE => kunif loc
+                       | SOME k => elabKind k
+
+            val (c', ck) = elabCon env c
+            val (env', n) = E.pushCNamed env x k' (SOME c')
+        in
+            checkKind env c' ck k';
+
+            ([(L'.DCon (x, n, k', c'), loc)], env')
+        end
+      | L.DVal (x, co, e) =>
+        let
+            val (c', ck) = case co of
+                               NONE => (cunif (loc, ktype), ktype)
+                             | SOME c => elabCon env c
+
+            val (e', et) = elabExp env e
+            val (env', n) = E.pushENamed env x c'
+        in
+            checkCon env e' et c';
+
+            ([(L'.DVal (x, n, c', e'), loc)], env')
+        end
+
+      | L.DSgn (x, sgn) =>
+        let
+            val sgn' = elabSgn env sgn
+            val (env', n) = E.pushSgnNamed env x sgn'
+        in
+            ([(L'.DSgn (x, n, sgn'), loc)], env')
+        end
+
+      | L.DStr (x, sgno, str) =>
+        let
+            val formal = Option.map (elabSgn env) sgno
+            val (str', actual) = elabStr env str
+
+            val sgn' = case formal of
+                           NONE => selfifyAt env {str = str', sgn = actual}
+                         | SOME formal =>
+                           (subSgn env actual formal;
+                            formal)
+
+            val (env', n) = E.pushStrNamed env x sgn'
+        in
+            case #1 (hnormSgn env sgn') of
+                L'.SgnFun _ =>
+                (case #1 str' of
+                     L'.StrFun _ => ()
+                   | _ => strError env (FunctorRebind loc))
+              | _ => ();
+
+            ([(L'.DStr (x, n, sgn', str'), loc)], env')
+        end
+
+      | L.DFfiStr (x, sgn) =>
+        let
+            val sgn' = elabSgn env sgn
+
+            val (env', n) = E.pushStrNamed env x sgn'
+        in
+            ([(L'.DFfiStr (x, n, sgn'), loc)], env')
+        end
+
+      | L.DOpen (m, ms) =>
+        case E.lookupStr env m of
+            NONE => (strError env (UnboundStr (loc, m));
+                     ([], env))
+          | SOME (n, sgn) =>
             let
-                val k' = case ko of
-                             NONE => kunif ()
-                           | SOME k => elabKind k
-
-                val (c', ck) = elabCon env c
-                val (env', n) = E.pushCNamed env x k' (SOME c')
+                val (_, sgn) = foldl (fn (m, (str, sgn)) =>
+                                         case E.projectStr env {str = str, sgn = sgn, field = m} of
+                                             NONE => (strError env (UnboundStr (loc, m));
+                                                      (strerror, sgnerror))
+                                           | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                     ((L'.StrVar n, loc), sgn) ms
             in
-                checkKind env c' ck k';
-
-                if ErrorMsg.anyErrors () then
-                    ()
-                else (
-                    if kunifsInKind k' then
-                        declError env (KunifsRemainKind (loc, k'))
-                    else
-                        ();
-
-                    if kunifsInCon c' then
-                        declError env (KunifsRemainCon (loc, c'))
-                    else
-                        ()
-                    );
-
-                ([(L'.DCon (x, n, k', c'), loc)], env')
+                dopen env {str = n, strs = ms, sgn = sgn}
             end
-          | L.DVal (x, co, e) =>
-            let
-                val (c', ck) = case co of
-                                   NONE => (cunif ktype, ktype)
-                                 | SOME c => elabCon env c
-
-                val (e', et) = elabExp env e
-                val (env', n) = E.pushENamed env x c'
-            in
-                checkCon env e' et c';
-
-                if ErrorMsg.anyErrors () then
-                    ()
-                else (
-                    if kunifsInCon c' then
-                        declError env (KunifsRemainCon (loc, c'))
-                    else
-                        ();
-
-                    if cunifsInCon c' then
-                        declError env (CunifsRemainCon (loc, c'))
-                    else
-                        ();
-
-                    if kunifsInExp e' then
-                        declError env (KunifsRemainExp (loc, e'))
-                    else
-                        ();
-
-                    if cunifsInExp e' then
-                        declError env (CunifsRemainExp (loc, e'))
-                    else
-                        ());
-
-                ([(L'.DVal (x, n, c', e'), loc)], env')
-            end
-
-          | L.DSgn (x, sgn) =>
-            let
-                val sgn' = elabSgn env sgn
-                val (env', n) = E.pushSgnNamed env x sgn'
-            in
-                ([(L'.DSgn (x, n, sgn'), loc)], env')
-            end
-
-          | L.DStr (x, sgno, str) =>
-            let
-                val formal = Option.map (elabSgn env) sgno
-                val (str', actual) = elabStr env str
-
-                val sgn' = case formal of
-                               NONE => selfifyAt env {str = str', sgn = actual}
-                             | SOME formal =>
-                               (subSgn env actual formal;
-                                formal)
-
-                val (env', n) = E.pushStrNamed env x sgn'
-            in
-                case #1 (hnormSgn env sgn') of
-                    L'.SgnFun _ =>
-                    (case #1 str' of
-                         L'.StrFun _ => ()
-                       | _ => strError env (FunctorRebind loc))
-                  | _ => ();
-
-                ([(L'.DStr (x, n, sgn', str'), loc)], env')
-            end
-
-          | L.DFfiStr (x, sgn) =>
-            let
-                val sgn' = elabSgn env sgn
-
-                val (env', n) = E.pushStrNamed env x sgn'
-            in
-                ([(L'.DFfiStr (x, n, sgn'), loc)], env')
-            end
-
-          | L.DOpen (m, ms) =>
-            (case E.lookupStr env m of
-                 NONE => (strError env (UnboundStr (loc, m));
-                          ([], env))
-               | SOME (n, sgn) =>
-                 let
-                     val (_, sgn) = foldl (fn (m, (str, sgn)) =>
-                                              case E.projectStr env {str = str, sgn = sgn, field = m} of
-                                                  NONE => (strError env (UnboundStr (loc, m));
-                                                           (strerror, sgnerror))
-                                                | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                                          ((L'.StrVar n, loc), sgn) ms
-                 in
-                     dopen env {str = n, strs = ms, sgn = sgn}
-                 end)
-    end
 
 and elabStr env (str, loc) =
     case str of
@@ -1844,7 +1751,30 @@ fun elabFile basis env file =
         val () = discoverC float "float"
         val () = discoverC string "string"
 
-        val (file, _) = ListUtil.foldlMapConcat elabDecl env' file
+        fun elabDecl' (d, env) =
+            let
+                val () = resetKunif ()
+                val () = resetCunif ()
+                val (ds, env) = elabDecl (d, env)
+            in
+                if ErrorMsg.anyErrors () then
+                    ()
+                else (
+                    if List.exists kunifsInDecl ds then
+                        declError env (KunifsRemain (#2 d))
+                    else
+                        ();
+                    
+                    case ListUtil.search cunifsInDecl ds of
+                        NONE => ()
+                      | SOME loc =>
+                        declError env (CunifsRemain loc)
+                    );
+
+                (ds, env)
+            end
+
+        val (file, _) = ListUtil.foldlMapConcat elabDecl' env' file
     in
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan) :: ds @ file
     end
