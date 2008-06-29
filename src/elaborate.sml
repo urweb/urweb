@@ -535,6 +535,11 @@ and consEq env (c1, c2) =
      true)
     handle CUnify _ => false
 
+and consNeq env (c1, c2) =
+    case (#1 (hnormCon env c1), #1 (hnormCon env c2)) of
+        (L'.CName x1, L'.CName x2) => x1 <> x2
+      | _ => false
+
 and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
     let
         (*val () = eprefaces "Summaries" [("#1", p_summary env s1),
@@ -563,7 +568,9 @@ and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
             end
 
         val (fs1, fs2) = eatMatching (fn ((x1, c1), (x2, c2)) =>
-                                         consEq env (c1, c2) andalso consEq env (x1, x2))
+                                         not (consNeq env (x1, x2))
+                                         andalso consEq env (c1, c2)
+                                         andalso consEq env (x1, x2))
                                      (#fields s1, #fields s2)
         (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
                                            ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
