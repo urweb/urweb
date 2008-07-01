@@ -27,3 +27,19 @@ structure M' = struct
         con r' = M.r
         con combo = [nm' = int] ++ r'
 end
+
+
+signature S' = sig
+        con r1 :: {Type}
+        con r2 :: {Type}
+
+        constraint r1 ~ r2
+end
+
+functor F (M : S) : S' = struct
+        con r1 = [M.nm = int]
+        con r2 = M.r
+
+        open constraints M
+        constraint r1 ~ r2
+end
