@@ -44,7 +44,8 @@ val s = ErrorMsg.spanOf
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR | TWIDDLE
- | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | INCLUDE | OPEN
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
+ | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS
 
 %nonterm
    file of decl list
@@ -128,6 +129,10 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
        | OPEN mpath                     (case mpath of
                                              [] => raise Fail "Impossible mpath parse [1]"
                                            | m :: ms => (DOpen (m, ms), s (OPENleft, mpathright)))
+       | OPEN CONSTRAINTS mpath         (case mpath of
+                                             [] => raise Fail "Impossible mpath parse [3]"
+                                           | m :: ms => (DOpenConstraints (m, ms), s (OPENleft, mpathright)))
+       | CONSTRAINT cterm TWIDDLE cterm (DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
 
 sgn    : sgntm                          (sgntm)
        | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn
@@ -161,6 +166,7 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
                                                  (SgnFun (CSYMBOL2, sgn1, sgn2), s (FUNCTORleft, sgn2right))),
                                          s (FUNCTORleft, sgn2right))
        | INCLUDE sgn                    (SgiInclude sgn, s (INCLUDEleft, sgnright))
+       | CONSTRAINT cterm TWIDDLE cterm (SgiConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
 
 sgis   :                                ([])
        | sgi sgis                       (sgi :: sgis)

@@ -111,15 +111,16 @@ fun p_con' par env (c, _) =
          handle E.UnboundNamed _ => string ("UNBOUND_NAMED" ^ Int.toString n))
       | CModProj (m1, ms, x) =>
         let
-            val (m1x, sgn) = E.lookupStrNamed env m1
-
+            val m1x = #1 (E.lookupStrNamed env m1)
+                handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1
+               
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
                       else
                           m1x
         in
             p_list_sep (string ".") string (m1x :: ms @ [x])
-        end
+        end 
 
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
                                            space,
@@ -193,19 +194,22 @@ fun p_exp' par env (e, _) =
     case e of
         EPrim p => Prim.p_t p
       | ERel n =>
-        if !debug then
-            string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
-        else
-            string (#1 (E.lookupERel env n))
+        ((if !debug then
+              string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
+          else
+              string (#1 (E.lookupERel env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_REL" ^ Int.toString n))
       | ENamed n =>
-        if !debug then
-            string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
-        else
-            string (#1 (E.lookupENamed env n))
+        ((if !debug then
+              string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+          else
+              string (#1 (E.lookupENamed env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_NAMED" ^ Int.toString n))
       | EModProj (m1, ms, x) =>
         let
-            val (m1x, sgn) = E.lookupStrNamed env m1
-
+            val m1x = #1 (E.lookupStrNamed env m1)
+                handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1
+                  
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
                       else
@@ -325,6 +329,13 @@ fun p_sgn_item env (sgi, _) =
                                    string "=",
                                    space,
                                    p_sgn env sgn]
+      | SgiConstraint (c1, c2) => box [string "constraint",
+                                       space,
+                                       p_con env c1,
+                                       space,
+                                       string "~",
+                                       space,
+                                       p_con env c2]
 
 and p_sgn env (sgn, _) =
     case sgn of
@@ -340,7 +351,8 @@ and p_sgn env (sgn, _) =
                               end,
                               newline,
                               string "end"]
-      | SgnVar n => string (#1 (E.lookupSgnNamed env n))
+      | SgnVar n => ((string (#1 (E.lookupSgnNamed env n)))
+                     handle E.UnboundNamed _ => string ("UNBOUND_SGN_" ^ Int.toString n))
       | SgnFun (x, n, sgn, sgn') => box [string "functor",
                                          space,
                                          string "(",
@@ -367,13 +379,14 @@ and p_sgn env (sgn, _) =
                                      p_con env c]
       | SgnProj (m1, ms, x) =>
         let
-            val (m1x, sgn) = E.lookupStrNamed env m1
-
+            val m1x = #1 (E.lookupStrNamed env m1)
+                handle E.UnboundNamed _ => "UNBOUND_SGN_" ^ Int.toString m1
+                   
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
                       else
                           m1x
-        in
+         in
             p_list_sep (string ".") string (m1x :: ms @ [x])
         end
       | SgnError => string "<ERROR>"
@@ -430,6 +443,13 @@ fun p_decl env ((d, _) : decl) =
                                     string ":",
                                     space,
                                     p_sgn env sgn]
+      | DConstraint (c1, c2) => box [string "constraint",
+                                     space,
+                                     p_con env c1,
+                                     space,
+                                     string "~",
+                                     space,
+                                     p_con env c2]
 
 and p_str env (str, _) =
     case str of
@@ -438,7 +458,8 @@ and p_str env (str, _) =
                             p_file env ds,
                             newline,
                             string "end"]
-      | StrVar n => string (#1 (E.lookupStrNamed env n))
+      | StrVar n => ((string (#1 (E.lookupStrNamed env n)))
+                     handle E.UnboundNamed _ => string ("UNBOUND_STR_" ^ Int.toString n))
       | StrProj (str, s) => box [p_str env str,
                                  string ".",
                                  string s]

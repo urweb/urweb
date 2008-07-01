@@ -81,5 +81,6 @@ signature ELAB_ENV = sig
     val projectVal : env -> { sgn : Elab.sgn, str : Elab.str, field : string } -> Elab.con option
     val projectSgn : env -> { sgn : Elab.sgn, str : Elab.str, field : string } -> Elab.sgn option
     val projectStr : env -> { sgn : Elab.sgn, str : Elab.str, field : string } -> Elab.sgn option
+    val projectConstraints : env -> { sgn : Elab.sgn, str : Elab.str } -> (Elab.con * Elab.con) list option
 
 end

@@ -291,6 +291,7 @@ fun declBinds env (d, _) =
       | DSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
       | DStr (x, n, sgn, _) => pushStrNamedAs env x n sgn
       | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
+      | DConstraint _ => env
 
 fun sgiBinds env (sgi, _) =
     case sgi of
@@ -299,6 +300,7 @@ fun sgiBinds env (sgi, _) =
       | SgiVal (x, n, t) => pushENamedAs env x n t
       | SgiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
+      | SgiConstraint _ => env
 
 fun sgnSeek f sgis =
     let
@@ -308,13 +310,14 @@ fun sgnSeek f sgis =
               | (sgi, _) :: sgis =>
                 case f sgi of
                     SOME v => SOME (v, (sgns, strs, cons))
-                    | NONE =>
-                      case sgi of
-                          SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                        | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                        | SgiVal _ => seek (sgis, sgns, strs, cons)
-                        | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons)
-                        | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons)
+                  | NONE =>
+                    case sgi of
+                        SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                      | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                      | SgiVal _ => seek (sgis, sgns, strs, cons)
+                      | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons)
+                      | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons)
+                      | SgiConstraint _ => seek (sgis, sgns, strs, cons)
     in
         seek (sgis, IM.empty, IM.empty, IM.empty)
     end
@@ -461,5 +464,32 @@ fun projectVal env {sgn, str, field} =
       | SgnError => SOME (CError, ErrorMsg.dummySpan)
       | _ => NONE
 
+fun sgnSeekConstraints (str, sgis) =
+    let
+        fun seek (sgis, sgns, strs, cons, acc) =
+            case sgis of
+                [] => acc
+              | (sgi, _) :: sgis =>
+                case sgi of
+                    SgiConstraint (c1, c2) =>
+                    let
+                        val sub = sgnSubCon (str, (sgns, strs, cons))
+                    in
+                        seek (sgis, sgns, strs, cons, (sub c1, sub c2) :: acc)
+                    end
+                  | SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiVal _ => seek (sgis, sgns, strs, cons, acc)
+                  | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
+                  | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
+    in
+        seek (sgis, IM.empty, IM.empty, IM.empty, [])
+    end
+
+fun projectConstraints env {sgn, str} =
+    case #1 (hnormSgn env sgn) of
+        SgnConst sgis => SOME (sgnSeekConstraints (str, sgis))
+      | SgnError => SOME []
+      | _ => NONE
 
 end

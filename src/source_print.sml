@@ -287,6 +287,13 @@ fun p_sgn_item (sgi, _) =
       | SgiInclude sgn => box [string "include",
                                space,
                                p_sgn sgn]
+      | SgiConstraint (c1, c2) => box [string "constraint",
+                                       space,
+                                       p_con c1,
+                                       space,
+                                       string "~",
+                                       space,
+                                       p_con c2]
 
 and p_sgn (sgn, _) =
     case sgn of
@@ -398,6 +405,18 @@ fun p_decl ((d, _) : decl) =
       | DOpen (m, ms) => box [string "open",
                               space,
                               p_list_sep (string ".") string (m :: ms)]
+      | DConstraint (c1, c2) => box [string "constraint",
+                                     space,
+                                     p_con c1,
+                                     space,
+                                     string "~",
+                                     space,
+                                     p_con c2]
+      | DOpenConstraints (m, ms) => box [string "open",
+                                         space,
+                                         string "constraints",
+                                         space,
+                                         p_list_sep (string ".") string (m :: ms)]
 
 and p_str (str, _) =
     case str of

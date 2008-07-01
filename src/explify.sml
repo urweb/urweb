@@ -91,15 +91,16 @@ fun explifyExp (e, loc) =
 
 fun explifySgi (sgi, loc) =
     case sgi of
-        L.SgiConAbs (x, n, k) => (L'.SgiConAbs (x, n, explifyKind k), loc)
-      | L.SgiCon (x, n, k, c) => (L'.SgiCon (x, n, explifyKind k, explifyCon c), loc)
-      | L.SgiVal (x, n, c) => (L'.SgiVal (x, n, explifyCon c), loc)
-      | L.SgiStr (x, n, sgn) => (L'.SgiStr (x, n, explifySgn sgn), loc)
-      | L.SgiSgn (x, n, sgn) => (L'.SgiSgn (x, n, explifySgn sgn), loc)
+        L.SgiConAbs (x, n, k) => SOME (L'.SgiConAbs (x, n, explifyKind k), loc)
+      | L.SgiCon (x, n, k, c) => SOME (L'.SgiCon (x, n, explifyKind k, explifyCon c), loc)
+      | L.SgiVal (x, n, c) => SOME (L'.SgiVal (x, n, explifyCon c), loc)
+      | L.SgiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, explifySgn sgn), loc)
+      | L.SgiSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, explifySgn sgn), loc)
+      | L.SgiConstraint _ => NONE
 
 and explifySgn (sgn, loc) =
     case sgn of
-        L.SgnConst sgis => (L'.SgnConst (map explifySgi sgis), loc)
+        L.SgnConst sgis => (L'.SgnConst (List.mapPartial explifySgi sgis), loc)
       | L.SgnVar n => (L'.SgnVar n, loc)
       | L.SgnFun (m, n, dom, ran) => (L'.SgnFun (m, n, explifySgn dom, explifySgn ran), loc)
       | L.SgnWhere (sgn, x, c) => (L'.SgnWhere (explifySgn sgn, x, explifyCon c), loc)
@@ -108,22 +109,23 @@ and explifySgn (sgn, loc) =
 
 fun explifyDecl (d, loc : EM.span) =
     case d of
-        L.DCon (x, n, k, c) => (L'.DCon (x, n, explifyKind k, explifyCon c), loc)
-      | L.DVal (x, n, t, e) => (L'.DVal (x, n, explifyCon t, explifyExp e), loc)
+        L.DCon (x, n, k, c) => SOME (L'.DCon (x, n, explifyKind k, explifyCon c), loc)
+      | L.DVal (x, n, t, e) => SOME (L'.DVal (x, n, explifyCon t, explifyExp e), loc)
 
-      | L.DSgn (x, n, sgn) => (L'.DSgn (x, n, explifySgn sgn), loc)
-      | L.DStr (x, n, sgn, str) => (L'.DStr (x, n, explifySgn sgn, explifyStr str), loc)
-      | L.DFfiStr (x, n, sgn) => (L'.DFfiStr (x, n, explifySgn sgn), loc)
+      | L.DSgn (x, n, sgn) => SOME (L'.DSgn (x, n, explifySgn sgn), loc)
+      | L.DStr (x, n, sgn, str) => SOME (L'.DStr (x, n, explifySgn sgn, explifyStr str), loc)
+      | L.DFfiStr (x, n, sgn) => SOME (L'.DFfiStr (x, n, explifySgn sgn), loc)
+      | L.DConstraint (c1, c2) => NONE
 
 and explifyStr (str, loc) =
     case str of
-        L.StrConst ds => (L'.StrConst (map explifyDecl ds), loc)
+        L.StrConst ds => (L'.StrConst (List.mapPartial explifyDecl ds), loc)
       | L.StrVar n => (L'.StrVar n, loc)
       | L.StrProj (str, s) => (L'.StrProj (explifyStr str, s), loc)
       | L.StrFun (m, n, dom, ran, str) => (L'.StrFun (m, n, explifySgn dom, explifySgn ran, explifyStr str), loc)
       | L.StrApp (str1, str2) => (L'.StrApp (explifyStr str1, explifyStr str2), loc)
       | L.StrError => raise Fail ("explifyStr: StrError at " ^ EM.spanToString loc)
 
-val explify = map explifyDecl
+val explify = List.mapPartial explifyDecl
 
 end

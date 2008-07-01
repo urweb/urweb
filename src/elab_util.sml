@@ -379,6 +379,12 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                 S.map2 (sg ctx s,
                      fn s' =>
                         (SgiSgn (x, n, s'), loc))
+              | SgiConstraint (c1, c2) =>
+                S.bind2 (con ctx c1,
+                         fn c1' =>
+                            S.map2 (con ctx c2,
+                                    fn c2' =>
+                                       (SgiConstraint (c1', c2'), loc)))
 
         and sg ctx s acc =
             S.bindP (sg' ctx s acc, sgn ctx)
@@ -396,7 +402,8 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                  | SgiStr (x, _, sgn) =>
                                                    bind (ctx, Str (x, sgn))
                                                  | SgiSgn (x, _, sgn) =>
-                                                   bind (ctx, Sgn (x, sgn)),
+                                                   bind (ctx, Sgn (x, sgn))
+                                                 | SgiConstraint _ => ctx,
                                                sgi ctx si)) ctx sgis,
                      fn sgis' =>
                         (SgnConst sgis', loc))
@@ -502,7 +509,8 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                  | DStr (x, _, sgn, _) =>
                                                    bind (ctx, Str (x, sgn))
                                                  | DFfiStr (x, _, sgn) =>
-                                                   bind (ctx, Str (x, sgn)),
+                                                   bind (ctx, Str (x, sgn))
+                                                 | DConstraint _ => ctx,
                                                mfd ctx d)) ctx ds,
                      fn ds' => (StrConst ds', loc))
               | StrVar _ => S.return2 strAll
@@ -557,6 +565,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                 S.map2 (mfsg ctx sgn,
                         fn sgn' =>
                            (DFfiStr (x, n, sgn'), loc))
+              | DConstraint (c1, c2) =>
+                S.bind2 (mfc ctx c1,
+                         fn c1' =>
+                            S.map2 (mfc ctx c2,
+                                    fn c2' =>
+                                       (DConstraint (c1', c2'), loc)))
     in
         mfd
     end

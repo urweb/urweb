@@ -160,6 +160,8 @@ realconst = [0-9]+\.[0-9]*;
 <INITIAL> "extern"    => (Tokens.EXTERN (pos yypos, pos yypos + size yytext));
 <INITIAL> "include"   => (Tokens.INCLUDE (pos yypos, pos yypos + size yytext));
 <INITIAL> "open"      => (Tokens.OPEN (pos yypos, pos yypos + size yytext));
+<INITIAL> "constraint"=> (Tokens.CONSTRAINT (pos yypos, pos yypos + size yytext));
+<INITIAL> "constraints"=> (Tokens.CONSTRAINTS (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));
 <INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));

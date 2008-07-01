@@ -1,0 +1,29 @@
+signature S = sig
+        con nm :: Name
+        con r :: {Type}
+
+        constraint [nm] ~ r
+end
+
+structure M : S = struct
+        con nm = #A
+        con r = [B = float, C = string]
+
+        constraint [A] ~ [B]
+        constraint [nm] ~ r
+        constraint [C] ~ [D]
+end
+
+structure M' = struct
+        open M
+
+        con combo = [nm = int] ++ r
+end
+
+structure M' = struct
+        open constraints M
+
+        con nm' = M.nm
+        con r' = M.r
+        con combo = [nm' = int] ++ r'
+end
