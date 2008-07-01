@@ -1,1 +1,1 @@
-con c = [A = ()] ++ [A = ()]
+con c = fn x :: Name => [x, A]

@@ -277,10 +277,7 @@ fun prove env denv (c1, c2, loc) =
         val hasUnknown = List.exists (fn p => p = Unknown)
     in
         if hasUnknown ps1 orelse hasUnknown ps2 then
-            (ErrorMsg.errorAt loc "Structure of row is too complicated to prove disjointness";
-             Print.eprefaces' [("Row 1", ElabPrint.p_con env c1),
-                               ("Row 2", ElabPrint.p_con env c2)];
-             [])
+            [(c1, c2)]
         else
             foldl (fn (p1, rem) =>
                       foldl (fn (p2, rem) =>
