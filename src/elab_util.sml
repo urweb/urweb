@@ -124,6 +124,14 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                          S.map2 (mfc (bind (ctx, Rel (x, k))) c,
                               fn c' =>
                                  (CAbs (x, k', c'), loc)))
+              | CDisjoint (c1, c2, c3) =>
+                S.bind2 (mfc ctx c1,
+                      fn c1' =>
+                         S.bind2 (mfc ctx c2,
+                              fn c2' =>
+                                 S.map2 (mfc ctx c3,
+                                         fn c3' =>
+                                            (CDisjoint (c1', c2', c3'), loc))))
 
               | CName _ => S.return2 cAll
 

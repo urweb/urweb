@@ -53,6 +53,7 @@ datatype con' =
        | CVar of string list * string
        | CApp of con * con
        | CAbs of string * kind option * con
+       | CDisjoint of con * con * con
 
        | CName of string
 

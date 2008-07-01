@@ -43,7 +43,7 @@ val s = ErrorMsg.spanOf
  | CON | LTYPE | VAL | FOLD | UNIT | KUNIT
  | TYPE | NAME
  | ARROW | LARROW | DARROW
- | FN | PLUSPLUS | DOLLAR
+ | FN | PLUSPLUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | INCLUDE | OPEN
 
 %nonterm
@@ -93,6 +93,7 @@ val s = ErrorMsg.spanOf
 %right COMMA
 %right ARROW LARROW
 %right PLUSPLUS
+%nonassoc TWIDDLE
 %nonassoc DOLLAR
 %left DOT
 
@@ -194,6 +195,7 @@ cexp   : capps                          (capps)
 
        | FN SYMBOL DARROW cexp          (CAbs (SYMBOL, NONE, cexp), s (FNleft, cexpright))
        | FN SYMBOL DCOLON kind DARROW cexp (CAbs (SYMBOL, SOME kind, cexp), s (FNleft, cexpright))
+       | cterm TWIDDLE cterm DARROW cexp(CDisjoint (cterm1, cterm2, cexp), s (cterm1left, cexpright))
 
        | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, kindright))
 

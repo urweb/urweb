@@ -56,6 +56,7 @@ fun explifyCon (c, loc) =
 
       | L.CApp (c1, c2) => (L'.CApp (explifyCon c1, explifyCon c2), loc)
       | L.CAbs (x, k, c) => (L'.CAbs (x, explifyKind k, explifyCon c), loc)
+      | L.CDisjoint _ => raise Fail "Explify CDisjoint"
 
       | L.CName s => (L'.CName s, loc)
 

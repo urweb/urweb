@@ -114,7 +114,7 @@ fun decomposeRow env c =
                 CName s => NameC s :: acc
               | CRel n => NameR n :: acc
               | CNamed n => NameN n :: acc
-              | _ => Unknown :: acc
+              | _ => (print "Unknown name\n"; Unknown :: acc)
                      
         fun decomposeRow (c, acc) =
             case #1 (hnormCon env c) of
@@ -122,7 +122,7 @@ fun decomposeRow env c =
               | CConcat (c1, c2) => decomposeRow (c1, decomposeRow (c2, acc))
               | CRel n => RowR n :: acc
               | CNamed n => RowN n :: acc
-              | _ => Unknown :: acc
+              | _ => (print "Unknown row\n"; Unknown :: acc)
     in
         decomposeRow (c, [])
     end
@@ -265,6 +265,7 @@ fun prove1' denv (p1, p2) =
 fun prove1 denv (p1, p2) =
     case (p1, p2) of
         (NameC s1, NameC s2) => s1 <> s2
+      | (NameC _, _) => prove1' denv (p2, p1)
       | (_, RowR _) => prove1' denv (p2, p1)
       | (_, RowN _) => prove1' denv (p2, p1)
       | _ => prove1' denv (p1, p2)

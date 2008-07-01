@@ -55,6 +55,7 @@ datatype con' =
        | CModProj of int * string list * string
        | CApp of con * con
        | CAbs of string * kind * con
+       | CDisjoint of con * con * con
 
        | CName of string
 

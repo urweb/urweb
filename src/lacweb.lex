@@ -142,6 +142,7 @@ realconst = [0-9]+\.[0-9]*;
 <INITIAL> "#"         => (Tokens.HASH (pos yypos, pos yypos + size yytext));
 <INITIAL> "__"        => (Tokens.UNDERUNDER (pos yypos, pos yypos + size yytext));
 <INITIAL> "_"         => (Tokens.UNDER (pos yypos, pos yypos + size yytext));
+<INITIAL> "~"         => (Tokens.TWIDDLE (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "con"       => (Tokens.CON (pos yypos, pos yypos + size yytext));
 <INITIAL> "type"      => (Tokens.LTYPE (pos yypos, pos yypos + size yytext));

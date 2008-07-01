@@ -1,1 +1,9 @@
-con c = fn x :: Name => [x, A]
+con c1 = fn x :: Name => [x] ~ [A] => [x, A]
+con c2 = fn x :: Name => [x] ~ [A] => [A, x]
+con c3 = fn x :: Name => [A] ~ [x] => [x, A]
+con c4 = fn x :: Name => [A] ~ [x] => [A, x]
+
+con c5 = fn r1 :: {Type} => fn r2 => r1 ~ r2 => r1 ++ r2
+con c6 = fn r1 :: {Type} => fn r2 => r2 ~ r1 => r1 ++ r2
+
+con c7 = fn x :: Name => fn r => [x] ~ r => [x] ++ r

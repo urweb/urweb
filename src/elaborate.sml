@@ -306,6 +306,23 @@ fun elabCon (env, denv) (c, loc) =
              gs)
         end
 
+      | L.CDisjoint (c1, c2, c) =>
+        let
+            val (c1', k1, gs1) = elabCon (env, denv) c1
+            val (c2', k2, gs2) = elabCon (env, denv) c2
+
+            val ku1 = kunif loc
+            val ku2 = kunif loc
+
+            val denv' = D.assert env denv (c1', c2')
+            val (c', k, gs3) = elabCon (env, denv') c
+        in
+            checkKind env c1' k1 (L'.KRecord ku1, loc);
+            checkKind env c2' k2 (L'.KRecord ku2, loc);
+
+            ((L'.CDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs3)
+        end
+
       | L.CName s =>
         ((L'.CName s, loc), kname, [])
 
@@ -498,6 +515,7 @@ fun kindof env (c, loc) =
            | L'.KError => kerror
            | _ => raise CUnify' (CKindof c))
       | L'.CAbs (x, k, c) => (L'.KArrow (k, kindof (E.pushCRel env x k) c), loc)
+      | L'.CDisjoint (_, _, c) => kindof env c
 
       | L'.CName _ => kname
 
@@ -1761,13 +1779,16 @@ fun elabFile basis env file =
 
         val (file, (_, gs)) = ListUtil.foldlMapConcat elabDecl' (env', []) file
     in
-        app (fn (loc, env, denv, (c1, c2)) =>
-                case D.prove env denv (c1, c2, loc) of
-                    [] => ()
-                  | _ =>
-                    (ErrorMsg.errorAt loc "Remaining constraint";
-                     eprefaces' [("Con 1", p_con env c1),
-                                 ("Con 2", p_con env c2)])) gs;
+        if ErrorMsg.anyErrors () then
+            ()
+        else
+            app (fn (loc, env, denv, (c1, c2)) =>
+                    case D.prove env denv (c1, c2, loc) of
+                        [] => ()
+                      | _ =>
+                        (ErrorMsg.errorAt loc "Remaining constraint";
+                         eprefaces' [("Con 1", p_con env c1),
+                                     ("Con 2", p_con env c2)])) gs;
 
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan) :: ds @ file
     end
