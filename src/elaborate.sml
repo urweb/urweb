@@ -416,32 +416,8 @@ fun cunifyError env err =
         eprefaces "Can't unify record constructors" []
 
 exception SynUnif = E.SynUnif
-val liftConInCon = E.liftConInCon
 
-val subConInCon =
-    U.Con.mapB {kind = fn k => k,
-                con = fn (xn, rep) => fn c =>
-                                  case c of
-                                      L'.CRel xn' =>
-                                      (case Int.compare (xn', xn) of
-                                           EQUAL => #1 rep
-                                         | GREATER => L'.CRel (xn' - 1)
-                                         | LESS => c)
-                                    (*| L'.CUnif _ => raise SynUnif*)
-                                    | _ => c,
-                bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
-                        | (ctx, _) => ctx}
-
-fun subStrInSgn (m1, m2) =
-    U.Sgn.map {kind = fn k => k,
-               con = fn c as L'.CModProj (m1', ms, x) =>
-                        if m1 = m1' then
-                            L'.CModProj (m2, ms, x)
-                        else
-                            c
-                      | c => c,
-               sgn_item = fn sgi => sgi,
-               sgn = fn sgn => sgn}
+open ElabOps
 
 type record_summary = {
      fields : (L'.con * L'.con) list,
@@ -631,85 +607,6 @@ and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
         pairOffUnifs (unifs1, unifs2)
     end
 
-and hnormCon env (cAll as (c, loc)) =
-    case c of
-        L'.CUnif (_, _, _, ref (SOME c)) => hnormCon env c
-
-      | L'.CNamed xn =>
-        (case E.lookupCNamed env xn of
-             (_, _, SOME c') => hnormCon env c'
-           | _ => cAll)
-
-      | L'.CModProj (n, ms, x) =>
-        let
-            val (_, sgn) = E.lookupStrNamed env n
-            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
-                                       case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                           NONE => raise Fail "hnormCon: Unknown substructure"
-                                         | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                             ((L'.StrVar n, loc), sgn) ms
-        in
-            case E.projectCon env {sgn = sgn, str = str, field = x} of
-                NONE => raise Fail "kindof: Unknown con in structure"
-              | SOME (_, NONE) => cAll
-              | SOME (_, SOME c) => hnormCon env c
-        end
-
-      | L'.CApp (c1, c2) =>
-        (case #1 (hnormCon env c1) of
-             L'.CAbs (x, k, cb) =>
-             let
-                 val sc = (hnormCon env (subConInCon (0, c2) cb))
-                     handle SynUnif => cAll
-                 (*val env' = E.pushCRel env x k*)
-             in
-                 (*eprefaces "Subst" [("x", Print.PD.string x),
-                                    ("cb", p_con env' cb),
-                                    ("c2", p_con env c2),
-                                    ("sc", p_con env sc)];*)
-                 sc
-             end
-           | L'.CApp (c', i) =>
-             (case #1 (hnormCon env c') of
-                  L'.CApp (c', f) =>
-                  (case #1 (hnormCon env c') of
-                       L'.CFold ks =>
-                       (case #1 (hnormCon env c2) of
-                            L'.CRecord (_, []) => hnormCon env i
-                          | L'.CRecord (k, (x, c) :: rest) =>
-                            hnormCon env
-                                     (L'.CApp ((L'.CApp ((L'.CApp (f, x), loc), c), loc),
-                                               (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold ks, loc), f), loc), i), loc),
-                                                         (L'.CRecord (k, rest), loc)), loc)), loc)
-                          | L'.CConcat ((L'.CRecord (k, (x, c) :: rest), _), rest') =>
-                            let
-                                val rest'' = (L'.CConcat ((L'.CRecord (k, rest), loc), rest'), loc)
-
-                                (*val ccc = (L'.CApp ((L'.CApp ((L'.CApp (f, x), loc), c), loc),
-                                                   (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold ks, loc), f), loc), i), loc),
-                                                             rest''), loc)), loc)*)
-                            in
-                                (*eprefaces "Red to" [("ccc", p_con env ccc), ("ccc'", p_con env (hnormCon env ccc))];*)
-                                hnormCon env
-                                         (L'.CApp ((L'.CApp ((L'.CApp (f, x), loc), c), loc),
-                                                   (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold ks, loc), f), loc), i), loc),
-                                                             rest''), loc)), loc)
-                            end
-                          | _ => cAll)
-                     | _ => cAll)
-                | _ => cAll)
-           | _ => cAll)
-
-      | L'.CConcat (c1, c2) =>
-        (case (hnormCon env c1, hnormCon env c2) of
-             ((L'.CRecord (k, xcs1), loc), (L'.CRecord (_, xcs2), _)) =>
-             (L'.CRecord (k, xcs1 @ xcs2), loc)
-           | ((L'.CRecord (_, []), _), c2') => c2'
-           | ((L'.CConcat (c11, c12), loc), c2') =>
-             hnormCon env (L'.CConcat (c11, (L'.CConcat (c12, c2'), loc)), loc)
-           | _ => cAll)
-
-      | _ => cAll
 
 and unifyCons' env c1 c2 =
     unifyCons'' env (hnormCon env c1) (hnormCon env c2)
