@@ -31,3 +31,5 @@ val vt6 = v2 [#A] [[B = float, C = string]] {A = 8, B = 8.0, C = "8"}
 val vtX = v2 [#A] [[B = float, B = string]] {A = 8, B = 8.0, B = "8"}
 val vtX = v2 [#A] [[A = float, B = string]] {A = 8, A = 8.0, B = "8"}
 *)
+
+val main = vt6

@@ -55,6 +55,8 @@ fun mapfold f =
                 S.map2 (mfk k,
                         fn k' =>
                            (KRecord k', loc))
+
+              | KUnit => S.return2 kAll
     in
         mfk
     end
@@ -144,6 +146,8 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                             S.map2 (mfk k2,
                                     fn k2' =>
                                        (CFold (k1', k2'), loc)))
+
+              | CUnit => S.return2 cAll
     in
         mfc
     end

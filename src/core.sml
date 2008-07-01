@@ -34,6 +34,7 @@ datatype kind' =
        | KArrow of kind * kind
        | KName
        | KRecord of kind
+       | KUnit
 
 withtype kind = kind' located
 
@@ -53,6 +54,8 @@ datatype con' =
        | CRecord of kind * (con * con) list
        | CConcat of con * con
        | CFold of kind * kind
+
+       | CUnit
 
 withtype con = con' located
 

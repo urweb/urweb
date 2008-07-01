@@ -275,6 +275,7 @@ fun corifyKind (k, loc) =
       | L.KArrow (k1, k2) => (L'.KArrow (corifyKind k1, corifyKind k2), loc)
       | L.KName => (L'.KName, loc)
       | L.KRecord k => (L'.KRecord (corifyKind k), loc)
+      | L.KUnit => (L'.KUnit, loc)
 
 fun corifyCon st (c, loc) =
     case c of
@@ -306,6 +307,7 @@ fun corifyCon st (c, loc) =
         (L'.CRecord (corifyKind k, map (fn (c1, c2) => (corifyCon st c1, corifyCon st c2)) xcs), loc)
       | L.CConcat (c1, c2) => (L'.CConcat (corifyCon st c1, corifyCon st c2), loc)
       | L.CFold (k1, k2) => (L'.CFold (corifyKind k1, corifyKind k2), loc)
+      | L.CUnit => (L'.CUnit, loc)
 
 fun corifyExp st (e, loc) =
     case e of

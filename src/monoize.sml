@@ -72,6 +72,7 @@ fun monoType env (all as (c, loc)) =
           | L.CRecord _ => poly ()
           | L.CConcat _ => poly ()
           | L.CFold _ => poly ()
+          | L.CUnit => poly ()
     end
 
 val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
