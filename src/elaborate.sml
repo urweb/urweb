@@ -32,6 +32,7 @@ structure L = Source
 structure L' = Elab
 structure E = ElabEnv
 structure U = ElabUtil
+structure D = Disjoint
 
 open Print
 open ElabPrint
@@ -73,6 +74,8 @@ fun unifyKinds' (k1All as (k1, _)) (k2All as (k2, _)) =
     in
         case (k1, k2) of
             (L'.KType, L'.KType) => ()
+          | (L'.KUnit, L'.KUnit) => ()
+
           | (L'.KArrow (d1, r1), L'.KArrow (d2, r2)) =>
             (unifyKinds' d1 d2;
              unifyKinds' r1 r2)
@@ -199,6 +202,7 @@ fun elabKind (k, loc) =
       | L.KArrow (k1, k2) => (L'.KArrow (elabKind k1, elabKind k2), loc)
       | L.KName => (L'.KName, loc)
       | L.KRecord k => (L'.KRecord (elabKind k), loc)
+      | L.KUnit => (L'.KUnit, loc)
       | L.KWild => kunif loc
 
 fun foldKind (dom, ran, loc)=
@@ -330,6 +334,10 @@ fun elabCon env (c, loc) =
             val ku = kunif loc
             val k = (L'.KRecord ku, loc)
         in
+            case D.prove env D.empty (c1', c2', loc) of
+                [] => ()
+              | _ => raise Fail "Can't prove disjointness";
+
             checkKind env c1' k1 k;
             checkKind env c2' k2 k;
             ((L'.CConcat (c1', c2'), loc), k)
@@ -342,6 +350,8 @@ fun elabCon env (c, loc) =
             ((L'.CFold (dom, ran), loc),
              foldKind (dom, ran, loc))
         end
+
+      | L.CUnit => ((L'.CUnit, loc), (L'.KUnit, loc))
 
       | L.CWild k =>
         let
@@ -477,6 +487,8 @@ fun kindof env (c, loc) =
       | L'.CRecord (k, _) => (L'.KRecord k, loc)
       | L'.CConcat (c, _) => kindof env c
       | L'.CFold (dom, ran) => foldKind (dom, ran, loc)
+
+      | L'.CUnit => (L'.KUnit, loc)
 
       | L'.CError => kerror
       | L'.CUnif (_, k, _, _) => k

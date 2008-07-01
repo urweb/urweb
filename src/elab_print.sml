@@ -48,6 +48,7 @@ fun p_kind' par (k, _) =
                                              p_kind k2])
       | KName => string "Name"
       | KRecord k => box [string "{", p_kind k, string "}"]
+      | KUnit => string "Unit"
 
       | KError => string "<ERROR>"
       | KUnif (_, _, ref (SOME k)) => p_kind' par k
@@ -154,6 +155,8 @@ fun p_con' par env (c, _) =
                                               space,
                                               p_con env c2])
       | CFold _ => string "fold"
+
+      | CUnit => string "()"
 
       | CError => string "<ERROR>"
       | CUnif (_, _, _, ref (SOME c)) => p_con' par env c

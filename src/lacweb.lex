@@ -120,6 +120,7 @@ realconst = [0-9]+\.[0-9]*;
 			  str := #"\n" :: !str; continue());
 <STRING> .            => (str := String.sub (yytext, 0) :: !str; continue());
 
+<INITIAL> "()"        => (Tokens.UNIT (pos yypos, pos yypos + size yytext));
 <INITIAL> "("         => (Tokens.LPAREN (pos yypos, pos yypos + size yytext));
 <INITIAL> ")"         => (Tokens.RPAREN (pos yypos, pos yypos + size yytext));
 <INITIAL> "["         => (Tokens.LBRACK (pos yypos, pos yypos + size yytext));
@@ -161,6 +162,7 @@ realconst = [0-9]+\.[0-9]*;
 
 <INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));
 <INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));
+<INITIAL> "Unit"      => (Tokens.KUNIT (pos yypos, pos yypos + size yytext));
 
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));

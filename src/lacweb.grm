@@ -40,7 +40,7 @@ val s = ErrorMsg.spanOf
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER
- | CON | LTYPE | VAL | FOLD
+ | CON | LTYPE | VAL | FOLD | UNIT | KUNIT
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR
@@ -179,6 +179,7 @@ kind   : TYPE                           (KType, s (TYPEleft, TYPEright))
        | LBRACE kind RBRACE             (KRecord kind, s (LBRACEleft, RBRACEright))
        | kind ARROW kind                (KArrow (kind1, kind2), s (kind1left, kind2right))
        | LPAREN kind RPAREN             (#1 kind, s (LPARENleft, RPARENright))
+       | KUNIT                          (KUnit, s (KUNITleft, KUNITright))
        | UNDERUNDER                     (KWild, s (UNDERUNDERleft, UNDERUNDERright))
 
 capps  : cterm                          (cterm)
@@ -216,6 +217,7 @@ cterm  : LPAREN cexp RPAREN             (#1 cexp, s (LPARENleft, RPARENright))
        | path                           (CVar path, s (pathleft, pathright))
        | UNDER                          (CWild (KWild, s (UNDERleft, UNDERright)), s (UNDERleft, UNDERright))
        | FOLD                           (CFold, s (FOLDleft, FOLDright))
+       | UNIT                           (CUnit, s (UNITleft, UNITright))
 
 rcon   :                                ([])
        | ident EQ cexp                  ([(ident, cexp)])

@@ -35,6 +35,9 @@ elab_print.sml
 elab_ops.sig
 elab_ops.sml
 
+disjoint.sig
+disjoint.sml
+
 elaborate.sig
 elaborate.sml
 
