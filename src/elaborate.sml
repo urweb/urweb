@@ -243,6 +243,22 @@ fun elabCon (env, denv) (c, loc) =
             checkKind env t' tk ktype;
             ((L'.TCFun (e', x, k', t'), loc), ktype, gs)
         end
+      | L.TDisjoint (c1, c2, c) =>
+        let
+            val (c1', k1, gs1) = elabCon (env, denv) c1
+            val (c2', k2, gs2) = elabCon (env, denv) c2
+
+            val ku1 = kunif loc
+            val ku2 = kunif loc
+
+            val denv' = D.assert env denv (c1', c2')
+            val (c', k, gs3) = elabCon (env, denv') c
+        in
+            checkKind env c1' k1 (L'.KRecord ku1, loc);
+            checkKind env c2' k2 (L'.KRecord ku2, loc);
+
+            ((L'.TDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs3)
+        end
       | L.TRecord c =>
         let
             val (c', ck, gs) = elabCon (env, denv) c
@@ -491,6 +507,7 @@ fun kindof env (c, loc) =
     case c of
         L'.TFun _ => ktype
       | L'.TCFun _ => ktype
+      | L'.TDisjoint _ => ktype
       | L'.TRecord _ => ktype
 
       | L'.CRel xn => #2 (E.lookupCRel env xn)
@@ -965,6 +982,23 @@ fun elabExp (env, denv) (e, loc) =
             ((L'.ECAbs (expl', x, k', e'), loc),
              (L'.TCFun (expl', x, k', et), loc),
              gs)
+        end
+
+      | L.EDisjoint (c1, c2, e) =>
+        let
+            val (c1', k1, gs1) = elabCon (env, denv) c1
+            val (c2', k2, gs2) = elabCon (env, denv) c2
+
+            val ku1 = kunif loc
+            val ku2 = kunif loc
+
+            val denv' = D.assert env denv (c1', c2')
+            val (e', t, gs3) = elabExp (env, denv') e
+        in
+            checkKind env c1' k1 (L'.KRecord ku1, loc);
+            checkKind env c2' k2 (L'.KRecord ku2, loc);
+
+            (e', (L'.TDisjoint (c1', c2', t), loc), gs1 @ gs2 @ gs3)
         end
 
       | L.ERecord xes =>

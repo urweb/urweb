@@ -78,6 +78,15 @@ fun p_con' par (c, _) =
                                                 string "->",
                                                 space,
                                                 p_con c])
+      | TDisjoint (c1, c2, c3) => parenIf par (box [p_con c1,
+                                                    space,
+                                                    string "~",
+                                                    space,
+                                                    p_con c2,
+                                                    space,
+                                                    string "->",
+                                                    space,
+                                                    p_con c3])
       | TRecord (CRecord xcs, _) => box [string "{",
                                          p_list (fn (x, c) =>
                                                     box [p_name x,
@@ -202,6 +211,15 @@ fun p_exp' par (e, _) =
                                                   string "=>",
                                                   space,
                                                   p_exp e])
+      | EDisjoint (c1, c2, e) => parenIf par (box [p_con c1,
+                                                   space,
+                                                   string "~",
+                                                   space,
+                                                   p_con c2,
+                                                   space,
+                                                   string "=>",
+                                                   space,
+                                                   p_exp e])
 
       | ERecord xes => box [string "{",
                             p_list (fn (x, e) =>

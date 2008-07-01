@@ -48,6 +48,7 @@ datatype con' =
 
        | TFun of con * con
        | TCFun of explicitness * string * kind * con
+       | TDisjoint of con * con * con
        | TRecord of con
 
        | CVar of string list * string
@@ -94,6 +95,7 @@ datatype exp' =
        | EAbs of string * con option * exp
        | ECApp of exp * con
        | ECAbs of explicitness * string * kind * exp
+       | EDisjoint of con * con * exp
 
        | ERecord of (con * exp) list
        | EField of exp * con
