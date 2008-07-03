@@ -1,3 +1,22 @@
 type int
 type float
 type string
+
+
+con tag :: {Unit} -> {Unit} -> Type
+
+
+con xml :: {Unit} -> Type
+val cdata : ctx ::: {Unit} -> string -> xml ctx
+val tag : outer ::: {Unit} -> inner ::: {Unit}
+        -> tag outer inner
+        -> xml inner
+        -> xml outer
+val join : shared :: {Unit}
+        -> ctx1 ::: {Unit} -> ctx1 ~ shared
+        -> ctx2 ::: {Unit} -> ctx2 ~ shared
+        -> xml (shared ++ ctx1) -> xml (shared ++ ctx2) -> xml shared
+
+
+val head : tag [Html] [Head]
+val title : tag [Head] []

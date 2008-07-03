@@ -906,205 +906,316 @@ fun elabHead (env, denv) (e as (_, loc)) t =
     end
 
 fun elabExp (env, denv) (e, loc) =
-    case e of
-        L.EAnnot (e, t) =>
-        let
-            val (e', et, gs1) = elabExp (env, denv) e
-            val (t', _, gs2) = elabCon (env, denv) t
-            val gs3 = checkCon (env, denv) e' et t'
-        in
-            (e', t', gs1 @ gs2 @ gs3)
-        end
+    let
+        fun doApp (e1, e2) =
+            let
+                val (e1', t1, gs1) = elabExp (env, denv) e1
+                val (e1', t1, gs2) = elabHead (env, denv) e1' t1
+                val (e2', t2, gs3) = elabExp (env, denv) e2
 
-      | L.EPrim p => ((L'.EPrim p, loc), primType env p, [])
-      | L.EVar ([], s) =>
-        (case E.lookupE env s of
-             E.NotBound =>
-             (expError env (UnboundExp (loc, s));
-              (eerror, cerror, []))
-           | E.Rel (n, t) => ((L'.ERel n, loc), t, [])
-           | E.Named (n, t) => ((L'.ENamed n, loc), t, []))
-      | L.EVar (m1 :: ms, s) =>
-        (case E.lookupStr env m1 of
-             NONE => (expError env (UnboundStrInExp (loc, m1));
-                      (eerror, cerror, []))
-           | SOME (n, sgn) =>
-             let
-                 val (str, sgn) = foldl (fn (m, (str, sgn)) =>
-                                     case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                         NONE => (conError env (UnboundStrInCon (loc, m));
-                                                  (strerror, sgnerror))
-                                       | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                                  ((L'.StrVar n, loc), sgn) ms
+                val dom = cunif (loc, ktype)
+                val ran = cunif (loc, ktype)
+                val t = (L'.TFun (dom, ran), dummy)
 
-                 val t = case E.projectVal env {sgn = sgn, str = str, field = s} of
-                             NONE => (expError env (UnboundExp (loc, s));
-                                      cerror)
-                           | SOME t => t
-             in
-                 ((L'.EModProj (n, ms, s), loc), t, [])
-             end)
+                val gs4 = checkCon (env, denv) e1' t1 t
+                val gs5 = checkCon (env, denv) e2' t2 dom
+            in
+                ((L'.EApp (e1', e2'), loc), ran, gs1 @ gs2 @ gs3 @ gs4 @ gs5)
+            end
+    in
+        case e of
+            L.EAnnot (e, t) =>
+            let
+                val (e', et, gs1) = elabExp (env, denv) e
+                val (t', _, gs2) = elabCon (env, denv) t
+                val gs3 = checkCon (env, denv) e' et t'
+            in
+                (e', t', gs1 @ gs2 @ gs3)
+            end
 
-      | L.EApp (e1, e2) =>
-        let
-            val (e1', t1, gs1) = elabExp (env, denv) e1
-            val (e1', t1, gs2) = elabHead (env, denv) e1' t1
-            val (e2', t2, gs3) = elabExp (env, denv) e2
+          | L.EPrim p => ((L'.EPrim p, loc), primType env p, [])
+          | L.EVar ([], s) =>
+            (case E.lookupE env s of
+                 E.NotBound =>
+                 (expError env (UnboundExp (loc, s));
+                  (eerror, cerror, []))
+               | E.Rel (n, t) => ((L'.ERel n, loc), t, [])
+               | E.Named (n, t) => ((L'.ENamed n, loc), t, []))
+          | L.EVar (m1 :: ms, s) =>
+            (case E.lookupStr env m1 of
+                 NONE => (expError env (UnboundStrInExp (loc, m1));
+                          (eerror, cerror, []))
+               | SOME (n, sgn) =>
+                 let
+                     val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                                case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                                    NONE => (conError env (UnboundStrInCon (loc, m));
+                                                             (strerror, sgnerror))
+                                                  | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                            ((L'.StrVar n, loc), sgn) ms
 
-            val dom = cunif (loc, ktype)
-            val ran = cunif (loc, ktype)
-            val t = (L'.TFun (dom, ran), dummy)
+                     val t = case E.projectVal env {sgn = sgn, str = str, field = s} of
+                                 NONE => (expError env (UnboundExp (loc, s));
+                                          cerror)
+                               | SOME t => t
+                 in
+                     ((L'.EModProj (n, ms, s), loc), t, [])
+                 end)
 
-            val gs4 = checkCon (env, denv) e1' t1 t
-            val gs5 = checkCon (env, denv) e2' t2 dom
-        in
-            ((L'.EApp (e1', e2'), loc), ran, gs1 @ gs2 @ gs3 @ gs4 @ gs5)
-        end
-      | L.EAbs (x, to, e) =>
-        let
-            val (t', gs1) = case to of
-                                NONE => (cunif (loc, ktype), [])
-                              | SOME t =>
-                                let
-                                    val (t', tk, gs) = elabCon (env, denv) t
-                                in
-                                    checkKind env t' tk ktype;
-                                    (t', gs)
-                                end
-            val (e', et, gs2) = elabExp (E.pushERel env x t', denv) e
-        in
-            ((L'.EAbs (x, t', et, e'), loc),
-             (L'.TFun (t', et), loc),
-             gs1 @ gs2)
-        end
-      | L.ECApp (e, c) =>
-        let
-            val (e', et, gs1) = elabExp (env, denv) e
-            val (e', et, gs2) = elabHead (env, denv) e' et
-            val (c', ck, gs3) = elabCon (env, denv) c
-            val ((et', _), gs4) = hnormCon (env, denv) et
-        in
-            case et' of
-                L'.CError => (eerror, cerror, [])
-              | L'.TCFun (_, _, k, eb) =>
-                let
-                    val () = checkKind env c' ck k
-                    val eb' = subConInCon (0, c') eb
-                              handle SynUnif => (expError env (Unif ("substitution", eb));
-                                                 cerror)
-                in
-                    ((L'.ECApp (e', c'), loc), eb', gs1 @ gs2 @ gs3 @ gs4)
-                end
+          | L.EApp (arg as ((L.EApp ((L.ECApp ((L.EVar (["Basis"], "join"), _), (L.CWild _, _)), _), xml1), _), xml2)) =>
+            let
+                val (xml1', t1, gs1) = elabExp (env, denv) xml1
+                val (xml2', t2, gs2) = elabExp (env, denv) xml2
 
-              | L'.CUnif _ =>
-                (expError env (Unif ("application", et));
-                 (eerror, cerror, []))
+                val kunit = (L'.KUnit, loc)
+                val k = (L'.KRecord kunit, loc)
 
-              | _ =>
-                (expError env (WrongForm ("constructor function", e', et));
-                 (eerror, cerror, []))
-        end
-      | L.ECAbs (expl, x, k, e) =>
-        let
-            val expl' = elabExplicitness expl
-            val k' = elabKind k
-            val (e', et, gs) = elabExp (E.pushCRel env x k', D.enter denv) e
-        in
-            ((L'.ECAbs (expl', x, k', e'), loc),
-             (L'.TCFun (expl', x, k', et), loc),
-             gs)
-        end
+                val basis =
+                    case E.lookupStr env "Basis" of
+                        NONE => raise Fail "elabExp: Unbound Basis"
+                      | SOME (n, _) => n
 
-      | L.EDisjoint (c1, c2, e) =>
-        let
-            val (c1', k1, gs1) = elabCon (env, denv) c1
-            val (c2', k2, gs2) = elabCon (env, denv) c2
-
-            val ku1 = kunif loc
-            val ku2 = kunif loc
-
-            val (denv', gs3) = D.assert env denv (c1', c2')
-            val (e', t, gs4) = elabExp (env, denv') e
-        in
-            checkKind env c1' k1 (L'.KRecord ku1, loc);
-            checkKind env c2' k2 (L'.KRecord ku2, loc);
-
-            (e', (L'.TDisjoint (c1', c2', t), loc), gs1 @ gs2 @ gs3 @ gs4)
-        end
-
-      | L.ERecord xes =>
-        let
-            val (xes', gs) = ListUtil.foldlMap (fn ((x, e), gs) =>
-                                                   let
-                                                       val (x', xk, gs1) = elabCon (env, denv) x
-                                                       val (e', et, gs2) = elabExp (env, denv) e
-                                                   in
-                                                       checkKind env x' xk kname;
-                                                       ((x', e', et), gs1 @ gs2 @ gs)
-                                                   end)
-                                               [] xes
-
-            val k = (L'.KType, loc)
-
-            fun prove (xets, gs) =
-                case xets of
-                    [] => gs
-                  | (x, _, t) :: rest =>
+                fun xml () =
                     let
-                        val xc = (x, t)
-                        val r1 = (L'.CRecord (k, [xc]), loc)
-                        val gs = foldl (fn ((x', _, t'), gs) =>
-                                           let
-                                               val xc' = (x', t')
-                                               val r2 = (L'.CRecord (k, [xc']), loc)
-                                           in
-                                               D.prove env denv (r1, r2, loc) @ gs
-                                           end)
-                                 gs rest
+                        val ns = cunif (loc, k)
                     in
-                        prove (rest, gs)
+                        (ns, (L'.CApp ((L'.CModProj (basis, [], "xml"), loc), ns), loc))
                     end
-        in
-            ((L'.ERecord xes', loc),
-             (L'.TRecord (L'.CRecord (ktype, map (fn (x', _, et) => (x', et)) xes'), loc), loc),
-             prove (xes', gs))
-        end
 
-      | L.EField (e, c) =>
-        let
-            val (e', et, gs1) = elabExp (env, denv) e
-            val (c', ck, gs2) = elabCon (env, denv) c
+                val (ns1, c1) = xml ()
+                val (ns2, c2) = xml ()
 
-            val ft = cunif (loc, ktype)
-            val rest = cunif (loc, ktype_record)
-            val first = (L'.CRecord (ktype, [(c', ft)]), loc)
-                       
-            val gs3 =
-                checkCon (env, denv) e' et
-                         (L'.TRecord (L'.CConcat (first, rest), loc), loc)
-            val gs4 = D.prove env denv (first, rest, loc)
-        in
-            ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ gs2 @ gs3 @ gs4)
-        end
+                val gs3 = checkCon (env, denv) xml1' t1 c1
+                val gs4 = checkCon (env, denv) xml2' t2 c2
 
-      | L.EFold =>
-        let
-            val dom = kunif loc
-        in
-            ((L'.EFold dom, loc), foldType (dom, loc), [])
-        end
+                val (ns1, gs5) = hnormCon (env, denv) ns1
+                val (ns2, gs6) = hnormCon (env, denv) ns2
+
+                val cemp = (L'.CRecord (kunit, []), loc)
+
+                val (shared, ctx1, ctx2) =
+                    case (#1 ns1, #1 ns2) of
+                        (L'.CRecord (_, ns1), L'.CRecord (_, ns2)) =>
+                        let
+                            val ns = List.filter (fn ((nm, _), _) =>
+                                                     case nm of
+                                                         L'.CName s =>
+                                                         List.exists (fn ((L'.CName s', _), _) => s' = s
+                                                                       | _ => false) ns2
+                                                       | _ => false) ns1
+                        in
+                            ((L'.CRecord (kunit, ns), loc), cunif (loc, k), cunif (loc, k))
+                        end
+                      | (_, L'.CRecord _) => (ns2, cemp, cemp)
+                      | _ => (ns1, cemp, cemp)
+
+                val ns1' = (L'.CConcat (shared, ctx1), loc)
+                val ns2' = (L'.CConcat (shared, ctx2), loc)
+
+                val e = (L'.EModProj (basis, [], "join"), loc)
+                val e = (L'.ECApp (e, shared), loc)
+                val e = (L'.ECApp (e, ctx1), loc)
+                val e = (L'.ECApp (e, ctx2), loc)
+                val e = (L'.EApp (e, xml1'), loc)
+                val e = (L'.EApp (e, xml2'), loc)
+
+                val t = (L'.CApp ((L'.CModProj (basis, [], "xml"), loc), shared), loc)
+
+                fun doUnify (ns, ns') =
+                    let
+                        fun setEmpty c =
+                            let
+                                val ((c, _), gs) = hnormCon (env, denv) c
+                            in
+                                case c of
+                                    L'.CUnif (_, _, _, r) =>
+                                    (r := SOME cemp;
+                                     gs)
+                                  | L'.CConcat (_, c') => setEmpty c' @ gs
+                                  | _ => gs
+                            end
+
+                        val gs1 = unifyCons (env, denv) ns ns'
+                        val gs2 = setEmpty ns'
+                        val gs3 = unifyCons (env, denv) ns ns'
+                    in
+                        gs1 @ gs2 @ gs3
+                    end
+
+                val gs7 = doUnify (ns1, ns1')
+                val gs8 = doUnify (ns2, ns2')
+            in
+                (e, t, (loc, env, denv, shared, ctx1)
+                       :: (loc, env, denv, shared, ctx2)
+                       :: gs1 @ gs2 @ gs3 @ gs4 @ gs5 @ gs6 @ gs7 @ gs8)
+            end
+
+          | L.EApp (e1, e2) =>
+            let
+                val (e1', t1, gs1) = elabExp (env, denv) e1
+                val (e1', t1, gs2) = elabHead (env, denv) e1' t1
+                val (e2', t2, gs3) = elabExp (env, denv) e2
+
+                val dom = cunif (loc, ktype)
+                val ran = cunif (loc, ktype)
+                val t = (L'.TFun (dom, ran), dummy)
+
+                val gs4 = checkCon (env, denv) e1' t1 t
+                val gs5 = checkCon (env, denv) e2' t2 dom
+            in
+                ((L'.EApp (e1', e2'), loc), ran, gs1 @ gs2 @ gs3 @ gs4 @ gs5)
+            end
+          | L.EAbs (x, to, e) =>
+            let
+                val (t', gs1) = case to of
+                                    NONE => (cunif (loc, ktype), [])
+                                  | SOME t =>
+                                    let
+                                        val (t', tk, gs) = elabCon (env, denv) t
+                                    in
+                                        checkKind env t' tk ktype;
+                                        (t', gs)
+                                    end
+                val (e', et, gs2) = elabExp (E.pushERel env x t', denv) e
+            in
+                ((L'.EAbs (x, t', et, e'), loc),
+                 (L'.TFun (t', et), loc),
+                 gs1 @ gs2)
+            end
+          | L.ECApp (e, c) =>
+            let
+                val (e', et, gs1) = elabExp (env, denv) e
+                val (e', et, gs2) = elabHead (env, denv) e' et
+                val (c', ck, gs3) = elabCon (env, denv) c
+                val ((et', _), gs4) = hnormCon (env, denv) et
+            in
+                case et' of
+                    L'.CError => (eerror, cerror, [])
+                  | L'.TCFun (_, _, k, eb) =>
+                    let
+                        val () = checkKind env c' ck k
+                        val eb' = subConInCon (0, c') eb
+                            handle SynUnif => (expError env (Unif ("substitution", eb));
+                                               cerror)
+                    in
+                        ((L'.ECApp (e', c'), loc), eb', gs1 @ gs2 @ gs3 @ gs4)
+                    end
+
+                  | L'.CUnif _ =>
+                    (expError env (Unif ("application", et));
+                     (eerror, cerror, []))
+
+                  | _ =>
+                    (expError env (WrongForm ("constructor function", e', et));
+                     (eerror, cerror, []))
+            end
+          | L.ECAbs (expl, x, k, e) =>
+            let
+                val expl' = elabExplicitness expl
+                val k' = elabKind k
+                val (e', et, gs) = elabExp (E.pushCRel env x k', D.enter denv) e
+            in
+                ((L'.ECAbs (expl', x, k', e'), loc),
+                 (L'.TCFun (expl', x, k', et), loc),
+                 gs)
+            end
+
+          | L.EDisjoint (c1, c2, e) =>
+            let
+                val (c1', k1, gs1) = elabCon (env, denv) c1
+                val (c2', k2, gs2) = elabCon (env, denv) c2
+
+                val ku1 = kunif loc
+                val ku2 = kunif loc
+
+                val (denv', gs3) = D.assert env denv (c1', c2')
+                val (e', t, gs4) = elabExp (env, denv') e
+            in
+                checkKind env c1' k1 (L'.KRecord ku1, loc);
+                checkKind env c2' k2 (L'.KRecord ku2, loc);
+
+                (e', (L'.TDisjoint (c1', c2', t), loc), gs1 @ gs2 @ gs3 @ gs4)
+            end
+
+          | L.ERecord xes =>
+            let
+                val (xes', gs) = ListUtil.foldlMap (fn ((x, e), gs) =>
+                                                       let
+                                                           val (x', xk, gs1) = elabCon (env, denv) x
+                                                           val (e', et, gs2) = elabExp (env, denv) e
+                                                       in
+                                                           checkKind env x' xk kname;
+                                                           ((x', e', et), gs1 @ gs2 @ gs)
+                                                       end)
+                                                   [] xes
+
+                val k = (L'.KType, loc)
+
+                fun prove (xets, gs) =
+                    case xets of
+                        [] => gs
+                      | (x, _, t) :: rest =>
+                        let
+                            val xc = (x, t)
+                            val r1 = (L'.CRecord (k, [xc]), loc)
+                            val gs = foldl (fn ((x', _, t'), gs) =>
+                                               let
+                                                   val xc' = (x', t')
+                                                   val r2 = (L'.CRecord (k, [xc']), loc)
+                                               in
+                                                   D.prove env denv (r1, r2, loc) @ gs
+                                               end)
+                                           gs rest
+                        in
+                            prove (rest, gs)
+                        end
+            in
+                ((L'.ERecord xes', loc),
+                 (L'.TRecord (L'.CRecord (ktype, map (fn (x', _, et) => (x', et)) xes'), loc), loc),
+                 prove (xes', gs))
+            end
+
+          | L.EField (e, c) =>
+            let
+                val (e', et, gs1) = elabExp (env, denv) e
+                val (c', ck, gs2) = elabCon (env, denv) c
+
+                val ft = cunif (loc, ktype)
+                val rest = cunif (loc, ktype_record)
+                val first = (L'.CRecord (ktype, [(c', ft)]), loc)
+                            
+                val gs3 =
+                    checkCon (env, denv) e' et
+                             (L'.TRecord (L'.CConcat (first, rest), loc), loc)
+                val gs4 = D.prove env denv (first, rest, loc)
+            in
+                ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ gs2 @ gs3 @ gs4)
+            end
+
+          | L.EFold =>
+            let
+                val dom = kunif loc
+            in
+                ((L'.EFold dom, loc), foldType (dom, loc), [])
+            end
+    end
             
 
 datatype decl_error =
-         KunifsRemain of ErrorMsg.span
-       | CunifsRemain of ErrorMsg.span
+         KunifsRemain of L'.decl list
+       | CunifsRemain of L'.decl list
+
+fun lspan [] = ErrorMsg.dummySpan
+  | lspan ((_, loc) :: _) = loc
 
 fun declError env err =
     case err of
-        KunifsRemain loc =>
-        ErrorMsg.errorAt loc "Some kind unification variables are undetermined in declaration"
-      | CunifsRemain loc =>
-        ErrorMsg.errorAt loc "Some constructor unification variables are undetermined in declaration"
+        KunifsRemain ds =>
+        (ErrorMsg.errorAt (lspan ds) "Some kind unification variables are undetermined in declaration";
+         eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
+      | CunifsRemain ds =>
+        (ErrorMsg.errorAt (lspan ds) "Some constructor unification variables are undetermined in declaration";
+         eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
 
 datatype sgn_error =
          UnboundSgn of ErrorMsg.span * string
@@ -1964,14 +2075,14 @@ fun elabFile basis env file =
                     ()
                 else (
                     if List.exists kunifsInDecl ds then
-                        declError env (KunifsRemain (#2 d))
+                        declError env (KunifsRemain ds)
                     else
                         ();
                     
                     case ListUtil.search cunifsInDecl ds of
                         NONE => ()
                       | SOME loc =>
-                        declError env (CunifsRemain loc)
+                        declError env (CunifsRemain ds)
                     );
 
                 (ds, (env, gs))

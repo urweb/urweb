@@ -40,12 +40,17 @@ val s = ErrorMsg.spanOf
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER
+ | DIVIDE | GT
  | CON | LTYPE | VAL | FOLD | UNIT | KUNIT
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS
+
+ | XML_BEGIN of string | XML_END
+ | NOTAGS of string 
+ | BEGIN_TAG of string | END_TAG of string
 
 %nonterm
    file of decl list
@@ -78,6 +83,8 @@ val s = ErrorMsg.spanOf
  | eapps of exp
  | eterm of exp
  | rexp of (con * exp) list
+ | xml of exp
+ | xmlOne of exp
 
 %verbose                                (* print summary of errors *)
 %pos int                                (* positions *)
@@ -268,6 +275,32 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
        | FOLD                           (EFold, s (FOLDleft, FOLDright))
 
+       | XML_BEGIN xml XML_END          (xml)
+       | XML_BEGIN XML_END              (EApp ((EVar (["Basis"], "cdata"), s (XML_BEGINleft, XML_ENDright)),
+                                               (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
+                                         s (XML_BEGINleft, XML_ENDright))
+
 rexp   :                                ([])
        | ident EQ eexp                  ([(ident, eexp)])
        | ident EQ eexp COMMA rexp       ((ident, eexp) :: rexp)
+
+xml    : xmlOne xml                  (let
+                                          val pos = s (xmlOneleft, xmlright)
+                                      in
+                                          (EApp ((EApp (
+                                                  (ECApp ((EVar (["Basis"], "join"), pos),
+                                                          (CWild (KRecord (KUnit, pos), pos), pos)), pos),
+                                                  xmlOne), pos),
+                                                  xml), pos)
+                                      end)
+       | xmlOne                      (xmlOne)
+
+xmlOne : NOTAGS                      (EApp ((EVar (["Basis"], "cdata"), s (NOTAGSleft, NOTAGSright)),
+                                            (EPrim (Prim.String NOTAGS), s (NOTAGSleft, NOTAGSright))),
+                                      s (NOTAGSleft, NOTAGSright))
+       | BEGIN_TAG DIVIDE GT         (EApp ((EApp ((EVar (["Basis"], "tag"), s (BEGIN_TAGleft, GTright)),
+                                                   (EVar ([], BEGIN_TAG), s (BEGIN_TAGleft, GTright))),
+                                             s (BEGIN_TAGleft, GTright)),
+                                            (EApp ((EVar (["Basis"], "cdata"), s (BEGIN_TAGleft, GTright)),
+                                                   (EPrim (Prim.String ""), s (BEGIN_TAGleft, GTright))),
+                                             s (BEGIN_TAGleft, GTright))), s (BEGIN_TAGleft, GTright))

@@ -80,17 +80,42 @@ fun newline yypos =
 
 end
 
+val xmlTag = ref ([] : string list)
+val xmlString = ref true
+val braceLevels = ref ([] : ((unit -> unit) * int) list)
+
+fun pushLevel s = braceLevels := (s, 1) :: (!braceLevels)
+
+fun enterBrace () =
+    case !braceLevels of
+	(s, i) :: rest => braceLevels := (s, i+1) :: rest
+      | _ => ()
+
+fun exitBrace () =
+    case !braceLevels of
+	(s, i) :: rest =>
+	if i = 1 then
+	    (braceLevels := rest;
+	     s ())
+	else
+	    braceLevels := (s, i-1) :: rest
+      | _ => ()
+
+fun initialize () = (xmlTag := [];
+		     xmlString := false)
+
 
 %%
 %header (functor LacwebLexFn(structure Tokens : Lacweb_TOKENS));
 %full
-%s COMMENT STRING;
+%s COMMENT STRING XML XMLTAG;
 
 id = [a-z_][A-Za-z0-9_']*;
 cid = [A-Z][A-Za-z0-9_']*;
 ws = [\ \t\012];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
+notags = [^<{\n]+;
 
 %%
 
@@ -98,6 +123,10 @@ realconst = [0-9]+\.[0-9]*;
                           continue ());
 <COMMENT> \n          => (newline yypos;
                           continue ());
+<XMLTAG> \n           => (newline yypos;
+                          continue ());
+<XML> \n              => (newline yypos;
+                          Tokens.NOTAGS (yytext, yypos, yypos + size yytext));
 
 <INITIAL> {ws}+       => (lex ());
 
@@ -119,6 +148,76 @@ realconst = [0-9]+\.[0-9]*;
 <STRING> "\n"         => (newline yypos;
 			  str := #"\n" :: !str; continue());
 <STRING> .            => (str := String.sub (yytext, 0) :: !str; continue());
+
+<INITIAL> "<" {id} ">"=> (let
+			      val tag = String.substring (yytext, 1, size yytext - 2)
+			  in
+			      YYBEGIN XML;
+			      xmlTag := tag :: (!xmlTag);
+			      Tokens.XML_BEGIN (tag, yypos, yypos + size yytext)
+			  end);
+<XML> "</" {id} ">"   => (let
+			      val id = String.substring (yytext, 2, size yytext - 3)
+			  in
+			      case !xmlTag of
+			          id' :: rest =>
+			          if id = id' then
+				      (YYBEGIN INITIAL;
+				       xmlTag := rest;
+				       Tokens.XML_END (yypos, yypos + size yytext))
+			          else
+				      Tokens.END_TAG (id, yypos, yypos + size yytext)
+			        | _ => 
+			          Tokens.END_TAG (id, yypos, yypos + size yytext)
+			  end);
+
+<XML> "<" {id}        => (YYBEGIN XMLTAG;
+			  Tokens.BEGIN_TAG (String.extract (yytext, 1, NONE),
+					    yypos, yypos + size yytext));
+
+<XMLTAG> "/"          => (Tokens.DIVIDE (yypos, yypos + size yytext));
+<XMLTAG> ">"          => (YYBEGIN XML;
+			  Tokens.GT (yypos, yypos + size yytext));
+
+<XMLTAG> {ws}+        => (lex ());
+
+<XMLTAG> {id}         => (Tokens.SYMBOL (yytext, yypos, yypos + size yytext));
+<XMLTAG> "="          => (Tokens.EQ (yypos, yypos + size yytext));
+
+<XMLTAG> {intconst}   => (case Int64.fromString yytext of
+                            SOME x => Tokens.INT (x, yypos, yypos + size yytext)
+                          | NONE   => (ErrorMsg.errorAt' (yypos, yypos)
+                                       ("Expected int, received: " ^ yytext);
+                                       continue ()));
+<XMLTAG> {realconst}  => (case Real.fromString yytext of
+                            SOME x => Tokens.FLOAT (x, yypos, yypos + size yytext)
+                          | NONE   => (ErrorMsg.errorAt' (yypos, yypos)
+                                       ("Expected float, received: " ^ yytext);
+                                       continue ()));
+<XMLTAG> "\""         => (YYBEGIN STRING;
+			  xmlString := true;
+			  strStart := yypos; str := []; continue());
+
+<XMLTAG> "{"          => (YYBEGIN INITIAL;
+			  pushLevel (fn () => YYBEGIN XMLTAG);
+			  Tokens.LBRACE (yypos, yypos + 1));
+<XMLTAG> "("          => (YYBEGIN INITIAL;
+			  pushLevel (fn () => YYBEGIN XMLTAG);
+			  Tokens.LPAREN (yypos, yypos + 1));
+
+<XMLTAG> .            => (ErrorMsg.errorAt' (yypos, yypos)
+                          ("illegal XML tag character: \"" ^ yytext ^ "\"");
+                          continue ());
+
+<XML> "{"             => (YYBEGIN INITIAL;
+			  pushLevel (fn () => YYBEGIN XML);
+			  Tokens.LBRACE (yypos, yypos + 1));
+
+<XML> {notags}        => (Tokens.NOTAGS (yytext, yypos, yypos + size yytext));
+
+<XML> .               => (ErrorMsg.errorAt' (yypos, yypos)
+                          ("illegal XML character: \"" ^ yytext ^ "\"");
+                          continue ());
 
 <INITIAL> "()"        => (Tokens.UNIT (pos yypos, pos yypos + size yytext));
 <INITIAL> "("         => (Tokens.LPAREN (pos yypos, pos yypos + size yytext));
