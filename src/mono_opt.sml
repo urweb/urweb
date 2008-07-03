@@ -25,41 +25,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+structure MonoOpt :> MONO_OPT = struct
 
-signature COMPILER = sig
+open Mono
+structure U = MonoUtil
 
-    type job = string list
-    val compile : job -> unit
+fun typ t = t
+fun decl d = d
 
-    val parseLig : string -> Source.sgn_item list option
-    val testLig : string -> unit
+fun exp e =
+    case e of
+        EPrim (Prim.String s) =>
+        let
+            val (_, chs) =
+                CharVector.foldl (fn (ch, (lastSpace, chs)) =>
+                                     let
+                                         val isSpace = Char.isSpace ch
+                                     in
+                                         if isSpace andalso lastSpace then
+                                             (true, chs)
+                                         else
+                                             (isSpace, ch :: chs)
+                                     end)
+                                 (false, []) s
+        in
+            EPrim (Prim.String (String.implode (rev chs)))
+        end
+                                       
+        
+      | EStrcat ((EPrim (Prim.String s1), loc), (EPrim (Prim.String s2), _)) =>
+        let
+            val s =
+                if size s1 > 0 andalso size s2 > 0
+                   andalso Char.isSpace (String.sub (s1, size s1 - 1))
+                   andalso Char.isSpace (String.sub (s2, 0)) then
+                    s1 ^ String.extract (s2, 1, NONE)
+                else
+                    s1 ^ s2
+        in
+            EPrim (Prim.String s)
+        end
+      | _ => e
 
-    val parseLac : string -> Source.file option
-    val testLac : string -> unit
-
-    val parse : job -> Source.file option
-    val elaborate : job -> Elab.file option
-    val explify : job -> Expl.file option
-    val corify : job -> Core.file option
-    val shake' : job -> Core.file option
-    val reduce : job -> Core.file option
-    val shake : job -> Core.file option
-    val monoize : job -> Mono.file option
-    val mono_opt : job -> Mono.file option
-    val cloconv : job -> Flat.file option
-    val cjrize : job -> Cjr.file option
-
-    val testParse : job -> unit
-    val testElaborate : job -> unit
-    val testExplify : job -> unit
-    val testCorify : job -> unit
-    val testShake' : job -> unit
-    val testReduce : job -> unit
-    val testShake : job -> unit
-    val testMonoize : job -> unit
-    val testMono_opt : job -> unit
-    val testCloconv : job -> unit
-    val testCjrize : job -> unit
+val optimize = U.File.map {typ = typ, exp = exp, decl = decl}
 
 end

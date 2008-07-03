@@ -266,6 +266,13 @@ fun mapB {typ, exp, decl, bind} ctx ds =
         S.Continue (ds, ()) => ds
       | S.Return _ => raise Fail "MonoUtil.File.mapB: Impossible"
 
+fun map {typ, exp, decl} e =
+    case mapfold {typ = fn c => fn () => S.Continue (typ c, ()),
+                  exp = fn e => fn () => S.Continue (exp e, ()),
+                  decl = fn d => fn () => S.Continue (decl d, ())} e () of
+        S.Return () => raise Fail "Mono_util.File.map"
+      | S.Continue (e, ()) => e
+
 fun fold {typ, exp, decl} s d =
     case mapfold {typ = fn c => fn s => S.Continue (c, typ (c, s)),
                   exp = fn e => fn s => S.Continue (e, exp (e, s)),

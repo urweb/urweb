@@ -109,6 +109,11 @@ structure File : sig
                 bind : 'typtext * binder -> 'typtext}
                -> 'typtext -> Mono.file -> Mono.file
 
+    val map : {typ : Mono.typ' -> Mono.typ',
+                exp : Mono.exp' -> Mono.exp',
+                decl : Mono.decl' -> Mono.decl'}
+              -> Mono.file -> Mono.file
+
     val fold : {typ : Mono.typ' * 'state -> 'state,
                 exp : Mono.exp' * 'state -> 'state,
                 decl : Mono.decl' * 'state -> 'state}

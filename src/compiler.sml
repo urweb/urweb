@@ -215,8 +215,17 @@ fun monoize job =
         else
             SOME (Monoize.monoize CoreEnv.empty file)
 
-fun cloconv job =
+fun mono_opt job =
     case monoize job of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (MonoOpt.optimize file)
+
+fun cloconv job =
+    case mono_opt job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -297,6 +306,15 @@ fun testShake job =
 
 fun testMonoize job =
     (case monoize job of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (MonoPrint.p_file MonoEnv.empty file);
+          print "\n"))
+    handle MonoEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testMono_opt job =
+    (case mono_opt job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (MonoPrint.p_file MonoEnv.empty file);
