@@ -133,6 +133,13 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                       fn e' =>
                          (EField (e', x), loc))
+
+              | EStrcat (e1, e2) =>
+                S.bind2 (mfe ctx e1,
+                      fn e1' =>
+                         S.map2 (mfe ctx e2,
+                              fn e2' =>
+                                 (EStrcat (e1', e2'), loc)))
     in
         mfe
     end

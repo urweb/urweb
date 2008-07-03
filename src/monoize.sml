@@ -61,6 +61,8 @@ fun monoType env (all as (c, loc)) =
             (L'.TRecord (map (fn (x, t) => (monoName env x, monoType env t)) xcs), loc)
           | L.TRecord _ => poly ()
 
+          | L.CApp ((L.CFfi ("Basis", "xml"), _), _) => (L'.TFfi ("Basis", "string"), loc)
+
           | L.CRel _ => poly ()
           | L.CNamed n => (L'.TNamed n, loc)
           | L.CFfi mx => (L'.TFfi mx, loc)
@@ -90,6 +92,10 @@ fun monoExp env (all as (e, loc)) =
           | L.ENamed n => (L'.ENamed n, loc)
           | L.EFfi mx => (L'.EFfi mx, loc)
           | L.EFfiApp (m, x, es) => (L'.EFfiApp (m, x, map (monoExp env) es), loc)
+
+          | L.EApp ((L.ECApp ((L.EFfi ("Basis", "cdata"), _),
+                              _), _), se) => monoExp env se
+
           | L.EApp (e1, e2) => (L'.EApp (monoExp env e1, monoExp env e2), loc)
           | L.EAbs (x, dom, ran, e) =>
             (L'.EAbs (x, monoType env dom, monoType env ran, monoExp (Env.pushERel env x dom) e), loc)

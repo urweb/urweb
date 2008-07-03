@@ -49,6 +49,9 @@ datatype exp' =
        | ERecord of (string * exp * typ) list
        | EField of exp * string
 
+       | EStrcat of exp * exp
+
+
 withtype exp = exp' located
 
 datatype decl' =

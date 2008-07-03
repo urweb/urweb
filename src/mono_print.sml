@@ -111,6 +111,13 @@ fun p_exp' par env (e, _) =
              string ".",
              string x]
 
+
+      | EStrcat (e1, e2) => box [p_exp' true env e1,
+                                 space,
+                                 string ".",
+                                 space,
+                                 p_exp' true env e2]
+
 and p_exp env = p_exp' false env
 
 fun p_decl env ((d, _) : decl) =

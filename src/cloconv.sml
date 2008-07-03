@@ -185,6 +185,8 @@ fun ccExp env ((e, loc), D) =
             ((L'.EField (e1, x), loc), D)
         end
 
+      | L.EStrcat _ => raise Fail "Cloconv EStrcat"
+
 fun ccDecl ((d, loc), D) =
     case d of
         L.DVal (x, n, t, e) =>
