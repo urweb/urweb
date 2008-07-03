@@ -1810,6 +1810,11 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
 
       | L.DStr (x, sgno, str) =>
         let
+            val () = if x = "Basis" then
+                         raise Fail "Not allowed to redefine structure 'Basis'"
+                     else
+                         ()
+
             val formal = Option.map (elabSgn (env, denv)) sgno
 
             val (str', sgn', gs') =

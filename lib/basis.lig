@@ -20,3 +20,8 @@ val join : shared :: {Unit}
 
 val head : tag [Html] [Head]
 val title : tag [Head] []
+
+val body : tag [Html] [Body]
+val p : tag [Body] [Body]
+val b : tag [Body] [Body]
+val i : tag [Body] [Body]
