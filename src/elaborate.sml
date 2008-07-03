@@ -251,13 +251,13 @@ fun elabCon (env, denv) (c, loc) =
             val ku1 = kunif loc
             val ku2 = kunif loc
 
-            val denv' = D.assert env denv (c1', c2')
-            val (c', k, gs3) = elabCon (env, denv') c
+            val (denv', gs3) = D.assert env denv (c1', c2')
+            val (c', k, gs4) = elabCon (env, denv') c
         in
             checkKind env c1' k1 (L'.KRecord ku1, loc);
             checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-            ((L'.TDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs3)
+            ((L'.TDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
         end
       | L.TRecord c =>
         let
@@ -330,13 +330,13 @@ fun elabCon (env, denv) (c, loc) =
             val ku1 = kunif loc
             val ku2 = kunif loc
 
-            val denv' = D.assert env denv (c1', c2')
-            val (c', k, gs3) = elabCon (env, denv') c
+            val (denv', gs3) = D.assert env denv (c1', c2')
+            val (c', k, gs4) = elabCon (env, denv') c
         in
             checkKind env c1' k1 (L'.KRecord ku1, loc);
             checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-            ((L'.CDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs3)
+            ((L'.CDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
         end
 
       | L.CName s =>
@@ -369,8 +369,7 @@ fun elabCon (env, denv) (c, loc) =
                                            let
                                                val r2 = (L'.CRecord (k, [xc']), loc)
                                            in
-                                               map (fn cs => (loc, env, denv, cs)) (D.prove env denv (r1, r2, loc))
-                                               @ ds
+                                               D.prove env denv (r1, r2, loc) @ ds
                                            end)
                                  ds rest
                     in
@@ -389,7 +388,7 @@ fun elabCon (env, denv) (c, loc) =
             checkKind env c1' k1 k;
             checkKind env c2' k2 k;
             ((L'.CConcat (c1', c2'), loc), k,
-             map (fn cs => (loc, env, denv, cs)) (D.prove env denv (c1', c2', loc)) @ gs1 @ gs2)
+             D.prove env denv (c1', c2', loc) @ gs1 @ gs2)
         end
       | L.CFold =>
         let
@@ -545,23 +544,7 @@ fun kindof env (c, loc) =
       | L'.CError => kerror
       | L'.CUnif (_, k, _, _) => k
 
-fun hnormCon (env, denv) c =
-    let
-        val cAll as (c, loc) = ElabOps.hnormCon env c
-
-        fun doDisj (c1, c2, c) =
-            let
-                val (c, gs) = hnormCon (env, denv) c
-            in
-                (c,
-                 map (fn cs => (loc, env, denv, cs)) (D.prove env denv (c1, c2, loc)) @ gs)
-            end
-    in
-        case c of
-            L'.CDisjoint cs => doDisj cs
-          | L'.TDisjoint cs => doDisj cs
-          | _ => (cAll, [])
-    end
+val hnormCon = D.hnormCon
 
 fun unifyRecordCons (env, denv) (c1, c2) =
     let
@@ -703,9 +686,9 @@ and unifyCons' (env, denv) c1 c2 =
     let
         val (c1, gs1) = hnormCon (env, denv) c1
         val (c2, gs2) = hnormCon (env, denv) c2
+        val gs3 = unifyCons'' (env, denv) c1 c2
     in
-        unifyCons'' (env, denv) c1 c2;
-        gs1 @ gs2
+        gs1 @ gs2 @ gs3
     end
     
 and unifyCons'' (env, denv) (c1All as (c1, _)) (c2All as (c2, _)) =
@@ -1040,13 +1023,13 @@ fun elabExp (env, denv) (e, loc) =
             val ku1 = kunif loc
             val ku2 = kunif loc
 
-            val denv' = D.assert env denv (c1', c2')
-            val (e', t, gs3) = elabExp (env, denv') e
+            val (denv', gs3) = D.assert env denv (c1', c2')
+            val (e', t, gs4) = elabExp (env, denv') e
         in
             checkKind env c1' k1 (L'.KRecord ku1, loc);
             checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-            (e', (L'.TDisjoint (c1', c2', t), loc), gs1 @ gs2 @ gs3)
+            (e', (L'.TDisjoint (c1', c2', t), loc), gs1 @ gs2 @ gs3 @ gs4)
         end
 
       | L.ERecord xes =>
@@ -1075,8 +1058,7 @@ fun elabExp (env, denv) (e, loc) =
                                                val xc' = (x', t')
                                                val r2 = (L'.CRecord (k, [xc']), loc)
                                            in
-                                               map (fn cs => (loc, env, denv, cs)) (D.prove env denv (r1, r2, loc))
-                                               @ gs
+                                               D.prove env denv (r1, r2, loc) @ gs
                                            end)
                                  gs rest
                     in
@@ -1100,9 +1082,7 @@ fun elabExp (env, denv) (e, loc) =
             val gs3 =
                 checkCon (env, denv) e' et
                          (L'.TRecord (L'.CConcat (first, rest), loc), loc)
-            val gs4 =
-                map (fn cs => (loc, env, denv, cs))
-                (D.prove env denv (first, rest, loc))
+            val gs4 = D.prove env denv (first, rest, loc)
         in
             ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ gs2 @ gs3 @ gs4)
         end
@@ -1287,12 +1267,12 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             val (c1', k1, gs1) = elabCon (env, denv) c1
             val (c2', k2, gs2) = elabCon (env, denv) c2
 
-            val denv = D.assert env denv (c1', c2')
+            val (denv, gs3) = D.assert env denv (c1', c2')
         in
             checkKind env c1' k1 (L'.KRecord (kunif loc), loc);
             checkKind env c2' k2 (L'.KRecord (kunif loc), loc);
 
-            ([(L'.SgiConstraint (c1', c2'), loc)], (env, denv, gs1 @ gs2))
+            ([(L'.SgiConstraint (c1', c2'), loc)], (env, denv, gs1 @ gs2 @ gs3))
         end
 
 and elabSgn (env, denv) (sgn, loc) =
@@ -1484,7 +1464,16 @@ fun dopenConstraints (loc, env, denv) {str, strs} =
             val denv = case cso of
                            NONE => (strError env (UnboundStr (loc, str));
                                     denv)
-                         | SOME cs => foldl (fn ((c1, c2), denv) => D.assert env denv (c1, c2)) denv cs
+                         | SOME cs => foldl (fn ((c1, c2), denv) =>
+                                                let
+                                                    val (denv, gs) = D.assert env denv (c1, c2)
+                                                in
+                                                    case gs of
+                                                        [] => ()
+                                                      | _ => raise Fail "dopenConstraints: Sub-constraints remain";
+
+                                                    denv
+                                                end) denv cs
         in
             denv
         end
@@ -1500,7 +1489,10 @@ fun sgiOfDecl (d, loc) =
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
-        L'.SgiConstraint (c1, c2) => D.assert env denv (c1, c2)
+        L'.SgiConstraint (c1, c2) =>
+        (case D.assert env denv (c1, c2) of
+             (denv, []) => denv
+           | _ => raise Fail "sgiBindsD: Sub-constraints remain")
       | _ => denv
 
 fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
@@ -1634,7 +1626,15 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                  case sgi1 of
                                      L'.SgiConstraint (c1, d1) =>
                                      if consEq (env, denv) (c1, c2) andalso consEq (env, denv) (d1, d2) then
-                                         SOME (env, D.assert env denv (c2, d2))
+                                         let
+                                             val (denv, gs) = D.assert env denv (c2, d2)
+                                         in
+                                             case gs of
+                                                 [] => ()
+                                               | _ => raise Fail "subSgn: Sub-constraints remain";
+
+                                             SOME (env, denv)
+                                         end
                                      else
                                          NONE
                                    | _ => NONE)
@@ -1793,14 +1793,14 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
         let
             val (c1', k1, gs1) = elabCon (env, denv) c1
             val (c2', k2, gs2) = elabCon (env, denv) c2
-            val gs3 = map (fn cs => (loc, env, denv, cs)) (D.prove env denv (c1', c2', loc))
+            val gs3 = D.prove env denv (c1', c2', loc)
 
-            val denv' = D.assert env denv (c1', c2')
+            val (denv', gs4) = D.assert env denv (c1', c2')
         in
             checkKind env c1' k1 (L'.KRecord (kunif loc), loc);
             checkKind env c2' k2 (L'.KRecord (kunif loc), loc);
 
-            ([(L'.DConstraint (c1', c2'), loc)], (env, denv', gs1 @ gs2 @ gs3))
+            ([(L'.DConstraint (c1', c2'), loc)], (env, denv', gs1 @ gs2 @ gs3 @ gs4))
         end
 
       | L.DOpenConstraints (m, ms) =>
@@ -1982,13 +1982,15 @@ fun elabFile basis env file =
         if ErrorMsg.anyErrors () then
             ()
         else
-            app (fn (loc, env, denv, (c1, c2)) =>
+            app (fn (loc, env, denv, c1, c2) =>
                     case D.prove env denv (c1, c2, loc) of
                         [] => ()
                       | _ =>
                         (ErrorMsg.errorAt loc "Couldn't prove field name disjointness";
                          eprefaces' [("Con 1", p_con env c1),
-                                     ("Con 2", p_con env c2)])) gs;
+                                     ("Con 2", p_con env c2),
+                                     ("Hnormed 1", p_con env (ElabOps.hnormCon env c1)),
+                                     ("Hnormed 2", p_con env (ElabOps.hnormCon env c2))])) gs;
 
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan) :: ds @ file
     end
