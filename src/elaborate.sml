@@ -548,8 +548,13 @@ val hnormCon = D.hnormCon
 
 fun unifyRecordCons (env, denv) (c1, c2) =
     let
-        val k1 = kindof env c1
-        val k2 = kindof env c2
+        fun rkindof c =
+            case kindof env c of
+                (L'.KRecord k, _) => k
+              | _ => raise CUnify' (CKindof c)
+
+        val k1 = rkindof c1
+        val k2 = rkindof c2
 
         val (r1, gs1) = recordSummary (env, denv) c1
         val (r2, gs2) = recordSummary (env, denv) c2
@@ -697,6 +702,9 @@ and unifyCons'' (env, denv) (c1All as (c1, _)) (c2All as (c2, _)) =
 
         fun isRecord () = unifyRecordCons (env, denv) (c1All, c2All)
     in
+        (*eprefaces "unifyCons''" [("c1All", p_con env c1All),
+                                 ("c2All", p_con env c2All)];*)
+
         case (c1, c2) of
             (L'.CUnit, L'.CUnit) => []
 
@@ -744,8 +752,12 @@ and unifyCons'' (env, denv) (c1All as (c1, _)) (c2All as (c2, _)) =
           | (L'.CError, _) => []
           | (_, L'.CError) => []
 
-          | (L'.CUnif (_, _, _, ref (SOME c1All)), _) => unifyCons' (env, denv) c1All c2All
-          | (_, L'.CUnif (_, _, _, ref (SOME c2All))) => unifyCons' (env, denv) c1All c2All
+          | (L'.CRecord _, _) => isRecord ()
+          | (_, L'.CRecord _) => isRecord ()
+          | (L'.CConcat _, _) => isRecord ()
+          | (_, L'.CConcat _) => isRecord ()
+          (*| (L'.CUnif (_, (L'.KRecord _, _), _, _), _) => isRecord ()
+          | (_, L'.CUnif (_, (L'.KRecord _, _), _, _)) => isRecord ()*)
 
           | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
             if r1 = r2 then
@@ -768,10 +780,6 @@ and unifyCons'' (env, denv) (c1All as (c1, _)) (c2All as (c2, _)) =
                 (r := SOME c1All;
                  [])
 
-          | (L'.CRecord _, _) => isRecord ()
-          | (_, L'.CRecord _) => isRecord ()
-          | (L'.CConcat _, _) => isRecord ()
-          | (_, L'.CConcat _) => isRecord ()
 
           | (L'.CFold (dom1, ran1), L'.CFold (dom2, ran2)) =>
             (unifyKinds dom1 dom2;
@@ -792,6 +800,7 @@ datatype exp_error =
      | Unify of L'.exp * L'.con * L'.con * cunify_error
      | Unif of string * L'.con
      | WrongForm of string * L'.exp * L'.con
+     | IncompatibleCons of L'.con * L'.con
 
 fun expError env err =
     case err of
@@ -812,6 +821,10 @@ fun expError env err =
         (ErrorMsg.errorAt (#2 e) ("Expression is not a " ^ variety);
          eprefaces' [("Expression", p_exp env e),
                      ("Type", p_con env t)])
+      | IncompatibleCons (c1, c2) =>
+        (ErrorMsg.errorAt (#2 c1) "Incompatible constructors";
+         eprefaces' [("Con 1", p_con env c1),
+                     ("Con 2", p_con env c2)])
 
 fun checkCon (env, denv) e c1 c2 =
     unifyCons (env, denv) c1 c2
@@ -905,24 +918,12 @@ fun elabHead (env, denv) (e as (_, loc)) t =
         unravel (t, e)
     end
 
-fun elabExp (env, denv) (e, loc) =
+fun elabExp (env, denv) (eAll as (e, loc)) =
     let
-        fun doApp (e1, e2) =
-            let
-                val (e1', t1, gs1) = elabExp (env, denv) e1
-                val (e1', t1, gs2) = elabHead (env, denv) e1' t1
-                val (e2', t2, gs3) = elabExp (env, denv) e2
-
-                val dom = cunif (loc, ktype)
-                val ran = cunif (loc, ktype)
-                val t = (L'.TFun (dom, ran), dummy)
-
-                val gs4 = checkCon (env, denv) e1' t1 t
-                val gs5 = checkCon (env, denv) e2' t2 dom
-            in
-                ((L'.EApp (e1', e2'), loc), ran, gs1 @ gs2 @ gs3 @ gs4 @ gs5)
-            end
+        
     in
+        (*eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)];*)
+
         case e of
             L.EAnnot (e, t) =>
             let
@@ -1040,7 +1041,8 @@ fun elabExp (env, denv) (e, loc) =
                         val gs3 = unifyCons (env, denv) ns ns'
                     in
                         gs1 @ gs2 @ gs3
-                    end
+                    end handle CUnify _ => (expError env (IncompatibleCons (ns, ns'));
+                                            [])
 
                 val gs7 = doUnify (ns1, ns1')
                 val gs8 = doUnify (ns2, ns2')

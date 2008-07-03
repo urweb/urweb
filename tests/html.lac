@@ -1,3 +1,5 @@
 val text : xml[Html] = <html>
-        <head/>
+        <head>
+                <title>Hello World!</title>
+        </head>
 </html>
