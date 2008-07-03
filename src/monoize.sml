@@ -95,6 +95,52 @@ fun monoExp env (all as (e, loc)) =
 
           | L.EApp ((L.ECApp ((L.EFfi ("Basis", "cdata"), _),
                               _), _), se) => monoExp env se
+          | L.EApp (
+            (L.EApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.EFfi ("Basis", "join"),
+                 _), _), _),
+               _), _),
+              _), _),
+             xml1), _),
+            xml2) => (L'.EStrcat (monoExp env xml1, monoExp env xml2), loc)
+
+          | L.EApp (
+            (L.EApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "tag"),
+                _), _), _),
+              _), _),
+             tag), _),
+            xml) =>
+            let
+                fun getTag (e, _) =
+                    case e of
+                        L.EFfi ("Basis", tag) => tag
+                      | _ => (E.errorAt loc "Non-constant XML tag";
+                              Print.eprefaces' [("Expression", CorePrint.p_exp env tag)];
+                              "")
+
+                val tag = getTag tag
+
+                fun normal () =
+                    (L'.EStrcat ((L'.EPrim (Prim.String (String.concat ["<", tag, ">"])), loc),
+                                 (L'.EStrcat (monoExp env xml,
+                                              (L'.EPrim (Prim.String (String.concat ["</", tag, ">"])), loc)), loc)),
+                     loc)
+            in
+                case xml of
+                    (L.EApp ((L.ECApp ((L.EFfi ("Basis", "cdata"), _),
+                                       _), _), (L.EPrim (Prim.String s), _)), _) =>
+                    if CharVector.all Char.isSpace s then
+                        (L'.EPrim (Prim.String (String.concat ["<", tag, "/>"])), loc)
+                    else
+                        normal ()
+                  | _ => normal ()
+            end
 
           | L.EApp (e1, e2) => (L'.EApp (monoExp env e1, monoExp env e2), loc)
           | L.EAbs (x, dom, ran, e) =>

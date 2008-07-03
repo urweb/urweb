@@ -39,6 +39,6 @@ fun p_t t =
     case t of
         Int n => string (Int64.toString n)
       | Float n => string (Real64.toString n)
-      | String s => box [string "\"", string s, string "\""]
+      | String s => box [string "\"", string (String.toString s), string "\""]
 
 end

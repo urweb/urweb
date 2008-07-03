@@ -1,0 +1,4 @@
+val main : {} -> xml[Html] = fn () => <html>
+        Hi!
+        Bye!
+</html>
