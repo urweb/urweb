@@ -28,3 +28,7 @@ val p : tag [] [Body] [Body]
 val b : tag [] [Body] [Body]
 val i : tag [] [Body] [Body]
 val font : tag [Size = int, Face = string] [Body] [Body]
+
+
+val attrifyInt : int -> string
+val attrifyFloat : float -> string

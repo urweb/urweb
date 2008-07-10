@@ -1,5 +1,5 @@
 val main = fn () => <html><body>
-        <font face="awesome">Welcome</font>
+        <font size=42 face="awesome">Welcome</font>
 </body></html>
 
 page main

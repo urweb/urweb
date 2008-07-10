@@ -79,6 +79,15 @@ fun monoType env (all as (c, loc)) =
 
 val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
 
+fun attrifyExp (e, tAll as (t, loc)) =
+    case t of
+        L'.TFfi ("Basis", "string") => e
+      | L'.TFfi ("Basis", "int") => (L'.EFfiApp ("Basis", "attrifyInt", [e]), loc)
+      | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", "attrifyFloat", [e]), loc)
+      | _ => (E.errorAt loc "Don't know how to encode attribute type";
+              Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
+              dummyExp)
+
 fun monoExp env (all as (e, loc)) =
     let
         fun poly () =
@@ -140,13 +149,13 @@ fun monoExp env (all as (e, loc)) =
 
                             val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
                         in
-                            foldl (fn ((x, e, _), s) =>
+                            foldl (fn ((x, e, t), s) =>
                                       let
                                           val xp = " " ^ lowercaseFirst x ^ "=\""
                                       in
                                           (L'.EStrcat (s,
                                                        (L'.EStrcat ((L'.EPrim (Prim.String xp), loc),
-                                                                    (L'.EStrcat (e,
+                                                                    (L'.EStrcat (attrifyExp (e, t),
                                                                                  (L'.EPrim (Prim.String "\""), loc)),
                                                                      loc)),
                                                         loc)), loc)

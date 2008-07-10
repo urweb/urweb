@@ -52,7 +52,6 @@ fun exp e =
             EPrim (Prim.String (String.implode (rev chs)))
         end
                                        
-        
       | EStrcat ((EPrim (Prim.String s1), loc), (EPrim (Prim.String s2), _)) =>
         let
             val s =
@@ -65,7 +64,26 @@ fun exp e =
         in
             EPrim (Prim.String s)
         end
+
+      | EStrcat ((EPrim (Prim.String s1), loc), (EStrcat ((EPrim (Prim.String s2), _), rest), _)) =>
+        let
+            val s =
+                if size s1 > 0 andalso size s2 > 0
+                   andalso Char.isSpace (String.sub (s1, size s1 - 1))
+                   andalso Char.isSpace (String.sub (s2, 0)) then
+                    s1 ^ String.extract (s2, 1, NONE)
+                else
+                    s1 ^ s2
+        in
+            EStrcat ((EPrim (Prim.String s), loc), rest)
+        end
+
+      | EStrcat ((EStrcat (e1, e2), loc), e3) =>
+        optExp (EStrcat (e1, (EStrcat (e2, e3), loc)), loc)
+
       | _ => e
+
+and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)
 
 val optimize = U.File.map {typ = typ, exp = exp, decl = decl}
 
