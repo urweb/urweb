@@ -146,6 +146,11 @@ fun p_exp' par env (e, _) =
                          p_exp env e,
                          string ")"]
 
+      | ESeq (e1, e2) => box [p_exp env e1,
+                              string ";",
+                              space,
+                              p_exp env e2]
+
 and p_exp env = p_exp' false env
 
 fun p_decl env ((d, _) : decl) =

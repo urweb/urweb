@@ -54,6 +54,7 @@ datatype exp' =
        | ELet of (string * typ * exp) list * exp
 
        | EWrite of exp
+       | ESeq of exp * exp
 
 withtype exp = exp' located
 

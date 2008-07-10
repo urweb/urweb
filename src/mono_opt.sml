@@ -81,6 +81,17 @@ fun exp e =
       | EStrcat ((EStrcat (e1, e2), loc), e3) =>
         optExp (EStrcat (e1, (EStrcat (e2, e3), loc)), loc)
 
+      | EWrite (EStrcat (e1, e2), loc) =>
+        ESeq ((optExp (EWrite e1, loc), loc),
+              (optExp (EWrite e2, loc), loc))
+
+      | EWrite (EFfiApp ("Basis", "attrifyInt", [e]), _) =>
+        EFfiApp ("Basis", "attrifyInt_w", [e])
+      | EWrite (EFfiApp ("Basis", "attrifyFloat", [e]), _) =>
+        EFfiApp ("Basis", "attrifyFloat_w", [e])
+      | EWrite (EFfiApp ("Basis", "attrifyString", [e]), _) =>
+        EFfiApp ("Basis", "attrifyString_w", [e])
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)

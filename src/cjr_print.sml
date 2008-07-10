@@ -146,6 +146,13 @@ fun p_exp' par env (e, _) =
                          p_exp env e,
                          string "), lw_unit_v)"]
 
+      | ESeq (e1, e2) => box [string "(",
+                              p_exp env e1,
+                              string ",",
+                              space,
+                              p_exp env e2,
+                              string ")"]
+
 and p_exp env = p_exp' false env
 
 fun p_decl env ((d, _) : decl) =
@@ -177,7 +184,9 @@ fun p_decl env ((d, _) : decl) =
         let
             val env' = E.pushERel env x dom
         in
-            box [p_typ env ran,
+            box [string "static",
+                 space,
+                 p_typ env ran,
                  space,
                  string ("__lwc_" ^ Int.toString n),
                  string "(",

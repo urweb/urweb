@@ -81,7 +81,7 @@ val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
 
 fun attrifyExp (e, tAll as (t, loc)) =
     case t of
-        L'.TFfi ("Basis", "string") => e
+        L'.TFfi ("Basis", "string") => (L'.EFfiApp ("Basis", "attrifyString", [e]), loc)
       | L'.TFfi ("Basis", "int") => (L'.EFfiApp ("Basis", "attrifyInt", [e]), loc)
       | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", "attrifyFloat", [e]), loc)
       | _ => (E.errorAt loc "Don't know how to encode attribute type";

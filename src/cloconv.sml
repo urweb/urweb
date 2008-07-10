@@ -204,6 +204,14 @@ fun ccExp env ((e, loc), D) =
             ((L'.EWrite e, loc), D)
         end
 
+      | L.ESeq (e1, e2) =>
+        let
+            val (e1, D) = ccExp env (e1, D)
+            val (e2, D) = ccExp env (e2, D)
+        in
+            ((L'.ESeq (e1, e2), loc), D)
+        end
+
 fun ccDecl ((d, loc), D) =
     case d of
         L.DVal (x, n, t, e) =>
