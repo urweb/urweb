@@ -427,7 +427,19 @@ fun corifyDecl ((d, loc : EM.span), st) =
              end
            | _ => raise Fail "Non-const signature for FFI structure")
 
-      | L.DPage (c, e) => ([(L'.DPage (corifyCon st c, corifyExp st e), loc)], st)
+      | L.DPage (c, e) =>
+        let
+            val c = corifyCon st c
+            val e = corifyExp st e
+
+            val dom = (L'.TRecord c, loc)
+            val ran = (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc)
+            val e = (L'.EAbs ("vs", dom, ran,
+                              (L'.EWrite (L'.EApp (e, (L'.ERel 0, loc)), loc), loc)), loc)
+                                                                
+        in
+            ([(L'.DPage (c, e), loc)], st)
+        end
 
 and corifyStr ((str, _), st) =
     case str of

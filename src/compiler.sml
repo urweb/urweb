@@ -345,11 +345,25 @@ fun compile job =
         NONE => ()
       | SOME file =>
         let
-            val outf = TextIO.openOut "/tmp/lacweb.c"
+            val cname = "/tmp/lacweb.c"
+            val oname = "/tmp/lacweb.o"
+            val ename = "/tmp/webapp"
+
+            val compile = "gcc -I include -c " ^ cname ^ " -o " ^ oname
+            val link = "gcc clib/lacweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
+
+            val outf = TextIO.openOut cname
             val s = TextIOPP.openOut {dst = outf, wid = 80}
         in
             Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
-            TextIO.closeOut outf
+            TextIO.closeOut outf;
+
+            if not (OS.Process.isSuccess (OS.Process.system compile)) then
+                print "C compilation failed\n"
+            else if not (OS.Process.isSuccess (OS.Process.system link)) then
+                print "C linking failed\n"
+            else
+                print "Success\n"
         end
 
 end

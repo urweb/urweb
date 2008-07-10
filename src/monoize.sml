@@ -151,6 +151,7 @@ fun monoExp env (all as (e, loc)) =
           | L.ERecord xes => (L'.ERecord (map (fn (x, e, t) => (monoName env x, monoExp env e, monoType env t)) xes), loc)
           | L.EField (e, x, _) => (L'.EField (monoExp env e, monoName env x), loc)
           | L.EFold _ => poly ()
+          | L.EWrite e => (L'.EWrite (monoExp env e), loc)
     end
 
 fun monoDecl env (all as (d, loc)) =

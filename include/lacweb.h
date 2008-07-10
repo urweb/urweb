@@ -1,3 +1,5 @@
-typedef int lw_Basis_int;
-typedef float lw_Basis_float;
-typedef char* lw_Basis_string;
+#include "types.h"
+
+extern lw_unit lw_unit_v;
+
+void lw_write(const char*);

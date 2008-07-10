@@ -197,6 +197,18 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                          S.map2 (mfe ctx e,
                                  fn e' =>
                                     (ELet (xes', e'), loc)))
+
+              | EStrcat (e1, e2) =>
+                S.bind2 (mfe ctx e1,
+                      fn e1' =>
+                         S.map2 (mfe ctx e2,
+                              fn e2' =>
+                                 (EStrcat (e1', e2'), loc)))
+
+              | EWrite e =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (EWrite e', loc))
     in
         mfe
     end

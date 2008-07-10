@@ -51,6 +51,8 @@ datatype exp' =
 
        | EStrcat of exp * exp
 
+       | EWrite of exp
+
 
 withtype exp = exp' located
 

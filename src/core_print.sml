@@ -226,6 +226,10 @@ fun p_exp' par env (e, _) =
                  p_con' true env c]
       | EFold _ => string "fold"
 
+      | EWrite e => box [string "write(",
+                         p_exp env e,
+                         string ")"]
+
 and p_exp env = p_exp' false env
 
 fun p_decl env ((d, _) : decl) =

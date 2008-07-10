@@ -142,6 +142,10 @@ fun p_exp' par env (e, _) =
                  string "})"]
         end
 
+      | EWrite e => box [string "(lw_write(",
+                         p_exp env e,
+                         string "), lw_unit_v)"]
+
 and p_exp env = p_exp' false env
 
 fun p_decl env ((d, _) : decl) =
@@ -219,9 +223,7 @@ fun p_page env (xts, (e, loc)) =
                                              val r = (ERecord (ri, [("env", envx),
                                                                     ("arg", (ERecord (ari, []), loc))]), loc)
                                          in
-                                             box [string "return",
-                                                  space,
-                                                  p_exp env (EApp (code, r), loc),
+                                             box [p_exp env (EApp (code, r), loc),
                                                   string ";"]
                                          end
                                        | _ => string "Page handler is too complicated! [6]"
@@ -247,7 +249,7 @@ fun p_file env (ds, ps) =
              newline,
              p_list_sep newline (fn x => x) pds,
              newline,
-             string "char *lw_handle(void) {",
+             string "void lw_handle(void) {",
              newline,
              p_list_sep newline (fn x => x) pds',
              newline,

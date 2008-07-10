@@ -114,9 +114,13 @@ fun p_exp' par env (e, _) =
 
       | EStrcat (e1, e2) => box [p_exp' true env e1,
                                  space,
-                                 string ".",
+                                 string "^",
                                  space,
                                  p_exp' true env e2]
+
+      | EWrite e => box [string "write(",
+                         p_exp env e,
+                         string ")"]
 
 and p_exp env = p_exp' false env
 

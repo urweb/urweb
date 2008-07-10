@@ -53,6 +53,10 @@ datatype exp' =
 
        | ELet of (string * typ * exp) list * exp
 
+       | EStrcat of exp * exp
+
+       | EWrite of exp
+
 withtype exp = exp' located
 
 datatype decl' =

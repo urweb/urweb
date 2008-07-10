@@ -46,7 +46,7 @@ structure FM = BinaryMapFn(struct
 
 type t = int * int FM.map * (int * (string * L'.typ) list) list
 
-val empty = (0, FM.empty, [])
+val empty : t = (1, FM.insert (FM.empty, (L.TRecord [], ErrorMsg.dummySpan), 0), [])
 
 fun find ((n, m, ds), xts, xts') =
     let
@@ -156,6 +156,15 @@ fun cifyExp ((e, loc), sm) =
             val (e, sm) = cifyExp (e, sm)
         in
             ((L'.ELet (xes, e), loc), sm)
+        end
+
+      | L.EStrcat _ => raise Fail "Cjrize EStrcat"
+
+      | L.EWrite e =>
+        let
+            val (e, sm) = cifyExp (e, sm)
+        in
+            ((L'.EWrite e, loc), sm)
         end
 
 fun cifyDecl ((d, loc), sm) =

@@ -1,14 +1,22 @@
-all: smlnj mlton
+all: smlnj mlton c
 
-.PHONY: all smlnj mlton clean
+.PHONY: all smlnj mlton c clean
 
 smlnj: src/lacweb.cm
 mlton: bin/lacweb
+c: clib/lacweb.o clib/driver.o
 
 clean:
 	rm -f src/*.mlton.grm.* src/*.mlton.lex.* \
-		src/lacweb.cm src/lacweb.mlb
+		src/lacweb.cm src/lacweb.mlb \
+		clib/*.o
 	rm -rf .cm src/.cm
+
+clib/lacweb.o: src/c/lacweb.c
+	gcc -I include -c src/c/lacweb.c -o clib/lacweb.o
+
+clib/driver.o: src/c/driver.c
+	gcc -c src/c/driver.c -o clib/driver.o
 
 src/lacweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \

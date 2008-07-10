@@ -74,6 +74,8 @@ datatype exp' =
        | EField of exp * con * { field : con, rest : con }
        | EFold of kind
 
+       | EWrite of exp
+
 withtype exp = exp' located
 
 datatype decl' =

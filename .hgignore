@@ -11,3 +11,4 @@ src/lacweb.mlb
 
 *.lex.*
 *.grm.*
+*.o
