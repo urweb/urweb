@@ -261,6 +261,7 @@ notags = [^<{\n]+;
 <INITIAL> "open"      => (Tokens.OPEN (pos yypos, pos yypos + size yytext));
 <INITIAL> "constraint"=> (Tokens.CONSTRAINT (pos yypos, pos yypos + size yytext));
 <INITIAL> "constraints"=> (Tokens.CONSTRAINTS (pos yypos, pos yypos + size yytext));
+<INITIAL> "page"      => (Tokens.PAGE (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));
 <INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));

@@ -79,6 +79,7 @@ withtype exp = exp' located
 datatype decl' =
          DCon of string * int * kind * con
        | DVal of string * int * con * exp
+       | DPage of con * exp
 
 withtype decl = decl' located
 

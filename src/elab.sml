@@ -115,6 +115,7 @@ datatype decl' =
        | DStr of string * int * sgn * str
        | DFfiStr of string * int * sgn
        | DConstraint of con * con
+       | DPage of con * exp
 
      and str' =
          StrConst of decl list

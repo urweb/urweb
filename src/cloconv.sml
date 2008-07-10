@@ -158,7 +158,6 @@ fun ccExp env ((e, loc), D) =
             val body = (L'.ELet ([("env", envT, (L'.EField ((L'.ERel 0, loc), "env"), loc)),
                                   ("arg", dom, (L'.EField ((L'.ERel 1, loc), "arg"), loc))],
                                  body), loc)
-                              
 
             val (D, fi) = Ds.func D (x, (L'.TRecord [("env", envT), ("arg", dom)], loc), ran, body)
         in
@@ -198,6 +197,7 @@ fun ccDecl ((d, loc), D) =
         in
             Ds.exp D (x, n, t, e)
         end
+      | L.DPage _ => raise Fail "Cloconv DPage"
 
 fun cloconv ds =
     let

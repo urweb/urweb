@@ -98,6 +98,7 @@ datatype decl' =
        | DSgn of string * int * sgn
        | DStr of string * int * sgn * str
        | DFfiStr of string * int * sgn
+       | DPage of con * exp
 
      and str' =
          StrConst of decl list

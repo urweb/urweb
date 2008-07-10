@@ -272,6 +272,12 @@ fun p_decl env ((d, _) : decl) =
                  space,
                  p_exp env e]
         end
+      | DPage (c, e) => box [string "page",
+                             p_con env c,
+                             space,
+                             string "=",
+                             space,
+                             p_exp env e]
 
 fun p_file env file =
     let

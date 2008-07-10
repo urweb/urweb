@@ -7,3 +7,5 @@ val main = fn () => <html>
                 <b>Hello</b> <i>World</i>!
         </body>
 </html>
+
+page main

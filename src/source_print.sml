@@ -418,6 +418,10 @@ fun p_decl ((d, _) : decl) =
                                          space,
                                          p_list_sep (string ".") string (m :: ms)]
 
+      | DPage e => box [string "page",
+                        space,
+                        p_exp e]
+
 and p_str (str, _) =
     case str of
         StrConst ds => box [string "struct",

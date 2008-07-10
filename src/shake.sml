@@ -42,61 +42,62 @@ type free = {
 }
 
 fun shake file =
-    case List.foldl (fn ((DVal ("main", n, t, e), _), _) => SOME (n, t, e)
-                      | (_, s) => s) NONE file of
-        NONE => []
-      | SOME (main, mainT, body) =>
-        let
-            val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, c), edef)
-                                       | ((DVal (_, n, t, e), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e))))
-                               (IM.empty, IM.empty) file
+    let
+        val (page_cs, page_es) = List.foldl
+                                     (fn ((DPage (c, e), _), (cs, es)) => (c :: cs, e :: es)
+                                       | (_, acc) => acc) ([], []) file
 
-            fun kind (_, s) = s
+        val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, c), edef)
+                                   | ((DVal (_, n, t, e), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
+                                   | ((DPage _, _), acc) => acc)
+                                 (IM.empty, IM.empty) file
 
-            fun con (c, s) =
-                case c of
-                    CNamed n =>
-                    if IS.member (#con s, n) then
-                        s
-                    else
-                        let
-                            val s' = {con = IS.add (#con s, n),
-                                      exp = #exp s}
-                        in
-                            case IM.find (cdef, n) of
-                                NONE => s'
-                              | SOME c => shakeCon s' c
-                        end
-                  | _ => s
+        fun kind (_, s) = s
 
-            and shakeCon s = U.Con.fold {kind = kind, con = con} s
+        fun con (c, s) =
+            case c of
+                CNamed n =>
+                if IS.member (#con s, n) then
+                    s
+                else
+                    let
+                        val s' = {con = IS.add (#con s, n),
+                                  exp = #exp s}
+                    in
+                        case IM.find (cdef, n) of
+                            NONE => s'
+                          | SOME c => shakeCon s' c
+                    end
+              | _ => s
 
-            fun exp (e, s) =
-                case e of
-                    ENamed n =>
-                    if IS.member (#exp s, n) then
-                        s
-                    else
-                        let
-                            val s' = {exp = IS.add (#exp s, n),
-                                      con = #con s}
-                        in
-                            case IM.find (edef, n) of
-                                NONE => s'
-                              | SOME (t, e) => shakeExp (shakeCon s' t) e
-                        end
-                  | _ => s
+        and shakeCon s = U.Con.fold {kind = kind, con = con} s
 
-            and shakeExp s = U.Exp.fold {kind = kind, con = con, exp = exp} s
+        fun exp (e, s) =
+            case e of
+                ENamed n =>
+                if IS.member (#exp s, n) then
+                    s
+                else
+                    let
+                        val s' = {exp = IS.add (#exp s, n),
+                                  con = #con s}
+                    in
+                        case IM.find (edef, n) of
+                            NONE => s'
+                          | SOME (t, e) => shakeExp (shakeCon s' t) e
+                    end
+              | _ => s
 
-            val s = {con = IS.empty,
-                     exp = IS.singleton main}
-                    
-            val s = U.Con.fold {kind = kind, con = con} s mainT
-            val s = U.Exp.fold {kind = kind, con = con, exp = exp} s body
-        in
-            List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
-                          | (DVal (_, n, _, _), _) => IS.member (#exp s, n)) file
-        end
+        and shakeExp s = U.Exp.fold {kind = kind, con = con, exp = exp} s
+
+        val s = {con = IS.empty,  exp = IS.empty}
+                
+        val s = foldl (fn (c, s) => U.Con.fold {kind = kind, con = con} s c) s page_cs
+        val s = foldl (fn (e, s) => U.Exp.fold {kind = kind, con = con, exp = exp} s e) s page_es
+    in
+        List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
+                      | (DVal (_, n, _, _), _) => IS.member (#exp s, n)
+                      | (DPage _, _) => true) file
+    end
 
 end

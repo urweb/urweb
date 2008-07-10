@@ -164,6 +164,13 @@ fun monoDecl env (all as (d, loc)) =
             L.DCon _ => NONE
           | L.DVal (x, n, t, e) => SOME (Env.pushENamed env x n t (SOME e),
                                          (L'.DVal (x, n, monoType env t, monoExp env e), loc))
+          | L.DPage ((c, _), e) =>
+            (case c of
+                 L.CRecord (_, vs) => SOME (env,
+                                            (L'.DPage (map (fn (nm, t) => (monoName env nm,
+                                                                           monoType env t)) vs,
+                                                       monoExp env e), loc))
+               | _ => poly ())
     end
 
 fun monoize env ds =

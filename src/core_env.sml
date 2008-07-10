@@ -123,5 +123,6 @@ fun declBinds env (d, _) =
     case d of
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
       | DVal (x, n, t, e) => pushENamed env x n t (SOME e)
+      | DPage _ => env
 
 end

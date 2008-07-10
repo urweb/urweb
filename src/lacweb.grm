@@ -46,7 +46,7 @@ val s = ErrorMsg.spanOf
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
- | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS
+ | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | PAGE
 
  | XML_BEGIN of string | XML_END
  | NOTAGS of string 
@@ -140,6 +140,7 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                              [] => raise Fail "Impossible mpath parse [3]"
                                            | m :: ms => (DOpenConstraints (m, ms), s (OPENleft, mpathright)))
        | CONSTRAINT cterm TWIDDLE cterm (DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
+       | PAGE eexp                      (DPage eexp, s (PAGEleft, eexpright))
 
 sgn    : sgntm                          (sgntm)
        | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn

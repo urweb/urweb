@@ -205,6 +205,15 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                          S.map2 (mfe ctx e,
                               fn e' =>
                                  (DVal (x, n, t', e'), loc)))
+              | DPage (xts, e) =>
+                S.bind2 (ListUtil.mapfold (fn (x, t) =>
+                                             S.map2 (mft t,
+                                                  fn t' =>
+                                                     (x, t'))) xts,
+                      fn xts' =>
+                         S.map2 (mfe ctx e,
+                              fn e' =>
+                                 (DPage (xts', e'), loc)))
     in
         mfd
     end    
@@ -239,10 +248,10 @@ fun mapfoldB (all as {bind, ...}) =
                 S.bind2 (mfd ctx d,
                          fn d' =>
                             let
-                                val b =
+                                val ctx' =
                                     case #1 d' of
-                                        DVal (x, n, t, e) => NamedE (x, n, t, SOME e)
-                                val ctx' = bind (ctx, b)
+                                        DVal (x, n, t, e) => bind (ctx, NamedE (x, n, t, SOME e))
+                                      | DPage _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
                                      fn ds' =>

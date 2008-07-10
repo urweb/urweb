@@ -292,6 +292,7 @@ fun declBinds env (d, _) =
       | DStr (x, n, sgn, _) => pushStrNamedAs env x n sgn
       | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | DConstraint _ => env
+      | DPage _ => env
 
 fun sgiBinds env (sgi, _) =
     case sgi of

@@ -427,6 +427,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
              end
            | _ => raise Fail "Non-const signature for FFI structure")
 
+      | L.DPage (c, e) => ([(L'.DPage (corifyCon st c, corifyExp st e), loc)], st)
 
 and corifyStr ((str, _), st) =
     case str of
@@ -473,7 +474,8 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DVal (_, n', _ , _) => Int.max (n, n')
                              | L.DSgn (_, n', _) => Int.max (n, n')
                              | L.DStr (_, n', _, str) => Int.max (n, Int.max (n', maxNameStr str))
-                             | L.DFfiStr (_, n', _) => Int.max (n, n'))
+                             | L.DFfiStr (_, n', _) => Int.max (n, n')
+                             | L.DPage _ => n)
                  0 ds
 
 and maxNameStr (str, _) =

@@ -1593,12 +1593,13 @@ fun dopenConstraints (loc, env, denv) {str, strs} =
 
 fun sgiOfDecl (d, loc) =
     case d of
-        L'.DCon (x, n, k, c) => (L'.SgiCon (x, n, k, c), loc)
-      | L'.DVal (x, n, t, _) => (L'.SgiVal (x, n, t), loc)
-      | L'.DSgn (x, n, sgn) => (L'.SgiSgn (x, n, sgn), loc)
-      | L'.DStr (x, n, sgn, _) => (L'.SgiStr (x, n, sgn), loc)
-      | L'.DFfiStr (x, n, sgn) => (L'.SgiStr (x, n, sgn), loc)
-      | L'.DConstraint cs => (L'.SgiConstraint cs, loc)
+        L'.DCon (x, n, k, c) => SOME (L'.SgiCon (x, n, k, c), loc)
+      | L'.DVal (x, n, t, _) => SOME (L'.SgiVal (x, n, t), loc)
+      | L'.DSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, sgn), loc)
+      | L'.DStr (x, n, sgn, _) => SOME (L'.SgiStr (x, n, sgn), loc)
+      | L'.DFfiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, sgn), loc)
+      | L'.DConstraint cs => SOME (L'.SgiConstraint cs, loc)
+      | L'.DPage _ => NONE
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
@@ -1928,12 +1929,35 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
             ([], (env, denv, []))
         end
 
+      | L.DPage e =>
+        let
+            val basis =
+                case E.lookupStr env "Basis" of
+                    NONE => raise Fail "elabExp: Unbound Basis"
+                  | SOME (n, _) => n
+
+            val (e', t, gs1) = elabExp (env, denv) e
+
+            val k = (L'.KRecord (L'.KType, loc), loc)
+            val vs = cunif (loc, k)
+
+            val c = (L'.TFun ((L'.TRecord vs, loc),
+                              (L'.CApp ((L'.CModProj (basis, [], "xml"), loc),
+                                        (L'.CRecord ((L'.KUnit, loc),
+                                                     [((L'.CName "Html", loc),
+                                                       (L'.CUnit, loc))]), loc)), loc)), loc)
+
+            val gs2 = checkCon (env, denv) e' t c
+        in
+            ([(L'.DPage (vs, e'), loc)], (env, denv, gs1 @ gs2))
+        end
+
 and elabStr (env, denv) (str, loc) =
     case str of
         L.StrConst ds =>
         let
             val (ds', (_, _, gs)) = ListUtil.foldlMapConcat elabDecl (env, denv, []) ds
-            val sgis = map sgiOfDecl ds'
+            val sgis = List.mapPartial sgiOfDecl ds'
 
             val (sgis, _, _, _, _) =
                 foldr (fn ((sgi, loc), (sgis, cons, vals, sgns, strs)) =>

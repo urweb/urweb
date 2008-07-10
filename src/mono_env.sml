@@ -84,5 +84,6 @@ fun lookupENamed (env : env) n =
 fun declBinds env (d, _) =
     case d of
         DVal (x, n, t, e) => pushENamed env x n t (SOME e)
+      | DPage _ => env
 
 end
