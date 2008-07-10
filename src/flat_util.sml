@@ -55,7 +55,7 @@ fun compare ((t1, _), (t2, _)) =
         join (compare (d1, d2), fn () => compare (r1, r2))
       | (TRecord xts1, TRecord xts2) =>
         let
-            val xts2 = sortFields xts1
+            val xts1 = sortFields xts1
             val xts2 = sortFields xts2
         in
             joinL compareFields (xts1, xts2)
