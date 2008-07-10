@@ -143,7 +143,10 @@ notags = [^<{\n]+;
 
 <INITIAL> "\""        => (YYBEGIN STRING; strStart := pos yypos; str := []; continue());
 <STRING> "\\\""       => (str := #"\"" :: !str; continue());
-<STRING> "\""         => (YYBEGIN INITIAL;
+<STRING> "\""         => (if !xmlString then
+			  (xmlString := false; YYBEGIN XMLTAG)
+			  else
+			  YYBEGIN INITIAL;
 			  Tokens.STRING (String.implode (List.rev (!str)), !strStart, pos yypos + 1));
 <STRING> "\n"         => (newline yypos;
 			  str := #"\n" :: !str; continue());
@@ -196,7 +199,7 @@ notags = [^<{\n]+;
                                        continue ()));
 <XMLTAG> "\""         => (YYBEGIN STRING;
 			  xmlString := true;
-			  strStart := yypos; str := []; continue());
+			  strStart := yypos; str := []; continue ());
 
 <XMLTAG> "{"          => (YYBEGIN INITIAL;
 			  pushLevel (fn () => YYBEGIN XMLTAG);

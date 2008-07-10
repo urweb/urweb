@@ -31,6 +31,9 @@ open Source
 
 val s = ErrorMsg.spanOf
 
+fun uppercaseFirst "" = ""
+  | uppercaseFirst s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
 %%
 %header (functor LacwebLrValsFn(structure Token : TOKEN))
 
@@ -85,6 +88,10 @@ val s = ErrorMsg.spanOf
  | rexp of (con * exp) list
  | xml of exp
  | xmlOne of exp
+
+ | attrs of (con * exp) list
+ | attr of con * exp
+ | attrv of exp
 
 %verbose                                (* print summary of errors *)
 %pos int                                (* positions *)
@@ -304,10 +311,11 @@ xml    : xmlOne xml                  (let
 xmlOne : NOTAGS                      (EApp ((EVar (["Basis"], "cdata"), s (NOTAGSleft, NOTAGSright)),
                                             (EPrim (Prim.String NOTAGS), s (NOTAGSleft, NOTAGSright))),
                                       s (NOTAGSleft, NOTAGSright))
-       | BEGIN_TAG DIVIDE GT         (let
+       | BEGIN_TAG attrs DIVIDE GT   (let
                                           val pos = s (BEGIN_TAGleft, GTright)
                                       in
-                                          (EApp ((EApp ((EVar (["Basis"], "tag"), pos),
+                                          (EApp ((EApp ((EApp ((EVar (["Basis"], "tag"), pos),
+                                                               (ERecord attrs, pos)), pos),
                                                         (EVar ([], BEGIN_TAG), pos)),
                                                   pos),
                                                  (EApp ((EVar (["Basis"], "cdata"), pos),
@@ -315,16 +323,25 @@ xmlOne : NOTAGS                      (EApp ((EVar (["Basis"], "cdata"), s (NOTAG
                                                   pos)), pos)
                                       end)
 
-       | BEGIN_TAG GT xml END_TAG    (let
-                                          val pos = s (BEGIN_TAGleft, GTright)
-                                      in
-                                          if BEGIN_TAG = END_TAG then
-                                              (EApp ((EApp ((EVar (["Basis"], "tag"), pos),
-                                                            (EVar ([], BEGIN_TAG), pos)),
-                                                      pos),
-                                                     xml), pos)
-                                          else
-                                              (ErrorMsg.errorAt pos "Begin and end tags don't match.";
-                                               (EFold, pos))
-                                      end)
+       | BEGIN_TAG attrs GT xml END_TAG(let
+                                            val pos = s (BEGIN_TAGleft, GTright)
+                                        in
+                                            if BEGIN_TAG = END_TAG then
+                                                (EApp ((EApp ((EApp ((EVar (["Basis"], "tag"), pos),
+                                                                     (ERecord attrs, pos)), pos),
+                                                              (EVar ([], BEGIN_TAG), pos)),
+                                                        pos),
+                                                       xml), pos)
+                                            else
+                                                (ErrorMsg.errorAt pos "Begin and end tags don't match.";
+                                                 (EFold, pos))
+                                        end)
                                           
+attrs  :                                ([])
+       | attr attrs                     (attr :: attrs)
+
+attr   : SYMBOL EQ attrv                ((CName (uppercaseFirst SYMBOL), s (SYMBOLleft, SYMBOLright)), attrv)
+
+attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
+       | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
+       | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))

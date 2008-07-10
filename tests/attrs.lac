@@ -1,0 +1,5 @@
+val main = fn () => <html><body>
+        <font face="awesome">Welcome</font>
+</body></html>
+
+page main

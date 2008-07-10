@@ -109,11 +109,14 @@ fun monoExp env (all as (e, loc)) =
 
           | L.EApp (
             (L.EApp (
-             (L.ECApp (
+             (L.EApp (
               (L.ECApp (
-               (L.EFfi ("Basis", "tag"),
-                _), _), _),
-              _), _),
+               (L.ECApp (
+                (L.ECApp (
+                 (L.ECApp (
+                  (L.EFfi ("Basis", "tag"),
+                   _), _), _), _), _), _), _), _), _),
+              attrs), _),
              tag), _),
             xml) =>
             let
@@ -126,17 +129,45 @@ fun monoExp env (all as (e, loc)) =
 
                 val tag = getTag tag
 
+                val attrs = monoExp env attrs
+
+                val tagStart =
+                    case #1 attrs of
+                        L'.ERecord xes =>
+                        let
+                            fun lowercaseFirst "" = ""
+                              | lowercaseFirst s = str (Char.toLower (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
+                            val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
+                        in
+                            foldl (fn ((x, e, _), s) =>
+                                      let
+                                          val xp = " " ^ lowercaseFirst x ^ "=\""
+                                      in
+                                          (L'.EStrcat (s,
+                                                       (L'.EStrcat ((L'.EPrim (Prim.String xp), loc),
+                                                                    (L'.EStrcat (e,
+                                                                                 (L'.EPrim (Prim.String "\""), loc)),
+                                                                     loc)),
+                                                        loc)), loc)
+                                      end)
+                            s xes
+                        end
+                      | _ => raise Fail "Attributes!"
+
                 fun normal () =
-                    (L'.EStrcat ((L'.EPrim (Prim.String (String.concat ["<", tag, ">"])), loc),
+                    (L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
                                  (L'.EStrcat (monoExp env xml,
                                               (L'.EPrim (Prim.String (String.concat ["</", tag, ">"])), loc)), loc)),
                      loc)
+
+
             in
                 case xml of
                     (L.EApp ((L.ECApp ((L.EFfi ("Basis", "cdata"), _),
                                        _), _), (L.EPrim (Prim.String s), _)), _) =>
                     if CharVector.all Char.isSpace s then
-                        (L'.EPrim (Prim.String (String.concat ["<", tag, "/>"])), loc)
+                        (L'.EStrcat (tagStart, (L'.EPrim (Prim.String "/>"), loc)), loc)
                     else
                         normal ()
                   | _ => normal ()

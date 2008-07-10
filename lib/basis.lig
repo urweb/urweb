@@ -3,13 +3,15 @@ type float
 type string
 
 
-con tag :: {Unit} -> {Unit} -> Type
+con tag :: {Type} -> {Unit} -> {Unit} -> Type
 
 
 con xml :: {Unit} -> Type
 val cdata : ctx ::: {Unit} -> string -> xml ctx
-val tag : outer ::: {Unit} -> inner ::: {Unit}
-        -> tag outer inner
+val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type} -> attrsGiven ~ attrsAbsent
+        -> outer ::: {Unit} -> inner ::: {Unit}
+        -> $attrsGiven
+        -> tag (attrsGiven ++ attrsAbsent) outer inner
         -> xml inner
         -> xml outer
 val join : shared :: {Unit}
@@ -18,10 +20,11 @@ val join : shared :: {Unit}
         -> xml (shared ++ ctx1) -> xml (shared ++ ctx2) -> xml shared
 
 
-val head : tag [Html] [Head]
-val title : tag [Head] []
+val head : tag [] [Html] [Head]
+val title : tag [] [Head] []
 
-val body : tag [Html] [Body]
-val p : tag [Body] [Body]
-val b : tag [Body] [Body]
-val i : tag [Body] [Body]
+val body : tag [] [Html] [Body]
+val p : tag [] [Body] [Body]
+val b : tag [] [Body] [Body]
+val i : tag [] [Body] [Body]
+val font : tag [Size = int, Face = string] [Body] [Body]
