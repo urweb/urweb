@@ -25,4 +25,4 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-val () = Compiler.testCjrize (CommandLine.arguments ())
+val () = Compiler.compile (CommandLine.arguments ())

@@ -13,10 +13,10 @@ clean:
 	rm -rf .cm src/.cm
 
 clib/lacweb.o: src/c/lacweb.c
-	gcc -I include -c src/c/lacweb.c -o clib/lacweb.o
+	gcc -O3 -I include -c src/c/lacweb.c -o clib/lacweb.o
 
 clib/driver.o: src/c/driver.c
-	gcc -c src/c/driver.c -o clib/driver.o
+	gcc -O3 -c src/c/driver.c -o clib/driver.o
 
 src/lacweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \
