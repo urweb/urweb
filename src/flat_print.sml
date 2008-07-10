@@ -194,6 +194,20 @@ fun p_decl env ((d, _) : decl) =
 
         end
 
+      | DPage (xcs, e) => box [string "page",
+                               string "[",
+                               p_list (fn (x, t) =>
+                                          box [string x,
+                                               space,
+                                               string ":",
+                                               space,
+                                               p_typ env t]) xcs,
+                               string "]",
+                               space,
+                               string "=",
+                               space,
+                               p_exp env e]
+
 fun p_file env file =
     let
         val (pds, _) = ListUtil.foldlMap (fn (d, env) =>

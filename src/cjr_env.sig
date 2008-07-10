@@ -34,6 +34,7 @@ signature CJR_ENV = sig
     exception UnboundRel of int
     exception UnboundNamed of int
     exception UnboundF of int
+    exception UnboundStruct of int
 
     val pushTNamed : env -> string -> int -> Cjr.typ option -> env
     val lookupTNamed : env -> int -> string * Cjr.typ option
@@ -48,6 +49,9 @@ signature CJR_ENV = sig
 
     val pushF : env -> int -> string -> Cjr.typ -> Cjr.typ -> env
     val lookupF : env -> int -> string * Cjr.typ * Cjr.typ
+
+    val pushStruct : env -> int -> (string * Cjr.typ) list -> env
+    val lookupStruct : env -> int -> (string * Cjr.typ) list
 
     val declBinds : env -> Cjr.decl -> env
                                                  

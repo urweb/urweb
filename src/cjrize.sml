@@ -165,7 +165,7 @@ fun cifyDecl ((d, loc), sm) =
             val (t, sm) = cifyTyp (t, sm)
             val (e, sm) = cifyExp (e, sm)
         in
-            ((L'.DVal (x, n, t, e), loc), sm)
+            (SOME (L'.DVal (x, n, t, e), loc), NONE, sm)
         end
       | L.DFun (n, x, dom, ran, e) =>
         let
@@ -173,15 +173,41 @@ fun cifyDecl ((d, loc), sm) =
             val (ran, sm) = cifyTyp (ran, sm)
             val (e, sm) = cifyExp (e, sm)
         in
-            ((L'.DFun (n, x, dom, ran, e), loc), sm)
+            (SOME (L'.DFun (n, x, dom, ran, e), loc), NONE, sm)
+        end
+      | L.DPage (xts, e) =>
+        let
+            val (xts, sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
+                                                  let
+                                                      val (t, sm) = cifyTyp (t, sm)
+                                                  in
+                                                      ((x, t), sm)
+                                                  end)
+                                              sm xts
+            val (e, sm) = cifyExp (e, sm)
+        in
+            (NONE, SOME (xts, e), sm)
         end
 
 fun cjrize ds =
     let
-        val (ds, sm) = ListUtil.foldlMap cifyDecl Sm.empty ds
+        val (ds, ps, sm) = foldl (fn (d, (ds, ps, sm)) =>
+                                     let
+                                         val (dop, pop, sm) = cifyDecl (d, sm)
+                                         val ds = case dop of
+                                                      NONE => ds
+                                                    | SOME d => d :: ds
+                                         val ps = case pop of
+                                                      NONE => ps
+                                                    | SOME p => p :: ps 
+                                     in
+                                         (ds, ps, sm)
+                                     end)
+                           ([], [], Sm.empty) ds
     in
-        List.revAppend (map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm),
-                        ds)
+        (List.revAppend (map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm),
+                         rev ds),
+         ps)
     end
 
 end

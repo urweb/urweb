@@ -35,6 +35,7 @@ structure IM = IntBinaryMap
 exception UnboundRel of int
 exception UnboundNamed of int
 exception UnboundF of int
+exception UnboundStruct of int
 
 type env = {
      namedT : (string * typ option) IM.map,
@@ -43,7 +44,8 @@ type env = {
      relE : (string * typ) list,
      namedE : (string * typ) IM.map,
 
-     F : (string * typ * typ) IM.map
+     F : (string * typ * typ) IM.map,
+     structs : (string * typ) list IM.map
 }
 
 val empty = {
@@ -53,7 +55,8 @@ val empty = {
     relE = [],
     namedE = IM.empty,
 
-    F = IM.empty
+    F = IM.empty,
+    structs = IM.empty
 }
 
 fun pushTNamed (env : env) x n co =
@@ -63,7 +66,8 @@ fun pushTNamed (env : env) x n co =
      relE = #relE env,
      namedE = #namedE env,
 
-     F = #F env}
+     F = #F env,
+     structs = #structs env}
 
 fun lookupTNamed (env : env) n =
     case IM.find (#namedT env, n) of
@@ -77,7 +81,8 @@ fun pushERel (env : env) x t =
      relE = (x, t) :: #relE env,
      namedE = #namedE env,
 
-     F = #F env}
+     F = #F env,
+     structs = #structs env}
 
 fun lookupERel (env : env) n =
     (List.nth (#relE env, n))
@@ -94,7 +99,8 @@ fun pushENamed (env : env) x n t =
      relE = #relE env,
      namedE = IM.insert (#namedE env, n, (x, t)),
 
-     F = #F env}
+     F = #F env,
+     structs = #structs env}
 
 fun lookupENamed (env : env) n =
     case IM.find (#namedE env, n) of
@@ -108,17 +114,33 @@ fun pushF (env : env) n x dom ran =
      relE = #relE env,
      namedE = #namedE env,
 
-     F = IM.insert (#F env, n, (x, dom, ran))}
+     F = IM.insert (#F env, n, (x, dom, ran)),
+     structs = #structs env}
 
 fun lookupF (env : env) n =
     case IM.find (#F env, n) of
         NONE => raise UnboundF n
       | SOME x => x
 
+fun pushStruct (env : env) n xts =
+    {namedT = #namedT env,
+
+     numRelE = #numRelE env,
+     relE = #relE env,
+     namedE = #namedE env,
+
+     F = #F env,
+     structs = IM.insert (#structs env, n, xts)}
+
+fun lookupStruct (env : env) n =
+    case IM.find (#structs env, n) of
+        NONE => raise UnboundStruct n
+      | SOME x => x
+
 fun declBinds env (d, _) =
     case d of
         DVal (x, n, t, _) => pushENamed env x n t
       | DFun (n, x, dom, ran, _) => pushF env n x dom ran
-      | DStruct _ => env
+      | DStruct (n, xts) => pushStruct env n xts
 
 end

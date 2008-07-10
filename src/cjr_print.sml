@@ -43,9 +43,7 @@ val dummyTyp = (TNamed 0, ErrorMsg.dummySpan)
 
 fun p_typ' par env (t, loc) =
     case t of
-        TTop =>
-        (EM.errorAt loc "Undetermined type";
-         string "?")
+        TTop => string "void*"
       | TFun =>
         (EM.errorAt loc "Undetermined function type";
          string "?->")
@@ -188,19 +186,73 @@ fun p_decl env ((d, _) : decl) =
                  newline,
                  box[string "return(",
                      p_exp env' e,
-                     string ")"],
+                     string ");"],
                  newline,
                  string "}"]
         end
 
-fun p_file env file =
+fun p_page env (xts, (e, loc)) =
+    case e of
+        ERecord (_, xes) =>
+        let
+            fun read x = ListUtil.search (fn (x', e) => if x' = x then SOME e else NONE) xes
+        in
+            case (read "code", read "env") of
+                (SOME code, SOME envx) =>
+                (case #1 code of
+                     ECode i =>
+                     let
+                         val (_, (dom, _), _) = E.lookupF env i
+                     in
+                         case dom of
+                             TRecord ri =>
+                             let
+                                 val axts = E.lookupStruct env ri
+                                 fun read x = ListUtil.search (fn (x', t) => if x' = x then SOME t else NONE) axts
+                             in
+                                 case read "arg" of
+                                     NONE => string "Page handler is too complicated! [5]"
+                                   | SOME (at, _) =>
+                                     case at of
+                                         TRecord ari =>
+                                         let
+                                             val r = (ERecord (ri, [("env", envx),
+                                                                    ("arg", (ERecord (ari, []), loc))]), loc)
+                                         in
+                                             box [string "return",
+                                                  space,
+                                                  p_exp env (EApp (code, r), loc),
+                                                  string ";"]
+                                         end
+                                       | _ => string "Page handler is too complicated! [6]"
+                             end
+                           | _ => string "Page handler is too complicated! [4]"
+                     end
+                   | _ => string "Page handler is too complicated! [3]")
+
+              | _ => string "Page handler is too complicated! [1]"
+        end
+      | _ => string "Page handler is too complicated! [2]"
+
+fun p_file env (ds, ps) =
     let
-        val (pds, _) = ListUtil.foldlMap (fn (d, env) =>
+        val (pds, env) = ListUtil.foldlMap (fn (d, env) =>
                                              (p_decl env d,
                                               E.declBinds env d))
-                             env file
+                             env ds
+        val pds' = map (p_page env) ps
     in
-        p_list_sep newline (fn x => x) pds
+        box [string "#include \"lacweb.h\"",
+             newline,
+             newline,
+             p_list_sep newline (fn x => x) pds,
+             newline,
+             string "char *lw_handle(void) {",
+             newline,
+             p_list_sep newline (fn x => x) pds',
+             newline,
+             string "}",
+             newline]
     end
 
 end

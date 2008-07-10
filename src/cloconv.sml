@@ -78,6 +78,7 @@ structure Ds :> sig
 
     val exp : t -> string * int * L'.typ * L'.exp -> t
     val func : t -> string * L'.typ * L'.typ * L'.exp -> t * int
+    val page : t -> (string * L'.typ) list * L'.exp -> t
     val decls : t -> L'.decl list
 
     val enter : t -> t
@@ -94,6 +95,8 @@ fun exp (fc, ds, vm) (v as (_, _, _, (_, loc))) = (fc, (L'.DVal v, loc) :: ds, v
 
 fun func (fc, ds, vm) (x, dom, ran, e as (_, loc)) =
     ((fc+1, (L'.DFun (fc, x, dom, ran, e), loc) :: ds, vm), fc)
+
+fun page (fc, ds, vm) (xts, e as (_, loc)) = (fc, (L'.DPage (xts, e), loc) :: ds, vm)
 
 fun decls (_, ds, _) = rev ds
 
@@ -197,7 +200,13 @@ fun ccDecl ((d, loc), D) =
         in
             Ds.exp D (x, n, t, e)
         end
-      | L.DPage _ => raise Fail "Cloconv DPage"
+      | L.DPage (xts, e) =>
+        let
+            val xts = map (fn (x, t) => (x, ccTyp t)) xts
+            val (e, D) = ccExp E.empty (e, D)
+        in
+            Ds.page D (xts, e)
+        end
 
 fun cloconv ds =
     let

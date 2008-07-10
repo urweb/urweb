@@ -62,6 +62,6 @@ datatype decl' =
 
 withtype decl = decl' located
 
-type file = decl list
+type file = decl list * ((string * typ) list * exp) list
 
 end

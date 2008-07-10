@@ -58,6 +58,7 @@ withtype exp = exp' located
 datatype decl' =
          DVal of string * int * typ * exp
        | DFun of int * string * typ * typ * exp
+       | DPage of (string * typ) list * exp
 
 withtype decl = decl' located
 
