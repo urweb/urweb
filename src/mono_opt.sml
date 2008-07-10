@@ -33,6 +33,24 @@ structure U = MonoUtil
 fun typ t = t
 fun decl d = d
 
+fun attrifyInt n =
+    if n < 0 then
+        "-" ^ Int64.toString (Int64.~ n)
+    else
+        Int64.toString n
+
+fun attrifyFloat n =
+    if n < 0.0 then
+        "-" ^ Real.toString (Real.~ n)
+    else
+        Real.toString n
+
+val attrifyString = String.translate (fn #"\"" => "&quot;"
+                                       | ch => if Char.isPrint ch then
+                                                   str ch
+                                               else
+                                                   "&#" ^ Int.toString (ord ch) ^ ";")
+
 fun exp e =
     case e of
         EPrim (Prim.String s) =>
@@ -85,10 +103,24 @@ fun exp e =
         ESeq ((optExp (EWrite e1, loc), loc),
               (optExp (EWrite e2, loc), loc))
 
+      | EFfiApp ("Basis", "attrifyInt", [(EPrim (Prim.Int n), _)]) =>
+        EPrim (Prim.String (attrifyInt n))
+      | EWrite (EFfiApp ("Basis", "attrifyInt", [(EPrim (Prim.Int n), _)]), loc) =>
+        EWrite (EPrim (Prim.String (attrifyInt n)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyInt", [e]), _) =>
         EFfiApp ("Basis", "attrifyInt_w", [e])
+
+      | EFfiApp ("Basis", "attrifyFloat", [(EPrim (Prim.Float n), _)]) =>
+        EPrim (Prim.String (attrifyFloat n))
+      | EWrite (EFfiApp ("Basis", "attrifyFloat", [(EPrim (Prim.Float n), _)]), loc) =>
+        EWrite (EPrim (Prim.String (attrifyFloat n)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyFloat", [e]), _) =>
         EFfiApp ("Basis", "attrifyFloat_w", [e])
+
+      | EFfiApp ("Basis", "attrifyString", [(EPrim (Prim.String s), _)]) =>
+        EPrim (Prim.String (attrifyString s))
+      | EWrite (EFfiApp ("Basis", "attrifyString", [(EPrim (Prim.String s), _)]), loc) =>
+        EWrite (EPrim (Prim.String (attrifyString s)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyString", [e]), _) =>
         EFfiApp ("Basis", "attrifyString_w", [e])
 
