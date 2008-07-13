@@ -350,7 +350,7 @@ fun testCjrize job =
 
 fun compile job =
     case cjrize job of
-        NONE => ()
+        NONE => print "Laconic compilation failed\n"
       | SOME file =>
         let
             val cname = "/tmp/lacweb.c"
