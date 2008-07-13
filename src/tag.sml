@@ -100,7 +100,7 @@ fun exp env (e, s) =
                                                    val e = (EClosure (cn, args), loc)
                                                    val t = (CFfi ("Basis", "string"), loc)
                                                in
-                                                   ((x, e, t),
+                                                   (((CName "href", loc), e, t),
                                                     (count, tags, byTag, newTags))
                                                end
                                              | _ => ((x, e, t), (count, tags, byTag, newTags)))

@@ -16,7 +16,7 @@ clib/lacweb.o: src/c/lacweb.c
 	gcc -O3 -I include -c src/c/lacweb.c -o clib/lacweb.o
 
 clib/driver.o: src/c/driver.c
-	gcc -O3 -c src/c/driver.c -o clib/driver.o
+	gcc -O3 -I include -c src/c/driver.c -o clib/driver.o
 
 src/lacweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \

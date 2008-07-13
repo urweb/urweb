@@ -80,7 +80,7 @@ fun p_exp' par env (e, _) =
                                    string m,
                                    string "_",
                                    string x,
-                                   string "(",
+                                   string "(ctx, ",
                                    p_list (p_exp env) es,
                                    string ")"]
       | EApp (e1, e2) => parenIf par (box [p_exp' true env e1,
@@ -111,7 +111,7 @@ fun p_exp' par env (e, _) =
              string ".",
              string x]
 
-      | EWrite e => box [string "(lw_write(",
+      | EWrite e => box [string "(lw_write(ctx, ",
                          p_exp env e,
                          string "), lw_unit_v)"]
 
@@ -158,7 +158,7 @@ fun p_decl env ((d, _) : decl) =
                  p_typ env ran,
                  space,
                  string ("__lwn_" ^ fx ^ "_" ^ Int.toString n),
-                 string "(",
+                 string "(lw_context ctx, ",
                  p_typ env dom,
                  space,
                  p_rel env' 0,
@@ -179,7 +179,7 @@ fun p_page env (s, n) =
          string "\")) {",
          newline,
          p_enamed env n,
-         string "(lw_unit_v);",
+         string "(ctx, lw_unit_v);",
          newline,
          string "}",
          newline]
@@ -197,7 +197,7 @@ fun p_file env (ds, ps) =
              newline,
              p_list_sep newline (fn x => x) pds,
              newline,
-             string "void lw_handle(char *request) {",
+             string "void lw_handle(lw_context ctx, char *request) {",
              newline,
              p_list_sep newline (fn x => x) pds',
              newline,

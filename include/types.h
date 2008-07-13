@@ -6,3 +6,6 @@ struct __lws_0 {
 };
 
 typedef struct __lws_0 lw_unit;
+
+typedef struct lw_context *lw_context;
+

@@ -5,11 +5,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "lacweb.h"
+
 int lw_port = 8080;
 int lw_backlog = 10;
 int lw_bufsize = 1024;
 
-void lw_handle(char*);
+void lw_handle(lw_context, char*);
 
 static void worker(int sock) {
   char buf[lw_bufsize+1], *back = buf, *s;
@@ -36,10 +38,11 @@ static void worker(int sock) {
     
     if (s = strstr(buf, "\r\n\r\n")) {
       char *cmd, *path;
+      lw_context ctx;
 
       *s = 0;
       
-      if (!(s = strstr(buf, "\n"))) {
+      if (!(s = strstr(buf, "\r\n"))) {
         fprintf(stderr, "No newline in buf\n");
         close(sock);
         return;
@@ -68,10 +71,15 @@ static void worker(int sock) {
       }
 
       printf("Serving URI %s....\n", path);
-      puts("Content-type: text/html\n\n");
-      puts("<html>");
-      lw_handle(path);
-      puts("</html>");
+
+      ctx = lw_init(1024);
+      lw_write (ctx, "HTTP/1.1 200 OK\r\n");
+      lw_write(ctx, "Content-type: text/html\r\n\r\n");
+      lw_write(ctx, "<html>");
+      lw_handle(ctx, path);
+      lw_write(ctx, "</html>");
+
+      lw_send(ctx, sock);
 
       printf("Done with client.\n\n");
       close(sock);
