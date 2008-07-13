@@ -171,20 +171,35 @@ fun tag file =
                                             val (fnam, t, _, tag) = E.lookupENamed env f
                                             val (args, result) = unravel t
 
-                                            val (app, _) = foldl (fn (t, (app, n)) =>
-                                                                     ((EApp (app, (ERel n, loc)), loc),
-                                                                      n - 1))
-                                                                 ((ENamed f, loc), length args - 1) args
-                                            val body = (EWrite app, loc)
                                             val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
-                                            val (abs, _, t) = foldr (fn (t, (abs, n, rest)) =>
-                                                                        ((EAbs ("x" ^ Int.toString n,
-                                                                                t,
-                                                                                rest,
-                                                                                abs), loc),
-                                                                         n + 1,
-                                                                         (TFun (t, rest), loc)))
-                                                                    (body, 0, unit) args
+
+                                            val (abs, t) =
+                                                case args of
+                                                    [] =>
+                                                    let
+                                                        val body = (EWrite (ENamed f, loc), loc)
+                                                    in
+                                                        ((EAbs ("x", unit, unit, body), loc),
+                                                         (TFun (unit, unit), loc))
+                                                    end
+                                                  | _ =>
+                                                    let
+                                                        val (app, _) = foldl (fn (t, (app, n)) =>
+                                                                                 ((EApp (app, (ERel n, loc)), loc),
+                                                                                  n - 1))
+                                                                             ((ENamed f, loc), length args - 1) args
+                                                        val body = (EWrite app, loc)
+                                                        val (abs, _, t) = foldr (fn (t, (abs, n, rest)) =>
+                                                                                    ((EAbs ("x" ^ Int.toString n,
+                                                                                            t,
+                                                                                            rest,
+                                                                                            abs), loc),
+                                                                                     n + 1,
+                                                                                     (TFun (t, rest), loc)))
+                                                                                (body, 0, unit) args
+                                                    in
+                                                        (abs, t)
+                                                    end
                                         in
                                             [(DVal ("wrap_" ^ fnam, cn, t, abs, tag), loc),
                                              (DExport cn, loc)]

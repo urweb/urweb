@@ -2,6 +2,8 @@ type int
 type float
 type string
 
+type unit = {}
+
 
 con tag :: {Type} -> {Unit} -> {Unit} -> Type
 
@@ -30,5 +32,8 @@ val p : tag [] [Body] [Body]
 val b : tag [] [Body] [Body]
 val i : tag [] [Body] [Body]
 val font : tag [Size = int, Face = string] [Body] [Body]
+
+val h1 : tag [] [Body] [Body]
+val li : tag [] [Body] [Body]
 
 val a : tag [Link = xhtml] [Body] [Body]
