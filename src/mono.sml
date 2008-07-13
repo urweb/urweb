@@ -54,6 +54,8 @@ datatype exp' =
        | EWrite of exp
        | ESeq of exp * exp
 
+       | EClosure of int * exp list
+
 
 withtype exp = exp' located
 

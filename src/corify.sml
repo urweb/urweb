@@ -376,8 +376,13 @@ fun corifyDecl ((d, loc : EM.span), st) =
       | L.DVal (x, n, t, e) =>
         let
             val (st, n) = St.bindVal st x n
+            val s =
+                if String.isPrefix "wrap_" x then
+                    String.extract (x, 5, NONE)
+                else
+                    x
         in
-            ([(L'.DVal (x, n, corifyCon st t, corifyExp st e, x), loc)], st)
+            ([(L'.DVal (x, n, corifyCon st t, corifyExp st e, s), loc)], st)
         end
                                                                         
       | L.DSgn _ => ([], st)

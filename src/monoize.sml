@@ -79,14 +79,35 @@ fun monoType env (all as (c, loc)) =
 
 val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
 
-fun attrifyExp (e, tAll as (t, loc)) =
-    case t of
-        L'.TFfi ("Basis", "string") => (L'.EFfiApp ("Basis", "attrifyString", [e]), loc)
-      | L'.TFfi ("Basis", "int") => (L'.EFfiApp ("Basis", "attrifyInt", [e]), loc)
-      | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", "attrifyFloat", [e]), loc)
-      | _ => (E.errorAt loc "Don't know how to encode attribute type";
-              Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
-              dummyExp)
+fun attrifyExp env (e, tAll as (t, loc)) =
+        case #1 e of
+            L'.EClosure (fnam, args) =>
+            let
+                val (_, ft, _, s) = Env.lookupENamed env fnam
+                val ft = monoType env ft
+
+                fun attrify (args, ft, e) =
+                    case (args, ft) of
+                        ([], _) => e
+                      | (arg :: args, (L'.TFun (t, ft), _)) =>
+                        (L'.EStrcat (e,
+                                     (L'.EStrcat ((L'.EPrim (Prim.String "/"), loc),
+                                                  attrifyExp env (arg, t)), loc)), loc)
+                      | _ => (E.errorAt loc "Type mismatch encoding attribute";
+                              e)
+            in
+                attrify (args, ft, (L'.EPrim (Prim.String s), loc))
+            end
+          | _ =>
+            case t of
+                L'.TFfi ("Basis", "string") => (L'.EFfiApp ("Basis", "attrifyString", [e]), loc)
+              | L'.TFfi ("Basis", "int") => (L'.EFfiApp ("Basis", "attrifyInt", [e]), loc)
+              | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", "attrifyFloat", [e]), loc)
+              | L'.TRecord [] => (L'.EPrim (Prim.String ""), loc)
+
+              | _ => (E.errorAt loc "Don't know how to encode attribute type";
+                      Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
+                      dummyExp)
 
 fun monoExp env (all as (e, loc)) =
     let
@@ -155,7 +176,7 @@ fun monoExp env (all as (e, loc)) =
                                       in
                                           (L'.EStrcat (s,
                                                        (L'.EStrcat ((L'.EPrim (Prim.String xp), loc),
-                                                                    (L'.EStrcat (attrifyExp (e, t),
+                                                                    (L'.EStrcat (attrifyExp env (e, t),
                                                                                  (L'.EPrim (Prim.String "\""), loc)),
                                                                      loc)),
                                                         loc)), loc)
@@ -193,7 +214,7 @@ fun monoExp env (all as (e, loc)) =
           | L.EFold _ => poly ()
           | L.EWrite e => (L'.EWrite (monoExp env e), loc)
 
-          | L.EClosure _ => raise Fail "Monoize EClosure"
+          | L.EClosure (n, es) => (L'.EClosure (n, map (monoExp env) es), loc)
     end
 
 fun monoDecl env (all as (d, loc)) =

@@ -166,7 +166,7 @@ fun tag file =
                 (newDs @ [d], (env, count, tags))
             end
 
-        val (file, _) = ListUtil.foldlMapConcat doDecl (CoreEnv.empty, count, IM.empty) file
+        val (file, _) = ListUtil.foldlMapConcat doDecl (CoreEnv.empty, count+1, IM.empty) file
     in
         file
     end

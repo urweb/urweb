@@ -194,6 +194,11 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                          S.map2 (mfe ctx e2,
                               fn e2' =>
                                  (ESeq (e1', e2'), loc)))
+
+              | EClosure (n, es) =>
+                S.map2 (ListUtil.mapfold (mfe ctx) es,
+                     fn es' =>
+                        (EClosure (n, es'), loc))
     in
         mfe
     end

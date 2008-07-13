@@ -155,6 +155,9 @@ fun cifyExp ((e, loc), sm) =
             ((L'.ESeq (e1, e2), loc), sm)
         end
 
+      | L.EClosure _ => (ErrorMsg.errorAt loc "Nested closure remains in code generation";
+                         (dummye, sm))
+
 fun cifyDecl ((d, loc), sm) =
     case d of
         L.DVal (x, n, t, e, _) =>
