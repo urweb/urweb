@@ -81,7 +81,13 @@ val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
 
 fun attrifyExp env (e, tAll as (t, loc)) =
         case #1 e of
-            L'.EClosure (fnam, args) =>
+            L'.EClosure (fnam, [(L'.ERecord [], _)]) =>
+            let
+                val (_, _, _, s) = Env.lookupENamed env fnam
+            in
+                (L'.EPrim (Prim.String s), loc)
+            end
+          | L'.EClosure (fnam, args) =>
             let
                 val (_, ft, _, s) = Env.lookupENamed env fnam
                 val ft = monoType env ft
