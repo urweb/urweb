@@ -33,11 +33,15 @@ structure U = CoreUtil
 structure E = CoreEnv
 
 structure IM = IntBinaryMap
+structure SM = BinaryMapFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
 
 fun kind (k, s) = (k, s)
 fun con (c, s) = (c, s)
 
-fun exp (e, s) =
+fun exp env (e, s) =
     case e of
         EApp (
         (EApp (
@@ -55,7 +59,7 @@ fun exp (e, s) =
              (ERecord xets, _) =>
              let
                  val (xets, s) =
-                     ListUtil.foldlMap (fn ((x, e, t), (count, tags, newTags)) =>
+                     ListUtil.foldlMap (fn ((x, e, t), (count, tags, byTag, newTags)) =>
                                            case x of
                                                (CName "Link", _) =>
                                                let
@@ -80,13 +84,26 @@ fun exp (e, s) =
                                                             (f, count) :: newTags)
                                                          | SOME cn => (cn, count, tags, newTags)
 
+                                                   val (_, _, _, s) = E.lookupENamed env f
+
+                                                   val byTag = case SM.find (byTag, s) of
+                                                                   NONE => SM.insert (byTag, s, f)
+                                                                 | SOME f' =>
+                                                                   (if f = f' then
+                                                                       ()
+                                                                    else
+                                                                        ErrorMsg.errorAt loc 
+                                                                                         ("Duplicate HTTP tag "
+                                                                                          ^ s);
+                                                                    byTag)
+
                                                    val e = (EClosure (cn, args), loc)
                                                    val t = (CFfi ("Basis", "string"), loc)
                                                in
                                                    ((x, e, t),
-                                                    (count, tags, newTags))
+                                                    (count, tags, byTag, newTags))
                                                end
-                                             | _ => ((x, e, t), (count, tags, newTags)))
+                                             | _ => ((x, e, t), (count, tags, byTag, newTags)))
                      s xets
              in
                  (EApp (
@@ -117,56 +134,66 @@ fun tag file =
                                 | DVal (_, n, _, _, _) => Int.max (n, count)
                                 | DExport _ => count) 0 file
 
-        fun doDecl (d as (d', loc), (env, count, tags)) =
-            let
-                val (d, (count, tags, newTags)) =
-                    U.Decl.foldMap {kind = kind,
-                                    con = con,
-                                    exp = exp,
-                                    decl = decl}
-                                   (count, tags, []) d
+        fun doDecl (d as (d', loc), (env, count, tags, byTag)) =
+            case d' of
+                DExport n =>
+                let
+                    val (_, _, _, s) = E.lookupENamed env n
+                in
+                    case SM.find (byTag, s) of
+                        NONE => ([d], (env, count, tags, byTag))
+                      | SOME n' => ([], (env, count, tags, byTag))
+                end
+              | _ =>
+                let
+                    val (d, (count, tags, byTag, newTags)) =
+                        U.Decl.foldMap {kind = kind,
+                                        con = con,
+                                        exp = exp env,
+                                        decl = decl}
+                                       (count, tags, byTag, []) d
 
-                val env = E.declBinds env d
+                    val env = E.declBinds env d
 
-                val newDs = ListUtil.mapConcat
-                                (fn (f, cn) =>
-                                    let
-                                        fun unravel (all as (t, _)) =
-                                            case t of
-                                                TFun (dom, ran) =>
-                                                let
-                                                    val (args, result) = unravel ran
-                                                in
-                                                    (dom :: args, result)
-                                                end
-                                              | _ => ([], all)
+                    val newDs = ListUtil.mapConcat
+                                    (fn (f, cn) =>
+                                        let
+                                            fun unravel (all as (t, _)) =
+                                                case t of
+                                                    TFun (dom, ran) =>
+                                                    let
+                                                        val (args, result) = unravel ran
+                                                    in
+                                                        (dom :: args, result)
+                                                    end
+                                                  | _ => ([], all)
 
-                                        val (fnam, t, _, tag) = E.lookupENamed env f
-                                        val (args, result) = unravel t
+                                            val (fnam, t, _, tag) = E.lookupENamed env f
+                                            val (args, result) = unravel t
 
-                                        val (app, _) = foldl (fn (t, (app, n)) =>
-                                                                 ((EApp (app, (ERel n, loc)), loc),
-                                                                  n - 1))
-                                                             ((ENamed f, loc), length args - 1) args
-                                        val body = (EWrite app, loc)
-                                        val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
-                                        val (abs, _, t) = foldr (fn (t, (abs, n, rest)) =>
-                                                                    ((EAbs ("x" ^ Int.toString n,
-                                                                            t,
-                                                                            rest,
-                                                                            abs), loc),
-                                                                     n + 1,
-                                                                     (TFun (t, rest), loc)))
-                                                                (body, 0, unit) args
-                                    in
-                                        [(DVal ("wrap_" ^ fnam, cn, t, abs, tag), loc),
-                                         (DExport cn, loc)]
-                                    end) newTags
-            in
-                (newDs @ [d], (env, count, tags))
-            end
+                                            val (app, _) = foldl (fn (t, (app, n)) =>
+                                                                     ((EApp (app, (ERel n, loc)), loc),
+                                                                      n - 1))
+                                                                 ((ENamed f, loc), length args - 1) args
+                                            val body = (EWrite app, loc)
+                                            val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
+                                            val (abs, _, t) = foldr (fn (t, (abs, n, rest)) =>
+                                                                        ((EAbs ("x" ^ Int.toString n,
+                                                                                t,
+                                                                                rest,
+                                                                                abs), loc),
+                                                                         n + 1,
+                                                                         (TFun (t, rest), loc)))
+                                                                    (body, 0, unit) args
+                                        in
+                                            [(DVal ("wrap_" ^ fnam, cn, t, abs, tag), loc),
+                                             (DExport cn, loc)]
+                                        end) newTags
+                in
+                    (newDs @ [d], (env, count, tags, byTag))
+                end
 
-        val (file, _) = ListUtil.foldlMapConcat doDecl (CoreEnv.empty, count+1, IM.empty) file
+        val (file, _) = ListUtil.foldlMapConcat doDecl (CoreEnv.empty, count+1, IM.empty, SM.empty) file
     in
         file
     end
