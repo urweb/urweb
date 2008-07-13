@@ -228,7 +228,12 @@ fun monoDecl env (all as (d, loc)) =
             L.DCon _ => NONE
           | L.DVal (x, n, t, e, s) => SOME (Env.pushENamed env x n t (SOME e) s,
                                             (L'.DVal (x, n, monoType env t, monoExp env e, s), loc))
-          | L.DExport n => SOME (env, (L'.DExport n, loc))
+          | L.DExport n =>
+            let
+                val (_, _, _, s) = Env.lookupENamed env n
+            in
+                SOME (env, (L'.DExport (s, n), loc))
+            end
     end
 
 fun monoize env ds =

@@ -173,8 +173,12 @@ fun p_decl env ((d, _) : decl) =
                  string "}"]
         end
 
-fun p_page env n = box [p_enamed env n,
-                        string "(lw_unit_v);"]
+fun p_page env (s, n) =
+    box [string "/* ",
+         string s,
+         string " */ ",
+         p_enamed env n,
+         string "(lw_unit_v);"]
 
 fun p_file env (ds, ps) =
     let

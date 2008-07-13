@@ -61,7 +61,7 @@ withtype exp = exp' located
 
 datatype decl' =
          DVal of string * int * typ * exp * string
-       | DExport of int
+       | DExport of string * int
 
 withtype decl = decl' located
 
