@@ -174,11 +174,15 @@ fun p_decl env ((d, _) : decl) =
         end
 
 fun p_page env (s, n) =
-    box [string "/* ",
-         string s,
-         string " */ ",
+    box [string "if (!strcmp(request, \"",
+         string (String.toString s),
+         string "\")) {",
+         newline,
          p_enamed env n,
-         string "(lw_unit_v);"]
+         string "(lw_unit_v);",
+         newline,
+         string "}",
+         newline]
 
 fun p_file env (ds, ps) =
     let
@@ -193,7 +197,7 @@ fun p_file env (ds, ps) =
              newline,
              p_list_sep newline (fn x => x) pds,
              newline,
-             string "void lw_handle(void) {",
+             string "void lw_handle(char *request) {",
              newline,
              p_list_sep newline (fn x => x) pds',
              newline,

@@ -184,7 +184,7 @@ fun cifyDecl ((d, loc), sm) =
         in
             (SOME (d, loc), NONE, sm)
         end
-      | L.DExport n => (NONE, SOME n, sm)
+      | L.DExport (s, n) => (NONE, SOME ("/" ^ s, n), sm)
 
 fun cjrize ds =
     let
