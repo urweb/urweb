@@ -203,7 +203,7 @@ datatype binder =
          RelC of string * kind
        | NamedC of string * int * kind * con option
        | RelE of string * con
-       | NamedE of string * int * con * exp option
+       | NamedE of string * int * con * exp option * string
 
 fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
     let
@@ -375,18 +375,13 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                          S.map2 (mfc ctx c,
                               fn c' =>
                                  (DCon (x, n, k', c'), loc)))
-              | DVal (x, n, t, e) =>
+              | DVal (x, n, t, e, s) =>
                 S.bind2 (mfc ctx t,
                       fn t' =>
                          S.map2 (mfe ctx e,
                               fn e' =>
-                                 (DVal (x, n, t', e'), loc)))
-              | DPage (c, e) =>
-                S.bind2 (mfc ctx c,
-                      fn c' =>
-                         S.map2 (mfe ctx e,
-                              fn e' =>
-                                 (DPage (c', e'), loc)))
+                                 (DVal (x, n, t', e', s), loc)))
+              | DExport _ => S.return2 dAll
     in
         mfd
     end    
@@ -426,8 +421,8 @@ fun mapfoldB (all as {bind, ...}) =
                                 val ctx' =
                                     case #1 d' of
                                         DCon (x, n, k, c) => bind (ctx, NamedC (x, n, k, SOME c))
-                                      | DVal (x, n, t, e) => bind (ctx, NamedE (x, n, t, SOME e))
-                                      | DPage _ => ctx
+                                      | DVal (x, n, t, e, s) => bind (ctx, NamedE (x, n, t, SOME e, s))
+                                      | DExport _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
                                      fn ds' =>

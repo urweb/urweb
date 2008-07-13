@@ -47,7 +47,6 @@ signature COMPILER = sig
     val shake : job -> Core.file option
     val monoize : job -> Mono.file option
     val mono_opt : job -> Mono.file option
-    val cloconv : job -> Flat.file option
     val cjrize : job -> Cjr.file option
 
     val testParse : job -> unit
@@ -59,7 +58,6 @@ signature COMPILER = sig
     val testShake : job -> unit
     val testMonoize : job -> unit
     val testMono_opt : job -> unit
-    val testCloconv : job -> unit
     val testCjrize : job -> unit
 
 end

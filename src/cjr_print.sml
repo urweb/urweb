@@ -44,16 +44,13 @@ val dummyTyp = (TNamed 0, ErrorMsg.dummySpan)
 fun p_typ' par env (t, loc) =
     case t of
         TTop => string "void*"
-      | TFun =>
-        (EM.errorAt loc "Undetermined function type";
-         string "?->")
-      | TCode (t1, t2) => parenIf par (box [p_typ' true env t2,
-                                            space,
-                                            string "(*)",
-                                            space,
-                                            string "(",
-                                            p_typ env t1,
-                                            string ")"])
+      | TFun (t1, t2) => parenIf par (box [p_typ' true env t2,
+                                           space,
+                                           string "(*)",
+                                           space,
+                                           string "(",
+                                           p_typ env t1,
+                                           string ")"])
       | TRecord i => box [string "struct",
                           space,
                           string "__lws_",
@@ -68,13 +65,16 @@ and p_typ env = p_typ' false env
 fun p_rel env n = string ("__lwr_" ^ #1 (E.lookupERel env n) ^ "_" ^ Int.toString (E.countERels env - n - 1))
     handle CjrEnv.UnboundRel _ => string ("__lwr_UNBOUND_" ^ Int.toString (E.countERels env - n - 1))
 
+fun p_enamed env n =
+    string ("__lwn_" ^ #1 (E.lookupENamed env n) ^ "_" ^ Int.toString n)
+    handle CjrEnv.UnboundNamed _ => string ("__lwn_UNBOUND_" ^ Int.toString n)
+
 fun p_exp' par env (e, _) =
     case e of
         EPrim p => Prim.p_t p
       | ERel n => p_rel env n
-      | ENamed n =>
-        (string ("__lwn_" ^ #1 (E.lookupENamed env n) ^ "_" ^ Int.toString n)
-         handle CjrEnv.UnboundNamed _ => string ("__lwn_UNBOUND_" ^ Int.toString n))
+      | ENamed n => p_enamed env n
+
       | EFfi (m, x) => box [string "lw_", string m, string "_", string x]
       | EFfiApp (m, x, es) => box [string "lw_",
                                    string m,
@@ -83,7 +83,6 @@ fun p_exp' par env (e, _) =
                                    string "(",
                                    p_list (p_exp env) es,
                                    string ")"]
-      | ECode n => string ("__lwc_" ^ Int.toString n)
       | EApp (e1, e2) => parenIf par (box [p_exp' true env e1,
                                            string "(",
                                            p_exp env e2,
@@ -111,36 +110,6 @@ fun p_exp' par env (e, _) =
         box [p_exp' true env e,
              string ".",
              string x]
-
-      | ELet (xes, e) =>
-        let
-            val (env, pps) = foldl (fn ((x, t, e), (env, pps)) =>
-                                       let
-                                           val env' = E.pushERel env x t
-                                       in
-                                           (env',
-                                            List.revAppend ([p_typ env t,
-                                                             space,
-                                                             p_rel env' 0,
-                                                             space,
-                                                             string "=",
-                                                             space,
-                                                             p_exp env e,
-                                                             string ";",
-                                                             newline],
-                                                            pps))
-                                       end)
-                                   (env, []) xes
-        in
-            box [string "({",
-                 newline,
-                 box (rev pps),
-                 p_exp env e,
-                 space,
-                 string ";",
-                 newline,
-                 string "})"]
-        end
 
       | EWrite e => box [string "(lw_write(",
                          p_exp env e,
@@ -180,7 +149,7 @@ fun p_decl env ((d, _) : decl) =
              space,
              p_exp env e,
              string ";"]
-      | DFun (n, x, dom, ran, e) =>
+      | DFun (fx, n, x, dom, ran, e) =>
         let
             val env' = E.pushERel env x dom
         in
@@ -188,7 +157,7 @@ fun p_decl env ((d, _) : decl) =
                  space,
                  p_typ env ran,
                  space,
-                 string ("__lwc_" ^ Int.toString n),
+                 string ("__lwn_" ^ fx ^ "_" ^ Int.toString n),
                  string "(",
                  p_typ env dom,
                  space,
@@ -204,46 +173,8 @@ fun p_decl env ((d, _) : decl) =
                  string "}"]
         end
 
-fun p_page env (xts, (e, loc)) =
-    case e of
-        ERecord (_, xes) =>
-        let
-            fun read x = ListUtil.search (fn (x', e) => if x' = x then SOME e else NONE) xes
-        in
-            case (read "code", read "env") of
-                (SOME code, SOME envx) =>
-                (case #1 code of
-                     ECode i =>
-                     let
-                         val (_, (dom, _), _) = E.lookupF env i
-                     in
-                         case dom of
-                             TRecord ri =>
-                             let
-                                 val axts = E.lookupStruct env ri
-                                 fun read x = ListUtil.search (fn (x', t) => if x' = x then SOME t else NONE) axts
-                             in
-                                 case read "arg" of
-                                     NONE => string "Page handler is too complicated! [5]"
-                                   | SOME (at, _) =>
-                                     case at of
-                                         TRecord ari =>
-                                         let
-                                             val r = (ERecord (ri, [("env", envx),
-                                                                    ("arg", (ERecord (ari, []), loc))]), loc)
-                                         in
-                                             box [p_exp env (EApp (code, r), loc),
-                                                  string ";"]
-                                         end
-                                       | _ => string "Page handler is too complicated! [6]"
-                             end
-                           | _ => string "Page handler is too complicated! [4]"
-                     end
-                   | _ => string "Page handler is too complicated! [3]")
-
-              | _ => string "Page handler is too complicated! [1]"
-        end
-      | _ => string "Page handler is too complicated! [2]"
+fun p_page env n = box [p_enamed env n,
+                        string "(lw_unit_v);"]
 
 fun p_file env (ds, ps) =
     let

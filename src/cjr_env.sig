@@ -47,9 +47,6 @@ signature CJR_ENV = sig
     val pushENamed : env -> string -> int -> Cjr.typ -> env
     val lookupENamed : env -> int -> string * Cjr.typ
 
-    val pushF : env -> int -> string -> Cjr.typ -> Cjr.typ -> env
-    val lookupF : env -> int -> string * Cjr.typ * Cjr.typ
-
     val pushStruct : env -> int -> (string * Cjr.typ) list -> env
     val lookupStruct : env -> int -> (string * Cjr.typ) list
 

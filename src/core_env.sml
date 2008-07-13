@@ -62,7 +62,7 @@ type env = {
      namedC : (string * kind * con option) IM.map,
 
      relE : (string * con) list,
-     namedE : (string * con * exp option) IM.map
+     namedE : (string * con * exp option * string) IM.map
 }
 
 val empty = {
@@ -78,7 +78,7 @@ fun pushCRel (env : env) x k =
      namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
 
      relE = map (fn (x, c) => (x, lift c)) (#relE env),
-     namedE = IM.map (fn (x, c, eo) => (x, lift c, eo)) (#namedE env)}
+     namedE = IM.map (fn (x, c, eo, s) => (x, lift c, eo, s)) (#namedE env)}
 
 fun lookupCRel (env : env) n =
     (List.nth (#relC env, n))
@@ -107,12 +107,12 @@ fun lookupERel (env : env) n =
     (List.nth (#relE env, n))
     handle Subscript => raise UnboundRel n
 
-fun pushENamed (env : env) x n t eo =
+fun pushENamed (env : env) x n t eo s =
     {relC = #relC env,
      namedC = #namedC env,
 
      relE = #relE env,
-     namedE = IM.insert (#namedE env, n, (x, t, eo))}
+     namedE = IM.insert (#namedE env, n, (x, t, eo, s))}
 
 fun lookupENamed (env : env) n =
     case IM.find (#namedE env, n) of
@@ -122,7 +122,7 @@ fun lookupENamed (env : env) n =
 fun declBinds env (d, _) =
     case d of
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
-      | DVal (x, n, t, e) => pushENamed env x n t (SOME e)
-      | DPage _ => env
+      | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
+      | DExport _ => env
 
 end

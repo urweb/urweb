@@ -28,6 +28,9 @@
 signature MONO_UTIL = sig
 
 structure Typ : sig
+    val compare : Mono.typ * Mono.typ -> order
+    val sortFields : (string * Mono.typ) list -> (string * Mono.typ) list
+
     val mapfold : (Mono.typ', 'state, 'abort) Search.mapfolder
                   -> (Mono.typ, 'state, 'abort) Search.mapfolder
 
@@ -44,7 +47,7 @@ structure Exp : sig
     datatype binder =
              NamedT of string * int * Mono.typ option
            | RelE of string * Mono.typ
-           | NamedE of string * int * Mono.typ * Mono.exp option
+           | NamedE of string * int * Mono.typ * Mono.exp option * string
 
     val mapfoldB : {typ : (Mono.typ', 'state, 'abort) Search.mapfolder,
                     exp : ('typtext, Mono.exp', 'state, 'abort) Search.mapfolderB,

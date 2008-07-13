@@ -362,6 +362,7 @@ fun corifyExp st (e, loc) =
       | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp st e1, corifyCon st c,
                                                        {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.EFold k => (L'.EFold (corifyKind k), loc)
+      | L.EWrite e => (L'.EWrite (corifyExp st e), loc)
 
 fun corifyDecl ((d, loc : EM.span), st) =
     case d of
@@ -375,7 +376,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
         let
             val (st, n) = St.bindVal st x n
         in
-            ([(L'.DVal (x, n, corifyCon st t, corifyExp st e), loc)], st)
+            ([(L'.DVal (x, n, corifyCon st t, corifyExp st e, x), loc)], st)
         end
                                                                         
       | L.DSgn _ => ([], st)
@@ -427,19 +428,60 @@ fun corifyDecl ((d, loc : EM.span), st) =
              end
            | _ => raise Fail "Non-const signature for FFI structure")
 
-      | L.DPage (c, e) =>
-        let
-            val c = corifyCon st c
-            val e = corifyExp st e
+      | L.DExport (en, sgn, str) =>
+        (case #1 sgn of
+             L.SgnConst sgis =>
+             let
+                 fun pathify (str, _) =
+                     case str of
+                         L.StrVar m => SOME (m, [])
+                       | L.StrProj (str, s) =>
+                         Option.map (fn (m, ms) => (m, ms @ [s])) (pathify str)
+                       | _ => NONE
+             in
+                 case pathify str of
+                     NONE => (ErrorMsg.errorAt loc "Structure is too fancy to export";
+                              ([], st))
+                   | SOME (m, ms) =>
+                     let
+                         fun wrapSgi ((sgi, _), (wds, eds))  =
+                             case sgi of
+                                 L.SgiVal (s, _, t as (L.TFun (dom, ran), _)) =>
+                                 (case (#1 dom, #1 ran) of
+                                      (L.TRecord _,
+                                       L.CApp ((L.CModProj (_, [], "xml"), _),
+                                               (L.TRecord (L.CRecord (_, [((L.CName "Html", _),
+                                                                           _)]), _), _))) =>
+                                      let
+                                          val ran = (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc)
+                                          val e = (L.EModProj (m, ms, s), loc)
+                                          val e = (L.EAbs ("vs", dom, ran,
+                                                           (L.EWrite (L.EApp (e, (L.ERel 0, loc)), loc), loc)), loc)
+                                      in
+                                          ((L.DVal ("wrap_" ^ s, 0,
+                                                    (L.TFun (dom, ran), loc),
+                                                    e), loc) :: wds,
+                                           (fn st =>
+                                               case #1 (corifyExp st (L.EModProj (en, [], "wrap_" ^ s), loc)) of
+                                                   L'.ENamed n => (L'.DExport n, loc)
+                                                 | _ => raise Fail "Corify: Value to export didn't corify properly")
+                                           :: eds)
+                                      end
+                                    | _ => (wds, eds))
+                               | _ => (wds, eds)
 
-            val dom = (L'.TRecord c, loc)
-            val ran = (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc)
-            val e = (L'.EAbs ("vs", dom, ran,
-                              (L'.EWrite (L'.EApp (e, (L'.ERel 0, loc)), loc), loc)), loc)
-                                                                
-        in
-            ([(L'.DPage (c, e), loc)], st)
-        end
+                         val (wds, eds) = foldl wrapSgi ([], []) sgis
+                         val wrapper = (L.StrConst wds, loc)
+                         val (ds, {inner, outer}) = corifyStr (wrapper, st)
+                         val st = St.bindStr outer "wrapper" en inner
+                         
+                         val ds = ds @ map (fn f => f st) eds
+                     in
+                         (ds, st)
+                     end
+             end
+           | _ => raise Fail "Non-const signature for 'export'")
+                 
 
 and corifyStr ((str, _), st) =
     case str of
@@ -487,7 +529,7 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DSgn (_, n', _) => Int.max (n, n')
                              | L.DStr (_, n', _, str) => Int.max (n, Int.max (n', maxNameStr str))
                              | L.DFfiStr (_, n', _) => Int.max (n, n')
-                             | L.DPage _ => n)
+                             | L.DExport _ => n)
                  0 ds
 
 and maxNameStr (str, _) =

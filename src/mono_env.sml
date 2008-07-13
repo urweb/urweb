@@ -39,7 +39,7 @@ type env = {
      namedT : (string * typ option) IM.map,
 
      relE : (string * typ) list,
-     namedE : (string * typ * exp option) IM.map
+     namedE : (string * typ * exp option * string) IM.map
 }
 
 val empty = {
@@ -70,11 +70,11 @@ fun lookupERel (env : env) n =
     (List.nth (#relE env, n))
     handle Subscript => raise UnboundRel n
 
-fun pushENamed (env : env) x n t eo =
+fun pushENamed (env : env) x n t eo s =
     {namedT = #namedT env,
 
      relE = #relE env,
-     namedE = IM.insert (#namedE env, n, (x, t, eo))}
+     namedE = IM.insert (#namedE env, n, (x, t, eo, s))}
 
 fun lookupENamed (env : env) n =
     case IM.find (#namedE env, n) of
@@ -83,7 +83,7 @@ fun lookupENamed (env : env) n =
 
 fun declBinds env (d, _) =
     case d of
-        DVal (x, n, t, e) => pushENamed env x n t (SOME e)
-      | DPage _ => env
+        DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
+      | DExport _ => env
 
 end

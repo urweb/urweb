@@ -271,6 +271,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                 S.map2 (mfk k,
                          fn k' =>
                             (EFold k', loc))
+
+              | EWrite e =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (EWrite e', loc))
     in
         mfe
     end

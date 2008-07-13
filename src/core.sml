@@ -80,8 +80,8 @@ withtype exp = exp' located
 
 datatype decl' =
          DCon of string * int * kind * con
-       | DVal of string * int * con * exp
-       | DPage of con * exp
+       | DVal of string * int * con * exp * string
+       | DExport of int
 
 withtype decl = decl' located
 

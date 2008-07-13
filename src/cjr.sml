@@ -31,8 +31,7 @@ type 'a located = 'a ErrorMsg.located
 
 datatype typ' =
          TTop
-       | TFun
-       | TCode of typ * typ
+       | TFun of typ * typ
        | TRecord of int
        | TNamed of int
        | TFfi of string * string
@@ -45,13 +44,10 @@ datatype exp' =
        | ENamed of int
        | EFfi of string * string
        | EFfiApp of string * string * exp list
-       | ECode of int
        | EApp of exp * exp
 
        | ERecord of int * (string * exp) list
        | EField of exp * string
-
-       | ELet of (string * typ * exp) list * exp
 
        | EWrite of exp
        | ESeq of exp * exp
@@ -61,10 +57,10 @@ withtype exp = exp' located
 datatype decl' =
          DStruct of int * (string * typ) list
        | DVal of string * int * typ * exp
-       | DFun of int * string * typ * typ * exp
+       | DFun of string * int * string * typ * typ * exp
 
 withtype decl = decl' located
 
-type file = decl list * ((string * typ) list * exp) list
+type file = decl list * int list
 
 end

@@ -1599,7 +1599,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DStr (x, n, sgn, _) => SOME (L'.SgiStr (x, n, sgn), loc)
       | L'.DFfiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, sgn), loc)
       | L'.DConstraint cs => SOME (L'.SgiConstraint cs, loc)
-      | L'.DPage _ => NONE
+      | L'.DExport _ => NONE
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
@@ -1929,27 +1929,41 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
             ([], (env, denv, []))
         end
 
-      | L.DPage e =>
+      | L.DExport str =>
         let
-            val basis =
-                case E.lookupStr env "Basis" of
-                    NONE => raise Fail "elabExp: Unbound Basis"
-                  | SOME (n, _) => n
+            val (str', sgn, gs) = elabStr (env, denv) str
 
-            val (e', t, gs1) = elabExp (env, denv) e
-
-            val k = (L'.KRecord (L'.KType, loc), loc)
-            val vs = cunif (loc, k)
-
-            val c = (L'.TFun ((L'.TRecord vs, loc),
-                              (L'.CApp ((L'.CModProj (basis, [], "xml"), loc),
-                                        (L'.CRecord ((L'.KUnit, loc),
-                                                     [((L'.CName "Html", loc),
-                                                       (L'.CUnit, loc))]), loc)), loc)), loc)
-
-            val gs2 = checkCon (env, denv) e' t c
+            val sgn =
+                case #1 (hnormSgn env sgn) of
+                    L'.SgnConst sgis =>
+                    let
+                        fun doOne (all as (sgi, _)) =
+                            case sgi of
+                                L'.SgiVal (x, n, t) =>
+                                (case hnormCon (env, denv) t of
+                                     ((L'.TFun (dom, ran), _), []) =>
+                                     (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
+                                          (((L'.TRecord domR, _), []),
+                                           ((L'.CApp (tf, ranR), _), [])) =>
+                                          (case hnormCon (env, denv) ranR of
+                                               (ranR, []) =>
+                                               (case (hnormCon (env, denv) domR, hnormCon (env, denv) ranR) of
+                                                    ((domR, []), (ranR, [])) =>
+                                                    (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
+                                                                                (L'.CApp (tf,
+                                                                                          (L'.TRecord ranR, loc)), loc)),
+                                                                       loc)), loc)
+                                                  | _ => all)
+                                             | _ => all)
+                                        | _ => all)
+                                   | _ => all)
+                              | _ => all
+                    in
+                        (L'.SgnConst (map doOne sgis), loc)
+                    end
+                  | _ => sgn
         in
-            ([(L'.DPage (vs, e'), loc)], (env, denv, gs1 @ gs2))
+            ([(L'.DExport (E.newNamed (), sgn, str'), loc)], (env, denv, gs))
         end
 
 and elabStr (env, denv) (str, loc) =

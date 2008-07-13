@@ -92,7 +92,8 @@ fun p_con' par env (c, _) =
          handle E.UnboundNamed _ => string ("UNBOUND_NAMED" ^ Int.toString n))
       | CModProj (m1, ms, x) =>
         let
-            val (m1x, sgn) = E.lookupStrNamed env m1
+            val m1x = #1 (E.lookupStrNamed env m1)
+                      handle E.UnboundNamed _ => "UNBOUND"
 
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
@@ -236,6 +237,10 @@ fun p_exp' par env (e, _) =
                  string ".",
                  p_con' true env c]
       | EFold _ => string "fold"
+
+      | EWrite e => box [string "write(",
+                         p_exp env e,
+                         string ")"]
 
 and p_exp env = p_exp' false env
 
@@ -392,12 +397,13 @@ fun p_decl env ((d, _) : decl) =
                                     string ":",
                                     space,
                                     p_sgn env sgn]
-      | DPage (c, e) => box [string "page",
-                             p_con env c,
-                             space,
-                             string "=",
-                             space,
-                             p_exp env e]
+      | DExport (_, sgn, str) => box [string "export",
+                                      space,
+                                      p_str env str,
+                                      space,
+                                      string ":",
+                                      space,
+                                      p_sgn env sgn]
 
 and p_str env (str, _) =
     case str of

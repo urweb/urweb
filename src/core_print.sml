@@ -145,6 +145,13 @@ and p_name env (all as (c, _)) =
         CName s => string s
       | _ => p_con env all
 
+fun p_enamed env n =
+    (if !debug then
+        string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+     else
+         string (#1 (E.lookupENamed env n)))
+    handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n)
+
 fun p_exp' par env (e, _) =
     case e of
         EPrim p => Prim.p_t p
@@ -154,12 +161,7 @@ fun p_exp' par env (e, _) =
           else
               string (#1 (E.lookupERel env n)))
          handle E.UnboundRel _ => string ("UNBOUND_" ^ Int.toString n))
-      | ENamed n =>
-        ((if !debug then
-              string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
-          else
-              string (#1 (E.lookupENamed env n)))
-         handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n))
+      | ENamed n => p_enamed env n
       | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
       | EFfiApp (m, x, es) => box [string "FFI(",
                                    string m,
@@ -255,7 +257,7 @@ fun p_decl env ((d, _) : decl) =
                  space,
                  p_con env c]
         end
-      | DVal (x, n, t, e) =>
+      | DVal (x, n, t, e, s) =>
         let
             val xp = if !debug then
                          box [string x,
@@ -268,6 +270,10 @@ fun p_decl env ((d, _) : decl) =
                  space,
                  xp,
                  space,
+                 string "as",
+                 space,
+                 string s,
+                 space,
                  string ":",
                  space,
                  p_con env t,
@@ -276,12 +282,9 @@ fun p_decl env ((d, _) : decl) =
                  space,
                  p_exp env e]
         end
-      | DPage (c, e) => box [string "page",
-                             p_con env c,
-                             space,
-                             string "=",
-                             space,
-                             p_exp env e]
+      | DExport n => box [string "export",
+                          space,
+                          p_enamed env n]
 
 fun p_file env file =
     let

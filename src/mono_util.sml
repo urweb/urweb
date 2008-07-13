@@ -33,6 +33,48 @@ structure S = Search
 
 structure Typ = struct
 
+fun join (o1, o2) =
+    case o1 of
+        EQUAL => o2 ()
+      | v => v
+
+fun joinL f (os1, os2) =
+    case (os1, os2) of
+        (nil, nil) => EQUAL
+      | (nil, _) => LESS
+      | (h1 :: t1, h2 :: t2) =>
+        join (f (h1, h2), fn () => joinL f (t1, t2))
+      | (_ :: _, nil) => GREATER
+
+fun compare ((t1, _), (t2, _)) =
+    case (t1, t2) of
+        (TFun (d1, r1), TFun (d2, r2)) =>
+        join (compare (d1, d2), fn () => compare (r1, r2))
+      | (TRecord xts1, TRecord xts2) =>
+        let
+            val xts1 = sortFields xts1
+            val xts2 = sortFields xts2
+        in
+            joinL compareFields (xts1, xts2)
+        end
+      | (TNamed n1, TNamed n2) => Int.compare (n1, n2)
+      | (TFfi (m1, x1), TFfi (m2, x2)) => join (String.compare (m1, m2), fn () => String.compare (x1, x2))
+
+      | (TFun _, _) => LESS
+      | (_, TFun _) => GREATER
+
+      | (TRecord _, _) => LESS
+      | (_, TRecord _) => GREATER
+
+      | (TNamed _, _) => LESS
+      | (_, TNamed _) => GREATER
+
+and compareFields ((x1, t1), (x2, t2)) =
+    join (String.compare (x1, x2),
+          fn () => compare (t1, t2))
+
+and sortFields xts = ListMergeSort.sort (fn (x, y) => compareFields (x, y) = GREATER) xts
+
 fun mapfold fc =
     let
         fun mft c acc =
@@ -85,7 +127,7 @@ structure Exp = struct
 datatype binder =
          NamedT of string * int * typ option
        | RelE of string * typ
-       | NamedE of string * int * typ * exp option
+       | NamedE of string * int * typ * exp option * string
 
 fun mapfoldB {typ = fc, exp = fe, bind} =
     let
@@ -211,21 +253,13 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
 
         and mfd' ctx (dAll as (d, loc)) =
             case d of
-                DVal (x, n, t, e) =>
+                DVal (x, n, t, e, s) =>
                 S.bind2 (mft t,
                       fn t' =>
                          S.map2 (mfe ctx e,
                               fn e' =>
-                                 (DVal (x, n, t', e'), loc)))
-              | DPage (xts, e) =>
-                S.bind2 (ListUtil.mapfold (fn (x, t) =>
-                                             S.map2 (mft t,
-                                                  fn t' =>
-                                                     (x, t'))) xts,
-                      fn xts' =>
-                         S.map2 (mfe ctx e,
-                              fn e' =>
-                                 (DPage (xts', e'), loc)))
+                                 (DVal (x, n, t', e', s), loc)))
+              | DExport _ => S.return2 dAll
     in
         mfd
     end    
@@ -262,8 +296,8 @@ fun mapfoldB (all as {bind, ...}) =
                             let
                                 val ctx' =
                                     case #1 d' of
-                                        DVal (x, n, t, e) => bind (ctx, NamedE (x, n, t, SOME e))
-                                      | DPage _ => ctx
+                                        DVal (x, n, t, e, s) => bind (ctx, NamedE (x, n, t, SOME e, s))
+                                      | DExport _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
                                      fn ds' =>

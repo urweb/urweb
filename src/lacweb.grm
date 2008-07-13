@@ -49,7 +49,7 @@ fun uppercaseFirst "" = ""
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
- | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | PAGE
+ | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT
 
  | XML_BEGIN of string | XML_END
  | NOTAGS of string 
@@ -147,7 +147,7 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                              [] => raise Fail "Impossible mpath parse [3]"
                                            | m :: ms => (DOpenConstraints (m, ms), s (OPENleft, mpathright)))
        | CONSTRAINT cterm TWIDDLE cterm (DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
-       | PAGE eexp                      (DPage eexp, s (PAGEleft, eexpright))
+       | EXPORT spath                   (DExport spath, s (EXPORTleft, spathright))
 
 sgn    : sgntm                          (sgntm)
        | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn

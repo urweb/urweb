@@ -27,6 +27,6 @@
 
 signature CJRIZE = sig
 
-    val cjrize : Flat.file -> Cjr.file
+    val cjrize : Mono.file -> Cjr.file
 
 end

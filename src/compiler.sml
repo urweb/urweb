@@ -111,9 +111,11 @@ fun capitalize "" = ""
 
 fun parse fnames =
     let
+        fun nameOf fname = capitalize (OS.Path.file fname)
+
         fun parseOne fname =
             let
-                val mname = capitalize (OS.Path.file fname)
+                val mname = nameOf fname
                 val lac = OS.Path.joinBaseExt {base = fname, ext = SOME "lac"}
                 val lig = OS.Path.joinBaseExt {base = fname, ext = SOME "lig"}
 
@@ -137,7 +139,13 @@ fun parse fnames =
                     SOME (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
             end
 
-        val ds = List.mapPartial parseOne fnames            
+        val ds = List.mapPartial parseOne fnames
+        val ds =
+            let
+                val final = nameOf (List.last fnames)
+            in
+                ds @ [(Source.DExport (Source.StrVar final, ErrorMsg.dummySpan), ErrorMsg.dummySpan)]
+            end handle Empty => ds
     in
         if ErrorMsg.anyErrors () then
             NONE
@@ -224,17 +232,8 @@ fun mono_opt job =
         else
             SOME (MonoOpt.optimize file)
 
-fun cloconv job =
-    case mono_opt job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Cloconv.cloconv file)
-
 fun cjrize job =
-    case cloconv job of
+    case mono_opt job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -320,15 +319,6 @@ fun testMono_opt job =
          (Print.print (MonoPrint.p_file MonoEnv.empty file);
           print "\n"))
     handle MonoEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
-
-fun testCloconv job =
-    (case cloconv job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (FlatPrint.p_file FlatEnv.empty file);
-          print "\n"))
-    handle FlatEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
 fun testCjrize job =

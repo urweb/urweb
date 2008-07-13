@@ -116,7 +116,7 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DStr (x, n, sgn, str) => SOME (L'.DStr (x, n, explifySgn sgn, explifyStr str), loc)
       | L.DFfiStr (x, n, sgn) => SOME (L'.DFfiStr (x, n, explifySgn sgn), loc)
       | L.DConstraint (c1, c2) => NONE
-      | L.DPage (c, e) => SOME (L'.DPage (explifyCon c, explifyExp e), loc)
+      | L.DExport (en, sgn, str) => SOME (L'.DExport (en, explifySgn sgn, explifyStr str), loc)
 
 and explifyStr (str, loc) =
     case str of

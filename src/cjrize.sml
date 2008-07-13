@@ -27,7 +27,7 @@
 
 structure Cjrize :> CJRIZE = struct
 
-structure L = Flat
+structure L = Mono
 structure L' = Cjr
 
 structure Sm :> sig
@@ -41,7 +41,7 @@ end = struct
 
 structure FM = BinaryMapFn(struct
                            type ord_key = L.typ
-                           val compare = FlatUtil.Typ.compare
+                           val compare = MonoUtil.Typ.compare
                            end)
 
 type t = int * int FM.map * (int * (string * L'.typ) list) list
@@ -63,20 +63,12 @@ end
 
 fun cifyTyp ((t, loc), sm) =
     case t of
-        L.TTop => ((L'.TTop, loc), sm)
-      | L.TFun (t1, t2) =>
-        let
-            val (_, sm) = cifyTyp (t1, sm)
-            val (_, sm) = cifyTyp (t2, sm)
-        in
-            ((L'.TFun, loc), sm)
-        end
-      | L.TCode (t1, t2) =>
+        L.TFun (t1, t2) =>
         let
             val (t1, sm) = cifyTyp (t1, sm)
             val (t2, sm) = cifyTyp (t2, sm)
         in
-            ((L'.TCode (t1, t2), loc), sm)
+            ((L'.TFun (t1, t2), loc), sm)
         end
       | L.TRecord xts =>
         let
@@ -95,6 +87,8 @@ fun cifyTyp ((t, loc), sm) =
       | L.TNamed n => ((L'.TNamed n, loc), sm)
       | L.TFfi mx => ((L'.TFfi mx, loc), sm)
 
+val dummye = (L'.EPrim (Prim.Int 0), ErrorMsg.dummySpan)
+
 fun cifyExp ((e, loc), sm) =
     case e of
         L.EPrim p => ((L'.EPrim p, loc), sm)
@@ -107,7 +101,6 @@ fun cifyExp ((e, loc), sm) =
         in
             ((L'.EFfiApp (m, x, es), loc), sm)
         end
-      | L.ECode n => ((L'.ECode n, loc), sm)
       | L.EApp (e1, e2) =>
         let
             val (e1, sm) = cifyExp (e1, sm)
@@ -115,6 +108,8 @@ fun cifyExp ((e, loc), sm) =
         in
             ((L'.EApp (e1, e2), loc), sm)
         end
+      | L.EAbs _ => (ErrorMsg.errorAt loc "Anonymous function remains at code generation";
+                     (dummye, sm))
 
       | L.ERecord xes =>
         let
@@ -143,21 +138,6 @@ fun cifyExp ((e, loc), sm) =
             ((L'.EField (e, x), loc), sm)
         end
 
-      | L.ELet (xes, e) =>
-        let
-            val (xes, sm) = ListUtil.foldlMap (fn ((x, t, e), sm) =>
-                                                  let
-                                                      val (t, sm) = cifyTyp (t, sm)
-                                                      val (e, sm) = cifyExp (e, sm)
-                                                  in
-                                                      ((x, t, e), sm)
-                                                  end)
-                            sm xes
-            val (e, sm) = cifyExp (e, sm)
-        in
-            ((L'.ELet (xes, e), loc), sm)
-        end
-
       | L.EStrcat _ => raise Fail "Cjrize EStrcat"
 
       | L.EWrite e =>
@@ -177,34 +157,31 @@ fun cifyExp ((e, loc), sm) =
 
 fun cifyDecl ((d, loc), sm) =
     case d of
-        L.DVal (x, n, t, e) =>
+        L.DVal (x, n, t, e, _) =>
         let
             val (t, sm) = cifyTyp (t, sm)
-            val (e, sm) = cifyExp (e, sm)
+
+            val (d, sm) = case #1 t of
+                              L'.TFun (dom, ran) =>
+                              (case #1 e of
+                                   L.EAbs (ax, _, _, e) =>
+                                   let
+                                       val (e, sm) = cifyExp (e, sm)
+                                   in
+                                       (L'.DFun (x, n, ax, dom, ran, e), sm)
+                                   end
+                                 | _ => (ErrorMsg.errorAt loc "Function isn't explicit at code generation";
+                                         (L'.DVal ("", 0, t, (L'.EPrim (Prim.Int 0), ErrorMsg.dummySpan)), sm)))
+                            | _ =>
+                              let
+                                  val (e, sm) = cifyExp (e, sm)
+                              in
+                                  (L'.DVal (x, n, t, e), sm)
+                              end
         in
-            (SOME (L'.DVal (x, n, t, e), loc), NONE, sm)
+            (SOME (d, loc), NONE, sm)
         end
-      | L.DFun (n, x, dom, ran, e) =>
-        let
-            val (dom, sm) = cifyTyp (dom, sm)
-            val (ran, sm) = cifyTyp (ran, sm)
-            val (e, sm) = cifyExp (e, sm)
-        in
-            (SOME (L'.DFun (n, x, dom, ran, e), loc), NONE, sm)
-        end
-      | L.DPage (xts, e) =>
-        let
-            val (xts, sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
-                                                  let
-                                                      val (t, sm) = cifyTyp (t, sm)
-                                                  in
-                                                      ((x, t), sm)
-                                                  end)
-                                              sm xts
-            val (e, sm) = cifyExp (e, sm)
-        in
-            (NONE, SOME (xts, e), sm)
-        end
+      | L.DExport n => (NONE, SOME n, sm)
 
 fun cjrize ds =
     let

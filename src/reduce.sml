@@ -115,7 +115,7 @@ fun bind (env, b) =
         U.Decl.RelC (x, k) => E.pushCRel env x k
       | U.Decl.NamedC (x, n, k, co) => E.pushCNamed env x n k co
       | U.Decl.RelE (x, t) => E.pushERel env x t
-      | U.Decl.NamedE (x, n, t, eo) => E.pushENamed env x n t eo
+      | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
 
 fun kind k = k
 
@@ -143,7 +143,7 @@ fun exp env e =
     case e of
         ENamed n =>
         (case E.lookupENamed env n of
-             (_, _, SOME e') => #1 e'
+             (_, _, SOME e', _) => #1 e'
            | _ => e)
 
       | ECApp ((EApp ((EApp ((ECApp ((EFold ks, _), ran), _), f), _), i), _), (CRecord (k, xcs), loc)) =>

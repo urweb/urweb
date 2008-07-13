@@ -73,6 +73,8 @@ datatype exp' =
        | EField of exp * con * { field : con, rest : con }
        | EFold of kind
 
+       | EWrite of exp
+
 withtype exp = exp' located
 
 datatype sgn_item' =
@@ -98,7 +100,7 @@ datatype decl' =
        | DSgn of string * int * sgn
        | DStr of string * int * sgn * str
        | DFfiStr of string * int * sgn
-       | DPage of con * exp
+       | DExport of int * sgn * str
 
      and str' =
          StrConst of decl list

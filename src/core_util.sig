@@ -69,7 +69,7 @@ structure Exp : sig
              RelC of string * Core.kind
            | NamedC of string * int * Core.kind * Core.con option
            | RelE of string * Core.con
-           | NamedE of string * int * Core.con * Core.exp option
+           | NamedE of string * int * Core.con * Core.exp option * string
 
     val mapfoldB : {kind : (Core.kind', 'state, 'abort) Search.mapfolder,
                     con : ('context, Core.con', 'state, 'abort) Search.mapfolderB,

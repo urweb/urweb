@@ -44,7 +44,6 @@ type env = {
      relE : (string * typ) list,
      namedE : (string * typ) IM.map,
 
-     F : (string * typ * typ) IM.map,
      structs : (string * typ) list IM.map
 }
 
@@ -55,7 +54,6 @@ val empty = {
     relE = [],
     namedE = IM.empty,
 
-    F = IM.empty,
     structs = IM.empty
 }
 
@@ -66,7 +64,6 @@ fun pushTNamed (env : env) x n co =
      relE = #relE env,
      namedE = #namedE env,
 
-     F = #F env,
      structs = #structs env}
 
 fun lookupTNamed (env : env) n =
@@ -81,7 +78,6 @@ fun pushERel (env : env) x t =
      relE = (x, t) :: #relE env,
      namedE = #namedE env,
 
-     F = #F env,
      structs = #structs env}
 
 fun lookupERel (env : env) n =
@@ -99,27 +95,11 @@ fun pushENamed (env : env) x n t =
      relE = #relE env,
      namedE = IM.insert (#namedE env, n, (x, t)),
 
-     F = #F env,
      structs = #structs env}
 
 fun lookupENamed (env : env) n =
     case IM.find (#namedE env, n) of
         NONE => raise UnboundNamed n
-      | SOME x => x
-
-fun pushF (env : env) n x dom ran =
-    {namedT = #namedT env,
-
-     numRelE = #numRelE env,
-     relE = #relE env,
-     namedE = #namedE env,
-
-     F = IM.insert (#F env, n, (x, dom, ran)),
-     structs = #structs env}
-
-fun lookupF (env : env) n =
-    case IM.find (#F env, n) of
-        NONE => raise UnboundF n
       | SOME x => x
 
 fun pushStruct (env : env) n xts =
@@ -129,7 +109,6 @@ fun pushStruct (env : env) n xts =
      relE = #relE env,
      namedE = #namedE env,
 
-     F = #F env,
      structs = IM.insert (#structs env, n, xts)}
 
 fun lookupStruct (env : env) n =
@@ -137,10 +116,10 @@ fun lookupStruct (env : env) n =
         NONE => raise UnboundStruct n
       | SOME x => x
 
-fun declBinds env (d, _) =
+fun declBinds env (d, loc) =
     case d of
         DVal (x, n, t, _) => pushENamed env x n t
-      | DFun (n, x, dom, ran, _) => pushF env n x dom ran
+      | DFun (fx, n, _, dom, ran, _) => pushENamed env fx n (TFun (dom, ran), loc)
       | DStruct (n, xts) => pushStruct env n xts
 
 end

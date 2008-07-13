@@ -511,7 +511,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                  | DFfiStr (x, _, sgn) =>
                                                    bind (ctx, Str (x, sgn))
                                                  | DConstraint _ => ctx
-                                                 | DPage _ => ctx,
+                                                 | DExport _ => ctx,
                                                mfd ctx d)) ctx ds,
                      fn ds' => (StrConst ds', loc))
               | StrVar _ => S.return2 strAll
@@ -572,12 +572,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                             S.map2 (mfc ctx c2,
                                     fn c2' =>
                                        (DConstraint (c1', c2'), loc)))
-              | DPage (c, e) =>
-                S.bind2 (mfc ctx c,
-                         fn c' =>
-                            S.map2 (mfe ctx e,
-                                 fn e' =>
-                                    (DPage (c', e'), loc)))
+              | DExport (en, sgn, str) =>
+                S.bind2 (mfsg ctx sgn,
+                         fn sgn' =>
+                            S.map2 (mfst ctx str,
+                                    fn str' =>
+                                       (DExport (en, sgn', str'), loc)))
     in
         mfd
     end

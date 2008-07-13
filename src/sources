@@ -92,20 +92,6 @@ monoize.sml
 mono_opt.sig
 mono_opt.sml
 
-flat.sml
-
-flat_util.sig
-flat_util.sml
-
-flat_env.sig
-flat_env.sml
-
-flat_print.sig
-flat_print.sml
-
-cloconv.sig
-cloconv.sml
-
 cjr.sml
 
 cjr_env.sig

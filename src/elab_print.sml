@@ -450,12 +450,12 @@ fun p_decl env ((d, _) : decl) =
                                      string "~",
                                      space,
                                      p_con env c2]
-      | DPage (c, e) => box [string "page",
-                             p_con env c,
-                             space,
-                             string "=",
-                             space,
-                             p_exp env e]
+      | DExport (_, sgn, str) => box [string "export",
+                                      p_str env str,
+                                      space,
+                                      string ":",
+                                      space,
+                                      p_sgn env sgn]
 
 and p_str env (str, _) =
     case str of

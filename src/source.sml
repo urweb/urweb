@@ -113,7 +113,7 @@ datatype decl' =
        | DOpen of string * string list
        | DConstraint of con * con
        | DOpenConstraints of string * string list
-       | DPage of exp
+       | DExport of str
 
      and str' =
          StrConst of decl list

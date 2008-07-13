@@ -43,13 +43,13 @@ type free = {
 
 fun shake file =
     let
-        val (page_cs, page_es) = List.foldl
-                                     (fn ((DPage (c, e), _), (cs, es)) => (c :: cs, e :: es)
-                                       | (_, acc) => acc) ([], []) file
+        val page_es = List.foldl
+                          (fn ((DExport n, _), page_es) => n :: page_es
+                            | (_, page_es) => page_es) [] file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, c), edef)
-                                   | ((DVal (_, n, t, e), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
-                                   | ((DPage _, _), acc) => acc)
+                                   | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
+                                   | ((DExport _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
         fun kind (_, s) = s
@@ -90,14 +90,16 @@ fun shake file =
 
         and shakeExp s = U.Exp.fold {kind = kind, con = con, exp = exp} s
 
-        val s = {con = IS.empty,  exp = IS.empty}
-                
-        val s = foldl (fn (c, s) => U.Con.fold {kind = kind, con = con} s c) s page_cs
-        val s = foldl (fn (e, s) => U.Exp.fold {kind = kind, con = con, exp = exp} s e) s page_es
+        val s = {con = IS.empty, exp = IS.addList (IS.empty, page_es)}
+
+        val s = foldl (fn (n, s) =>
+                          case IM.find (edef, n) of
+                              NONE => raise Fail "Shake: Couldn't find 'val'"
+                            | SOME (t, e) => shakeExp (shakeCon s t) e) s page_es
     in
         List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
-                      | (DVal (_, n, _, _), _) => IS.member (#exp s, n)
-                      | (DPage _, _) => true) file
+                      | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
+                      | (DExport _, _) => true) file
     end
 
 end

@@ -91,6 +91,14 @@ type env = {
 
 val namedCounter = ref 0
 
+fun newNamed () =
+    let
+        val r = !namedCounter
+    in
+        namedCounter := r + 1;
+        r
+    end
+
 val empty = {
     renameC = SM.empty,
     relC = [],
@@ -292,7 +300,7 @@ fun declBinds env (d, _) =
       | DStr (x, n, sgn, _) => pushStrNamedAs env x n sgn
       | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | DConstraint _ => env
-      | DPage _ => env
+      | DExport _ => env
 
 fun sgiBinds env (sgi, _) =
     case sgi of

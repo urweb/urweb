@@ -45,8 +45,8 @@ signature CORE_ENV = sig
     val pushERel : env -> string -> Core.con -> env
     val lookupERel : env -> int -> string * Core.con
 
-    val pushENamed : env -> string -> int -> Core.con -> Core.exp option -> env
-    val lookupENamed : env -> int -> string * Core.con * Core.exp option
+    val pushENamed : env -> string -> int -> Core.con -> Core.exp option -> string -> env
+    val lookupENamed : env -> int -> string * Core.con * Core.exp option * string
 
     val declBinds : env -> Core.decl -> env
                                                  
