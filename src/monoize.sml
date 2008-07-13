@@ -192,6 +192,8 @@ fun monoExp env (all as (e, loc)) =
           | L.EField (e, x, _) => (L'.EField (monoExp env e, monoName env x), loc)
           | L.EFold _ => poly ()
           | L.EWrite e => (L'.EWrite (monoExp env e), loc)
+
+          | L.EClosure _ => raise Fail "Monoize EClosure"
     end
 
 fun monoDecl env (all as (d, loc)) =

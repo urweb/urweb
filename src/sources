@@ -75,6 +75,9 @@ reduce.sml
 shake.sig
 shake.sml
 
+tag.sig
+tag.sml
+
 mono.sml
 
 mono_util.sig

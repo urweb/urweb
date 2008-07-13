@@ -1945,13 +1945,12 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                                      (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
                                           (((L'.TRecord domR, _), []),
                                            ((L'.CApp (tf, ranR), _), [])) =>
-                                          (case hnormCon (env, denv) ranR of
-                                               (ranR, []) =>
+                                          (case (hnormCon (env, denv) tf, hnormCon (env, denv) ranR) of
+                                               ((tf, []), (ranR, [])) =>
                                                (case (hnormCon (env, denv) domR, hnormCon (env, denv) ranR) of
                                                     ((domR, []), (ranR, [])) =>
                                                     (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
-                                                                                (L'.CApp (tf,
-                                                                                          (L'.TRecord ranR, loc)), loc)),
+                                                                                (L'.CApp (tf, ranR), loc)),
                                                                        loc)), loc)
                                                   | _ => all)
                                              | _ => all)

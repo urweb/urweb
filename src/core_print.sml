@@ -232,6 +232,12 @@ fun p_exp' par env (e, _) =
                          p_exp env e,
                          string ")"]
 
+      | EClosure (n, es) => box [string "CLOSURE(",
+                                 p_enamed env n,
+                                 p_list_sep (string "") (fn e => box [string ", ",
+                                                                      p_exp env e]) es,
+                                 string ")"]
+
 and p_exp env = p_exp' false env
 
 fun p_decl env ((d, _) : decl) =

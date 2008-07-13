@@ -29,6 +29,16 @@ structure ListUtil :> LIST_UTIL = struct
 
 structure S = Search
 
+fun mapConcat f =
+    let
+        fun mc acc ls =
+            case ls of
+                [] => rev acc
+              | h :: t => mc (List.revAppend (f h, acc)) t
+    in
+        mc []
+    end
+
 fun mapfold f =
     let
         fun mf ls s =

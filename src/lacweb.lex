@@ -227,8 +227,10 @@ notags = [^<{\n]+;
 <INITIAL> ")"         => (Tokens.RPAREN (pos yypos, pos yypos + size yytext));
 <INITIAL> "["         => (Tokens.LBRACK (pos yypos, pos yypos + size yytext));
 <INITIAL> "]"         => (Tokens.RBRACK (pos yypos, pos yypos + size yytext));
-<INITIAL> "{"         => (Tokens.LBRACE (pos yypos, pos yypos + size yytext));
-<INITIAL> "}"         => (Tokens.RBRACE (pos yypos, pos yypos + size yytext));
+<INITIAL> "{"         => (enterBrace ();
+                          Tokens.LBRACE (pos yypos, pos yypos + size yytext));
+<INITIAL> "}"         => (exitBrace ();
+                          Tokens.RBRACE (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "->"        => (Tokens.ARROW (pos yypos, pos yypos + size yytext));
 <INITIAL> "=>"        => (Tokens.DARROW (pos yypos, pos yypos + size yytext));

@@ -291,6 +291,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                      fn e' =>
                         (EWrite e', loc))
+
+              | EClosure (n, es) =>
+                S.map2 (ListUtil.mapfold (mfe ctx) es,
+                     fn es' =>
+                        (EClosure (n, es'), loc))
     in
         mfe
     end
@@ -401,6 +406,14 @@ fun fold {kind, con, exp, decl} s d =
         S.Continue (_, s) => s
       | S.Return _ => raise Fail "CoreUtil.Decl.fold: Impossible"
 
+fun foldMap {kind, con, exp, decl} s d =
+    case mapfold {kind = fn k => fn s => S.Continue (kind (k, s)),
+                  con = fn c => fn s => S.Continue (con (c, s)),
+                  exp = fn e => fn s => S.Continue (exp (e, s)),
+                  decl = fn d => fn s => S.Continue (decl (d, s))} d s of
+        S.Continue v => v
+      | S.Return _ => raise Fail "CoreUtil.Decl.foldMap: Impossible"
+
 end
 
 structure File = struct
@@ -455,6 +468,14 @@ fun fold {kind, con, exp, decl} s d =
                   decl = fn d => fn s => S.Continue (d, decl (d, s))} d s of
         S.Continue (_, s) => s
       | S.Return _ => raise Fail "CoreUtil.File.fold: Impossible"
+
+fun foldMap {kind, con, exp, decl} s d =
+    case mapfold {kind = fn k => fn s => S.Continue (kind (k, s)),
+                  con = fn c => fn s => S.Continue (con (c, s)),
+                  exp = fn e => fn s => S.Continue (exp (e, s)),
+                  decl = fn d => fn s => S.Continue (decl (d, s))} d s of
+        S.Continue v => v
+      | S.Return _ => raise Fail "CoreUtil.File.foldMap: Impossible"
 
 end
 

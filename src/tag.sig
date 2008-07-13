@@ -25,68 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Core = struct
+signature TAG = sig
 
-type 'a located = 'a ErrorMsg.located
-
-datatype kind' =
-         KType
-       | KArrow of kind * kind
-       | KName
-       | KRecord of kind
-       | KUnit
-
-withtype kind = kind' located
-
-datatype con' =
-         TFun of con * con
-       | TCFun of string * kind * con
-       | TRecord of con
-
-       | CRel of int
-       | CNamed of int
-       | CFfi of string * string
-       | CApp of con * con
-       | CAbs of string * kind * con
-
-       | CName of string
-
-       | CRecord of kind * (con * con) list
-       | CConcat of con * con
-       | CFold of kind * kind
-
-       | CUnit
-
-withtype con = con' located
-
-datatype exp' =
-         EPrim of Prim.t
-       | ERel of int
-       | ENamed of int
-       | EFfi of string * string
-       | EFfiApp of string * string * exp list
-       | EApp of exp * exp
-       | EAbs of string * con * con * exp
-       | ECApp of exp * con
-       | ECAbs of string * kind * exp
-
-       | ERecord of (con * exp * con) list
-       | EField of exp * con * { field : con, rest : con }
-       | EFold of kind
-
-       | EWrite of exp
-
-       | EClosure of int * exp list
-
-withtype exp = exp' located
-
-datatype decl' =
-         DCon of string * int * kind * con
-       | DVal of string * int * con * exp * string
-       | DExport of int
-
-withtype decl = decl' located
-
-type file = decl list
+    val tag : Core.file -> Core.file
 
 end

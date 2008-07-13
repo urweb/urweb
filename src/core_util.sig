@@ -121,6 +121,12 @@ structure Decl : sig
                 exp : Core.exp' * 'state -> 'state,
                 decl : Core.decl' * 'state -> 'state}
                -> 'state -> Core.decl -> 'state
+
+    val foldMap : {kind : Core.kind' * 'state -> Core.kind' * 'state,
+                   con : Core.con' * 'state -> Core.con' * 'state,
+                   exp : Core.exp' * 'state -> Core.exp' * 'state,
+                   decl : Core.decl' * 'state -> Core.decl' * 'state}
+                  -> 'state -> Core.decl -> Core.decl * 'state
 end
 
 structure File : sig
@@ -151,6 +157,12 @@ structure File : sig
                 exp : Core.exp' * 'state -> 'state,
                 decl : Core.decl' * 'state -> 'state}
                -> 'state -> Core.file -> 'state
+
+    val foldMap : {kind : Core.kind' * 'state -> Core.kind' * 'state,
+                   con : Core.con' * 'state -> Core.con' * 'state,
+                   exp : Core.exp' * 'state -> Core.exp' * 'state,
+                   decl : Core.decl' * 'state -> Core.decl' * 'state}
+                  -> 'state -> Core.file -> Core.file * 'state
 end
 
 end

@@ -196,8 +196,17 @@ fun shake' job =
         else
             SOME (Shake.shake file)
 
+fun tag job =
+    case shake' job of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Tag.tag file)
+
 fun reduce job =
-    case corify job of
+    case tag job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -278,6 +287,15 @@ fun testCorify job =
 
 fun testShake' job =
     (case shake' job of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (CorePrint.p_file CoreEnv.empty file);
+          print "\n"))
+    handle CoreEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testTag job =
+    (case tag job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (CorePrint.p_file CoreEnv.empty file);

@@ -27,6 +27,8 @@
 
 signature LIST_UTIL = sig
 
+    val mapConcat : ('a -> 'b list) -> 'a list -> 'b list
+
     val mapfold : ('data, 'state, 'abort) Search.mapfolder
                   -> ('data list, 'state, 'abort) Search.mapfolder
     val mapfoldB : ('context * 'data -> 'context * ('state -> ('data * 'state, 'abort) Search.result))

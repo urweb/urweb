@@ -358,7 +358,8 @@ fun corifyExp st (e, loc) =
       | L.ECApp (e1, c) => (L'.ECApp (corifyExp st e1, corifyCon st c), loc)
       | L.ECAbs (x, k, e1) => (L'.ECAbs (x, corifyKind k, corifyExp st e1), loc)
 
-      | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) => (corifyCon st c, corifyExp st e, corifyCon st t)) xes), loc)
+      | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) =>
+                                              (corifyCon st c, corifyExp st e, corifyCon st t)) xes), loc)
       | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp st e1, corifyCon st c,
                                                        {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.EFold k => (L'.EFold (corifyKind k), loc)
@@ -450,8 +451,8 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                  (case (#1 dom, #1 ran) of
                                       (L.TRecord _,
                                        L.CApp ((L.CModProj (_, [], "xml"), _),
-                                               (L.TRecord (L.CRecord (_, [((L.CName "Html", _),
-                                                                           _)]), _), _))) =>
+                                               (L.CRecord (_, [((L.CName "Html", _),
+                                                                _)]), _))) =>
                                       let
                                           val ran = (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc)
                                           val e = (L.EModProj (m, ms, s), loc)

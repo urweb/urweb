@@ -20,6 +20,8 @@ val join : shared :: {Unit}
         -> xml (shared ++ ctx1) -> xml (shared ++ ctx2) -> xml shared
 
 
+con xhtml = xml [Html]
+
 val head : tag [] [Html] [Head]
 val title : tag [] [Head] []
 
@@ -28,3 +30,5 @@ val p : tag [] [Body] [Body]
 val b : tag [] [Body] [Body]
 val i : tag [] [Body] [Body]
 val font : tag [Size = int, Face = string] [Body] [Body]
+
+val a : tag [Link = xhtml] [Body] [Body]

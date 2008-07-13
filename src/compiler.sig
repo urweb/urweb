@@ -43,6 +43,7 @@ signature COMPILER = sig
     val explify : job -> Expl.file option
     val corify : job -> Core.file option
     val shake' : job -> Core.file option
+    val tag : job -> Core.file option
     val reduce : job -> Core.file option
     val shake : job -> Core.file option
     val monoize : job -> Mono.file option
@@ -54,6 +55,7 @@ signature COMPILER = sig
     val testExplify : job -> unit
     val testCorify : job -> unit
     val testShake' : job -> unit
+    val testTag : job -> unit
     val testReduce : job -> unit
     val testShake : job -> unit
     val testMonoize : job -> unit

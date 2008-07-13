@@ -451,6 +451,7 @@ fun p_decl env ((d, _) : decl) =
                                      space,
                                      p_con env c2]
       | DExport (_, sgn, str) => box [string "export",
+                                      space,
                                       p_str env str,
                                       space,
                                       string ":",

@@ -281,6 +281,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
        | path                           (EVar path, s (pathleft, pathright))
        | LBRACE rexp RBRACE             (ERecord rexp, s (LBRACEleft, RBRACEright))
+       | UNIT                           (ERecord [], s (UNITleft, UNITright))
 
        | INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
@@ -345,3 +346,4 @@ attr   : SYMBOL EQ attrv                ((CName (uppercaseFirst SYMBOL), s (SYMB
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
+       | LBRACE eexp RBRACE             (eexp)

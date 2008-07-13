@@ -1,0 +1,9 @@
+val ancillary : {} -> xhtml = fn () => <html>
+        Welcome to the ancillary page!
+</html>
+
+val main : {} -> xhtml = fn () => <html><body>
+        <a link={ancillary ()}>Enter the unknown!</a>
+
+        <a link={ancillary ()}>Alternate route!</a>
+</body></html>
