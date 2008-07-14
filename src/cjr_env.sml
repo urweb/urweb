@@ -119,7 +119,12 @@ fun lookupStruct (env : env) n =
 fun declBinds env (d, loc) =
     case d of
         DVal (x, n, t, _) => pushENamed env x n t
-      | DFun (fx, n, _, dom, ran, _) => pushENamed env fx n (TFun (dom, ran), loc)
+      | DFun (fx, n, args, ran, _) =>
+        let
+            val t = foldl (fn ((_, arg), t) => (TFun (arg, t), loc)) ran args
+        in
+            pushENamed env fx n t
+        end
       | DStruct (n, xts) => pushStruct env n xts
 
 end

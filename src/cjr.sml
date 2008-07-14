@@ -57,7 +57,7 @@ withtype exp = exp' located
 datatype decl' =
          DStruct of int * (string * typ) list
        | DVal of string * int * typ * exp
-       | DFun of string * int * string * typ * typ * exp
+       | DFun of string * int * (string * typ) list * typ * exp
 
 withtype decl = decl' located
 

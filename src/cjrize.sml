@@ -165,16 +165,27 @@ fun cifyDecl ((d, loc), sm) =
             val (t, sm) = cifyTyp (t, sm)
 
             val (d, sm) = case #1 t of
-                              L'.TFun (dom, ran) =>
-                              (case #1 e of
-                                   L.EAbs (ax, _, _, e) =>
-                                   let
-                                       val (e, sm) = cifyExp (e, sm)
-                                   in
-                                       (L'.DFun (x, n, ax, dom, ran, e), sm)
-                                   end
-                                 | _ => (ErrorMsg.errorAt loc "Function isn't explicit at code generation";
-                                         (L'.DVal ("", 0, t, (L'.EPrim (Prim.Int 0), ErrorMsg.dummySpan)), sm)))
+                              L'.TFun _ =>
+                              let
+                                  fun unravel (tAll as (t, _), eAll as (e, _)) =
+                                      case (t, e) of
+                                          (L'.TFun (dom, ran), L.EAbs (ax, _, _, e)) =>
+                                          let
+                                              val (args, t, e) = unravel (ran, e)
+                                          in
+                                              ((ax, dom) :: args, t, e)
+                                          end
+                                        | (L'.TFun _, _) =>
+                                          (ErrorMsg.errorAt loc "Function isn't explicit at code generation";
+                                           ([], tAll, eAll))
+                                        | _ => ([], tAll, eAll)
+
+                                  val (args, ran, e) = unravel (t, e)
+                                  val (e, sm) = cifyExp (e, sm)
+                              in
+                                  (L'.DFun (x, n, args, ran, e), sm)
+                              end
+
                             | _ =>
                               let
                                   val (e, sm) = cifyExp (e, sm)

@@ -149,19 +149,22 @@ fun p_decl env ((d, _) : decl) =
              space,
              p_exp env e,
              string ";"]
-      | DFun (fx, n, x, dom, ran, e) =>
+      | DFun (fx, n, args, ran, e) =>
         let
-            val env' = E.pushERel env x dom
+            val nargs = length args
+            val env' = foldl (fn ((x, dom), env) => E.pushERel env x dom) env args
         in
             box [string "static",
                  space,
                  p_typ env ran,
                  space,
                  string ("__lwn_" ^ fx ^ "_" ^ Int.toString n),
-                 string "(lw_context ctx, ",
-                 p_typ env dom,
-                 space,
-                 p_rel env' 0,
+                 string "(",
+                 p_list_sep (box [string ",", space]) (fn x => x)
+                            (string "lw_context ctx" :: ListUtil.mapi (fn (i, (_, dom)) =>
+                                                                   box [p_typ env dom,
+                                                                        space,
+                                                                        p_rel env' (nargs - i - 1)]) args),
                  string ")",
                  space,
                  string "{",

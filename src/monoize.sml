@@ -98,9 +98,10 @@ fun fooifyExp name env =
                         case (args, ft) of
                             ([], _) => e
                           | (arg :: args, (L'.TFun (t, ft), _)) =>
-                            (L'.EStrcat (e,
-                                         (L'.EStrcat ((L'.EPrim (Prim.String "/"), loc),
-                                                      fooify (arg, t)), loc)), loc)
+                            attrify (args, ft,
+                                     (L'.EStrcat (e,
+                                                  (L'.EStrcat ((L'.EPrim (Prim.String "/"), loc),
+                                                               fooify (arg, t)), loc)), loc))
                           | _ => (E.errorAt loc "Type mismatch encoding attribute";
                                   e)
                 in
