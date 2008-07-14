@@ -276,10 +276,10 @@ notags = [^<{\n]+;
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));
 
 <INITIAL> {intconst}  => (case Int64.fromString yytext of
-                            SOME x => Tokens.INT (x, pos yypos, pos yypos + size yytext)
-                          | NONE   => (ErrorMsg.errorAt' (pos yypos, pos yypos)
-                                       ("Expected int, received: " ^ yytext);
-                                       continue ()));
+                              SOME x => Tokens.INT (x, pos yypos, pos yypos + size yytext)
+                            | NONE   => (ErrorMsg.errorAt' (pos yypos, pos yypos)
+                                                           ("Expected int, received: " ^ yytext);
+                                         continue ()));
 <INITIAL> {realconst} => (case Real64.fromString yytext of
                             SOME x => Tokens.FLOAT (x, pos yypos, pos yypos + size yytext)
                           | NONE   => (ErrorMsg.errorAt' (pos yypos, pos yypos)

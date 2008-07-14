@@ -173,18 +173,55 @@ fun p_decl env ((d, _) : decl) =
                  string "}"]
         end
 
-fun p_page env (s, n) =
-    box [string "if (!strcmp(request, \"",
+fun unurlify (t, loc) =
+    case t of
+        TFfi ("Basis", "int") => string "lw_unurlifyInt(&request)"
+      | TFfi ("Basis", "float") => string "lw_unurlifyFloat(&request)"
+      | TFfi ("Basis", "string") => string "lw_unurlifyString(&request)"
+
+      | TRecord 0 => string "lw_unit_v"
+
+      | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
+              space)
+
+fun p_page env (s, n, ts) =
+    box [string "if (!strncmp(request, \"",
          string (String.toString s),
-         string "\")) {",
+         string "\", ",
+         string (Int.toString (size s)),
+         string ")) {",
          newline,
-         p_enamed env n,
-         string "(ctx, lw_unit_v);",
+         string "request += ",
+         string (Int.toString (size s)),
+         string ";",
          newline,
-         string "return;",
+         string "if (*request == '/') ++request;",
          newline,
-         string "}",
-         newline]
+         box [string "{",
+              newline,
+              box (ListUtil.mapi (fn (i, t) => box [p_typ env t,
+                                                    space,
+                                                    string "arg",
+                                                    string (Int.toString i),
+                                                    space,
+                                                    string "=",
+                                                    space,
+                                                    unurlify t,
+                                                    string ";",
+                                                    newline]) ts),
+              p_enamed env n,
+              string "(",
+              p_list_sep (box [string ",", space])
+                         (fn x => x)
+                         (string "ctx" :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts),
+              string ");",
+              newline,
+              string "return;",
+              newline,
+              string "}",
+              newline,
+              string "}"]
+        ]
 
 fun p_file env (ds, ps) =
     let

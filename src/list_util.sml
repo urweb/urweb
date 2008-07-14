@@ -136,4 +136,14 @@ fun search f =
         s
     end
 
+fun mapi f =
+    let
+        fun m i acc ls =
+            case ls of
+                [] => rev acc
+              | h :: t => m (i + 1) (f (i, h) :: acc) t
+    in
+        m 0 []
+    end
+
 end

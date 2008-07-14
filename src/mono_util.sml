@@ -264,7 +264,10 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                          S.map2 (mfe ctx e,
                               fn e' =>
                                  (DVal (x, n, t', e', s), loc)))
-              | DExport _ => S.return2 dAll
+              | DExport (s, n, ts) =>
+                S.map2 (ListUtil.mapfold mft ts,
+                        fn ts' =>
+                           (DExport (s, n, ts'), loc))
     in
         mfd
     end    

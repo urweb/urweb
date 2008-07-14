@@ -124,3 +124,86 @@ void lw_Basis_attrifyString_w(lw_context ctx, lw_Basis_string s) {
     }
   }
 }
+
+
+char *lw_Basis_urlifyInt(lw_Basis_int n) {
+  return "0";
+}
+
+char *lw_Basis_urlifyFloat(lw_Basis_float n) {
+  return "0.0";
+}
+
+char *lw_Basis_urlifyString(lw_Basis_string s) {
+  return "";
+}
+
+static void lw_Basis_urlifyInt_w_unsafe(lw_context ctx, lw_Basis_int n) {
+  int len;
+
+  sprintf(ctx->page_front, "%d%n", n, &len);
+  ctx->page_front += len;
+}
+
+void lw_Basis_urlifyInt_w(lw_context ctx, lw_Basis_int n) {
+  lw_check(ctx, INTS_MAX);
+  lw_Basis_urlifyInt_w_unsafe(ctx, n);
+}
+
+void lw_Basis_urlifyFloat_w(lw_context ctx, lw_Basis_float n) {
+  int len;
+
+  lw_check(ctx, FLOATS_MAX);
+  sprintf(ctx->page_front, "%g%n", n, &len);
+  ctx->page_front += len;
+}
+
+void lw_Basis_urlifyString_w(lw_context ctx, lw_Basis_string s) {
+  lw_check(ctx, strlen(s) * 3);
+
+  for (; *s; s++) {
+    char c = *s;
+
+    if (c == ' ')
+      lw_writec_unsafe(ctx, '+');
+    else if (isalnum(c))
+      lw_writec_unsafe(ctx, c);
+    else {
+      sprintf(ctx->page_front, "%%%02X", c);
+      ctx->page_front += 3;
+    }
+  }
+}
+
+
+lw_Basis_int lw_unurlifyInt(char **s) {
+  char *new_s = strchr(*s, '/');
+  int r;
+
+  if (new_s)
+    *new_s++ = 0;
+  else
+    new_s = strchr(*s, 0);
+
+  r = atoi(*s);
+  *s = new_s;
+  return r;
+}
+
+lw_Basis_float lw_unurlifyFloat(char **s) {
+  char *new_s = strchr(*s, '/');
+  int r;
+
+  if (new_s)
+    *new_s++ = 0;
+  else
+    new_s = strchr(*s, 0);
+
+  r = atof(*s);
+  *s = new_s;
+  return r;
+}
+
+lw_Basis_string lw_unurlifyString(char **s) {
+  return "";
+}

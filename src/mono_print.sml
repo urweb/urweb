@@ -166,12 +166,16 @@ fun p_decl env ((d, _) : decl) =
                  p_exp env e]
         end
 
-      | DExport (s, n) => box [string "export",
-                               space,
-                               p_enamed env n,
-                               space,
-                               string "as",
-                               string s]
+      | DExport (s, n, ts) => box [string "export",
+                                   space,
+                                   p_enamed env n,
+                                   space,
+                                   string "as",
+                                   string s,
+                                   p_list_sep (string "") (fn t => box [space,
+                                                                        string "(",
+                                                                        p_typ env t,
+                                                                        string ")"]) ts]
                           
 fun p_file env file =
     let

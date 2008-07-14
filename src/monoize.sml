@@ -79,41 +79,49 @@ fun monoType env (all as (c, loc)) =
 
 val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
 
-fun attrifyExp env (e, tAll as (t, loc)) =
-        case #1 e of
-            L'.EClosure (fnam, [(L'.ERecord [], _)]) =>
-            let
-                val (_, _, _, s) = Env.lookupENamed env fnam
-            in
-                (L'.EPrim (Prim.String s), loc)
-            end
-          | L'.EClosure (fnam, args) =>
-            let
-                val (_, ft, _, s) = Env.lookupENamed env fnam
-                val ft = monoType env ft
+fun fooifyExp name env =
+    let
+        fun fooify (e, tAll as (t, loc)) =
+            case #1 e of
+                L'.EClosure (fnam, [(L'.ERecord [], _)]) =>
+                let
+                    val (_, _, _, s) = Env.lookupENamed env fnam
+                in
+                    (L'.EPrim (Prim.String s), loc)
+                end
+              | L'.EClosure (fnam, args) =>
+                let
+                    val (_, ft, _, s) = Env.lookupENamed env fnam
+                    val ft = monoType env ft
 
-                fun attrify (args, ft, e) =
-                    case (args, ft) of
-                        ([], _) => e
-                      | (arg :: args, (L'.TFun (t, ft), _)) =>
-                        (L'.EStrcat (e,
-                                     (L'.EStrcat ((L'.EPrim (Prim.String "/"), loc),
-                                                  attrifyExp env (arg, t)), loc)), loc)
-                      | _ => (E.errorAt loc "Type mismatch encoding attribute";
-                              e)
-            in
-                attrify (args, ft, (L'.EPrim (Prim.String s), loc))
-            end
-          | _ =>
-            case t of
-                L'.TFfi ("Basis", "string") => (L'.EFfiApp ("Basis", "attrifyString", [e]), loc)
-              | L'.TFfi ("Basis", "int") => (L'.EFfiApp ("Basis", "attrifyInt", [e]), loc)
-              | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", "attrifyFloat", [e]), loc)
-              | L'.TRecord [] => (L'.EPrim (Prim.String ""), loc)
+                    fun attrify (args, ft, e) =
+                        case (args, ft) of
+                            ([], _) => e
+                          | (arg :: args, (L'.TFun (t, ft), _)) =>
+                            (L'.EStrcat (e,
+                                         (L'.EStrcat ((L'.EPrim (Prim.String "/"), loc),
+                                                      fooify (arg, t)), loc)), loc)
+                          | _ => (E.errorAt loc "Type mismatch encoding attribute";
+                                  e)
+                in
+                    attrify (args, ft, (L'.EPrim (Prim.String s), loc))
+                end
+              | _ =>
+                case t of
+                    L'.TFfi ("Basis", "string") => (L'.EFfiApp ("Basis", name ^ "ifyString", [e]), loc)
+                  | L'.TFfi ("Basis", "int") => (L'.EFfiApp ("Basis", name ^ "ifyInt", [e]), loc)
+                  | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", name ^ "ifyFloat", [e]), loc)
+                  | L'.TRecord [] => (L'.EPrim (Prim.String ""), loc)
 
-              | _ => (E.errorAt loc "Don't know how to encode attribute type";
-                      Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
-                      dummyExp)
+                  | _ => (E.errorAt loc "Don't know how to encode attribute type";
+                          Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
+                          dummyExp)
+    in
+        fooify
+    end
+
+val attrifyExp = fooifyExp "attr"
+val urlifyExp = fooifyExp "url"
 
 fun monoExp env (all as (e, loc)) =
     let
@@ -179,10 +187,15 @@ fun monoExp env (all as (e, loc)) =
                             foldl (fn ((x, e, t), s) =>
                                       let
                                           val xp = " " ^ lowercaseFirst x ^ "=\""
+
+                                          val fooify =
+                                              case x of
+                                                  "Link" => urlifyExp
+                                                | _ => attrifyExp
                                       in
                                           (L'.EStrcat (s,
                                                        (L'.EStrcat ((L'.EPrim (Prim.String xp), loc),
-                                                                    (L'.EStrcat (attrifyExp env (e, t),
+                                                                    (L'.EStrcat (fooify env (e, t),
                                                                                  (L'.EPrim (Prim.String "\""), loc)),
                                                                      loc)),
                                                         loc)), loc)
@@ -236,9 +249,16 @@ fun monoDecl env (all as (d, loc)) =
                                             (L'.DVal (x, n, monoType env t, monoExp env e, s), loc))
           | L.DExport n =>
             let
-                val (_, _, _, s) = Env.lookupENamed env n
+                val (_, t, _, s) = Env.lookupENamed env n
+
+                fun unwind (t, _) =
+                    case t of
+                        L.TFun (dom, ran) => dom :: unwind ran
+                      | _ => []
+
+                val ts = map (monoType env) (unwind t)
             in
-                SOME (env, (L'.DExport (s, n), loc))
+                SOME (env, (L'.DExport (s, n, ts), loc))
             end
     end
 

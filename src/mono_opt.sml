@@ -51,6 +51,25 @@ val attrifyString = String.translate (fn #"\"" => "&quot;"
                                                else
                                                    "&#" ^ Int.toString (ord ch) ^ ";")
 
+val urlifyInt = attrifyInt
+val urlifyFloat = attrifyFloat
+
+fun hexIt ch =
+    let
+        val s = Int.fmt StringCvt.HEX (ord ch)
+    in
+        case size s of
+            0 => "00"
+          | 1 => "0" ^ s
+          | _ => s
+    end
+
+val urlifyString = String.translate (fn #" " => "+"
+                                      | ch => if Char.isAlphaNum ch then
+                                                  str ch
+                                              else
+                                                  "%" ^ hexIt ch)
+                   
 fun exp e =
     case e of
         EPrim (Prim.String s) =>
@@ -123,6 +142,27 @@ fun exp e =
         EWrite (EPrim (Prim.String (attrifyString s)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyString", [e]), _) =>
         EFfiApp ("Basis", "attrifyString_w", [e])
+
+      | EFfiApp ("Basis", "urlifyInt", [(EPrim (Prim.Int n), _)]) =>
+        EPrim (Prim.String (urlifyInt n))
+      | EWrite (EFfiApp ("Basis", "urlifyInt", [(EPrim (Prim.Int n), _)]), loc) =>
+        EWrite (EPrim (Prim.String (urlifyInt n)), loc)
+      | EWrite (EFfiApp ("Basis", "urlifyInt", [e]), _) =>
+        EFfiApp ("Basis", "urlifyInt_w", [e])
+
+      | EFfiApp ("Basis", "urlifyFloat", [(EPrim (Prim.Float n), _)]) =>
+        EPrim (Prim.String (urlifyFloat n))
+      | EWrite (EFfiApp ("Basis", "urlifyFloat", [(EPrim (Prim.Float n), _)]), loc) =>
+        EWrite (EPrim (Prim.String (urlifyFloat n)), loc)
+      | EWrite (EFfiApp ("Basis", "urlifyFloat", [e]), _) =>
+        EFfiApp ("Basis", "urlifyFloat_w", [e])
+
+      | EFfiApp ("Basis", "urlifyString", [(EPrim (Prim.String s), _)]) =>
+        EPrim (Prim.String (urlifyString s))
+      | EWrite (EFfiApp ("Basis", "urlifyString", [(EPrim (Prim.String s), _)]), loc) =>
+        EWrite (EPrim (Prim.String (urlifyString s)), loc)
+      | EWrite (EFfiApp ("Basis", "urlifyString", [e]), _) =>
+        EFfiApp ("Basis", "urlifyString_w", [e])
 
       | _ => e
 
