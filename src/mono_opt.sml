@@ -46,6 +46,7 @@ fun attrifyFloat n =
         Real.toString n
 
 val attrifyString = String.translate (fn #"\"" => "&quot;"
+                                       | #"&" => "&amp;"
                                        | ch => if Char.isPrint ch then
                                                    str ch
                                                else
@@ -53,6 +54,15 @@ val attrifyString = String.translate (fn #"\"" => "&quot;"
 
 val urlifyInt = attrifyInt
 val urlifyFloat = attrifyFloat
+
+val htmlifyString = String.translate (fn ch => case ch of
+                                                   #"<" => "&lt;"
+                                                 | #"&" => "&amp;"
+                                                 | _ =>   
+                                                   if Char.isPrint ch orelse Char.isSpace ch then
+                                                       str ch
+                                                   else
+                                                       "&#" ^ Int.toString (ord ch) ^ ";")
 
 fun hexIt ch =
     let
@@ -121,6 +131,13 @@ fun exp e =
       | EWrite (EStrcat (e1, e2), loc) =>
         ESeq ((optExp (EWrite e1, loc), loc),
               (optExp (EWrite e2, loc), loc))
+
+      | EFfiApp ("Basis", "htmlifyString", [(EPrim (Prim.String s), _)]) =>
+        EPrim (Prim.String (htmlifyString s))
+      | EWrite (EFfiApp ("Basis", "htmlifyString", [(EPrim (Prim.String s), _)]), loc) =>
+        EWrite (EPrim (Prim.String (htmlifyString s)), loc)
+      | EWrite (EFfiApp ("Basis", "htmlifyString", [e]), _) =>
+        EFfiApp ("Basis", "htmlifyString_w", [e])
 
       | EFfiApp ("Basis", "attrifyInt", [(EPrim (Prim.Int n), _)]) =>
         EPrim (Prim.String (attrifyInt n))

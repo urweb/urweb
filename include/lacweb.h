@@ -13,6 +13,9 @@ int lw_send(lw_context, int sock);
 void lw_write(lw_context, const char*);
 
 
+char *lw_Basis_htmlifyString(lw_Basis_string);
+void lw_Basis_htmlifyString_w(lw_context, lw_Basis_string);
+
 char *lw_Basis_attrifyInt(lw_Basis_int);
 char *lw_Basis_attrifyFloat(lw_Basis_float);
 char *lw_Basis_attrifyString(lw_Basis_string);

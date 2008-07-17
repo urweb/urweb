@@ -72,6 +72,7 @@ void lw_write(lw_context ctx, const char* s) {
   lw_write_unsafe(ctx, s);
 }
 
+
 char *lw_Basis_attrifyInt(lw_Basis_int n) {
   return "0";
 }
@@ -206,4 +207,34 @@ lw_Basis_float lw_unurlifyFloat(char **s) {
 
 lw_Basis_string lw_unurlifyString(char **s) {
   return "";
+}
+
+
+char *lw_Basis_htmlifyString(lw_Basis_string s) {
+  return "";
+}
+
+void lw_Basis_htmlifyString_w(lw_context ctx, lw_Basis_string s) {
+  lw_check(ctx, strlen(s) * 5);
+
+  for (; *s; s++) {
+    char c = *s;
+
+    switch (c) {
+    case '<':
+      lw_write_unsafe(ctx, "&lt;");
+      break;
+    case '&':
+      lw_write_unsafe(ctx, "&amp;");
+      break;
+    default:
+      if (isprint(c))
+        lw_writec_unsafe(ctx, c);
+      else {
+        lw_write_unsafe(ctx, "&#");
+        lw_Basis_attrifyInt_w_unsafe(ctx, c);
+        lw_writec_unsafe(ctx, ';');
+      }
+    }
+  }
 }

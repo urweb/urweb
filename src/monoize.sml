@@ -139,7 +139,7 @@ fun monoExp env (all as (e, loc)) =
           | L.EFfiApp (m, x, es) => (L'.EFfiApp (m, x, map (monoExp env) es), loc)
 
           | L.EApp ((L.ECApp ((L.EFfi ("Basis", "cdata"), _),
-                              _), _), se) => monoExp env se
+                              _), _), se) => (L'.EFfiApp ("Basis", "htmlifyString", [monoExp env se]), loc)
           | L.EApp (
             (L.EApp (
              (L.ECApp (

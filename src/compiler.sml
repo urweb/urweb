@@ -51,7 +51,8 @@ fun parseLig filename =
         val () = TextIO.closeOut outf
 
         val () = (ErrorMsg.resetErrors ();
-                  ErrorMsg.resetPositioning filename)
+                  ErrorMsg.resetPositioning filename;
+                  Lex.UserDeclarations.initialize ())
 	val file = TextIO.openIn fname
 	fun get _ = TextIO.input file
 	fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
@@ -79,7 +80,8 @@ fun testLig fname =
 fun parseLac filename =
     let
         val () = (ErrorMsg.resetErrors ();
-                  ErrorMsg.resetPositioning filename)
+                  ErrorMsg.resetPositioning filename;
+                  Lex.UserDeclarations.initialize ())
 	val file = TextIO.openIn filename
 	fun get _ = TextIO.input file
 	fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
