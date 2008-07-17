@@ -58,6 +58,7 @@ datatype decl' =
          DStruct of int * (string * typ) list
        | DVal of string * int * typ * exp
        | DFun of string * int * (string * typ) list * typ * exp
+       | DFunRec of (string * int * (string * typ) list * typ * exp) list
 
 withtype decl = decl' located
 

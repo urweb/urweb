@@ -125,6 +125,13 @@ fun declBinds env (d, loc) =
         in
             pushENamed env fx n t
         end
+      | DFunRec vis =>
+        foldl (fn ((fx, n, args, ran, _), env) =>
+                  let
+                      val t = foldl (fn ((_, arg), t) => (TFun (arg, t), loc)) ran args
+                  in
+                      pushENamed env fx n t
+                  end) env vis
       | DStruct (n, xts) => pushStruct env n xts
 
 end

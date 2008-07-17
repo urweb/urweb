@@ -83,10 +83,21 @@ fun p_exp' par env (e, _) =
                                    string "(ctx, ",
                                    p_list (p_exp env) es,
                                    string ")"]
-      | EApp (e1, e2) => parenIf par (box [p_exp' true env e1,
-                                           string "(",
-                                           p_exp env e2,
-                                           string ")"])
+      | EApp (e1, e2) =>
+        let
+            fun unravel (f, acc) =
+                case #1 f of
+                    EApp (f', arg) => unravel (f', arg :: acc)
+                  | _ => (f, acc)
+
+            val (f, args) = unravel (e1, [e2])
+        in
+            parenIf par (box [p_exp' true env e1,
+                              string "(ctx,",
+                              space,
+                              p_list_sep (box [string ",", space]) (p_exp env) args,
+                              string ")"])
+        end
 
       | ERecord (i, xes) => box [string "({",
                                  space,
@@ -124,7 +135,34 @@ fun p_exp' par env (e, _) =
 
 and p_exp env = p_exp' false env
 
-fun p_decl env ((d, _) : decl) =
+fun p_fun env (fx, n, args, ran, e) =
+    let
+        val nargs = length args
+        val env' = foldl (fn ((x, dom), env) => E.pushERel env x dom) env args
+    in
+        box [string "static",
+             space,
+             p_typ env ran,
+             space,
+             string ("__lwn_" ^ fx ^ "_" ^ Int.toString n),
+             string "(",
+             p_list_sep (box [string ",", space]) (fn x => x)
+                        (string "lw_context ctx" :: ListUtil.mapi (fn (i, (_, dom)) =>
+                                                                      box [p_typ env dom,
+                                                                           space,
+                                                                           p_rel env' (nargs - i - 1)]) args),
+             string ")",
+             space,
+             string "{",
+             newline,
+             box[string "return(",
+                 p_exp env' e,
+                 string ");"],
+             newline,
+             string "}"]
+    end
+
+fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DStruct (n, xts) =>
         box [string "struct",
@@ -149,31 +187,25 @@ fun p_decl env ((d, _) : decl) =
              space,
              p_exp env e,
              string ";"]
-      | DFun (fx, n, args, ran, e) =>
+      | DFun vi => p_fun env vi
+      | DFunRec vis =>
         let
-            val nargs = length args
-            val env' = foldl (fn ((x, dom), env) => E.pushERel env x dom) env args
+            val env = E.declBinds env dAll
         in
-            box [string "static",
-                 space,
-                 p_typ env ran,
-                 space,
-                 string ("__lwn_" ^ fx ^ "_" ^ Int.toString n),
-                 string "(",
-                 p_list_sep (box [string ",", space]) (fn x => x)
-                            (string "lw_context ctx" :: ListUtil.mapi (fn (i, (_, dom)) =>
-                                                                   box [p_typ env dom,
-                                                                        space,
-                                                                        p_rel env' (nargs - i - 1)]) args),
-                 string ")",
-                 space,
-                 string "{",
+            box [p_list_sep newline (fn (fx, n, args, ran, _) =>
+                                        box [string "static",
+                                             space,
+                                             p_typ env ran,
+                                             space,
+                                             string ("__lwn_" ^ fx ^ "_" ^ Int.toString n),
+                                             string "(lw_context,",
+                                             space,
+                                             p_list_sep (box [string ",", space])
+                                                        (fn (_, dom) => p_typ env dom) args,
+                                             string ");"]) vis,
                  newline,
-                 box[string "return(",
-                     p_exp env' e,
-                     string ");"],
-                 newline,
-                 string "}"]
+                 p_list_sep newline (p_fun env) vis,
+                 newline]
         end
 
 fun unurlify (t, loc) =

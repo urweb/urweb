@@ -183,6 +183,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                    p_enamed env n,
                                    space,
                                    string "as",
+                                   space,
                                    string s,
                                    p_list_sep (string "") (fn t => box [space,
                                                                         string "(",

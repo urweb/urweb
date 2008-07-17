@@ -195,7 +195,36 @@ fun cifyDecl ((d, loc), sm) =
         in
             (SOME (d, loc), NONE, sm)
         end
-      | L.DValRec _ => raise Fail "Cjrize DValRec"
+      | L.DValRec vis =>
+        let
+            val (vis, sm) = ListUtil.foldlMap
+                            (fn ((x, n, t, e, _), sm) =>
+                                let                                    
+                                    val (t, sm) = cifyTyp (t, sm)
+
+                                    fun unravel (tAll as (t, _), eAll as (e, _)) =
+                                        case (t, e) of
+                                            (L'.TFun (dom, ran), L.EAbs (ax, _, _, e)) =>
+                                            let
+                                                val (args, t, e) = unravel (ran, e)
+                                            in
+                                                ((ax, dom) :: args, t, e)
+                                            end
+                                          | (L'.TFun _, _) =>
+                                            (ErrorMsg.errorAt loc "Function isn't explicit at code generation";
+                                             ([], tAll, eAll))
+                                          | _ => ([], tAll, eAll)
+                                                 
+                                    val (args, ran, e) = unravel (t, e)
+                                    val (e, sm) = cifyExp (e, sm)
+                              in
+                                  ((x, n, args, ran, e), sm)
+                              end)
+                            sm vis
+        in
+            (SOME (L'.DFunRec vis, loc), NONE, sm)
+        end        
+
       | L.DExport (s, n, ts) =>
         let
             val (ts, sm) = ListUtil.foldlMap cifyTyp sm ts
