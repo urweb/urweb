@@ -232,8 +232,17 @@ fun monoize job =
         else
             SOME (Monoize.monoize CoreEnv.empty file)
 
-fun mono_opt job =
+fun untangle job =
     case monoize job of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Untangle.untangle file)
+
+fun mono_opt job =
+    case untangle job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -304,7 +313,7 @@ fun testTag job =
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
 fun testReduce job =
-    (case reduce job of
+    (case tag job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (CorePrint.p_file CoreEnv.empty file);
@@ -323,6 +332,15 @@ fun testShake job =
 
 fun testMonoize job =
     (case monoize job of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (MonoPrint.p_file MonoEnv.empty file);
+          print "\n"))
+    handle MonoEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testUntangle job =
+    (case untangle job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (MonoPrint.p_file MonoEnv.empty file);

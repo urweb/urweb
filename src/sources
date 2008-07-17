@@ -78,6 +78,9 @@ shake.sml
 tag.sig
 tag.sml
 
+untangle.sig
+untangle.sml
+
 mono.sml
 
 mono_util.sig

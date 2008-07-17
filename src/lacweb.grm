@@ -345,6 +345,7 @@ xmlOne : NOTAGS                      (EApp ((EVar (["Basis"], "cdata"), s (NOTAG
                                                 (ErrorMsg.errorAt pos "Begin and end tags don't match.";
                                                  (EFold, pos))
                                         end)
+       | LBRACE eexp RBRACE          (eexp)
                                           
 attrs  :                                ([])
        | attr attrs                     (attr :: attrs)
