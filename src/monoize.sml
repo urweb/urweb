@@ -248,7 +248,13 @@ fun monoDecl env (all as (d, loc)) =
             L.DCon _ => NONE
           | L.DVal (x, n, t, e, s) => SOME (Env.pushENamed env x n t (SOME e) s,
                                             (L'.DVal (x, n, monoType env t, monoExp env e, s), loc))
-          | L.DValRec _ => raise Fail "Monoize DValRec"
+          | L.DValRec vis =>
+            let
+                val env = foldl (fn ((x, n, t, e, s), env) => Env.pushENamed env x n t NONE s) env vis
+            in
+                SOME (env,
+                      (L'.DValRec (map (fn (x, n, t, e, s) => (x, n, monoType env t, monoExp env e, s)) vis), loc))
+            end
           | L.DExport n =>
             let
                 val (_, t, _, s) = Env.lookupENamed env n
