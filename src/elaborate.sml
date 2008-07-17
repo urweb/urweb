@@ -1593,13 +1593,14 @@ fun dopenConstraints (loc, env, denv) {str, strs} =
 
 fun sgiOfDecl (d, loc) =
     case d of
-        L'.DCon (x, n, k, c) => SOME (L'.SgiCon (x, n, k, c), loc)
-      | L'.DVal (x, n, t, _) => SOME (L'.SgiVal (x, n, t), loc)
-      | L'.DSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, sgn), loc)
-      | L'.DStr (x, n, sgn, _) => SOME (L'.SgiStr (x, n, sgn), loc)
-      | L'.DFfiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, sgn), loc)
-      | L'.DConstraint cs => SOME (L'.SgiConstraint cs, loc)
-      | L'.DExport _ => NONE
+        L'.DCon (x, n, k, c) => [(L'.SgiCon (x, n, k, c), loc)]
+      | L'.DVal (x, n, t, _) => [(L'.SgiVal (x, n, t), loc)]
+      | L'.DValRec vis => map (fn (x, n, t, _) => (L'.SgiVal (x, n, t), loc)) vis
+      | L'.DSgn (x, n, sgn) => [(L'.SgiSgn (x, n, sgn), loc)]
+      | L'.DStr (x, n, sgn, _) => [(L'.SgiStr (x, n, sgn), loc)]
+      | L'.DFfiStr (x, n, sgn) => [(L'.SgiStr (x, n, sgn), loc)]
+      | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
+      | L'.DExport _ => []
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
@@ -1789,7 +1790,7 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
         end
       | L.DVal (x, co, e) =>
         let
-            val (c', ck, gs1) = case co of
+            val (c', _, gs1) = case co of
                                     NONE => (cunif (loc, ktype), ktype, [])
                                   | SOME c => elabCon (env, denv) c
 
@@ -1799,6 +1800,36 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
             val gs3 = checkCon (env, denv) e' et c'
         in
             ([(L'.DVal (x, n, c', e'), loc)], (env', denv, gs1 @ gs2 @ gs3 @ gs))
+        end
+      | L.DValRec vis =>
+        let
+            val (vis, gs) = ListUtil.foldlMap
+                                (fn ((x, co, e), gs) =>
+                                    let
+                                        val (c', _, gs1) = case co of
+                                                               NONE => (cunif (loc, ktype), ktype, [])
+                                                             | SOME c => elabCon (env, denv) c
+                                    in
+                                        ((x, c', e), gs1 @ gs)
+                                    end) [] vis
+
+            val (vis, env) = ListUtil.foldlMap (fn ((x, c', e), env) =>
+                                                   let
+                                                       val (env, n) = E.pushENamed env x c'
+                                                   in
+                                                       ((x, n, c', e), env)
+                                                   end) env vis
+
+            val (vis, gs) = ListUtil.foldlMap (fn ((x, n, c', e), gs) =>
+                                                  let
+                                                      val (e', et, gs1) = elabExp (env, denv) e
+                                                                          
+                                                      val gs2 = checkCon (env, denv) e' et c'
+                                                  in
+                                                      ((x, n, c', e'), gs1 @ gs2 @ gs)
+                                                  end) gs vis
+        in
+            ([(L'.DValRec vis, loc)], (env, denv, gs))
         end
 
       | L.DSgn (x, sgn) =>
@@ -1970,7 +2001,7 @@ and elabStr (env, denv) (str, loc) =
         L.StrConst ds =>
         let
             val (ds', (_, _, gs)) = ListUtil.foldlMapConcat elabDecl (env, denv, []) ds
-            val sgis = List.mapPartial sgiOfDecl ds'
+            val sgis = ListUtil.mapConcat sgiOfDecl ds'
 
             val (sgis, _, _, _, _) =
                 foldr (fn ((sgi, loc), (sgis, cons, vals, sgns, strs)) =>

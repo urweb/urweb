@@ -1,0 +1,3 @@
+val rec looper = fn () => <html><body>
+        <a link={looper ()}>Ride again!</a>
+</body></html>

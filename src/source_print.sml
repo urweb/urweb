@@ -329,6 +329,23 @@ and p_sgn (sgn, _) =
       | SgnProj (m, ms, x) => p_list_sep (string ".") string (m :: ms @ [x])
                                    
 
+fun p_vali (x, co, e) =
+    case co of
+        NONE => box [string x,
+                     space,
+                     string "=",
+                     space,
+                     p_exp e]
+      | SOME t => box [string x,
+                       space,
+                       string ":",
+                       space,
+                       p_con t,
+                       space,
+                       string "=",
+                       space,
+                       p_exp e]
+
 fun p_decl ((d, _) : decl) =
     case d of
         DCon (x, NONE, c) => box [string "con",
@@ -349,24 +366,14 @@ fun p_decl ((d, _) : decl) =
                                     string "=",
                                     space,
                                     p_con c]
-      | DVal (x, NONE, e) => box [string "val",
-                                  space,
-                                  string x,
-                                  space,
-                                  string "=",
-                                  space,
-                                  p_exp e]
-      | DVal (x, SOME t, e) => box [string "val",
-                                    space,
-                                    string x,
-                                    space,
-                                    string ":",
-                                    space,
-                                    p_con t,
-                                    space,
-                                    string "=",
-                                    space,
-                                    p_exp e]
+      | DVal vi => box [string "val",
+                        space,
+                        p_vali vi]
+      | DValRec vis => box [string "val",
+                            space,
+                            string "rec",
+                            space,
+                            p_list_sep (box [newline, string "and", space]) p_vali vis]
 
       | DSgn (x, sgn) => box [string "signature",
                               space,

@@ -111,6 +111,7 @@ and sgn = sgn' located
 datatype decl' =
          DCon of string * int * kind * con
        | DVal of string * int * con * exp
+       | DValRec of (string * int * con * exp) list
        | DSgn of string * int * sgn
        | DStr of string * int * sgn * str
        | DFfiStr of string * int * sgn

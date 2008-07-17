@@ -504,6 +504,8 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                    bind (ctx, NamedC (x, k))
                                                  | DVal (x, _, c, _) =>
                                                    bind (ctx, NamedE (x, c))
+                                                 | DValRec vis =>
+                                                   foldl (fn ((x, _, c, _), ctx) => bind (ctx, NamedE (x, c))) ctx vis
                                                  | DSgn (x, _, sgn) =>
                                                    bind (ctx, Sgn (x, sgn))
                                                  | DStr (x, _, sgn, _) =>
@@ -546,12 +548,14 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                             S.map2 (mfc ctx c,
                                     fn c' =>
                                        (DCon (x, n, k', c'), loc)))
-              | DVal (x, n, c, e) =>
-                S.bind2 (mfc ctx c,
-                         fn c' =>
-                            S.map2 (mfe ctx e,
-                                    fn e' =>
-                                       (DVal (x, n, c', e'), loc)))
+              | DVal vi =>
+                S.map2 (mfvi ctx vi,
+                     fn vi' =>
+                        (DVal vi', loc))
+              | DValRec vis =>
+                S.map2 (ListUtil.mapfold (mfvi ctx) vis,
+                     fn vis' =>
+                        (DValRec vis', loc))
               | DSgn (x, n, sgn) =>
                 S.map2 (mfsg ctx sgn,
                         fn sgn' =>
@@ -578,6 +582,13 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                             S.map2 (mfst ctx str,
                                     fn str' =>
                                        (DExport (en, sgn', str'), loc)))
+
+        and mfvi ctx (x, n, c, e) =
+            S.bind2 (mfc ctx c,
+                  fn c' =>
+                     S.map2 (mfe ctx e,
+                          fn e' =>
+                             (x, n, c', e')))
     in
         mfd
     end

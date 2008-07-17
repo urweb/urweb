@@ -391,7 +391,17 @@ and p_sgn env (sgn, _) =
         end
       | SgnError => string "<ERROR>"
 
-fun p_decl env ((d, _) : decl) =
+fun p_vali env (x, n, t, e) = box [p_named x n,
+                                   space,
+                                   string ":",
+                                   space,
+                                   p_con env t,
+                                   space,
+                                   string "=",
+                                   space,
+                                   p_exp env e]
+
+fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DCon (x, n, k, c) => box [string "con",
                                   space,
@@ -404,17 +414,19 @@ fun p_decl env ((d, _) : decl) =
                                   string "=",
                                   space,
                                   p_con env c]
-      | DVal (x, n, t, e) => box [string "val",
-                                  space,
-                                  p_named x n,
-                                  space,
-                                  string ":",
-                                  space,
-                                  p_con env t,
-                                  space,
-                                  string "=",
-                                  space,
-                                  p_exp env e]
+      | DVal vi => box [string "val",
+                        space,
+                        p_vali env vi]
+      | DValRec vis =>
+        let
+            val env = E.declBinds env dAll
+        in
+            box [string "val",
+                 space,
+                 string "rec",
+                 space,
+                 p_list_sep (box [newline, string "and", space]) (p_vali env) vis]
+        end
                              
       | DSgn (x, n, sgn) => box [string "signature",
                                  space,

@@ -107,6 +107,7 @@ withtype exp = exp' located
 datatype decl' =
          DCon of string * kind option * con
        | DVal of string * con option * exp
+       | DValRec of (string * con option * exp) list
        | DSgn of string * sgn
        | DStr of string * sgn option * str
        | DFfiStr of string * sgn

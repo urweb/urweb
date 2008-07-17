@@ -44,7 +44,7 @@ fun uppercaseFirst "" = ""
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER
  | DIVIDE | GT
- | CON | LTYPE | VAL | FOLD | UNIT | KUNIT
+ | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | DOLLAR | TWIDDLE
@@ -59,6 +59,8 @@ fun uppercaseFirst "" = ""
    file of decl list
  | decls of decl list
  | decl of decl
+ | vali of string * con option * exp
+ | valis of (string * con option * exp) list
 
  | sgn of sgn
  | sgntm of sgn
@@ -125,8 +127,8 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
        | CON SYMBOL DCOLON kind EQ cexp (DCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
        | LTYPE SYMBOL EQ cexp           (DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
-       | VAL SYMBOL EQ eexp             (DVal (SYMBOL, NONE, eexp), s (VALleft, eexpright))
-       | VAL SYMBOL COLON cexp EQ eexp  (DVal (SYMBOL, SOME cexp, eexp), s (VALleft, eexpright))
+       | VAL vali                       (DVal vali, s (VALleft, valiright))
+       | VAL REC valis                  (DValRec valis, s (VALleft, valisright))
 
        | SIGNATURE CSYMBOL EQ sgn       (DSgn (CSYMBOL, sgn), s (SIGNATUREleft, sgnright))
        | STRUCTURE CSYMBOL EQ str       (DStr (CSYMBOL, NONE, str), s (STRUCTUREleft, strright))
@@ -148,6 +150,12 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                            | m :: ms => (DOpenConstraints (m, ms), s (OPENleft, mpathright)))
        | CONSTRAINT cterm TWIDDLE cterm (DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
        | EXPORT spath                   (DExport spath, s (EXPORTleft, spathright))
+
+vali   : SYMBOL EQ eexp                 (SYMBOL, NONE, eexp)
+       | SYMBOL COLON cexp EQ eexp      (SYMBOL, SOME cexp, eexp)
+
+valis  : vali                           ([vali])
+       | vali AND valis                 (vali :: valis)
 
 sgn    : sgntm                          (sgntm)
        | FUNCTOR LPAREN CSYMBOL COLON sgn RPAREN COLON sgn
