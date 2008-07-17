@@ -385,9 +385,14 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                      fn vi' =>
                         (DVal vi', loc))
               | DValRec vis =>
-                S.map2 (ListUtil.mapfold (mfvi ctx) vis,
-                     fn vis' =>
-                        (DValRec vis', loc))
+                let
+                    val ctx = foldl (fn ((x, n, t, e, s), ctx) => bind (ctx, NamedE (x, n, t, NONE, s)))
+                                    ctx vis
+                in
+                    S.map2 (ListUtil.mapfold (mfvi ctx) vis,
+                         fn vis' =>
+                            (DValRec vis', loc))
+                end
               | DExport _ => S.return2 dAll
 
         and mfvi ctx (x, n, t, e, s) =
@@ -445,7 +450,7 @@ fun mapfoldB (all as {bind, ...}) =
                                         DCon (x, n, k, c) => bind (ctx, NamedC (x, n, k, SOME c))
                                       | DVal (x, n, t, e, s) => bind (ctx, NamedE (x, n, t, SOME e, s))
                                       | DValRec vis =>
-                                        foldl (fn ((x, n, t, e, s), ctx) => bind (ctx, NamedE (x, n, t, SOME e, s)))
+                                        foldl (fn ((x, n, t, e, s), ctx) => bind (ctx, NamedE (x, n, t, NONE, s)))
                                         ctx vis
                                       | DExport _ => ctx
                             in
