@@ -111,7 +111,7 @@ fun explifyDecl (d, loc : EM.span) =
     case d of
         L.DCon (x, n, k, c) => SOME (L'.DCon (x, n, explifyKind k, explifyCon c), loc)
       | L.DVal (x, n, t, e) => SOME (L'.DVal (x, n, explifyCon t, explifyExp e), loc)
-      | L.DValRec _ => raise Fail "Expliofy DValRec"
+      | L.DValRec vis => SOME (L'.DValRec (map (fn (x, n, t, e) => (x, n, explifyCon t, explifyExp e)) vis), loc)
 
       | L.DSgn (x, n, sgn) => SOME (L'.DSgn (x, n, explifySgn sgn), loc)
       | L.DStr (x, n, sgn, str) => SOME (L'.DStr (x, n, explifySgn sgn, explifyStr str), loc)

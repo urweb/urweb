@@ -384,6 +384,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
         in
             ([(L'.DVal (x, n, corifyCon st t, corifyExp st e, s), loc)], st)
         end
+      | L.DValRec _ => raise Fail "Explify DValRec"
                                                                         
       | L.DSgn _ => ([], st)
 
@@ -531,7 +532,8 @@ and corifyStr ((str, _), st) =
 fun maxName ds = foldl (fn ((d, _), n) =>
                            case d of
                                L.DCon (_, n', _, _) => Int.max (n, n')
-                             | L.DVal (_, n', _ , _) => Int.max (n, n')
+                             | L.DVal (_, n', _, _) => Int.max (n, n')
+                             | L.DValRec vis => foldl (fn ((_, n', _, _), n) => Int.max (n, n)) n vis
                              | L.DSgn (_, n', _) => Int.max (n, n')
                              | L.DStr (_, n', _, str) => Int.max (n, Int.max (n', maxNameStr str))
                              | L.DFfiStr (_, n', _) => Int.max (n, n')
