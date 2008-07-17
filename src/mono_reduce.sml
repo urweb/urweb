@@ -1,0 +1,89 @@
+(* Copyright (c) 2008, Adam Chlipala
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * - The names of contributors may not be used to endorse or promote products
+ *   derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *)
+
+(* Simplify a Mono program algebraically *)
+
+structure MonoReduce :> MONO_REDUCE = struct
+
+open Mono
+
+structure E = MonoEnv
+structure U = MonoUtil
+
+val liftExpInExp =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn bound => fn e =>
+                                     case e of
+                                         ERel xn =>
+                                         if xn < bound then
+                                             e
+                                         else
+                                             ERel (xn + 1)
+                                       | _ => e,
+                bind = fn (bound, U.Exp.RelE _) => bound + 1
+                        | (bound, _) => bound}
+
+val subExpInExp =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn (xn, rep) => fn e =>
+                                  case e of
+                                      ERel xn' =>
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER=> ERel (xn' - 1)
+                                         | LESS => e)
+                                    | _ => e,
+                bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
+                        | (ctx, _) => ctx}
+
+fun bind (env, b) =
+    case b of
+        U.Decl.NamedT (x, n, co) => E.pushTNamed env x n co
+      | U.Decl.RelE (x, t) => E.pushERel env x t
+      | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
+
+fun typ c = c
+
+fun exp env e =
+    case e of
+        ENamed n =>
+        (case E.lookupENamed env n of
+             (_, _, SOME e', _) => #1 e'
+           | _ => e)
+
+      | EApp ((EAbs (_, _, _, e1), loc), e2) =>
+        #1 (reduceExp env (subExpInExp (0, e2) e1))
+
+      | _ => e
+
+and reduceExp env = U.Exp.mapB {typ = typ, exp = exp, bind = bind} env
+
+fun decl env d = d
+
+val reduce = U.File.mapB {typ = typ, exp = exp, decl = decl, bind = bind} E.empty
+
+end

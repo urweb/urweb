@@ -250,8 +250,17 @@ fun untangle job =
         else
             SOME (Untangle.untangle file)
 
-fun mono_opt job =
+fun mono_reduce job =
     case untangle job of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (MonoReduce.reduce file)
+
+fun mono_opt job =
+    case mono_reduce job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -359,6 +368,15 @@ fun testMono_opt' job =
 
 fun testUntangle job =
     (case untangle job of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (MonoPrint.p_file MonoEnv.empty file);
+          print "\n"))
+    handle MonoEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testMono_reduce job =
+    (case mono_reduce job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (MonoPrint.p_file MonoEnv.empty file);

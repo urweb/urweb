@@ -78,9 +78,6 @@ shake.sml
 tag.sig
 tag.sml
 
-untangle.sig
-untangle.sml
-
 mono.sml
 
 mono_util.sig
@@ -97,6 +94,12 @@ monoize.sml
 
 mono_opt.sig
 mono_opt.sml
+
+untangle.sig
+untangle.sml
+
+mono_reduce.sig
+mono_reduce.sml
 
 cjr.sml
 
