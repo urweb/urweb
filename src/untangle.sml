@@ -134,20 +134,42 @@ fun untangle file =
                                 sccs (nodes, scc :: acc)
                             end
 
-                    val sccs = rev (sccs (thisGroup, []))
+                    val sccs = sccs (thisGroup, [])
                     (*val () = app (fn nodes => (print "SCC:";
                                                IS.app (fn i => (print " ";
                                                                 print (Int.toString i))) nodes;
                                                print "\n")) sccs*)
 
-                    val sccs = ListMergeSort.sort (fn (nodes1, nodes2) =>
-                                                      let
-                                                          val node1 = valOf (IS.find (fn _ => true) nodes1)
-                                                          val node2 = valOf (IS.find (fn _ => true) nodes2)
-                                                          val reachable1 = valOf (IM.find (reachable, node1))
-                                                      in
-                                                          IS.member (reachable1, node2)
-                                                      end) sccs
+                    fun depends nodes1 nodes2 =
+                        let
+                            val node1 = valOf (IS.find (fn _ => true) nodes1)
+                            val node2 = valOf (IS.find (fn _ => true) nodes2)
+                            val reachable1 = valOf (IM.find (reachable, node1))
+                        in
+                            IS.member (reachable1, node2)
+                        end
+
+                    fun findReady (sccs, passed) =
+                        case sccs of
+                            [] => raise Fail "Untangle: Unable to topologically sort 'val rec'"
+                          | nodes :: sccs =>
+                            if List.exists (depends nodes) passed
+                               orelse List.exists (depends nodes) sccs then
+                                findReady (sccs, nodes :: passed)
+                            else
+                                (nodes, List.revAppend (passed, sccs))
+
+                    fun topo (sccs, acc) =
+                        case sccs of
+                            [] => rev acc
+                          | _ =>
+                            let
+                                val (node, sccs) = findReady (sccs, [])
+                            in
+                                topo (sccs, node :: acc)
+                            end
+
+                    val sccs = topo (sccs, [])
                     (*val () = app (fn nodes => (print "SCC':";
                                                IS.app (fn i => (print " ";
                                                                 print (Int.toString i))) nodes;
