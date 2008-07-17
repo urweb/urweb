@@ -72,7 +72,7 @@ static void worker(int sock) {
 
       printf("Serving URI %s....\n", path);
 
-      ctx = lw_init(1024);
+      ctx = lw_init(1024, 1024);
       lw_write (ctx, "HTTP/1.1 200 OK\r\n");
       lw_write(ctx, "Content-type: text/html\r\n\r\n");
       lw_write(ctx, "<html>");
@@ -81,6 +81,7 @@ static void worker(int sock) {
 
       lw_send(ctx, sock);
 
+      lw_free(ctx);
       printf("Done with client.\n\n");
       close(sock);
       return;

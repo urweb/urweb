@@ -212,7 +212,7 @@ fun unurlify (t, loc) =
     case t of
         TFfi ("Basis", "int") => string "lw_unurlifyInt(&request)"
       | TFfi ("Basis", "float") => string "lw_unurlifyFloat(&request)"
-      | TFfi ("Basis", "string") => string "lw_unurlifyString(&request)"
+      | TFfi ("Basis", "string") => string "lw_unurlifyString(ctx, &request)"
 
       | TRecord 0 => string "lw_unit_v"
 

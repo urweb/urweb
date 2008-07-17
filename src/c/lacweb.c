@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "types.h"
 
@@ -9,17 +10,54 @@ lw_unit lw_unit_v = {};
 
 struct lw_context {
   char *page, *page_front, *page_back;
+  char *heap, *heap_front, *heap_back;
 };
 
-lw_context lw_init(int page_len) {
+lw_context lw_init(size_t page_len, size_t heap_len) {
   lw_context ctx = malloc(sizeof(struct lw_context));
+
   ctx->page_front = ctx->page = malloc(page_len);
   ctx->page_back = ctx->page_front + page_len;
+
+  ctx->heap_front = ctx->heap = malloc(heap_len);
+  ctx->heap_back = ctx->heap_front + heap_len;
+
   return ctx;
 }
 
 void lw_free(lw_context ctx) {
   free(ctx->page);
+  free(ctx->heap);
+  free(ctx);
+}
+
+static void lw_check_heap(lw_context ctx, size_t extra) {
+  if (ctx->heap_back - ctx->heap_front < extra) {
+    size_t desired = ctx->heap_back - ctx->heap_front + extra, next;
+    char *new_heap;
+
+    for (next = ctx->heap_back - ctx->heap_front; next < desired; next *= 2);
+
+    new_heap = realloc(ctx->heap, next);
+
+    if (new_heap != ctx->heap) {
+      ctx->heap = new_heap;
+      puts("Couldn't get contiguous chunk");
+      exit(1);
+    }
+
+    ctx->heap_back = new_heap + next;
+  }
+}
+
+void *lw_malloc(lw_context ctx, size_t len) {
+  void *result;
+
+  lw_check_heap(ctx, len);
+
+  result = ctx->heap_front;
+  ctx->heap_front += len;
+  return result;
 }
 
 int lw_really_send(int sock, const void *buf, ssize_t len) {
@@ -73,20 +111,58 @@ void lw_write(lw_context ctx, const char* s) {
 }
 
 
-char *lw_Basis_attrifyInt(lw_Basis_int n) {
-  return "0";
-}
-
-char *lw_Basis_attrifyFloat(lw_Basis_float n) {
-  return "0.0";
-}
-
-char *lw_Basis_attrifyString(lw_Basis_string s) {
-  return "";
-}
-
 #define INTS_MAX 50
 #define FLOATS_MAX 100
+
+char *lw_Basis_attrifyInt(lw_context ctx, lw_Basis_int n) {
+  char *result;
+  int len;
+  lw_check_heap(ctx, INTS_MAX);
+  result = ctx->heap_front;
+  sprintf(result, "%d%n", n, &len);
+  ctx->heap_front += len;
+  return result;
+}
+
+char *lw_Basis_attrifyFloat(lw_context ctx, lw_Basis_float n) {
+  char *result;
+  int len;
+  lw_check_heap(ctx, INTS_MAX);
+  result = ctx->heap_front;
+  sprintf(result, "%g%n", n, &len);
+  ctx->heap_front += len;
+  return result;
+}
+
+char *lw_Basis_attrifyString(lw_context ctx, lw_Basis_string s) {
+  int len = strlen(s);
+  char *result, *p;
+  lw_check_heap(ctx, len * 6);
+
+  result = p = ctx->heap_front;
+
+  for (; *s; s++) {
+    char c = *s;
+
+    if (c == '"') {
+      strcpy(p, "&quot;");
+      p += 6;
+    } else if (c == '&') {
+      strcpy(p, "&amp;");
+      p += 5;
+    }
+    else if (isprint(c))
+      *p++ = c;
+    else {
+      int len2;
+      sprintf(p, "&#%d;%n", c, &len2);
+      p += len2;
+    }
+  }
+
+  ctx->heap_front = p;
+  return result;
+}
 
 static void lw_Basis_attrifyInt_w_unsafe(lw_context ctx, lw_Basis_int n) {
   int len;
@@ -116,6 +192,8 @@ void lw_Basis_attrifyString_w(lw_context ctx, lw_Basis_string s) {
 
     if (c == '"')
       lw_write_unsafe(ctx, "&quot;");
+    else if (c == '&')
+      lw_write_unsafe(ctx, "&amp;");
     else if (isprint(c))
       lw_writec_unsafe(ctx, c);
     else {
@@ -205,12 +283,45 @@ lw_Basis_float lw_unurlifyFloat(char **s) {
   return r;
 }
 
-lw_Basis_string lw_unurlifyString(char **s) {
-  return "";
+lw_Basis_string lw_unurlifyString(lw_context ctx, char **s) {
+  char *new_s = strchr(*s, '/');
+  char *r, *s1, *s2;
+  int len, n;
+
+  if (new_s)
+    *new_s++ = 0;
+  else
+    new_s = strchr(*s, 0);
+
+  len = strlen(*s);
+  lw_check_heap(ctx, len + 1);
+
+  r = ctx->heap_front;
+  for (s1 = r, s2 = *s; *s2; ++s1, ++s2) {
+    char c = *s2;
+
+    switch (c) {
+    case '+':
+      *s1 = ' ';
+      break;
+    case '%':
+      assert(s2 + 2 < new_s);
+      sscanf(s2+1, "%02X", &n);
+      *s1 = n;
+      s2 += 2;
+      break;
+    default:
+      *s1 = c;
+    }
+  }
+  *s1++ = 0;
+  ctx->heap_front = s1;
+  *s = new_s;
+  return r;
 }
 
 
-char *lw_Basis_htmlifyString(lw_Basis_string s) {
+char *lw_Basis_htmlifyString(lw_context ctx, lw_Basis_string s) {
   return "";
 }
 
