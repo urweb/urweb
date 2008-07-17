@@ -387,18 +387,26 @@ fun corifyDecl ((d, loc : EM.span), st) =
       | L.DValRec vis =>
         let
             val (vis, st) = ListUtil.foldlMap
-                            (fn ((x, n, t, e), st) =>
-                                let
-                                    val (st, n) = St.bindVal st x n
-                                    val s =
-                                        if String.isPrefix "wrap_" x then
-                                            String.extract (x, 5, NONE)
-                                        else
-                                            x
-                                in
-                                    ((x, n, corifyCon st t, corifyExp st e, s), st)
-                                end)
-                            st vis
+                                (fn ((x, n, t, e), st) =>
+                                    let
+                                        val (st, n) = St.bindVal st x n
+                                    in
+                                        ((x, n, t, e), st)
+                                    end)
+                                st vis
+
+            val vis = map
+                          (fn (x, n, t, e) =>
+                              let
+                                  val s =
+                                      if String.isPrefix "wrap_" x then
+                                          String.extract (x, 5, NONE)
+                                      else
+                                          x
+                              in
+                                  (x, n, corifyCon st t, corifyExp st e, s)
+                              end)
+                          vis
         in
             ([(L'.DValRec vis, loc)], st)
         end
