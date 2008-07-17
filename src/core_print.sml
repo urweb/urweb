@@ -240,7 +240,31 @@ fun p_exp' par env (e, _) =
 
 and p_exp env = p_exp' false env
 
-fun p_decl env ((d, _) : decl) =
+fun p_vali env (x, n, t, e, s) =
+    let
+        val xp = if !debug then
+                     box [string x,
+                          string "__",
+                          string (Int.toString n)]
+                 else
+                     string x        
+    in
+        box [xp,
+             space,
+             string "as",
+             space,
+             string s,
+             space,
+             string ":",
+             space,
+             p_con env t,
+             space,
+             string "=",
+             space,
+             p_exp env e]
+    end
+
+fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DCon (x, n, k, c) =>
         let
@@ -263,30 +287,18 @@ fun p_decl env ((d, _) : decl) =
                  space,
                  p_con env c]
         end
-      | DVal (x, n, t, e, s) =>
+      | DVal vi => box [string "val",
+                        space,
+                        p_vali env vi]
+      | DValRec vis =>
         let
-            val xp = if !debug then
-                         box [string x,
-                              string "__",
-                              string (Int.toString n)]
-                     else
-                         string x        
+            val env = E.declBinds env dAll
         in
             box [string "val",
                  space,
-                 xp,
+                 string "rec",
                  space,
-                 string "as",
-                 space,
-                 string s,
-                 space,
-                 string ":",
-                 space,
-                 p_con env t,
-                 space,
-                 string "=",
-                 space,
-                 p_exp env e]
+                 p_list_sep (box [newline, string "and", space]) (p_vali env) vis]
         end
       | DExport n => box [string "export",
                           space,

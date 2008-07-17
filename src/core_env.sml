@@ -123,6 +123,7 @@ fun declBinds env (d, _) =
     case d of
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
       | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
+      | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t (SOME e) s) env vis
       | DExport _ => env
 
 end

@@ -384,8 +384,24 @@ fun corifyDecl ((d, loc : EM.span), st) =
         in
             ([(L'.DVal (x, n, corifyCon st t, corifyExp st e, s), loc)], st)
         end
-      | L.DValRec _ => raise Fail "Explify DValRec"
-                                                                        
+      | L.DValRec vis =>
+        let
+            val (vis, st) = ListUtil.foldlMap
+                            (fn ((x, n, t, e), st) =>
+                                let
+                                    val (st, n) = St.bindVal st x n
+                                    val s =
+                                        if String.isPrefix "wrap_" x then
+                                            String.extract (x, 5, NONE)
+                                        else
+                                            x
+                                in
+                                    ((x, n, corifyCon st t, corifyExp st e, s), st)
+                                end)
+                            st vis
+        in
+            ([(L'.DValRec vis, loc)], st)
+        end
       | L.DSgn _ => ([], st)
 
       | L.DStr (x, n, _, (L.StrFun (_, na, _, _, str), _)) =>

@@ -49,6 +49,8 @@ fun shake file =
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, c), edef)
                                    | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
+                                   | ((DValRec vis, _), (cdef, edef)) =>
+                                     (cdef, foldl (fn ((_, n, t, e, _), edef) => IM.insert (edef, n, (t, e))) edef vis)
                                    | ((DExport _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
@@ -99,6 +101,7 @@ fun shake file =
     in
         List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
+                      | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => true) file
     end
 

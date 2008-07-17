@@ -83,6 +83,7 @@ withtype exp = exp' located
 datatype decl' =
          DCon of string * int * kind * con
        | DVal of string * int * con * exp * string
+       | DValRec of (string * int * con * exp * string) list
        | DExport of int
 
 withtype decl = decl' located
