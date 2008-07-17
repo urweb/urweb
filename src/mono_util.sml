@@ -258,16 +258,25 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
 
         and mfd' ctx (dAll as (d, loc)) =
             case d of
-                DVal (x, n, t, e, s) =>
-                S.bind2 (mft t,
-                      fn t' =>
-                         S.map2 (mfe ctx e,
-                              fn e' =>
-                                 (DVal (x, n, t', e', s), loc)))
+                DVal vi =>
+                S.map2 (mfvi ctx vi,
+                     fn vi' =>
+                        (DVal vi', loc))
+              | DValRec vis =>
+                S.map2 (ListUtil.mapfold (mfvi ctx) vis,
+                     fn vis' =>
+                        (DValRec vis', loc))
               | DExport (s, n, ts) =>
                 S.map2 (ListUtil.mapfold mft ts,
                         fn ts' =>
                            (DExport (s, n, ts'), loc))
+
+        and mfvi ctx (x, n, t, e, s) =
+            S.bind2 (mft t,
+                  fn t' =>
+                     S.map2 (mfe ctx e,
+                          fn e' =>
+                             (x, n, t', e', s)))
     in
         mfd
     end    
@@ -305,6 +314,8 @@ fun mapfoldB (all as {bind, ...}) =
                                 val ctx' =
                                     case #1 d' of
                                         DVal (x, n, t, e, s) => bind (ctx, NamedE (x, n, t, SOME e, s))
+                                      | DValRec vis => foldl (fn ((x, n, t, e, s), ctx) =>
+                                                                 bind (ctx, NamedE (x, n, t, SOME e, s))) ctx vis
                                       | DExport _ => ctx
                             in
                                 S.map2 (mff ctx' ds',

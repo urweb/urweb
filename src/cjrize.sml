@@ -195,6 +195,7 @@ fun cifyDecl ((d, loc), sm) =
         in
             (SOME (d, loc), NONE, sm)
         end
+      | L.DValRec _ => raise Fail "Cjrize DValRec"
       | L.DExport (s, n, ts) =>
         let
             val (ts, sm) = ListUtil.foldlMap cifyTyp sm ts

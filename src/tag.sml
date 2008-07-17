@@ -147,16 +147,21 @@ fun tag file =
                 end
               | _ =>
                 let
+                    val env' = E.declBinds env d
+                    val env'' = case d' of
+                                    DValRec _ => env'
+                                  | _ => env
+
                     val (d, (count, tags, byTag, newTags)) =
                         U.Decl.foldMap {kind = kind,
                                         con = con,
-                                        exp = exp env,
+                                        exp = exp env'',
                                         decl = decl}
                                        (count, tags, byTag, []) d
 
-                    val env = E.declBinds env d
+                    val env = env'
 
-                    val newDs = ListUtil.mapConcat
+                    val newDs = map
                                     (fn (f, cn) =>
                                         let
                                             fun unravel (all as (t, _)) =
@@ -202,11 +207,17 @@ fun tag file =
                                                         (abs, t)
                                                     end
                                         in
-                                            [(DVal ("wrap_" ^ fnam, cn, t, abs, tag), loc),
-                                             (DExport cn, loc)]
+                                            (("wrap_" ^ fnam, cn, t, abs, tag),
+                                             (DExport cn, loc))
                                         end) newTags
+
+                    val (newVals, newExports) = ListPair.unzip newDs
+
+                    val ds = case d of
+                                 (DValRec vis, _) => [(DValRec (vis @ newVals), loc)]
+                               | _ => map (fn vi => (DVal vi, loc)) newVals @ [d]
                 in
-                    (newDs @ [d], (env, count, tags, byTag))
+                    (ds @ newExports, (env, count, tags, byTag))
                 end
 
         val (file, _) = ListUtil.foldlMapConcat doDecl (CoreEnv.empty, count+1, IM.empty, SM.empty) file
