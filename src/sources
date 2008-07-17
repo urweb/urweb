@@ -101,6 +101,9 @@ untangle.sml
 mono_reduce.sig
 mono_reduce.sml
 
+mono_shake.sig
+mono_shake.sml
+
 cjr.sml
 
 cjr_env.sig

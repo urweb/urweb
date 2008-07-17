@@ -259,8 +259,17 @@ fun mono_reduce job =
         else
             SOME (MonoReduce.reduce file)
 
-fun mono_opt job =
+fun mono_shake job =
     case mono_reduce job of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (MonoShake.shake file)
+
+fun mono_opt job =
+    case mono_shake job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -377,6 +386,15 @@ fun testUntangle job =
 
 fun testMono_reduce job =
     (case mono_reduce job of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (MonoPrint.p_file MonoEnv.empty file);
+          print "\n"))
+    handle MonoEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testMono_shake job =
+    (case mono_shake job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (MonoPrint.p_file MonoEnv.empty file);

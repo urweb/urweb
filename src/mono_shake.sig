@@ -25,49 +25,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+(* Remove unused definitions from a file *)
 
-signature COMPILER = sig
+signature MONO_SHAKE = sig
 
-    type job = string list
-    val compile : job -> unit
-
-    val parseLig : string -> Source.sgn_item list option
-    val testLig : string -> unit
-
-    val parseLac : string -> Source.file option
-    val testLac : string -> unit
-
-    val parse : job -> Source.file option
-    val elaborate : job -> Elab.file option
-    val explify : job -> Expl.file option
-    val corify : job -> Core.file option
-    val shake' : job -> Core.file option
-    val tag : job -> Core.file option
-    val reduce : job -> Core.file option
-    val shake : job -> Core.file option
-    val monoize : job -> Mono.file option
-    val mono_opt' : job -> Mono.file option
-    val untangle : job -> Mono.file option
-    val mono_reduce : job -> Mono.file option
-    val mono_shake : job -> Mono.file option
-    val mono_opt : job -> Mono.file option
-    val cjrize : job -> Cjr.file option
-
-    val testParse : job -> unit
-    val testElaborate : job -> unit
-    val testExplify : job -> unit
-    val testCorify : job -> unit
-    val testShake' : job -> unit
-    val testTag : job -> unit
-    val testReduce : job -> unit
-    val testShake : job -> unit
-    val testMonoize : job -> unit
-    val testMono_opt' : job -> unit
-    val testUntangle : job -> unit
-    val testMono_reduce : job -> unit
-    val testMono_shake : job -> unit
-    val testMono_opt : job -> unit
-    val testCjrize : job -> unit
+    val shake : Mono.file -> Mono.file
 
 end
