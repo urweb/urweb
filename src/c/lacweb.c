@@ -120,24 +120,24 @@ char *lw_Basis_attrifyInt(lw_context ctx, lw_Basis_int n) {
   lw_check_heap(ctx, INTS_MAX);
   result = ctx->heap_front;
   sprintf(result, "%d%n", n, &len);
-  ctx->heap_front += len;
+  ctx->heap_front += len+1;
   return result;
 }
 
 char *lw_Basis_attrifyFloat(lw_context ctx, lw_Basis_float n) {
   char *result;
   int len;
-  lw_check_heap(ctx, INTS_MAX);
+  lw_check_heap(ctx, FLOATS_MAX);
   result = ctx->heap_front;
   sprintf(result, "%g%n", n, &len);
-  ctx->heap_front += len;
+  ctx->heap_front += len+1;
   return result;
 }
 
 char *lw_Basis_attrifyString(lw_context ctx, lw_Basis_string s) {
   int len = strlen(s);
   char *result, *p;
-  lw_check_heap(ctx, len * 6);
+  lw_check_heap(ctx, len * 6 + 1);
 
   result = p = ctx->heap_front;
 
@@ -160,6 +160,7 @@ char *lw_Basis_attrifyString(lw_context ctx, lw_Basis_string s) {
     }
   }
 
+  *p++ = 0;
   ctx->heap_front = p;
   return result;
 }
@@ -205,16 +206,49 @@ void lw_Basis_attrifyString_w(lw_context ctx, lw_Basis_string s) {
 }
 
 
-char *lw_Basis_urlifyInt(lw_Basis_int n) {
-  return "0";
+char *lw_Basis_urlifyInt(lw_context ctx, lw_Basis_int n) {
+  int len;
+  char *r;
+
+  lw_check_heap(ctx, INTS_MAX);
+  r = ctx->heap_front;
+  sprintf(r, "%d%n", n, &len);
+  ctx->heap_front += len+1;
+  return r;
 }
 
-char *lw_Basis_urlifyFloat(lw_Basis_float n) {
-  return "0.0";
+char *lw_Basis_urlifyFloat(lw_context ctx, lw_Basis_float n) {
+  int len;
+  char *r;
+
+  lw_check_heap(ctx, FLOATS_MAX);
+  r = ctx->heap_front;
+  sprintf(r, "%g%n", n, &len);
+  ctx->heap_front += len+1;
+  return r;
 }
 
-char *lw_Basis_urlifyString(lw_Basis_string s) {
-  return "";
+char *lw_Basis_urlifyString(lw_context ctx, lw_Basis_string s) {
+  char *r, *p;
+
+  lw_check_heap(ctx, strlen(s) * 3 + 1);
+
+  for (r = p = ctx->heap_front; *s; s++) {
+    char c = *s;
+
+    if (c == ' ')
+      *p++ = '+';
+    else if (isalnum(c))
+      *p++ = c;
+    else {
+      sprintf(p, "%%%02X", c);
+      p += 3;
+    }
+  }
+
+  *p++ = 0;
+  ctx->heap_front = p;
+  return r;
 }
 
 static void lw_Basis_urlifyInt_w_unsafe(lw_context ctx, lw_Basis_int n) {
@@ -322,7 +356,36 @@ lw_Basis_string lw_unurlifyString(lw_context ctx, char **s) {
 
 
 char *lw_Basis_htmlifyString(lw_context ctx, lw_Basis_string s) {
-  return "";
+  char *r, *s2;
+
+  lw_check_heap(ctx, strlen(s) * 5 + 1);
+
+  for (r = s2 = ctx->heap_front; *s; s++) {
+    char c = *s;
+
+    switch (c) {
+    case '<':
+      strcpy(s2, "&lt;");
+      s2 += 4;
+      break;
+    case '&':
+      strcpy(s2, "&amp;");
+      s2 += 5;
+      break;
+    default:
+      if (isprint(c))
+        *s2++ = c;
+      else {
+        int len2;
+        sprintf(s2, "&#%d;%n", c, &len2);
+        s2 += len2;
+      }
+    }
+  }
+
+  *s2++ = 0;
+  ctx->heap_front = s2;
+  return r;
 }
 
 void lw_Basis_htmlifyString_w(lw_context ctx, lw_Basis_string s) {
