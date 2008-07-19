@@ -8,6 +8,7 @@ extern lw_unit lw_unit_v;
 
 lw_context lw_init(size_t page_len, size_t heap_len);
 void lw_free(lw_context);
+void lw_reset(lw_context);
 void *lw_malloc(lw_context, size_t);
 int lw_send(lw_context, int sock);
 

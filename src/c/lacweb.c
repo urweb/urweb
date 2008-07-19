@@ -31,6 +31,11 @@ void lw_free(lw_context ctx) {
   free(ctx);
 }
 
+void lw_reset(lw_context ctx) {
+  ctx->page_front = ctx->page;
+  ctx->heap_front = ctx->heap;
+}
+
 static void lw_check_heap(lw_context ctx, size_t extra) {
   if (ctx->heap_back - ctx->heap_front < extra) {
     size_t desired = ctx->heap_back - ctx->heap_front + extra, next;

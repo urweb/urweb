@@ -432,7 +432,7 @@ fun compile job =
             val ename = "/tmp/webapp"
 
             val compile = "gcc -O3 -I include -c " ^ cname ^ " -o " ^ oname
-            val link = "gcc -O3 clib/lacweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
+            val link = "gcc -pthread -O3 clib/lacweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
 
             val outf = TextIO.openOut cname
             val s = TextIOPP.openOut {dst = outf, wid = 80}
