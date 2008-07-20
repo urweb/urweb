@@ -151,14 +151,8 @@ fun monoExp env (all as (e, loc)) =
               (L.ECApp (
                (L.ECApp (
                 (L.ECApp (
-                 (L.ECApp (
-                  (L.ECApp (
-                   (L.ECApp (
-                    (L.EFfi ("Basis", "join"),
+                 (L.EFfi ("Basis", "join"),
                      _), _), _),
-                   _), _),
-                  _), _),
-                 _), _),
                 _), _),
                _), _),
               _), _),
@@ -182,9 +176,18 @@ fun monoExp env (all as (e, loc)) =
              tag), _),
             xml) =>
             let
-                fun getTag (e, _) =
+                fun getTag' (e, _) =
                     case e of
                         L.EFfi ("Basis", tag) => tag
+                      | L.ECApp (e, _) => getTag' e
+                      | _ => (E.errorAt loc "Non-constant XML tag";
+                              Print.eprefaces' [("Expression", CorePrint.p_exp env tag)];
+                              "")
+
+                fun getTag (e, _) =
+                    case e of
+                        L.EFfiApp ("Basis", tag, [(L.ERecord [], _)]) => tag
+                      | L.EApp (e, (L.ERecord [], _)) => getTag' e
                       | _ => (E.errorAt loc "Non-constant XML tag";
                               Print.eprefaces' [("Expression", CorePrint.p_exp env tag)];
                               "")

@@ -963,7 +963,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                      ((L'.EModProj (n, ms, s), loc), t, [])
                  end)
 
-          | L.EApp (arg as ((L.EApp ((L.ECApp ((L.EVar (["Basis"], "join"), _), (L.CWild _, _)), _), xml1), _), xml2)) =>
+          (*| L.EApp (arg as ((L.EApp ((L.ECApp ((L.EVar (["Basis"], "join"), _), (L.CWild _, _)), _), xml1), _), xml2)) =>
             let
                 val (xml1', t1, gs1) = elabExp (env, denv) xml1
                 val (xml2', t2, gs2) = elabExp (env, denv) xml2
@@ -1067,7 +1067,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                        :: (loc, env, denv, use1, use2)
                        :: (loc, env, denv, bind1, bind2)
                        :: gs1 @ gs2 @ gs3 @ gs4 @ gs5 @ gs6 @ gs7 @ gs8)
-            end
+            end*)
 
           | L.EApp (e1, e2) =>
             let

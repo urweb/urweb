@@ -18,29 +18,37 @@ val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type} -> attrsGiven ~ attrsA
         -> tag (attrsGiven ++ attrsAbsent) ctxOuter ctxInner useOuter bindOuter
         -> xml ctxInner useInner bindInner
         -> xml ctxOuter (useOuter ++ useInner) (bindOuter ++ bindInner)
-val join : sharedCtx :: {Unit}
-        -> ctx1 ::: {Unit} -> ctx1 ~ sharedCtx
-        -> ctx2 ::: {Unit} -> ctx2 ~ sharedCtx
+val join : ctx ::: {Unit} 
         -> use1 ::: {Type} -> bind1 ::: {Type} -> bind2 ::: {Type}
         -> use1 ~ bind1 -> bind1 ~ bind2
-        -> xml (sharedCtx ++ ctx1) use1 bind1
-        -> xml (sharedCtx ++ ctx2) (use1 ++ bind1) bind2
-        -> xml sharedCtx use1 (bind1 ++ bind2)
+        -> xml ctx use1 bind1
+        -> xml ctx (use1 ++ bind1) bind2
+        -> xml ctx use1 (bind1 ++ bind2)
 
 
 con xhtml = xml [Html]
 con page = xhtml [] []
 
-val head : tag [] [Html] [Head] [] []
-val title : tag [] [Head] [] [] []
+con html = [Html]
+con head = [Head]
+con body = [Body]
+con form = [Body, Form]
 
-val body : tag [] [Html] [Body] [] []
-val p : tag [] [Body] [Body] [] []
-val b : tag [] [Body] [Body] [] []
-val i : tag [] [Body] [Body] [] []
-val font : tag [Size = int, Face = string] [Body] [Body] [] []
+val head : unit -> tag [] html head [] []
+val title : unit -> tag [] head [] [] []
 
-val h1 : tag [] [Body] [Body] [] []
-val li : tag [] [Body] [Body] [] []
+val body : unit -> tag [] html body [] []
+con bodyTag = fn attrs :: {Type} => ctx ::: {Unit} -> [Body] ~ ctx -> unit
+        -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
 
-val a : tag [Link = page] [Body] [Body] [] []
+val p : bodyTag []
+val b : bodyTag []
+val i : bodyTag []
+val font : bodyTag [Size = int, Face = string]
+
+val h1 : bodyTag []
+val li : bodyTag []
+
+val a : bodyTag [Link = page]
+
+val form : unit -> tag [] [Body] [Form] [] []
