@@ -444,7 +444,7 @@ datatype cunify_error =
        | COccursCheckFailed of L'.con * L'.con
        | CIncompatible of L'.con * L'.con
        | CExplicitness of L'.con * L'.con
-       | CKindof of L'.con
+       | CKindof of L'.kind * L'.con
        | CRecordFailure
 
 exception CUnify' of cunify_error
@@ -468,9 +468,10 @@ fun cunifyError env err =
         eprefaces "Differing constructor function explicitness"
                   [("Con 1", p_con env c1),
                    ("Con 2", p_con env c2)]
-      | CKindof c =>
+      | CKindof (k, c) =>
         eprefaces "Kind unification variable blocks kindof calculation"
-                  [("Con", p_con env c)]
+                  [("Kind", p_kind k),
+                   ("Con", p_con env c)]
       | CRecordFailure =>
         eprefaces "Can't unify record constructors" []
 
@@ -526,10 +527,10 @@ fun kindof env (c, loc) =
         end
 
       | L'.CApp (c, _) =>
-        (case #1 (hnormKind (kindof env c)) of
-             L'.KArrow (_, k) => k
-           | L'.KError => kerror
-           | _ => raise CUnify' (CKindof c))
+        (case hnormKind (kindof env c) of
+             (L'.KArrow (_, k), _) => k
+           | (L'.KError, _) => kerror
+           | k => raise CUnify' (CKindof (k, c)))
       | L'.CAbs (x, k, c) => (L'.KArrow (k, kindof (E.pushCRel env x k) c), loc)
       | L'.CDisjoint (_, _, c) => kindof env c
 
@@ -551,7 +552,8 @@ fun unifyRecordCons (env, denv) (c1, c2) =
         fun rkindof c =
             case kindof env c of
                 (L'.KRecord k, _) => k
-              | _ => raise CUnify' (CKindof c)
+              | (L'.KError, _) => kerror
+              | k => raise CUnify' (CKindof (k, c))
 
         val k1 = rkindof c1
         val k2 = rkindof c2
@@ -643,7 +645,8 @@ and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
               | (_, _, (_, r) :: rest) =>
                 let
                     val r' = ref NONE
-                    val cr' = (L'.CUnif (dummy, k, "recd", r'), dummy)
+                    val kr = (L'.KRecord k, dummy)
+                    val cr' = (L'.CUnif (dummy, kr, "recd", r'), dummy)
 
                     val prefix = case (fs, others) of
                                      ([], other :: others) =>

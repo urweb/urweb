@@ -90,6 +90,8 @@ fun uppercaseFirst "" = ""
  | rexp of (con * exp) list
  | xml of exp
  | xmlOne of exp
+ | tag of string * exp
+ | tagHead of string * exp
 
  | attrs of (con * exp) list
  | attr of con * exp
@@ -306,47 +308,61 @@ rexp   :                                ([])
        | ident EQ eexp                  ([(ident, eexp)])
        | ident EQ eexp COMMA rexp       ((ident, eexp) :: rexp)
 
-xml    : xmlOne xml                  (let
-                                          val pos = s (xmlOneleft, xmlright)
-                                      in
-                                          (EApp ((EApp (
-                                                  (EVar (["Basis"], "join"), pos),
+xml    : xmlOne xml                     (let
+                                             val pos = s (xmlOneleft, xmlright)
+                                         in
+                                             (EApp ((EApp (
+                                                     (EVar (["Basis"], "join"), pos),
                                                   xmlOne), pos),
-                                                 xml), pos)
-                                      end)
-       | xmlOne                      (xmlOne)
+                                                    xml), pos)
+                                         end)
+       | xmlOne                         (xmlOne)
 
-xmlOne : NOTAGS                      (EApp ((EVar (["Basis"], "cdata"), s (NOTAGSleft, NOTAGSright)),
-                                            (EPrim (Prim.String NOTAGS), s (NOTAGSleft, NOTAGSright))),
-                                      s (NOTAGSleft, NOTAGSright))
-       | BEGIN_TAG attrs DIVIDE GT   (let
-                                          val pos = s (BEGIN_TAGleft, GTright)
-                                      in
-                                          (EApp ((EApp ((EApp ((EVar (["Basis"], "tag"), pos),
-                                                               (ERecord attrs, pos)), pos),
-                                                        ((EApp ((EVar ([], BEGIN_TAG), pos),
-                                                                (ERecord [], pos)), pos))),
-                                                  pos),
-                                                 (EApp ((EVar (["Basis"], "cdata"), pos),
-                                                        (EPrim (Prim.String ""), pos)),
-                                                  pos)), pos)
-                                      end)
+xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata"), s (NOTAGSleft, NOTAGSright)),
+                                               (EPrim (Prim.String NOTAGS), s (NOTAGSleft, NOTAGSright))),
+                                         s (NOTAGSleft, NOTAGSright))
+       | tag DIVIDE GT                  (let
+                                             val pos = s (tagleft, GTright)
+                                         in
+                                             (EApp (#2 tag,
+                                                    (EApp ((EVar (["Basis"], "cdata"), pos),
+                                                           (EPrim (Prim.String ""), pos)),
+                                                     pos)), pos)
+                                         end)
+         
+       | tag GT xml END_TAG             (let
+                                             val pos = s (tagleft, GTright)
+                                         in
+                                             if #1 tag = END_TAG then
+                                                 if END_TAG = "lform" then
+                                                     (EApp ((EVar (["Basis"], "lform"), pos),
+                                                            xml), pos)
+                                                 else
+                                                     (EApp (#2 tag, xml), pos)
+                                             else
+                                                 (ErrorMsg.errorAt pos "Begin and end tags don't match.";
+                                                  (EFold, pos))
+                                         end)
+       | LBRACE eexp RBRACE             (eexp)
 
-       | BEGIN_TAG attrs GT xml END_TAG(let
-                                            val pos = s (BEGIN_TAGleft, GTright)
-                                        in
-                                            if BEGIN_TAG = END_TAG then
-                                                (EApp ((EApp ((EApp ((EVar (["Basis"], "tag"), pos),
-                                                                     (ERecord attrs, pos)), pos),
-                                                              (EApp ((EVar ([], BEGIN_TAG), pos),
-                                                                     (ERecord [], pos)), pos)),
-                                                        pos),
-                                                       xml), pos)
-                                            else
-                                                (ErrorMsg.errorAt pos "Begin and end tags don't match.";
-                                                 (EFold, pos))
-                                        end)
-       | LBRACE eexp RBRACE          (eexp)
+tag    : tagHead attrs                  (let
+                                             val pos = s (tagHeadleft, attrsright)
+                                         in
+                                             (#1 tagHead,
+                                              (EApp ((EApp ((EVar (["Basis"], "tag"), pos),
+                                                            (ERecord attrs, pos)), pos),
+                                                     (EApp (#2 tagHead,
+                                                            (ERecord [], pos)), pos)),
+                                               pos))
+                                         end)
+
+tagHead: BEGIN_TAG                      (let
+                                             val pos = s (BEGIN_TAGleft, BEGIN_TAGright)
+                                         in
+                                             (BEGIN_TAG,
+                                              (EVar ([], BEGIN_TAG), pos))
+                                         end)
+       | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
 attrs  :                                ([])
        | attr attrs                     (attr :: attrs)

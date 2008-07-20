@@ -9,7 +9,7 @@ con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 
 
 con xml :: {Unit} -> {Type} -> {Type} -> Type
-val cdata : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> string -> xml ctx use bind
+val cdata : ctx ::: {Unit} -> use ::: {Type} -> string -> xml ctx use []
 val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type} -> attrsGiven ~ attrsAbsent
         -> ctxOuter ::: {Unit} -> ctxInner ::: {Unit}
         -> useOuter ::: {Type} -> useInner ::: {Type} -> useOuter ~ useInner
@@ -32,7 +32,7 @@ con page = xhtml [] []
 con html = [Html]
 con head = [Head]
 con body = [Body]
-con form = [Body, Form]
+con lform = [Body, LForm]
 
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
@@ -40,6 +40,10 @@ val title : unit -> tag [] head [] [] []
 val body : unit -> tag [] html body [] []
 con bodyTag = fn attrs :: {Type} => ctx ::: {Unit} -> [Body] ~ ctx -> unit
         -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
+con bodyTagStandalone = fn attrs :: {Type} => ctx ::: {Unit} -> [Body] ~ ctx -> unit
+        -> tag attrs ([Body] ++ ctx) [] [] []
+
+val br : bodyTagStandalone []
 
 val p : bodyTag []
 val b : bodyTag []
@@ -51,4 +55,11 @@ val li : bodyTag []
 
 val a : bodyTag [Link = page]
 
-val form : unit -> tag [] [Body] [Form] [] []
+val lform : ctx ::: {Unit} -> [Body] ~ ctx -> bind ::: {Type}
+        -> xml lform [] bind
+        -> xml ([Body] ++ ctx) [] []
+con lformTag = fn ty :: Type => fn attrs :: {Type} =>
+        ctx ::: {Unit} -> [LForm] ~ ctx
+        -> nm :: Name -> unit
+        -> tag attrs ([LForm] ++ ctx) [] [] [nm = ty]
+val textbox : lformTag string []

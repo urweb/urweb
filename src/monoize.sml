@@ -140,9 +140,7 @@ fun monoExp env (all as (e, loc)) =
 
           | L.EApp (
             (L.ECApp (
-             (L.ECApp (
-              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
-              _), _),
+             (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
              _), _),
             se) => (L'.EFfiApp ("Basis", "htmlifyString", [monoExp env se]), loc)
           | L.EApp (
@@ -234,14 +232,25 @@ fun monoExp env (all as (e, loc)) =
 
             in
                 case xml of
-                    (L.EApp ((L.ECApp ((L.EFfi ("Basis", "cdata"), _),
-                                       _), _), (L.EPrim (Prim.String s), _)), _) =>
+                    (L.EApp ((L.ECApp (
+                              (L.ECApp ((L.EFfi ("Basis", "cdata"), _),
+                                        _), _),
+                              _), _),
+                             (L.EPrim (Prim.String s), _)), _) =>
                     if CharVector.all Char.isSpace s then
                         (L'.EStrcat (tagStart, (L'.EPrim (Prim.String "/>"), loc)), loc)
                     else
                         normal ()
                   | _ => normal ()
             end
+
+          | L.EApp ((L.ECApp (
+                     (L.ECApp ((L.EFfi ("Basis", "lform"), _), _), _),
+                     _), _),
+                    xml) =>
+            (L'.EStrcat ((L'.EPrim (Prim.String "<form>"), loc),
+                         (L'.EStrcat (monoExp env xml,
+                                      (L'.EPrim (Prim.String "</form>"), loc)), loc)), loc)
 
           | L.EApp (e1, e2) => (L'.EApp (monoExp env e1, monoExp env e2), loc)
           | L.EAbs (x, dom, ran, e) =>

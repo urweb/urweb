@@ -1,0 +1,6 @@
+val main : unit -> page = fn () => <html><body>
+        <lform>
+                Name: <textbox{#Nam} /><br/>
+                Color: <textbox{#Color} /><br/>
+        </lform>
+</body></html>
