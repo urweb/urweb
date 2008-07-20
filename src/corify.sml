@@ -480,9 +480,11 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                  L.SgiVal (s, _, t as (L.TFun (dom, ran), _)) =>
                                  (case (#1 dom, #1 ran) of
                                       (L.TRecord _,
-                                       L.CApp ((L.CModProj (_, [], "xml"), _),
-                                               (L.CRecord (_, [((L.CName "Html", _),
-                                                                _)]), _))) =>
+                                       L.CApp
+                                           ((L.CApp
+                                                 ((L.CApp ((L.CModProj (_, [], "xml"), _),
+                                                           (L.CRecord (_, [((L.CName "Html", _),
+                                                                            _)]), _)), _), _), _), _)) =>
                                       let
                                           val ran = (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc)
                                           val e = (L.EModProj (m, ms, s), loc)

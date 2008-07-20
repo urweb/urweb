@@ -138,15 +138,28 @@ fun monoExp env (all as (e, loc)) =
           | L.EFfi mx => (L'.EFfi mx, loc)
           | L.EFfiApp (m, x, es) => (L'.EFfiApp (m, x, map (monoExp env) es), loc)
 
-          | L.EApp ((L.ECApp ((L.EFfi ("Basis", "cdata"), _),
-                              _), _), se) => (L'.EFfiApp ("Basis", "htmlifyString", [monoExp env se]), loc)
+          | L.EApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
+              _), _),
+             _), _),
+            se) => (L'.EFfiApp ("Basis", "htmlifyString", [monoExp env se]), loc)
           | L.EApp (
             (L.EApp (
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "join"),
-                 _), _), _),
+                (L.ECApp (
+                 (L.ECApp (
+                  (L.ECApp (
+                   (L.ECApp (
+                    (L.EFfi ("Basis", "join"),
+                     _), _), _),
+                   _), _),
+                  _), _),
+                 _), _),
+                _), _),
                _), _),
               _), _),
              xml1), _),
@@ -159,8 +172,12 @@ fun monoExp env (all as (e, loc)) =
                (L.ECApp (
                 (L.ECApp (
                  (L.ECApp (
-                  (L.EFfi ("Basis", "tag"),
-                   _), _), _), _), _), _), _), _), _),
+                  (L.ECApp (
+                   (L.ECApp (
+                    (L.ECApp (
+                     (L.ECApp (
+                      (L.EFfi ("Basis", "tag"),
+                       _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
               attrs), _),
              tag), _),
             xml) =>

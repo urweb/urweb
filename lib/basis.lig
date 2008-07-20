@@ -5,35 +5,42 @@ type string
 type unit = {}
 
 
-con tag :: {Type} -> {Unit} -> {Unit} -> Type
+con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 
 
-con xml :: {Unit} -> Type
-val cdata : ctx ::: {Unit} -> string -> xml ctx
+con xml :: {Unit} -> {Type} -> {Type} -> Type
+val cdata : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> string -> xml ctx use bind
 val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type} -> attrsGiven ~ attrsAbsent
-        -> outer ::: {Unit} -> inner ::: {Unit}
+        -> ctxOuter ::: {Unit} -> ctxInner ::: {Unit}
+        -> useOuter ::: {Type} -> useInner ::: {Type} -> useOuter ~ useInner
+        -> bindOuter ::: {Type} -> bindInner ::: {Type} -> bindOuter ~ bindInner
         -> $attrsGiven
-        -> tag (attrsGiven ++ attrsAbsent) outer inner
-        -> xml inner
-        -> xml outer
-val join : shared :: {Unit}
-        -> ctx1 ::: {Unit} -> ctx1 ~ shared
-        -> ctx2 ::: {Unit} -> ctx2 ~ shared
-        -> xml (shared ++ ctx1) -> xml (shared ++ ctx2) -> xml shared
+        -> tag (attrsGiven ++ attrsAbsent) ctxOuter ctxInner useOuter bindOuter
+        -> xml ctxInner useInner bindInner
+        -> xml ctxOuter (useOuter ++ useInner) (bindOuter ++ bindInner)
+val join : sharedCtx :: {Unit}
+        -> ctx1 ::: {Unit} -> ctx1 ~ sharedCtx
+        -> ctx2 ::: {Unit} -> ctx2 ~ sharedCtx
+        -> use1 ::: {Type} -> bind1 ::: {Type} -> bind2 ::: {Type}
+        -> use1 ~ bind1 -> bind1 ~ bind2
+        -> xml (sharedCtx ++ ctx1) use1 bind1
+        -> xml (sharedCtx ++ ctx2) (use1 ++ bind1) bind2
+        -> xml sharedCtx use1 (bind1 ++ bind2)
 
 
 con xhtml = xml [Html]
+con page = xhtml [] []
 
-val head : tag [] [Html] [Head]
-val title : tag [] [Head] []
+val head : tag [] [Html] [Head] [] []
+val title : tag [] [Head] [] [] []
 
-val body : tag [] [Html] [Body]
-val p : tag [] [Body] [Body]
-val b : tag [] [Body] [Body]
-val i : tag [] [Body] [Body]
-val font : tag [Size = int, Face = string] [Body] [Body]
+val body : tag [] [Html] [Body] [] []
+val p : tag [] [Body] [Body] [] []
+val b : tag [] [Body] [Body] [] []
+val i : tag [] [Body] [Body] [] []
+val font : tag [Size = int, Face = string] [Body] [Body] [] []
 
-val h1 : tag [] [Body] [Body]
-val li : tag [] [Body] [Body]
+val h1 : tag [] [Body] [Body] [] []
+val li : tag [] [Body] [Body] [] []
 
-val a : tag [Link = xhtml] [Body] [Body]
+val a : tag [Link = page] [Body] [Body] [] []

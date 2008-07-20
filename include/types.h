@@ -11,3 +11,4 @@ typedef lw_unit lw_Basis_unit;
 typedef struct lw_context *lw_context;
 
 typedef lw_Basis_string lw_Basis_xhtml;
+typedef lw_Basis_string lw_Basis_page;

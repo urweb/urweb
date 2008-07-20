@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
 
     pthread_mutex_lock(&queue_mutex);
     enqueue(new_fd);
-    pthread_mutex_unlock(&queue_mutex);
     pthread_cond_broadcast(&queue_cond);
+    pthread_mutex_unlock(&queue_mutex);
   }
 }

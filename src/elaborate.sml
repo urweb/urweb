@@ -970,6 +970,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 
                 val kunit = (L'.KUnit, loc)
                 val k = (L'.KRecord kunit, loc)
+                val kt = (L'.KRecord (L'.KType, loc), loc)
 
                 val basis =
                     case E.lookupStr env "Basis" of
@@ -979,12 +980,19 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 fun xml () =
                     let
                         val ns = cunif (loc, k)
+                        val use = cunif (loc, kt)
+                        val bind = cunif (loc, kt)
+
+                        val t = (L'.CModProj (basis, [], "xml"), loc)
+                        val t = (L'.CApp (t, ns), loc)
+                        val t = (L'.CApp (t, use), loc)
+                        val t = (L'.CApp (t, bind), loc)
                     in
-                        (ns, (L'.CApp ((L'.CModProj (basis, [], "xml"), loc), ns), loc))
+                        (ns, use, bind, t)
                     end
 
-                val (ns1, c1) = xml ()
-                val (ns2, c2) = xml ()
+                val (ns1, use1, bind1, c1) = xml ()
+                val (ns2, use2, bind2, c2) = xml ()
 
                 val gs3 = checkCon (env, denv) xml1' t1 c1
                 val gs4 = checkCon (env, denv) xml2' t2 c2
@@ -1017,10 +1025,17 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val e = (L'.ECApp (e, shared), loc)
                 val e = (L'.ECApp (e, ctx1), loc)
                 val e = (L'.ECApp (e, ctx2), loc)
+                val e = (L'.ECApp (e, use1), loc)
+                val e = (L'.ECApp (e, use2), loc)
+                val e = (L'.ECApp (e, bind1), loc)
+                val e = (L'.ECApp (e, bind2), loc)
                 val e = (L'.EApp (e, xml1'), loc)
                 val e = (L'.EApp (e, xml2'), loc)
 
-                val t = (L'.CApp ((L'.CModProj (basis, [], "xml"), loc), shared), loc)
+                val t = (L'.CModProj (basis, [], "xml"), loc)
+                val t = (L'.CApp (t, shared), loc)
+                val t = (L'.CApp (t, (L'.CConcat (use1, use2), loc)), loc)
+                val t = (L'.CApp (t, (L'.CConcat (bind1, bind2), loc)), loc)
 
                 fun doUnify (ns, ns') =
                     let
@@ -1049,6 +1064,8 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
             in
                 (e, t, (loc, env, denv, shared, ctx1)
                        :: (loc, env, denv, shared, ctx2)
+                       :: (loc, env, denv, use1, use2)
+                       :: (loc, env, denv, bind1, bind2)
                        :: gs1 @ gs2 @ gs3 @ gs4 @ gs5 @ gs6 @ gs7 @ gs8)
             end
 
@@ -1975,14 +1992,27 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                                      ((L'.TFun (dom, ran), _), []) =>
                                      (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
                                           (((L'.TRecord domR, _), []),
-                                           ((L'.CApp (tf, ranR), _), [])) =>
-                                          (case (hnormCon (env, denv) tf, hnormCon (env, denv) ranR) of
-                                               ((tf, []), (ranR, [])) =>
-                                               (case (hnormCon (env, denv) domR, hnormCon (env, denv) ranR) of
-                                                    ((domR, []), (ranR, [])) =>
-                                                    (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
-                                                                                (L'.CApp (tf, ranR), loc)),
-                                                                       loc)), loc)
+                                           ((L'.CApp (tf, arg3), _), [])) =>
+                                          (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
+                                               (((L'.CApp (tf, arg2), _), []),
+                                                (((L'.CRecord (_, []), _), []))) =>
+                                               (case (hnormCon (env, denv) tf) of
+                                                    ((L'.CApp (tf, arg1), _), []) =>
+                                                    (case (hnormCon (env, denv) tf,
+                                                           hnormCon (env, denv) domR,
+                                                           hnormCon (env, denv) arg2) of
+                                                         ((tf, []), (domR, []),
+                                                          ((L'.CRecord (_, []), _), [])) =>
+                                                         let
+                                                             val t = (L'.CApp (tf, arg1), loc)
+                                                             val t = (L'.CApp (t, arg2), loc)
+                                                             val t = (L'.CApp (t, arg3), loc)
+                                                         in
+                                                             (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
+                                                                                         t),
+                                                                                loc)), loc)
+                                                         end
+                                                       | _ => all)
                                                   | _ => all)
                                              | _ => all)
                                         | _ => all)

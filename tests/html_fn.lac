@@ -1,4 +1,4 @@
-val main = fn () => <html>
+val main : unit -> page = fn () => <html>
         <head>
                 <title>Hello World!</title>
         </head>
