@@ -65,50 +65,57 @@ fun exp env (e, s) =
              let
                  val (xets, s) =
                      ListUtil.foldlMap (fn ((x, e, t), (count, tags, byTag, newTags)) =>
-                                           case x of
-                                               (CName "Link", _) =>
-                                               let
-                                                   fun unravel (e, _) =
-                                                       case e of
-                                                           ENamed n => (n, [])
-                                                         | EApp (e1, e2) =>
-                                                           let
-                                                               val (n, es) = unravel e1
-                                                           in
-                                                               (n, es @ [e2])
-                                                           end
-                                                         | _ => (ErrorMsg.errorAt loc "Invalid link expression";
-                                                                 (0, []))
+                                           let
+                                               fun tagIt newAttr =
+                                                   let
+                                                       fun unravel (e, _) =
+                                                           case e of
+                                                               ENamed n => (n, [])
+                                                             | EApp (e1, e2) =>
+                                                               let
+                                                                   val (n, es) = unravel e1
+                                                               in
+                                                                   (n, es @ [e2])
+                                                               end
+                                                             | _ => (ErrorMsg.errorAt loc "Invalid link expression";
+                                                                     (0, []))
 
-                                                   val (f, args) = unravel e
 
-                                                   val (cn, count, tags, newTags) =
-                                                       case IM.find (tags, f) of
-                                                           NONE =>
-                                                           (count, count + 1, IM.insert (tags, f, count),
-                                                            (f, count) :: newTags)
-                                                         | SOME cn => (cn, count, tags, newTags)
 
-                                                   val (_, _, _, s) = E.lookupENamed env f
+                                                       val (f, args) = unravel e
 
-                                                   val byTag = case SM.find (byTag, s) of
-                                                                   NONE => SM.insert (byTag, s, f)
-                                                                 | SOME f' =>
-                                                                   (if f = f' then
-                                                                       ()
-                                                                    else
-                                                                        ErrorMsg.errorAt loc 
-                                                                                         ("Duplicate HTTP tag "
-                                                                                          ^ s);
-                                                                    byTag)
+                                                       val (cn, count, tags, newTags) =
+                                                           case IM.find (tags, f) of
+                                                               NONE =>
+                                                               (count, count + 1, IM.insert (tags, f, count),
+                                                                (f, count) :: newTags)
+                                                             | SOME cn => (cn, count, tags, newTags)
+                                                                          
+                                                       val (_, _, _, s) = E.lookupENamed env f
 
-                                                   val e = (EClosure (cn, args), loc)
-                                                   val t = (CFfi ("Basis", "string"), loc)
-                                               in
-                                                   (((CName "href", loc), e, t),
-                                                    (count, tags, byTag, newTags))
-                                               end
-                                             | _ => ((x, e, t), (count, tags, byTag, newTags)))
+                                                       val byTag = case SM.find (byTag, s) of
+                                                                       NONE => SM.insert (byTag, s, f)
+                                                                     | SOME f' =>
+                                                                       (if f = f' then
+                                                                            ()
+                                                                        else
+                                                                            ErrorMsg.errorAt loc 
+                                                                                             ("Duplicate HTTP tag "
+                                                                                              ^ s);
+                                                                        byTag)
+
+                                                       val e = (EClosure (cn, args), loc)
+                                                       val t = (CFfi ("Basis", "string"), loc)
+                                                   in
+                                                       (((CName newAttr, loc), e, t),
+                                                        (count, tags, byTag, newTags))
+                                                   end
+                                           in
+                                               case x of
+                                                   (CName "Link", _) => tagIt "Href"
+                                                 | (CName "Action", _) => tagIt "Action"
+                                                 | _ => ((x, e, t), (count, tags, byTag, newTags))
+                                           end)
                      s xets
              in
                  (EApp (

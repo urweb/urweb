@@ -208,13 +208,48 @@ fun p_decl env (dAll as (d, _) : decl) =
                  newline]
         end
 
-fun unurlify (t, loc) =
+fun unurlify env (t, loc) =
     case t of
         TFfi ("Basis", "int") => string "lw_unurlifyInt(&request)"
       | TFfi ("Basis", "float") => string "lw_unurlifyFloat(&request)"
       | TFfi ("Basis", "string") => string "lw_unurlifyString(ctx, &request)"
 
       | TRecord 0 => string "lw_unit_v"
+      | TRecord i =>
+        let
+            val xts = E.lookupStruct env i
+        in
+            box [string "({",
+                 newline,
+                 box (map (fn (x, t) =>
+                              box [p_typ env t,
+                                   space,
+                                   string x,
+                                   space,
+                                   string "=",
+                                   space,
+                                   unurlify env t,
+                                   string ";",
+                                   newline]) xts),
+                 string "struct",
+                 space,
+                 string "__lws_",
+                 string (Int.toString i),
+                 space,
+                 string "__lw_tmp",
+                 space,
+                 string "=",
+                 space,
+                 string "{",
+                 space,
+                 p_list_sep (box [string ",", space]) (fn (x, _) => string x) xts,
+                 space,
+                 string "};",
+                 newline,
+                 string "__lw_tmp;",
+                 newline,
+                 string "})"]
+        end
 
       | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
               space)
@@ -241,7 +276,7 @@ fun p_page env (s, n, ts) =
                                                     space,
                                                     string "=",
                                                     space,
-                                                    unurlify t,
+                                                    unurlify env t,
                                                     string ";",
                                                     newline]) ts),
               p_enamed env n,

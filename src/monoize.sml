@@ -61,7 +61,8 @@ fun monoType env (all as (c, loc)) =
             (L'.TRecord (map (fn (x, t) => (monoName env x, monoType env t)) xcs), loc)
           | L.TRecord _ => poly ()
 
-          | L.CApp ((L.CFfi ("Basis", "xml"), _), _) => (L'.TFfi ("Basis", "string"), loc)
+          | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
+            (L'.TFfi ("Basis", "string"), loc)
 
           | L.CRel _ => poly ()
           | L.CNamed n => (L'.TNamed n, loc)
@@ -124,6 +125,11 @@ fun fooifyExp name env =
 val attrifyExp = fooifyExp "attr"
 val urlifyExp = fooifyExp "url"
 
+datatype 'a failable_search =
+         Found of 'a
+       | NotFound
+       | Error
+
 fun monoExp env (all as (e, loc)) =
     let
         fun poly () =
@@ -176,30 +182,35 @@ fun monoExp env (all as (e, loc)) =
             let
                 fun getTag' (e, _) =
                     case e of
-                        L.EFfi ("Basis", tag) => tag
-                      | L.ECApp (e, _) => getTag' e
+                        L.EFfi ("Basis", tag) => (tag, [])
+                      | L.ECApp (e, t) => let
+                            val (tag, ts) = getTag' e
+                        in
+                            (tag, ts @ [t])
+                        end
                       | _ => (E.errorAt loc "Non-constant XML tag";
                               Print.eprefaces' [("Expression", CorePrint.p_exp env tag)];
-                              "")
+                              ("", []))
 
                 fun getTag (e, _) =
                     case e of
-                        L.EFfiApp ("Basis", tag, [(L.ERecord [], _)]) => tag
+                        L.EFfiApp ("Basis", tag, [(L.ERecord [], _)]) => (tag, [])
                       | L.EApp (e, (L.ERecord [], _)) => getTag' e
                       | _ => (E.errorAt loc "Non-constant XML tag";
                               Print.eprefaces' [("Expression", CorePrint.p_exp env tag)];
-                              "")
+                              ("", []))
 
-                val tag = getTag tag
+                val (tag, targs) = getTag tag
 
                 val attrs = monoExp env attrs
 
-                val tagStart =
+                fun tagStart tag =
                     case #1 attrs of
                         L'.ERecord xes =>
                         let
                             fun lowercaseFirst "" = ""
-                              | lowercaseFirst s = str (Char.toLower (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+                              | lowercaseFirst s = str (Char.toLower (String.sub (s, 0)))
+                                                   ^ String.extract (s, 1, NONE)
 
                             val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
                         in
@@ -210,47 +221,135 @@ fun monoExp env (all as (e, loc)) =
                                           val fooify =
                                               case x of
                                                   "Link" => urlifyExp
+                                                | "Action" => urlifyExp
                                                 | _ => attrifyExp
                                       in
                                           (L'.EStrcat (s,
                                                        (L'.EStrcat ((L'.EPrim (Prim.String xp), loc),
                                                                     (L'.EStrcat (fooify env (e, t),
-                                                                                 (L'.EPrim (Prim.String "\""), loc)),
+                                                                                 (L'.EPrim (Prim.String "\""),
+                                                                                  loc)),
                                                                      loc)),
                                                         loc)), loc)
                                       end)
-                            s xes
+                                  s xes
                         end
-                      | _ => raise Fail "Attributes!"
+                      | _ => raise Fail "Non-record attributes!"
 
-                fun normal () =
-                    (L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
-                                 (L'.EStrcat (monoExp env xml,
-                                              (L'.EPrim (Prim.String (String.concat ["</", tag, ">"])), loc)), loc)),
-                     loc)
-
-
+                fun input typ =
+                    case targs of
+                        [(L.CName name, _)] =>
+                        (L'.EStrcat (tagStart "input",
+                                     (L'.EPrim (Prim.String (" type=\"" ^ typ ^ "\" name=\"" ^ name ^ "\"/>")),
+                                      loc)), loc)
+                      | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                              raise Fail "No named passed to input tag")
             in
-                case xml of
-                    (L.EApp ((L.ECApp (
-                              (L.ECApp ((L.EFfi ("Basis", "cdata"), _),
-                                        _), _),
-                              _), _),
-                             (L.EPrim (Prim.String s), _)), _) =>
-                    if CharVector.all Char.isSpace s then
-                        (L'.EStrcat (tagStart, (L'.EPrim (Prim.String "/>"), loc)), loc)
-                    else
-                        normal ()
-                  | _ => normal ()
+                case tag of
+                    "submit" => (L'.EPrim (Prim.String "<input type=\"submit\"/>"), loc)
+
+                  | "textbox" =>
+                    (case targs of
+                         [_, (L.CName name, _)] =>
+                         (L'.EStrcat (tagStart "input",
+                                      (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\"/>")),
+                                       loc)), loc)
+                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                               raise Fail "No named passed to input tag"))
+
+                  | _ =>
+                    let
+                        val tagStart = tagStart tag
+                                       
+                        fun normal () =
+                            (L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
+                                         (L'.EStrcat (monoExp env xml,
+                                                      (L'.EPrim (Prim.String (String.concat ["</", tag, ">"])),
+                                                       loc)), loc)),
+                             loc)
+                    in
+                        case xml of
+                            (L.EApp ((L.ECApp (
+                                      (L.ECApp ((L.EFfi ("Basis", "cdata"), _),
+                                                _), _),
+                                      _), _),
+                                     (L.EPrim (Prim.String s), _)), _) =>
+                            if CharVector.all Char.isSpace s then
+                                (L'.EStrcat (tagStart, (L'.EPrim (Prim.String "/>"), loc)), loc)
+                            else
+                                normal ()
+                          | _ => normal ()
+                    end
             end
 
           | L.EApp ((L.ECApp (
                      (L.ECApp ((L.EFfi ("Basis", "lform"), _), _), _),
                      _), _),
                     xml) =>
-            (L'.EStrcat ((L'.EPrim (Prim.String "<form>"), loc),
-                         (L'.EStrcat (monoExp env xml,
-                                      (L'.EPrim (Prim.String "</form>"), loc)), loc)), loc)
+            let
+                fun findSubmit (e, _) =
+                    case e of
+                        L.EApp (
+                        (L.EApp (
+                         (L.ECApp (
+                          (L.ECApp (
+                           (L.ECApp (
+                            (L.ECApp (
+                             (L.EFfi ("Basis", "join"),
+                              _), _), _),
+                            _), _),
+                           _), _),
+                          _), _),
+                         xml1), _),
+                        xml2) => (case findSubmit xml1 of
+                                      Error => Error
+                                    | NotFound => findSubmit xml2
+                                    | Found e =>
+                                      case findSubmit xml2 of
+                                          NotFound => Found e
+                                        | _ => Error)
+                      | L.EApp (
+                        (L.EApp (
+                         (L.EApp (
+                          (L.ECApp (
+                           (L.ECApp (
+                            (L.ECApp (
+                             (L.ECApp (
+                              (L.ECApp (
+                               (L.ECApp (
+                                (L.ECApp (
+                                 (L.ECApp (
+                                  (L.EFfi ("Basis", "tag"),
+                                   _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                          attrs), _),
+                         _), _),
+                        xml) =>
+                        (case #1 attrs of
+                             L.ERecord xes =>
+                             (case ListUtil.search (fn ((L.CName "Action", _), e, t) => SOME (e, t)
+                                                     | _ => NONE) xes of
+                                  NONE => findSubmit xml
+                                | SOME et =>
+                                  case findSubmit xml of
+                                      NotFound => Found et
+                                    | _ => Error)
+                           | _ => findSubmit xml)
+                      | _ => NotFound
+
+                val (action, actionT) = case findSubmit xml of
+                    NotFound => raise Fail "No submit found"
+                  | Error => raise Fail "Not ready for multi-submit lforms yet"
+                  | Found et => et
+
+                val actionT = monoType env actionT
+                val action = monoExp env action
+            in
+                (L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form action=\""), loc),
+                                          (L'.EStrcat (urlifyExp env (action, actionT),
+                                                       (L'.EPrim (Prim.String "\">"), loc)), loc)), loc),
+                             (L'.EStrcat (monoExp env xml,
+                                          (L'.EPrim (Prim.String "</form>"), loc)), loc)), loc)
+            end
 
           | L.EApp (e1, e2) => (L'.EApp (monoExp env e1, monoExp env e2), loc)
           | L.EAbs (x, dom, ran, e) =>
