@@ -285,7 +285,6 @@ eexp   : eapps                          (eapps)
                                          end)
 
        | LPAREN eexp RPAREN DCOLON cexp (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
-       | eterm DOT ident                (EField (eterm, ident), s (etermleft, identright))
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
@@ -297,6 +296,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
 
+       | path DOT ident                 (EField ((EVar path, s (pathleft, pathright)), ident), s (pathleft, identright))
        | FOLD                           (EFold, s (FOLDleft, FOLDright))
 
        | XML_BEGIN xml XML_END          (xml)
