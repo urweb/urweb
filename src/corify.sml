@@ -488,7 +488,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
                              case sgi of
                                  L.SgiVal (s, _, t as (L.TFun (dom, ran), _)) =>
                                  (case (#1 dom, #1 ran) of
-                                      (L.TRecord _,
+                                      (L.TRecord (L.CRecord (_, []), _),
                                        L.CApp
                                            ((L.CApp
                                                  ((L.CApp ((L.CModProj (_, [], "xml"), _),

@@ -469,7 +469,7 @@ fun cunifyError env err =
                   [("Con 1", p_con env c1),
                    ("Con 2", p_con env c2)]
       | CKindof (k, c) =>
-        eprefaces "Kind unification variable blocks kindof calculation"
+        eprefaces "Unexpected kind for kindof calculation"
                   [("Kind", p_kind k),
                    ("Con", p_con env c)]
       | CRecordFailure =>
@@ -550,7 +550,7 @@ val hnormCon = D.hnormCon
 fun unifyRecordCons (env, denv) (c1, c2) =
     let
         fun rkindof c =
-            case kindof env c of
+            case hnormKind (kindof env c) of
                 (L'.KRecord k, _) => k
               | (L'.KError, _) => kerror
               | k => raise CUnify' (CKindof (k, c))
@@ -873,7 +873,7 @@ fun typeof env (e, loc) =
             val (_, sgn) = E.lookupStrNamed env n
             val (str, sgn) = foldl (fn (m, (str, sgn)) =>
                                        case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                           NONE => raise Fail "kindof: Unknown substructure"
+                                           NONE => raise Fail "typeof: Unknown substructure"
                                          | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                              ((L'.StrVar n, loc), sgn) ms
         in
@@ -965,112 +965,6 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                  in
                      ((L'.EModProj (n, ms, s), loc), t, [])
                  end)
-
-          (*| L.EApp (arg as ((L.EApp ((L.ECApp ((L.EVar (["Basis"], "join"), _), (L.CWild _, _)), _), xml1), _), xml2)) =>
-            let
-                val (xml1', t1, gs1) = elabExp (env, denv) xml1
-                val (xml2', t2, gs2) = elabExp (env, denv) xml2
-
-                val kunit = (L'.KUnit, loc)
-                val k = (L'.KRecord kunit, loc)
-                val kt = (L'.KRecord (L'.KType, loc), loc)
-
-                val basis =
-                    case E.lookupStr env "Basis" of
-                        NONE => raise Fail "elabExp: Unbound Basis"
-                      | SOME (n, _) => n
-
-                fun xml () =
-                    let
-                        val ns = cunif (loc, k)
-                        val use = cunif (loc, kt)
-                        val bind = cunif (loc, kt)
-
-                        val t = (L'.CModProj (basis, [], "xml"), loc)
-                        val t = (L'.CApp (t, ns), loc)
-                        val t = (L'.CApp (t, use), loc)
-                        val t = (L'.CApp (t, bind), loc)
-                    in
-                        (ns, use, bind, t)
-                    end
-
-                val (ns1, use1, bind1, c1) = xml ()
-                val (ns2, use2, bind2, c2) = xml ()
-
-                val gs3 = checkCon (env, denv) xml1' t1 c1
-                val gs4 = checkCon (env, denv) xml2' t2 c2
-
-                val (ns1, gs5) = hnormCon (env, denv) ns1
-                val (ns2, gs6) = hnormCon (env, denv) ns2
-
-                val cemp = (L'.CRecord (kunit, []), loc)
-
-                val (shared, ctx1, ctx2) =
-                    case (#1 ns1, #1 ns2) of
-                        (L'.CRecord (_, ns1), L'.CRecord (_, ns2)) =>
-                        let
-                            val ns = List.filter (fn ((nm, _), _) =>
-                                                     case nm of
-                                                         L'.CName s =>
-                                                         List.exists (fn ((L'.CName s', _), _) => s' = s
-                                                                       | _ => false) ns2
-                                                       | _ => false) ns1
-                        in
-                            ((L'.CRecord (kunit, ns), loc), cunif (loc, k), cunif (loc, k))
-                        end
-                      | (_, L'.CRecord _) => (ns2, cemp, cemp)
-                      | _ => (ns1, cemp, cemp)
-
-                val ns1' = (L'.CConcat (shared, ctx1), loc)
-                val ns2' = (L'.CConcat (shared, ctx2), loc)
-
-                val e = (L'.EModProj (basis, [], "join"), loc)
-                val e = (L'.ECApp (e, shared), loc)
-                val e = (L'.ECApp (e, ctx1), loc)
-                val e = (L'.ECApp (e, ctx2), loc)
-                val e = (L'.ECApp (e, use1), loc)
-                val e = (L'.ECApp (e, use2), loc)
-                val e = (L'.ECApp (e, bind1), loc)
-                val e = (L'.ECApp (e, bind2), loc)
-                val e = (L'.EApp (e, xml1'), loc)
-                val e = (L'.EApp (e, xml2'), loc)
-
-                val t = (L'.CModProj (basis, [], "xml"), loc)
-                val t = (L'.CApp (t, shared), loc)
-                val t = (L'.CApp (t, (L'.CConcat (use1, use2), loc)), loc)
-                val t = (L'.CApp (t, (L'.CConcat (bind1, bind2), loc)), loc)
-
-                fun doUnify (ns, ns') =
-                    let
-                        fun setEmpty c =
-                            let
-                                val ((c, _), gs) = hnormCon (env, denv) c
-                            in
-                                case c of
-                                    L'.CUnif (_, _, _, r) =>
-                                    (r := SOME cemp;
-                                     gs)
-                                  | L'.CConcat (_, c') => setEmpty c' @ gs
-                                  | _ => gs
-                            end
-
-                        val gs1 = unifyCons (env, denv) ns ns'
-                        val gs2 = setEmpty ns'
-                        val gs3 = unifyCons (env, denv) ns ns'
-                    in
-                        gs1 @ gs2 @ gs3
-                    end handle CUnify _ => (expError env (IncompatibleCons (ns, ns'));
-                                            [])
-
-                val gs7 = doUnify (ns1, ns1')
-                val gs8 = doUnify (ns2, ns2')
-            in
-                (e, t, (loc, env, denv, shared, ctx1)
-                       :: (loc, env, denv, shared, ctx2)
-                       :: (loc, env, denv, use1, use2)
-                       :: (loc, env, denv, bind1, bind2)
-                       :: gs1 @ gs2 @ gs3 @ gs4 @ gs5 @ gs6 @ gs7 @ gs8)
-            end*)
 
           | L.EApp (e1, e2) =>
             let
