@@ -122,22 +122,17 @@ static void *worker(void *data) {
 
           while (*inputs) {
             name = inputs;
-            if (value = strchr(inputs, '=')) {
+            if (inputs = strchr(inputs, '&'))
+              *inputs++ = 0;
+            else
+              inputs = strchr(name, 0);
+
+            if (value = strchr(name, '=')) {
               *value++ = 0;
-              if (inputs = strchr(value, '&'))
-                *inputs++ = 0;
-              else
-                inputs = strchr(value, 0);
               lw_set_input(ctx, name, value);
             }
-            else if (inputs = strchr(value, '&')) {
-              *inputs++ = 0;
+            else
               lw_set_input(ctx, name, "");
-            }
-            else {
-              inputs = strchr(value, 0);
-              lw_set_input(ctx, name, "");
-            }
           }
         }
 
