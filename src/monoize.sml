@@ -351,6 +351,17 @@ fun monoExp env (all as (e, loc)) =
                                           (L'.EPrim (Prim.String "</form>"), loc)), loc)), loc)
             end
 
+          | L.EApp ((L.ECApp (
+                     (L.ECApp (
+                      (L.ECApp (
+                       (L.ECApp (
+                        (L.EFfi ("Basis", "useMore"), _), _), _),
+                       _), _),
+                      _), _),
+                     _), _),
+                    xml) => monoExp env xml
+                     
+
           | L.EApp (e1, e2) => (L'.EApp (monoExp env e1, monoExp env e2), loc)
           | L.EAbs (x, dom, ran, e) =>
             (L'.EAbs (x, monoType env dom, monoType env ran, monoExp (Env.pushERel env x dom) e), loc)

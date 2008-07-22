@@ -23,7 +23,7 @@ functor F (M : S) : S' where con rs = M.rs = struct
                         {fold [fn rs :: {Unit} => xml lform [] (stringify rs)]
                                 (fn nm :: Name => fn u :: Unit => fn rest :: {Unit} =>
                                         fn frag : xml lform [] (stringify rest) =>
-                                                <lform><li>{frag} <textbox{nm}/></li></lform>)
+                                                <lform><li> <textbox{nm}/></li> {useMore frag}</lform>)
                                 <lform></lform>
                                 [rs]}
 

@@ -24,7 +24,10 @@ val join : ctx ::: {Unit}
         -> xml ctx use1 bind1
         -> xml ctx (use1 ++ bind1) bind2
         -> xml ctx use1 (bind1 ++ bind2)
-
+val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type} -> bind ::: {Type}
+        -> use1 ~ use2
+        -> xml ctx use1 bind
+        -> xml ctx (use1 ++ use2) bind
 
 con xhtml = xml [Html]
 con page = xhtml [] []
