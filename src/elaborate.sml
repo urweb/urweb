@@ -1988,41 +1988,42 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                 case #1 (hnormSgn env sgn) of
                     L'.SgnConst sgis =>
                     let
-                        fun doOne (all as (sgi, _)) =
-                            case sgi of
-                                L'.SgiVal (x, n, t) =>
-                                (case hnormCon (env, denv) t of
-                                     ((L'.TFun (dom, ran), _), []) =>
-                                     (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
-                                          (((L'.TRecord domR, _), []),
-                                           ((L'.CApp (tf, arg3), _), [])) =>
-                                          (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
-                                               (((L'.CApp (tf, arg2), _), []),
-                                                (((L'.CRecord (_, []), _), []))) =>
-                                               (case (hnormCon (env, denv) tf) of
-                                                    ((L'.CApp (tf, arg1), _), []) =>
-                                                    (case (hnormCon (env, denv) tf,
-                                                           hnormCon (env, denv) domR,
-                                                           hnormCon (env, denv) arg2) of
-                                                         ((tf, []), (domR, []),
-                                                          ((L'.CRecord (_, []), _), [])) =>
-                                                         let
-                                                             val t = (L'.CApp (tf, arg1), loc)
-                                                             val t = (L'.CApp (t, arg2), loc)
-                                                             val t = (L'.CApp (t, arg3), loc)
-                                                         in
-                                                             (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
-                                                                                         t),
-                                                                                loc)), loc)
-                                                         end
-                                                       | _ => all)
-                                                  | _ => all)
-                                             | _ => all)
-                                        | _ => all)
-                                   | _ => all)
-                              | _ => all
+                        fun doOne (all as (sgi, _), env) =
+                            (case sgi of
+                                 L'.SgiVal (x, n, t) =>
+                                 (case hnormCon (env, denv) t of
+                                      ((L'.TFun (dom, ran), _), []) =>
+                                      (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
+                                           (((L'.TRecord domR, _), []),
+                                            ((L'.CApp (tf, arg3), _), [])) =>
+                                           (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
+                                                (((L'.CApp (tf, arg2), _), []),
+                                                 (((L'.CRecord (_, []), _), []))) =>
+                                                (case (hnormCon (env, denv) tf) of
+                                                     ((L'.CApp (tf, arg1), _), []) =>
+                                                     (case (hnormCon (env, denv) tf,
+                                                            hnormCon (env, denv) domR,
+                                                            hnormCon (env, denv) arg2) of
+                                                          ((tf, []), (domR, []),
+                                                           ((L'.CRecord (_, []), _), [])) =>
+                                                          let
+                                                              val t = (L'.CApp (tf, arg1), loc)
+                                                              val t = (L'.CApp (t, arg2), loc)
+                                                              val t = (L'.CApp (t, arg3), loc)
+                                                          in
+                                                              (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
+                                                                                          t),
+                                                                                 loc)), loc)
+                                                          end
+                                                        | _ => all)
+                                                   | _ => all)
+                                              | _ => all)
+                                         | _ => all)
+                                    | _ => all)
+                               | _ => all,
+                             E.sgiBinds env all)
                     in
-                        (L'.SgnConst (map doOne sgis), loc)
+                        (L'.SgnConst (#1 (ListUtil.foldlMap doOne env sgis)), loc)
                     end
                   | _ => sgn
         in

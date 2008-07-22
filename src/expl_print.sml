@@ -100,7 +100,7 @@ fun p_con' par env (c, _) =
                       else
                           m1x
         in
-            p_list_sep (string ".") string (m1x :: ms @ [x])
+            p_list_sep (string ".") string (m1s :: ms @ [x])
         end
 
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
@@ -155,7 +155,7 @@ and p_name env (all as (c, _)) =
         CName s => string s
       | _ => p_con env all
 
-fun p_exp' par env (e, _) =
+fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t p
       | ERel n =>
@@ -171,13 +171,14 @@ fun p_exp' par env (e, _) =
       | EModProj (m1, ms, x) =>
         let
             val (m1x, sgn) = E.lookupStrNamed env m1
+                handle E.UnboundNamed _ => ("UNBOUND", (SgnConst [], loc))
 
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
                       else
                           m1x
         in
-            p_list_sep (string ".") string (m1x :: ms @ [x])
+            p_list_sep (string ".") string (m1s :: ms @ [x])
         end
                                          
       | EApp (e1, e2) => parenIf par (box [p_exp env e1,
@@ -294,7 +295,7 @@ fun p_sgn_item env (sgi, _) =
                                    space,
                                    p_sgn env sgn]
 
-and p_sgn env (sgn, _) =
+and p_sgn env (sgn, loc) =
     case sgn of
         SgnConst sgis => box [string "sig",
                               newline,
@@ -308,7 +309,8 @@ and p_sgn env (sgn, _) =
                               end,
                               newline,
                               string "end"]
-      | SgnVar n => string (#1 (E.lookupSgnNamed env n))
+      | SgnVar n => string ((#1 (E.lookupSgnNamed env n))
+                            handle E.UnboundNamed _ => "UNBOUND")
       | SgnFun (x, n, sgn, sgn') => box [string "functor",
                                          space,
                                          string "(",
@@ -336,6 +338,7 @@ and p_sgn env (sgn, _) =
       | SgnProj (m1, ms, x) =>
         let
             val (m1x, sgn) = E.lookupStrNamed env m1
+                handle E.UnboundNamed _ => ("UNBOUND", (SgnConst [], loc))
                              
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
@@ -424,7 +427,18 @@ and p_str env (str, _) =
                             p_file env ds,
                             newline,
                             string "end"]
-      | StrVar n => string (#1 (E.lookupStrNamed env n))
+      | StrVar n =>
+        let
+            val x = #1 (E.lookupStrNamed env n)
+                    handle E.UnboundNamed _ => "UNBOUND"
+
+            val s = if !debug then
+                        x ^ "__" ^ Int.toString n
+                    else
+                        x
+        in
+            string s
+        end
       | StrProj (str, s) => box [p_str env str,
                                  string ".",
                                  string s]

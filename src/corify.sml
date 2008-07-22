@@ -58,6 +58,8 @@ structure St : sig
 
     val empty : t
 
+    val debug : t -> unit
+
     val enter : t -> t
     val leave : t -> {outer : t, inner : t}
     val ffi : string -> L'.con SM.map -> t
@@ -80,16 +82,16 @@ structure St : sig
     val lookupStrById : t -> int -> t
     val lookupStrByName : string * t -> t
 
-    val bindFunctor : t -> string -> int -> int -> L.str -> t
-    val lookupFunctorById : t -> int -> int * L.str
-    val lookupFunctorByName : string * t -> int * L.str
+    val bindFunctor : t -> string -> int -> string -> int -> L.str -> t
+    val lookupFunctorById : t -> int -> string * int * L.str
+    val lookupFunctorByName : string * t -> string * int * L.str
 end = struct
 
 datatype flattening =
          FNormal of {cons : int SM.map,
                      vals : int SM.map,
                      strs : flattening SM.map,
-                     funs : (int * L.str) SM.map}
+                     funs : (string * int * L.str) SM.map}
        | FFfi of {mod : string,
                   vals : L'.con SM.map}
                            
@@ -97,7 +99,7 @@ type t = {
      cons : int IM.map,
      vals : int IM.map,
      strs : flattening IM.map,
-     funs : (int * L.str) IM.map,
+     funs : (string * int * L.str) IM.map,
      current : flattening,
      nested : flattening list
 }
@@ -110,6 +112,13 @@ val empty = {
     current = FNormal { cons = SM.empty, vals = SM.empty, strs = SM.empty, funs = SM.empty },
     nested = []
 }
+
+fun debug ({current = FNormal {cons, vals, strs, funs}, ...} : t) =
+    print ("cons: " ^ Int.toString (SM.numItems cons) ^ "; "
+           ^ "vals: " ^ Int.toString (SM.numItems vals) ^ "; "
+           ^ "strs: " ^ Int.toString (SM.numItems strs) ^ "; "
+           ^ "funs: " ^ Int.toString (SM.numItems funs) ^ "\n")
+  | debug _ = print "Not normal!\n"
 
 datatype core_con =
          CNormal of int
@@ -243,17 +252,17 @@ fun lookupStrByName (m, {current = FNormal {strs, ...}, ...} : t) =
 
 fun bindFunctor ({cons, vals, strs, funs,
                   current = FNormal {cons = mcons, vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
-                x n na str =
+                x n xa na str =
     {cons = cons,
      vals = vals,
      strs = strs,
-     funs = IM.insert (funs, n, (na, str)),
+     funs = IM.insert (funs, n, (xa, na, str)),
      current = FNormal {cons = mcons,
                         vals = mvals,
                         strs = mstrs,
-                        funs = SM.insert (mfuns, x, (na, str))},
+                        funs = SM.insert (mfuns, x, (xa, na, str))},
      nested = nested}
-  | bindFunctor _ _ _ _ _ = raise Fail "Corify.St.bindFunctor"
+  | bindFunctor _ _ _ _ _ _ = raise Fail "Corify.St.bindFunctor"
 
 fun lookupFunctorById ({funs, ...} : t) n =
     case IM.find (funs, n) of
@@ -412,8 +421,8 @@ fun corifyDecl ((d, loc : EM.span), st) =
         end
       | L.DSgn _ => ([], st)
 
-      | L.DStr (x, n, _, (L.StrFun (_, na, _, _, str), _)) =>
-        ([], St.bindFunctor st x n na str)
+      | L.DStr (x, n, _, (L.StrFun (xa, na, _, _, str), _)) =>
+        ([], St.bindFunctor st x n xa na str)
 
       | L.DStr (x, n, _, str) =>
         let
@@ -514,7 +523,6 @@ fun corifyDecl ((d, loc : EM.span), st) =
                      end
              end
            | _ => raise Fail "Non-const signature for 'export'")
-                 
 
 and corifyStr ((str, _), st) =
     case str of
@@ -547,12 +555,12 @@ and corifyStr ((str, _), st) =
                   | L.StrProj (str, x) => St.lookupFunctorByName (x, unwind' str)
                   | _ => raise Fail "Corify of fancy functor application [2]"
 
-            val (na, body) = unwind str1
+            val (xa, na, body) = unwind str1
 
-            val (ds1, {inner, outer}) = corifyStr (str2, st)
-            val (ds2, sts) = corifyStr (body, St.bindStr outer "ARG" na inner)
+            val (ds1, {inner = inner', outer}) = corifyStr (str2, st)
+            val (ds2, {inner, outer}) = corifyStr (body, St.bindStr outer xa na inner')
         in
-            (ds1 @ ds2, sts)
+            (ds1 @ ds2, {inner = St.bindStr inner xa na inner', outer = outer})
         end
 
 fun maxName ds = foldl (fn ((d, _), n) =>
@@ -577,6 +585,7 @@ and maxNameStr (str, _) =
 fun corify ds =
     let
         val () = reset (maxName ds + 1)
+
         val (ds, _) = ListUtil.foldlMapConcat corifyDecl St.empty ds
     in
         ds
