@@ -62,6 +62,6 @@ datatype decl' =
 
 withtype decl = decl' located
 
-type file = decl list * (string * int * typ list) list
+type file = decl list * (Core.export_kind * string * int * typ list) list
 
 end

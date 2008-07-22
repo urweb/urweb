@@ -86,9 +86,11 @@ static void *worker(void *data) {
       *back = 0;
     
       if (s = strstr(buf, "\r\n\r\n")) {
-        char *cmd, *path;
+        char *cmd, *path, *inputs;
 
         *s = 0;
+
+        printf("Read: %s\n", buf);
       
         if (!(s = strstr(buf, "\r\n"))) {
           fprintf(stderr, "No newline in buf\n");
@@ -114,9 +116,33 @@ static void *worker(void *data) {
           break;
         }
 
+        if (inputs = strchr(path, '?')) {
+          char *name, *value;
+          *inputs++ = 0;
+
+          while (*inputs) {
+            name = inputs;
+            if (value = strchr(inputs, '=')) {
+              *value++ = 0;
+              if (inputs = strchr(value, '&'))
+                *inputs++ = 0;
+              else
+                inputs = strchr(value, 0);
+              lw_set_input(ctx, name, value);
+            }
+            else if (inputs = strchr(value, '&')) {
+              *inputs++ = 0;
+              lw_set_input(ctx, name, "");
+            }
+            else {
+              inputs = strchr(value, 0);
+              lw_set_input(ctx, name, "");
+            }
+          }
+        }
+
         printf("Serving URI %s....\n", path);
 
-        ctx = lw_init(1024, 1024);
         lw_write (ctx, "HTTP/1.1 200 OK\r\n");
         lw_write(ctx, "Content-type: text/html\r\n\r\n");
         lw_write(ctx, "<html>");

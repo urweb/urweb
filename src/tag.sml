@@ -66,7 +66,7 @@ fun exp env (e, s) =
                  val (xets, s) =
                      ListUtil.foldlMap (fn ((x, e, t), (count, tags, byTag, newTags)) =>
                                            let
-                                               fun tagIt newAttr =
+                                               fun tagIt (ek, newAttr) =
                                                    let
                                                        fun unravel (e, _) =
                                                            case e of
@@ -88,20 +88,25 @@ fun exp env (e, s) =
                                                            case IM.find (tags, f) of
                                                                NONE =>
                                                                (count, count + 1, IM.insert (tags, f, count),
-                                                                (f, count) :: newTags)
+                                                                (ek, f, count) :: newTags)
                                                              | SOME cn => (cn, count, tags, newTags)
                                                                           
                                                        val (_, _, _, s) = E.lookupENamed env f
 
                                                        val byTag = case SM.find (byTag, s) of
-                                                                       NONE => SM.insert (byTag, s, f)
-                                                                     | SOME f' =>
+                                                                       NONE => SM.insert (byTag, s, (ek, f))
+                                                                     | SOME (ek', f') =>
                                                                        (if f = f' then
                                                                             ()
                                                                         else
                                                                             ErrorMsg.errorAt loc 
                                                                                              ("Duplicate HTTP tag "
                                                                                               ^ s);
+                                                                        if ek = ek' then
+                                                                            ()
+                                                                        else
+                                                                            ErrorMsg.errorAt loc 
+                                                                                             "Function needed as both a link and a form ";
                                                                         byTag)
 
                                                        val e = (EClosure (cn, args), loc)
@@ -112,8 +117,8 @@ fun exp env (e, s) =
                                                    end
                                            in
                                                case x of
-                                                   (CName "Link", _) => tagIt "Href"
-                                                 | (CName "Action", _) => tagIt "Action"
+                                                   (CName "Link", _) => tagIt (Link, "Href")
+                                                 | (CName "Action", _) => tagIt (Action, "Action")
                                                  | _ => ((x, e, t), (count, tags, byTag, newTags))
                                            end)
                      s xets
@@ -154,13 +159,18 @@ fun tag file =
 
         fun doDecl (d as (d', loc), (env, count, tags, byTag)) =
             case d' of
-                DExport n =>
+                DExport (ek, n) =>
                 let
                     val (_, _, _, s) = E.lookupENamed env n
                 in
                     case SM.find (byTag, s) of
                         NONE => ([d], (env, count, tags, byTag))
-                      | SOME n' => ([], (env, count, tags, byTag))
+                      | SOME (ek', n') =>
+                        (if ek = ek' then
+                             ()
+                         else
+                             ErrorMsg.errorAt loc "Function needed for both a link and a form";
+                         ([], (env, count, tags, byTag)))
                 end
               | _ =>
                 let
@@ -179,7 +189,7 @@ fun tag file =
                     val env = env'
 
                     val newDs = map
-                                    (fn (f, cn) =>
+                                    (fn (ek, f, cn) =>
                                         let
                                             fun unravel (all as (t, _)) =
                                                 case t of
@@ -225,7 +235,7 @@ fun tag file =
                                                     end
                                         in
                                             (("wrap_" ^ fnam, cn, t, abs, tag),
-                                             (DExport cn, loc))
+                                             (DExport (ek, cn), loc))
                                         end) newTags
 
                     val (newVals, newExports) = ListPair.unzip newDs

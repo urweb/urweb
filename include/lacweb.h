@@ -12,6 +12,9 @@ void lw_reset(lw_context);
 void *lw_malloc(lw_context, size_t);
 int lw_send(lw_context, int sock);
 
+void lw_set_input(lw_context, char *name, char *value);
+char *lw_get_input(lw_context, int name);
+
 void lw_write(lw_context, const char*);
 
 

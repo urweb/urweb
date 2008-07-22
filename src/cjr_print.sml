@@ -37,6 +37,20 @@ open Cjr
 structure E = CjrEnv
 structure EM = ErrorMsg
 
+structure SK = struct
+type ord_key = string
+val compare = String.compare
+end
+
+structure SS = BinarySetFn(SK)
+structure SM = BinaryMapFn(SK)
+structure IS = IntBinarySet
+
+structure CM = BinaryMapFn(struct
+                           type ord_key = char
+                           val compare = Char.compare
+                           end)
+
 val debug = ref false
 
 val dummyTyp = (TNamed 0, ErrorMsg.dummySpan)
@@ -208,90 +222,11 @@ fun p_decl env (dAll as (d, _) : decl) =
                  newline]
         end
 
-fun unurlify env (t, loc) =
-    case t of
-        TFfi ("Basis", "int") => string "lw_unurlifyInt(&request)"
-      | TFfi ("Basis", "float") => string "lw_unurlifyFloat(&request)"
-      | TFfi ("Basis", "string") => string "lw_unurlifyString(ctx, &request)"
+datatype 'a search =
+         Found of 'a
+       | NotFound
+       | Error
 
-      | TRecord 0 => string "lw_unit_v"
-      | TRecord i =>
-        let
-            val xts = E.lookupStruct env i
-        in
-            box [string "({",
-                 newline,
-                 box (map (fn (x, t) =>
-                              box [p_typ env t,
-                                   space,
-                                   string x,
-                                   space,
-                                   string "=",
-                                   space,
-                                   unurlify env t,
-                                   string ";",
-                                   newline]) xts),
-                 string "struct",
-                 space,
-                 string "__lws_",
-                 string (Int.toString i),
-                 space,
-                 string "__lw_tmp",
-                 space,
-                 string "=",
-                 space,
-                 string "{",
-                 space,
-                 p_list_sep (box [string ",", space]) (fn (x, _) => string x) xts,
-                 space,
-                 string "};",
-                 newline,
-                 string "__lw_tmp;",
-                 newline,
-                 string "})"]
-        end
-
-      | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
-              space)
-
-fun p_page env (s, n, ts) =
-    box [string "if (!strncmp(request, \"",
-         string (String.toString s),
-         string "\", ",
-         string (Int.toString (size s)),
-         string ")) {",
-         newline,
-         string "request += ",
-         string (Int.toString (size s)),
-         string ";",
-         newline,
-         string "if (*request == '/') ++request;",
-         newline,
-         box [string "{",
-              newline,
-              box (ListUtil.mapi (fn (i, t) => box [p_typ env t,
-                                                    space,
-                                                    string "arg",
-                                                    string (Int.toString i),
-                                                    space,
-                                                    string "=",
-                                                    space,
-                                                    unurlify env t,
-                                                    string ";",
-                                                    newline]) ts),
-              p_enamed env n,
-              string "(",
-              p_list_sep (box [string ",", space])
-                         (fn x => x)
-                         (string "ctx" :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts),
-              string ");",
-              newline,
-              string "return;",
-              newline,
-              string "}",
-              newline,
-              string "}"]
-        ]
 
 fun p_file env (ds, ps) =
     let
@@ -299,12 +234,317 @@ fun p_file env (ds, ps) =
                                              (p_decl env d,
                                               E.declBinds env d))
                              env ds
-        val pds' = map (p_page env) ps
+
+        val fields = foldl (fn ((ek, _, _, ts), fields) =>
+                               case ek of
+                                   Core.Link => fields
+                                 | Core.Action =>
+                                   case List.last ts of
+                                       (TRecord i, _) =>
+                                       let
+                                           val xts = E.lookupStruct env i
+                                           val xtsSet = SS.addList (SS.empty, map #1 xts)
+                                       in
+                                           foldl (fn ((x, _), fields) =>
+                                                     let
+                                                         val xtsSet' = Option.getOpt (SM.find (fields, x), SS.empty)
+                                                     in
+                                                         SM.insert (fields, x, SS.union (SS.delete (xtsSet, x),
+                                                                                         xtsSet'))
+                                                     end) fields xts
+                                       end
+                                     | _ => raise Fail "CjrPrint: Last argument of action isn't record")
+                     SM.empty ps
+
+        val fnums = SM.foldli (fn (x, xs, fnums) =>
+                                  let
+                                      val unusable = SS.foldl (fn (x', unusable) =>
+                                                                  case SM.find (fnums, x') of
+                                                                      NONE => unusable
+                                                                    | SOME n => IS.add (unusable, n))
+                                                     IS.empty xs
+
+                                      fun findAvailable n =
+                                          if IS.member (unusable, n) then
+                                              findAvailable (n + 1)
+                                          else
+                                              n
+                                  in
+                                      SM.insert (fnums, x, findAvailable 0)
+                                  end)
+                    SM.empty fields
+
+        fun makeSwitch (fnums, i) =
+            case SM.foldl (fn (n, NotFound) => Found n
+                            | (n, Error) => Error
+                            | (n, Found n') => if n = n' then
+                                                  Found n'
+                                               else
+                                                   Error) NotFound fnums of
+                NotFound => box [string "return",
+                                 space,
+                                 string "-1;"]
+              | Found n => box [string "return",
+                                space,
+                                string (Int.toString n),
+                                string ";"]
+              | Error =>
+                let
+                    val cmap = SM.foldli (fn (x, n, cmap) =>
+                                             let
+                                                 val ch = if i < size x then
+                                                              String.sub (x, i)
+                                                          else
+                                                              chr 0
+
+                                                 val fnums = case CM.find (cmap, ch) of
+                                                                 NONE => SM.empty
+                                                               | SOME fnums => fnums
+                                                 val fnums = SM.insert (fnums, x, n)
+                                             in
+                                                 CM.insert (cmap, ch, fnums)
+                                             end)
+                               CM.empty fnums
+
+                    val cmap = CM.listItemsi cmap
+                in
+                    case cmap of
+                        [(_, fnums)] =>
+                        box [string "if",
+                             space,
+                             string "(name[",
+                             string (Int.toString i),
+                             string "]",
+                             space,
+                             string "==",
+                             space,
+                             string "0)",
+                             space,
+                             string "return",
+                             space,
+                             string "-1;",
+                             newline,
+                             makeSwitch (fnums, i+1)]
+                      | _ =>
+                        box [string "switch",
+                             space,
+                             string "(name[",
+                             string (Int.toString i),
+                             string "])",
+                             space,
+                             string "{",
+                             newline,
+                             box (map (fn (ch, fnums) =>
+                                          box [string "case",
+                                               space,
+                                               if ch = chr 0 then
+                                                   string "0:"
+                                               else
+                                                   box [string "'",
+                                                        string (Char.toString ch),
+                                                        string "':"],
+                                               newline,
+                                               makeSwitch (fnums, i+1),
+                                               newline]) cmap),
+                             string "default:",
+                             newline,
+                             string "return",
+                             space,
+                             string "-1;",
+                             newline,
+                             string "}"]
+                end
+
+        fun unurlify (t, loc) =
+            case t of
+                TFfi ("Basis", "int") => string "lw_unurlifyInt(&request)"
+              | TFfi ("Basis", "float") => string "lw_unurlifyFloat(&request)"
+              | TFfi ("Basis", "string") => string "lw_unurlifyString(ctx, &request)"
+
+              | TRecord 0 => string "lw_unit_v"
+              | TRecord i =>
+                let
+                    val xts = E.lookupStruct env i
+                in
+                    box [string "({",
+                         newline,
+                         box (map (fn (x, t) =>
+                                      box [p_typ env t,
+                                           space,
+                                           string x,
+                                           space,
+                                           string "=",
+                                           space,
+                                           unurlify t,
+                                           string ";",
+                                           newline]) xts),
+                         string "struct",
+                         space,
+                         string "__lws_",
+                         string (Int.toString i),
+                         space,
+                         string "__lw_tmp",
+                         space,
+                         string "=",
+                         space,
+                         string "{",
+                         space,
+                         p_list_sep (box [string ",", space]) (fn (x, _) => string x) xts,
+                         space,
+                         string "};",
+                         newline,
+                         string "__lw_tmp;",
+                         newline,
+                         string "})"]
+                end
+
+              | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
+                      space)
+
+
+        fun p_page (ek, s, n, ts) =
+            let
+                val (ts, defInputs, inputsVar) =
+                    case ek of
+                        Core.Link => (ts, string "", string "")
+                      | Core.Action =>
+                        case List.last ts of
+                            (TRecord i, _) =>
+                            let
+                                val xts = E.lookupStruct env i
+                            in
+                                (List.drop (ts, 1),
+                                 box [box (map (fn (x, t) => box [p_typ env t,
+                                                                  space,
+                                                                  string "lw_input_",
+                                                                  string x,
+                                                                  string ";",
+                                                                  newline]) xts),
+                                      newline,
+                                      box (map (fn (x, t) =>
+                                                   let
+                                                       val n = case SM.find (fnums, x) of
+                                                                   NONE => raise Fail "CjrPrint: Can't find in fnums"
+                                                                 | SOME n => n
+                                                   in
+                                                       box [string "request = lw_get_input(ctx, ",
+                                                            string (Int.toString n),
+                                                            string ");",
+                                                            newline,
+                                                            string "if (request == NULL) {",
+                                                            newline,
+                                                            box [string "printf(\"Missing input ",
+                                                                 string x,
+                                                                 string "\\n\");",
+                                                                 newline,
+                                                                 string "exit(1);"],
+                                                            newline,
+                                                            string "}",
+                                                            newline,
+                                                            string "lw_input_",
+                                                            string x,
+                                                            space,
+                                                            string "=",
+                                                            space,
+                                                            unurlify t,
+                                                            string ";",
+                                                            newline]
+                                                   end) xts),
+                                      string "struct __lws_",
+                                      string (Int.toString i),
+                                      space,
+                                      string "lw_inputs",
+                                      space,
+                                      string "= {",
+                                      newline,
+                                      box (map (fn (x, _) => box [string "lw_input_",
+                                                                  string x,
+                                                                  string ",",
+                                                                  newline]) xts),
+                                      string "};",
+                                      newline],
+                                 box [string ",",
+                                      space,
+                                      string "lw_inputs"])
+                            end
+
+                          | _ => raise Fail "CjrPrint: Last argument to an action isn't a record"
+            in
+                box [string "if (!strncmp(request, \"",
+                     string (String.toString s),
+                     string "\", ",
+                     string (Int.toString (size s)),
+                     string ")) {",
+                     newline,
+                     string "request += ",
+                     string (Int.toString (size s)),
+                     string ";",
+                     newline,
+                     string "if (*request == '/') ++request;",
+                     newline,
+                     box [string "{",
+                          newline,
+                          box (ListUtil.mapi (fn (i, t) => box [p_typ env t,
+                                                                space,
+                                                                string "arg",
+                                                                string (Int.toString i),
+                                                                space,
+                                                                string "=",
+                                                                space,
+                                                                unurlify t,
+                                                                string ";",
+                                                                newline]) ts),
+                          defInputs,
+                          p_enamed env n,
+                          string "(",
+                          p_list_sep (box [string ",", space])
+                                     (fn x => x)
+                                     (string "ctx" :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts),
+                          inputsVar,
+                          string ");",
+                          newline,
+                          string "return;",
+                          newline,
+                          string "}",
+                          newline,
+                          string "}"]
+                    ]
+            end
+
+        val pds' = map p_page ps
     in
-        box [string "#include \"lacweb.h\"",
+        box [string "#include <stdio.h>",
+             newline,
+             string "#include <stdlib.h>",
+             newline,
+             newline,
+             string "#include \"lacweb.h\"",
              newline,
              newline,
              p_list_sep newline (fn x => x) pds,
+             newline,
+             string "int lw_inputs_len = ",
+             string (Int.toString (SM.foldl Int.max 0 fnums + 1)),
+             string ";",
+             newline,
+             newline,
+             string "int lw_input_num(char *name) {",
+             newline,
+             string "if",
+             space,
+             string "(name[0]",
+             space,
+             string "==",
+             space,
+             string "0)",
+             space,
+             string "return",
+             space,
+             string "-1;",
+             newline,
+             makeSwitch (fnums, 0),
+             string "}",
+             newline,
              newline,
              string "void lw_handle(lw_context ctx, char *request) {",
              newline,

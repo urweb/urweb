@@ -266,10 +266,10 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                 S.map2 (ListUtil.mapfold (mfvi ctx) vis,
                      fn vis' =>
                         (DValRec vis', loc))
-              | DExport (s, n, ts) =>
+              | DExport (ek, s, n, ts) =>
                 S.map2 (ListUtil.mapfold mft ts,
                         fn ts' =>
-                           (DExport (s, n, ts'), loc))
+                           (DExport (ek, s, n, ts'), loc))
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mft t,

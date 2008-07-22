@@ -44,7 +44,7 @@ type free = {
 fun shake file =
     let
         val page_es = List.foldl
-                          (fn ((DExport n, _), page_es) => n :: page_es
+                          (fn ((DExport (_, n), _), page_es) => n :: page_es
                             | (_, page_es) => page_es) [] file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, c), edef)

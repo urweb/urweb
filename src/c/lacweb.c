@@ -11,7 +11,10 @@ lw_unit lw_unit_v = {};
 struct lw_context {
   char *page, *page_front, *page_back;
   char *heap, *heap_front, *heap_back;
+  char **inputs;
 };
+
+extern int lw_inputs_len;
 
 lw_context lw_init(size_t page_len, size_t heap_len) {
   lw_context ctx = malloc(sizeof(struct lw_context));
@@ -22,18 +25,45 @@ lw_context lw_init(size_t page_len, size_t heap_len) {
   ctx->heap_front = ctx->heap = malloc(heap_len);
   ctx->heap_back = ctx->heap_front + heap_len;
 
+  ctx->inputs = calloc(lw_inputs_len, sizeof(char *));
+
   return ctx;
 }
 
 void lw_free(lw_context ctx) {
   free(ctx->page);
   free(ctx->heap);
+  free(ctx->inputs);
   free(ctx);
 }
 
 void lw_reset(lw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
+  memset(ctx->inputs, 0, lw_inputs_len * sizeof(char *));
+}
+
+int lw_input_num(char*);
+
+void lw_set_input(lw_context ctx, char *name, char *value) {
+  int n = lw_input_num(name);
+
+  if (n < 0) {
+    printf("Bad input name");
+    exit(1);
+  }
+
+  assert(n < lw_inputs_len);
+  ctx->inputs[n] = value;
+
+  printf("[%d] %s = %s\n", n, name, value);
+}
+
+char *lw_get_input(lw_context ctx, int n) {
+  assert(n >= 0);
+  assert(n < lw_inputs_len);
+  printf("[%d] = %s\n", n, ctx->inputs[n]);
+  return ctx->inputs[n];
 }
 
 static void lw_check_heap(lw_context ctx, size_t extra) {
@@ -294,14 +324,20 @@ void lw_Basis_urlifyString_w(lw_context ctx, lw_Basis_string s) {
 }
 
 
-lw_Basis_int lw_unurlifyInt(char **s) {
-  char *new_s = strchr(*s, '/');
-  int r;
+static char *lw_unurlify_advance(char *s) {
+  char *new_s = strchr(s, '/');
 
   if (new_s)
     *new_s++ = 0;
   else
-    new_s = strchr(*s, 0);
+    new_s = strchr(s, 0);
+
+  return new_s;
+}
+
+lw_Basis_int lw_unurlifyInt(char **s) {
+  char *new_s = lw_unurlify_advance(*s);
+  int r;
 
   r = atoi(*s);
   *s = new_s;
@@ -309,34 +345,19 @@ lw_Basis_int lw_unurlifyInt(char **s) {
 }
 
 lw_Basis_float lw_unurlifyFloat(char **s) {
-  char *new_s = strchr(*s, '/');
+  char *new_s = lw_unurlify_advance(*s);
   int r;
-
-  if (new_s)
-    *new_s++ = 0;
-  else
-    new_s = strchr(*s, 0);
 
   r = atof(*s);
   *s = new_s;
   return r;
 }
 
-lw_Basis_string lw_unurlifyString(lw_context ctx, char **s) {
-  char *new_s = strchr(*s, '/');
-  char *r, *s1, *s2;
-  int len, n;
+static lw_Basis_string lw_unurlifyString_to(char *r, char *s) {
+  char *s1, *s2;
+  int n;
 
-  if (new_s)
-    *new_s++ = 0;
-  else
-    new_s = strchr(*s, 0);
-
-  len = strlen(*s);
-  lw_check_heap(ctx, len + 1);
-
-  r = ctx->heap_front;
-  for (s1 = r, s2 = *s; *s2; ++s1, ++s2) {
+  for (s1 = r, s2 = s; *s2; ++s1, ++s2) {
     char c = *s2;
 
     switch (c) {
@@ -344,7 +365,7 @@ lw_Basis_string lw_unurlifyString(lw_context ctx, char **s) {
       *s1 = ' ';
       break;
     case '%':
-      assert(s2 + 2 < new_s);
+      assert(s2[1] != 0 && s2[2] != 0);
       sscanf(s2+1, "%02X", &n);
       *s1 = n;
       s2 += 2;
@@ -354,7 +375,19 @@ lw_Basis_string lw_unurlifyString(lw_context ctx, char **s) {
     }
   }
   *s1++ = 0;
-  ctx->heap_front = s1;
+  return s1;
+}
+
+lw_Basis_string lw_unurlifyString(lw_context ctx, char **s) {
+  char *new_s = lw_unurlify_advance(*s);
+  char *r, *s1, *s2;
+  int len, n;
+
+  len = strlen(*s);
+  lw_check_heap(ctx, len + 1);
+
+  r = ctx->heap_front;
+  ctx->heap_front = lw_unurlifyString_to(ctx->heap_front, *s);
   *s = new_s;
   return r;
 }

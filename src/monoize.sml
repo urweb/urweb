@@ -383,7 +383,7 @@ fun monoDecl env (all as (d, loc)) =
                 SOME (env,
                       (L'.DValRec (map (fn (x, n, t, e, s) => (x, n, monoType env t, monoExp env e, s)) vis), loc))
             end
-          | L.DExport n =>
+          | L.DExport (ek, n) =>
             let
                 val (_, t, _, s) = Env.lookupENamed env n
 
@@ -394,7 +394,7 @@ fun monoDecl env (all as (d, loc)) =
 
                 val ts = map (monoType env) (unwind t)
             in
-                SOME (env, (L'.DExport (s, n, ts), loc))
+                SOME (env, (L'.DExport (ek, s, n, ts), loc))
             end
     end
 

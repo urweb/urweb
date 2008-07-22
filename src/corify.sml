@@ -496,7 +496,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                                     e), loc) :: wds,
                                            (fn st =>
                                                case #1 (corifyExp st (L.EModProj (en, [], "wrap_" ^ s), loc)) of
-                                                   L'.ENamed n => (L'.DExport n, loc)
+                                                   L'.ENamed n => (L'.DExport (L'.Link, n), loc)
                                                  | _ => raise Fail "Corify: Value to export didn't corify properly")
                                            :: eds)
                                       end

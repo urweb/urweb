@@ -80,11 +80,15 @@ datatype exp' =
 
 withtype exp = exp' located
 
+datatype export_kind =
+         Link
+       | Action
+
 datatype decl' =
          DCon of string * int * kind * con
        | DVal of string * int * con * exp * string
        | DValRec of (string * int * con * exp * string) list
-       | DExport of int
+       | DExport of export_kind * int
 
 withtype decl = decl' located
 

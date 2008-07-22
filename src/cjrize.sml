@@ -225,11 +225,11 @@ fun cifyDecl ((d, loc), sm) =
             (SOME (L'.DFunRec vis, loc), NONE, sm)
         end        
 
-      | L.DExport (s, n, ts) =>
+      | L.DExport (ek, s, n, ts) =>
         let
             val (ts, sm) = ListUtil.foldlMap cifyTyp sm ts
         in
-            (NONE, SOME ("/" ^ s, n, ts), sm)
+            (NONE, SOME (ek, "/" ^ s, n, ts), sm)
         end
 
 fun cjrize ds =

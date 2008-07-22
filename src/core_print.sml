@@ -264,6 +264,11 @@ fun p_vali env (x, n, t, e, s) =
              p_exp env e]
     end
 
+fun p_export_kind ck =
+    case ck of
+        Link => string "link"
+      | Action => string "action"
+
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DCon (x, n, k, c) =>
@@ -300,9 +305,15 @@ fun p_decl env (dAll as (d, _) : decl) =
                  space,
                  p_list_sep (box [newline, string "and", space]) (p_vali env) vis]
         end
-      | DExport n => box [string "export",
-                          space,
-                          p_enamed env n]
+      | DExport (ek, n) => box [string "export",
+                                space,
+                                p_export_kind ek,
+                                space,
+                                p_enamed env n,
+                                space,
+                                string "as",
+                                space,
+                                p_con env (#2 (E.lookupENamed env n))]
 
 fun p_file env file =
     let

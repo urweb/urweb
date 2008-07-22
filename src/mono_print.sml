@@ -178,17 +178,19 @@ fun p_decl env (dAll as (d, _) : decl) =
                  p_list_sep (box [newline, string "and", space]) (p_vali env) vis]
         end
 
-      | DExport (s, n, ts) => box [string "export",
-                                   space,
-                                   p_enamed env n,
-                                   space,
-                                   string "as",
-                                   space,
-                                   string s,
-                                   p_list_sep (string "") (fn t => box [space,
-                                                                        string "(",
-                                                                        p_typ env t,
-                                                                        string ")"]) ts]
+      | DExport (ek, s, n, ts) => box [string "export",
+                                       space,
+                                       CorePrint.p_export_kind ek,
+                                       space,
+                                       p_enamed env n,
+                                       space,
+                                       string "as",
+                                       space,
+                                       string s,
+                                       p_list_sep (string "") (fn t => box [space,
+                                                                            string "(",
+                                                                            p_typ env t,
+                                                                            string ")"]) ts]
                           
 fun p_file env file =
     let
