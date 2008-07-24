@@ -259,7 +259,7 @@ fun monoExp (env, st) (all as (e, loc)) =
 
                 fun input typ =
                     case targs of
-                        [(L.CName name, _)] =>
+                        [_, (L.CName name, _)] =>
                         (L'.EStrcat (tagStart "input",
                                      (L'.EPrim (Prim.String (" type=\"" ^ typ ^ "\" name=\"" ^ name ^ "\"/>")),
                                       loc)), loc)
@@ -304,6 +304,7 @@ fun monoExp (env, st) (all as (e, loc)) =
                                        loc)), loc)
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to textarea tag"))
+                  | "password" => input "password"
                   | "ltextarea" =>
                     (case targs of
                          [_, (L.CName name, _)] =>

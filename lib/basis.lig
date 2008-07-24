@@ -66,6 +66,7 @@ con lformTag = fn ty :: Type => fn inner :: {Unit} => fn attrs :: {Type} =>
         -> nm :: Name -> unit
         -> tag attrs ([LForm] ++ ctx) inner [] [nm = ty]
 val textbox : lformTag string [] []
+val password : lformTag string [] []
 val ltextarea : lformTag string [] []
 
 con radio = [Body, Radio]
