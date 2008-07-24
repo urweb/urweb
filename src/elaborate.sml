@@ -1337,28 +1337,32 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
                                        | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                                   ((L'.StrVar n, loc), sgn) ms
              in
-                 case E.projectDatatype env {sgn = sgn, str = str, field = s} of
-                     NONE => (conError env (UnboundDatatype (loc, s));
-                              ([], (env, denv, gs)))
-                   | SOME xncs =>
-                     let
-                         val k = (L'.KType, loc)
-                         val t = (L'.CModProj (n, ms, s), loc)
-                         val (env, n') = E.pushCNamed env x k (SOME t)
-                         val env = E.pushDatatype env n' xncs
+                 case hnormCon (env, denv) (L'.CModProj (n, ms, s), loc) of
+                     ((L'.CModProj (n, ms, s), _), gs) =>
+                     (case E.projectDatatype env {sgn = sgn, str = str, field = s} of
+                          NONE => (conError env (UnboundDatatype (loc, s));
+                                   ([], (env, denv, gs)))
+                        | SOME xncs =>
+                          let
+                              val k = (L'.KType, loc)
+                              val t = (L'.CModProj (n, ms, s), loc)
+                              val (env, n') = E.pushCNamed env x k (SOME t)
+                              val env = E.pushDatatype env n' xncs
 
-                         val t = (L'.CNamed n', loc)
-                         val env = foldl (fn ((x, n, to), env) =>
-                                             let
-                                                 val t = case to of
-                                                             NONE => t
-                                                           | SOME t' => (L'.TFun (t', t), loc)
-                                             in
-                                                 E.pushENamedAs env x n t
-                                             end) env xncs
-                     in
-                         ([(L'.SgiDatatypeImp (x, n', n, ms, s), loc)], (env, denv, []))
-                     end
+                              val t = (L'.CNamed n', loc)
+                              val env = foldl (fn ((x, n, to), env) =>
+                                                  let
+                                                      val t = case to of
+                                                                  NONE => t
+                                                                | SOME t' => (L'.TFun (t', t), loc)
+                                                  in
+                                                      E.pushENamedAs env x n t
+                                                  end) env xncs
+                          in
+                              ([(L'.SgiDatatypeImp (x, n', n, ms, s), loc)], (env, denv, gs))
+                          end)
+                   | _ => (strError env (NotDatatype loc);
+                           ([], (env, denv, [])))
              end)
 
       | L.SgiVal (x, c) =>
