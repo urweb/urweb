@@ -2,7 +2,15 @@ structure M : sig datatype t = A | B end = struct
         datatype t = A | B
 end
 
+val a = M.A
+
 datatype u = datatype M.t
 
 val a : M.t = A
 val a2 : u = a
+
+structure M2 = M
+structure M3 : sig datatype t = datatype M.t end = M2
+structure M4 : sig datatype t = datatype M.t end = M
+
+val b : M3.t = M4.B

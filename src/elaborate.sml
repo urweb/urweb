@@ -1237,6 +1237,7 @@ datatype str_error =
        | UnOpenable of L'.sgn
        | NotType of L'.kind * (L'.kind * L'.kind * kunify_error)
        | DuplicateConstructor of string * ErrorMsg.span
+       | NotDatatype of ErrorMsg.span
 
 fun strError env err =
     case err of
@@ -1258,6 +1259,8 @@ fun strError env err =
          kunifyError ue)
       | DuplicateConstructor (x, loc) =>
         ErrorMsg.errorAt loc ("Duplicate datatype constructor " ^ x)
+      | NotDatatype loc =>
+        ErrorMsg.errorAt loc "Trying to import non-datatype as a datatype"
 
 val hnormSgn = E.hnormSgn
 
@@ -1319,7 +1322,44 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             ([(L'.SgiDatatype (x, n, xcs), loc)], (env, denv, gs))
         end
 
-      | L.SgiDatatypeImp _ => raise Fail "Elaborate SgiDatatypeImp"
+      | L.SgiDatatypeImp (_, [], _) => raise Fail "Empty SgiDatatypeImp"
+
+      | L.SgiDatatypeImp (x, m1 :: ms, s) =>
+        (case E.lookupStr env m1 of
+             NONE => (strError env (UnboundStr (loc, m1));
+                      ([], (env, denv, gs)))
+           | SOME (n, sgn) =>
+             let
+                 val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                     case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                         NONE => (conError env (UnboundStrInCon (loc, m));
+                                                  (strerror, sgnerror))
+                                       | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                  ((L'.StrVar n, loc), sgn) ms
+             in
+                 case E.projectDatatype env {sgn = sgn, str = str, field = s} of
+                     NONE => (conError env (UnboundDatatype (loc, s));
+                              ([], (env, denv, gs)))
+                   | SOME xncs =>
+                     let
+                         val k = (L'.KType, loc)
+                         val t = (L'.CModProj (n, ms, s), loc)
+                         val (env, n') = E.pushCNamed env x k (SOME t)
+                         val env = E.pushDatatype env n' xncs
+
+                         val t = (L'.CNamed n', loc)
+                         val env = foldl (fn ((x, n, to), env) =>
+                                             let
+                                                 val t = case to of
+                                                             NONE => t
+                                                           | SOME t' => (L'.TFun (t', t), loc)
+                                             in
+                                                 E.pushENamedAs env x n t
+                                             end) env xncs
+                     in
+                         ([(L'.SgiDatatypeImp (x, n', n, ms, s), loc)], (env, denv, []))
+                     end
+             end)
 
       | L.SgiVal (x, c) =>
         let
@@ -1501,6 +1541,8 @@ fun selfify env {str, strs, sgn} =
       | L'.SgnConst sgis =>
         (L'.SgnConst (map (fn (L'.SgiConAbs (x, n, k), loc) =>
                               (L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
+                            | (L'.SgiDatatype (x, n, xncs), loc) =>
+                              (L'.SgiDatatypeImp (x, n, str, strs, x), loc)
                             | (L'.SgiStr (x, n, sgn), loc) =>
                               (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
                             | x => x) sgis), #2 sgn)
@@ -1745,7 +1787,35 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                      end
                                    | _ => NONE)
 
-                      | L'.SgiDatatypeImp _ => raise Fail "SgiDatatypeImp in subsgn"
+                      | L'.SgiDatatypeImp (x, n2, m11, ms1, s1) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 case sgi1 of
+                                     L'.SgiDatatypeImp (x', n1, m12, ms2, s2) =>
+                                     if x = x' then
+                                         let
+                                             val k = (L'.KType, loc)
+                                             val t1 = (L'.CModProj (m11, ms1, s1), loc)
+                                             val t2 = (L'.CModProj (m12, ms2, s2), loc)
+
+                                             fun good () =
+                                                 let
+                                                     val env = E.pushCNamedAs env x n1 k (SOME t1)
+                                                     val env = E.pushCNamedAs env x n2 k (SOME t2)
+                                                 in
+                                                     SOME (env, denv)
+                                                 end
+                                         in
+                                             (case unifyCons (env, denv) t1 t2 of
+                                                  [] => good ()
+                                                | _ => NONE)
+                                             handle CUnify (c1, c2, err) =>
+                                                    (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                     good ())
+                                         end
+                                     else
+                                         NONE
+
+                                   | _ => NONE)
 
                       | L'.SgiVal (x, n2, c2) =>
                         seek (fn sgi1All as (sgi1, _) =>
@@ -1904,28 +1974,32 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                                        | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                                   ((L'.StrVar n, loc), sgn) ms
              in
-                 case E.projectDatatype env {sgn = sgn, str = str, field = s} of
-                     NONE => (conError env (UnboundDatatype (loc, s));
-                              ([], (env, denv, gs)))
-                   | SOME xncs =>
-                     let
-                         val k = (L'.KType, loc)
-                         val t = (L'.CModProj (n, ms, s), loc)
-                         val (env, n') = E.pushCNamed env x k (SOME t)
-                         val env = E.pushDatatype env n' xncs
+                 case hnormCon (env, denv) (L'.CModProj (n, ms, s), loc) of
+                     ((L'.CModProj (n, ms, s), _), gs) =>
+                     (case E.projectDatatype env {sgn = sgn, str = str, field = s} of
+                          NONE => (conError env (UnboundDatatype (loc, s));
+                                   ([], (env, denv, gs)))
+                        | SOME xncs =>
+                          let
+                              val k = (L'.KType, loc)
+                              val t = (L'.CModProj (n, ms, s), loc)
+                              val (env, n') = E.pushCNamed env x k (SOME t)
+                              val env = E.pushDatatype env n' xncs
 
-                         val t = (L'.CNamed n', loc)
-                         val env = foldl (fn ((x, n, to), env) =>
-                                             let
-                                                 val t = case to of
-                                                             NONE => t
-                                                           | SOME t' => (L'.TFun (t', t), loc)
-                                             in
-                                                 E.pushENamedAs env x n t
-                                             end) env xncs
-                     in
-                         ([(L'.DDatatypeImp (x, n', n, ms, s), loc)], (env, denv, []))
-                     end
+                              val t = (L'.CNamed n', loc)
+                              val env = foldl (fn ((x, n, to), env) =>
+                                                  let
+                                                      val t = case to of
+                                                                  NONE => t
+                                                                | SOME t' => (L'.TFun (t', t), loc)
+                                                  in
+                                                      E.pushENamedAs env x n t
+                                                  end) env xncs
+                          in
+                              ([(L'.DDatatypeImp (x, n', n, ms, s), loc)], (env, denv, gs))
+                          end)
+                   | _ => (strError env (NotDatatype loc);
+                           ([], (env, denv, [])))
              end)
 
       | L.DVal (x, co, e) =>
@@ -2035,7 +2109,7 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
 
                         val (str', actual, gs2) = elabStr (env, denv) str
                     in
-                        subSgn (env, denv) actual formal;
+                        subSgn (env, denv) (selfifyAt env {str = str', sgn = actual}) formal;
                         (str', formal, gs1 @ gs2)
                     end
 

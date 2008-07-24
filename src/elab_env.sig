@@ -93,4 +93,6 @@ signature ELAB_ENV = sig
 
     val newNamed : unit -> int
 
+    val chaseMpath : env -> (int * string list) -> Elab.str * Elab.sgn
+
 end

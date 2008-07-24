@@ -366,7 +366,16 @@ fun sgnSeek f sgis =
                 [] => NONE
               | (sgi, _) :: sgis =>
                 case f sgi of
-                    SOME v => SOME (v, (sgns, strs, cons))
+                    SOME v =>
+                    let
+                        val cons =
+                            case sgi of
+                                SgiDatatype (x, n, _) => IM.insert (cons, n, x)
+                              | SgiDatatypeImp (x, n, _, _, _) => IM.insert (cons, n, x)
+                              | _ => cons
+                    in
+                        SOME (v, (sgns, strs, cons))
+                    end
                   | NONE =>
                     case sgi of
                         SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
@@ -503,12 +512,28 @@ fun projectStr env {sgn, str, field} =
       | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
       | _ => NONE
 
+fun chaseMpath env (n, ms) =
+    let
+        val (_, sgn) = lookupStrNamed env n
+    in
+        foldl (fn (m, (str, sgn)) =>
+                                   case projectStr env {sgn = sgn, str = str, field = m} of
+                                       NONE => raise Fail "kindof: Unknown substructure"
+                                     | SOME sgn => ((StrProj (str, m), #2 sgn), sgn))
+                               ((StrVar n, #2 sgn), sgn) ms
+    end
+
 fun projectCon env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         (case sgnSeek (fn SgiConAbs (x, _, k) => if x = field then SOME (k, NONE) else NONE
                         | SgiCon (x, _, k, c) => if x = field then SOME (k, SOME c) else NONE
                         | SgiDatatype (x, _, _) => if x = field then SOME ((KType, #2 sgn), NONE) else NONE
+                        | SgiDatatypeImp (x, _, m1, ms, x') =>
+                          if x = field then
+                              SOME ((KType, #2 sgn), SOME (CModProj (m1, ms, x'), #2 sgn))
+                          else
+                              NONE
                         | _ => NONE) sgis of
              NONE => NONE
            | SOME ((k, co), subs) => SOME (k, Option.map (sgnSubCon (str, subs)) co))
@@ -519,6 +544,15 @@ fun projectDatatype env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         (case sgnSeek (fn SgiDatatype (x, _, xncs) => if x = field then SOME xncs else NONE
+                        | SgiDatatypeImp (x, _, m1, ms, x') =>
+                          if x = field then
+                              let
+                                  val (str, sgn) = chaseMpath env (m1, ms)
+                              in
+                                  projectDatatype env {sgn = sgn, str = str, field = x'}
+                              end
+                          else
+                              NONE
                         | _ => NONE) sgis of
              NONE => NONE
            | SOME (xncs, subs) => SOME (map (fn (x, n, to) => (x, n, Option.map (sgnSubCon (str, subs)) to)) xncs))
@@ -527,7 +561,31 @@ fun projectDatatype env {sgn, str, field} =
 fun projectVal env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
-        (case sgnSeek (fn SgiVal (x, _, c) => if x = field then SOME c else NONE | _ => NONE) sgis of
+        (case sgnSeek (fn SgiVal (x, _, c) => if x = field then SOME c else NONE
+                        | SgiDatatype (_, n, xncs) =>
+                          ListUtil.search (fn (x, _, to) =>
+                                              if x = field then
+                                                  SOME (case to of
+                                                            NONE => (CNamed n, #2 sgn)
+                                                          | SOME t => (TFun (t, (CNamed n, #2 sgn)), #2 sgn))
+                                              else
+                                                  NONE) xncs
+                        | SgiDatatypeImp (_, n, m1, ms, x') =>
+                          let
+                              val (str, sgn) = chaseMpath env (m1, ms)
+                          in
+                              case projectDatatype env {sgn = sgn, str = str, field = x'} of
+                                  NONE => NONE
+                                | SOME xncs =>
+                                  ListUtil.search (fn (x, _, to) =>
+                                                      if x = field then
+                                                          SOME (case to of
+                                                                    NONE => (CNamed n, #2 sgn)
+                                                                  | SOME t => (TFun (t, (CNamed n, #2 sgn)), #2 sgn))
+                                                      else
+                                                          NONE) xncs
+                          end
+                        | _ => NONE) sgis of
              NONE => NONE
            | SOME (c, subs) => SOME (sgnSubCon (str, subs) c))
       | SgnError => SOME (CError, ErrorMsg.dummySpan)
