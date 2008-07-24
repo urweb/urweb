@@ -1,0 +1,8 @@
+structure M : sig datatype t = A | B end = struct
+        datatype t = A | B
+end
+
+datatype u = datatype M.t
+
+val a : M.t = A
+val a2 : u = a

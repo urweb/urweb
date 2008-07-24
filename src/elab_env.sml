@@ -73,10 +73,14 @@ datatype 'a var =
        | Rel of int * 'a
        | Named of int * 'a
 
+type datatyp = (string * con option) IM.map
+
 type env = {
      renameC : kind var' SM.map,
      relC : (string * kind) list,
      namedC : (string * kind * con option) IM.map,
+
+     datatypes : datatyp IM.map,
 
      renameE : con var' SM.map,
      relE : (string * con) list,
@@ -104,6 +108,8 @@ val empty = {
     relC = [],
     namedC = IM.empty,
 
+    datatypes = IM.empty,
+
     renameE = SM.empty,
     relE = [],
     namedE = IM.empty,
@@ -123,6 +129,8 @@ fun pushCRel (env : env) x k =
         {renameC = SM.insert (renameC, x, Rel' (0, k)),
          relC = (x, k) :: #relC env,
          namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
+
+         datatypes = #datatypes env,
 
          renameE = #renameE env,
          relE = map (fn (x, c) => (x, lift c)) (#relE env),
@@ -144,6 +152,8 @@ fun pushCNamedAs (env : env) x n k co =
     {renameC = SM.insert (#renameC env, x, Named' (n, k)),
      relC = #relC env,
      namedC = IM.insert (#namedC env, n, (x, k, co)),
+
+     datatypes = #datatypes env,
 
      renameE = #renameE env,
      relE = #relE env,
@@ -174,6 +184,37 @@ fun lookupC (env : env) x =
       | SOME (Rel' x) => Rel x
       | SOME (Named' x) => Named x
 
+fun pushDatatype (env : env) n xncs =
+    {renameC = #renameC env,
+     relC = #relC env,
+     namedC = #namedC env,
+
+     datatypes = IM.insert (#datatypes env, n,
+                            foldl (fn ((x, n, to), cons) =>
+                                      IM.insert (cons, n, (x, to))) IM.empty xncs),
+
+     renameE = #renameE env,
+     relE = #relE env,
+     namedE = #namedE env,
+
+     renameSgn = #renameSgn env,
+     sgn = #sgn env,
+
+     renameStr = #renameStr env,
+     str = #str env}
+
+fun lookupDatatype (env : env) n =
+    case IM.find (#datatypes env, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
+fun lookupConstructor dt n =
+    case IM.find (dt, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
+fun constructors dt = IM.foldri (fn (n, (x, to), ls) => (x, n, to) :: ls) [] dt
+
 fun pushERel (env : env) x t =
     let
         val renameE = SM.map (fn Rel' (n, t) => Rel' (n+1, t)
@@ -182,6 +223,8 @@ fun pushERel (env : env) x t =
         {renameC = #renameC env,
          relC = #relC env,
          namedC = #namedC env,
+
+         datatypes = #datatypes env,
 
          renameE = SM.insert (renameE, x, Rel' (0, t)),
          relE = (x, t) :: #relE env,
@@ -202,6 +245,8 @@ fun pushENamedAs (env : env) x n t =
     {renameC = #renameC env,
      relC = #relC env,
      namedC = #namedC env,
+
+     datatypes = #datatypes env,
 
      renameE = SM.insert (#renameE env, x, Named' (n, t)),
      relE = #relE env,
@@ -237,6 +282,8 @@ fun pushSgnNamedAs (env : env) x n sgis =
      relC = #relC env,
      namedC = #namedC env,
 
+     datatypes = #datatypes env,
+
      renameE = #renameE env,
      relE = #relE env,
      namedE = #namedE env,
@@ -267,6 +314,8 @@ fun pushStrNamedAs (env : env) x n sgis =
      relC = #relC env,
      namedC = #namedC env,
 
+     datatypes = #datatypes env,
+
      renameE = #renameE env,
      relE = #relE env,
      namedE = #namedE env,
@@ -291,26 +340,6 @@ fun lookupStrNamed (env : env) n =
       | SOME x => x
 
 fun lookupStr (env : env) x = SM.find (#renameStr env, x)
-
-fun declBinds env (d, loc) =
-    case d of
-        DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
-      | DDatatype (x, n, xncs) =>
-        let
-            val env = pushCNamedAs env x n (KType, loc) NONE
-        in
-            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
-                    | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
-            env xncs
-        end
-      | DDatatypeImp (x, n, m, ms, x') => pushCNamedAs env x n (KType, loc) (SOME (CModProj (m, ms, x'), loc))
-      | DVal (x, n, t, _) => pushENamedAs env x n t
-      | DValRec vis => foldl (fn ((x, n, t, _), env) => pushENamedAs env x n t) env vis
-      | DSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
-      | DStr (x, n, sgn, _) => pushStrNamedAs env x n sgn
-      | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
-      | DConstraint _ => env
-      | DExport _ => env
 
 fun sgiBinds env (sgi, loc) =
     case sgi of
@@ -479,10 +508,20 @@ fun projectCon env {sgn, str, field} =
         SgnConst sgis =>
         (case sgnSeek (fn SgiConAbs (x, _, k) => if x = field then SOME (k, NONE) else NONE
                         | SgiCon (x, _, k, c) => if x = field then SOME (k, SOME c) else NONE
+                        | SgiDatatype (x, _, _) => if x = field then SOME ((KType, #2 sgn), NONE) else NONE
                         | _ => NONE) sgis of
              NONE => NONE
            | SOME ((k, co), subs) => SOME (k, Option.map (sgnSubCon (str, subs)) co))
       | SgnError => SOME ((KError, ErrorMsg.dummySpan), SOME (CError, ErrorMsg.dummySpan))
+      | _ => NONE
+
+fun projectDatatype env {sgn, str, field} =
+    case #1 (hnormSgn env sgn) of
+        SgnConst sgis =>
+        (case sgnSeek (fn SgiDatatype (x, _, xncs) => if x = field then SOME xncs else NONE
+                        | _ => NONE) sgis of
+             NONE => NONE
+           | SOME (xncs, subs) => SOME (map (fn (x, n, to) => (x, n, Option.map (sgnSubCon (str, subs)) to)) xncs))
       | _ => NONE
 
 fun projectVal env {sgn, str, field} =
@@ -523,5 +562,44 @@ fun projectConstraints env {sgn, str} =
         SgnConst sgis => SOME (sgnSeekConstraints (str, sgis))
       | SgnError => SOME []
       | _ => NONE
+
+fun declBinds env (d, loc) =
+    case d of
+        DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
+      | DDatatype (x, n, xncs) =>
+        let
+            val env = pushCNamedAs env x n (KType, loc) NONE
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
+                    | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
+            env xncs
+        end
+      | DDatatypeImp (x, n, m, ms, x') =>
+        let
+            val t = (CModProj (m, ms, x'), loc)
+            val env = pushCNamedAs env x n (KType, loc) (SOME t)
+            val (_, sgn) = lookupStrNamed env m
+            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                       case projectStr env {sgn = sgn, str = str, field = m} of
+                                           NONE => raise Fail "ElabEnv.declBinds: Couldn't projectStr"
+                                         | SOME sgn => ((StrProj (str, m), loc), sgn))
+                                   ((StrVar m, loc), sgn) ms
+            val xncs = case projectDatatype env {sgn = sgn, str = str, field = x'} of
+                           NONE => raise Fail "ElabEnv.declBinds: Couldn't projectDatatype"
+                         | SOME xncs => xncs
+
+            val t = (CNamed n, loc)
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' t
+                    | ((x', n', SOME t'), env) => pushENamedAs env x' n' (TFun (t', t), loc))
+            env xncs
+        end
+      | DVal (x, n, t, _) => pushENamedAs env x n t
+      | DValRec vis => foldl (fn ((x, n, t, _), env) => pushENamedAs env x n t) env vis
+      | DSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
+      | DStr (x, n, sgn, _) => pushStrNamedAs env x n sgn
+      | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
+      | DConstraint _ => env
+      | DExport _ => env
 
 end

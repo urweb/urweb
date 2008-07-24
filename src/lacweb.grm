@@ -136,7 +136,8 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
        | LTYPE SYMBOL EQ cexp           (DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
        | DATATYPE SYMBOL EQ barOpt dcons(DDatatype (SYMBOL, dcons), s (DATATYPEleft, dconsright))
-       | DATATYPE SYMBOL EQ DATATYPE path(DDatatypeImp (SYMBOL, #1 path, #2 path), s (DATATYPEleft, pathright))
+       | DATATYPE SYMBOL EQ DATATYPE CSYMBOL DOT path
+                (DDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))
        | VAL vali                       (DVal vali, s (VALleft, valiright))
        | VAL REC valis                  (DValRec valis, s (VALleft, valisright))
 
@@ -200,7 +201,8 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
        | LTYPE SYMBOL EQ cexp           (SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
        | DATATYPE SYMBOL EQ barOpt dcons(SgiDatatype (SYMBOL, dcons), s (DATATYPEleft, dconsright))
-       | DATATYPE SYMBOL EQ DATATYPE path(SgiDatatypeImp (SYMBOL, #1 path, #2 path), s (DATATYPEleft, pathright))
+       | DATATYPE SYMBOL EQ DATATYPE CSYMBOL DOT path
+                (SgiDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))
        | VAL SYMBOL COLON cexp          (SgiVal (SYMBOL, cexp), s (VALleft, cexpright))
 
        | STRUCTURE CSYMBOL COLON sgn    (SgiStr (CSYMBOL, sgn), s (STRUCTUREleft, sgnright))
