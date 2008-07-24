@@ -1724,6 +1724,9 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                      case sgi1 of
                                          L'.SgiConAbs (x', n1, k1) => found (x', n1, k1, NONE)
                                        | L'.SgiCon (x', n1, k1, c1) => found (x', n1, k1, SOME c1)
+                                       | L'.SgiDatatype (x', n1, _) => found (x', n1, (L'.KType, loc), NONE)
+                                       | L'.SgiDatatypeImp (x', n1, m1, ms, s) =>
+                                         found (x', n1, (L'.KType, loc), SOME (L'.CModProj (m1, ms, s), loc))
                                        | _ => NONE
                                  end)
 

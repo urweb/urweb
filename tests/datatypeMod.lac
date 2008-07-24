@@ -14,3 +14,5 @@ structure M3 : sig datatype t = datatype M.t end = M2
 structure M4 : sig datatype t = datatype M.t end = M
 
 val b : M3.t = M4.B
+
+structure Ma : sig type t end = M
