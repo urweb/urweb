@@ -895,6 +895,7 @@ fun typeof env (e, loc) =
 
       | L'.ERecord xes => (L'.TRecord (L'.CRecord (ktype, map (fn (x, _, t) => (x, t)) xes), loc), loc)
       | L'.EField (_, _, {field, ...}) => field
+      | L'.ECut (_, _, {rest, ...}) => (L'.TRecord rest, loc)
       | L'.EFold dom => foldType (dom, loc)
 
       | L'.EError => cerror
@@ -1106,6 +1107,23 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val gs4 = D.prove env denv (first, rest, loc)
             in
                 ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ gs2 @ gs3 @ gs4)
+            end
+
+          | L.ECut (e, c) =>
+            let
+                val (e', et, gs1) = elabExp (env, denv) e
+                val (c', ck, gs2) = elabCon (env, denv) c
+
+                val ft = cunif (loc, ktype)
+                val rest = cunif (loc, ktype_record)
+                val first = (L'.CRecord (ktype, [(c', ft)]), loc)
+                            
+                val gs3 =
+                    checkCon (env, denv) e' et
+                             (L'.TRecord (L'.CConcat (first, rest), loc), loc)
+                val gs4 = D.prove env denv (first, rest, loc)
+            in
+                ((L'.ECut (e', c', {field = ft, rest = rest}), loc), (L'.TRecord rest, loc), gs1 @ gs2 @ gs3 @ gs4)
             end
 
           | L.EFold =>

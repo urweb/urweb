@@ -47,7 +47,7 @@ fun uppercaseFirst "" = ""
  | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT
  | TYPE | NAME
  | ARROW | LARROW | DARROW
- | FN | PLUSPLUS | DOLLAR | TWIDDLE
+ | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT
 
@@ -111,7 +111,7 @@ fun uppercaseFirst "" = ""
 %nonassoc DCOLON TCOLON
 %right COMMA
 %right ARROW LARROW
-%right PLUSPLUS
+%right PLUSPLUS MINUSMINUS
 %nonassoc TWIDDLE
 %nonassoc DOLLAR
 %left DOT
@@ -285,6 +285,7 @@ eexp   : eapps                          (eapps)
                                          end)
 
        | LPAREN eexp RPAREN DCOLON cexp (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
+       | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 

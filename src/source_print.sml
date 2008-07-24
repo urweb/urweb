@@ -232,6 +232,11 @@ fun p_exp' par (e, _) =
       | EField (e, c) => box [p_exp' true e,
                               string ".",
                               p_con' true c]
+      | ECut (e, c) => parenIf par (box [p_exp' true e,
+                                         space,
+                                         string "--",
+                                         space,
+                                         p_con' true c])
       | EFold => string "fold"
 
 and p_exp e = p_exp' false e

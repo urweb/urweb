@@ -235,6 +235,7 @@ notags = [^<{\n]+;
 <INITIAL> "->"        => (Tokens.ARROW (pos yypos, pos yypos + size yytext));
 <INITIAL> "=>"        => (Tokens.DARROW (pos yypos, pos yypos + size yytext));
 <INITIAL> "++"        => (Tokens.PLUSPLUS (pos yypos, pos yypos + size yytext));
+<INITIAL> "--"        => (Tokens.MINUSMINUS (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "="         => (Tokens.EQ (pos yypos, pos yypos + size yytext));
 <INITIAL> ","         => (Tokens.COMMA (pos yypos, pos yypos + size yytext));

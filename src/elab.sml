@@ -83,6 +83,7 @@ datatype exp' =
 
        | ERecord of (con * exp * con) list
        | EField of exp * con * { field : con, rest : con }
+       | ECut of exp * con * { field : con, rest : con }
        | EFold of kind
 
        | EError

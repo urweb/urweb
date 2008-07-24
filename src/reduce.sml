@@ -164,6 +164,19 @@ fun exp env e =
                           | _ => false) xes of
              SOME (_, e, _) => #1 e
            | NONE => e)
+      | ECut (r as (_, loc), _, {rest = (CRecord (k, xts), _), ...}) =>
+        let
+            fun fields (remaining, passed) =
+                case remaining of
+                    [] => []
+                  | (x, t) :: rest =>
+                    (x,
+                     (EField (r, x, {field = t,
+                                     rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
+                     t) :: fields (rest, (x, t) :: passed)
+        in
+            #1 (reduceExp env (ERecord (fields (xts, [])), loc))
+        end
 
       | _ => e
 

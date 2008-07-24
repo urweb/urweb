@@ -100,6 +100,7 @@ datatype exp' =
 
        | ERecord of (con * exp) list
        | EField of exp * con
+       | ECut of exp * con
        | EFold
 
 withtype exp = exp' located

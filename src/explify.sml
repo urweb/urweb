@@ -85,6 +85,8 @@ fun explifyExp (e, loc) =
       | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) => (explifyCon c, explifyExp e, explifyCon t)) xes), loc)
       | L.EField (e1, c, {field, rest}) => (L'.EField (explifyExp e1, explifyCon c,
                                                        {field = explifyCon field, rest = explifyCon rest}), loc)
+      | L.ECut (e1, c, {field, rest}) => (L'.ECut (explifyExp e1, explifyCon c,
+                                                     {field = explifyCon field, rest = explifyCon rest}), loc)
       | L.EFold k => (L'.EFold (explifyKind k), loc)
 
       | L.EError => raise Fail ("explifyExp: EError at " ^ EM.spanToString loc)
