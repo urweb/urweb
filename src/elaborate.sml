@@ -1751,44 +1751,57 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
 
                       | L'.SgiDatatype (x, n2, xncs2) =>
                         seek (fn sgi1All as (sgi1, _) =>
-                                 case sgi1 of
-                                     L'.SgiDatatype (x', n1, xncs1) =>
-                                     let
-                                         fun mismatched ue =
-                                             (sgnError env (SgiMismatchedDatatypes (sgi1All, sgi2All, ue));
-                                              SOME (env, denv))
+                                 let
+                                     fun found (n1, xncs1) =
+                                         let
+                                             fun mismatched ue =
+                                                 (sgnError env (SgiMismatchedDatatypes (sgi1All, sgi2All, ue));
+                                                  SOME (env, denv))
 
-                                         fun good () =
-                                             let
-                                                 val env = E.sgiBinds env sgi2All
-                                                 val env = if n1 = n2 then
-                                                               env
-                                                           else
-                                                               E.pushCNamedAs env x n1 (L'.KType, loc)
-                                                                              (SOME (L'.CNamed n1, loc))
-                                             in
-                                                 SOME (env, denv)
-                                             end
+                                             fun good () =
+                                                 let
+                                                     val env = E.sgiBinds env sgi2All
+                                                     val env = if n1 = n2 then
+                                                                   env
+                                                               else
+                                                                   E.pushCNamedAs env x n1 (L'.KType, loc)
+                                                                                  (SOME (L'.CNamed n1, loc))
+                                                 in
+                                                     SOME (env, denv)
+                                                 end
 
-                                         fun xncBad ((x1, _, t1), (x2, _, t2)) =
-                                             String.compare (x1, x2) <> EQUAL
-                                             orelse case (t1, t2) of
-                                                        (NONE, NONE) => false
-                                                      | (SOME t1, SOME t2) =>
-                                                        not (List.null (unifyCons (env, denv) t1 t2))
-                                                      | _ => true
-                                     in
-                                         (if x = x' then
-                                             if length xncs1 <> length xncs2
-                                                orelse ListPair.exists xncBad (xncs1, xncs2) then
-                                                 mismatched NONE
-                                             else
-                                                 good ()
-                                          else
-                                              NONE)
-                                         handle CUnify ue => mismatched (SOME ue)
-                                     end
-                                   | _ => NONE)
+                                             fun xncBad ((x1, _, t1), (x2, _, t2)) =
+                                                 String.compare (x1, x2) <> EQUAL
+                                                 orelse case (t1, t2) of
+                                                            (NONE, NONE) => false
+                                                          | (SOME t1, SOME t2) =>
+                                                            not (List.null (unifyCons (env, denv) t1 t2))
+                                                          | _ => true
+                                         in
+                                             (if length xncs1 <> length xncs2
+                                                 orelse ListPair.exists xncBad (xncs1, xncs2) then
+                                                  mismatched NONE
+                                              else
+                                                  good ())
+                                             handle CUnify ue => mismatched (SOME ue)
+                                         end
+                                 in
+                                     case sgi1 of
+                                         L'.SgiDatatype (x', n1, xncs1) =>
+                                         if x' = x then
+                                             found (n1, xncs1)
+                                         else
+                                             NONE
+                                       | L'.SgiDatatypeImp (x', n1, m1, ms, s) =>
+                                         let
+                                             val (str, sgn) = E.chaseMpath env (m1, ms)
+                                         in
+                                             case E.projectDatatype env {str = str, sgn = sgn, field = s} of
+                                                 NONE => NONE
+                                               | SOME xncs1 => found (n1, xncs1)
+                                         end
+                                       | _ => NONE
+                                 end)
 
                       | L'.SgiDatatypeImp (x, n2, m11, ms1, s1) =>
                         seek (fn sgi1All as (sgi1, _) =>
