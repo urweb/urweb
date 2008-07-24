@@ -42,9 +42,10 @@ fun uppercaseFirst "" = ""
  | STRING of string | INT of Int64.int | FLOAT of Real64.real
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
- | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER
+ | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
  | DIVIDE | GT
  | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT
+ | DATATYPE | OF
  | TYPE | NAME
  | ARROW | LARROW | DARROW
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
@@ -62,6 +63,10 @@ fun uppercaseFirst "" = ""
  | vali of string * con option * exp
  | valis of (string * con option * exp) list
 
+ | barOpt of unit
+ | dcons of (string * con option) list
+ | dcon of string * con option
+
  | sgn of sgn
  | sgntm of sgn
  | sgi of sgn_item
@@ -73,6 +78,7 @@ fun uppercaseFirst "" = ""
  | kcolon of explicitness
 
  | path of string list * string
+ | cpath of string list * string
  | spath of str
  | mpath of string list
 
@@ -129,6 +135,8 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
        | CON SYMBOL DCOLON kind EQ cexp (DCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
        | LTYPE SYMBOL EQ cexp           (DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
+       | DATATYPE SYMBOL EQ barOpt dcons(DDatatype (SYMBOL, dcons), s (DATATYPEleft, dconsright))
+       | DATATYPE SYMBOL EQ DATATYPE path(DDatatypeImp (SYMBOL, #1 path, #2 path), s (DATATYPEleft, pathright))
        | VAL vali                       (DVal vali, s (VALleft, valiright))
        | VAL REC valis                  (DValRec valis, s (VALleft, valisright))
 
@@ -152,6 +160,15 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                            | m :: ms => (DOpenConstraints (m, ms), s (OPENleft, mpathright)))
        | CONSTRAINT cterm TWIDDLE cterm (DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
        | EXPORT spath                   (DExport spath, s (EXPORTleft, spathright))
+
+barOpt :                                ()
+       | BAR                            ()
+
+dcons  : dcon                           ([dcon])
+       | dcon BAR dcons                 (dcon :: dcons)
+
+dcon   : CSYMBOL                        (CSYMBOL, NONE)
+       | CSYMBOL OF cexp                (CSYMBOL, SOME cexp)
 
 vali   : SYMBOL EQ eexp                 (SYMBOL, NONE, eexp)
        | SYMBOL COLON cexp EQ eexp      (SYMBOL, SOME cexp, eexp)
@@ -182,6 +199,8 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
        | CON SYMBOL DCOLON kind EQ cexp (SgiCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
        | LTYPE SYMBOL EQ cexp           (SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
+       | DATATYPE SYMBOL EQ barOpt dcons(SgiDatatype (SYMBOL, dcons), s (DATATYPEleft, dconsright))
+       | DATATYPE SYMBOL EQ DATATYPE path(SgiDatatypeImp (SYMBOL, #1 path, #2 path), s (DATATYPEleft, pathright))
        | VAL SYMBOL COLON cexp          (SgiVal (SYMBOL, cexp), s (VALleft, cexpright))
 
        | STRUCTURE CSYMBOL COLON sgn    (SgiStr (CSYMBOL, sgn), s (STRUCTUREleft, sgnright))
@@ -239,6 +258,9 @@ kcolon : DCOLON                         (Explicit)
 path   : SYMBOL                         ([], SYMBOL)
        | CSYMBOL DOT path               (let val (ms, x) = path in (CSYMBOL :: ms, x) end)
 
+cpath  : CSYMBOL                        ([], CSYMBOL)
+       | CSYMBOL DOT cpath              (let val (ms, x) = cpath in (CSYMBOL :: ms, x) end)
+
 mpath  : CSYMBOL                        ([CSYMBOL])
        | CSYMBOL DOT mpath              (CSYMBOL :: mpath)
 
@@ -290,6 +312,7 @@ eexp   : eapps                          (eapps)
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
        | path                           (EVar path, s (pathleft, pathright))
+       | cpath                          (EVar cpath, s (cpathleft, cpathright))
        | LBRACE rexp RBRACE             (ERecord rexp, s (LBRACEleft, RBRACEright))
        | UNIT                           (ERecord [], s (UNITleft, UNITright))
 

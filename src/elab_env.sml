@@ -292,9 +292,18 @@ fun lookupStrNamed (env : env) n =
 
 fun lookupStr (env : env) x = SM.find (#renameStr env, x)
 
-fun declBinds env (d, _) =
+fun declBinds env (d, loc) =
     case d of
         DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
+      | DDatatype (x, n, xncs) =>
+        let
+            val env = pushCNamedAs env x n (KType, loc) NONE
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
+                    | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
+            env xncs
+        end
+      | DDatatypeImp (x, n, m, ms, x') => pushCNamedAs env x n (KType, loc) (SOME (CModProj (m, ms, x'), loc))
       | DVal (x, n, t, _) => pushENamedAs env x n t
       | DValRec vis => foldl (fn ((x, n, t, _), env) => pushENamedAs env x n t) env vis
       | DSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
@@ -303,10 +312,19 @@ fun declBinds env (d, _) =
       | DConstraint _ => env
       | DExport _ => env
 
-fun sgiBinds env (sgi, _) =
+fun sgiBinds env (sgi, loc) =
     case sgi of
         SgiConAbs (x, n, k) => pushCNamedAs env x n k NONE
       | SgiCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
+      | SgiDatatype (x, n, xncs) =>
+        let
+            val env = pushCNamedAs env x n (KType, loc) NONE
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
+                    | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
+            env xncs
+        end
+      | SgiDatatypeImp (x, n, m1, ms, x') => pushCNamedAs env x n (KType, loc) (SOME (CModProj (m1, ms, x'), loc))
       | SgiVal (x, n, t) => pushENamedAs env x n t
       | SgiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
@@ -324,6 +342,8 @@ fun sgnSeek f sgis =
                     case sgi of
                         SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
                       | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                      | SgiDatatype (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                      | SgiDatatypeImp (x, n, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
                       | SgiVal _ => seek (sgis, sgns, strs, cons)
                       | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons)
                       | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons)
@@ -489,6 +509,8 @@ fun sgnSeekConstraints (str, sgis) =
                     end
                   | SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiDatatype (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiDatatypeImp (x, n, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiVal _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
                   | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)

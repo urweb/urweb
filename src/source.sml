@@ -71,6 +71,8 @@ withtype con = con' located
 datatype sgn_item' =
          SgiConAbs of string * kind
        | SgiCon of string * kind option * con
+       | SgiDatatype of string * (string * con option) list
+       | SgiDatatypeImp of string * string list * string
        | SgiVal of string * con
        | SgiStr of string * sgn
        | SgiSgn of string * sgn
@@ -107,6 +109,8 @@ withtype exp = exp' located
 
 datatype decl' =
          DCon of string * kind option * con
+       | DDatatype of string * (string * con option) list
+       | DDatatypeImp of string * string list * string
        | DVal of string * con option * exp
        | DValRec of (string * con option * exp) list
        | DSgn of string * sgn

@@ -309,6 +309,22 @@ fun p_named x n =
     else
         string x
 
+fun p_datatype env (x, n, cons) =
+    let
+        val env = E.pushCNamedAs env x n (KType, ErrorMsg.dummySpan) NONE
+    in
+        box [string "datatype",
+             space,
+             string x,
+             space,
+             string "=",
+             space,
+             p_list_sep (box [space, string "|", space])
+                        (fn (x, _, NONE) => string x
+                          | (x, _, SOME t) => box [string x, space, string "of", space, p_con env t])
+                        cons]
+    end
+
 fun p_sgn_item env (sgi, _) =
     case sgi of
         SgiConAbs (x, n, k) => box [string "con",
@@ -329,6 +345,22 @@ fun p_sgn_item env (sgi, _) =
                                     string "=",
                                     space,
                                     p_con env c]
+      | SgiDatatype x => p_datatype env x
+      | SgiDatatypeImp (x, _, m1, ms, x') =>
+        let
+            val m1x = #1 (E.lookupStrNamed env m1)
+                handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1
+        in
+            box [string "datatype",
+                 space,
+                 string x,
+                 space,
+                 string "=",
+                 space,
+                 string "datatype",
+                 space,
+                 p_list_sep (string ".") string (m1x :: ms @ [x'])]
+        end
       | SgiVal (x, n, c) => box [string "val",
                                  space,
                                  p_named x n,
@@ -435,6 +467,22 @@ fun p_decl env (dAll as (d, _) : decl) =
                                   string "=",
                                   space,
                                   p_con env c]
+      | DDatatype x => p_datatype env x
+      | DDatatypeImp (x, _, m1, ms, x') =>
+        let
+            val m1x = #1 (E.lookupStrNamed env m1)
+                handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1
+        in
+            box [string "datatype",
+                 space,
+                 string x,
+                 space,
+                 string "=",
+                 space,
+                 string "datatype",
+                 space,
+                 p_list_sep (string ".") string (m1x :: ms @ [x'])]
+        end
       | DVal vi => box [string "val",
                         space,
                         p_vali env vi]

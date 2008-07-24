@@ -248,9 +248,12 @@ notags = [^<{\n]+;
 <INITIAL> "__"        => (Tokens.UNDERUNDER (pos yypos, pos yypos + size yytext));
 <INITIAL> "_"         => (Tokens.UNDER (pos yypos, pos yypos + size yytext));
 <INITIAL> "~"         => (Tokens.TWIDDLE (pos yypos, pos yypos + size yytext));
+<INITIAL> "|"         => (Tokens.BAR (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "con"       => (Tokens.CON (pos yypos, pos yypos + size yytext));
 <INITIAL> "type"      => (Tokens.LTYPE (pos yypos, pos yypos + size yytext));
+<INITIAL> "datatype"  => (Tokens.DATATYPE (pos yypos, pos yypos + size yytext));
+<INITIAL> "of"        => (Tokens.OF (pos yypos, pos yypos + size yytext));
 <INITIAL> "val"       => (Tokens.VAL (pos yypos, pos yypos + size yytext));
 <INITIAL> "rec"       => (Tokens.REC (pos yypos, pos yypos + size yytext));
 <INITIAL> "and"       => (Tokens.AND (pos yypos, pos yypos + size yytext));

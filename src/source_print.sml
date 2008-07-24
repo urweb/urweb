@@ -241,6 +241,18 @@ fun p_exp' par (e, _) =
 
 and p_exp e = p_exp' false e
 
+fun p_datatype (x, cons) =
+    box [string "datatype",
+         space,
+         string x,
+         space,
+         string "=",
+         space,
+         p_list_sep (box [space, string "|", space])
+         (fn (x, NONE) => string x
+           | (x, SOME t) => box [string x, space, string "of", space, p_con t])
+         cons]
+
 fun p_sgn_item (sgi, _) =
     case sgi of
         SgiConAbs (x, k) => box [string "con",
@@ -268,6 +280,17 @@ fun p_sgn_item (sgi, _) =
                                       string "=",
                                       space,
                                       p_con c]
+      | SgiDatatype x => p_datatype x
+      | SgiDatatypeImp (x, ms, x') =>
+        box [string "datatype",
+             space,
+             string x,
+             space,
+             string "=",
+             space,
+             string "datatype",
+             space,
+             p_list_sep (string ".") string (ms @ [x'])]
       | SgiVal (x, c) => box [string "val",
                               space,
                               string x,
@@ -371,6 +394,17 @@ fun p_decl ((d, _) : decl) =
                                     string "=",
                                     space,
                                     p_con c]
+      | DDatatype x => p_datatype x
+      | DDatatypeImp (x, ms, x') =>
+        box [string "datatype",
+             space,
+             string x,
+             space,
+             string "=",
+             space,
+             string "datatype",
+             space,
+             p_list_sep (string ".") string (ms @ [x'])]
       | DVal vi => box [string "val",
                         space,
                         p_vali vi]
