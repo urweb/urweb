@@ -445,7 +445,7 @@ datatype cunify_error =
        | CIncompatible of L'.con * L'.con
        | CExplicitness of L'.con * L'.con
        | CKindof of L'.kind * L'.con
-       | CRecordFailure
+       | CRecordFailure of PD.pp_desc * PD.pp_desc
 
 exception CUnify' of cunify_error
 
@@ -472,8 +472,10 @@ fun cunifyError env err =
         eprefaces "Unexpected kind for kindof calculation"
                   [("Kind", p_kind k),
                    ("Con", p_con env c)]
-      | CRecordFailure =>
-        eprefaces "Can't unify record constructors" []
+      | CRecordFailure (s1, s2) =>
+        eprefaces "Can't unify record constructors"
+        [("Summary 1", s1),
+         ("Summary 2", s2)]
 
 exception SynUnif = E.SynUnif
 
@@ -677,12 +679,12 @@ and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
                 if clear then
                     List.app (fn (_, r) => r := SOME empty) unifs2
                 else
-                    raise CUnify' CRecordFailure
+                    raise CUnify' (CRecordFailure (p_summary env s1, p_summary env s2))
               | (_, []) =>
                 if clear then
                     List.app (fn (_, r) => r := SOME empty) unifs1
                 else
-                    raise CUnify' CRecordFailure
+                    raise CUnify' (CRecordFailure (p_summary env s1, p_summary env s2))
               | ((c1, _) :: rest1, (_, r2) :: rest2) =>
                 (r2 := SOME c1;
                  pairOffUnifs (rest1, rest2))

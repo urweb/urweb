@@ -61,12 +61,16 @@ val a : bodyTag [Link = page]
 val lform : ctx ::: {Unit} -> [Body] ~ ctx -> bind ::: {Type}
         -> xml lform [] bind
         -> xml ([Body] ++ ctx) [] []
-con lformTag = fn ty :: Type => fn attrs :: {Type} =>
+con lformTag = fn ty :: Type => fn inner :: {Unit} => fn attrs :: {Type} =>
         ctx ::: {Unit} -> [LForm] ~ ctx
         -> nm :: Name -> unit
-        -> tag attrs ([LForm] ++ ctx) [] [] [nm = ty]
-val textbox : lformTag string []
-val ltextarea : lformTag string []
+        -> tag attrs ([LForm] ++ ctx) inner [] [nm = ty]
+val textbox : lformTag string [] []
+val ltextarea : lformTag string [] []
+
+con radio = [Body, Radio]
+val radio : lformTag string radio []
+val radioOption : unit -> tag [Value = string] radio [] [] []
 
 val submit : ctx ::: {Unit} -> [LForm] ~ ctx
         -> use ::: {Type} -> unit

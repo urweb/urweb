@@ -130,7 +130,28 @@ datatype 'a failable_search =
        | NotFound
        | Error
 
-fun monoExp env (all as (e, loc)) =
+structure St :> sig
+    type t
+
+    val empty : t
+
+    val radioGroup : t -> string option
+    val setRadioGroup : t * string -> t
+end = struct
+
+type t = {
+     radioGroup : string option
+}
+
+val empty = {radioGroup = NONE}
+
+fun radioGroup (t : t) = #radioGroup t
+
+fun setRadioGroup (t : t, x) = {radioGroup = SOME x}
+
+end
+
+fun monoExp (env, st) (all as (e, loc)) =
     let
         fun poly () =
             (E.errorAt loc "Unsupported expression";
@@ -142,13 +163,13 @@ fun monoExp env (all as (e, loc)) =
           | L.ERel n => (L'.ERel n, loc)
           | L.ENamed n => (L'.ENamed n, loc)
           | L.EFfi mx => (L'.EFfi mx, loc)
-          | L.EFfiApp (m, x, es) => (L'.EFfiApp (m, x, map (monoExp env) es), loc)
+          | L.EFfiApp (m, x, es) => (L'.EFfiApp (m, x, map (monoExp (env, st)) es), loc)
 
           | L.EApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
              _), _),
-            se) => (L'.EFfiApp ("Basis", "htmlifyString", [monoExp env se]), loc)
+            se) => (L'.EFfiApp ("Basis", "htmlifyString", [monoExp (env, st) se]), loc)
           | L.EApp (
             (L.EApp (
              (L.ECApp (
@@ -161,7 +182,7 @@ fun monoExp env (all as (e, loc)) =
                _), _),
               _), _),
              xml1), _),
-            xml2) => (L'.EStrcat (monoExp env xml1, monoExp env xml2), loc)
+            xml2) => (L'.EStrcat (monoExp (env, st) xml1, monoExp (env, st) xml2), loc)
 
           | L.EApp (
             (L.EApp (
@@ -202,7 +223,7 @@ fun monoExp env (all as (e, loc)) =
 
                 val (tag, targs) = getTag tag
 
-                val attrs = monoExp env attrs
+                val attrs = monoExp (env, st) attrs
 
                 fun tagStart tag =
                     case #1 attrs of
@@ -243,7 +264,7 @@ fun monoExp env (all as (e, loc)) =
                                      (L'.EPrim (Prim.String (" type=\"" ^ typ ^ "\" name=\"" ^ name ^ "\"/>")),
                                       loc)), loc)
                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
-                              raise Fail "No named passed to input tag")
+                              raise Fail "No name passed to input tag")
 
                 fun normal (tag, extra) =
                     let
@@ -254,7 +275,7 @@ fun monoExp env (all as (e, loc)) =
 
                         fun normal () =
                             (L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
-                                         (L'.EStrcat (monoExp env xml,
+                                         (L'.EStrcat (monoExp (env, st) xml,
                                                       (L'.EPrim (Prim.String (String.concat ["</", tag, ">"])),
                                                        loc)), loc)),
                              loc)
@@ -282,18 +303,31 @@ fun monoExp env (all as (e, loc)) =
                                       (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\"/>")),
                                        loc)), loc)
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
-                               raise Fail "No named passed to textarea tag"))
+                               raise Fail "No name passed to textarea tag"))
                   | "ltextarea" =>
                     (case targs of
                          [_, (L.CName name, _)] =>
                          (L'.EStrcat ((L'.EStrcat (tagStart "textarea",
                                                    (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")), loc)), loc),
-                                      (L'.EStrcat (monoExp env xml,
+                                      (L'.EStrcat (monoExp (env, st) xml,
                                                    (L'.EPrim (Prim.String "</textarea>"),
                                                     loc)), loc)),
                           loc)
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
-                               raise Fail "No named passed to ltextarea tag"))
+                               raise Fail "No name passed to ltextarea tag"))
+
+                  | "radio" =>
+                    (case targs of
+                         [_, (L.CName name, _)] =>
+                         monoExp (env, St.setRadioGroup (st, name)) xml
+                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                               raise Fail "No name passed to radio tag"))
+                  | "radioOption" =>
+                    (case St.radioGroup st of
+                         NONE => raise Fail "No name for radioGroup"
+                       | SOME name =>
+                         normal ("input",
+                                 SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc)))
 
                   | _ => normal (tag, NONE)
             end
@@ -358,12 +392,12 @@ fun monoExp env (all as (e, loc)) =
                   | Found et => et
 
                 val actionT = monoType env actionT
-                val action = monoExp env action
+                val action = monoExp (env, st) action
             in
                 (L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form action=\""), loc),
                                           (L'.EStrcat (urlifyExp env (action, actionT),
                                                        (L'.EPrim (Prim.String "\">"), loc)), loc)), loc),
-                             (L'.EStrcat (monoExp env xml,
+                             (L'.EStrcat (monoExp (env, st) xml,
                                           (L'.EPrim (Prim.String "</form>"), loc)), loc)), loc)
             end
 
@@ -375,22 +409,24 @@ fun monoExp env (all as (e, loc)) =
                        _), _),
                       _), _),
                      _), _),
-                    xml) => monoExp env xml
+                    xml) => monoExp (env, st) xml
                      
 
-          | L.EApp (e1, e2) => (L'.EApp (monoExp env e1, monoExp env e2), loc)
+          | L.EApp (e1, e2) => (L'.EApp (monoExp (env, st) e1, monoExp (env, st) e2), loc)
           | L.EAbs (x, dom, ran, e) =>
-            (L'.EAbs (x, monoType env dom, monoType env ran, monoExp (Env.pushERel env x dom) e), loc)
+            (L'.EAbs (x, monoType env dom, monoType env ran, monoExp (Env.pushERel env x dom, st) e), loc)
           | L.ECApp _ => poly ()
           | L.ECAbs _ => poly ()
 
-          | L.ERecord xes => (L'.ERecord (map (fn (x, e, t) => (monoName env x, monoExp env e, monoType env t)) xes), loc)
-          | L.EField (e, x, _) => (L'.EField (monoExp env e, monoName env x), loc)
+          | L.ERecord xes => (L'.ERecord (map (fn (x, e, t) => (monoName env x,
+                                                                monoExp (env, st) e,
+                                                                monoType env t)) xes), loc)
+          | L.EField (e, x, _) => (L'.EField (monoExp (env, st) e, monoName env x), loc)
           | L.ECut _ => poly ()
           | L.EFold _ => poly ()
-          | L.EWrite e => (L'.EWrite (monoExp env e), loc)
+          | L.EWrite e => (L'.EWrite (monoExp (env, st) e), loc)
 
-          | L.EClosure (n, es) => (L'.EClosure (n, map (monoExp env) es), loc)
+          | L.EClosure (n, es) => (L'.EClosure (n, map (monoExp (env, st)) es), loc)
     end
 
 fun monoDecl env (all as (d, loc)) =
@@ -403,13 +439,14 @@ fun monoDecl env (all as (d, loc)) =
         case d of
             L.DCon _ => NONE
           | L.DVal (x, n, t, e, s) => SOME (Env.pushENamed env x n t (SOME e) s,
-                                            (L'.DVal (x, n, monoType env t, monoExp env e, s), loc))
+                                            (L'.DVal (x, n, monoType env t, monoExp (env, St.empty) e, s), loc))
           | L.DValRec vis =>
             let
                 val env = foldl (fn ((x, n, t, e, s), env) => Env.pushENamed env x n t NONE s) env vis
             in
                 SOME (env,
-                      (L'.DValRec (map (fn (x, n, t, e, s) => (x, n, monoType env t, monoExp env e, s)) vis), loc))
+                      (L'.DValRec (map (fn (x, n, t, e, s) => (x, n, monoType env t,
+                                                               monoExp (env, St.empty) e, s)) vis), loc))
             end
           | L.DExport (ek, n) =>
             let
