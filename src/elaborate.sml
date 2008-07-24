@@ -1915,8 +1915,9 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                                                      ((L'.CApp (tf, arg1), _), []) =>
                                                      (case (hnormCon (env, denv) tf,
                                                             hnormCon (env, denv) domR,
+                                                            hnormCon (env, denv) arg1,
                                                             hnormCon (env, denv) arg2) of
-                                                          ((tf, []), (domR, []),
+                                                          ((tf, []), (domR, []), (arg1, []),
                                                            ((L'.CRecord (_, []), _), [])) =>
                                                           let
                                                               val t = (L'.CApp (tf, arg1), loc)

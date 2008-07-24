@@ -66,6 +66,7 @@ con lformTag = fn ty :: Type => fn attrs :: {Type} =>
         -> nm :: Name -> unit
         -> tag attrs ([LForm] ++ ctx) [] [] [nm = ty]
 val textbox : lformTag string []
+val ltextarea : lformTag string []
 
 val submit : ctx ::: {Unit} -> [LForm] ~ ctx
         -> use ::: {Type} -> unit

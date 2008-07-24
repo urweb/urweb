@@ -244,23 +244,14 @@ fun monoExp env (all as (e, loc)) =
                                       loc)), loc)
                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                               raise Fail "No named passed to input tag")
-            in
-                case tag of
-                    "submit" => (L'.EPrim (Prim.String "<input type=\"submit\"/>"), loc)
 
-                  | "textbox" =>
-                    (case targs of
-                         [_, (L.CName name, _)] =>
-                         (L'.EStrcat (tagStart "input",
-                                      (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\"/>")),
-                                       loc)), loc)
-                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
-                               raise Fail "No named passed to input tag"))
-
-                  | _ =>
+                fun normal (tag, extra) =
                     let
                         val tagStart = tagStart tag
-                                       
+                        val tagStart = case extra of
+                                           NONE => tagStart
+                                         | SOME extra => (L'.EStrcat (tagStart, extra), loc)
+
                         fun normal () =
                             (L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
                                          (L'.EStrcat (monoExp env xml,
@@ -280,6 +271,31 @@ fun monoExp env (all as (e, loc)) =
                                 normal ()
                           | _ => normal ()
                     end
+            in
+                case tag of
+                    "submit" => (L'.EPrim (Prim.String "<input type=\"submit\"/>"), loc)
+
+                  | "textbox" =>
+                    (case targs of
+                         [_, (L.CName name, _)] =>
+                         (L'.EStrcat (tagStart "input",
+                                      (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\"/>")),
+                                       loc)), loc)
+                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                               raise Fail "No named passed to textarea tag"))
+                  | "ltextarea" =>
+                    (case targs of
+                         [_, (L.CName name, _)] =>
+                         (L'.EStrcat ((L'.EStrcat (tagStart "textarea",
+                                                   (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")), loc)), loc),
+                                      (L'.EStrcat (monoExp env xml,
+                                                   (L'.EPrim (Prim.String "</textarea>"),
+                                                    loc)), loc)),
+                          loc)
+                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                               raise Fail "No named passed to ltextarea tag"))
+
+                  | _ => normal (tag, NONE)
             end
 
           | L.EApp ((L.ECApp (
