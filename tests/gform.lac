@@ -15,7 +15,13 @@ functor F (M : S) : S' where con rs = M.rs = struct
         con rs = M.rs
 
         val handler = fn x : $(stringify M.rs) => <html><body>
-                OK.
+                {fold [fn rs :: {Unit} => $(stringify rs) -> xml body [] []]
+                        (fn nm :: Name => fn u :: Unit => fn rest :: {Unit} =>
+                                fn f : $(stringify rest) -> xml body [] [] =>
+                                fn x : $(stringify ([nm] ++ rest)) =>
+                                        <body><li> {cdata x.nm}</li> {f (x -- nm)}</body>)
+                        (fn x => <body></body>)
+                        [M.rs] x}
         </body></html>
 
         val page = fn () => <html><body>
