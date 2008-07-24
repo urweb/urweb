@@ -329,6 +329,20 @@ fun monoExp (env, st) (all as (e, loc)) =
                          normal ("input",
                                  SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc)))
 
+                  | "lselect" =>
+                    (case targs of
+                         [_, (L.CName name, _)] =>
+                         (L'.EStrcat ((L'.EStrcat (tagStart "select",
+                                                   (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")), loc)), loc),
+                                      (L'.EStrcat (monoExp (env, st) xml,
+                                                   (L'.EPrim (Prim.String "</select>"),
+                                                    loc)), loc)),
+                          loc)
+                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                               raise Fail "No name passed to lselect tag"))
+
+                  | "loption" => normal ("option", NONE)
+
                   | _ => normal (tag, NONE)
             end
 

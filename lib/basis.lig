@@ -72,6 +72,10 @@ con radio = [Body, Radio]
 val radio : lformTag string radio []
 val radioOption : unit -> tag [Value = string] radio [] [] []
 
+con select = [Select]
+val lselect : lformTag string select []
+val loption : unit -> tag [Value = string] select [] [] []
+
 val submit : ctx ::: {Unit} -> [LForm] ~ ctx
         -> use ::: {Type} -> unit
         -> tag [Action = $use -> page] ([LForm] ++ ctx) ([LForm] ++ ctx) use []
