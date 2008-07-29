@@ -160,7 +160,20 @@ fun cifyExp ((e, loc), sm) =
 
 fun cifyDecl ((d, loc), sm) =
     case d of
-        L.DDatatype _ => raise Fail "Cjrize DDatatype"
+        L.DDatatype (x, n, xncs) =>
+        let
+            val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
+                                                   case to of
+                                                       NONE => ((x, n, NONE), sm)
+                                                     | SOME t =>
+                                                       let
+                                                           val (t, sm) = cifyTyp (t, sm)
+                                                       in
+                                                           ((x, n, SOME t), sm)
+                                                       end) sm xncs
+        in
+            (SOME (L'.DDatatype (x, n, xncs), loc), NONE, sm)
+        end
 
       | L.DVal (x, n, t, e, _) =>
         let

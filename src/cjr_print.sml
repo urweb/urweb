@@ -70,7 +70,9 @@ fun p_typ' par env (t, loc) =
                           string "__lws_",
                           string (Int.toString i)]
       | TNamed n =>
-        (string ("__lwt_" ^ #1 (E.lookupTNamed env n) ^ "_" ^ Int.toString n)
+        (box [string "struct",
+              space,
+              string ("__lwt_" ^ #1 (E.lookupTNamed env n) ^ "_" ^ Int.toString n ^ "*")]
          handle CjrEnv.UnboundNamed _ => string ("__lwt_UNBOUND__" ^ Int.toString n))
       | TFfi (m, x) => box [string "lw_", string m, string "_", string x]
 
@@ -191,6 +193,51 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                     string ";",
                                                     newline]) xts,
              string "};"]
+      | DDatatype (x, n, xncs) =>
+        let
+            val xncsArgs = List.mapPartial (fn (x, n, NONE) => NONE
+                                             | (x, n, SOME t) => SOME (x, n, t)) xncs
+        in
+            box [string "enum",
+                 space,
+                 string ("__lwe_" ^ x ^ "_" ^ Int.toString n),
+                 space,
+                 string "{",
+                 space,
+                 p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__lwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
+                 space,
+                 string "};",
+                 newline,
+                 newline,
+                 string "struct",
+                 space,
+                 string ("_lwd_" ^ x ^ "_" ^ Int.toString n),
+                 space,
+                 string "{",
+                 newline,
+                 string "enum",
+                 space,
+                 string ("__lwe_" ^ x ^ "_" ^ Int.toString n),
+                 space,
+                 string "tag;",
+                 newline,
+                 box (case xncsArgs of
+                          [] => []
+                        | _ => [string "union",
+                                space,
+                                string "{",
+                                newline,
+                                p_list_sep newline (fn (x, n, t) => box [p_typ env t,
+                                                                         space,
+                                                                         string ("__lwc_" ^ x),
+                                                                         string ";"]) xncsArgs,
+                                newline,
+                                string "}",
+                                space,
+                                string "data;",
+                                newline]),
+                 string "};"]
+        end                 
 
       | DVal (x, n, t, e) =>
         box [p_typ env t,
