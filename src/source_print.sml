@@ -162,6 +162,17 @@ and p_name (all as (c, _)) =
         CName s => string s
       | _ => p_con all
 
+fun p_pat' par (p, _) =
+    case p of
+        PWild => string "_"
+      | PVar s => string s
+      | PCon (ms, x, NONE) => p_list_sep (string ".") string (ms @ [x])
+      | PCon (ms, x, SOME p) => parenIf par (box [p_list_sep (string ".") string (ms @ [x]),
+                                                  space,
+                                                  p_pat' true p])
+
+val p_pat = p_pat' false
+
 fun p_exp' par (e, _) =
     case e of
         EAnnot (e, t) => box [string "(",
@@ -238,6 +249,19 @@ fun p_exp' par (e, _) =
                                          space,
                                          p_con' true c])
       | EFold => string "fold"
+
+      | ECase (e, pes) => parenIf par (box [string "case",
+                                            space,
+                                            p_exp' false e,
+                                            space,
+                                            string "of",
+                                            space,
+                                            p_list_sep (box [space, string "|", space])
+                                            (fn (p, e) => box [p_pat p,
+                                                               space,
+                                                               string "=>",
+                                                               space,
+                                                               p_exp e]) pes])
 
 and p_exp e = p_exp' false e
 

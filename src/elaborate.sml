@@ -1137,6 +1137,8 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
             in
                 ((L'.EFold dom, loc), foldType (dom, loc), [])
             end
+
+          | L.ECase _ => raise Fail "Elaborate ECase"
     end
             
 

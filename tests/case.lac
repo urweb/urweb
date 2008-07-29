@@ -1,0 +1,12 @@
+datatype t = A | B
+
+val swap = fn x : t => case x of A => B | B => A
+
+datatype u = C of t | D
+
+val out = fn x : u => case x of C y => y | D => A
+
+datatype nat = O | S of nat
+
+val is_two = fn x : int_list =>
+        case x of S (S O) => A | _ => B

@@ -89,6 +89,13 @@ and sgn' =
 withtype sgn_item = sgn_item' located
 and sgn = sgn' located
 
+datatype pat' =
+         PWild
+       | PVar of string
+       | PCon of string list * string * pat option
+
+withtype pat = pat' located
+
 datatype exp' =
          EAnnot of exp * con
 
@@ -104,6 +111,8 @@ datatype exp' =
        | EField of exp * con
        | ECut of exp * con
        | EFold
+
+       | ECase of exp * (pat * exp) list
 
 withtype exp = exp' located
 

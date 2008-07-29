@@ -51,6 +51,7 @@ fun uppercaseFirst "" = ""
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT
+ | CASE
 
  | XML_BEGIN of string | XML_END
  | NOTAGS of string 
@@ -98,6 +99,11 @@ fun uppercaseFirst "" = ""
  | xmlOne of exp
  | tag of string * exp
  | tagHead of string * exp
+
+ | branch of pat * exp
+ | branchs of (pat * exp) list
+ | pat of pat
+ | pterm of pat
 
  | attrs of (con * exp) list
  | attr of con * exp
@@ -310,6 +316,7 @@ eexp   : eapps                          (eapps)
 
        | LPAREN eexp RPAREN DCOLON cexp (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
        | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
+       | CASE eexp OF barOpt branch branchs (ECase (eexp, branch :: branchs), s (CASEleft, branchsright))
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
@@ -329,6 +336,19 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | XML_BEGIN XML_END              (EApp ((EVar (["Basis"], "cdata"), s (XML_BEGINleft, XML_ENDright)),
                                                (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
                                          s (XML_BEGINleft, XML_ENDright))
+
+branch : pat DARROW eexp                (pat, eexp)
+
+branchs:                                ([])
+       | BAR branch branchs             (branch :: branchs)
+
+pat    : pterm                          (pterm)
+       | cpath pterm                    (PCon (#1 cpath, #2 cpath, SOME pterm), s (cpathleft, ptermright))
+
+pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright))
+       | cpath                          (PCon (#1 cpath, #2 cpath, NONE), s (cpathleft, cpathright))
+       | UNDER                          (PWild, s (UNDERleft, UNDERright))
+       | LPAREN pat RPAREN              (pat)
 
 rexp   :                                ([])
        | ident EQ eexp                  ([(ident, eexp)])
