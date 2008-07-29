@@ -236,9 +236,28 @@ fun lookupStrNamed (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
-fun declBinds env (d, _) =
+fun declBinds env (d, loc) =
     case d of
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
+      | DDatatype (x, n, xncs) =>
+        let
+            val env = pushCNamed env x n (KType, loc) NONE
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc)
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (CNamed n, loc)), loc))
+            env xncs
+        end
+      | DDatatypeImp (x, n, m, ms, x', xncs) =>
+        let
+            val t = (CModProj (m, ms, x'), loc)
+            val env = pushCNamed env x n (KType, loc) (SOME t)
+
+            val t = (CNamed n, loc)
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' t
+                    | ((x', n', SOME t'), env) => pushENamed env x' n' (TFun (t', t), loc))
+            env xncs
+        end
       | DVal (x, n, t, _) => pushENamed env x n t
       | DValRec vis => foldl (fn ((x, n, t, _), env) => pushENamed env x n t) env vis
       | DSgn (x, n, sgn) => pushSgnNamed env x n sgn
@@ -246,10 +265,26 @@ fun declBinds env (d, _) =
       | DFfiStr (x, n, sgn) => pushStrNamed env x n sgn
       | DExport _ => env
 
-fun sgiBinds env (sgi, _) =
+fun sgiBinds env (sgi, loc) =
     case sgi of
         SgiConAbs (x, n, k) => pushCNamed env x n k NONE
       | SgiCon (x, n, k, c) => pushCNamed env x n k (SOME c)
+      | SgiDatatype (x, n, xncs) =>
+        let
+            val env = pushCNamed env x n (KType, loc) NONE
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc)
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (CNamed n, loc)), loc))
+            env xncs
+        end
+      | SgiDatatypeImp (x, n, m1, ms, x', xncs) =>
+        let
+            val env = pushCNamed env x n (KType, loc) (SOME (CModProj (m1, ms, x'), loc))
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc)
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (CNamed n, loc)), loc))
+            env xncs
+        end
       | SgiVal (x, n, t) => pushENamed env x n t
       | SgiSgn (x, n, sgn) => pushSgnNamed env x n sgn
       | SgiStr (x, n, sgn) => pushStrNamed env x n sgn

@@ -94,7 +94,7 @@ datatype sgn_item' =
          SgiConAbs of string * int * kind
        | SgiCon of string * int * kind * con
        | SgiDatatype of string * int * (string * int * con option) list
-       | SgiDatatypeImp of string * int * int * string list * string
+       | SgiDatatypeImp of string * int * int * string list * string * (string * int * con option) list
        | SgiVal of string * int * con
        | SgiStr of string * int * sgn
        | SgiSgn of string * int * sgn
@@ -114,7 +114,7 @@ and sgn = sgn' located
 datatype decl' =
          DCon of string * int * kind * con
        | DDatatype of string * int * (string * int * con option) list
-       | DDatatypeImp of string * int * int * string list * string
+       | DDatatypeImp of string * int * int * string list * string * (string * int * con option) list
        | DVal of string * int * con * exp
        | DValRec of (string * int * con * exp) list
        | DSgn of string * int * sgn

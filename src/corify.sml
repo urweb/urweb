@@ -384,6 +384,8 @@ fun corifyDecl ((d, loc : EM.span), st) =
         in
             ([(L'.DCon (x, n, corifyKind k, corifyCon st c), loc)], st)
         end
+      | L.DDatatype _ => raise Fail "Corify DDatatype"
+      | L.DDatatypeImp _ => raise Fail "Corify DDatatypeImp"
       | L.DVal (x, n, t, e) =>
         let
             val (st, n) = St.bindVal st x n
@@ -568,6 +570,8 @@ and corifyStr ((str, _), st) =
 fun maxName ds = foldl (fn ((d, _), n) =>
                            case d of
                                L.DCon (_, n', _, _) => Int.max (n, n')
+                             | L.DDatatype (_, n', _) => Int.max (n, n')
+                             | L.DDatatypeImp (_, n', _, _, _, _) => Int.max (n, n')
                              | L.DVal (_, n', _, _) => Int.max (n, n')
                              | L.DValRec vis => foldl (fn ((_, n', _, _), n) => Int.max (n, n)) n vis
                              | L.DSgn (_, n', _) => Int.max (n, n')

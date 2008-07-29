@@ -1359,7 +1359,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
                                                       E.pushENamedAs env x n t
                                                   end) env xncs
                           in
-                              ([(L'.SgiDatatypeImp (x, n', n, ms, s), loc)], (env, denv, gs))
+                              ([(L'.SgiDatatypeImp (x, n', n, ms, s, xncs), loc)], (env, denv, gs))
                           end)
                    | _ => (strError env (NotDatatype loc);
                            ([], (env, denv, [])))
@@ -1453,7 +1453,7 @@ and elabSgn (env, denv) (sgn, loc) =
                                           ();
                                       (SS.add (cons, x), vals, sgns, strs)
                                   end
-                                | L'.SgiDatatypeImp (x, _, _, _, _) =>
+                                | L'.SgiDatatypeImp (x, _, _, _, _, _) =>
                                   (if SS.member (cons, x) then
                                        sgnError env (DuplicateCon (loc, x))
                                    else
@@ -1546,7 +1546,7 @@ fun selfify env {str, strs, sgn} =
         (L'.SgnConst (map (fn (L'.SgiConAbs (x, n, k), loc) =>
                               (L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
                             | (L'.SgiDatatype (x, n, xncs), loc) =>
-                              (L'.SgiDatatypeImp (x, n, str, strs, x), loc)
+                              (L'.SgiDatatypeImp (x, n, str, strs, x, xncs), loc)
                             | (L'.SgiStr (x, n, sgn), loc) =>
                               (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
                             | x => x) sgis), #2 sgn)
@@ -1584,45 +1584,32 @@ fun dopen (env, denv) {str, strs, sgn} =
         case #1 (hnormSgn env sgn) of
             L'.SgnConst sgis =>
             ListUtil.foldlMap (fn ((sgi, loc), (env', denv')) =>
-                                  case sgi of
-                                      L'.SgiConAbs (x, n, k) =>
-                                      let
-                                          val c = (L'.CModProj (str, strs, x), loc)
-                                      in
-                                          ((L'.DCon (x, n, k, c), loc),
-                                           (E.pushCNamedAs env' x n k (SOME c), denv'))
-                                      end
-                                    | L'.SgiCon (x, n, k, c) =>
-                                      ((L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc),
-                                       (E.pushCNamedAs env' x n k (SOME c), denv'))
-                                    | L'.SgiDatatype (x, n, xncs) =>
-                                      let
-                                          val k = (L'.KType, loc)
-                                          val c = (L'.CModProj (str, strs, x), loc)
-                                      in
-                                          ((L'.DDatatypeImp (x, n, str, strs, x), loc),
-                                           (E.pushCNamedAs env' x n k (SOME c), denv'))
-                                      end
-                                    | L'.SgiDatatypeImp (x, n, m1, ms, x') =>
-                                      let
-                                          val k = (L'.KType, loc)
-                                          val c = (L'.CModProj (m1, ms, x'), loc)
-                                      in
-                                          ((L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc),
-                                           (E.pushCNamedAs env' x n k (SOME c), denv'))
-                                      end
-                                    | L'.SgiVal (x, n, t) =>
-                                      ((L'.DVal (x, n, t, (L'.EModProj (str, strs, x), loc)), loc),
-                                       (E.pushENamedAs env' x n t, denv'))
-                                    | L'.SgiStr (x, n, sgn) =>
-                                      ((L'.DStr (x, n, sgn, (L'.StrProj (m, x), loc)), loc),
-                                       (E.pushStrNamedAs env' x n sgn, denv'))
-                                    | L'.SgiSgn (x, n, sgn) =>
-                                      ((L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc),
-                                       (E.pushSgnNamedAs env' x n sgn, denv'))
-                                    | L'.SgiConstraint (c1, c2) =>
-                                      ((L'.DConstraint (c1, c2), loc),
-                                       (env', denv)))
+                                  let
+                                      val d =
+                                          case sgi of
+                                              L'.SgiConAbs (x, n, k) =>
+                                              let
+                                                  val c = (L'.CModProj (str, strs, x), loc)
+                                              in
+                                                  (L'.DCon (x, n, k, c), loc)
+                                              end
+                                            | L'.SgiCon (x, n, k, c) =>
+                                              (L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
+                                            | L'.SgiDatatype (x, n, xncs) =>
+                                              (L'.DDatatypeImp (x, n, str, strs, x, xncs), loc)
+                                            | L'.SgiDatatypeImp (x, n, m1, ms, x', xncs) =>
+                                              (L'.DDatatypeImp (x, n, m1, ms, x', xncs), loc)
+                                            | L'.SgiVal (x, n, t) =>
+                                              (L'.DVal (x, n, t, (L'.EModProj (str, strs, x), loc)), loc)
+                                            | L'.SgiStr (x, n, sgn) =>
+                                              (L'.DStr (x, n, sgn, (L'.StrProj (m, x), loc)), loc)
+                                            | L'.SgiSgn (x, n, sgn) =>
+                                              (L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc)
+                                            | L'.SgiConstraint (c1, c2) =>
+                                              (L'.DConstraint (c1, c2), loc)
+                                  in
+                                      (d, (E.declBinds env' d, denv'))
+                                  end)
                               (env, denv) sgis
           | _ => (strError env (UnOpenable sgn);
                   ([], (env, denv)))
@@ -1729,7 +1716,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                          L'.SgiConAbs (x', n1, k1) => found (x', n1, k1, NONE)
                                        | L'.SgiCon (x', n1, k1, c1) => found (x', n1, k1, SOME c1)
                                        | L'.SgiDatatype (x', n1, _) => found (x', n1, (L'.KType, loc), NONE)
-                                       | L'.SgiDatatypeImp (x', n1, m1, ms, s) =>
+                                       | L'.SgiDatatypeImp (x', n1, m1, ms, s, _) =>
                                          found (x', n1, (L'.KType, loc), SOME (L'.CModProj (m1, ms, s), loc))
                                        | _ => NONE
                                  end)
@@ -1796,21 +1783,18 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                              found (n1, xncs1)
                                          else
                                              NONE
-                                       | L'.SgiDatatypeImp (x', n1, m1, ms, s) =>
-                                         let
-                                             val (str, sgn) = E.chaseMpath env (m1, ms)
-                                         in
-                                             case E.projectDatatype env {str = str, sgn = sgn, field = s} of
-                                                 NONE => NONE
-                                               | SOME xncs1 => found (n1, xncs1)
-                                         end
+                                       | L'.SgiDatatypeImp (x', n1, _, _, _, xncs1) =>
+                                         if x' = x then
+                                             found (n1, xncs1)
+                                         else
+                                             NONE
                                        | _ => NONE
                                  end)
 
-                      | L'.SgiDatatypeImp (x, n2, m11, ms1, s1) =>
+                      | L'.SgiDatatypeImp (x, n2, m12, ms2, s2, _) =>
                         seek (fn sgi1All as (sgi1, _) =>
                                  case sgi1 of
-                                     L'.SgiDatatypeImp (x', n1, m12, ms2, s2) =>
+                                     L'.SgiDatatypeImp (x', n1, m11, ms1, s1, _) =>
                                      if x = x' then
                                          let
                                              val k = (L'.KType, loc)
@@ -2016,7 +2000,7 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                                                       E.pushENamedAs env x n t
                                                   end) env xncs
                           in
-                              ([(L'.DDatatypeImp (x, n', n, ms, s), loc)], (env, denv, gs))
+                              ([(L'.DDatatypeImp (x, n', n, ms, s, xncs), loc)], (env, denv, gs))
                           end)
                    | _ => (strError env (NotDatatype loc);
                            ([], (env, denv, [])))
@@ -2294,7 +2278,7 @@ and elabStr (env, denv) (str, loc) =
                               in
                                   ((L'.SgiDatatype (x, n, xncs), loc) :: sgis, cons, vals, sgns, strs)
                               end
-                            | L'.SgiDatatypeImp (x, n, m1, ms, x') =>
+                            | L'.SgiDatatypeImp (x, n, m1, ms, x', xncs) =>
                               let
                                   val (cons, x) =
                                       if SS.member (cons, x) then
@@ -2302,7 +2286,7 @@ and elabStr (env, denv) (str, loc) =
                                       else
                                           (SS.add (cons, x), x)
                               in
-                                  ((L'.SgiDatatypeImp (x, n, m1, ms, x'), loc) :: sgis, cons, vals, sgns, strs)
+                                  ((L'.SgiDatatypeImp (x, n, m1, ms, x', xncs), loc) :: sgis, cons, vals, sgns, strs)
                               end
                             | L'.SgiVal (x, n, c) =>
                               let

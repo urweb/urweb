@@ -346,7 +346,7 @@ fun p_sgn_item env (sgi, _) =
                                     space,
                                     p_con env c]
       | SgiDatatype x => p_datatype env x
-      | SgiDatatypeImp (x, _, m1, ms, x') =>
+      | SgiDatatypeImp (x, _, m1, ms, x', _) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)
                 handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1
@@ -468,7 +468,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                   space,
                                   p_con env c]
       | DDatatype x => p_datatype env x
-      | DDatatypeImp (x, _, m1, ms, x') =>
+      | DDatatypeImp (x, _, m1, ms, x', _) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)
                 handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1

@@ -353,7 +353,14 @@ fun sgiBinds env (sgi, loc) =
                     | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
             env xncs
         end
-      | SgiDatatypeImp (x, n, m1, ms, x') => pushCNamedAs env x n (KType, loc) (SOME (CModProj (m1, ms, x'), loc))
+      | SgiDatatypeImp (x, n, m1, ms, x', xncs) =>
+        let
+            val env = pushCNamedAs env x n (KType, loc) (SOME (CModProj (m1, ms, x'), loc))
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
+                    | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
+            env xncs
+        end
       | SgiVal (x, n, t) => pushENamedAs env x n t
       | SgiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
@@ -371,7 +378,7 @@ fun sgnSeek f sgis =
                         val cons =
                             case sgi of
                                 SgiDatatype (x, n, _) => IM.insert (cons, n, x)
-                              | SgiDatatypeImp (x, n, _, _, _) => IM.insert (cons, n, x)
+                              | SgiDatatypeImp (x, n, _, _, _, _) => IM.insert (cons, n, x)
                               | _ => cons
                     in
                         SOME (v, (sgns, strs, cons))
@@ -381,7 +388,7 @@ fun sgnSeek f sgis =
                         SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
                       | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
                       | SgiDatatype (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                      | SgiDatatypeImp (x, n, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                      | SgiDatatypeImp (x, n, _, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
                       | SgiVal _ => seek (sgis, sgns, strs, cons)
                       | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons)
                       | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons)
@@ -529,7 +536,7 @@ fun projectCon env {sgn, str, field} =
         (case sgnSeek (fn SgiConAbs (x, _, k) => if x = field then SOME (k, NONE) else NONE
                         | SgiCon (x, _, k, c) => if x = field then SOME (k, SOME c) else NONE
                         | SgiDatatype (x, _, _) => if x = field then SOME ((KType, #2 sgn), NONE) else NONE
-                        | SgiDatatypeImp (x, _, m1, ms, x') =>
+                        | SgiDatatypeImp (x, _, m1, ms, x', _) =>
                           if x = field then
                               SOME ((KType, #2 sgn), SOME (CModProj (m1, ms, x'), #2 sgn))
                           else
@@ -544,15 +551,7 @@ fun projectDatatype env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         (case sgnSeek (fn SgiDatatype (x, _, xncs) => if x = field then SOME xncs else NONE
-                        | SgiDatatypeImp (x, _, m1, ms, x') =>
-                          if x = field then
-                              let
-                                  val (str, sgn) = chaseMpath env (m1, ms)
-                              in
-                                  projectDatatype env {sgn = sgn, str = str, field = x'}
-                              end
-                          else
-                              NONE
+                        | SgiDatatypeImp (x, _, _, _, _, xncs) => if x = field then SOME xncs else NONE
                         | _ => NONE) sgis of
              NONE => NONE
            | SOME (xncs, subs) => SOME (map (fn (x, n, to) => (x, n, Option.map (sgnSubCon (str, subs)) to)) xncs))
@@ -561,33 +560,23 @@ fun projectDatatype env {sgn, str, field} =
 fun projectVal env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
-        (case sgnSeek (fn SgiVal (x, _, c) => if x = field then SOME c else NONE
-                        | SgiDatatype (_, n, xncs) =>
-                          ListUtil.search (fn (x, _, to) =>
-                                              if x = field then
-                                                  SOME (case to of
-                                                            NONE => (CNamed n, #2 sgn)
-                                                          | SOME t => (TFun (t, (CNamed n, #2 sgn)), #2 sgn))
-                                              else
-                                                  NONE) xncs
-                        | SgiDatatypeImp (_, n, m1, ms, x') =>
-                          let
-                              val (str, sgn) = chaseMpath env (m1, ms)
-                          in
-                              case projectDatatype env {sgn = sgn, str = str, field = x'} of
-                                  NONE => NONE
-                                | SOME xncs =>
-                                  ListUtil.search (fn (x, _, to) =>
-                                                      if x = field then
-                                                          SOME (case to of
-                                                                    NONE => (CNamed n, #2 sgn)
-                                                                  | SOME t => (TFun (t, (CNamed n, #2 sgn)), #2 sgn))
-                                                      else
-                                                          NONE) xncs
-                          end
-                        | _ => NONE) sgis of
-             NONE => NONE
-           | SOME (c, subs) => SOME (sgnSubCon (str, subs) c))
+        let
+            fun seek (n, xncs) =
+                ListUtil.search (fn (x, _, to) =>
+                                    if x = field then
+                                        SOME (case to of
+                                                  NONE => (CNamed n, #2 sgn)
+                                                | SOME t => (TFun (t, (CNamed n, #2 sgn)), #2 sgn))
+                                    else
+                                        NONE) xncs
+        in
+            case sgnSeek (fn SgiVal (x, _, c) => if x = field then SOME c else NONE
+                           | SgiDatatype (_, n, xncs) => seek (n, xncs)
+                           | SgiDatatypeImp (_, n, _, _, _, xncs) => seek (n, xncs)
+                           | _ => NONE) sgis of
+                NONE => NONE
+              | SOME (c, subs) => SOME (sgnSubCon (str, subs) c)
+        end
       | SgnError => SOME (CError, ErrorMsg.dummySpan)
       | _ => NONE
 
@@ -607,7 +596,7 @@ fun sgnSeekConstraints (str, sgis) =
                   | SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiDatatype (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
-                  | SgiDatatypeImp (x, n, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiDatatypeImp (x, n, _, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiVal _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
                   | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
@@ -632,19 +621,10 @@ fun declBinds env (d, loc) =
                     | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
             env xncs
         end
-      | DDatatypeImp (x, n, m, ms, x') =>
+      | DDatatypeImp (x, n, m, ms, x', xncs) =>
         let
             val t = (CModProj (m, ms, x'), loc)
             val env = pushCNamedAs env x n (KType, loc) (SOME t)
-            val (_, sgn) = lookupStrNamed env m
-            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
-                                       case projectStr env {sgn = sgn, str = str, field = m} of
-                                           NONE => raise Fail "ElabEnv.declBinds: Couldn't projectStr"
-                                         | SOME sgn => ((StrProj (str, m), loc), sgn))
-                                   ((StrVar m, loc), sgn) ms
-            val xncs = case projectDatatype env {sgn = sgn, str = str, field = x'} of
-                           NONE => raise Fail "ElabEnv.declBinds: Couldn't projectDatatype"
-                         | SOME xncs => xncs
 
             val t = (CNamed n, loc)
         in

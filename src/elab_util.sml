@@ -386,7 +386,15 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                       fn c' => (x, n, SOME c'))) xncs,
                         fn xncs' =>
                            (SgiDatatype (x, n, xncs'), loc))
-              | SgiDatatypeImp _ => S.return2 siAll
+              | SgiDatatypeImp (x, n, m1, ms, s, xncs) =>
+                S.map2 (ListUtil.mapfold (fn (x, n, c) =>
+                                             case c of
+                                                 NONE => S.return2 (x, n, c)
+                                               | SOME c =>
+                                                 S.map2 (con ctx c,
+                                                      fn c' => (x, n, SOME c'))) xncs,
+                        fn xncs' =>
+                           (SgiDatatypeImp (x, n, m1, ms, s, xncs'), loc))
               | SgiVal (x, n, c) =>
                 S.map2 (con ctx c,
                      fn c' =>
@@ -420,7 +428,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                    bind (ctx, NamedC (x, k))
                                                  | SgiDatatype (x, n, xncs) =>
                                                    bind (ctx, NamedC (x, (KType, loc)))
-                                                 | SgiDatatypeImp (x, _, _, _, _) =>
+                                                 | SgiDatatypeImp (x, _, _, _, _, _) =>
                                                    bind (ctx, NamedC (x, (KType, loc)))
                                                  | SgiVal _ => ctx
                                                  | SgiStr (x, _, sgn) =>
@@ -541,7 +549,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                                  end)
                                                        ctx xncs
                                                    end
-                                                 | DDatatypeImp (x, n, m, ms, x') =>
+                                                 | DDatatypeImp (x, n, m, ms, x', _) =>
                                                    bind (ctx, NamedC (x, (KType, loc)))
                                                  | DVal (x, _, c, _) =>
                                                    bind (ctx, NamedE (x, c))
@@ -598,7 +606,15 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                       fn c' => (x, n, SOME c'))) xncs,
                         fn xncs' =>
                            (DDatatype (x, n, xncs'), loc))
-              | DDatatypeImp _ => S.return2 dAll
+              | DDatatypeImp (x, n, m1, ms, s, xncs) =>
+                S.map2 (ListUtil.mapfold (fn (x, n, c) =>
+                                             case c of
+                                                 NONE => S.return2 (x, n, c)
+                                               | SOME c =>
+                                                 S.map2 (mfc ctx c,
+                                                      fn c' => (x, n, SOME c'))) xncs,
+                        fn xncs' =>
+                           (DDatatypeImp (x, n, m1, ms, s, xncs'), loc))
               | DVal vi =>
                 S.map2 (mfvi ctx vi,
                      fn vi' =>
