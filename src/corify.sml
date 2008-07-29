@@ -75,6 +75,7 @@ structure St : sig
              ENormal of int
            | EFfi of string * L'.con
     val bindVal : t -> string -> int -> t * int
+    val bindConstructor : t -> string -> int -> t
     val lookupValById : t -> int -> int option
     val lookupValByName : t -> string -> core_val
 
@@ -180,6 +181,25 @@ fun bindVal {cons, vals, strs, funs, current, nested} s n =
           current = current,
           nested = nested},
          n')
+    end
+
+fun bindConstructor {cons, vals, strs, funs, current, nested} s n =
+    let
+        val current =
+            case current of
+                FFfi _ => raise Fail "Binding inside FFfi"
+              | FNormal {cons, vals, strs, funs} =>
+                FNormal {cons = cons,
+                         vals = SM.insert (vals, s, n),
+                         strs = strs,
+                         funs = funs}
+    in
+        {cons = cons,
+         vals = IM.insert (vals, n, n),
+         strs = strs,
+         funs = funs,
+         current = current,
+         nested = nested}
     end
 
 fun lookupValById ({vals, ...} : t) n = IM.find (vals, n)
@@ -384,8 +404,44 @@ fun corifyDecl ((d, loc : EM.span), st) =
         in
             ([(L'.DCon (x, n, corifyKind k, corifyCon st c), loc)], st)
         end
-      | L.DDatatype _ => raise Fail "Corify DDatatype"
-      | L.DDatatypeImp _ => raise Fail "Corify DDatatypeImp"
+      | L.DDatatype (x, n, xncs) =>
+        let
+            val (st, n) = St.bindCon st x n
+            val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
+                                                   let
+                                                       val st = St.bindConstructor st x n
+                                                       val co = Option.map (corifyCon st) co
+                                                   in
+                                                       ((x, n, co), st)
+                                                   end) st xncs
+        in
+            ([(L'.DDatatype (x, n, xncs), loc)], st)
+        end
+      | L.DDatatypeImp (x, n, m1, ms, s, xncs) =>
+        let
+            val (st, n) = St.bindCon st x n
+            val c = corifyCon st (L.CModProj (m1, ms, s), loc)
+
+            val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
+                                                   let
+                                                       val (st, n) = St.bindVal st x n
+                                                       val co = Option.map (corifyCon st) co
+                                                   in
+                                                       ((x, n, co), st)
+                                                   end) st xncs
+
+            val cds = map (fn (x, n, co) =>
+                              let
+                                  val t = case co of
+                                              NONE => c
+                                            | SOME t' => (L'.TFun (t', c), loc)
+                                  val e = corifyExp st (L.EModProj (m1, ms, x), loc)
+                              in
+                                  (L'.DVal (x, n, t, e, x), loc)
+                              end) xncs
+        in
+            ((L'.DCon (x, n, (L'.KType, loc), c), loc) :: cds, st)
+        end
       | L.DVal (x, n, t, e) =>
         let
             val (st, n) = St.bindVal st x n

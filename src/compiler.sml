@@ -342,7 +342,7 @@ fun testTag job =
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
 fun testReduce job =
-    (case tag job of
+    (case reduce job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (CorePrint.p_file CoreEnv.empty file);

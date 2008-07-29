@@ -453,6 +453,7 @@ fun monoDecl env (all as (d, loc)) =
     in
         case d of
             L.DCon _ => NONE
+          | L.DDatatype _ => raise Fail "Monoize DDatatype"
           | L.DVal (x, n, t, e, s) => SOME (Env.pushENamed env x n t (SOME e) s,
                                             (L'.DVal (x, n, monoType env t, monoExp (env, St.empty) e, s), loc))
           | L.DValRec vis =>

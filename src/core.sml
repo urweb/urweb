@@ -87,6 +87,7 @@ datatype export_kind =
 
 datatype decl' =
          DCon of string * int * kind * con
+       | DDatatype of string * int * (string * int * con option) list
        | DVal of string * int * con * exp * string
        | DValRec of (string * int * con * exp * string) list
        | DExport of export_kind * int

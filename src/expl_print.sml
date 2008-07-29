@@ -285,8 +285,10 @@ fun p_datatype env (x, n, cons) =
              string "=",
              space,
              p_list_sep (box [space, string "|", space])
-                        (fn (x, _, NONE) => string x
-                          | (x, _, SOME t) => box [string x, space, string "of", space, p_con env t])
+                        (fn (x, n, NONE) => if !debug then (string (x ^ "__" ^ Int.toString n))
+                                            else string x
+                          | (x, _, SOME t) => box [if !debug then (string (x ^ "__" ^ Int.toString n))
+                                                   else string x, space, string "of", space, p_con env t])
                         cons]
     end
 

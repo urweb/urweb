@@ -290,6 +290,24 @@ fun p_export_kind ck =
         Link => string "link"
       | Action => string "action"
 
+fun p_datatype env (x, n, cons) =
+    let
+        val env = E.pushCNamed env x n (KType, ErrorMsg.dummySpan) NONE
+    in
+        box [string "datatype",
+             space,
+             string x,
+             space,
+             string "=",
+             space,
+             p_list_sep (box [space, string "|", space])
+                        (fn (x, n, NONE) => if !debug then (string (x ^ "__" ^ Int.toString n))
+                                            else string x
+                          | (x, _, SOME t) => box [if !debug then (string (x ^ "__" ^ Int.toString n))
+                                                   else string x, space, string "of", space, p_con env t])
+                        cons]
+    end
+
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DCon (x, n, k, c) =>
@@ -313,6 +331,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                  space,
                  p_con env c]
         end
+      | DDatatype x => p_datatype env x
       | DVal vi => box [string "val",
                         space,
                         p_vali env vi]

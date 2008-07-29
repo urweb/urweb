@@ -47,7 +47,9 @@ fun shake file =
                           (fn ((DExport (_, n), _), page_es) => n :: page_es
                             | (_, page_es) => page_es) [] file
 
-        val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, c), edef)
+        val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
+                                   | ((DDatatype (_, n, xncs), _), (cdef, edef)) =>
+                                     (IM.insert (cdef, n, List.mapPartial #3 xncs), edef)
                                    | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
                                    | ((DValRec vis, _), (cdef, edef)) =>
                                      (cdef, foldl (fn ((_, n, t, e, _), edef) => IM.insert (edef, n, (t, e))) edef vis)
@@ -68,7 +70,7 @@ fun shake file =
                     in
                         case IM.find (cdef, n) of
                             NONE => s'
-                          | SOME c => shakeCon s' c
+                          | SOME cs => foldl (fn (c, s') => shakeCon s' c) s' cs
                     end
               | _ => s
 
@@ -100,6 +102,7 @@ fun shake file =
                             | SOME (t, e) => shakeExp (shakeCon s t) e) s page_es
     in
         List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
+                      | (DDatatype (_, n, _), _) => IS.member (#con s, n)
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => true) file
