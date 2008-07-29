@@ -53,7 +53,7 @@ structure CM = BinaryMapFn(struct
 
 val debug = ref false
 
-val dummyTyp = (TNamed 0, ErrorMsg.dummySpan)
+val dummyTyp = (TDatatype 0, ErrorMsg.dummySpan)
 
 fun p_typ' par env (t, loc) =
     case t of
@@ -69,11 +69,11 @@ fun p_typ' par env (t, loc) =
                           space,
                           string "__lws_",
                           string (Int.toString i)]
-      | TNamed n =>
+      | TDatatype n =>
         (box [string "struct",
               space,
-              string ("__lwt_" ^ #1 (E.lookupTNamed env n) ^ "_" ^ Int.toString n ^ "*")]
-         handle CjrEnv.UnboundNamed _ => string ("__lwt_UNBOUND__" ^ Int.toString n))
+              string ("__lwd_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n ^ "*")]
+         handle CjrEnv.UnboundNamed _ => string ("__lwd_UNBOUND__" ^ Int.toString n))
       | TFfi (m, x) => box [string "lw_", string m, string "_", string x]
 
 and p_typ env = p_typ' false env
@@ -443,6 +443,58 @@ fun p_file env (ds, ps) =
                          string "__lw_tmp;",
                          newline,
                          string "})"]
+                end
+
+              | TDatatype i =>
+                let
+                    val (x, xncs) = E.lookupDatatype env i
+
+                    fun doEm xncs =
+                        case xncs of
+                            [] => string "Uh oh"
+                          | (x, n, to) :: rest =>
+                            box [string "(!strcmp(request, \"",
+                                 string x,
+                                 string "\") ? ({",
+                                 newline,
+                                 string ("__lwd_" ^ x ^ "_" ^ Int.toString i),
+                                 space,
+                                 string "__lw_tmp;",
+                                 newline,
+                                 string "__lw_tmp.tag",
+                                 space,
+                                 string "=",
+                                 space,
+                                 string ("__lwc_" ^ x ^ "_" ^ Int.toString n),
+                                 string ";",
+                                 newline,
+                                 string "request",
+                                 space,
+                                 string "+=",
+                                 space,
+                                 string (Int.toString (size x)),
+                                 string ";",
+                                 newline,
+                                 case to of
+                                     NONE => box []
+                                   | SOME t => box [string "__lw_tmp.data.",
+                                                    string x,
+                                                    space,
+                                                    string "=",
+                                                    space,
+                                                    unurlify t,
+                                                    string ";",
+                                                    newline],
+                                 string "__lw_tmp;",
+                                 newline,
+                                 string "})",
+                                 space,
+                                 string ":",
+                                 space,
+                                 doEm rest,
+                                 string ")"]
+                in
+                    doEm xncs
                 end
 
               | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";

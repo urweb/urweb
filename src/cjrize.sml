@@ -84,7 +84,7 @@ fun cifyTyp ((t, loc), sm) =
         in
             ((L'.TRecord si, loc), sm)
         end
-      | L.TNamed n => ((L'.TNamed n, loc), sm)
+      | L.TNamed n => ((L'.TDatatype n, loc), sm)
       | L.TFfi mx => ((L'.TFfi mx, loc), sm)
 
 val dummye = (L'.EPrim (Prim.Int 0), ErrorMsg.dummySpan)

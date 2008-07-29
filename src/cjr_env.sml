@@ -38,7 +38,7 @@ exception UnboundF of int
 exception UnboundStruct of int
 
 type env = {
-     namedT : (string * typ option) IM.map,
+     datatypes : (string * (string * int * typ option) list) IM.map,
 
      numRelE : int,
      relE : (string * typ) list,
@@ -48,7 +48,7 @@ type env = {
 }
 
 val empty = {
-    namedT = IM.empty,
+    datatypes = IM.empty,
 
     numRelE = 0,
     relE = [],
@@ -57,8 +57,8 @@ val empty = {
     structs = IM.empty
 }
 
-fun pushTNamed (env : env) x n co =
-    {namedT = IM.insert (#namedT env, n, (x, co)),
+fun pushDatatype (env : env) x n xncs =
+    {datatypes = IM.insert (#datatypes env, n, (x, xncs)),
 
      numRelE = #numRelE env,
      relE = #relE env,
@@ -66,13 +66,13 @@ fun pushTNamed (env : env) x n co =
 
      structs = #structs env}
 
-fun lookupTNamed (env : env) n =
-    case IM.find (#namedT env, n) of
+fun lookupDatatype (env : env) n =
+    case IM.find (#datatypes env, n) of
         NONE => raise UnboundNamed n
       | SOME x => x
 
 fun pushERel (env : env) x t =
-    {namedT = #namedT env,
+    {datatypes = #datatypes env,
 
      numRelE = #numRelE env + 1,
      relE = (x, t) :: #relE env,
@@ -89,7 +89,7 @@ fun countERels (env : env) = #numRelE env
 fun listERels (env : env) = #relE env
 
 fun pushENamed (env : env) x n t =
-    {namedT = #namedT env,
+    {datatypes = #datatypes env,
 
      numRelE = #numRelE env,
      relE = #relE env,
@@ -103,7 +103,7 @@ fun lookupENamed (env : env) n =
       | SOME x => x
 
 fun pushStruct (env : env) n xts =
-    {namedT = #namedT env,
+    {datatypes = #datatypes env,
 
      numRelE = #numRelE env,
      relE = #relE env,
@@ -120,10 +120,10 @@ fun declBinds env (d, loc) =
     case d of
         DDatatype (x, n, xncs) =>
         let
-            val env = pushTNamed env x n NONE
+            val env = pushDatatype env x n xncs
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TNamed n, loc)
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TNamed n, loc)), loc))
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TDatatype n, loc)
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TDatatype n, loc)), loc))
             env xncs
         end
       | DStruct (n, xts) => pushStruct env n xts
