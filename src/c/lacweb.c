@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <assert.h>
 #include <setjmp.h>
 #include <stdarg.h>
 
@@ -97,20 +96,22 @@ int lw_input_num(char*);
 void lw_set_input(lw_context ctx, char *name, char *value) {
   int n = lw_input_num(name);
 
-  if (n < 0) {
-    printf("Bad input name");
-    exit(1);
-  }
+  if (n < 0)
+    lw_error(ctx, FATAL, "Bad input name %s", name);
 
-  assert(n < lw_inputs_len);
+  if (n >= lw_inputs_len)
+    lw_error(ctx, FATAL, "For input name %s, index %d is out of range", name, n);
+
   ctx->inputs[n] = value;
 
   printf("[%d] %s = %s\n", n, name, value);
 }
 
 char *lw_get_input(lw_context ctx, int n) {
-  assert(n >= 0);
-  assert(n < lw_inputs_len);
+  if (n < 0)
+    lw_error(ctx, FATAL, "Negative input index %d", n);
+  if (n >= lw_inputs_len)
+    lw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
   printf("[%d] = %s\n", n, ctx->inputs[n]);
   return ctx->inputs[n];
 }
@@ -123,14 +124,15 @@ static void lw_check_heap(lw_context ctx, size_t extra) {
     for (next = ctx->heap_back - ctx->heap_front; next < desired; next *= 2);
 
     new_heap = realloc(ctx->heap, next);
+    ctx->heap_front = new_heap;
+    ctx->heap_back = new_heap + next;
 
     if (new_heap != ctx->heap) {
       ctx->heap = new_heap;
-      puts("Couldn't get contiguous chunk");
-      exit(1);
+      lw_error(ctx, UNLIMITED_RETRY, "Couldn't allocate new heap chunk contiguously");
     }
 
-    ctx->heap_back = new_heap + next;
+    ctx->heap = new_heap;
   }
 }
 
@@ -402,7 +404,7 @@ lw_Basis_float lw_unurlifyFloat(char **s) {
   return r;
 }
 
-static lw_Basis_string lw_unurlifyString_to(char *r, char *s) {
+static lw_Basis_string lw_unurlifyString_to(lw_context ctx, char *r, char *s) {
   char *s1, *s2;
   int n;
 
@@ -414,8 +416,12 @@ static lw_Basis_string lw_unurlifyString_to(char *r, char *s) {
       *s1 = ' ';
       break;
     case '%':
-      assert(s2[1] != 0 && s2[2] != 0);
-      sscanf(s2+1, "%02X", &n);
+      if (s2[1] == 0)
+        lw_error(ctx, FATAL, "Missing first character of escaped URL byte");
+      if (s2[2] == 0)
+        lw_error(ctx, FATAL, "Missing second character of escaped URL byte");
+      if (sscanf(s2+1, "%02X", &n) != 1)
+        lw_error(ctx, FATAL, "Invalid escaped URL byte starting at: %s", s2);
       *s1 = n;
       s2 += 2;
       break;
@@ -436,7 +442,7 @@ lw_Basis_string lw_unurlifyString(lw_context ctx, char **s) {
   lw_check_heap(ctx, len + 1);
 
   r = ctx->heap_front;
-  ctx->heap_front = lw_unurlifyString_to(ctx->heap_front, *s);
+  ctx->heap_front = lw_unurlifyString_to(ctx, ctx->heap_front, *s);
   *s = new_s;
   return r;
 }
