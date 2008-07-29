@@ -115,7 +115,7 @@ fun fooifyExp name env =
                   | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", name ^ "ifyFloat", [e]), loc)
                   | L'.TRecord [] => (L'.EPrim (Prim.String ""), loc)
 
-                  | L'.TNamed _ => (L'.EPrim (Prim.String ""), loc)
+                  | L'.TNamed _ => (L'.EPrim (Prim.String "A"), loc)
 
                   | _ => (E.errorAt loc "Don't know how to encode attribute type";
                           Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];

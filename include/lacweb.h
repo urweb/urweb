@@ -9,6 +9,13 @@ extern lw_unit lw_unit_v;
 lw_context lw_init(size_t page_len, size_t heap_len);
 void lw_free(lw_context);
 void lw_reset(lw_context);
+void lw_reset_keep_request(lw_context);
+void lw_reset_keep_error_message(lw_context);
+failure_kind lw_begin(lw_context, char *path);
+
+void lw_error(lw_context, failure_kind, const char *fmt, ...);
+char *lw_error_message(lw_context);
+
 void *lw_malloc(lw_context, size_t);
 int lw_send(lw_context, int sock);
 

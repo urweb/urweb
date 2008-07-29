@@ -3,15 +3,24 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <setjmp.h>
+#include <stdarg.h>
 
 #include "types.h"
 
 lw_unit lw_unit_v = {};
 
+#define ERROR_BUF_LEN 1024
+
 struct lw_context {
   char *page, *page_front, *page_back;
   char *heap, *heap_front, *heap_back;
   char **inputs;
+
+  jmp_buf jmp_buf;
+
+  failure_kind failure_kind;
+  char error_message[ERROR_BUF_LEN];
 };
 
 extern int lw_inputs_len;
@@ -27,6 +36,9 @@ lw_context lw_init(size_t page_len, size_t heap_len) {
 
   ctx->inputs = calloc(lw_inputs_len, sizeof(char *));
 
+  ctx->failure_kind = SUCCESS;
+  ctx->error_message[0] = 0;
+
   return ctx;
 }
 
@@ -37,10 +49,47 @@ void lw_free(lw_context ctx) {
   free(ctx);
 }
 
-void lw_reset(lw_context ctx) {
+void lw_reset_keep_request(lw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
+
+  ctx->failure_kind = SUCCESS;
+  ctx->error_message[0] = 0;
+}
+
+void lw_reset_keep_error_message(lw_context ctx) {
+  ctx->page_front = ctx->page;
+  ctx->heap_front = ctx->heap;
+
+  ctx->failure_kind = SUCCESS;
+}
+
+void lw_reset(lw_context ctx) {
+  lw_reset_keep_request(ctx);
   memset(ctx->inputs, 0, lw_inputs_len * sizeof(char *));
+}
+
+void lw_handle(lw_context, char *);
+
+failure_kind lw_begin(lw_context ctx, char *path) {
+  if (!setjmp(ctx->jmp_buf))
+    lw_handle(ctx, path);
+
+  return ctx->failure_kind;
+}
+
+void lw_error(lw_context ctx, failure_kind fk, const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  ctx->failure_kind = fk;
+  vsnprintf(ctx->error_message, ERROR_BUF_LEN, fmt, ap);
+
+  longjmp(ctx->jmp_buf, 1);
+}
+
+char *lw_error_message(lw_context ctx) {
+  return ctx->error_message;
 }
 
 int lw_input_num(char*);

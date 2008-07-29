@@ -13,8 +13,6 @@ int lw_port = 8080;
 int lw_backlog = 10;
 int lw_bufsize = 1024;
 
-void lw_handle(lw_context, char*);
-
 typedef struct node {
   int fd;
   struct node *next;
@@ -51,6 +49,8 @@ static int dequeue() {
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 
+#define MAX_RETRIES 5
+
 static void *worker(void *data) {
   int me = *(int *)data;
   lw_context ctx = lw_init(1024, 1024);
@@ -68,6 +68,7 @@ static void *worker(void *data) {
     printf("Handling connection with thread #%d.\n", me);
 
     while (1) {
+      unsigned retries_left = MAX_RETRIES;
       int r = recv(sock, back, lw_bufsize - (back - buf), 0);
 
       if (r < 0) {
@@ -138,11 +139,58 @@ static void *worker(void *data) {
 
         printf("Serving URI %s....\n", path);
 
-        lw_write (ctx, "HTTP/1.1 200 OK\r\n");
-        lw_write(ctx, "Content-type: text/html\r\n\r\n");
-        lw_write(ctx, "<html>");
-        lw_handle(ctx, path);
-        lw_write(ctx, "</html>");
+        while (1) {
+          failure_kind fk;
+
+          lw_write(ctx, "HTTP/1.1 200 OK\r\n");
+          lw_write(ctx, "Content-type: text/html\r\n\r\n");
+          lw_write(ctx, "<html>");
+
+          fk = lw_begin(ctx, path);
+          if (fk == SUCCESS) {
+            lw_write(ctx, "</html>");
+            break;
+          } else if (fk == BOUNDED_RETRY) {
+            if (retries_left) {
+              printf("Error triggers bounded retry: %s\n", lw_error_message(ctx));
+              --retries_left;
+            }
+            else {
+              printf("Fatal error (out of retries): %s\n", lw_error_message(ctx));
+
+              lw_reset_keep_error_message(ctx);
+              lw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+              lw_write(ctx, "Content-type: text/plain\r\n\r\n");
+              lw_write(ctx, "Fatal error (out of retries): ");
+              lw_write(ctx, lw_error_message(ctx));
+              lw_write(ctx, "\n");
+            }
+          } else if (fk == UNLIMITED_RETRY)
+            printf("Error triggers unlimited retry: %s\n", lw_error_message(ctx));
+          else if (fk == FATAL) {
+            printf("Fatal error: %s\n", lw_error_message(ctx));
+
+            lw_reset_keep_error_message(ctx);
+            lw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+            lw_write(ctx, "Content-type: text/plain\r\n\r\n");
+            lw_write(ctx, "Fatal error: ");
+            lw_write(ctx, lw_error_message(ctx));
+            lw_write(ctx, "\n");
+
+            break;
+          } else {
+            printf("Unknown lw_handle return code!\n");
+
+            lw_reset_keep_request(ctx);
+            lw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+            lw_write(ctx, "Content-type: text/plain\r\n\r\n");
+            lw_write(ctx, "Unknown lw_handle return code!\n");
+
+            break;
+          }
+
+          lw_reset_keep_request(ctx);
+        }
 
         lw_send(ctx, sock);
 
