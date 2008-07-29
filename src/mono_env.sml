@@ -81,9 +81,17 @@ fun lookupENamed (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
-fun declBinds env (d, _) =
+fun declBinds env (d, loc) =
     case d of
-        DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
+        DDatatype (x, n, xncs) =>
+        let
+            val env = pushTNamed env x n NONE
+        in
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TNamed n, loc) NONE ""
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TNamed n, loc)), loc) NONE "")
+            env xncs
+        end
+      | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
       | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t NONE s) env vis
       | DExport _ => env
 

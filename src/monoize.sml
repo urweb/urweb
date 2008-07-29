@@ -115,6 +115,8 @@ fun fooifyExp name env =
                   | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", name ^ "ifyFloat", [e]), loc)
                   | L'.TRecord [] => (L'.EPrim (Prim.String ""), loc)
 
+                  | L'.TNamed _ => (L'.EPrim (Prim.String ""), loc)
+
                   | _ => (E.errorAt loc "Don't know how to encode attribute type";
                           Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
                           dummyExp)
@@ -453,7 +455,12 @@ fun monoDecl env (all as (d, loc)) =
     in
         case d of
             L.DCon _ => NONE
-          | L.DDatatype _ => raise Fail "Monoize DDatatype"
+          | L.DDatatype (x, n, xncs) =>
+            let
+                val d = (L'.DDatatype (x, n, map (fn (x, n, to) => (x, n, Option.map (monoType env) to)) xncs), loc)
+            in
+                SOME (Env.declBinds env all, d)
+            end
           | L.DVal (x, n, t, e, s) => SOME (Env.pushENamed env x n t (SOME e) s,
                                             (L'.DVal (x, n, monoType env t, monoExp (env, St.empty) e, s), loc))
           | L.DValRec vis =>

@@ -160,7 +160,9 @@ fun cifyExp ((e, loc), sm) =
 
 fun cifyDecl ((d, loc), sm) =
     case d of
-        L.DVal (x, n, t, e, _) =>
+        L.DDatatype _ => raise Fail "Cjrize DDatatype"
+
+      | L.DVal (x, n, t, e, _) =>
         let
             val (t, sm) = cifyTyp (t, sm)
 

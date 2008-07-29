@@ -162,9 +162,28 @@ fun p_vali env (x, n, t, e, s) =
              p_exp env e]
     end
 
+fun p_datatype env (x, n, cons) =
+    let
+        val env = E.pushTNamed env x n NONE
+    in
+        box [string "datatype",
+             space,
+             string x,
+             space,
+             string "=",
+             space,
+             p_list_sep (box [space, string "|", space])
+                        (fn (x, n, NONE) => if !debug then (string (x ^ "__" ^ Int.toString n))
+                                            else string x
+                          | (x, _, SOME t) => box [if !debug then (string (x ^ "__" ^ Int.toString n))
+                                                   else string x, space, string "of", space, p_typ env t])
+                        cons]
+    end
+
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
-        DVal vi => box [string "val",
+        DDatatype x => p_datatype env x
+      | DVal vi => box [string "val",
                         space,
                         p_vali env vi]
       | DValRec vis =>

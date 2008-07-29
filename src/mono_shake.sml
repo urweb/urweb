@@ -47,13 +47,22 @@ fun shake file =
                           (fn ((DExport (_, _, n, _), _), page_es) => n :: page_es
                             | (_, page_es) => page_es) [] file
 
-        val (cdef, edef) = foldl (fn ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
+        val (cdef, edef) = foldl (fn ((DDatatype _, _), acc) => acc
+                                   | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
                                    | ((DValRec vis, _), (cdef, edef)) =>
                                      (cdef, foldl (fn ((_, n, t, e, _), edef) => IM.insert (edef, n, (t, e))) edef vis)
                                    | ((DExport _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
-        fun typ (_, s) = s
+        fun typ (c, s) =
+            case c of
+                TNamed n =>
+                if IS.member (#con s, n) then
+                    s
+                else
+                    {exp = #exp s,
+                     con = IS.add (#con s, n)}
+              | _ => s
 
         fun exp (e, s) =
             case e of
@@ -80,7 +89,8 @@ fun shake file =
                               NONE => raise Fail "Shake: Couldn't find 'val'"
                             | SOME (t, e) => shakeExp s e) s page_es
     in
-        List.filter (fn (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
+        List.filter (fn (DDatatype (_, n, _), _) => IS.member (#con s, n)
+                      | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => true) file
     end

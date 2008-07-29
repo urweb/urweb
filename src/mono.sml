@@ -60,7 +60,8 @@ datatype exp' =
 withtype exp = exp' located
 
 datatype decl' =
-         DVal of string * int * typ * exp * string
+         DDatatype of string * int * (string * int * typ option) list
+       | DVal of string * int * typ * exp * string
        | DValRec of (string * int * typ * exp * string) list
        | DExport of Core.export_kind * string * int * typ list
 

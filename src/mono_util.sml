@@ -258,7 +258,16 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
 
         and mfd' ctx (dAll as (d, loc)) =
             case d of
-                DVal vi =>
+                DDatatype (x, n, xncs) =>
+                S.map2 (ListUtil.mapfold (fn (x, n, c) =>
+                                             case c of
+                                                 NONE => S.return2 (x, n, c)
+                                               | SOME c =>
+                                                 S.map2 (mft c,
+                                                      fn c' => (x, n, SOME c'))) xncs,
+                        fn xncs' =>
+                           (DDatatype (x, n, xncs'), loc))
+              | DVal vi =>
                 S.map2 (mfvi ctx vi,
                      fn vi' =>
                         (DVal vi', loc))
@@ -313,7 +322,22 @@ fun mapfoldB (all as {bind, ...}) =
                             let
                                 val ctx' =
                                     case #1 d' of
-                                        DVal (x, n, t, e, s) => bind (ctx, NamedE (x, n, t, SOME e, s))
+                                        DDatatype (x, n, xncs) =>
+                                        let
+                                            val ctx = bind (ctx, NamedT (x, n, NONE))
+                                            val t = (TNamed n, #2 d')
+                                        in
+                                            foldl (fn ((x, n, to), ctx) =>
+                                                      let
+                                                          val t = case to of
+                                                                      NONE => t
+                                                                    | SOME t' => (TFun (t', t), #2 d')
+                                                      in
+                                                          bind (ctx, NamedE (x, n, t, NONE, ""))
+                                                      end)
+                                            ctx xncs
+                                        end
+                                      | DVal (x, n, t, e, s) => bind (ctx, NamedE (x, n, t, SOME e, s))
                                       | DValRec vis => foldl (fn ((x, n, t, e, s), ctx) =>
                                                                  bind (ctx, NamedE (x, n, t, SOME e, s))) ctx vis
                                       | DExport _ => ctx
