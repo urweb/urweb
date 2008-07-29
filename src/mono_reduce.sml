@@ -62,7 +62,7 @@ val subExpInExp =
 
 fun bind (env, b) =
     case b of
-        U.Decl.NamedT (x, n, co) => E.pushTNamed env x n co
+        U.Decl.Datatype (x, n, xncs) => E.pushDatatype env x n xncs
       | U.Decl.RelE (x, t) => E.pushERel env x t
       | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
 

@@ -53,11 +53,11 @@ fun p_typ' par env (t, _) =
                                             space,
                                             p_typ env t]) xcs,
                             string "}"]
-      | TNamed n =>
+      | TDatatype (n, _) =>
         if !debug then
-            string (#1 (E.lookupTNamed env n) ^ "__" ^ Int.toString n)
+            string (#1 (E.lookupDatatype env n) ^ "__" ^ Int.toString n)
         else
-            string (#1 (E.lookupTNamed env n))
+            string (#1 (E.lookupDatatype env n))
       | TFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
 
 and p_typ env = p_typ' false env
@@ -164,7 +164,7 @@ fun p_vali env (x, n, t, e, s) =
 
 fun p_datatype env (x, n, cons) =
     let
-        val env = E.pushTNamed env x n NONE
+        val env = E.pushDatatype env x n cons
     in
         box [string "datatype",
              space,

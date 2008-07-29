@@ -84,7 +84,21 @@ fun cifyTyp ((t, loc), sm) =
         in
             ((L'.TRecord si, loc), sm)
         end
-      | L.TNamed n => ((L'.TDatatype n, loc), sm)
+      | L.TDatatype (n, xncs) =>
+        let
+            val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
+                                                   case to of
+                                                       NONE => ((x, n, NONE), sm)
+                                                     | SOME t =>
+                                                       let
+                                                           val (t, sm) = cifyTyp (t, sm)
+                                                       in
+                                                           ((x, n, SOME t), sm)
+                                                       end)
+                             sm xncs
+        in
+            ((L'.TDatatype (n, xncs), loc), sm)
+        end
       | L.TFfi mx => ((L'.TFfi mx, loc), sm)
 
 val dummye = (L'.EPrim (Prim.Int 0), ErrorMsg.dummySpan)

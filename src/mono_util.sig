@@ -45,7 +45,7 @@ end
 
 structure Exp : sig
     datatype binder =
-             NamedT of string * int * Mono.typ option
+             Datatype of string * int * (string * int * Mono.typ option) list
            | RelE of string * Mono.typ
            | NamedE of string * int * Mono.typ * Mono.exp option * string
 

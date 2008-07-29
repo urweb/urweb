@@ -36,32 +36,32 @@ exception UnboundRel of int
 exception UnboundNamed of int
 
 type env = {
-     namedT : (string * typ option) IM.map,
+     datatypes : (string * (string * int * typ option) list) IM.map,
 
      relE : (string * typ) list,
      namedE : (string * typ * exp option * string) IM.map
 }
 
 val empty = {
-    namedT = IM.empty,
+    datatypes = IM.empty,
 
     relE = [],
     namedE = IM.empty
 }
 
-fun pushTNamed (env : env) x n co =
-    {namedT = IM.insert (#namedT env, n, (x, co)),
+fun pushDatatype (env : env) x n xncs =
+    {datatypes = IM.insert (#datatypes env, n, (x, xncs)),
 
      relE = #relE env,
      namedE = #namedE env}
 
-fun lookupTNamed (env : env) n =
-    case IM.find (#namedT env, n) of
+fun lookupDatatype (env : env) n =
+    case IM.find (#datatypes env, n) of
         NONE => raise UnboundNamed n
       | SOME x => x
 
 fun pushERel (env : env) x t =
-    {namedT = #namedT env,
+    {datatypes = #datatypes env,
 
      relE = (x, t) :: #relE env,
      namedE = #namedE env}
@@ -71,7 +71,7 @@ fun lookupERel (env : env) n =
     handle Subscript => raise UnboundRel n
 
 fun pushENamed (env : env) x n t eo s =
-    {namedT = #namedT env,
+    {datatypes = #datatypes env,
 
      relE = #relE env,
      namedE = IM.insert (#namedE env, n, (x, t, eo, s))}
@@ -85,10 +85,10 @@ fun declBinds env (d, loc) =
     case d of
         DDatatype (x, n, xncs) =>
         let
-            val env = pushTNamed env x n NONE
+            val env = pushDatatype env x n xncs
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TNamed n, loc) NONE ""
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TNamed n, loc)), loc) NONE "")
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TDatatype (n, xncs), loc) NONE ""
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TDatatype (n, xncs), loc)), loc) NONE "")
             env xncs
         end
       | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s

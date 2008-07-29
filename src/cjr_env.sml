@@ -122,8 +122,8 @@ fun declBinds env (d, loc) =
         let
             val env = pushDatatype env x n xncs
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TDatatype n, loc)
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TDatatype n, loc)), loc))
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TDatatype (n, xncs), loc)
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TDatatype (n, xncs), loc)), loc))
             env xncs
         end
       | DStruct (n, xts) => pushStruct env n xts

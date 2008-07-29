@@ -32,7 +32,7 @@ type 'a located = 'a ErrorMsg.located
 datatype typ' =
          TFun of typ * typ
        | TRecord of (string * typ) list
-       | TNamed of int
+       | TDatatype of int * (string * int * typ option) list
        | TFfi of string * string
 
 withtype typ = typ' located

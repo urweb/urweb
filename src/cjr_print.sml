@@ -53,7 +53,7 @@ structure CM = BinaryMapFn(struct
 
 val debug = ref false
 
-val dummyTyp = (TDatatype 0, ErrorMsg.dummySpan)
+val dummyTyp = (TDatatype (0, []), ErrorMsg.dummySpan)
 
 fun p_typ' par env (t, loc) =
     case t of
@@ -69,7 +69,7 @@ fun p_typ' par env (t, loc) =
                           space,
                           string "__lws_",
                           string (Int.toString i)]
-      | TDatatype n =>
+      | TDatatype (n, _) =>
         (box [string "struct",
               space,
               string ("__lwd_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n ^ "*")]
@@ -445,7 +445,7 @@ fun p_file env (ds, ps) =
                          string "})"]
                 end
 
-              | TDatatype i =>
+              | TDatatype (i, _) =>
                 let
                     val (x, xncs) = E.lookupDatatype env i
 

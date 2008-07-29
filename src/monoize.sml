@@ -33,7 +33,7 @@ structure Env = CoreEnv
 structure L = Core
 structure L' = Mono
 
-val dummyTyp = (L'.TNamed 0, E.dummySpan)
+val dummyTyp = (L'.TDatatype (0, []), E.dummySpan)
 
 fun monoName env (all as (c, loc)) =
     let
@@ -65,7 +65,14 @@ fun monoType env (all as (c, loc)) =
             (L'.TFfi ("Basis", "string"), loc)
 
           | L.CRel _ => poly ()
-          | L.CNamed n => (L'.TNamed n, loc)
+          | L.CNamed n =>
+            let
+                val (_, xncs) = Env.lookupDatatype env n
+
+                val xncs = map (fn (x, n, to) => (x, n, Option.map (monoType env) to)) xncs
+            in
+                (L'.TDatatype (n, xncs), loc)
+            end
           | L.CFfi mx => (L'.TFfi mx, loc)
           | L.CApp _ => poly ()
           | L.CAbs _ => poly ()
@@ -115,7 +122,7 @@ fun fooifyExp name env =
                   | L'.TFfi ("Basis", "float") => (L'.EFfiApp ("Basis", name ^ "ifyFloat", [e]), loc)
                   | L'.TRecord [] => (L'.EPrim (Prim.String ""), loc)
 
-                  | L'.TNamed _ => (L'.EPrim (Prim.String "A"), loc)
+                  | L'.TDatatype _ => (L'.EPrim (Prim.String "A"), loc)
 
                   | _ => (E.errorAt loc "Don't know how to encode attribute type";
                           Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];

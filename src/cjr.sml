@@ -33,7 +33,7 @@ datatype typ' =
          TTop
        | TFun of typ * typ
        | TRecord of int
-       | TDatatype of int
+       | TDatatype of int * (string * int * typ option) list
        | TFfi of string * string
 
 withtype typ = typ' located

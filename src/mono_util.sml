@@ -57,7 +57,7 @@ fun compare ((t1, _), (t2, _)) =
         in
             joinL compareFields (xts1, xts2)
         end
-      | (TNamed n1, TNamed n2) => Int.compare (n1, n2)
+      | (TDatatype (n1, _), TDatatype (n2, _)) => Int.compare (n1, n2)
       | (TFfi (m1, x1), TFfi (m2, x2)) => join (String.compare (m1, m2), fn () => String.compare (x1, x2))
 
       | (TFun _, _) => LESS
@@ -66,8 +66,8 @@ fun compare ((t1, _), (t2, _)) =
       | (TRecord _, _) => LESS
       | (_, TRecord _) => GREATER
 
-      | (TNamed _, _) => LESS
-      | (_, TNamed _) => GREATER
+      | (TDatatype _, _) => LESS
+      | (_, TDatatype _) => GREATER
 
 and compareFields ((x1, t1), (x2, t2)) =
     join (String.compare (x1, x2),
@@ -95,7 +95,7 @@ fun mapfold fc =
                                                      (x, t')))
                                          xts,
                      fn xts' => (TRecord xts', loc))
-              | TNamed _ => S.return2 cAll
+              | TDatatype _ => S.return2 cAll
               | TFfi _ => S.return2 cAll
     in
         mft
@@ -125,7 +125,7 @@ end
 structure Exp = struct
 
 datatype binder =
-         NamedT of string * int * typ option
+         Datatype of string * int * (string * int * typ option) list
        | RelE of string * typ
        | NamedE of string * int * typ * exp option * string
 
@@ -324,8 +324,8 @@ fun mapfoldB (all as {bind, ...}) =
                                     case #1 d' of
                                         DDatatype (x, n, xncs) =>
                                         let
-                                            val ctx = bind (ctx, NamedT (x, n, NONE))
-                                            val t = (TNamed n, #2 d')
+                                            val ctx = bind (ctx, Datatype (x, n, xncs))
+                                            val t = (TDatatype (n, xncs), #2 d')
                                         in
                                             foldl (fn ((x, n, to), ctx) =>
                                                       let

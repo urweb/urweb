@@ -61,6 +61,8 @@ type env = {
      relC : (string * kind) list,
      namedC : (string * kind * con option) IM.map,
 
+     datatypes : (string * (string * int * con option) list) IM.map,
+
      relE : (string * con) list,
      namedE : (string * con * exp option * string) IM.map
 }
@@ -69,6 +71,8 @@ val empty = {
     relC = [],
     namedC = IM.empty,
 
+    datatypes = IM.empty,
+
     relE = [],
     namedE = IM.empty
 }
@@ -76,6 +80,8 @@ val empty = {
 fun pushCRel (env : env) x k =
     {relC = (x, k) :: #relC env,
      namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
+
+     datatypes = #datatypes env,
 
      relE = map (fn (x, c) => (x, lift c)) (#relE env),
      namedE = IM.map (fn (x, c, eo, s) => (x, lift c, eo, s)) (#namedE env)}
@@ -88,6 +94,8 @@ fun pushCNamed (env : env) x n k co =
     {relC = #relC env,
      namedC = IM.insert (#namedC env, n, (x, k, co)),
 
+     datatypes = #datatypes env,
+     
      relE = #relE env,
      namedE = #namedE env}
 
@@ -96,9 +104,25 @@ fun lookupCNamed (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
+fun pushDatatype (env : env) x n xncs =
+    {relC = #relC env,
+     namedC = #namedC env,
+
+     datatypes = IM.insert (#datatypes env, n, (x, xncs)),
+     
+     relE = #relE env,
+     namedE = #namedE env}
+
+fun lookupDatatype (env : env) n =
+    case IM.find (#datatypes env, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
 fun pushERel (env : env) x t =
     {relC = #relC env,
      namedC = #namedC env,
+
+     datatypes = #datatypes env,
 
      relE = (x, t) :: #relE env,
      namedE = #namedE env}
@@ -110,6 +134,8 @@ fun lookupERel (env : env) n =
 fun pushENamed (env : env) x n t eo s =
     {relC = #relC env,
      namedC = #namedC env,
+
+     datatypes = #datatypes env,
 
      relE = #relE env,
      namedE = IM.insert (#namedE env, n, (x, t, eo, s))}
@@ -124,6 +150,7 @@ fun declBinds env (d, loc) =
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
       | DDatatype (x, n, xncs) =>
         let
+            val env = pushDatatype env x n xncs
             val env = pushCNamed env x n (KType, loc) NONE
         in
             foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc) NONE ""

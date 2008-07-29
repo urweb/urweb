@@ -34,8 +34,8 @@ signature MONO_ENV = sig
     exception UnboundRel of int
     exception UnboundNamed of int
 
-    val pushTNamed : env -> string -> int -> Mono.typ option -> env
-    val lookupTNamed : env -> int -> string * Mono.typ option
+    val pushDatatype : env -> string -> int -> (string * int * Mono.typ option) list -> env
+    val lookupDatatype : env -> int -> string * (string * int * Mono.typ option) list
 
     val pushERel : env -> string -> Mono.typ -> env
     val lookupERel : env -> int -> string * Mono.typ
