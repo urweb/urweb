@@ -89,6 +89,8 @@ fun explifyExp (e, loc) =
                                                      {field = explifyCon field, rest = explifyCon rest}), loc)
       | L.EFold k => (L'.EFold (explifyKind k), loc)
 
+      | L.ECase _ => raise Fail "Explify ECase"
+
       | L.EError => raise Fail ("explifyExp: EError at " ^ EM.spanToString loc)
 
 fun explifySgi (sgi, loc) =

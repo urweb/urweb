@@ -81,6 +81,7 @@ type env = {
      namedC : (string * kind * con option) IM.map,
 
      datatypes : datatyp IM.map,
+     constructors : (int * con option * int) SM.map,
 
      renameE : con var' SM.map,
      relE : (string * con) list,
@@ -109,6 +110,7 @@ val empty = {
     namedC = IM.empty,
 
     datatypes = IM.empty,
+    constructors = SM.empty,
 
     renameE = SM.empty,
     relE = [],
@@ -131,6 +133,7 @@ fun pushCRel (env : env) x k =
          namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
 
          datatypes = #datatypes env,
+         constructors = #constructors env,
 
          renameE = #renameE env,
          relE = map (fn (x, c) => (x, lift c)) (#relE env),
@@ -154,6 +157,7 @@ fun pushCNamedAs (env : env) x n k co =
      namedC = IM.insert (#namedC env, n, (x, k, co)),
 
      datatypes = #datatypes env,
+     constructors = #constructors env,
 
      renameE = #renameE env,
      relE = #relE env,
@@ -192,6 +196,9 @@ fun pushDatatype (env : env) n xncs =
      datatypes = IM.insert (#datatypes env, n,
                             foldl (fn ((x, n, to), cons) =>
                                       IM.insert (cons, n, (x, to))) IM.empty xncs),
+     constructors = foldl (fn ((x, n', to), cmap) =>
+                              SM.insert (cmap, x, (n', to, n)))
+                          (#constructors env) xncs,
 
      renameE = #renameE env,
      relE = #relE env,
@@ -208,10 +215,12 @@ fun lookupDatatype (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
-fun lookupConstructor dt n =
+fun lookupDatatypeConstructor dt n =
     case IM.find (dt, n) of
         NONE => raise UnboundNamed n
       | SOME x => x
+
+fun lookupConstructor (env : env) s = SM.find (#constructors env, s)
 
 fun constructors dt = IM.foldri (fn (n, (x, to), ls) => (x, n, to) :: ls) [] dt
 
@@ -225,6 +234,7 @@ fun pushERel (env : env) x t =
          namedC = #namedC env,
 
          datatypes = #datatypes env,
+         constructors = #constructors env,
 
          renameE = SM.insert (renameE, x, Rel' (0, t)),
          relE = (x, t) :: #relE env,
@@ -247,6 +257,7 @@ fun pushENamedAs (env : env) x n t =
      namedC = #namedC env,
 
      datatypes = #datatypes env,
+     constructors = #constructors env,
 
      renameE = SM.insert (#renameE env, x, Named' (n, t)),
      relE = #relE env,
@@ -283,6 +294,7 @@ fun pushSgnNamedAs (env : env) x n sgis =
      namedC = #namedC env,
 
      datatypes = #datatypes env,
+     constructors = #constructors env,
 
      renameE = #renameE env,
      relE = #relE env,
@@ -315,6 +327,7 @@ fun pushStrNamedAs (env : env) x n sgis =
      namedC = #namedC env,
 
      datatypes = #datatypes env,
+     constructors = #constructors env,
 
      renameE = #renameE env,
      relE = #relE env,

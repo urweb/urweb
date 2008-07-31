@@ -252,7 +252,7 @@ fun p_exp' par (e, _) =
 
       | ECase (e, pes) => parenIf par (box [string "case",
                                             space,
-                                            p_exp' false e,
+                                            p_exp e,
                                             space,
                                             string "of",
                                             space,

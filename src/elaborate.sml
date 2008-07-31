@@ -809,6 +809,11 @@ datatype exp_error =
      | Unif of string * L'.con
      | WrongForm of string * L'.exp * L'.con
      | IncompatibleCons of L'.con * L'.con
+     | DuplicatePatternVariable of ErrorMsg.span * string
+     | PatUnify of L'.pat * L'.con * L'.con * cunify_error
+     | UnboundConstructor of ErrorMsg.span * string
+     | PatHasArg of ErrorMsg.span
+     | PatHasNoArg of ErrorMsg.span
 
 fun expError env err =
     case err of
@@ -833,11 +838,31 @@ fun expError env err =
         (ErrorMsg.errorAt (#2 c1) "Incompatible constructors";
          eprefaces' [("Con 1", p_con env c1),
                      ("Con 2", p_con env c2)])
+      | DuplicatePatternVariable (loc, s) =>
+        ErrorMsg.errorAt loc ("Duplicate pattern variable " ^ s)
+      | PatUnify (p, c1, c2, uerr) =>
+        (ErrorMsg.errorAt (#2 p) "Unification failure for pattern";
+         eprefaces' [("Pattern", p_pat env p),
+                     ("Have con", p_con env c1),
+                     ("Need con", p_con env c2)];
+         cunifyError env uerr)
+      | UnboundConstructor (loc, s) =>
+        ErrorMsg.errorAt loc ("Unbound constructor " ^ s ^ " in pattern")
+      | PatHasArg loc =>
+        ErrorMsg.errorAt loc "Constructor expects no argument but is used with argument"
+      | PatHasNoArg loc =>
+        ErrorMsg.errorAt loc "Constructor expects argument but is used with no argument"
 
 fun checkCon (env, denv) e c1 c2 =
     unifyCons (env, denv) c1 c2
     handle CUnify (c1, c2, err) =>
            (expError env (Unify (e, c1, c2, err));
+            [])
+
+fun checkPatCon (env, denv) p c1 c2 =
+    unifyCons (env, denv) c1 c2
+    handle CUnify (c1, c2, err) =>
+           (expError env (PatUnify (p, c1, c2, err));
             [])
 
 fun primType env p =
@@ -903,6 +928,8 @@ fun typeof env (e, loc) =
       | L'.ECut (_, _, {rest, ...}) => (L'.TRecord rest, loc)
       | L'.EFold dom => foldType (dom, loc)
 
+      | L'.ECase (_, _, t) => t
+
       | L'.EError => cerror
 
 fun elabHead (env, denv) (e as (_, loc)) t =
@@ -925,6 +952,52 @@ fun elabHead (env, denv) (e as (_, loc)) t =
             end
     in
         unravel (t, e)
+    end
+
+fun elabPat (pAll as (p, loc), (env, bound)) =
+    let
+        val perror = (L'.PWild, loc)
+        val terror = (L'.CError, loc)
+        val pterror = (perror, terror)
+        val rerror = (pterror, (env, bound))
+
+        fun pcon (pc, po, to, dn) =
+
+                case (po, to) of
+                    (NONE, SOME _) => (expError env (PatHasNoArg loc);
+                                       rerror)
+                  | (SOME _, NONE) => (expError env (PatHasArg loc);
+                                       rerror)
+                  | (NONE, NONE) => (((L'.PCon (pc, NONE), loc), (L'.CNamed dn, loc)),
+                                     (env, bound))
+                  | (SOME p, SOME t) =>
+                    let
+                        val ((p', pt), (env, bound)) = elabPat (p, (env, bound))
+                    in
+                        (((L'.PCon (pc, SOME p'), loc), (L'.CNamed dn, loc)),
+                         (env, bound))
+                    end
+    in
+        case p of
+            L.PWild => (((L'.PWild, loc), cunif (loc, (L'.KType, loc))),
+                        (env, bound))
+          | L.PVar x =>
+            let
+                val t = if SS.member (bound, x) then
+                            (expError env (DuplicatePatternVariable (loc, x));
+                             terror)
+                        else
+                            cunif (loc, (L'.KType, loc))
+            in
+                (((L'.PVar x, loc), t),
+                 (E.pushERel env x t, SS.add (bound, x)))
+            end
+          | L.PCon ([], x, po) =>
+            (case E.lookupConstructor env x of
+                 NONE => (expError env (UnboundConstructor (loc, x));
+                          rerror)
+               | SOME (n, to, dn) => pcon (L'.PConVar n, po, to, dn))
+          | L.PCon _ => raise Fail "uhoh"
     end
 
 fun elabExp (env, denv) (eAll as (e, loc)) =
@@ -1138,7 +1211,25 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 ((L'.EFold dom, loc), foldType (dom, loc), [])
             end
 
-          | L.ECase _ => raise Fail "Elaborate ECase"
+          | L.ECase (e, pes) =>
+            let
+                val (e', et, gs1) = elabExp (env, denv) e
+                val result = cunif (loc, (L'.KType, loc))
+                val (pes', gs) = ListUtil.foldlMap
+                                 (fn ((p, e), gs) =>
+                                     let
+                                         val ((p', pt), (env, _)) = elabPat (p, (env, SS.empty))
+
+                                         val gs1 = checkPatCon (env, denv) p' pt et
+                                         val (e', et, gs2) = elabExp (env, denv) e
+                                         val gs3 = checkCon (env, denv) e' et result
+                                     in
+                                         ((p', e'), gs1 @ gs2 @ gs3 @ gs)
+                                     end)
+                                 gs1 pes
+            in
+                ((L'.ECase (e', pes', result), loc), result, gs)
+            end
     end
             
 
@@ -1961,6 +2052,8 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                         ((x, n', to), (SS.add (used, x), env, gs'))
                     end)
                 (SS.empty, env, []) xcs
+
+            val env = E.pushDatatype env n xcs
         in
             ([(L'.DDatatype (x, n, xcs), loc)], (env, denv, gs))
         end

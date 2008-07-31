@@ -308,6 +308,17 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                          fn k' =>
                             (EFold k', loc))
 
+              | ECase (e, pes, t) =>
+                S.bind2 (mfe ctx e,
+                         fn e' =>
+                            S.bind2 (ListUtil.mapfold (fn (p, e) =>
+                                                         S.map2 (mfe ctx e,
+                                                              fn e' => (p, e'))) pes,
+                                    fn pes' =>
+                                       S.map2 (mfc ctx t,
+                                               fn t' =>
+                                                  (ECase (e', pes', t'), loc))))
+
               | EError => S.return2 eAll
     in
         mfe

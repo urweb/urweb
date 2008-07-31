@@ -190,6 +190,38 @@ and p_name env (all as (c, _)) =
         CName s => string s
       | _ => p_con env all
 
+fun p_patCon env pc =
+    case pc of
+        PConVar n =>
+        ((if !debug then
+              string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+          else
+              string (#1 (E.lookupENamed env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_NAMED" ^ Int.toString n))
+      | PConProj (m1, ms, x) =>
+        let
+            val m1x = #1 (E.lookupStrNamed env m1)
+                handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1
+                  
+            val m1s = if !debug then
+                          m1x ^ "__" ^ Int.toString m1
+                      else
+                          m1x
+        in
+            p_list_sep (string ".") string (m1x :: ms @ [x])
+        end
+
+fun p_pat' par env (p, _) =
+    case p of
+        PWild => string "_"
+      | PVar s => string s
+      | PCon (pc, NONE) => p_patCon env pc
+      | PCon (pc, SOME p) => parenIf par (box [p_patCon env pc,
+                                               space,
+                                               p_pat' true env p])
+
+val p_pat = p_pat' false
+
 fun p_exp' par env (e, _) =
     case e of
         EPrim p => Prim.p_t p
@@ -296,6 +328,19 @@ fun p_exp' par env (e, _) =
                               space,
                               p_con' true env c])
       | EFold _ => string "fold"
+
+      | ECase (e, pes, _) => parenIf par (box [string "case",
+                                               space,
+                                               p_exp env e,
+                                               space,
+                                               string "of",
+                                               space,
+                                               p_list_sep (box [space, string "|", space])
+                                                          (fn (p, e) => box [p_pat env p,
+                                                                             space,
+                                                                             string "=>",
+                                                                             space,
+                                                                             p_exp env e]) pes])
 
       | EError => string "<ERROR>"
 
