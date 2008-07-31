@@ -242,6 +242,7 @@ notags = [^<{\n]+;
 <INITIAL> ":::"       => (Tokens.TCOLON (pos yypos, pos yypos + size yytext));
 <INITIAL> "::"        => (Tokens.DCOLON (pos yypos, pos yypos + size yytext));
 <INITIAL> ":"         => (Tokens.COLON (pos yypos, pos yypos + size yytext));
+<INITIAL> "..."       => (Tokens.DOTDOTDOT (pos yypos, pos yypos + size yytext));
 <INITIAL> "."         => (Tokens.DOT (pos yypos, pos yypos + size yytext));
 <INITIAL> "$"         => (Tokens.DOLLAR (pos yypos, pos yypos + size yytext));
 <INITIAL> "#"         => (Tokens.HASH (pos yypos, pos yypos + size yytext));

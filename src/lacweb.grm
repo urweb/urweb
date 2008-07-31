@@ -43,7 +43,7 @@ fun uppercaseFirst "" = ""
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
- | DIVIDE | GT
+ | DIVIDE | GT | DOTDOTDOT
  | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT
  | DATATYPE | OF
  | TYPE | NAME
@@ -104,6 +104,7 @@ fun uppercaseFirst "" = ""
  | branchs of (pat * exp) list
  | pat of pat
  | pterm of pat
+ | rpat of (string * pat) list * bool
 
  | attrs of (con * exp) list
  | attr of con * exp
@@ -351,6 +352,13 @@ pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright
        | INT                            (PPrim (Prim.Int INT), s (INTleft, INTright))
        | STRING                         (PPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LPAREN pat RPAREN              (pat)
+       | LBRACE RBRACE                  (PRecord ([], false), s (LBRACEleft, RBRACEright))
+       | UNIT                           (PRecord ([], false), s (UNITleft, UNITright))
+       | LBRACE rpat RBRACE             (PRecord rpat, s (LBRACEleft, RBRACEright))
+
+rpat   : STRING EQ pat                  ([(STRING, pat)], false)
+       | DOTDOTDOT                      ([], true)
+       | STRING EQ pat COMMA rpat       ((STRING, pat) :: #1 rpat, #2 rpat)
 
 rexp   :                                ([])
        | ident EQ eexp                  ([(ident, eexp)])

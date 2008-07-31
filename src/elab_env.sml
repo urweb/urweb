@@ -570,6 +570,25 @@ fun projectDatatype env {sgn, str, field} =
            | SOME (xncs, subs) => SOME (map (fn (x, n, to) => (x, n, Option.map (sgnSubCon (str, subs)) to)) xncs))
       | _ => NONE
 
+fun projectConstructor env {sgn, str, field} =
+    case #1 (hnormSgn env sgn) of
+        SgnConst sgis =>
+        let
+            fun consider (n, xncs) =
+                ListUtil.search (fn (x, n', to) =>
+                                    if x <> field then
+                                        NONE
+                                    else
+                                        SOME (n', to, (CNamed n, #2 str))) xncs
+        in
+            case sgnSeek (fn SgiDatatype (_, n, xncs) => consider (n, xncs)
+                           | SgiDatatypeImp (_, n, _, _, _, xncs) => consider (n, xncs)
+                           | _ => NONE) sgis of
+                NONE => NONE
+              | SOME ((n, to, t), subs) => SOME (n, Option.map (sgnSubCon (str, subs)) to, sgnSubCon (str, subs) t)
+        end
+      | _ => NONE
+
 fun projectVal env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>

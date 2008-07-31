@@ -94,6 +94,7 @@ datatype pat' =
        | PVar of string
        | PPrim of Prim.t
        | PCon of string list * string * pat option
+       | PRecord of (string * pat) list * bool
 
 withtype pat = pat' located
 

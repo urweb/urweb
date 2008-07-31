@@ -171,8 +171,20 @@ fun p_pat' par (p, _) =
       | PCon (ms, x, SOME p) => parenIf par (box [p_list_sep (string ".") string (ms @ [x]),
                                                   space,
                                                   p_pat' true p])
+      | PRecord (xps, flex) =>
+        let
+            val pps = map (fn (x, p) => box [string "x", space, string "=", space, p_pat p]) xps
+        in
+            box [string "{",
+                 p_list_sep (box [string ",", space]) (fn x => x)
+                 (if flex then
+                      pps
+                  else
+                      pps @ [string "..."]),
+                 string "}"]
+        end
 
-val p_pat = p_pat' false
+and p_pat x = p_pat' false x
 
 fun p_exp' par (e, _) =
     case e of

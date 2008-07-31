@@ -812,7 +812,7 @@ datatype exp_error =
      | IncompatibleCons of L'.con * L'.con
      | DuplicatePatternVariable of ErrorMsg.span * string
      | PatUnify of L'.pat * L'.con * L'.con * cunify_error
-     | UnboundConstructor of ErrorMsg.span * string
+     | UnboundConstructor of ErrorMsg.span * string list * string
      | PatHasArg of ErrorMsg.span
      | PatHasNoArg of ErrorMsg.span
      | Inexhaustive of ErrorMsg.span
@@ -848,8 +848,8 @@ fun expError env err =
                      ("Have con", p_con env c1),
                      ("Need con", p_con env c2)];
          cunifyError env uerr)
-      | UnboundConstructor (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound constructor " ^ s ^ " in pattern")
+      | UnboundConstructor (loc, ms, s) =>
+        ErrorMsg.errorAt loc ("Unbound constructor " ^ String.concatWith "." (ms @ [s]) ^ " in pattern")
       | PatHasArg loc =>
         ErrorMsg.errorAt loc "Constructor expects no argument but is used with argument"
       | PatHasNoArg loc =>
@@ -958,7 +958,7 @@ fun elabHead (env, denv) (e as (_, loc)) t =
         unravel (t, e)
     end
 
-fun elabPat (pAll as (p, loc), (env, bound)) =
+fun elabPat (pAll as (p, loc), (env, denv, bound)) =
     let
         val perror = (L'.PWild, loc)
         val terror = (L'.CError, loc)
@@ -972,13 +972,13 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
                                        rerror)
                   | (SOME _, NONE) => (expError env (PatHasArg loc);
                                        rerror)
-                  | (NONE, NONE) => (((L'.PCon (pc, NONE), loc), (L'.CNamed dn, loc)),
+                  | (NONE, NONE) => (((L'.PCon (pc, NONE), loc), dn),
                                      (env, bound))
                   | (SOME p, SOME t) =>
                     let
-                        val ((p', pt), (env, bound)) = elabPat (p, (env, bound))
+                        val ((p', pt), (env, bound)) = elabPat (p, (env, denv, bound))
                     in
-                        (((L'.PCon (pc, SOME p'), loc), (L'.CNamed dn, loc)),
+                        (((L'.PCon (pc, SOME p'), loc), dn),
                          (env, bound))
                     end
     in
@@ -1000,10 +1000,28 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
                           (env, bound))
           | L.PCon ([], x, po) =>
             (case E.lookupConstructor env x of
-                 NONE => (expError env (UnboundConstructor (loc, x));
+                 NONE => (expError env (UnboundConstructor (loc, [], x));
                           rerror)
-               | SOME (n, to, dn) => pcon (L'.PConVar n, po, to, dn))
-          | L.PCon _ => raise Fail "uhoh"
+               | SOME (n, to, dn) => pcon (L'.PConVar n, po, to, (L'.CNamed dn, loc)))
+          | L.PCon (m1 :: ms, x, po) =>
+            (case E.lookupStr env m1 of
+                 NONE => (expError env (UnboundStrInExp (loc, m1));
+                          rerror)
+               | SOME (n, sgn) =>
+                 let
+                     val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                                case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                                    NONE => raise Fail "typeof: Unknown substructure"
+                                                  | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                            ((L'.StrVar n, loc), sgn) ms
+                 in
+                     case E.projectConstructor env {str = str, sgn = sgn, field = x} of
+                         NONE => (expError env (UnboundConstructor (loc, m1 :: ms, x));
+                                  rerror)
+                       | SOME (_, to, dn) => pcon (L'.PConProj (n, ms, x), po, to, dn)
+                 end)
+
+          | L.PRecord _ => raise Fail "Elaborate PRecord"
     end
 
 datatype coverage =
@@ -1016,7 +1034,14 @@ fun exhaustive (env, denv, t, ps) =
         fun pcCoverage pc =
             case pc of
                 L'.PConVar n => n
-              | _ => raise Fail "uh oh^2"
+              | L'.PConProj (m1, ms, x) =>
+                let
+                    val (str, sgn) = E.chaseMpath env (m1, ms)
+                in
+                    case E.projectConstructor env {str = str, sgn = sgn, field = x} of
+                        NONE => raise Fail "exhaustive: Can't project constructor"
+                      | SOME (n, _, _) => n
+                end
 
         fun coverage (p, _) =
             case p of
@@ -1049,6 +1074,21 @@ fun exhaustive (env, denv, t, ps) =
               | Datatype cm =>
                 let
                     val ((t, _), gs) = hnormCon (env, denv) t
+
+                    fun dtype cons =
+                        foldl (fn ((_, n, to), (total, gs)) =>
+                                  case IM.find (cm, n) of
+                                      NONE => (false, gs)
+                                    | SOME c' =>
+                                      case to of
+                                          NONE => (total, gs)
+                                        | SOME t' =>
+                                          let
+                                              val (total, gs') = isTotal (c', t')
+                                          in
+                                              (total, gs' @ gs)
+                                          end)
+                              (true, gs) cons
                 in
                     case t of
                         L'.CNamed n =>
@@ -1056,19 +1096,15 @@ fun exhaustive (env, denv, t, ps) =
                             val dt = E.lookupDatatype env n
                             val cons = E.constructors dt
                         in
-                            foldl (fn ((_, n, to), (total, gs)) =>
-                                      case IM.find (cm, n) of
-                                          NONE => (false, gs)
-                                        | SOME c' =>
-                                          case to of
-                                              NONE => (total, gs)
-                                            | SOME t' =>
-                                              let
-                                                  val (total, gs') = isTotal (c', t')
-                                              in
-                                                  (total, gs' @ gs)
-                                              end)
-                                  (true, gs) cons
+                            dtype cons
+                        end
+                      | L'.CModProj (m1, ms, x) =>
+                        let
+                            val (str, sgn) = E.chaseMpath env (m1, ms)
+                        in
+                            case E.projectDatatype env {str = str, sgn = sgn, field = x} of
+                                NONE => raise Fail "isTotal: Can't project datatype"
+                              | SOME cons => dtype cons
                         end
                       | L'.CError => (true, gs)
                       | _ => raise Fail "isTotal: Not a datatype"
@@ -1295,7 +1331,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val (pes', gs) = ListUtil.foldlMap
                                  (fn ((p, e), gs) =>
                                      let
-                                         val ((p', pt), (env, _)) = elabPat (p, (env, SS.empty))
+                                         val ((p', pt), (env, _)) = elabPat (p, (env, denv, SS.empty))
 
                                          val gs1 = checkPatCon (env, denv) p' pt et
                                          val (e', et, gs2) = elabExp (env, denv) e

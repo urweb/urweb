@@ -1,0 +1,19 @@
+structure M = struct
+        datatype t = A | B
+end
+
+val f = fn x : M.t => case x of M.A => M.B | M.B => M.A
+
+datatype t = datatype M.t
+
+val g = fn x : t => case x of M.A => B | B => M.A
+
+structure N = struct
+        datatype t = C of t | D
+end
+
+val h = fn x : N.t => case x of N.C x => x | N.D => M.A
+
+datatype u = datatype N.t
+
+val i = fn x : u => case x of N.C x => x | D => M.A
