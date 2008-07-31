@@ -71,6 +71,19 @@ fun explifyCon (c, loc) =
       | L.CUnif (_, _, _, ref (SOME c)) => explifyCon c
       | L.CUnif _ => raise Fail ("explifyCon: CUnif at " ^ EM.spanToString loc)
 
+fun explifyPatCon pc =
+    case pc of
+        L.PConVar n => L'.PConVar n
+      | L.PConProj x => L'.PConProj x
+
+fun explifyPat (p, loc) =
+    case p of
+        L.PWild => (L'.PWild, loc)
+      | L.PVar x => (L'.PVar x, loc)
+      | L.PPrim p => (L'.PPrim p, loc)
+      | L.PCon (pc, po) => (L'.PCon (explifyPatCon pc, Option.map explifyPat po), loc)
+      | L.PRecord xps => (L'.PRecord (map (fn (x, p) => (x, explifyPat p)) xps), loc)
+
 fun explifyExp (e, loc) =
     case e of
         L.EPrim p => (L'.EPrim p, loc)
@@ -89,7 +102,9 @@ fun explifyExp (e, loc) =
                                                      {field = explifyCon field, rest = explifyCon rest}), loc)
       | L.EFold k => (L'.EFold (explifyKind k), loc)
 
-      | L.ECase _ => raise Fail "Explify ECase"
+      | L.ECase (e, pes, t) => (L'.ECase (explifyExp e,
+                                          map (fn (p, e) => (explifyPat p, explifyExp e)) pes,
+                                          explifyCon t), loc)
 
       | L.EError => raise Fail ("explifyExp: EError at " ^ EM.spanToString loc)
 

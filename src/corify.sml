@@ -394,6 +394,7 @@ fun corifyExp st (e, loc) =
       | L.ECut (e1, c, {field, rest}) => (L'.ECut (corifyExp st e1, corifyCon st c,
                                                    {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.EFold k => (L'.EFold (corifyKind k), loc)
+      | L.ECase _ => raise Fail "Corify ECase"
       | L.EWrite e => (L'.EWrite (corifyExp st e), loc)
 
 fun corifyDecl ((d, loc : EM.span), st) =

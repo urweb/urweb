@@ -220,17 +220,15 @@ fun p_pat' par env (p, _) =
       | PCon (pc, SOME p) => parenIf par (box [p_patCon env pc,
                                                space,
                                                p_pat' true env p])
-      | PRecord (xps, flex) =>
-        let
-            val pps = map (fn (x, p) => box [string x, space, string "=", space, p_pat env p]) xps
-        in
-            box [string "{",
-                 p_list_sep (box [string ",", space]) (fn x => x)
-                 (case flex of
-                      NONE => pps
-                    | SOME _ => pps @ [string "..."]),
-                 string "}"]
-        end
+      | PRecord xps =>
+        box [string "{",
+             p_list_sep (box [string ",", space]) (fn (x, p) =>
+                                                      box [string x,
+                                                           space,
+                                                           string "=",
+                                                           space,
+                                                           p_pat env p]) xps,
+             string "}"]
 
 and p_pat x = p_pat' false x
 

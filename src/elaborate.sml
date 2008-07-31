@@ -1045,17 +1045,13 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
 
                 val k = (L'.KType, loc)
                 val c = (L'.CRecord (k, map (fn (x, _, t) => ((L'.CName x, loc), t)) xpts), loc)
-                val (flex, c) =
+                val c =
                     if flex then
-                        let
-                            val flex = cunif (loc, (L'.KRecord k, loc))
-                        in
-                            (SOME flex, (L'.CConcat (c, flex), loc))
-                        end
+                        (L'.CConcat (c, cunif (loc, (L'.KRecord k, loc))), loc)
                     else
-                        (NONE, c)
+                        c
             in
-                (((L'.PRecord (map (fn (x, p', _) => (x, p')) xpts, flex), loc),
+                (((L'.PRecord (map (fn (x, p', _) => (x, p')) xpts), loc),
                   (L'.TRecord c, loc)),
                  (env, bound))
             end
@@ -1089,8 +1085,9 @@ fun exhaustive (env, denv, t, ps) =
               | L'.PPrim _ => None
               | L'.PCon (pc, NONE) => Datatype (IM.insert (IM.empty, pcCoverage pc, Wild))
               | L'.PCon (pc, SOME p) => Datatype (IM.insert (IM.empty, pcCoverage pc, coverage p))
-              | L'.PRecord (xps, _) => Record [foldl (fn ((x, p), fmap) =>
+              | L'.PRecord xps => Record [foldl (fn ((x, p), fmap) =>
                                                          SM.insert (fmap, x, coverage p)) SM.empty xps]
+
         fun merge (c1, c2) =
             case (c1, c2) of
                 (None, _) => c2
