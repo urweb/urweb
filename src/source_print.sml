@@ -173,14 +173,14 @@ fun p_pat' par (p, _) =
                                                   p_pat' true p])
       | PRecord (xps, flex) =>
         let
-            val pps = map (fn (x, p) => box [string "x", space, string "=", space, p_pat p]) xps
+            val pps = map (fn (x, p) => box [string x, space, string "=", space, p_pat p]) xps
         in
             box [string "{",
                  p_list_sep (box [string ",", space]) (fn x => x)
                  (if flex then
-                      pps
+                      pps @ [string "..."]
                   else
-                      pps @ [string "..."]),
+                      pps),
                  string "}"]
         end
 

@@ -80,6 +80,7 @@ datatype pat' =
        | PVar of string
        | PPrim of Prim.t
        | PCon of patCon * pat option
+       | PRecord of (string * pat) list * con option
 
 withtype pat = pat' located
 

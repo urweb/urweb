@@ -356,9 +356,9 @@ pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright
        | UNIT                           (PRecord ([], false), s (UNITleft, UNITright))
        | LBRACE rpat RBRACE             (PRecord rpat, s (LBRACEleft, RBRACEright))
 
-rpat   : STRING EQ pat                  ([(STRING, pat)], false)
+rpat   : CSYMBOL EQ pat                 ([(CSYMBOL, pat)], false)
        | DOTDOTDOT                      ([], true)
-       | STRING EQ pat COMMA rpat       ((STRING, pat) :: #1 rpat, #2 rpat)
+       | CSYMBOL EQ pat COMMA rpat      ((CSYMBOL, pat) :: #1 rpat, #2 rpat)
 
 rexp   :                                ([])
        | ident EQ eexp                  ([(ident, eexp)])
