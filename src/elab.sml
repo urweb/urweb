@@ -78,6 +78,7 @@ datatype patCon =
 datatype pat' =
          PWild
        | PVar of string
+       | PPrim of Prim.t
        | PCon of patCon * pat option
 
 withtype pat = pat' located

@@ -215,6 +215,7 @@ fun p_pat' par env (p, _) =
     case p of
         PWild => string "_"
       | PVar s => string s
+      | PPrim p => Prim.p_t p
       | PCon (pc, NONE) => p_patCon env pc
       | PCon (pc, SOME p) => parenIf par (box [p_patCon env pc,
                                                space,

@@ -166,6 +166,7 @@ fun p_pat' par (p, _) =
     case p of
         PWild => string "_"
       | PVar s => string s
+      | PPrim p => Prim.p_t p
       | PCon (ms, x, NONE) => p_list_sep (string ".") string (ms @ [x])
       | PCon (ms, x, SOME p) => parenIf par (box [p_list_sep (string ".") string (ms @ [x]),
                                                   space,

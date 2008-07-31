@@ -348,6 +348,8 @@ pat    : pterm                          (pterm)
 pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright))
        | cpath                          (PCon (#1 cpath, #2 cpath, NONE), s (cpathleft, cpathright))
        | UNDER                          (PWild, s (UNDERleft, UNDERright))
+       | INT                            (PPrim (Prim.Int INT), s (INTleft, INTright))
+       | STRING                         (PPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LPAREN pat RPAREN              (pat)
 
 rexp   :                                ([])

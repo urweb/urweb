@@ -996,6 +996,8 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
                 (((L'.PVar x, loc), t),
                  (E.pushERel env x t, SS.add (bound, x)))
             end
+          | L.PPrim p => (((L'.PPrim p, loc), primType env p),
+                          (env, bound))
           | L.PCon ([], x, po) =>
             (case E.lookupConstructor env x of
                  NONE => (expError env (UnboundConstructor (loc, x));
@@ -1006,6 +1008,7 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
 
 datatype coverage =
          Wild
+       | None
        | Datatype of coverage IM.map
 
 fun exhaustive (env, denv, t, ps) =
@@ -1019,12 +1022,16 @@ fun exhaustive (env, denv, t, ps) =
             case p of
                 L'.PWild => Wild
               | L'.PVar _ => Wild
+              | L'.PPrim _ => None
               | L'.PCon (pc, NONE) => Datatype (IM.insert (IM.empty, pcCoverage pc, Wild))
               | L'.PCon (pc, SOME p) => Datatype (IM.insert (IM.empty, pcCoverage pc, coverage p))
 
         fun merge (c1, c2) =
             case (c1, c2) of
-                (Wild, _) => Wild
+                (None, _) => c2
+              | (_, None) => c1
+                
+              | (Wild, _) => Wild
               | (_, Wild) => Wild
 
               | (Datatype cm1, Datatype cm2) => Datatype (IM.unionWith merge (cm1, cm2))
@@ -1037,7 +1044,8 @@ fun exhaustive (env, denv, t, ps) =
 
         fun isTotal (c, t) =
             case c of
-                Wild => (true, nil)
+                None => (false, [])
+              | Wild => (true, [])
               | Datatype cm =>
                 let
                     val ((t, _), gs) = hnormCon (env, denv) t

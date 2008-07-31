@@ -92,6 +92,7 @@ and sgn = sgn' located
 datatype pat' =
          PWild
        | PVar of string
+       | PPrim of Prim.t
        | PCon of string list * string * pat option
 
 withtype pat = pat' located
