@@ -45,6 +45,8 @@ signature CORE_ENV = sig
     val pushDatatype : env -> string -> int -> (string * int * Core.con option) list -> env
     val lookupDatatype : env -> int -> string * (string * int * Core.con option) list
 
+    val lookupConstructor : env -> int -> string * Core.con option * int
+
     val pushERel : env -> string -> Core.con -> env
     val lookupERel : env -> int -> string * Core.con
 

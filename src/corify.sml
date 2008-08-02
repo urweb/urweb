@@ -71,11 +71,15 @@ structure St : sig
     val lookupConById : t -> int -> int option
     val lookupConByName : t -> string -> core_con
 
+    val bindConstructor : t -> string -> int -> L'.patCon -> t
+    val lookupConstructorByName : t -> string -> L'.patCon
+    val lookupConstructorById : t -> int -> L'.patCon
+
     datatype core_val =
              ENormal of int
            | EFfi of string * L'.con
     val bindVal : t -> string -> int -> t * int
-    val bindConstructor : t -> string -> int -> t
+    val bindConstructorVal : t -> string -> int -> t
     val lookupValById : t -> int -> int option
     val lookupValByName : t -> string -> core_val
 
@@ -90,6 +94,7 @@ end = struct
 
 datatype flattening =
          FNormal of {cons : int SM.map,
+                     constructors : L'.patCon SM.map,
                      vals : int SM.map,
                      strs : flattening SM.map,
                      funs : (string * int * L.str) SM.map}
@@ -98,6 +103,7 @@ datatype flattening =
                            
 type t = {
      cons : int IM.map,
+     constructors : L'.patCon IM.map,
      vals : int IM.map,
      strs : flattening IM.map,
      funs : (string * int * L.str) IM.map,
@@ -107,15 +113,17 @@ type t = {
 
 val empty = {
     cons = IM.empty,
+    constructors = IM.empty,
     vals = IM.empty,
     strs = IM.empty,
     funs = IM.empty,
-    current = FNormal { cons = SM.empty, vals = SM.empty, strs = SM.empty, funs = SM.empty },
+    current = FNormal { cons = SM.empty, constructors = SM.empty, vals = SM.empty, strs = SM.empty, funs = SM.empty },
     nested = []
 }
 
-fun debug ({current = FNormal {cons, vals, strs, funs}, ...} : t) =
+fun debug ({current = FNormal {cons, constructors, vals, strs, funs}, ...} : t) =
     print ("cons: " ^ Int.toString (SM.numItems cons) ^ "; "
+           ^ "constructors: " ^ Int.toString (SM.numItems constructors) ^ "; "
            ^ "vals: " ^ Int.toString (SM.numItems vals) ^ "; "
            ^ "strs: " ^ Int.toString (SM.numItems strs) ^ "; "
            ^ "funs: " ^ Int.toString (SM.numItems funs) ^ "\n")
@@ -129,20 +137,22 @@ datatype core_val =
          ENormal of int
        | EFfi of string * L'.con
 
-fun bindCon {cons, vals, strs, funs, current, nested} s n =
+fun bindCon {cons, constructors, vals, strs, funs, current, nested} s n =
     let
         val n' = alloc ()
 
         val current =
             case current of
                 FFfi _ => raise Fail "Binding inside FFfi"
-              | FNormal {cons, vals, strs, funs} =>
+              | FNormal {cons, constructors, vals, strs, funs} =>
                 FNormal {cons = SM.insert (cons, s, n'),
+                         constructors = constructors,
                          vals = vals,
                          strs = strs,
                          funs = funs}
     in
         ({cons = IM.insert (cons, n, n'),
+          constructors = constructors,
           vals = vals,
           strs = strs,
           funs = funs,
@@ -161,20 +171,22 @@ fun lookupConByName ({current, ...} : t) x =
             NONE => raise Fail "Corify.St.lookupConByName"
           | SOME n => CNormal n
 
-fun bindVal {cons, vals, strs, funs, current, nested} s n =
+fun bindVal {cons, constructors, vals, strs, funs, current, nested} s n =
     let
         val n' = alloc ()
 
         val current =
             case current of
                 FFfi _ => raise Fail "Binding inside FFfi"
-              | FNormal {cons, vals, strs, funs} =>
+              | FNormal {cons, constructors, vals, strs, funs} =>
                 FNormal {cons = cons,
+                         constructors = constructors,
                          vals = SM.insert (vals, s, n'),
                          strs = strs,
                          funs = funs}
     in
         ({cons = cons,
+          constructors = constructors,
           vals = IM.insert (vals, n, n'),
           strs = strs,
           funs = funs,
@@ -183,24 +195,27 @@ fun bindVal {cons, vals, strs, funs, current, nested} s n =
          n')
     end
 
-fun bindConstructor {cons, vals, strs, funs, current, nested} s n =
+fun bindConstructorVal {cons, constructors, vals, strs, funs, current, nested} s n =
     let
         val current =
             case current of
                 FFfi _ => raise Fail "Binding inside FFfi"
-              | FNormal {cons, vals, strs, funs} =>
+              | FNormal {cons, constructors, vals, strs, funs} =>
                 FNormal {cons = cons,
+                         constructors = constructors,
                          vals = SM.insert (vals, s, n),
                          strs = strs,
                          funs = funs}
     in
         {cons = cons,
+         constructors = constructors,
          vals = IM.insert (vals, n, n),
          strs = strs,
          funs = funs,
          current = current,
          nested = nested}
     end
+
 
 fun lookupValById ({vals, ...} : t) n = IM.find (vals, n)
 
@@ -215,26 +230,64 @@ fun lookupValByName ({current, ...} : t) x =
             NONE => raise Fail "Corify.St.lookupValByName"
           | SOME n => ENormal n
 
-fun enter {cons, vals, strs, funs, current, nested} =
+fun bindConstructor {cons, constructors, vals, strs, funs, current, nested} s n n' =
+    let
+        val current =
+            case current of
+                FFfi _ => raise Fail "Binding inside FFfi"
+              | FNormal {cons, constructors, vals, strs, funs} =>
+                FNormal {cons = cons,
+                         constructors = SM.insert (constructors, s, n'),
+                         vals = vals,
+                         strs = strs,
+                         funs = funs}
+    in
+        {cons = cons,
+         constructors = IM.insert (constructors, n, n'),
+         vals = vals,
+         strs = strs,
+         funs = funs,
+         current = current,
+         nested = nested}
+    end
+
+fun lookupConstructorById ({constructors, ...} : t) n =
+    case IM.find (constructors, n) of
+        NONE => raise Fail "Corify.St.lookupConstructorById"
+      | SOME x => x
+
+fun lookupConstructorByName ({current, ...} : t) x =
+    case current of
+        FFfi {mod = m, ...} => L'.PConFfi (m, x)
+      | FNormal {constructors, ...} =>
+        case SM.find (constructors, x) of
+            NONE => raise Fail "Corify.St.lookupConstructorByName"
+          | SOME n => n
+
+fun enter {cons, constructors, vals, strs, funs, current, nested} =
     {cons = cons,
+     constructors = constructors,
      vals = vals,
      strs = strs,
      funs = funs,
      current = FNormal {cons = SM.empty,
+                        constructors = SM.empty,
                         vals = SM.empty,
                         strs = SM.empty,
                         funs = SM.empty},
      nested = current :: nested}
 
 fun dummy f = {cons = IM.empty,
+               constructors = IM.empty,
                vals = IM.empty,
                strs = IM.empty,
                funs = IM.empty,
                current = f,
                nested = []}
 
-fun leave {cons, vals, strs, funs, current, nested = m1 :: rest} =
+fun leave {cons, constructors, vals, strs, funs, current, nested = m1 :: rest} =
         {outer = {cons = cons,
+                  constructors = constructors,
                   vals = vals,
                   strs = strs,
                   funs = funs,
@@ -245,14 +298,17 @@ fun leave {cons, vals, strs, funs, current, nested = m1 :: rest} =
 
 fun ffi m vals = dummy (FFfi {mod = m, vals = vals})
 
-fun bindStr ({cons, vals, strs, funs,
-              current = FNormal {cons = mcons, vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
+fun bindStr ({cons, constructors, vals, strs, funs,
+              current = FNormal {cons = mcons, constructors = mconstructors,
+                                 vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
             x n ({current = f, ...} : t) =
     {cons = cons,
+     constructors = constructors,
      vals = vals,
      strs = IM.insert (strs, n, f),
      funs = funs,
      current = FNormal {cons = mcons,
+                        constructors = mconstructors,
                         vals = mvals,
                         strs = SM.insert (mstrs, x, f),
                         funs = mfuns},
@@ -270,14 +326,17 @@ fun lookupStrByName (m, {current = FNormal {strs, ...}, ...} : t) =
        | SOME f => dummy f)
   | lookupStrByName _ = raise Fail "Corify.St.lookupStrByName"
 
-fun bindFunctor ({cons, vals, strs, funs,
-                  current = FNormal {cons = mcons, vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
+fun bindFunctor ({cons, constructors, vals, strs, funs,
+                  current = FNormal {cons = mcons, constructors = mconstructors,
+                                     vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
                 x n xa na str =
     {cons = cons,
+     constructors = constructors,
      vals = vals,
      strs = strs,
      funs = IM.insert (funs, n, (xa, na, str)),
      current = FNormal {cons = mcons,
+                        constructors = mconstructors,
                         vals = mvals,
                         strs = mstrs,
                         funs = SM.insert (mfuns, x, (xa, na, str))},
@@ -338,6 +397,25 @@ fun corifyCon st (c, loc) =
       | L.CFold (k1, k2) => (L'.CFold (corifyKind k1, corifyKind k2), loc)
       | L.CUnit => (L'.CUnit, loc)
 
+fun corifyPatCon st pc =
+    case pc of
+        L.PConVar n => St.lookupConstructorById st n
+      | L.PConProj (m1, ms, x) =>
+        let
+            val st = St.lookupStrById st m1
+            val st = foldl St.lookupStrByName st ms
+        in
+            St.lookupConstructorByName st x
+        end
+
+fun corifyPat st (p, loc) =
+    case p of
+        L.PWild => (L'.PWild, loc)
+      | L.PVar x => (L'.PVar x, loc)
+      | L.PPrim p => (L'.PPrim p, loc)
+      | L.PCon (pc, po) => (L'.PCon (corifyPatCon st pc, Option.map (corifyPat st) po), loc)
+      | L.PRecord xps => (L'.PRecord (map (fn (x, p) => (x, corifyPat st p)) xps), loc)
+
 fun corifyExp st (e, loc) =
     case e of
         L.EPrim p => (L'.EPrim p, loc)
@@ -394,7 +472,12 @@ fun corifyExp st (e, loc) =
       | L.ECut (e1, c, {field, rest}) => (L'.ECut (corifyExp st e1, corifyCon st c,
                                                    {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.EFold k => (L'.EFold (corifyKind k), loc)
-      | L.ECase _ => raise Fail "Corify ECase"
+
+      | L.ECase (e, pes, t) => (L'.ECase (corifyExp st e,
+                                          map (fn (p, e) => (corifyPat st p, corifyExp st e)) pes,
+                                          corifyCon st t),
+                                loc)
+
       | L.EWrite e => (L'.EWrite (corifyExp st e), loc)
 
 fun corifyDecl ((d, loc : EM.span), st) =
@@ -410,27 +493,47 @@ fun corifyDecl ((d, loc : EM.span), st) =
             val (st, n) = St.bindCon st x n
             val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
                                                    let
-                                                       val st = St.bindConstructor st x n
+                                                       val st = St.bindConstructor st x n (L'.PConVar n)
+                                                       val st = St.bindConstructorVal st x n
                                                        val co = Option.map (corifyCon st) co
                                                    in
                                                        ((x, n, co), st)
                                                    end) st xncs
+
+            val t = (L'.CNamed n, loc)
+            val dcons = map (fn (x, n, to) =>
+                                let
+                                    val (e, t) =
+                                        case to of
+                                            NONE => ((L'.ECon (n, NONE), loc), t)
+                                          | SOME t' => ((L'.EAbs ("x", t', t,
+                                                                  (L'.ECon (n, SOME (L'.ERel 0, loc)), loc)),
+                                                         loc),
+                                                        (L'.TFun (t', t), loc))
+                                in
+                                    (L'.DVal (x, n, t, e, ""), loc)
+                                end) xncs
         in
-            ([(L'.DDatatype (x, n, xncs), loc)], st)
+            ((L'.DDatatype (x, n, xncs), loc) :: dcons, st)
         end
       | L.DDatatypeImp (x, n, m1, ms, s, xncs) =>
         let
             val (st, n) = St.bindCon st x n
             val c = corifyCon st (L.CModProj (m1, ms, s), loc)
 
+            val m = foldl (fn (x, m) => (L.StrProj (m, x), loc)) (L.StrVar m1, loc) ms
+            val (_, {inner, ...}) = corifyStr (m, st)
+
             val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
                                                    let
+                                                       val n' = St.lookupConstructorByName inner x
+                                                       val st = St.bindConstructor st x n n'
                                                        val (st, n) = St.bindVal st x n
                                                        val co = Option.map (corifyCon st) co
                                                    in
                                                        ((x, n, co), st)
                                                    end) st xncs
-
+                             
             val cds = map (fn (x, n, co) =>
                               let
                                   val t = case co of

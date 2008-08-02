@@ -171,6 +171,7 @@ fun monoExp (env, st) (all as (e, loc)) =
             L.EPrim p => (L'.EPrim p, loc)
           | L.ERel n => (L'.ERel n, loc)
           | L.ENamed n => (L'.ENamed n, loc)
+          | L.ECon _ => raise Fail "Monoize ECon"
           | L.EFfi mx => (L'.EFfi mx, loc)
           | L.EFfiApp (m, x, es) => (L'.EFfiApp (m, x, map (monoExp (env, st)) es), loc)
 
@@ -448,6 +449,9 @@ fun monoExp (env, st) (all as (e, loc)) =
           | L.EField (e, x, _) => (L'.EField (monoExp (env, st) e, monoName env x), loc)
           | L.ECut _ => poly ()
           | L.EFold _ => poly ()
+
+          | L.ECase _ => raise Fail "Monoize ECase"
+
           | L.EWrite e => (L'.EWrite (monoExp (env, st) e), loc)
 
           | L.EClosure (n, es) => (L'.EClosure (n, map (monoExp (env, st)) es), loc)

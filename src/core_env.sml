@@ -62,6 +62,7 @@ type env = {
      namedC : (string * kind * con option) IM.map,
 
      datatypes : (string * (string * int * con option) list) IM.map,
+     constructors : (string * con option * int) IM.map,
 
      relE : (string * con) list,
      namedE : (string * con * exp option * string) IM.map
@@ -72,6 +73,7 @@ val empty = {
     namedC = IM.empty,
 
     datatypes = IM.empty,
+    constructors = IM.empty,
 
     relE = [],
     namedE = IM.empty
@@ -82,6 +84,7 @@ fun pushCRel (env : env) x k =
      namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
 
      datatypes = #datatypes env,
+     constructors = #constructors env,
 
      relE = map (fn (x, c) => (x, lift c)) (#relE env),
      namedE = IM.map (fn (x, c, eo, s) => (x, lift c, eo, s)) (#namedE env)}
@@ -95,6 +98,7 @@ fun pushCNamed (env : env) x n k co =
      namedC = IM.insert (#namedC env, n, (x, k, co)),
 
      datatypes = #datatypes env,
+     constructors = #constructors env,
      
      relE = #relE env,
      namedE = #namedE env}
@@ -109,6 +113,9 @@ fun pushDatatype (env : env) x n xncs =
      namedC = #namedC env,
 
      datatypes = IM.insert (#datatypes env, n, (x, xncs)),
+     constructors = foldl (fn ((x, n, to), constructors) =>
+                              IM.insert (constructors, n, (x, to, n)))
+                          (#constructors env) xncs,
      
      relE = #relE env,
      namedE = #namedE env}
@@ -118,11 +125,17 @@ fun lookupDatatype (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
+fun lookupConstructor (env : env) n =
+    case IM.find (#constructors env, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
 fun pushERel (env : env) x t =
     {relC = #relC env,
      namedC = #namedC env,
 
      datatypes = #datatypes env,
+     constructors = #constructors env,
 
      relE = (x, t) :: #relE env,
      namedE = #namedE env}
@@ -136,6 +149,7 @@ fun pushENamed (env : env) x n t eo s =
      namedC = #namedC env,
 
      datatypes = #datatypes env,
+     constructors = #constructors env,
 
      relE = #relE env,
      namedE = IM.insert (#namedE env, n, (x, t, eo, s))}
