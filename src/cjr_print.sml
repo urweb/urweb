@@ -85,7 +85,188 @@ fun p_enamed env n =
     string ("__lwn_" ^ #1 (E.lookupENamed env n) ^ "_" ^ Int.toString n)
     handle CjrEnv.UnboundNamed _ => string ("__lwn_UNBOUND_" ^ Int.toString n)
 
-fun p_exp' par env (e, _) =
+fun p_con_named env n =
+    string ("__lwc_" ^ #1 (E.lookupConstructor env n) ^ "_" ^ Int.toString n)
+    handle CjrEnv.UnboundNamed _ => string ("__lwc_UNBOUND_" ^ Int.toString n)
+
+fun p_pat_preamble env (p, _) =
+    case p of
+        PWild => (box [],
+                  env)
+      | PVar (x, t) => (box [p_typ env t,
+                             space,
+                             string "__lwr_",
+                             string x,
+                             string "_",
+                             string (Int.toString (E.countERels env)),
+                             string ";",
+                             newline],
+                        env)
+      | PPrim _ => (box [], env)
+      | PCon (_, NONE) => (box [], env)
+      | PCon (_, SOME p) => p_pat_preamble env p
+      | PRecord xps =>
+        foldl (fn ((_, p, _), (pp, env)) =>
+                  let
+                      val (pp', env) = p_pat_preamble env p
+                  in
+                      (box [pp', pp], env)
+                  end) (box [], env) xps
+
+fun p_patCon env pc =
+    case pc of
+        PConVar n => p_con_named env n
+      | PConFfi _ => raise Fail "CjrPrint PConFfi"
+
+fun p_pat (env, exit, depth) (p, _) =
+    case p of
+        PWild =>
+        (box [], env)
+      | PVar (x, t) =>
+        (box [string "__lwr_",
+              string x,
+              string "_",
+              string (Int.toString (E.countERels env)),
+              space,
+              string "=",
+              space,
+              string "disc",
+              string (Int.toString depth),
+              string ";"],
+         E.pushERel env x t)
+      | PPrim (Prim.Int n) =>
+        (box [string "if",
+              space,
+              string "(disc",
+              string (Int.toString depth),
+              space,
+              string "!=",
+              space,
+              Prim.p_t (Prim.Int n),
+              string ")",
+              space,
+              exit],
+         env)
+      | PPrim (Prim.String s) =>
+        (box [string "if",
+              space,
+              string "(strcmp(disc",
+              string (Int.toString depth),
+              string ",",
+              space,
+              Prim.p_t (Prim.String s),
+              string "))",
+              space,
+              exit],
+         env)
+      | PPrim _ => raise Fail "CjrPrint: Disallowed PPrim primitive"
+
+      | PCon (pc, po) =>
+        let
+            val (p, env) =
+                case po of
+                    NONE => (box [], env)
+                  | SOME p =>
+                    let
+                        val (p, env) = p_pat (env, exit, depth + 1) p
+
+                        val (x, to) = case pc of
+                                          PConVar n =>
+                                          let
+                                              val (x, to, _) = E.lookupConstructor env n
+                                          in
+                                              (x, to)
+                                          end
+                                        | PConFfi _ => raise Fail "PConFfi"
+
+                        val t = case to of
+                                    NONE => raise Fail "CjrPrint: Constructor mismatch"
+                                  | SOME t => t
+                    in
+                        (box [string "{",
+                              newline,
+                              p_typ env t,
+                              space,
+                              string "disc",
+                              string (Int.toString (depth + 1)),
+                              space,
+                              string "=",
+                              space,
+                              string "disc",
+                              string (Int.toString depth),
+                              string "->data.__lwc_",
+                              string x,
+                              string ";",
+                              newline,
+                              p,
+                              newline,
+                              string "}"],
+                         env)
+                    end
+        in
+            (box [string "if",
+                  space,
+                  string "(disc",
+                  string (Int.toString depth),
+                  string "->tag",
+                  space,
+                  string "!=",
+                  space,
+                  p_patCon env pc,
+                  string ")",
+                  space,
+                  exit,
+                  newline,
+                  p],
+             env)
+        end
+
+      | PRecord xps =>
+        let
+            val (xps, env) =
+                ListUtil.foldlMap (fn ((x, p, t), env) =>
+                                      let
+                                          val (p, env) = p_pat (env, exit, depth + 1) p
+
+                                          val p = box [string "{",
+                                                       newline,
+                                                       p_typ env t,
+                                                       space,
+                                                       string "disc",
+                                                       string (Int.toString (depth + 1)),
+                                                       space,
+                                                       string "=",
+                                                       space,
+                                                       string "disc",
+                                                       string (Int.toString depth),
+                                                       string ".",
+                                                       string x,
+                                                       string ";",
+                                                       newline,
+                                                       p,
+                                                       newline,
+                                                       string "}"]
+                                      in
+                                          (p, env)
+                                      end) env xps
+        in
+            (p_list_sep newline (fn x => x) xps,
+             env)
+        end
+
+local
+    val count = ref 0
+in
+fun newGoto () =
+    let
+        val r = !count
+    in
+        count := r + 1;
+        string ("L" ^ Int.toString r)
+    end
+end
+
+fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t p
       | ERel n => p_rel env n
@@ -95,7 +276,7 @@ fun p_exp' par env (e, _) =
             val (x, _, dn) = E.lookupConstructor env n
             val (dx, _) = E.lookupDatatype env dn
         in
-            box [string "{(",
+            box [string "({",
                  newline,
                  string "struct",
                  space,
@@ -123,7 +304,7 @@ fun p_exp' par env (e, _) =
                  newline,
                  case eo of
                      NONE => box []
-                   | SOME e => box [string "tmp->data.",
+                   | SOME e => box [string "tmp->data.__lwc_",
                                     string x,
                                     space,
                                     string "=",
@@ -180,10 +361,77 @@ fun p_exp' par env (e, _) =
                                  string "})" ]
       | EField (e, x) =>
         box [p_exp' true env e,
-             string ".",
+             string ".__lwf_",
              string x]
 
-      | ECase _ => raise Fail "CjrPrint ECase"
+      | ECase (e, pes, {disc, result}) =>
+        let
+            val final = newGoto ()
+
+            val body = foldl (fn ((p, e), body) =>
+                               let
+                                   val exit = newGoto ()
+                                   val (pr, _) = p_pat_preamble env p
+                                   val (p, env) = p_pat (env,
+                                                         box [string "goto",
+                                                              space,
+                                                              exit,
+                                                              string ";"],
+                                                         0) p
+                               in
+                                   box [body,
+                                        box [string "{",
+                                             newline,
+                                             pr,
+                                             newline,
+                                             p,
+                                             newline,
+                                             string "result",
+                                             space,
+                                             string "=",
+                                             space,
+                                             p_exp env e,
+                                             string ";",
+                                             newline,
+                                             string "goto",
+                                             space,
+                                             final,
+                                             string ";",
+                                             newline,
+                                             string "}"],
+                                        newline,
+                                        exit,
+                                        string ":",
+                                        newline]
+                               end) (box []) pes
+        in
+            box [string "({",
+                 newline,
+                 p_typ env disc,
+                 space,
+                 string "disc0",
+                 space,
+                 string "=",
+                 space,
+                 p_exp env e,
+                 string ";",
+                 newline,
+                 p_typ env result,
+                 space,
+                 string "result;",
+                 newline,
+                 body,
+                 string "lw_error(ctx, FATAL, \"",
+                 string (ErrorMsg.spanToString loc),
+                 string ": pattern match failure\");",
+                 newline,
+                 final,
+                 string ":",
+                 space,
+                 string "result;",
+                 newline,
+                 string "})"]
+        end
 
       | EWrite e => box [string "(lw_write(ctx, ",
                          p_exp env e,
@@ -236,6 +484,7 @@ fun p_decl env (dAll as (d, _) : decl) =
              newline,
              p_list_sep (box []) (fn (x, t) => box [p_typ env t,
                                                     space,
+                                                    string "__lwf_",
                                                     string x,
                                                     string ";",
                                                     newline]) xts,
@@ -538,7 +787,7 @@ fun p_file env (ds, ps) =
                                  newline,
                                  case to of
                                      NONE => box []
-                                   | SOME t => box [string "tmp->data.",
+                                   | SOME t => box [string "tmp->data.__lwc_",
                                                     string x',
                                                     space,
                                                     string "=",

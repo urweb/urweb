@@ -44,10 +44,10 @@ datatype patCon =
 
 datatype pat' =
          PWild
-       | PVar of string
+       | PVar of string * typ
        | PPrim of Prim.t
        | PCon of patCon * pat option
-       | PRecord of (string * pat) list
+       | PRecord of (string * pat * typ) list
 
 withtype pat = pat' located
 
@@ -63,7 +63,7 @@ datatype exp' =
        | ERecord of int * (string * exp) list
        | EField of exp * string
 
-       | ECase of exp * (pat * exp) list * typ
+       | ECase of exp * (pat * exp) list * { disc : typ, result : typ }
 
        | EWrite of exp
        | ESeq of exp * exp

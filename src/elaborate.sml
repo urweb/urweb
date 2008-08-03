@@ -904,45 +904,6 @@ fun foldType (dom, loc) =
                                               (L'.CApp ((L'.CRel 1, loc), (L'.CRel 0, loc)), loc)), loc)),
                           loc)), loc)), loc)
 
-fun typeof env (e, loc) =
-    case e of
-        L'.EPrim p => primType env p
-      | L'.ERel n => #2 (E.lookupERel env n)
-      | L'.ENamed n => #2 (E.lookupENamed env n)
-      | L'.EModProj (n, ms, x) =>
-        let
-            val (_, sgn) = E.lookupStrNamed env n
-            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
-                                       case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                           NONE => raise Fail "typeof: Unknown substructure"
-                                         | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                             ((L'.StrVar n, loc), sgn) ms
-        in
-            case E.projectVal env {sgn = sgn, str = str, field = x} of
-                NONE => raise Fail "typeof: Unknown val in structure"
-              | SOME t => t
-        end
-
-      | L'.EApp (e1, _) =>
-        (case #1 (typeof env e1) of
-             L'.TFun (_, c) => c
-           | _ => raise Fail "typeof: Bad EApp")
-      | L'.EAbs (_, _, ran, _) => ran
-      | L'.ECApp (e1, c) =>
-        (case #1 (typeof env e1) of
-             L'.TCFun (_, _, _, c1) => subConInCon (0, c) c1
-           | _ => raise Fail "typeof: Bad ECApp")
-      | L'.ECAbs (expl, x, k, e1) => (L'.TCFun (expl, x, k, typeof (E.pushCRel env x k) e1), loc)
-
-      | L'.ERecord xes => (L'.TRecord (L'.CRecord (ktype, map (fn (x, _, t) => (x, t)) xes), loc), loc)
-      | L'.EField (_, _, {field, ...}) => field
-      | L'.ECut (_, _, {rest, ...}) => (L'.TRecord rest, loc)
-      | L'.EFold dom => foldType (dom, loc)
-
-      | L'.ECase (_, _, t) => t
-
-      | L'.EError => cerror
-
 fun elabHead (env, denv) (e as (_, loc)) t =
     let
         fun unravel (t, e) =
@@ -1000,7 +961,7 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
                         else
                             cunif (loc, (L'.KType, loc))
             in
-                (((L'.PVar x, loc), t),
+                (((L'.PVar (x, t), loc), t),
                  (E.pushERel env x t, SS.add (bound, x)))
             end
           | L.PPrim p => (((L'.PPrim p, loc), primType env p),
@@ -1018,7 +979,7 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
                  let
                      val (str, sgn) = foldl (fn (m, (str, sgn)) =>
                                                 case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                                    NONE => raise Fail "typeof: Unknown substructure"
+                                                    NONE => raise Fail "elabPat: Unknown substructure"
                                                   | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                                             ((L'.StrVar n, loc), sgn) ms
                  in
@@ -1051,7 +1012,7 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
                     else
                         c
             in
-                (((L'.PRecord (map (fn (x, p', _) => (x, p')) xpts), loc),
+                (((L'.PRecord xpts, loc),
                   (L'.TRecord c, loc)),
                  (env, bound))
             end
@@ -1085,8 +1046,8 @@ fun exhaustive (env, denv, t, ps) =
               | L'.PPrim _ => None
               | L'.PCon (pc, NONE) => Datatype (IM.insert (IM.empty, pcCoverage pc, Wild))
               | L'.PCon (pc, SOME p) => Datatype (IM.insert (IM.empty, pcCoverage pc, coverage p))
-              | L'.PRecord xps => Record [foldl (fn ((x, p), fmap) =>
-                                                         SM.insert (fmap, x, coverage p)) SM.empty xps]
+              | L'.PRecord xps => Record [foldl (fn ((x, p, _), fmap) =>
+                                                    SM.insert (fmap, x, coverage p)) SM.empty xps]
 
         fun merge (c1, c2) =
             case (c1, c2) of
@@ -1458,7 +1419,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 else
                     expError env (Inexhaustive loc);
 
-                ((L'.ECase (e', pes', result), loc), result, gs' @ gs)
+                ((L'.ECase (e', pes', {disc = et, result = result}), loc), result, gs' @ gs)
             end
     end
             

@@ -287,16 +287,18 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                      fn e' =>
                         (EWrite e', loc))
 
-              | ECase (e, pes, t) =>
+              | ECase (e, pes, {disc, result}) =>
                 S.bind2 (mfe ctx e,
                          fn e' =>
                             S.bind2 (ListUtil.mapfold (fn (p, e) =>
                                                          S.map2 (mfe ctx e,
                                                               fn e' => (p, e'))) pes,
                                     fn pes' =>
-                                       S.map2 (mfc ctx t,
-                                               fn t' =>
-                                                  (ECase (e', pes', t'), loc))))
+                                       S.bind2 (mfc ctx disc,
+                                                fn disc' =>
+                                                   S.map2 (mfc ctx result,
+                                                        fn result' =>
+                                                           (ECase (e', pes', {disc = disc', result = result'}), loc)))))
     in
         mfe
     end

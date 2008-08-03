@@ -214,7 +214,7 @@ fun p_patCon env pc =
 fun p_pat' par env (p, _) =
     case p of
         PWild => string "_"
-      | PVar s => string s
+      | PVar (s, _) => string s
       | PPrim p => Prim.p_t p
       | PCon (pc, NONE) => p_patCon env pc
       | PCon (pc, SOME p) => parenIf par (box [p_patCon env pc,
@@ -222,7 +222,7 @@ fun p_pat' par env (p, _) =
                                                p_pat' true env p])
       | PRecord xps =>
         box [string "{",
-             p_list_sep (box [string ",", space]) (fn (x, p) =>
+             p_list_sep (box [string ",", space]) (fn (x, p, _) =>
                                                       box [string x,
                                                            space,
                                                            string "=",

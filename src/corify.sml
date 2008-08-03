@@ -411,10 +411,10 @@ fun corifyPatCon st pc =
 fun corifyPat st (p, loc) =
     case p of
         L.PWild => (L'.PWild, loc)
-      | L.PVar x => (L'.PVar x, loc)
+      | L.PVar (x, t) => (L'.PVar (x, corifyCon st t), loc)
       | L.PPrim p => (L'.PPrim p, loc)
       | L.PCon (pc, po) => (L'.PCon (corifyPatCon st pc, Option.map (corifyPat st) po), loc)
-      | L.PRecord xps => (L'.PRecord (map (fn (x, p) => (x, corifyPat st p)) xps), loc)
+      | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, corifyPat st p, corifyCon st t)) xps), loc)
 
 fun corifyExp st (e, loc) =
     case e of
@@ -473,10 +473,11 @@ fun corifyExp st (e, loc) =
                                                    {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.EFold k => (L'.EFold (corifyKind k), loc)
 
-      | L.ECase (e, pes, t) => (L'.ECase (corifyExp st e,
-                                          map (fn (p, e) => (corifyPat st p, corifyExp st e)) pes,
-                                          corifyCon st t),
-                                loc)
+      | L.ECase (e, pes, {disc, result}) =>
+        (L'.ECase (corifyExp st e,
+                   map (fn (p, e) => (corifyPat st p, corifyExp st e)) pes,
+                   {disc = corifyCon st disc, result = corifyCon st result}),
+         loc)
 
       | L.EWrite e => (L'.EWrite (corifyExp st e), loc)
 

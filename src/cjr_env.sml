@@ -61,8 +61,8 @@ val empty = {
 
 fun pushDatatype (env : env) x n xncs =
     {datatypes = IM.insert (#datatypes env, n, (x, xncs)),
-     constructors = foldl (fn ((x, n, to), constructors) =>
-                              IM.insert (constructors, n, (x, to, n)))
+     constructors = foldl (fn ((x, n', to), constructors) =>
+                              IM.insert (constructors, n', (x, to, n)))
                           (#constructors env) xncs,
 
      numRelE = #numRelE env,

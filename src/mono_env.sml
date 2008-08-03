@@ -53,8 +53,8 @@ val empty = {
 
 fun pushDatatype (env : env) x n xncs =
     {datatypes = IM.insert (#datatypes env, n, (x, xncs)),
-     constructors = foldl (fn ((x, n, to), constructors) =>
-                              IM.insert (constructors, n, (x, to, n)))
+     constructors = foldl (fn ((x, n', to), constructors) =>
+                              IM.insert (constructors, n', (x, to, n)))
                           (#constructors env) xncs,
 
      relE = #relE env,
@@ -107,15 +107,13 @@ fun declBinds env (d, loc) =
       | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t NONE s) env vis
       | DExport _ => env
 
-val dummyt = (TFfi ("", ""), ErrorMsg.dummySpan)
-
 fun patBinds env (p, loc) =
     case p of
         PWild => env
-      | PVar x => pushERel env x dummyt
+      | PVar (x, t) => pushERel env x t
       | PPrim _ => env
       | PCon (_, NONE) => env
       | PCon (_, SOME p) => patBinds env p
-      | PRecord xps => foldl (fn ((_, p), env) => patBinds env p) env xps
+      | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
 
 end

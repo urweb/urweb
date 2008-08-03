@@ -108,13 +108,35 @@ fun cifyPatCon pc =
         L.PConVar n => L'.PConVar n
       | L.PConFfi mx => L'.PConFfi mx
 
-fun cifyPat (p, loc) =
+fun cifyPat ((p, loc), sm) =
     case p of
-        L.PWild => (L'.PWild, loc)
-      | L.PVar x => (L'.PVar x, loc)
-      | L.PPrim p => (L'.PPrim p, loc)
-      | L.PCon (pc, po) => (L'.PCon (cifyPatCon pc, Option.map cifyPat po), loc)
-      | L.PRecord xps => (L'.PRecord (map (fn (x, p) => (x, cifyPat p)) xps), loc)
+        L.PWild => ((L'.PWild, loc), sm)
+      | L.PVar (x, t) =>
+        let
+            val (t, sm) = cifyTyp (t, sm)
+        in
+            ((L'.PVar (x, t), loc), sm)
+        end
+      | L.PPrim p => ((L'.PPrim p, loc), sm)
+      | L.PCon (pc, NONE) => ((L'.PCon (cifyPatCon pc, NONE), loc), sm)
+      | L.PCon (pc, SOME p) =>
+        let
+            val (p, sm) = cifyPat (p, sm)
+        in
+            ((L'.PCon (cifyPatCon pc, SOME p), loc), sm)
+        end
+      | L.PRecord xps =>
+        let
+            val (xps, sm) = ListUtil.foldlMap (fn ((x, p, t), sm) =>
+                                                  let
+                                                      val (p, sm) = cifyPat (p, sm)
+                                                      val (t, sm) = cifyTyp (t, sm)
+                                                  in
+                                                      ((x, p, t), sm)
+                                                  end) sm xps
+        in
+            ((L'.PRecord xps, loc), sm)
+        end
 
 fun cifyExp ((e, loc), sm) =
     case e of
@@ -179,19 +201,21 @@ fun cifyExp ((e, loc), sm) =
             ((L'.EField (e, x), loc), sm)
         end
 
-      | L.ECase (e, pes, t) =>
+      | L.ECase (e, pes, {disc, result}) =>
         let
                 val (e, sm) = cifyExp (e, sm)
                 val (pes, sm) = ListUtil.foldlMap
                                     (fn ((p, e), sm) =>
                                         let
                                             val (e, sm) = cifyExp (e, sm)
+                                            val (p, sm) = cifyPat (p, sm)
                                         in
-                                            ((cifyPat p, e), sm)
+                                            ((p, e), sm)
                                         end) sm pes
-                val (t, sm) = cifyTyp (t, sm)
+                val (disc, sm) = cifyTyp (disc, sm)
+                val (result, sm) = cifyTyp (result, sm)
             in
-                ((L'.ECase (e, pes, t), loc), sm)
+                ((L'.ECase (e, pes, {disc = disc, result = result}), loc), sm)
             end
 
       | L.EStrcat (e1, e2) =>

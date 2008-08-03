@@ -79,10 +79,10 @@ fun explifyPatCon pc =
 fun explifyPat (p, loc) =
     case p of
         L.PWild => (L'.PWild, loc)
-      | L.PVar x => (L'.PVar x, loc)
+      | L.PVar (x, t) => (L'.PVar (x, explifyCon t), loc)
       | L.PPrim p => (L'.PPrim p, loc)
       | L.PCon (pc, po) => (L'.PCon (explifyPatCon pc, Option.map explifyPat po), loc)
-      | L.PRecord xps => (L'.PRecord (map (fn (x, p) => (x, explifyPat p)) xps), loc)
+      | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, explifyPat p, explifyCon t)) xps), loc)
 
 fun explifyExp (e, loc) =
     case e of
@@ -102,9 +102,10 @@ fun explifyExp (e, loc) =
                                                      {field = explifyCon field, rest = explifyCon rest}), loc)
       | L.EFold k => (L'.EFold (explifyKind k), loc)
 
-      | L.ECase (e, pes, t) => (L'.ECase (explifyExp e,
-                                          map (fn (p, e) => (explifyPat p, explifyExp e)) pes,
-                                          explifyCon t), loc)
+      | L.ECase (e, pes, {disc, result}) =>
+        (L'.ECase (explifyExp e,
+                   map (fn (p, e) => (explifyPat p, explifyExp e)) pes,
+                   {disc = explifyCon disc, result = explifyCon result}), loc)
 
       | L.EError => raise Fail ("explifyExp: EError at " ^ EM.spanToString loc)
 

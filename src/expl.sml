@@ -65,10 +65,10 @@ datatype patCon =
 
 datatype pat' =
          PWild
-       | PVar of string
+       | PVar of string * con
        | PPrim of Prim.t
        | PCon of patCon * pat option
-       | PRecord of (string * pat) list
+       | PRecord of (string * pat * con) list
 
 withtype pat = pat' located
 
@@ -87,7 +87,7 @@ datatype exp' =
        | ECut of exp * con * { field : con, rest : con }
        | EFold of kind
 
-       | ECase of exp * (pat * exp) list * con
+       | ECase of exp * (pat * exp) list * { disc : con, result : con }
 
        | EWrite of exp
 

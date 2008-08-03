@@ -181,30 +181,30 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                       fn e' =>
                          (EField (e', x), loc))
 
-              | ECase (e, pes, t) =>
+              | ECase (e, pes, {disc, result}) =>
                 S.bind2 (mfe ctx e,
                          fn e' =>
                             S.bind2 (ListUtil.mapfold (fn (p, e) =>
                                                           let
-                                                              val dummyt = (TFfi ("", ""), ErrorMsg.dummySpan)
-
                                                               fun pb ((p, _), ctx) =
                                                                   case p of
                                                                       PWild => ctx
-                                                                    | PVar x => bind (ctx, RelE (x, dummyt))
+                                                                    | PVar (x, t) => bind (ctx, RelE (x, t))
                                                                     | PPrim _ => ctx
                                                                     | PCon (_, NONE) => ctx
                                                                     | PCon (_, SOME p) => pb (p, ctx)
-                                                                    | PRecord xps => foldl (fn ((_, p), ctx) =>
+                                                                    | PRecord xps => foldl (fn ((_, p, _), ctx) =>
                                                                                                pb (p, ctx)) ctx xps
                                                           in
                                                               S.map2 (mfe (pb (p, ctx)) e,
                                                                    fn e' => (p, e'))
                                                           end) pes,
                                     fn pes' =>
-                                       S.map2 (mft t,
-                                               fn t' =>
-                                                  (ECase (e', pes', t'), loc))))
+                                       S.bind2 (mft disc,
+                                                fn disc' =>
+                                                   S.map2 (mft result,
+                                                        fn result' =>
+                                                           (ECase (e', pes', {disc = disc', result = result'}), loc)))))
 
               | EStrcat (e1, e2) =>
                 S.bind2 (mfe ctx e1,

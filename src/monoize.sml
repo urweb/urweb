@@ -212,10 +212,10 @@ fun fooifyExp fk env =
                                                  fm)
                                               | SOME t =>
                                                 let
-                                                    val (arg, fm) = fooify fm ((L'.ERel 0, loc),
-                                                                               monoType env t)
+                                                    val t = monoType env t
+                                                    val (arg, fm) = fooify fm ((L'.ERel 0, loc), t)
                                                 in
-                                                    (((L'.PCon (L'.PConVar n, SOME (L'.PVar "a", loc)), loc),
+                                                    (((L'.PCon (L'.PConVar n, SOME (L'.PVar ("a", t), loc)), loc),
                                                       (L'.EStrcat ((L'.EPrim (Prim.String (x ^ "/")), loc),
                                                                    arg), loc)),
                                                      fm)
@@ -233,7 +233,8 @@ fun fooifyExp fk env =
                                                          ran,
                                                          (L'.ECase ((L'.ERel 0, loc),
                                                                     branches,
-                                                                    ran), loc)), loc),
+                                                                    {disc = dom,
+                                                                     result = ran}), loc)), loc),
                                                "")], loc),
                                  fm)
                             end       
@@ -284,13 +285,13 @@ fun monoPatCon pc =
         L.PConVar n => L'.PConVar n
       | L.PConFfi mx => L'.PConFfi mx
 
-fun monoPat (p, loc) =
+fun monoPat env (p, loc) =
     case p of
         L.PWild => (L'.PWild, loc)
-      | L.PVar x => (L'.PVar x, loc)
+      | L.PVar (x, t) => (L'.PVar (x, monoType env t), loc)
       | L.PPrim p => (L'.PPrim p, loc)
-      | L.PCon (pc, po) => (L'.PCon (monoPatCon pc, Option.map monoPat po), loc)
-      | L.PRecord xps => (L'.PRecord (map (fn (x, p) => (x, monoPat p)) xps), loc)
+      | L.PCon (pc, po) => (L'.PCon (monoPatCon pc, Option.map (monoPat env) po), loc)
+      | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, monoPat env p, monoType env t)) xps), loc)
 
 fun monoExp (env, st, fm) (all as (e, loc)) =
     let
@@ -667,7 +668,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECut _ => poly ()
           | L.EFold _ => poly ()
 
-          | L.ECase (e, pes, t) =>
+          | L.ECase (e, pes, {disc, result}) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
                 val (pes, fm) = ListUtil.foldlMap
@@ -675,10 +676,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                         let
                                             val (e, fm) = monoExp (env, st, fm) e
                                         in
-                                            ((monoPat p, e), fm)
+                                            ((monoPat env p, e), fm)
                                         end) fm pes
             in
-                ((L'.ECase (e, pes, monoType env t), loc), fm)
+                ((L'.ECase (e, pes, {disc = monoType env disc, result = monoType env result}), loc), fm)
             end
 
           | L.EWrite e =>
