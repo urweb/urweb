@@ -141,6 +141,11 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 EPrim _ => S.return2 eAll
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
+              | ECon (_, NONE) => S.return2 eAll
+              | ECon (n, SOME e) =>
+                S.map2 (mfe ctx e,
+                        fn e' =>
+                           (ECon (n, SOME e'), loc))
               | EFfi _ => S.return2 eAll
               | EFfiApp (m, x, es) =>
                 S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,
@@ -175,6 +180,17 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                       fn e' =>
                          (EField (e', x), loc))
+
+              | ECase (e, pes, t) =>
+                S.bind2 (mfe ctx e,
+                         fn e' =>
+                            S.bind2 (ListUtil.mapfold (fn (p, e) =>
+                                                         S.map2 (mfe ctx e,
+                                                              fn e' => (p, e'))) pes,
+                                    fn pes' =>
+                                       S.map2 (mft t,
+                                               fn t' =>
+                                                  (ECase (e', pes', t'), loc))))
 
               | EStrcat (e1, e2) =>
                 S.bind2 (mfe ctx e1,

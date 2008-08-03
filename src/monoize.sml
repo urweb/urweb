@@ -160,6 +160,19 @@ fun setRadioGroup (t : t, x) = {radioGroup = SOME x}
 
 end
 
+fun monoPatCon pc =
+    case pc of
+        L.PConVar n => L'.PConVar n
+      | L.PConFfi mx => L'.PConFfi mx
+
+fun monoPat (p, loc) =
+    case p of
+        L.PWild => (L'.PWild, loc)
+      | L.PVar x => (L'.PVar x, loc)
+      | L.PPrim p => (L'.PPrim p, loc)
+      | L.PCon (pc, po) => (L'.PCon (monoPatCon pc, Option.map monoPat po), loc)
+      | L.PRecord xps => (L'.PRecord (map (fn (x, p) => (x, monoPat p)) xps), loc)
+
 fun monoExp (env, st) (all as (e, loc)) =
     let
         fun poly () =
@@ -171,7 +184,7 @@ fun monoExp (env, st) (all as (e, loc)) =
             L.EPrim p => (L'.EPrim p, loc)
           | L.ERel n => (L'.ERel n, loc)
           | L.ENamed n => (L'.ENamed n, loc)
-          | L.ECon _ => raise Fail "Monoize ECon"
+          | L.ECon (n, eo) => (L'.ECon (n, Option.map (monoExp (env, st)) eo), loc)
           | L.EFfi mx => (L'.EFfi mx, loc)
           | L.EFfiApp (m, x, es) => (L'.EFfiApp (m, x, map (monoExp (env, st)) es), loc)
 
@@ -450,7 +463,9 @@ fun monoExp (env, st) (all as (e, loc)) =
           | L.ECut _ => poly ()
           | L.EFold _ => poly ()
 
-          | L.ECase _ => raise Fail "Monoize ECase"
+          | L.ECase (e, pes, t) => (L'.ECase (monoExp (env, st) e,
+                                              map (fn (p, e) => (monoPat p, monoExp (env, st) e)) pes,
+                                              monoType env t), loc)
 
           | L.EWrite e => (L'.EWrite (monoExp (env, st) e), loc)
 

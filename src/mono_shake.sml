@@ -47,8 +47,10 @@ fun shake file =
                           (fn ((DExport (_, _, n, _), _), page_es) => n :: page_es
                             | (_, page_es) => page_es) [] file
 
-        val (cdef, edef) = foldl (fn ((DDatatype _, _), acc) => acc
-                                   | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
+        val (cdef, edef) = foldl (fn ((DDatatype (_, n, xncs), _), (cdef, edef)) =>
+                                     (IM.insert (cdef, n, xncs), edef)
+                                   | ((DVal (_, n, t, e, _), _), (cdef, edef)) =>
+                                     (cdef, IM.insert (edef, n, (t, e)))
                                    | ((DValRec vis, _), (cdef, edef)) =>
                                      (cdef, foldl (fn ((_, n, t, e, _), edef) => IM.insert (edef, n, (t, e))) edef vis)
                                    | ((DExport _, _), acc) => acc)
@@ -60,9 +62,21 @@ fun shake file =
                 if IS.member (#con s, n) then
                     s
                 else
-                    {exp = #exp s,
-                     con = IS.add (#con s, n)}
+                    let
+                        val s' = {exp = #exp s,
+                                  con = IS.add (#con s, n)}
+                    in
+                        case IM.find (cdef, n) of
+                            NONE => s'
+                          | SOME xncs => foldl (fn ((_, _, to), s) =>
+                                                   case to of
+                                                       NONE => s
+                                                     | SOME t => shakeTyp s t)
+                                         s' xncs
+                    end
               | _ => s
+
+        and shakeTyp s = U.Typ.fold typ s
 
         fun exp (e, s) =
             case e of

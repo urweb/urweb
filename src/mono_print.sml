@@ -54,29 +54,73 @@ fun p_typ' par env (t, _) =
                                             p_typ env t]) xcs,
                             string "}"]
       | TDatatype (n, _) =>
-        if !debug then
-            string (#1 (E.lookupDatatype env n) ^ "__" ^ Int.toString n)
-        else
-            string (#1 (E.lookupDatatype env n))
+        ((if !debug then
+              string (#1 (E.lookupDatatype env n) ^ "__" ^ Int.toString n)
+          else
+              string (#1 (E.lookupDatatype env n)))
+         handle E.UnboundNamed _ => string ("UNBOUND_DATATYPE_" ^ Int.toString n))
       | TFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
 
 and p_typ env = p_typ' false env
 
 fun p_enamed env n =
-    if !debug then
-        string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
-    else
-        string (#1 (E.lookupENamed env n))
+    (if !debug then
+         string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+     else
+         string (#1 (E.lookupENamed env n)))
+    handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n)
+
+fun p_con_named env n =
+    (if !debug then
+        string (#1 (E.lookupConstructor env n) ^ "__" ^ Int.toString n)
+     else
+         string (#1 (E.lookupConstructor env n)))
+    handle E.UnboundNamed _ => string ("CONSTRUCTOR_" ^ Int.toString n)
+
+fun p_patCon env pc =
+    case pc of
+        PConVar n => p_con_named env n
+      | PConFfi (m, x) => box [string "FFI(",
+                               string m,
+                               string ".",
+                               string x,
+                               string ")"]
+
+fun p_pat' par env (p, _) =
+    case p of
+        PWild => string "_"
+      | PVar s => string s
+      | PPrim p => Prim.p_t p
+      | PCon (n, NONE) => p_patCon env n
+      | PCon (n, SOME p) => parenIf par (box [p_patCon env n,
+                                              space,
+                                              p_pat' true env p])
+      | PRecord xps =>
+        box [string "{",
+             p_list_sep (box [string ",", space]) (fn (x, p) =>
+                                                      box [string x,
+                                                           space,
+                                                           string "=",
+                                                           space,
+                                                           p_pat env p]) xps,
+             string "}"]
+
+and p_pat x = p_pat' false x
 
 fun p_exp' par env (e, _) =
     case e of
         EPrim p => Prim.p_t p
       | ERel n =>
-        if !debug then
-            string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
-        else
-            string (#1 (E.lookupERel env n))
+        ((if !debug then
+              string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
+          else
+              string (#1 (E.lookupERel env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_" ^ Int.toString n))
       | ENamed n => p_enamed env n
+      | ECon (n, NONE) => p_con_named env n
+      | ECon (n, SOME e) => parenIf par (box [p_con_named env n,
+                                              space,
+                                              p_exp' true env e])
 
       | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
       | EFfiApp (m, x, es) => box [string "FFI(",
@@ -114,6 +158,18 @@ fun p_exp' par env (e, _) =
              string ".",
              string x]
 
+      | ECase (e, pes, _) => parenIf par (box [string "case",
+                                               space,
+                                               p_exp env e,
+                                               space,
+                                               string "of",
+                                               space,
+                                               p_list_sep (box [space, string "|", space])
+                                                          (fn (p, e) => box [p_pat env p,
+                                                                             space,
+                                                                             string "=>",
+                                                                             space,
+                                                                             p_exp env e]) pes])
 
       | EStrcat (e1, e2) => box [p_exp' true env e1,
                                  space,

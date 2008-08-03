@@ -37,6 +37,7 @@ exception UnboundNamed of int
 
 type env = {
      datatypes : (string * (string * int * typ option) list) IM.map,
+     constructors : (string * typ option * int) IM.map,
 
      relE : (string * typ) list,
      namedE : (string * typ * exp option * string) IM.map
@@ -44,6 +45,7 @@ type env = {
 
 val empty = {
     datatypes = IM.empty,
+    constructors = IM.empty,
 
     relE = [],
     namedE = IM.empty
@@ -51,6 +53,9 @@ val empty = {
 
 fun pushDatatype (env : env) x n xncs =
     {datatypes = IM.insert (#datatypes env, n, (x, xncs)),
+     constructors = foldl (fn ((x, n, to), constructors) =>
+                              IM.insert (constructors, n, (x, to, n)))
+                          (#constructors env) xncs,
 
      relE = #relE env,
      namedE = #namedE env}
@@ -60,8 +65,14 @@ fun lookupDatatype (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
+fun lookupConstructor (env : env) n =
+    case IM.find (#constructors env, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
 fun pushERel (env : env) x t =
     {datatypes = #datatypes env,
+     constructors = #constructors env,
 
      relE = (x, t) :: #relE env,
      namedE = #namedE env}
@@ -72,6 +83,7 @@ fun lookupERel (env : env) n =
 
 fun pushENamed (env : env) x n t eo s =
     {datatypes = #datatypes env,
+     constructors = #constructors env,
 
      relE = #relE env,
      namedE = IM.insert (#namedE env, n, (x, t, eo, s))}

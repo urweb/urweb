@@ -37,10 +37,24 @@ datatype typ' =
 
 withtype typ = typ' located
 
+datatype patCon =
+         PConVar of int
+       | PConFfi of string * string
+
+datatype pat' =
+         PWild
+       | PVar of string
+       | PPrim of Prim.t
+       | PCon of patCon * pat option
+       | PRecord of (string * pat) list
+
+withtype pat = pat' located
+
 datatype exp' =
          EPrim of Prim.t
        | ERel of int
        | ENamed of int
+       | ECon of int * exp option
        | EFfi of string * string
        | EFfiApp of string * string * exp list
        | EApp of exp * exp
@@ -48,6 +62,8 @@ datatype exp' =
 
        | ERecord of (string * exp * typ) list
        | EField of exp * string
+
+       | ECase of exp * (pat * exp) list * typ
 
        | EStrcat of exp * exp
 

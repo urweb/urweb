@@ -108,6 +108,7 @@ fun cifyExp ((e, loc), sm) =
         L.EPrim p => ((L'.EPrim p, loc), sm)
       | L.ERel n => ((L'.ERel n, loc), sm)
       | L.ENamed n => ((L'.ENamed n, loc), sm)
+      | L.ECon _ => raise Fail "Cjrize ECon"
       | L.EFfi mx => ((L'.EFfi mx, loc), sm)
       | L.EFfiApp (m, x, es) =>
         let
@@ -151,6 +152,8 @@ fun cifyExp ((e, loc), sm) =
         in
             ((L'.EField (e, x), loc), sm)
         end
+
+      | L.ECase _ => raise Fail "Cjrize ECase"
 
       | L.EStrcat _ => raise Fail "Cjrize EStrcat"
 
