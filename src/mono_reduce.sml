@@ -123,7 +123,7 @@ fun exp env e =
       | EApp ((EAbs (_, _, _, e1), loc), e2) =>
         #1 (reduceExp env (subExpInExp (0, e2) e1))
 
-      | ECase (disc, pes, t) =>
+      | ECase (disc, pes, _) =>
         (case ListUtil.search (fn (p, body) =>
                                   case match (env, p, disc) of
                                       NONE => NONE

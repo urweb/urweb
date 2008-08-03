@@ -185,6 +185,13 @@ fun exp e =
       | EWrite (EFfiApp ("Basis", "urlifyString", [e]), _) =>
         EFfiApp ("Basis", "urlifyString_w", [e])
 
+
+      | EWrite (ECase (discE, pes, {disc, ...}), loc) =>
+        optExp (ECase (discE,
+                       map (fn (p, e) => (p, (EWrite e, loc))) pes,
+                       {disc = disc,
+                        result = (TRecord [], loc)}), loc)
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)
