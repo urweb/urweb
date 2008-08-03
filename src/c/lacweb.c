@@ -339,7 +339,7 @@ char *lw_Basis_urlifyString(lw_context ctx, lw_Basis_string s) {
 }
 
 char *lw_Basis_urlifyBool(lw_context ctx, lw_Basis_bool b) {
-  if (b->tag == lw_Basis_False)
+  if (b == lw_Basis_False)
     return "0";
   else
     return "1";
@@ -383,7 +383,7 @@ void lw_Basis_urlifyString_w(lw_context ctx, lw_Basis_string s) {
 }
 
 void lw_Basis_urlifyBool_w(lw_context ctx, lw_Basis_bool b) {
-  if (b->tag == lw_Basis_False)
+  if (b == lw_Basis_False)
     lw_writec(ctx, '0');
   else
     lw_writec(ctx, '1');
@@ -448,17 +448,14 @@ static lw_Basis_string lw_unurlifyString_to(lw_context ctx, char *r, char *s) {
   return s1;
 }
 
-static struct lw_Basis_bool lw_False = { lw_Basis_False },
-  lw_True = { lw_Basis_True };
-
 lw_Basis_bool lw_Basis_unurlifyBool(lw_context ctx, char **s) {
   char *new_s = lw_unurlify_advance(*s);
   lw_Basis_bool r;
   
   if (*s[0] == 0 || !strcmp(*s, "0") || !strcmp(*s, "off"))
-    r = &lw_False;
+    r = lw_Basis_False;
   else
-    r = &lw_True;
+    r = lw_Basis_True;
 
   *s = new_s;
   return r;
