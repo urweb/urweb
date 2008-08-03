@@ -90,6 +90,51 @@ fun p_exp' par env (e, _) =
         EPrim p => Prim.p_t p
       | ERel n => p_rel env n
       | ENamed n => p_enamed env n
+      | ECon (n, eo) =>
+        let
+            val (x, _, dn) = E.lookupConstructor env n
+            val (dx, _) = E.lookupDatatype env dn
+        in
+            box [string "{(",
+                 newline,
+                 string "struct",
+                 space,
+                 string "__lwd_",
+                 string dx,
+                 string "_",
+                 string (Int.toString dn),
+                 space,
+                 string "*tmp",
+                 space,
+                 string "=",
+                 space,
+                 string "lw_malloc(ctx, sizeof(struct __lwd_",
+                 string dx,
+                 string "_",
+                 string (Int.toString dn),
+                 string "));",
+                 newline,
+                 string "tmp->tag",
+                 space,
+                 string "=",
+                 space,
+                 string ("__lwc_" ^ x ^ "_" ^ Int.toString n),
+                 string ";",
+                 newline,
+                 case eo of
+                     NONE => box []
+                   | SOME e => box [string "tmp->data.",
+                                    string x,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_exp env e,
+                                    string ";",
+                                    newline],
+                 string "tmp;",
+                 newline,
+                 string "})"]          
+        end
 
       | EFfi (m, x) => box [string "lw_", string m, string "_", string x]
       | EFfiApp (m, x, es) => box [string "lw_",
@@ -121,7 +166,7 @@ fun p_exp' par env (e, _) =
                                  space,
                                  string ("__lws_" ^ Int.toString i),
                                  space,
-                                 string "__lw_tmp",
+                                 string "tmp",
                                  space,
                                  string "=",
                                  space,
@@ -130,13 +175,15 @@ fun p_exp' par env (e, _) =
                                             p_exp env e) xes,
                                  string "};",
                                  space,
-                                 string "__lw_tmp;",
+                                 string "tmp;",
                                  space,
                                  string "})" ]
       | EField (e, x) =>
         box [p_exp' true env e,
              string ".",
              string x]
+
+      | ECase _ => raise Fail "CjrPrint ECase"
 
       | EWrite e => box [string "(lw_write(ctx, ",
                          p_exp env e,
@@ -430,7 +477,7 @@ fun p_file env (ds, ps) =
                          string "__lws_",
                          string (Int.toString i),
                          space,
-                         string "__lw_tmp",
+                         string "tmp",
                          space,
                          string "=",
                          space,
@@ -440,7 +487,7 @@ fun p_file env (ds, ps) =
                          space,
                          string "};",
                          newline,
-                         string "__lw_tmp;",
+                         string "tmp;",
                          newline,
                          string "})"]
                 end
@@ -467,13 +514,13 @@ fun p_file env (ds, ps) =
                                  space,
                                  string ("__lwd_" ^ x ^ "_" ^ Int.toString i),
                                  space,
-                                 string "*__lw_tmp = lw_malloc(ctx, sizeof(struct __lwd_",
+                                 string "*tmp = lw_malloc(ctx, sizeof(struct __lwd_",
                                  string x,
                                  string "_",
                                  string (Int.toString i),
                                  string "));",
                                  newline,
-                                 string "__lw_tmp->tag",
+                                 string "tmp->tag",
                                  space,
                                  string "=",
                                  space,
@@ -491,7 +538,7 @@ fun p_file env (ds, ps) =
                                  newline,
                                  case to of
                                      NONE => box []
-                                   | SOME t => box [string "__lw_tmp->data.",
+                                   | SOME t => box [string "tmp->data.",
                                                     string x',
                                                     space,
                                                     string "=",
@@ -499,7 +546,7 @@ fun p_file env (ds, ps) =
                                                     unurlify t,
                                                     string ";",
                                                     newline],
-                                 string "__lw_tmp;",
+                                 string "tmp;",
                                  newline,
                                  string "})",
                                  space,

@@ -39,6 +39,7 @@ exception UnboundStruct of int
 
 type env = {
      datatypes : (string * (string * int * typ option) list) IM.map,
+     constructors : (string * typ option * int) IM.map,
 
      numRelE : int,
      relE : (string * typ) list,
@@ -49,6 +50,7 @@ type env = {
 
 val empty = {
     datatypes = IM.empty,
+    constructors = IM.empty,
 
     numRelE = 0,
     relE = [],
@@ -59,6 +61,9 @@ val empty = {
 
 fun pushDatatype (env : env) x n xncs =
     {datatypes = IM.insert (#datatypes env, n, (x, xncs)),
+     constructors = foldl (fn ((x, n, to), constructors) =>
+                              IM.insert (constructors, n, (x, to, n)))
+                          (#constructors env) xncs,
 
      numRelE = #numRelE env,
      relE = #relE env,
@@ -71,8 +76,14 @@ fun lookupDatatype (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
+fun lookupConstructor (env : env) n =
+    case IM.find (#constructors env, n) of
+        NONE => raise UnboundNamed n
+      | SOME x => x
+
 fun pushERel (env : env) x t =
     {datatypes = #datatypes env,
+     constructors = #constructors env,
 
      numRelE = #numRelE env + 1,
      relE = (x, t) :: #relE env,
@@ -90,6 +101,7 @@ fun listERels (env : env) = #relE env
 
 fun pushENamed (env : env) x n t =
     {datatypes = #datatypes env,
+     constructors = #constructors env,
 
      numRelE = #numRelE env,
      relE = #relE env,
@@ -104,6 +116,7 @@ fun lookupENamed (env : env) n =
 
 fun pushStruct (env : env) n xts =
     {datatypes = #datatypes env,
+     constructors = #constructors env,
 
      numRelE = #numRelE env,
      relE = #relE env,

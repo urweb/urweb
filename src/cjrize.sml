@@ -103,12 +103,38 @@ fun cifyTyp ((t, loc), sm) =
 
 val dummye = (L'.EPrim (Prim.Int 0), ErrorMsg.dummySpan)
 
+fun cifyPatCon pc =
+    case pc of
+        L.PConVar n => L'.PConVar n
+      | L.PConFfi mx => L'.PConFfi mx
+
+fun cifyPat (p, loc) =
+    case p of
+        L.PWild => (L'.PWild, loc)
+      | L.PVar x => (L'.PVar x, loc)
+      | L.PPrim p => (L'.PPrim p, loc)
+      | L.PCon (pc, po) => (L'.PCon (cifyPatCon pc, Option.map cifyPat po), loc)
+      | L.PRecord xps => (L'.PRecord (map (fn (x, p) => (x, cifyPat p)) xps), loc)
+
 fun cifyExp ((e, loc), sm) =
     case e of
         L.EPrim p => ((L'.EPrim p, loc), sm)
       | L.ERel n => ((L'.ERel n, loc), sm)
       | L.ENamed n => ((L'.ENamed n, loc), sm)
-      | L.ECon _ => raise Fail "Cjrize ECon"
+      | L.ECon (n, eo) =>
+        let
+            val (eo, sm) =
+                case eo of
+                    NONE => (NONE, sm)
+                  | SOME e =>
+                    let
+                        val (e, sm) = cifyExp (e, sm)
+                    in
+                        (SOME e, sm)
+                    end
+        in
+            ((L'.ECon (n, eo), loc), sm)
+        end
       | L.EFfi mx => ((L'.EFfi mx, loc), sm)
       | L.EFfiApp (m, x, es) =>
         let
@@ -153,7 +179,20 @@ fun cifyExp ((e, loc), sm) =
             ((L'.EField (e, x), loc), sm)
         end
 
-      | L.ECase _ => raise Fail "Cjrize ECase"
+      | L.ECase (e, pes, t) =>
+        let
+                val (e, sm) = cifyExp (e, sm)
+                val (pes, sm) = ListUtil.foldlMap
+                                    (fn ((p, e), sm) =>
+                                        let
+                                            val (e, sm) = cifyExp (e, sm)
+                                        in
+                                            ((cifyPat p, e), sm)
+                                        end) sm pes
+                val (t, sm) = cifyTyp (t, sm)
+            in
+                ((L'.ECase (e, pes, t), loc), sm)
+            end
 
       | L.EStrcat (e1, e2) =>
         let

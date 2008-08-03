@@ -39,6 +39,8 @@ signature CJR_ENV = sig
     val pushDatatype : env -> string -> int -> (string * int * Cjr.typ option) list -> env
     val lookupDatatype : env -> int -> string * (string * int * Cjr.typ option) list
 
+    val lookupConstructor : env -> int -> string * Cjr.typ option * int
+
     val pushERel : env -> string -> Cjr.typ -> env
     val lookupERel : env -> int -> string * Cjr.typ
     val listERels : env -> (string * Cjr.typ) list
