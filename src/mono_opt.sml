@@ -185,6 +185,17 @@ fun exp e =
       | EWrite (EFfiApp ("Basis", "urlifyString", [e]), _) =>
         EFfiApp ("Basis", "urlifyString_w", [e])
 
+      | EFfiApp ("Basis", "urlifyBool", [(ECon (PConFfi {con = "True", ...}, NONE), _)]) =>
+        EPrim (Prim.String "1")
+      | EFfiApp ("Basis", "urlifyBool", [(ECon (PConFfi {con = "False", ...}, NONE), _)]) =>
+        EPrim (Prim.String "0")
+      | EWrite (EFfiApp ("Basis", "urlifyBool", [(ECon (PConFfi {con = "True", ...}, NONE), _)]), loc) =>
+        EWrite (EPrim (Prim.String "1"), loc)
+      | EWrite (EFfiApp ("Basis", "urlifyBool", [(ECon (PConFfi {con = "False", ...}, NONE), _)]), loc) =>
+        EWrite (EPrim (Prim.String "0"), loc)
+      | EWrite (EFfiApp ("Basis", "urlifyBool", [e]), _) =>
+        EFfiApp ("Basis", "urlifyBool_w", [e])
+
       | EWrite (ECase (discE, pes, {disc, ...}), loc) =>
         optExp (ECase (discE,
                        map (fn (p, e) => (p, (EWrite e, loc))) pes,
