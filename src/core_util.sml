@@ -544,6 +544,14 @@ fun foldMap {kind, con, exp, decl} s d =
         S.Continue v => v
       | S.Return _ => raise Fail "CoreUtil.File.foldMap: Impossible"
 
+val maxName = foldl (fn ((d, _) : decl, count) =>
+                        case d of
+                            DCon (_, n, _, _) => Int.max (n, count)
+                          | DDatatype (_, n, _) => Int.max (n, count)
+                          | DVal (_, n, _, _, _) => Int.max (n, count)
+                          | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
+                          | DExport _ => count) 0
+              
 end
 
 end

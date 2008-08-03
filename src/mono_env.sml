@@ -107,4 +107,15 @@ fun declBinds env (d, loc) =
       | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t NONE s) env vis
       | DExport _ => env
 
+val dummyt = (TFfi ("", ""), ErrorMsg.dummySpan)
+
+fun patBinds env (p, loc) =
+    case p of
+        PWild => env
+      | PVar x => pushERel env x dummyt
+      | PPrim _ => env
+      | PCon (_, NONE) => env
+      | PCon (_, SOME p) => patBinds env p
+      | PRecord xps => foldl (fn ((_, p), env) => patBinds env p) env xps
+
 end

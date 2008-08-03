@@ -169,7 +169,7 @@ fun p_exp' par env (e, _) =
                                                                              space,
                                                                              string "=>",
                                                                              space,
-                                                                             p_exp env e]) pes])
+                                                                             p_exp (E.patBinds env p) e]) pes])
 
       | EStrcat (e1, e2) => box [p_exp' true env e1,
                                  space,

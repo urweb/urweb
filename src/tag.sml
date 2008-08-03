@@ -150,13 +150,7 @@ fun decl (d, s) = (d, s)
 
 fun tag file =
     let
-        val count = foldl (fn ((d, _), count) =>
-                              case d of
-                                  DCon (_, n, _, _) => Int.max (n, count)
-                                | DDatatype (_, n, _) => Int.max (n, count)
-                                | DVal (_, n, _, _, _) => Int.max (n, count)
-                                | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
-                                | DExport _ => count) 0 file
+        val count = U.File.maxName file
 
         fun doDecl (d as (d', loc), (env, count, tags, byTag)) =
             case d' of

@@ -46,5 +46,6 @@ signature MONO_ENV = sig
     val lookupENamed : env -> int -> string * Mono.typ * Mono.exp option * string
 
     val declBinds : env -> Mono.decl -> env
+    val patBinds : env -> Mono.pat -> env
                                                  
 end

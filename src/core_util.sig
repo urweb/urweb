@@ -130,6 +130,8 @@ structure Decl : sig
 end
 
 structure File : sig
+    val maxName : Core.file -> int
+
     datatype binder = datatype Exp.binder
 
     val mapfoldB : {kind : (Core.kind', 'state, 'abort) Search.mapfolder,

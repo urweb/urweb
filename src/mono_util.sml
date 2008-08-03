@@ -185,8 +185,22 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.bind2 (mfe ctx e,
                          fn e' =>
                             S.bind2 (ListUtil.mapfold (fn (p, e) =>
-                                                         S.map2 (mfe ctx e,
-                                                              fn e' => (p, e'))) pes,
+                                                          let
+                                                              val dummyt = (TFfi ("", ""), ErrorMsg.dummySpan)
+
+                                                              fun pb ((p, _), ctx) =
+                                                                  case p of
+                                                                      PWild => ctx
+                                                                    | PVar x => bind (ctx, RelE (x, dummyt))
+                                                                    | PPrim _ => ctx
+                                                                    | PCon (_, NONE) => ctx
+                                                                    | PCon (_, SOME p) => pb (p, ctx)
+                                                                    | PRecord xps => foldl (fn ((_, p), ctx) =>
+                                                                                               pb (p, ctx)) ctx xps
+                                                          in
+                                                              S.map2 (mfe (pb (p, ctx)) e,
+                                                                   fn e' => (p, e'))
+                                                          end) pes,
                                     fn pes' =>
                                        S.map2 (mft t,
                                                fn t' =>
