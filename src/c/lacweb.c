@@ -505,3 +505,18 @@ void lw_Basis_htmlifyString_w(lw_context ctx, lw_Basis_string s) {
     }
   }
 }
+
+lw_Basis_string lw_Basis_strcat(lw_context ctx, lw_Basis_string s1, lw_Basis_string s2) {
+  int len = strlen(s1) + strlen(s2) + 1;
+  char *s;
+
+  lw_check(ctx, len);
+
+  s = ctx->heap_front;
+
+  strcpy(s, s1);
+  strcat(s, s2);
+  ctx->heap_front += len;
+
+  return s;
+}

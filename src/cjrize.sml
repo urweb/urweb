@@ -155,7 +155,13 @@ fun cifyExp ((e, loc), sm) =
 
       | L.ECase _ => raise Fail "Cjrize ECase"
 
-      | L.EStrcat _ => raise Fail "Cjrize EStrcat"
+      | L.EStrcat (e1, e2) =>
+        let
+            val (e1, sm) = cifyExp (e1, sm)
+            val (e2, sm) = cifyExp (e2, sm)
+        in
+            ((L'.EFfiApp ("Basis", "strcat", [e1, e2]), loc), sm)
+        end
 
       | L.EWrite e =>
         let

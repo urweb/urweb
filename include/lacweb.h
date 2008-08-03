@@ -48,3 +48,5 @@ void lw_Basis_urlifyString_w(lw_context, lw_Basis_string);
 lw_Basis_int lw_unurlifyInt(char **);
 lw_Basis_float lw_unurlifyFloat(char **);
 lw_Basis_string lw_unurlifyString(lw_context, char **);
+
+lw_Basis_string lw_Basis_strcat(lw_context, lw_Basis_string, lw_Basis_string);
