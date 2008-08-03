@@ -143,7 +143,7 @@ fun cifyExp ((e, loc), sm) =
         L.EPrim p => ((L'.EPrim p, loc), sm)
       | L.ERel n => ((L'.ERel n, loc), sm)
       | L.ENamed n => ((L'.ENamed n, loc), sm)
-      | L.ECon (n, eo) =>
+      | L.ECon (pc, eo) =>
         let
             val (eo, sm) =
                 case eo of
@@ -155,7 +155,7 @@ fun cifyExp ((e, loc), sm) =
                         (SOME e, sm)
                     end
         in
-            ((L'.ECon (n, eo), loc), sm)
+            ((L'.ECon (cifyPatCon pc, eo), loc), sm)
         end
       | L.EFfi mx => ((L'.EFfi mx, loc), sm)
       | L.EFfiApp (m, x, es) =>

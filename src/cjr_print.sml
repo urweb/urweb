@@ -266,46 +266,54 @@ fun newGoto () =
     end
 end
 
+fun patConInfo env pc =
+    case pc of
+        PConVar n =>
+        let
+            val (x, _, dn) = E.lookupConstructor env n
+            val (dx, _) = E.lookupDatatype env dn
+        in
+            ("__lwd_" ^ dx ^ "_" ^ Int.toString dn,
+             "__lwc_" ^ x ^ "_" ^ Int.toString n)
+        end
+      | PConFfi {mod = m, datatyp, con} =>
+        ("lw_" ^ m ^ "_" ^ datatyp,
+         "lw_" ^ m ^ "_" ^ con)
+
 fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t p
       | ERel n => p_rel env n
       | ENamed n => p_enamed env n
-      | ECon (n, eo) =>
+      | ECon (pc, eo) =>
         let
-            val (x, _, dn) = E.lookupConstructor env n
-            val (dx, _) = E.lookupDatatype env dn
+            val (xd, xc) = patConInfo env pc
         in
             box [string "({",
                  newline,
                  string "struct",
                  space,
-                 string "__lwd_",
-                 string dx,
-                 string "_",
-                 string (Int.toString dn),
+                 string xd,
                  space,
                  string "*tmp",
                  space,
                  string "=",
                  space,
-                 string "lw_malloc(ctx, sizeof(struct __lwd_",
-                 string dx,
-                 string "_",
-                 string (Int.toString dn),
+                 string "lw_malloc(ctx, sizeof(struct ",
+                 string xd,
                  string "));",
                  newline,
                  string "tmp->tag",
                  space,
                  string "=",
                  space,
-                 string ("__lwc_" ^ x ^ "_" ^ Int.toString n),
+                 string xc,
                  string ";",
                  newline,
                  case eo of
                      NONE => box []
-                   | SOME e => box [string "tmp->data.__lwc_",
-                                    string x,
+                   | SOME e => box [string "tmp->data.",
+                                    string xd,
                                     space,
                                     string "=",
                                     space,

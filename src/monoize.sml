@@ -156,7 +156,13 @@ fun lookup (t as {count, map, decls}) k n thunk =
     end
 
 end
-                
+
+
+fun capitalize s =
+    if s = "" then
+        s
+    else
+        str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
 fun fooifyExp fk env =
     let
@@ -193,9 +199,7 @@ fun fooifyExp fk env =
                 end
               | _ =>
                 case t of
-                    L'.TFfi ("Basis", "string") => ((L'.EFfiApp ("Basis", fk2s fk ^ "ifyString", [e]), loc), fm)
-                  | L'.TFfi ("Basis", "int") => ((L'.EFfiApp ("Basis", fk2s fk ^ "ifyInt", [e]), loc), fm)
-                  | L'.TFfi ("Basis", "float") => ((L'.EFfiApp ("Basis", fk2s fk ^ "ifyFloat", [e]), loc), fm)
+                    L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [e]), loc), fm)
                   | L'.TRecord [] => ((L'.EPrim (Prim.String ""), loc), fm)
 
                   | L'.TDatatype (i, _) =>
@@ -306,7 +310,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             L.EPrim p => ((L'.EPrim p, loc), fm)
           | L.ERel n => ((L'.ERel n, loc), fm)
           | L.ENamed n => ((L'.ENamed n, loc), fm)
-          | L.ECon (n, eo) =>
+          | L.ECon (pc, eo) =>
             let
                 val (eo, fm) =
                     case eo of
@@ -318,7 +322,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             (SOME e, fm)
                         end
             in
-                ((L'.ECon (n, eo), loc), fm)
+                ((L'.ECon (monoPatCon pc, eo), loc), fm)
             end
           | L.EFfi mx => ((L'.EFfi mx, loc), fm)
           | L.EFfiApp (m, x, es) =>
@@ -416,7 +420,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                                           val fooify =
                                               case x of
-                                                  "Link" => urlifyExp
+                                                  "Href" => urlifyExp
+                                                | "Link" => urlifyExp
                                                 | "Action" => urlifyExp
                                                 | _ => attrifyExp
 

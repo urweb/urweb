@@ -40,7 +40,7 @@ withtype typ = typ' located
 
 datatype patCon =
          PConVar of int
-       | PConFfi of string * string
+       | PConFfi of {mod : string, datatyp : string, con : string}
 
 datatype pat' =
          PWild
@@ -55,7 +55,7 @@ datatype exp' =
          EPrim of Prim.t
        | ERel of int
        | ENamed of int
-       | ECon of int * exp option
+       | ECon of patCon * exp option
        | EFfi of string * string
        | EFfiApp of string * string * exp list
        | EApp of exp * exp

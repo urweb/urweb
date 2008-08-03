@@ -162,11 +162,11 @@ fun p_con_named env n =
 fun p_patCon env pc =
     case pc of
         PConVar n => p_con_named env n
-      | PConFfi (m, x) => box [string "FFI(",
-                               string m,
-                               string ".",
-                               string x,
-                               string ")"]
+      | PConFfi {mod = m, con, ...} => box [string "FFI(",
+                                            string m,
+                                            string ".",
+                                            string con,
+                                            string ")"]
 
 fun p_pat' par env (p, _) =
     case p of
@@ -199,8 +199,8 @@ fun p_exp' par env (e, _) =
               string (#1 (E.lookupERel env n)))
          handle E.UnboundRel _ => string ("UNBOUND_" ^ Int.toString n))
       | ENamed n => p_enamed env n
-      | ECon (n, NONE) => p_con_named env n
-      | ECon (n, SOME e) => parenIf par (box [p_con_named env n,
+      | ECon (pc, NONE) => p_patCon env pc
+      | ECon (pc, SOME e) => parenIf par (box [p_patCon env pc,
                                               space,
                                               p_exp' true env e])
       | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]

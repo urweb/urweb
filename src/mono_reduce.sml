@@ -79,14 +79,26 @@ fun match (env, p : pat, e : exp) =
         else
             NONE
 
-      | (PCon (PConVar n1, NONE), ECon (n2, NONE)) =>
+      | (PCon (PConVar n1, NONE), ECon (PConVar n2, NONE)) =>
         if n1 = n2 then
             SOME env
         else
             NONE
 
-      | (PCon (PConVar n1, SOME p), ECon (n2, SOME e)) =>
+      | (PCon (PConVar n1, SOME p), ECon (PConVar n2, SOME e)) =>
         if n1 = n2 then
+            match (env, p, e)
+        else
+            NONE
+
+      | (PCon (PConFfi {mod = m1, con = con1, ...}, NONE), ECon (PConFfi {mod = m2, con = con2, ...}, NONE)) =>
+        if m1 = m2 andalso con1 = con2 then
+            SOME env
+        else
+            NONE
+
+      | (PCon (PConFfi {mod = m1, con = con1, ...}, SOME ep), ECon (PConFfi {mod = m2, con = con2, ...}, SOME e)) =>
+        if m1 = m2 andalso con1 = con2 then
             match (env, p, e)
         else
             NONE

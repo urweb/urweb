@@ -62,7 +62,7 @@ structure St : sig
 
     val enter : t -> t
     val leave : t -> {outer : t, inner : t}
-    val ffi : string -> L'.con SM.map -> t
+    val ffi : string -> L'.con SM.map -> string SM.map -> t
 
     datatype core_con =
              CNormal of int
@@ -99,7 +99,8 @@ datatype flattening =
                      strs : flattening SM.map,
                      funs : (string * int * L.str) SM.map}
        | FFfi of {mod : string,
-                  vals : L'.con SM.map}
+                  vals : L'.con SM.map,
+                  constructors : string SM.map}
                            
 type t = {
      cons : int IM.map,
@@ -258,10 +259,13 @@ fun lookupConstructorById ({constructors, ...} : t) n =
 
 fun lookupConstructorByName ({current, ...} : t) x =
     case current of
-        FFfi {mod = m, ...} => L'.PConFfi (m, x)
+        FFfi {mod = m, constructors, ...} =>
+        (case SM.find (constructors, x) of
+             NONE => raise Fail "Corify.St.lookupConstructorByName [1]"
+           | SOME n => L'.PConFfi {mod = m, datatyp = n, con = x})
       | FNormal {constructors, ...} =>
         case SM.find (constructors, x) of
-            NONE => raise Fail "Corify.St.lookupConstructorByName"
+            NONE => raise Fail "Corify.St.lookupConstructorByName [2]"
           | SOME n => n
 
 fun enter {cons, constructors, vals, strs, funs, current, nested} =
@@ -296,7 +300,7 @@ fun leave {cons, constructors, vals, strs, funs, current, nested = m1 :: rest} =
          inner = dummy current}
   | leave _ = raise Fail "Corify.St.leave"
 
-fun ffi m vals = dummy (FFfi {mod = m, vals = vals})
+fun ffi m vals constructors = dummy (FFfi {mod = m, vals = vals, constructors = constructors})
 
 fun bindStr ({cons, constructors, vals, strs, funs,
               current = FNormal {cons = mcons, constructors = mconstructors,
@@ -506,9 +510,9 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                 let
                                     val (e, t) =
                                         case to of
-                                            NONE => ((L'.ECon (n, NONE), loc), t)
+                                            NONE => ((L'.ECon (L'.PConVar n, NONE), loc), t)
                                           | SOME t' => ((L'.EAbs ("x", t', t,
-                                                                  (L'.ECon (n, SOME (L'.ERel 0, loc)), loc)),
+                                                                  (L'.ECon (L'.PConVar n, SOME (L'.ERel 0, loc)), loc)),
                                                          loc),
                                                         (L'.TFun (t', t), loc))
                                 in
@@ -601,8 +605,8 @@ fun corifyDecl ((d, loc : EM.span), st) =
         (case sgn of
              L.SgnConst sgis =>
              let
-                 val (ds, cmap, st) =
-                     foldl (fn ((sgi, _), (ds, cmap, st)) =>
+                 val (ds, cmap, conmap, st) =
+                     foldl (fn ((sgi, _), (ds, cmap, conmap, st)) =>
                                case sgi of
                                    L.SgiConAbs (x, n, k) =>
                                    let
@@ -610,6 +614,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                    in
                                        ((L'.DCon (x, n', corifyKind k, (L'.CFfi (m, x), loc)), loc) :: ds,
                                         cmap,
+                                        conmap,
                                         st)
                                    end
                                  | L.SgiCon (x, n, k, _) =>
@@ -618,16 +623,56 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                    in
                                        ((L'.DCon (x, n', corifyKind k, (L'.CFfi (m, x), loc)), loc) :: ds,
                                         cmap,
+                                        conmap,
+                                        st)
+                                   end
+
+                                 | L.SgiDatatype (x, n, xnts) =>
+                                   let
+                                       val (st, n') = St.bindCon st x n
+                                       val (xnts, (st, cmap, conmap)) =
+                                           ListUtil.foldlMap
+                                               (fn ((x', n, to), (st, cmap, conmap)) =>
+                                                   let
+                                                       val st = St.bindConstructor st x' n
+                                                                                   (L'.PConFfi {mod = m,
+                                                                                                datatyp = x,
+                                                                                                con = x'})
+                                                       val st = St.bindConstructorVal st x' n
+
+                                                       val dt = (L'.CNamed n', loc)
+
+                                                       val (to, cmap) =
+                                                           case to of
+                                                               NONE => (NONE, SM.insert (cmap, x', dt))
+                                                             | SOME t =>
+                                                               let
+                                                                   val t = corifyCon st t
+                                                               in
+                                                                   (SOME t, SM.insert (cmap, x',
+                                                                                       (L'.TFun (t, dt), loc)))
+                                                               end
+
+                                                       val conmap = SM.insert (conmap, x', x)
+                                                   in
+                                                       ((x', n, to),
+                                                        (st, cmap, conmap))
+                                                   end) (st, cmap, conmap) xnts
+                                   in
+                                       ((L'.DDatatype (x, n', xnts), loc) :: ds,
+                                        cmap,
+                                        conmap,
                                         st)
                                    end
 
                                  | L.SgiVal (x, _, c) =>
                                    (ds,
                                     SM.insert (cmap, x, corifyCon st c),
+                                    conmap,
                                     st)
-                                 | _ => (ds, cmap, st)) ([], SM.empty, st) sgis
+                                 | _ => (ds, cmap, conmap, st)) ([], SM.empty, SM.empty, st) sgis
 
-                 val st = St.bindStr st m n (St.ffi m cmap)
+                 val st = St.bindStr st m n (St.ffi m cmap conmap)
              in
                  (rev ds, st)
              end
