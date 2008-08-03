@@ -4,6 +4,8 @@ type string
 
 type unit = {}
 
+datatype bool = False | True
+
 
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 

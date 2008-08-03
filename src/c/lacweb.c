@@ -338,6 +338,13 @@ char *lw_Basis_urlifyString(lw_context ctx, lw_Basis_string s) {
   return r;
 }
 
+char *lw_Basis_urlifyBool(lw_context ctx, lw_Basis_bool b) {
+  if (b->tag == lw_Basis_False)
+    return "0";
+  else
+    return "1";
+}
+
 static void lw_Basis_urlifyInt_w_unsafe(lw_context ctx, lw_Basis_int n) {
   int len;
 
@@ -375,6 +382,13 @@ void lw_Basis_urlifyString_w(lw_context ctx, lw_Basis_string s) {
   }
 }
 
+void lw_Basis_urlifyBool_w(lw_context ctx, lw_Basis_bool b) {
+  if (b->tag == lw_Basis_False)
+    lw_writec(ctx, '0');
+  else
+    lw_writec(ctx, '1');
+}
+
 
 static char *lw_unurlify_advance(char *s) {
   char *new_s = strchr(s, '/');
@@ -387,7 +401,7 @@ static char *lw_unurlify_advance(char *s) {
   return new_s;
 }
 
-lw_Basis_int lw_unurlifyInt(char **s) {
+lw_Basis_int lw_Basis_unurlifyInt(lw_context ctx, char **s) {
   char *new_s = lw_unurlify_advance(*s);
   int r;
 
@@ -396,7 +410,7 @@ lw_Basis_int lw_unurlifyInt(char **s) {
   return r;
 }
 
-lw_Basis_float lw_unurlifyFloat(char **s) {
+lw_Basis_float lw_Basis_unurlifyFloat(lw_context ctx, char **s) {
   char *new_s = lw_unurlify_advance(*s);
   int r;
 
@@ -434,7 +448,23 @@ static lw_Basis_string lw_unurlifyString_to(lw_context ctx, char *r, char *s) {
   return s1;
 }
 
-lw_Basis_string lw_unurlifyString(lw_context ctx, char **s) {
+static struct lw_Basis_bool lw_False = { lw_Basis_False },
+  lw_True = { lw_Basis_True };
+
+lw_Basis_bool lw_Basis_unurlifyBool(lw_context ctx, char **s) {
+  char *new_s = lw_unurlify_advance(*s);
+  lw_Basis_bool r;
+  
+  if (*s[0] == 0 || !strcmp(*s, "0") || !strcmp(*s, "off"))
+    r = &lw_False;
+  else
+    r = &lw_True;
+
+  *s = new_s;
+  return r;
+}
+
+lw_Basis_string lw_Basis_unurlifyString(lw_context ctx, char **s) {
   char *new_s = lw_unurlify_advance(*s);
   char *r, *s1, *s2;
   int len, n;

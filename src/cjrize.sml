@@ -103,10 +103,23 @@ fun cifyTyp ((t, loc), sm) =
 
 val dummye = (L'.EPrim (Prim.Int 0), ErrorMsg.dummySpan)
 
-fun cifyPatCon pc =
+fun cifyPatCon (pc, sm) =
     case pc of
-        L.PConVar n => L'.PConVar n
-      | L.PConFfi mx => L'.PConFfi mx
+        L.PConVar n => (L'.PConVar n, sm)
+      | L.PConFfi {mod = m, datatyp, con, arg} =>
+        let
+            val (arg, sm) =
+                case arg of
+                    NONE => (NONE, sm)
+                  | SOME t =>
+                    let
+                        val (t, sm) = cifyTyp (t, sm)
+                    in
+                        (SOME t, sm)
+                    end
+        in
+            (L'.PConFfi {mod = m, datatyp = datatyp, con = con, arg = arg}, sm)
+        end
 
 fun cifyPat ((p, loc), sm) =
     case p of
@@ -118,12 +131,18 @@ fun cifyPat ((p, loc), sm) =
             ((L'.PVar (x, t), loc), sm)
         end
       | L.PPrim p => ((L'.PPrim p, loc), sm)
-      | L.PCon (pc, NONE) => ((L'.PCon (cifyPatCon pc, NONE), loc), sm)
+      | L.PCon (pc, NONE) =>
+        let
+            val (pc, sm) = cifyPatCon (pc, sm)
+        in
+            ((L'.PCon (pc, NONE), loc), sm)
+        end
       | L.PCon (pc, SOME p) =>
         let
+            val (pc, sm) = cifyPatCon (pc, sm)
             val (p, sm) = cifyPat (p, sm)
         in
-            ((L'.PCon (cifyPatCon pc, SOME p), loc), sm)
+            ((L'.PCon (pc, SOME p), loc), sm)
         end
       | L.PRecord xps =>
         let
@@ -154,8 +173,9 @@ fun cifyExp ((e, loc), sm) =
                     in
                         (SOME e, sm)
                     end
+            val (pc, sm) = cifyPatCon (pc, sm)
         in
-            ((L'.ECon (cifyPatCon pc, eo), loc), sm)
+            ((L'.ECon (pc, eo), loc), sm)
         end
       | L.EFfi mx => ((L'.EFfi mx, loc), sm)
       | L.EFfiApp (m, x, es) =>

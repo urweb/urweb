@@ -61,7 +61,7 @@ withtype con = con' located
 
 datatype patCon =
          PConVar of int
-       | PConFfi of {mod : string, datatyp : string, con : string}
+       | PConFfi of {mod : string, datatyp : string, con : string, arg : con option}
 
 datatype pat' =
          PWild

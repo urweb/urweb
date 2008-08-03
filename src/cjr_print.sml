@@ -116,7 +116,7 @@ fun p_pat_preamble env (p, _) =
 fun p_patCon env pc =
     case pc of
         PConVar n => p_con_named env n
-      | PConFfi _ => raise Fail "CjrPrint PConFfi"
+      | PConFfi {mod = m, con, ...} => string ("lw_" ^ m ^ "_" ^ con)
 
 fun p_pat (env, exit, depth) (p, _) =
     case p of
@@ -276,7 +276,7 @@ fun patConInfo env pc =
             ("__lwd_" ^ dx ^ "_" ^ Int.toString dn,
              "__lwc_" ^ x ^ "_" ^ Int.toString n)
         end
-      | PConFfi {mod = m, datatyp, con} =>
+      | PConFfi {mod = m, datatyp, con, ...} =>
         ("lw_" ^ m ^ "_" ^ datatyp,
          "lw_" ^ m ^ "_" ^ con)
 
@@ -706,11 +706,15 @@ fun p_file env (ds, ps) =
                              string "}"]
                 end
 
+        fun capitalize s =
+            if s = "" then
+                ""
+            else
+                str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
         fun unurlify (t, loc) =
             case t of
-                TFfi ("Basis", "int") => string "lw_unurlifyInt(&request)"
-              | TFfi ("Basis", "float") => string "lw_unurlifyFloat(&request)"
-              | TFfi ("Basis", "string") => string "lw_unurlifyString(ctx, &request)"
+                TFfi (m, t) => string ("lw_" ^ m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
 
               | TRecord 0 => string "lw_unit_v"
               | TRecord i =>

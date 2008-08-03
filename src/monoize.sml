@@ -286,17 +286,18 @@ fun setRadioGroup (t : t, x) = {radioGroup = SOME x}
 
 end
 
-fun monoPatCon pc =
+fun monoPatCon env pc =
     case pc of
         L.PConVar n => L'.PConVar n
-      | L.PConFfi mx => L'.PConFfi mx
+      | L.PConFfi {mod = m, datatyp, con, arg} => L'.PConFfi {mod = m, datatyp = datatyp, con = con,
+                                                              arg = Option.map (monoType env) arg}
 
 fun monoPat env (p, loc) =
     case p of
         L.PWild => (L'.PWild, loc)
       | L.PVar (x, t) => (L'.PVar (x, monoType env t), loc)
       | L.PPrim p => (L'.PPrim p, loc)
-      | L.PCon (pc, po) => (L'.PCon (monoPatCon pc, Option.map (monoPat env) po), loc)
+      | L.PCon (pc, po) => (L'.PCon (monoPatCon env pc, Option.map (monoPat env) po), loc)
       | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, monoPat env p, monoType env t)) xps), loc)
 
 fun monoExp (env, st, fm) (all as (e, loc)) =
@@ -322,7 +323,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             (SOME e, fm)
                         end
             in
-                ((L'.ECon (monoPatCon pc, eo), loc), fm)
+                ((L'.ECon (monoPatCon env pc, eo), loc), fm)
             end
           | L.EFfi mx => ((L'.EFfi mx, loc), fm)
           | L.EFfiApp (m, x, es) =>

@@ -430,7 +430,7 @@ fun compileC {cname, oname, ename} =
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"
         else if not (OS.Process.isSuccess (OS.Process.system link)) then
-                print "C linking failed\n"
+            print "C linking failed\n"
         else
             print "Success\n"
     end
@@ -439,18 +439,21 @@ fun compile job =
     case cjrize job of
         NONE => print "Laconic compilation failed\n"
       | SOME file =>
-        let
-            val cname = "/tmp/lacweb.c"
-            val oname = "/tmp/lacweb.o"
-            val ename = "/tmp/webapp"
+        if ErrorMsg.anyErrors () then
+            print "Laconic compilation failed\n"
+        else
+            let
+                val cname = "/tmp/lacweb.c"
+                val oname = "/tmp/lacweb.o"
+                val ename = "/tmp/webapp"
 
-            val outf = TextIO.openOut cname
-            val s = TextIOPP.openOut {dst = outf, wid = 80}
-        in
-            Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
-            TextIO.closeOut outf;
+                val outf = TextIO.openOut cname
+                val s = TextIOPP.openOut {dst = outf, wid = 80}
+            in
+                Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
+                TextIO.closeOut outf;
 
-            compileC {cname = cname, oname = oname, ename = ename}
-        end
+                compileC {cname = cname, oname = oname, ename = ename}
+            end
 
 end

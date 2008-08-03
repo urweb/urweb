@@ -80,7 +80,7 @@ fun p_con_named env n =
 fun p_patCon env pc =
     case pc of
         PConVar n => p_con_named env n
-      | PConFfi {mod = m, con, ...} => box [string "FFI(",
+      | PConFfi {mod = m, con, ...} => box [string "FFIC(",
                                             string m,
                                             string ".",
                                             string con,

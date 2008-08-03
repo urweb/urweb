@@ -648,6 +648,7 @@ fun declBinds env (d, loc) =
       | DDatatype (x, n, xncs) =>
         let
             val env = pushCNamedAs env x n (KType, loc) NONE
+            val env = pushDatatype env n xncs
         in
             foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
                     | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
@@ -657,6 +658,7 @@ fun declBinds env (d, loc) =
         let
             val t = (CModProj (m, ms, x'), loc)
             val env = pushCNamedAs env x n (KType, loc) (SOME t)
+            val env = pushDatatype env n xncs
 
             val t = (CNamed n, loc)
         in

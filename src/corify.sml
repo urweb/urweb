@@ -62,7 +62,7 @@ structure St : sig
 
     val enter : t -> t
     val leave : t -> {outer : t, inner : t}
-    val ffi : string -> L'.con SM.map -> string SM.map -> t
+    val ffi : string -> L'.con SM.map -> (string * L'.con option) SM.map -> t
 
     datatype core_con =
              CNormal of int
@@ -72,6 +72,7 @@ structure St : sig
     val lookupConByName : t -> string -> core_con
 
     val bindConstructor : t -> string -> int -> L'.patCon -> t
+    val lookupConstructorByNameOpt : t -> string -> L'.patCon option
     val lookupConstructorByName : t -> string -> L'.patCon
     val lookupConstructorById : t -> int -> L'.patCon
 
@@ -100,7 +101,7 @@ datatype flattening =
                      funs : (string * int * L.str) SM.map}
        | FFfi of {mod : string,
                   vals : L'.con SM.map,
-                  constructors : string SM.map}
+                  constructors : (string * L'.con option) SM.map}
                            
 type t = {
      cons : int IM.map,
@@ -257,12 +258,23 @@ fun lookupConstructorById ({constructors, ...} : t) n =
         NONE => raise Fail "Corify.St.lookupConstructorById"
       | SOME x => x
 
+fun lookupConstructorByNameOpt ({current, ...} : t) x =
+    case current of
+        FFfi {mod = m, constructors, ...} =>
+        (case SM.find (constructors, x) of
+             NONE => NONE
+           | SOME (n, to) => SOME (L'.PConFfi {mod = m, datatyp = n, con = x, arg = to}))
+      | FNormal {constructors, ...} =>
+        case SM.find (constructors, x) of
+            NONE => NONE
+          | SOME n => SOME n
+
 fun lookupConstructorByName ({current, ...} : t) x =
     case current of
         FFfi {mod = m, constructors, ...} =>
         (case SM.find (constructors, x) of
              NONE => raise Fail "Corify.St.lookupConstructorByName [1]"
-           | SOME n => L'.PConFfi {mod = m, datatyp = n, con = x})
+           | SOME (n, to) => L'.PConFfi {mod = m, datatyp = n, con = x, arg = to})
       | FNormal {constructors, ...} =>
         case SM.find (constructors, x) of
             NONE => raise Fail "Corify.St.lookupConstructorByName [2]"
@@ -433,36 +445,43 @@ fun corifyExp st (e, loc) =
             val st = St.lookupStrById st m
             val st = foldl St.lookupStrByName st ms
         in
-            case St.lookupValByName st x of
-                St.ENormal n => (L'.ENamed n, loc)
-              | St.EFfi (m, t) =>
-                case t of
-                    (L'.TFun (dom as (L'.TRecord (L'.CRecord (_, []), _), _), ran), _) =>
-                    (L'.EAbs ("arg", dom, ran, (L'.EFfiApp (m, x, []), loc)), loc)
-                  | t as (L'.TFun _, _) =>
-                    let
-                        fun getArgs (all as (t, _), args) =
-                            case t of
-                                L'.TFun (dom, ran) => getArgs (ran, dom :: args)
-                              | _ => (all, rev args)
-                                     
-                        val (result, args) = getArgs (t, [])
+            case St.lookupConstructorByNameOpt st x of
+                SOME (pc as L'.PConFfi {mod = m, datatyp, arg, ...}) =>
+                (case arg of
+                     NONE => (L'.ECon (pc, NONE), loc)
+                   | SOME dom => (L'.EAbs ("x", dom, (L'.CFfi (m, datatyp), loc),
+                                           (L'.ECon (pc, SOME (L'.ERel 0, loc)), loc)), loc))
+              | _ =>
+                case St.lookupValByName st x of
+                    St.ENormal n => (L'.ENamed n, loc)
+                  | St.EFfi (m, t) =>
+                    case t of
+                        (L'.TFun (dom as (L'.TRecord (L'.CRecord (_, []), _), _), ran), _) =>
+                        (L'.EAbs ("arg", dom, ran, (L'.EFfiApp (m, x, []), loc)), loc)
+                      | t as (L'.TFun _, _) =>
+                        let
+                            fun getArgs (all as (t, _), args) =
+                                case t of
+                                    L'.TFun (dom, ran) => getArgs (ran, dom :: args)
+                                  | _ => (all, rev args)
+                                         
+                            val (result, args) = getArgs (t, [])
 
-                        val (actuals, _) = foldr (fn (_, (actuals, n)) =>
-                                                     ((L'.ERel n, loc) :: actuals,
-                                                      n + 1)) ([], 0) args
-                        val app = (L'.EFfiApp (m, x, actuals), loc)
-                        val (abs, _, _) = foldr (fn (t, (abs, ran, n)) =>
-                                                    ((L'.EAbs ("arg" ^ Int.toString n,
-                                                               t,
-                                                               ran,
-                                                               abs), loc),
-                                                     (L'.TFun (t, ran), loc),
-                                                     n - 1)) (app, result, length args - 1) args
-                    in
-                        abs
-                    end
-                  | _ => (L'.EFfi (m, x), loc)
+                            val (actuals, _) = foldr (fn (_, (actuals, n)) =>
+                                                         ((L'.ERel n, loc) :: actuals,
+                                                          n + 1)) ([], 0) args
+                            val app = (L'.EFfiApp (m, x, actuals), loc)
+                            val (abs, _, _) = foldr (fn (t, (abs, ran, n)) =>
+                                                        ((L'.EAbs ("arg" ^ Int.toString n,
+                                                                   t,
+                                                                   ran,
+                                                                   abs), loc),
+                                                         (L'.TFun (t, ran), loc),
+                                                         n - 1)) (app, result, length args - 1) args
+                        in
+                            abs
+                        end
+                      | _ => (L'.EFfi (m, x), loc)
         end
       | L.EApp (e1, e2) => (L'.EApp (corifyExp st e1, corifyExp st e2), loc)
       | L.EAbs (x, dom, ran, e1) => (L'.EAbs (x, corifyCon st dom, corifyCon st ran, corifyExp st e1), loc)
@@ -630,36 +649,48 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                  | L.SgiDatatype (x, n, xnts) =>
                                    let
                                        val (st, n') = St.bindCon st x n
-                                       val (xnts, (st, cmap, conmap)) =
+                                       val (xnts, (ds', st, cmap, conmap)) =
                                            ListUtil.foldlMap
-                                               (fn ((x', n, to), (st, cmap, conmap)) =>
+                                               (fn ((x', n, to), (ds', st, cmap, conmap)) =>
                                                    let
-                                                       val st = St.bindConstructor st x' n
-                                                                                   (L'.PConFfi {mod = m,
-                                                                                                datatyp = x,
-                                                                                                con = x'})
-                                                       val st = St.bindConstructorVal st x' n
-
                                                        val dt = (L'.CNamed n', loc)
 
-                                                       val (to, cmap) =
+                                                       val to = Option.map (corifyCon st) to
+
+                                                       val pc = L'.PConFfi {mod = m,
+                                                                            datatyp = x,
+                                                                            con = x',
+                                                                            arg = to}
+
+                                                       val (cmap, d) =
                                                            case to of
-                                                               NONE => (NONE, SM.insert (cmap, x', dt))
+                                                               NONE => (SM.insert (cmap, x', dt),
+                                                                        (L'.DVal (x', n, dt,
+                                                                                  (L'.ECon (pc, NONE), loc),
+                                                                                  ""), loc))
                                                              | SOME t =>
                                                                let
-                                                                   val t = corifyCon st t
+                                                                   val tf = (L'.TFun (t, dt), loc)
+                                                                   val d = (L'.DVal (x', n, tf,
+                                                                                     (L'.EAbs ("x", t, tf,
+                                                                                               (L'.ECon (pc,
+                                                                                                         SOME (L'.ERel 0,
+                                                                                                               loc)),
+                                                                                                loc)), loc), ""), loc)
                                                                in
-                                                                   (SOME t, SM.insert (cmap, x',
-                                                                                       (L'.TFun (t, dt), loc)))
+                                                                   (SM.insert (cmap, x', tf), d)
                                                                end
 
-                                                       val conmap = SM.insert (conmap, x', x)
+                                                       val st = St.bindConstructor st x' n pc
+                                                       (*val st = St.bindConstructorVal st x' n*)
+
+                                                       val conmap = SM.insert (conmap, x', (x, to))
                                                    in
                                                        ((x', n, to),
-                                                        (st, cmap, conmap))
-                                                   end) (st, cmap, conmap) xnts
+                                                        (d :: ds', st, cmap, conmap))
+                                                   end) ([], st, cmap, conmap) xnts
                                    in
-                                       ((L'.DDatatype (x, n', xnts), loc) :: ds,
+                                       (ds' @ (L'.DDatatype (x, n', xnts), loc) :: ds,
                                         cmap,
                                         conmap,
                                         st)

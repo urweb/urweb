@@ -40,13 +40,16 @@ void lw_Basis_attrifyString_w(lw_context, lw_Basis_string);
 char *lw_Basis_urlifyInt(lw_context, lw_Basis_int);
 char *lw_Basis_urlifyFloat(lw_context, lw_Basis_float);
 char *lw_Basis_urlifyString(lw_context, lw_Basis_string);
+char *lw_Basis_urlifyBool(lw_context, lw_Basis_bool);
 
 void lw_Basis_urlifyInt_w(lw_context, lw_Basis_int);
 void lw_Basis_urlifyFloat_w(lw_context, lw_Basis_float);
 void lw_Basis_urlifyString_w(lw_context, lw_Basis_string);
+void lw_Basis_urlifyBool_w(lw_context, lw_Basis_bool);
 
-lw_Basis_int lw_unurlifyInt(char **);
-lw_Basis_float lw_unurlifyFloat(char **);
-lw_Basis_string lw_unurlifyString(lw_context, char **);
+lw_Basis_int lw_Basis_unurlifyInt(lw_context, char **);
+lw_Basis_float lw_Basis_unurlifyFloat(lw_context, char **);
+lw_Basis_string lw_Basis_unurlifyString(lw_context, char **);
+lw_Basis_bool lw_Basis_unurlifyBool(lw_context, char **);
 
 lw_Basis_string lw_Basis_strcat(lw_context, lw_Basis_string, lw_Basis_string);
