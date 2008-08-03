@@ -79,7 +79,7 @@ val urlifyString = String.translate (fn #" " => "+"
                                                   str ch
                                               else
                                                   "%" ^ hexIt ch)
-                   
+        
 fun exp e =
     case e of
         EPrim (Prim.String s) =>
@@ -131,6 +131,10 @@ fun exp e =
       | EWrite (EStrcat (e1, e2), loc) =>
         ESeq ((optExp (EWrite e1, loc), loc),
               (optExp (EWrite e2, loc), loc))
+
+      | ESeq ((EWrite (EPrim (Prim.String s1), _), loc),
+              (EWrite (EPrim (Prim.String s2), _), _)) =>
+        EWrite (EPrim (Prim.String (s1 ^ s2)), loc)
 
       | EFfiApp ("Basis", "htmlifyString", [(EPrim (Prim.String s), _)]) =>
         EPrim (Prim.String (htmlifyString s))

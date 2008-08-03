@@ -39,8 +39,8 @@ signature MONO_ENV = sig
 
     val lookupConstructor : env -> int -> string * Mono.typ option * int
 
-    val pushERel : env -> string -> Mono.typ -> env
-    val lookupERel : env -> int -> string * Mono.typ
+    val pushERel : env -> string -> Mono.typ -> Mono.exp option -> env
+    val lookupERel : env -> int -> string * Mono.typ * Mono.exp option
 
     val pushENamed : env -> string -> int -> Mono.typ -> Mono.exp option -> string -> env
     val lookupENamed : env -> int -> string * Mono.typ * Mono.exp option * string

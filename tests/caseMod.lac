@@ -24,8 +24,11 @@ val toString = fn x =>
           | C B => "C B"
           | D => "D"
 
-val page = fn x => <html><body>
-        {cdata (toString x)}
+val rec page = fn x => <html><body>
+        {cdata (toString x)}<br/>
+        <br/>
+
+        <a link={page x}>Again!</a>
 </body></html>
 
 val main : unit -> page = fn () => <html><body>

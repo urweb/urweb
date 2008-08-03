@@ -143,7 +143,7 @@ fun p_exp' par env (e, _) =
                                                space,
                                                string "=>",
                                                space,
-                                               p_exp (E.pushERel env x t) e])
+                                               p_exp (E.pushERel env x t NONE) e])
 
       | ERecord xes => box [string "{",
                             p_list (fn (x, e, _) =>

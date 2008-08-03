@@ -41,4 +41,12 @@ fun p_t t =
       | Float n => string (Real64.toString n)
       | String s => box [string "\"", string (String.toString s), string "\""]
 
+fun equal x =
+    case x of
+        (Int n1, Int n2) => n1 = n2
+      | (Float n1, Float n2) => Real64.== (n1, n2)
+      | (String s1, String s2) => s1 = s2
+
+      | _ => false
+
 end

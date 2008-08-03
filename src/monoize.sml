@@ -63,6 +63,8 @@ fun monoType env (all as (c, loc)) =
 
           | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
             (L'.TFfi ("Basis", "string"), loc)
+          | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
+            (L'.TFfi ("Basis", "string"), loc)
 
           | L.CRel _ => poly ()
           | L.CNamed n =>
@@ -164,7 +166,7 @@ fun fooifyExp fk env =
                 let
                     val (_, _, _, s) = Env.lookupENamed env fnam
                 in
-                    ((L'.EPrim (Prim.String s), loc), fm)
+                    ((L'.EPrim (Prim.String ("/" ^ s)), loc), fm)
                 end
               | L'.EClosure (fnam, args) =>
                 let
@@ -187,7 +189,7 @@ fun fooifyExp fk env =
                           | _ => (E.errorAt loc "Type mismatch encoding attribute";
                                   (e, fm))
                 in
-                    attrify (args, ft, (L'.EPrim (Prim.String s), loc), fm)
+                    attrify (args, ft, (L'.EPrim (Prim.String ("/" ^ s)), loc), fm)
                 end
               | _ =>
                 case t of

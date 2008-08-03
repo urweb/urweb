@@ -63,20 +63,73 @@ val subExpInExp =
 fun bind (env, b) =
     case b of
         U.Decl.Datatype (x, n, xncs) => E.pushDatatype env x n xncs
-      | U.Decl.RelE (x, t) => E.pushERel env x t
+      | U.Decl.RelE (x, t) => E.pushERel env x t NONE
       | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
 
 fun typ c = c
 
+fun match (env, p : pat, e : exp) =
+    case (#1 p, #1 e) of
+        (PWild, _) => SOME env
+      | (PVar (x, t), _) => SOME (E.pushERel env x t (SOME e))
+
+      | (PPrim p, EPrim p') =>
+        if Prim.equal (p, p') then
+            SOME env
+        else
+            NONE
+
+      | (PCon (PConVar n1, NONE), ECon (n2, NONE)) =>
+        if n1 = n2 then
+            SOME env
+        else
+            NONE
+
+      | (PCon (PConVar n1, SOME p), ECon (n2, SOME e)) =>
+        if n1 = n2 then
+            match (env, p, e)
+        else
+            NONE
+
+      | (PRecord xps, ERecord xes) =>
+        let
+            fun consider (xps, env) =
+                case xps of
+                    [] => SOME env
+                  | (x, p, _) :: rest =>
+                    case List.find (fn (x', _, _) => x' = x) xes of
+                        NONE => NONE
+                      | SOME (_, e, _) =>
+                        case match (env, p, e) of
+                            NONE => NONE
+                          | SOME env => consider (rest, env)
+        in
+            consider (xps, env)
+        end
+
+      | _ => NONE
+
 fun exp env e =
     case e of
-        ENamed n =>
+        ERel n =>
+        (case E.lookupERel env n of
+             (_, _, SOME e') => #1 e'
+           | _ => e)
+      | ENamed n =>
         (case E.lookupENamed env n of
              (_, _, SOME e', _) => #1 e'
            | _ => e)
 
       | EApp ((EAbs (_, _, _, e1), loc), e2) =>
         #1 (reduceExp env (subExpInExp (0, e2) e1))
+
+      | ECase (disc, pes, t) =>
+        (case ListUtil.search (fn (p, body) =>
+                                  case match (env, p, disc) of
+                                      NONE => NONE
+                                    | SOME env => SOME (#1 (reduceExp env body))) pes of
+             NONE => e
+           | SOME e' => e')
 
       | _ => e
 

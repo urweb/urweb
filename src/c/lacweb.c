@@ -192,8 +192,9 @@ static void lw_write_unsafe(lw_context ctx, const char* s) {
 }
 
 void lw_write(lw_context ctx, const char* s) {
-  lw_check(ctx, strlen(s));
+  lw_check(ctx, strlen(s) + 1);
   lw_write_unsafe(ctx, s);
+  *ctx->page_front = 0;
 }
 
 
@@ -510,13 +511,17 @@ lw_Basis_string lw_Basis_strcat(lw_context ctx, lw_Basis_string s1, lw_Basis_str
   int len = strlen(s1) + strlen(s2) + 1;
   char *s;
 
-  lw_check(ctx, len);
+  printf("s1 = %s\ns2 = %s\n", s1, s2);
+
+  lw_check_heap(ctx, len);
 
   s = ctx->heap_front;
 
   strcpy(s, s1);
   strcat(s, s2);
   ctx->heap_front += len;
+
+  printf("s = %s\n", s);
 
   return s;
 }

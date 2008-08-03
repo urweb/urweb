@@ -31,6 +31,7 @@ signature COMPILER = sig
 
     type job = string list
     val compile : job -> unit
+    val compileC : {cname : string, oname : string, ename : string} -> unit
 
     val parseLig : string -> Source.sgn_item list option
     val testLig : string -> unit

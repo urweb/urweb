@@ -34,4 +34,6 @@ signature PRIM = sig
 
     val p_t : t Print.printer
 
+    val equal : t * t -> bool
+
 end

@@ -422,6 +422,19 @@ fun testCjrize job =
     handle CjrEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
+fun compileC {cname, oname, ename} =
+    let
+        val compile = "gcc -O3 -I include -c " ^ cname ^ " -o " ^ oname
+        val link = "gcc -pthread -O3 clib/lacweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
+    in
+        if not (OS.Process.isSuccess (OS.Process.system compile)) then
+            print "C compilation failed\n"
+        else if not (OS.Process.isSuccess (OS.Process.system link)) then
+                print "C linking failed\n"
+        else
+            print "Success\n"
+    end
+
 fun compile job =
     case cjrize job of
         NONE => print "Laconic compilation failed\n"
@@ -431,21 +444,13 @@ fun compile job =
             val oname = "/tmp/lacweb.o"
             val ename = "/tmp/webapp"
 
-            val compile = "gcc -O3 -I include -c " ^ cname ^ " -o " ^ oname
-            val link = "gcc -pthread -O3 clib/lacweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
-
             val outf = TextIO.openOut cname
             val s = TextIOPP.openOut {dst = outf, wid = 80}
         in
             Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
             TextIO.closeOut outf;
 
-            if not (OS.Process.isSuccess (OS.Process.system compile)) then
-                print "C compilation failed\n"
-            else if not (OS.Process.isSuccess (OS.Process.system link)) then
-                print "C linking failed\n"
-            else
-                print "Success\n"
+            compileC {cname = cname, oname = oname, ename = ename}
         end
 
 end

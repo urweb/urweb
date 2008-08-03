@@ -39,7 +39,7 @@ type env = {
      datatypes : (string * (string * int * typ option) list) IM.map,
      constructors : (string * typ option * int) IM.map,
 
-     relE : (string * typ) list,
+     relE : (string * typ * exp option) list,
      namedE : (string * typ * exp option * string) IM.map
 }
 
@@ -70,11 +70,11 @@ fun lookupConstructor (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
-fun pushERel (env : env) x t =
+fun pushERel (env : env) x t eo =
     {datatypes = #datatypes env,
      constructors = #constructors env,
 
-     relE = (x, t) :: #relE env,
+     relE = (x, t, eo) :: #relE env,
      namedE = #namedE env}
 
 fun lookupERel (env : env) n =
@@ -110,7 +110,7 @@ fun declBinds env (d, loc) =
 fun patBinds env (p, loc) =
     case p of
         PWild => env
-      | PVar (x, t) => pushERel env x t
+      | PVar (x, t) => pushERel env x t NONE
       | PPrim _ => env
       | PCon (_, NONE) => env
       | PCon (_, SOME p) => patBinds env p
