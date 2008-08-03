@@ -98,9 +98,10 @@ fun declBinds env (d, loc) =
         DDatatype (x, n, xncs) =>
         let
             val env = pushDatatype env x n xncs
+            val dt = (TDatatype (MonoUtil.classifyDatatype xncs, n, xncs), loc)
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TDatatype (n, xncs), loc) NONE ""
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TDatatype (n, xncs), loc)), loc) NONE "")
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' dt NONE ""
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, dt), loc) NONE "")
             env xncs
         end
       | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
@@ -112,8 +113,8 @@ fun patBinds env (p, loc) =
         PWild => env
       | PVar (x, t) => pushERel env x t NONE
       | PPrim _ => env
-      | PCon (_, NONE) => env
-      | PCon (_, SOME p) => patBinds env p
+      | PCon (_, _, NONE) => env
+      | PCon (_, _, SOME p) => patBinds env p
       | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
 
 end

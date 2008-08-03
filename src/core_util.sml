@@ -29,6 +29,12 @@ structure CoreUtil :> CORE_UTIL = struct
 
 open Core
 
+fun classifyDatatype xncs =
+    if List.all (fn (_, _, NONE) => true | _ => false) xncs then
+        Enum
+    else
+        Default
+
 structure S = Search
 
 structure Kind = struct
@@ -227,11 +233,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                 EPrim _ => S.return2 eAll
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
-              | ECon (_, NONE) => S.return2 eAll
-              | ECon (n, SOME e) =>
+              | ECon (_, _, NONE) => S.return2 eAll
+              | ECon (dk, n, SOME e) =>
                 S.map2 (mfe ctx e,
                         fn e' =>
-                           (ECon (n, SOME e'), loc))
+                           (ECon (dk, n, SOME e'), loc))
               | EFfi _ => S.return2 eAll
               | EFfiApp (m, x, es) =>
                 S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,

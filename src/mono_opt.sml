@@ -185,13 +185,13 @@ fun exp e =
       | EWrite (EFfiApp ("Basis", "urlifyString", [e]), _) =>
         EFfiApp ("Basis", "urlifyString_w", [e])
 
-      | EFfiApp ("Basis", "urlifyBool", [(ECon (PConFfi {con = "True", ...}, NONE), _)]) =>
+      | EFfiApp ("Basis", "urlifyBool", [(ECon (Enum, PConFfi {con = "True", ...}, NONE), _)]) =>
         EPrim (Prim.String "1")
-      | EFfiApp ("Basis", "urlifyBool", [(ECon (PConFfi {con = "False", ...}, NONE), _)]) =>
+      | EFfiApp ("Basis", "urlifyBool", [(ECon (Enum, PConFfi {con = "False", ...}, NONE), _)]) =>
         EPrim (Prim.String "0")
-      | EWrite (EFfiApp ("Basis", "urlifyBool", [(ECon (PConFfi {con = "True", ...}, NONE), _)]), loc) =>
+      | EWrite (EFfiApp ("Basis", "urlifyBool", [(ECon (Enum, PConFfi {con = "True", ...}, NONE), _)]), loc) =>
         EWrite (EPrim (Prim.String "1"), loc)
-      | EWrite (EFfiApp ("Basis", "urlifyBool", [(ECon (PConFfi {con = "False", ...}, NONE), _)]), loc) =>
+      | EWrite (EFfiApp ("Basis", "urlifyBool", [(ECon (Enum, PConFfi {con = "False", ...}, NONE), _)]), loc) =>
         EWrite (EPrim (Prim.String "0"), loc)
       | EWrite (EFfiApp ("Basis", "urlifyBool", [e]), _) =>
         EFfiApp ("Basis", "urlifyBool_w", [e])

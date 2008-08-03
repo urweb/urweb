@@ -53,5 +53,7 @@ signature CJR_ENV = sig
     val lookupStruct : env -> int -> (string * Cjr.typ) list
 
     val declBinds : env -> Cjr.decl -> env
+
+    val classifyDatatype : (string * int * Cjr.typ option) list -> Cjr.datatype_kind
                                                  
 end

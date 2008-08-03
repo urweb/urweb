@@ -29,11 +29,13 @@ structure Cjr = struct
 
 type 'a located = 'a ErrorMsg.located
 
+datatype datatype_kind = datatype Mono.datatype_kind
+
 datatype typ' =
          TTop
        | TFun of typ * typ
        | TRecord of int
-       | TDatatype of int * (string * int * typ option) list
+       | TDatatype of datatype_kind * int * (string * int * typ option) list
        | TFfi of string * string
 
 withtype typ = typ' located
@@ -46,7 +48,7 @@ datatype pat' =
          PWild
        | PVar of string * typ
        | PPrim of Prim.t
-       | PCon of patCon * pat option
+       | PCon of datatype_kind * patCon * pat option
        | PRecord of (string * pat * typ) list
 
 withtype pat = pat' located
@@ -55,7 +57,7 @@ datatype exp' =
          EPrim of Prim.t
        | ERel of int
        | ENamed of int
-       | ECon of patCon * exp option
+       | ECon of datatype_kind * patCon * exp option
        | EFfi of string * string
        | EFfiApp of string * string * exp list
        | EApp of exp * exp
@@ -72,7 +74,7 @@ withtype exp = exp' located
 
 datatype decl' =
          DStruct of int * (string * typ) list
-       | DDatatype of string * int * (string * int * typ option) list
+       | DDatatype of datatype_kind * string * int * (string * int * typ option) list
        | DVal of string * int * typ * exp
        | DFun of string * int * (string * typ) list * typ * exp
        | DFunRec of (string * int * (string * typ) list * typ * exp) list

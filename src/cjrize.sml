@@ -84,7 +84,7 @@ fun cifyTyp ((t, loc), sm) =
         in
             ((L'.TRecord si, loc), sm)
         end
-      | L.TDatatype (n, xncs) =>
+      | L.TDatatype (dk, n, xncs) =>
         let
             val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
                                                    case to of
@@ -97,7 +97,7 @@ fun cifyTyp ((t, loc), sm) =
                                                        end)
                              sm xncs
         in
-            ((L'.TDatatype (n, xncs), loc), sm)
+            ((L'.TDatatype (dk, n, xncs), loc), sm)
         end
       | L.TFfi mx => ((L'.TFfi mx, loc), sm)
 
@@ -131,18 +131,18 @@ fun cifyPat ((p, loc), sm) =
             ((L'.PVar (x, t), loc), sm)
         end
       | L.PPrim p => ((L'.PPrim p, loc), sm)
-      | L.PCon (pc, NONE) =>
+      | L.PCon (dk, pc, NONE) =>
         let
             val (pc, sm) = cifyPatCon (pc, sm)
         in
-            ((L'.PCon (pc, NONE), loc), sm)
+            ((L'.PCon (dk, pc, NONE), loc), sm)
         end
-      | L.PCon (pc, SOME p) =>
+      | L.PCon (dk, pc, SOME p) =>
         let
             val (pc, sm) = cifyPatCon (pc, sm)
             val (p, sm) = cifyPat (p, sm)
         in
-            ((L'.PCon (pc, SOME p), loc), sm)
+            ((L'.PCon (dk, pc, SOME p), loc), sm)
         end
       | L.PRecord xps =>
         let
@@ -162,7 +162,7 @@ fun cifyExp ((e, loc), sm) =
         L.EPrim p => ((L'.EPrim p, loc), sm)
       | L.ERel n => ((L'.ERel n, loc), sm)
       | L.ENamed n => ((L'.ENamed n, loc), sm)
-      | L.ECon (pc, eo) =>
+      | L.ECon (dk, pc, eo) =>
         let
             val (eo, sm) =
                 case eo of
@@ -175,7 +175,7 @@ fun cifyExp ((e, loc), sm) =
                     end
             val (pc, sm) = cifyPatCon (pc, sm)
         in
-            ((L'.ECon (pc, eo), loc), sm)
+            ((L'.ECon (dk, pc, eo), loc), sm)
         end
       | L.EFfi mx => ((L'.EFfi mx, loc), sm)
       | L.EFfiApp (m, x, es) =>
@@ -268,6 +268,7 @@ fun cifyDecl ((d, loc), sm) =
     case d of
         L.DDatatype (x, n, xncs) =>
         let
+            val dk = MonoUtil.classifyDatatype xncs
             val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
                                                    case to of
                                                        NONE => ((x, n, NONE), sm)
@@ -278,7 +279,7 @@ fun cifyDecl ((d, loc), sm) =
                                                            ((x, n, SOME t), sm)
                                                        end) sm xncs
         in
-            (SOME (L'.DDatatype (x, n, xncs), loc), NONE, sm)
+            (SOME (L'.DDatatype (dk, x, n, xncs), loc), NONE, sm)
         end
 
       | L.DVal (x, n, t, e, _) =>

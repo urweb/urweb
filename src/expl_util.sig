@@ -27,6 +27,8 @@
 
 signature EXPL_UTIL = sig
 
+val classifyDatatype : (string * int * Expl.con option) list -> Expl.datatype_kind
+
 structure Kind : sig
     val mapfold : (Expl.kind', 'state, 'abort) Search.mapfolder
                   -> (Expl.kind, 'state, 'abort) Search.mapfolder

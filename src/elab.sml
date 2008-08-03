@@ -71,6 +71,10 @@ datatype con' =
 
 withtype con = con' located
 
+datatype datatype_kind =
+         Enum
+       | Default
+
 datatype patCon =
          PConVar of int
        | PConProj of int * string list * string
@@ -79,7 +83,7 @@ datatype pat' =
          PWild
        | PVar of string * con
        | PPrim of Prim.t
-       | PCon of patCon * pat option
+       | PCon of datatype_kind * patCon * pat option
        | PRecord of (string * pat * con) list
 
 withtype pat = pat' located

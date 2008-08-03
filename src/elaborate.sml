@@ -933,22 +933,21 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
         val pterror = (perror, terror)
         val rerror = (pterror, (env, bound))
 
-        fun pcon (pc, po, to, dn) =
-
-                case (po, to) of
-                    (NONE, SOME _) => (expError env (PatHasNoArg loc);
-                                       rerror)
-                  | (SOME _, NONE) => (expError env (PatHasArg loc);
-                                       rerror)
-                  | (NONE, NONE) => (((L'.PCon (pc, NONE), loc), dn),
-                                     (env, bound))
-                  | (SOME p, SOME t) =>
-                    let
-                        val ((p', pt), (env, bound)) = elabPat (p, (env, denv, bound))
-                    in
-                        (((L'.PCon (pc, SOME p'), loc), dn),
-                         (env, bound))
-                    end
+        fun pcon (pc, po, to, dn, dk) =
+            case (po, to) of
+                (NONE, SOME _) => (expError env (PatHasNoArg loc);
+                                   rerror)
+              | (SOME _, NONE) => (expError env (PatHasArg loc);
+                                   rerror)
+              | (NONE, NONE) => (((L'.PCon (dk, pc, NONE), loc), dn),
+                                 (env, bound))
+              | (SOME p, SOME t) =>
+                let
+                    val ((p', pt), (env, bound)) = elabPat (p, (env, denv, bound))
+                in
+                    (((L'.PCon (dk, pc, SOME p'), loc), dn),
+                     (env, bound))
+                end
     in
         case p of
             L.PWild => (((L'.PWild, loc), cunif (loc, (L'.KType, loc))),
@@ -970,7 +969,7 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
             (case E.lookupConstructor env x of
                  NONE => (expError env (UnboundConstructor (loc, [], x));
                           rerror)
-               | SOME (n, to, dn) => pcon (L'.PConVar n, po, to, (L'.CNamed dn, loc)))
+               | SOME (dk, n, to, dn) => pcon (L'.PConVar n, po, to, (L'.CNamed dn, loc), dk))
           | L.PCon (m1 :: ms, x, po) =>
             (case E.lookupStr env m1 of
                  NONE => (expError env (UnboundStrInExp (loc, m1));
@@ -986,7 +985,7 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
                      case E.projectConstructor env {str = str, sgn = sgn, field = x} of
                          NONE => (expError env (UnboundConstructor (loc, m1 :: ms, x));
                                   rerror)
-                       | SOME (_, to, dn) => pcon (L'.PConProj (n, ms, x), po, to, dn)
+                       | SOME (dk, _, to, dn) => pcon (L'.PConProj (n, ms, x), po, to, dn, dk)
                  end)
 
           | L.PRecord (xps, flex) =>
@@ -1036,7 +1035,7 @@ fun exhaustive (env, denv, t, ps) =
                 in
                     case E.projectConstructor env {str = str, sgn = sgn, field = x} of
                         NONE => raise Fail "exhaustive: Can't project constructor"
-                      | SOME (n, _, _) => n
+                      | SOME (_, n, _, _) => n
                 end
 
         fun coverage (p, _) =
@@ -1044,8 +1043,8 @@ fun exhaustive (env, denv, t, ps) =
                 L'.PWild => Wild
               | L'.PVar _ => Wild
               | L'.PPrim _ => None
-              | L'.PCon (pc, NONE) => Datatype (IM.insert (IM.empty, pcCoverage pc, Wild))
-              | L'.PCon (pc, SOME p) => Datatype (IM.insert (IM.empty, pcCoverage pc, coverage p))
+              | L'.PCon (_, pc, NONE) => Datatype (IM.insert (IM.empty, pcCoverage pc, Wild))
+              | L'.PCon (_, pc, SOME p) => Datatype (IM.insert (IM.empty, pcCoverage pc, coverage p))
               | L'.PRecord xps => Record [foldl (fn ((x, p, _), fmap) =>
                                                     SM.insert (fmap, x, coverage p)) SM.empty xps]
 

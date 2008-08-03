@@ -29,6 +29,12 @@ structure MonoUtil :> MONO_UTIL = struct
 
 open Mono
 
+fun classifyDatatype xncs =
+    if List.all (fn (_, _, NONE) => true | _ => false) xncs then
+        Enum
+    else
+        Default
+
 structure S = Search
 
 structure Typ = struct
@@ -57,7 +63,7 @@ fun compare ((t1, _), (t2, _)) =
         in
             joinL compareFields (xts1, xts2)
         end
-      | (TDatatype (n1, _), TDatatype (n2, _)) => Int.compare (n1, n2)
+      | (TDatatype (_, n1, _), TDatatype (_, n2, _)) => Int.compare (n1, n2)
       | (TFfi (m1, x1), TFfi (m2, x2)) => join (String.compare (m1, m2), fn () => String.compare (x1, x2))
 
       | (TFun _, _) => LESS
@@ -141,11 +147,11 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 EPrim _ => S.return2 eAll
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
-              | ECon (_, NONE) => S.return2 eAll
-              | ECon (n, SOME e) =>
+              | ECon (_, _, NONE) => S.return2 eAll
+              | ECon (dk, n, SOME e) =>
                 S.map2 (mfe ctx e,
                         fn e' =>
-                           (ECon (n, SOME e'), loc))
+                           (ECon (dk, n, SOME e'), loc))
               | EFfi _ => S.return2 eAll
               | EFfiApp (m, x, es) =>
                 S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,
@@ -191,8 +197,8 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                                                       PWild => ctx
                                                                     | PVar (x, t) => bind (ctx, RelE (x, t))
                                                                     | PPrim _ => ctx
-                                                                    | PCon (_, NONE) => ctx
-                                                                    | PCon (_, SOME p) => pb (p, ctx)
+                                                                    | PCon (_, _, NONE) => ctx
+                                                                    | PCon (_, _, SOME p) => pb (p, ctx)
                                                                     | PRecord xps => foldl (fn ((_, p, _), ctx) =>
                                                                                                pb (p, ctx)) ctx xps
                                                           in
@@ -355,7 +361,7 @@ fun mapfoldB (all as {bind, ...}) =
                                         DDatatype (x, n, xncs) =>
                                         let
                                             val ctx = bind (ctx, Datatype (x, n, xncs))
-                                            val t = (TDatatype (n, xncs), #2 d')
+                                            val t = (TDatatype (classifyDatatype xncs, n, xncs), #2 d')
                                         in
                                             foldl (fn ((x, n, to), ctx) =>
                                                       let

@@ -81,7 +81,7 @@ type env = {
      namedC : (string * kind * con option) IM.map,
 
      datatypes : datatyp IM.map,
-     constructors : (int * con option * int) SM.map,
+     constructors : (datatype_kind * int * con option * int) SM.map,
 
      renameE : con var' SM.map,
      relE : (string * con) list,
@@ -189,26 +189,30 @@ fun lookupC (env : env) x =
       | SOME (Named' x) => Named x
 
 fun pushDatatype (env : env) n xncs =
-    {renameC = #renameC env,
-     relC = #relC env,
-     namedC = #namedC env,
+    let
+        val dk = U.classifyDatatype xncs
+    in
+        {renameC = #renameC env,
+         relC = #relC env,
+         namedC = #namedC env,
 
-     datatypes = IM.insert (#datatypes env, n,
-                            foldl (fn ((x, n, to), cons) =>
-                                      IM.insert (cons, n, (x, to))) IM.empty xncs),
-     constructors = foldl (fn ((x, n', to), cmap) =>
-                              SM.insert (cmap, x, (n', to, n)))
-                          (#constructors env) xncs,
+         datatypes = IM.insert (#datatypes env, n,
+                                foldl (fn ((x, n, to), cons) =>
+                                          IM.insert (cons, n, (x, to))) IM.empty xncs),
+         constructors = foldl (fn ((x, n', to), cmap) =>
+                                  SM.insert (cmap, x, (dk, n', to, n)))
+                              (#constructors env) xncs,
 
-     renameE = #renameE env,
-     relE = #relE env,
-     namedE = #namedE env,
+         renameE = #renameE env,
+         relE = #relE env,
+         namedE = #namedE env,
 
-     renameSgn = #renameSgn env,
-     sgn = #sgn env,
+         renameSgn = #renameSgn env,
+         sgn = #sgn env,
 
-     renameStr = #renameStr env,
-     str = #str env}
+         renameStr = #renameStr env,
+         str = #str env}
+    end
 
 fun lookupDatatype (env : env) n =
     case IM.find (#datatypes env, n) of
@@ -579,13 +583,14 @@ fun projectConstructor env {sgn, str, field} =
                                     if x <> field then
                                         NONE
                                     else
-                                        SOME (n', to, (CNamed n, #2 str))) xncs
+                                        SOME (U.classifyDatatype xncs, n', to, (CNamed n, #2 str))) xncs
         in
             case sgnSeek (fn SgiDatatype (_, n, xncs) => consider (n, xncs)
                            | SgiDatatypeImp (_, n, _, _, _, xncs) => consider (n, xncs)
                            | _ => NONE) sgis of
                 NONE => NONE
-              | SOME ((n, to, t), subs) => SOME (n, Option.map (sgnSubCon (str, subs)) to, sgnSubCon (str, subs) t)
+              | SOME ((dk, n, to, t), subs) => SOME (dk, n, Option.map (sgnSubCon (str, subs)) to,
+                                                     sgnSubCon (str, subs) t)
         end
       | _ => NONE
 

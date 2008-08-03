@@ -33,7 +33,7 @@ structure Env = CoreEnv
 structure L = Core
 structure L' = Mono
 
-val dummyTyp = (L'.TDatatype (0, []), E.dummySpan)
+val dummyTyp = (L'.TDatatype (L'.Enum, 0, []), E.dummySpan)
 
 fun monoName env (all as (c, loc)) =
     let
@@ -73,7 +73,7 @@ fun monoType env (all as (c, loc)) =
 
                 val xncs = map (fn (x, n, to) => (x, n, Option.map (monoType env) to)) xncs
             in
-                (L'.TDatatype (n, xncs), loc)
+                (L'.TDatatype (MonoUtil.classifyDatatype xncs, n, xncs), loc)
             end
           | L.CFfi mx => (L'.TFfi mx, loc)
           | L.CApp _ => poly ()
@@ -202,7 +202,7 @@ fun fooifyExp fk env =
                     L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [e]), loc), fm)
                   | L'.TRecord [] => ((L'.EPrim (Prim.String ""), loc), fm)
 
-                  | L'.TDatatype (i, _) =>
+                  | L'.TDatatype (dk, i, _) =>
                     let
                         fun makeDecl n fm =
                             let
@@ -213,7 +213,7 @@ fun fooifyExp fk env =
                                         (fn ((x, n, to), fm) =>
                                             case to of
                                                 NONE =>
-                                                (((L'.PCon (L'.PConVar n, NONE), loc),
+                                                (((L'.PCon (dk, L'.PConVar n, NONE), loc),
                                                   (L'.EPrim (Prim.String x), loc)),
                                                  fm)
                                               | SOME t =>
@@ -221,7 +221,7 @@ fun fooifyExp fk env =
                                                     val t = monoType env t
                                                     val (arg, fm) = fooify fm ((L'.ERel 0, loc), t)
                                                 in
-                                                    (((L'.PCon (L'.PConVar n, SOME (L'.PVar ("a", t), loc)), loc),
+                                                    (((L'.PCon (dk, L'.PConVar n, SOME (L'.PVar ("a", t), loc)), loc),
                                                       (L'.EStrcat ((L'.EPrim (Prim.String (x ^ "/")), loc),
                                                                    arg), loc)),
                                                      fm)
@@ -289,15 +289,15 @@ end
 fun monoPatCon env pc =
     case pc of
         L.PConVar n => L'.PConVar n
-      | L.PConFfi {mod = m, datatyp, con, arg} => L'.PConFfi {mod = m, datatyp = datatyp, con = con,
-                                                              arg = Option.map (monoType env) arg}
+      | L.PConFfi {mod = m, datatyp, con, arg, ...} => L'.PConFfi {mod = m, datatyp = datatyp, con = con,
+                                                                   arg = Option.map (monoType env) arg}
 
 fun monoPat env (p, loc) =
     case p of
         L.PWild => (L'.PWild, loc)
       | L.PVar (x, t) => (L'.PVar (x, monoType env t), loc)
       | L.PPrim p => (L'.PPrim p, loc)
-      | L.PCon (pc, po) => (L'.PCon (monoPatCon env pc, Option.map (monoPat env) po), loc)
+      | L.PCon (dk, pc, po) => (L'.PCon (dk, monoPatCon env pc, Option.map (monoPat env) po), loc)
       | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, monoPat env p, monoType env t)) xps), loc)
 
 fun monoExp (env, st, fm) (all as (e, loc)) =
@@ -311,7 +311,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             L.EPrim p => ((L'.EPrim p, loc), fm)
           | L.ERel n => ((L'.ERel n, loc), fm)
           | L.ENamed n => ((L'.ENamed n, loc), fm)
-          | L.ECon (pc, eo) =>
+          | L.ECon (dk, pc, eo) =>
             let
                 val (eo, fm) =
                     case eo of
@@ -323,7 +323,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             (SOME e, fm)
                         end
             in
-                ((L'.ECon (monoPatCon env pc, eo), loc), fm)
+                ((L'.ECon (dk, monoPatCon env pc, eo), loc), fm)
             end
           | L.EFfi mx => ((L'.EFfi mx, loc), fm)
           | L.EFfiApp (m, x, es) =>

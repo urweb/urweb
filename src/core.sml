@@ -59,15 +59,17 @@ datatype con' =
 
 withtype con = con' located
 
+datatype datatype_kind = datatype Elab.datatype_kind
+
 datatype patCon =
          PConVar of int
-       | PConFfi of {mod : string, datatyp : string, con : string, arg : con option}
+       | PConFfi of {mod : string, datatyp : string, con : string, arg : con option, kind : datatype_kind}
 
 datatype pat' =
          PWild
        | PVar of string * con
        | PPrim of Prim.t
-       | PCon of patCon * pat option
+       | PCon of datatype_kind * patCon * pat option
        | PRecord of (string * pat * con) list
 
 withtype pat = pat' located
@@ -76,7 +78,7 @@ datatype exp' =
          EPrim of Prim.t
        | ERel of int
        | ENamed of int
-       | ECon of patCon * exp option
+       | ECon of datatype_kind * patCon * exp option
        | EFfi of string * string
        | EFfiApp of string * string * exp list
        | EApp of exp * exp

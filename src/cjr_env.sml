@@ -129,14 +129,21 @@ fun lookupStruct (env : env) n =
         NONE => raise UnboundStruct n
       | SOME x => x
 
+fun classifyDatatype xncs =
+    if List.all (fn (_, _, NONE) => true | _ => false) xncs then
+        Enum
+    else
+        Default
+
 fun declBinds env (d, loc) =
     case d of
-        DDatatype (x, n, xncs) =>
+        DDatatype (_, x, n, xncs) =>
         let
             val env = pushDatatype env x n xncs
+            val dt = (TDatatype (classifyDatatype xncs, n, xncs), loc)
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (TDatatype (n, xncs), loc)
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (TDatatype (n, xncs), loc)), loc))
+            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' dt
+                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, dt), loc))
             env xncs
         end
       | DStruct (n, xts) => pushStruct env n xts

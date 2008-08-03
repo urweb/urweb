@@ -27,6 +27,8 @@
 
 signature CORE_UTIL = sig
 
+val classifyDatatype : (string * int * Core.con option) list -> Core.datatype_kind
+
 structure Kind : sig
     val mapfold : (Core.kind', 'state, 'abort) Search.mapfolder
                   -> (Core.kind, 'state, 'abort) Search.mapfolder

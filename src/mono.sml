@@ -29,10 +29,12 @@ structure Mono = struct
 
 type 'a located = 'a ErrorMsg.located
 
+datatype datatype_kind = datatype Core.datatype_kind
+
 datatype typ' =
          TFun of typ * typ
        | TRecord of (string * typ) list
-       | TDatatype of int * (string * int * typ option) list
+       | TDatatype of datatype_kind * int * (string * int * typ option) list
        | TFfi of string * string
 
 withtype typ = typ' located
@@ -45,7 +47,7 @@ datatype pat' =
          PWild
        | PVar of string * typ
        | PPrim of Prim.t
-       | PCon of patCon * pat option
+       | PCon of datatype_kind * patCon * pat option
        | PRecord of (string * pat * typ) list
 
 withtype pat = pat' located
@@ -54,7 +56,7 @@ datatype exp' =
          EPrim of Prim.t
        | ERel of int
        | ENamed of int
-       | ECon of patCon * exp option
+       | ECon of datatype_kind * patCon * exp option
        | EFfi of string * string
        | EFfiApp of string * string * exp list
        | EApp of exp * exp

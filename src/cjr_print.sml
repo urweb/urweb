@@ -53,7 +53,7 @@ structure CM = BinaryMapFn(struct
 
 val debug = ref false
 
-val dummyTyp = (TDatatype (0, []), ErrorMsg.dummySpan)
+val dummyTyp = (TDatatype (Enum, 0, []), ErrorMsg.dummySpan)
 
 fun p_typ' par env (t, loc) =
     case t of
@@ -69,7 +69,12 @@ fun p_typ' par env (t, loc) =
                           space,
                           string "__lws_",
                           string (Int.toString i)]
-      | TDatatype (n, _) =>
+      | TDatatype (Enum, n, _) =>
+        (box [string "enum",
+              space,
+              string ("__lwe_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n)]
+         handle CjrEnv.UnboundNamed _ => string ("__lwd_UNBOUND__" ^ Int.toString n))
+      | TDatatype (Default, n, _) =>
         (box [string "struct",
               space,
               string ("__lwd_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n ^ "*")]
@@ -103,8 +108,8 @@ fun p_pat_preamble env (p, _) =
                              newline],
                         env)
       | PPrim _ => (box [], env)
-      | PCon (_, NONE) => (box [], env)
-      | PCon (_, SOME p) => p_pat_preamble env p
+      | PCon (_, _, NONE) => (box [], env)
+      | PCon (_, _, SOME p) => p_pat_preamble env p
       | PRecord xps =>
         foldl (fn ((_, p, _), (pp, env)) =>
                   let
@@ -161,7 +166,7 @@ fun p_pat (env, exit, depth) (p, _) =
          env)
       | PPrim _ => raise Fail "CjrPrint: Disallowed PPrim primitive"
 
-      | PCon (pc, po) =>
+      | PCon (dk, pc, po) =>
         let
             val (p, env) =
                 case po of
@@ -175,9 +180,10 @@ fun p_pat (env, exit, depth) (p, _) =
                                           let
                                               val (x, to, _) = E.lookupConstructor env n
                                           in
-                                              (x, to)
+                                              ("__lwc_" ^ x, to)
                                           end
-                                        | PConFfi _ => raise Fail "PConFfi"
+                                        | PConFfi {mod = m, con, arg, ...} =>
+                                          ("lw_" ^ m ^ "_" ^ con, arg)
 
                         val t = case to of
                                     NONE => raise Fail "CjrPrint: Constructor mismatch"
@@ -194,7 +200,7 @@ fun p_pat (env, exit, depth) (p, _) =
                               space,
                               string "disc",
                               string (Int.toString depth),
-                              string "->data.__lwc_",
+                              string "->data.",
                               string x,
                               string ";",
                               newline,
@@ -208,7 +214,9 @@ fun p_pat (env, exit, depth) (p, _) =
                   space,
                   string "(disc",
                   string (Int.toString depth),
-                  string "->tag",
+                  case dk of
+                      Enum => box []
+                    | Default => string "->tag",
                   space,
                   string "!=",
                   space,
@@ -285,7 +293,8 @@ fun p_exp' par env (e, loc) =
         EPrim p => Prim.p_t p
       | ERel n => p_rel env n
       | ENamed n => p_enamed env n
-      | ECon (pc, eo) =>
+      | ECon (Enum, pc, _) => p_patCon env pc
+      | ECon (Default, pc, eo) =>
         let
             val (xd, xc) = patConInfo env pc
         in
@@ -497,7 +506,17 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                     string ";",
                                                     newline]) xts,
              string "};"]
-      | DDatatype (x, n, xncs) =>
+      | DDatatype (Enum, x, n, xncs) =>
+        box [string "enum",
+             space,
+             string ("__lwe_" ^ x ^ "_" ^ Int.toString n),
+             space,
+             string "{",
+             space,
+             p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__lwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
+             space,
+             string "};"]
+      | DDatatype (Default, x, n, xncs) =>
         let
             val xncsArgs = List.mapPartial (fn (x, n, NONE) => NONE
                                              | (x, n, SOME t) => SOME (x, n, t)) xncs
@@ -541,7 +560,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 string "data;",
                                 newline]),
                  string "};"]
-        end                 
+        end
 
       | DVal (x, n, t, e) =>
         box [p_typ env t,
@@ -753,7 +772,34 @@ fun p_file env (ds, ps) =
                          string "})"]
                 end
 
-              | TDatatype (i, _) =>
+              | TDatatype (Enum, i, _) =>
+                let
+                    val (x, xncs) = E.lookupDatatype env i
+
+                    fun doEm xncs =
+                        case xncs of
+                            [] => string ("(lw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), (enum __lwe_"
+                                          ^ x ^ "_" ^ Int.toString i ^ ")0)")
+                          | (x', n, to) :: rest =>
+                            box [string "((!strncmp(request, \"",
+                                 string x',
+                                 string "\", ",
+                                 string (Int.toString (size x')),
+                                 string ") && (request[",
+                                 string (Int.toString (size x')),
+                                 string "] == 0 || request[",
+                                 string (Int.toString (size x')),
+                                 string ("] == '/')) ? __lwc_" ^ x' ^ "_" ^ Int.toString n),
+                                 space,
+                                 string ":",
+                                 space,
+                                 doEm rest,
+                                 string ")"]
+                in
+                    doEm xncs
+                end
+
+              | TDatatype (Default, i, _) =>
                 let
                     val (x, xncs) = E.lookupDatatype env i
 

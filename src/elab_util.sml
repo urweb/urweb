@@ -29,6 +29,12 @@ structure ElabUtil :> ELAB_UTIL = struct
 
 open Elab
 
+fun classifyDatatype xncs =
+    if List.all (fn (_, _, NONE) => true | _ => false) xncs then
+        Enum
+    else
+        Default
+
 structure S = Search
 
 structure Kind = struct
