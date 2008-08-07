@@ -893,8 +893,14 @@ fun p_file env (ds, ps) =
                                                        val n = case SM.find (fnums, x) of
                                                                    NONE => raise Fail "CjrPrint: Can't find in fnums"
                                                                  | SOME n => n
+
+                                                       val f = case t of
+                                                                   (TFfi ("Basis", "bool"), _) => "optional_"
+                                                                 | _ => ""
                                                    in
-                                                       box [string "request = lw_get_input(ctx, ",
+                                                       box [string "request = lw_get_",
+                                                            string f,
+                                                            string "input(ctx, ",
                                                             string (Int.toString n),
                                                             string ");",
                                                             newline,

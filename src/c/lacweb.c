@@ -18,7 +18,6 @@ struct lw_context {
 
   jmp_buf jmp_buf;
 
-  failure_kind failure_kind;
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -35,7 +34,6 @@ lw_context lw_init(size_t page_len, size_t heap_len) {
 
   ctx->inputs = calloc(lw_inputs_len, sizeof(char *));
 
-  ctx->failure_kind = SUCCESS;
   ctx->error_message[0] = 0;
 
   return ctx;
@@ -52,15 +50,12 @@ void lw_reset_keep_request(lw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
 
-  ctx->failure_kind = SUCCESS;
   ctx->error_message[0] = 0;
 }
 
 void lw_reset_keep_error_message(lw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
-
-  ctx->failure_kind = SUCCESS;
 }
 
 void lw_reset(lw_context ctx) {
@@ -71,20 +66,21 @@ void lw_reset(lw_context ctx) {
 void lw_handle(lw_context, char *);
 
 failure_kind lw_begin(lw_context ctx, char *path) {
-  if (!setjmp(ctx->jmp_buf))
+  int r = setjmp(ctx->jmp_buf);
+
+  if (r == 0)
     lw_handle(ctx, path);
 
-  return ctx->failure_kind;
+  return r;
 }
 
 void lw_error(lw_context ctx, failure_kind fk, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  ctx->failure_kind = fk;
   vsnprintf(ctx->error_message, ERROR_BUF_LEN, fmt, ap);
 
-  longjmp(ctx->jmp_buf, 1);
+  longjmp(ctx->jmp_buf, fk);
 }
 
 char *lw_error_message(lw_context ctx) {
@@ -114,6 +110,15 @@ char *lw_get_input(lw_context ctx, int n) {
     lw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
   printf("[%d] = %s\n", n, ctx->inputs[n]);
   return ctx->inputs[n];
+}
+
+char *lw_get_optional_input(lw_context ctx, int n) {
+  if (n < 0)
+    lw_error(ctx, FATAL, "Negative input index %d", n);
+  if (n >= lw_inputs_len)
+    lw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
+  printf("[%d] = %s\n", n, ctx->inputs[n]);
+  return (ctx->inputs[n] == NULL ? "" : ctx->inputs[n]);
 }
 
 static void lw_check_heap(lw_context ctx, size_t extra) {

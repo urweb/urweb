@@ -51,7 +51,7 @@ fun uppercaseFirst "" = ""
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT
- | CASE
+ | CASE | IF | THEN | ELSE
 
  | XML_BEGIN of string | XML_END
  | NOTAGS of string 
@@ -318,6 +318,12 @@ eexp   : eapps                          (eapps)
        | LPAREN eexp RPAREN DCOLON cexp (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
        | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
        | CASE eexp OF barOpt branch branchs (ECase (eexp, branch :: branchs), s (CASEleft, branchsright))
+       | IF eexp THEN eexp ELSE eexp    (let
+                                             val loc = s (IFleft, eexp3right)
+                                         in
+                                             (ECase (eexp1, [((PCon (["Basis"], "True", NONE), loc), eexp2),
+                                                             ((PCon (["Basis"], "False", NONE), loc), eexp3)]), loc)
+                                         end)
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 

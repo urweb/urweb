@@ -261,6 +261,9 @@ notags = [^<{\n]+;
 <INITIAL> "fn"        => (Tokens.FN (pos yypos, pos yypos + size yytext));
 <INITIAL> "fold"      => (Tokens.FOLD (pos yypos, pos yypos + size yytext));
 <INITIAL> "case"      => (Tokens.CASE (pos yypos, pos yypos + size yytext));
+<INITIAL> "if"        => (Tokens.IF (pos yypos, pos yypos + size yytext));
+<INITIAL> "then"      => (Tokens.THEN (pos yypos, pos yypos + size yytext));
+<INITIAL> "else"      => (Tokens.ELSE (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "structure" => (Tokens.STRUCTURE (pos yypos, pos yypos + size yytext));
 <INITIAL> "signature" => (Tokens.SIGNATURE (pos yypos, pos yypos + size yytext));

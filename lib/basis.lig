@@ -71,6 +71,8 @@ val textbox : lformTag string [] []
 val password : lformTag string [] []
 val ltextarea : lformTag string [] []
 
+val checkbox : lformTag bool [] []
+
 con radio = [Body, Radio]
 val radio : lformTag string radio []
 val radioOption : unit -> tag [Value = string] radio [] [] []

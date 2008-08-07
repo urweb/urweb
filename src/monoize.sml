@@ -519,6 +519,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to ltextarea tag"))
 
+                  | "checkbox" => input "checkbox"
+
                   | "radio" =>
                     (case targs of
                          [_, (L.CName name, _)] =>
