@@ -81,7 +81,7 @@ fun explifyPat (p, loc) =
         L.PWild => (L'.PWild, loc)
       | L.PVar (x, t) => (L'.PVar (x, explifyCon t), loc)
       | L.PPrim p => (L'.PPrim p, loc)
-      | L.PCon (dk, pc, po) => (L'.PCon (dk, explifyPatCon pc, Option.map explifyPat po), loc)
+      | L.PCon (dk, pc, cs, po) => (L'.PCon (dk, explifyPatCon pc, map explifyCon cs, Option.map explifyPat po), loc)
       | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, explifyPat p, explifyCon t)) xps), loc)
 
 fun explifyExp (e, loc) =
@@ -113,11 +113,12 @@ fun explifySgi (sgi, loc) =
     case sgi of
         L.SgiConAbs (x, n, k) => SOME (L'.SgiConAbs (x, n, explifyKind k), loc)
       | L.SgiCon (x, n, k, c) => SOME (L'.SgiCon (x, n, explifyKind k, explifyCon c), loc)
-      | L.SgiDatatype (x, n, xncs) => SOME (L'.SgiDatatype (x, n, map (fn (x, n, co) =>
-                                                                          (x, n, Option.map explifyCon co)) xncs), loc)
-      | L.SgiDatatypeImp (x, n, m1, ms, s, xncs) =>
-        SOME (L'.SgiDatatypeImp (x, n, m1, ms, s, map (fn (x, n, co) =>
-                                                          (x, n, Option.map explifyCon co)) xncs), loc)
+      | L.SgiDatatype (x, n, xs, xncs) => SOME (L'.SgiDatatype (x, n, xs,
+                                                                map (fn (x, n, co) =>
+                                                                        (x, n, Option.map explifyCon co)) xncs), loc)
+      | L.SgiDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
+        SOME (L'.SgiDatatypeImp (x, n, m1, ms, s, xs, map (fn (x, n, co) =>
+                                                              (x, n, Option.map explifyCon co)) xncs), loc)
       | L.SgiVal (x, n, c) => SOME (L'.SgiVal (x, n, explifyCon c), loc)
       | L.SgiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, explifySgn sgn), loc)
       | L.SgiSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, explifySgn sgn), loc)
@@ -135,11 +136,13 @@ and explifySgn (sgn, loc) =
 fun explifyDecl (d, loc : EM.span) =
     case d of
         L.DCon (x, n, k, c) => SOME (L'.DCon (x, n, explifyKind k, explifyCon c), loc)
-      | L.DDatatype (x, n, xncs) => SOME (L'.DDatatype (x, n, map (fn (x, n, co) =>
-                                                                      (x, n, Option.map explifyCon co)) xncs), loc)
-      | L.DDatatypeImp (x, n, m1, ms, s, xncs) =>
-        SOME (L'.DDatatypeImp (x, n, m1, ms, s, map (fn (x, n, co) =>
-                                                        (x, n, Option.map explifyCon co)) xncs), loc)
+      | L.DDatatype (x, n, xs, xncs) => SOME (L'.DDatatype (x, n, xs,
+                                                            map (fn (x, n, co) =>
+                                                                    (x, n, Option.map explifyCon co)) xncs), loc)
+      | L.DDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
+        SOME (L'.DDatatypeImp (x, n, m1, ms, s, xs,
+                               map (fn (x, n, co) =>
+                                       (x, n, Option.map explifyCon co)) xncs), loc)
       | L.DVal (x, n, t, e) => SOME (L'.DVal (x, n, explifyCon t, explifyExp e), loc)
       | L.DValRec vis => SOME (L'.DValRec (map (fn (x, n, t, e) => (x, n, explifyCon t, explifyExp e)) vis), loc)
 

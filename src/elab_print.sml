@@ -216,8 +216,8 @@ fun p_pat' par env (p, _) =
         PWild => string "_"
       | PVar (s, _) => string s
       | PPrim p => Prim.p_t p
-      | PCon (_, pc, NONE) => p_patCon env pc
-      | PCon (_, pc, SOME p) => parenIf par (box [p_patCon env pc,
+      | PCon (_, pc, _, NONE) => p_patCon env pc
+      | PCon (_, pc, _, SOME p) => parenIf par (box [p_patCon env pc,
                                                   space,
                                                   p_pat' true env p])
       | PRecord xps =>
@@ -364,13 +364,16 @@ fun p_named x n =
     else
         string x
 
-fun p_datatype env (x, n, cons) =
+fun p_datatype env (x, n, xs, cons) =
     let
-        val env = E.pushCNamedAs env x n (KType, ErrorMsg.dummySpan) NONE
+        val k = (KType, ErrorMsg.dummySpan)
+        val env = E.pushCNamedAs env x n k NONE
+        val env = foldl (fn (x, env) => E.pushCRel env x k) env xs
     in
         box [string "datatype",
              space,
              string x,
+             p_list_sep (box []) (fn x => box [space, string x]) xs,
              space,
              string "=",
              space,
@@ -401,7 +404,7 @@ fun p_sgn_item env (sgi, _) =
                                     space,
                                     p_con env c]
       | SgiDatatype x => p_datatype env x
-      | SgiDatatypeImp (x, _, m1, ms, x', _) =>
+      | SgiDatatypeImp (x, _, m1, ms, x', _, _) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)
                 handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1
@@ -523,7 +526,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                   space,
                                   p_con env c]
       | DDatatype x => p_datatype env x
-      | DDatatypeImp (x, _, m1, ms, x', _) =>
+      | DDatatypeImp (x, _, m1, ms, x', _, _) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)
                 handle E.UnboundNamed _ => "UNBOUND_STR_" ^ Int.toString m1

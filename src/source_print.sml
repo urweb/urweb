@@ -278,10 +278,11 @@ fun p_exp' par (e, _) =
 
 and p_exp e = p_exp' false e
 
-fun p_datatype (x, cons) =
+fun p_datatype (x, xs, cons) =
     box [string "datatype",
          space,
          string x,
+         p_list_sep (box []) (fn x => box [space, string x]) xs,
          space,
          string "=",
          space,

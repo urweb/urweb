@@ -429,7 +429,7 @@ structure St : sig
          L.PWild => (L'.PWild, loc)
        | L.PVar (x, t) => (L'.PVar (x, corifyCon st t), loc)
        | L.PPrim p => (L'.PPrim p, loc)
-       | L.PCon (dk, pc, po) => (L'.PCon (dk, corifyPatCon st pc, Option.map (corifyPat st) po), loc)
+       | L.PCon (dk, pc, ts, po) => raise Fail "Corify PCon" (*(L'.PCon (dk, corifyPatCon st pc, Option.map (corifyPat st) po), loc)*)
        | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, corifyPat st p, corifyCon st t)) xps), loc)
 
  fun corifyExp st (e, loc) =
@@ -512,8 +512,8 @@ structure St : sig
          in
              ([(L'.DCon (x, n, corifyKind k, corifyCon st c), loc)], st)
          end
-       | L.DDatatype (x, n, xncs) =>
-         let
+       | L.DDatatype (x, n, xs, xncs) => raise Fail "Corify DDatatype"
+         (*let
              val (st, n) = St.bindCon st x n
              val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
                                                     let
@@ -541,9 +541,9 @@ structure St : sig
                                  end) xncs
          in
              ((L'.DDatatype (x, n, xncs), loc) :: dcons, st)
-         end
-       | L.DDatatypeImp (x, n, m1, ms, s, xncs) =>
-         let
+         end*)
+       | L.DDatatypeImp (x, n, m1, ms, s, xs, xncs) => raise Fail "Corify DDatatypeImp"
+         (*let
              val (st, n) = St.bindCon st x n
              val c = corifyCon st (L.CModProj (m1, ms, s), loc)
 
@@ -571,7 +571,7 @@ structure St : sig
                                end) xncs
          in
              ((L'.DCon (x, n, (L'.KType, loc), c), loc) :: cds, st)
-         end
+         end*)
        | L.DVal (x, n, t, e) =>
          let
              val (st, n) = St.bindVal st x n
@@ -648,8 +648,8 @@ structure St : sig
                                          st)
                                     end
 
-                                  | L.SgiDatatype (x, n, xnts) =>
-                                    let
+                                  | L.SgiDatatype (x, n, xs, xnts) => raise Fail "Corify FFI SgiDatatype"
+                                    (*let
                                         val dk = ExplUtil.classifyDatatype xnts
                                         val (st, n') = St.bindCon st x n
                                         val (xnts, (ds', st, cmap, conmap)) =
@@ -698,7 +698,7 @@ structure St : sig
                                         cmap,
                                         conmap,
                                         st)
-                                   end
+                                   end*)
 
                                  | L.SgiVal (x, _, c) =>
                                    (ds,
@@ -811,8 +811,8 @@ and corifyStr ((str, _), st) =
 fun maxName ds = foldl (fn ((d, _), n) =>
                            case d of
                                L.DCon (_, n', _, _) => Int.max (n, n')
-                             | L.DDatatype (_, n', _) => Int.max (n, n')
-                             | L.DDatatypeImp (_, n', _, _, _, _) => Int.max (n, n')
+                             | L.DDatatype (_, n', _, _) => Int.max (n, n')
+                             | L.DDatatypeImp (_, n', _, _, _, _, _) => Int.max (n, n')
                              | L.DVal (_, n', _, _) => Int.max (n, n')
                              | L.DValRec vis => foldl (fn ((_, n', _, _), n) => Int.max (n, n)) n vis
                              | L.DSgn (_, n', _) => Int.max (n, n')

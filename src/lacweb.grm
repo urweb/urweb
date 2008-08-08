@@ -64,6 +64,7 @@ fun uppercaseFirst "" = ""
  | vali of string * con option * exp
  | valis of (string * con option * exp) list
 
+ | dargs of string list
  | barOpt of unit
  | dcons of (string * con option) list
  | dcon of string * con option
@@ -142,9 +143,11 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
        | CON SYMBOL DCOLON kind EQ cexp (DCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
        | LTYPE SYMBOL EQ cexp           (DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
-       | DATATYPE SYMBOL EQ barOpt dcons(DDatatype (SYMBOL, dcons), s (DATATYPEleft, dconsright))
-       | DATATYPE SYMBOL EQ DATATYPE CSYMBOL DOT path
-                (DDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))
+       | DATATYPE SYMBOL dargs EQ barOpt dcons(DDatatype (SYMBOL, dargs, dcons), s (DATATYPEleft, dconsright))
+       | DATATYPE SYMBOL dargs EQ DATATYPE CSYMBOL DOT path
+                (case dargs of
+                     [] => (DDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))
+                   | _ => raise Fail "Arguments specified for imported datatype")
        | VAL vali                       (DVal vali, s (VALleft, valiright))
        | VAL REC valis                  (DValRec valis, s (VALleft, valisright))
 
@@ -168,6 +171,9 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                            | m :: ms => (DOpenConstraints (m, ms), s (OPENleft, mpathright)))
        | CONSTRAINT cterm TWIDDLE cterm (DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
        | EXPORT spath                   (DExport spath, s (EXPORTleft, spathright))
+
+dargs  :                                ([])
+       | SYMBOL dargs                   (SYMBOL :: dargs)
 
 barOpt :                                ()
        | BAR                            ()
@@ -207,9 +213,11 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
        | CON SYMBOL DCOLON kind EQ cexp (SgiCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
        | LTYPE SYMBOL EQ cexp           (SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
-       | DATATYPE SYMBOL EQ barOpt dcons(SgiDatatype (SYMBOL, dcons), s (DATATYPEleft, dconsright))
-       | DATATYPE SYMBOL EQ DATATYPE CSYMBOL DOT path
-                (SgiDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))
+       | DATATYPE SYMBOL dargs EQ barOpt dcons(SgiDatatype (SYMBOL, dargs, dcons), s (DATATYPEleft, dconsright))
+       | DATATYPE SYMBOL dargs EQ DATATYPE CSYMBOL DOT path
+                (case dargs of
+                     [] => (SgiDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))
+                   | _ => raise Fail "Arguments specified for imported datatype")
        | VAL SYMBOL COLON cexp          (SgiVal (SYMBOL, cexp), s (VALleft, cexpright))
 
        | STRUCTURE CSYMBOL COLON sgn    (SgiStr (CSYMBOL, sgn), s (STRUCTUREleft, sgnright))

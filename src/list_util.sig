@@ -41,5 +41,6 @@ signature LIST_UTIL = sig
     val search : ('a -> 'b option) -> 'a list -> 'b option
 
     val mapi : (int * 'a -> 'b) -> 'a list -> 'b list
+    val foldli : (int * 'a * 'b -> 'b) -> 'b -> 'a list -> 'b
 
 end

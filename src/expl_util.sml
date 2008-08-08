@@ -373,7 +373,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                         S.map2 (con ctx c,
                              fn c' =>
                                 (SgiCon (x, n, k', c'), loc)))
-              | SgiDatatype (x, n, xncs) =>
+              | SgiDatatype (x, n, xs, xncs) =>
                 S.map2 (ListUtil.mapfold (fn (x, n, c) =>
                                              case c of
                                                  NONE => S.return2 (x, n, c)
@@ -381,8 +381,8 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                  S.map2 (con ctx c,
                                                       fn c' => (x, n, SOME c'))) xncs,
                         fn xncs' =>
-                           (SgiDatatype (x, n, xncs'), loc))
-              | SgiDatatypeImp (x, n, m1, ms, s, xncs) =>
+                           (SgiDatatype (x, n, xs, xncs'), loc))
+              | SgiDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
                 S.map2 (ListUtil.mapfold (fn (x, n, c) =>
                                              case c of
                                                  NONE => S.return2 (x, n, c)
@@ -390,7 +390,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                  S.map2 (con ctx c,
                                                       fn c' => (x, n, SOME c'))) xncs,
                         fn xncs' =>
-                           (SgiDatatypeImp (x, n, m1, ms, s, xncs'), loc))
+                           (SgiDatatypeImp (x, n, m1, ms, s, xs, xncs'), loc))
               | SgiVal (x, n, c) =>
                 S.map2 (con ctx c,
                      fn c' =>
@@ -416,9 +416,9 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                    bind (ctx, NamedC (x, k))
                                                  | SgiCon (x, _, k, _) =>
                                                    bind (ctx, NamedC (x, k))
-                                                 | SgiDatatype (x, n, xncs) =>
+                                                 | SgiDatatype (x, n, _, xncs) =>
                                                    bind (ctx, NamedC (x, (KType, loc)))
-                                                 | SgiDatatypeImp (x, _, _, _, _, _) =>
+                                                 | SgiDatatypeImp (x, _, _, _, _, _, _) =>
                                                    bind (ctx, NamedC (x, (KType, loc)))
                                                  | SgiVal _ => ctx
                                                  | SgiStr (x, _, sgn) =>

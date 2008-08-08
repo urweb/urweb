@@ -51,13 +51,14 @@ signature ELAB_ENV = sig
 
     val lookupC : env -> string -> Elab.kind var
 
-    val pushDatatype : env -> int -> (string * int * Elab.con option) list -> env
+    val pushDatatype : env -> int -> string list -> (string * int * Elab.con option) list -> env
     type datatyp
     val lookupDatatype : env -> int -> datatyp
     val lookupDatatypeConstructor : datatyp -> int -> string * Elab.con option
+    val datatypeArgs : datatyp -> string list
     val constructors : datatyp -> (string * int * Elab.con option) list
 
-    val lookupConstructor : env -> string -> (Elab.datatype_kind * int * Elab.con option * int) option
+    val lookupConstructor : env -> string -> (Elab.datatype_kind * int * string list * Elab.con option * int) option
 
     val pushERel : env -> string -> Elab.con -> env
     val lookupERel : env -> int -> string * Elab.con
@@ -87,9 +88,9 @@ signature ELAB_ENV = sig
 
     val projectCon : env -> { sgn : Elab.sgn, str : Elab.str, field : string } -> (Elab.kind * Elab.con option) option
     val projectDatatype : env -> { sgn : Elab.sgn, str : Elab.str, field : string }
-                          -> (string * int * Elab.con option) list option
+                          -> (string list * (string * int * Elab.con option) list) option
     val projectConstructor : env -> { sgn : Elab.sgn, str : Elab.str, field : string }
-                             -> (Elab.datatype_kind * int * Elab.con option * Elab.con) option
+                             -> (Elab.datatype_kind * int * string list * Elab.con option * Elab.con) option
     val projectVal : env -> { sgn : Elab.sgn, str : Elab.str, field : string } -> Elab.con option
     val projectSgn : env -> { sgn : Elab.sgn, str : Elab.str, field : string } -> Elab.sgn option
     val projectStr : env -> { sgn : Elab.sgn, str : Elab.str, field : string } -> Elab.sgn option

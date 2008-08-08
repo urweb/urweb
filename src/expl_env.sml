@@ -239,24 +239,42 @@ fun lookupStrNamed (env : env) n =
 fun declBinds env (d, loc) =
     case d of
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
-      | DDatatype (x, n, xncs) =>
+      | DDatatype (x, n, xs, xncs) =>
         let
             val env = pushCNamed env x n (KType, loc) NONE
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc)
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (CNamed n, loc)), loc))
-            env xncs
+            foldl (fn ((x', n', to), env) =>
+                      let
+                          val t =
+                              case to of
+                                  NONE => (CNamed n, loc)
+                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
+                          val k = (KType, loc)
+                          val t = foldr (fn (x, t) => (TCFun (x, k, t), loc)) t xs
+                      in
+                          pushENamed env x' n' t
+                      end)
+                  env xncs
         end
-      | DDatatypeImp (x, n, m, ms, x', xncs) =>
+      | DDatatypeImp (x, n, m, ms, x', xs, xncs) =>
         let
             val t = (CModProj (m, ms, x'), loc)
             val env = pushCNamed env x n (KType, loc) (SOME t)
 
             val t = (CNamed n, loc)
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' t
-                    | ((x', n', SOME t'), env) => pushENamed env x' n' (TFun (t', t), loc))
-            env xncs
+            foldl (fn ((x', n', to), env) =>
+                      let
+                          val t =
+                              case to of
+                                  NONE => (CNamed n, loc)
+                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
+                          val k = (KType, loc)
+                          val t = foldr (fn (x, t) => (TCFun (x, k, t), loc)) t xs
+                      in
+                          pushENamed env x' n' t
+                      end)
+                  env xncs
         end
       | DVal (x, n, t, _) => pushENamed env x n t
       | DValRec vis => foldl (fn ((x, n, t, _), env) => pushENamed env x n t) env vis
@@ -269,21 +287,42 @@ fun sgiBinds env (sgi, loc) =
     case sgi of
         SgiConAbs (x, n, k) => pushCNamed env x n k NONE
       | SgiCon (x, n, k, c) => pushCNamed env x n k (SOME c)
-      | SgiDatatype (x, n, xncs) =>
+      | SgiDatatype (x, n, xs, xncs) =>
         let
             val env = pushCNamed env x n (KType, loc) NONE
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc)
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (CNamed n, loc)), loc))
-            env xncs
+            foldl (fn ((x', n', to), env) =>
+                      let
+                          val t =
+                              case to of
+                                  NONE => (CNamed n, loc)
+                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
+                          val k = (KType, loc)
+                          val t = foldr (fn (x, t) => (TCFun (x, k, t), loc)) t xs
+                      in
+                          pushENamed env x' n' t
+                      end)
+                  env xncs
         end
-      | SgiDatatypeImp (x, n, m1, ms, x', xncs) =>
+      | SgiDatatypeImp (x, n, m1, ms, x', xs, xncs) =>
         let
-            val env = pushCNamed env x n (KType, loc) (SOME (CModProj (m1, ms, x'), loc))
+            val t = (CModProj (m1, ms, x'), loc)
+            val env = pushCNamed env x n (KType, loc) (SOME t)
+
+            val t = (CNamed n, loc)
         in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc)
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (CNamed n, loc)), loc))
-            env xncs
+            foldl (fn ((x', n', to), env) =>
+                      let
+                          val t =
+                              case to of
+                                  NONE => (CNamed n, loc)
+                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
+                          val k = (KType, loc)
+                          val t = foldr (fn (x, t) => (TCFun (x, k, t), loc)) t xs
+                      in
+                          pushENamed env x' n' t
+                      end)
+                  env xncs
         end
       | SgiVal (x, n, t) => pushENamed env x n t
       | SgiSgn (x, n, sgn) => pushSgnNamed env x n sgn

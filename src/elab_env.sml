@@ -73,7 +73,7 @@ datatype 'a var =
        | Rel of int * 'a
        | Named of int * 'a
 
-type datatyp = (string * con option) IM.map
+type datatyp = string list * (string * con option) IM.map
 
 type env = {
      renameC : kind var' SM.map,
@@ -81,7 +81,7 @@ type env = {
      namedC : (string * kind * con option) IM.map,
 
      datatypes : datatyp IM.map,
-     constructors : (datatype_kind * int * con option * int) SM.map,
+     constructors : (datatype_kind * int * string list * con option * int) SM.map,
 
      renameE : con var' SM.map,
      relE : (string * con) list,
@@ -188,7 +188,7 @@ fun lookupC (env : env) x =
       | SOME (Rel' x) => Rel x
       | SOME (Named' x) => Named x
 
-fun pushDatatype (env : env) n xncs =
+fun pushDatatype (env : env) n xs xncs =
     let
         val dk = U.classifyDatatype xncs
     in
@@ -197,10 +197,10 @@ fun pushDatatype (env : env) n xncs =
          namedC = #namedC env,
 
          datatypes = IM.insert (#datatypes env, n,
-                                foldl (fn ((x, n, to), cons) =>
-                                          IM.insert (cons, n, (x, to))) IM.empty xncs),
+                                (xs, foldl (fn ((x, n, to), cons) =>
+                                               IM.insert (cons, n, (x, to))) IM.empty xncs)),
          constructors = foldl (fn ((x, n', to), cmap) =>
-                                  SM.insert (cmap, x, (dk, n', to, n)))
+                                  SM.insert (cmap, x, (dk, n', xs, to, n)))
                               (#constructors env) xncs,
 
          renameE = #renameE env,
@@ -219,14 +219,15 @@ fun lookupDatatype (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
-fun lookupDatatypeConstructor dt n =
+fun lookupDatatypeConstructor (_, dt) n =
     case IM.find (dt, n) of
         NONE => raise UnboundNamed n
       | SOME x => x
 
 fun lookupConstructor (env : env) s = SM.find (#constructors env, s)
 
-fun constructors dt = IM.foldri (fn (n, (x, to), ls) => (x, n, to) :: ls) [] dt
+fun datatypeArgs (xs, _) = xs
+fun constructors (_, dt) = IM.foldri (fn (n, (x, to), ls) => (x, n, to) :: ls) [] dt
 
 fun pushERel (env : env) x t =
     let
@@ -362,20 +363,40 @@ fun sgiBinds env (sgi, loc) =
     case sgi of
         SgiConAbs (x, n, k) => pushCNamedAs env x n k NONE
       | SgiCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
-      | SgiDatatype (x, n, xncs) =>
+      | SgiDatatype (x, n, xs, xncs) =>
         let
             val env = pushCNamedAs env x n (KType, loc) NONE
         in
-            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
-                    | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
+            foldl (fn ((x', n', to), env) =>
+                      let
+                          val t =
+                              case to of
+                                  NONE => (CNamed n, loc)
+                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
+
+                          val k = (KType, loc)
+                          val t = foldr (fn (x, t) => (TCFun (Explicit, x, k, t), loc)) t xs
+                      in
+                          pushENamedAs env x' n' t
+                      end)
             env xncs
         end
-      | SgiDatatypeImp (x, n, m1, ms, x', xncs) =>
+      | SgiDatatypeImp (x, n, m1, ms, x', xs, xncs) =>
         let
             val env = pushCNamedAs env x n (KType, loc) (SOME (CModProj (m1, ms, x'), loc))
         in
-            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
-                    | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
+            foldl (fn ((x', n', to), env) =>
+                      let
+                          val t =
+                              case to of
+                                  NONE => (CNamed n, loc)
+                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
+
+                          val k = (KType, loc)
+                          val t = foldr (fn (x, t) => (TCFun (Explicit, x, k, t), loc)) t xs
+                      in
+                          pushENamedAs env x' n' t
+                      end)
             env xncs
         end
       | SgiVal (x, n, t) => pushENamedAs env x n t
@@ -394,8 +415,8 @@ fun sgnSeek f sgis =
                     let
                         val cons =
                             case sgi of
-                                SgiDatatype (x, n, _) => IM.insert (cons, n, x)
-                              | SgiDatatypeImp (x, n, _, _, _, _) => IM.insert (cons, n, x)
+                                SgiDatatype (x, n, _, _) => IM.insert (cons, n, x)
+                              | SgiDatatypeImp (x, n, _, _, _, _, _) => IM.insert (cons, n, x)
                               | _ => cons
                     in
                         SOME (v, (sgns, strs, cons))
@@ -404,8 +425,8 @@ fun sgnSeek f sgis =
                     case sgi of
                         SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
                       | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                      | SgiDatatype (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                      | SgiDatatypeImp (x, n, _, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                      | SgiDatatype (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                      | SgiDatatypeImp (x, n, _, _, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
                       | SgiVal _ => seek (sgis, sgns, strs, cons)
                       | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons)
                       | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons)
@@ -552,8 +573,8 @@ fun projectCon env {sgn, str, field} =
         SgnConst sgis =>
         (case sgnSeek (fn SgiConAbs (x, _, k) => if x = field then SOME (k, NONE) else NONE
                         | SgiCon (x, _, k, c) => if x = field then SOME (k, SOME c) else NONE
-                        | SgiDatatype (x, _, _) => if x = field then SOME ((KType, #2 sgn), NONE) else NONE
-                        | SgiDatatypeImp (x, _, m1, ms, x', _) =>
+                        | SgiDatatype (x, _, _, _) => if x = field then SOME ((KType, #2 sgn), NONE) else NONE
+                        | SgiDatatypeImp (x, _, m1, ms, x', _, _) =>
                           if x = field then
                               SOME ((KType, #2 sgn), SOME (CModProj (m1, ms, x'), #2 sgn))
                           else
@@ -567,30 +588,31 @@ fun projectCon env {sgn, str, field} =
 fun projectDatatype env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
-        (case sgnSeek (fn SgiDatatype (x, _, xncs) => if x = field then SOME xncs else NONE
-                        | SgiDatatypeImp (x, _, _, _, _, xncs) => if x = field then SOME xncs else NONE
+        (case sgnSeek (fn SgiDatatype (x, _, xs, xncs) => if x = field then SOME (xs, xncs) else NONE
+                        | SgiDatatypeImp (x, _, _, _, _, xs, xncs) => if x = field then SOME (xs, xncs) else NONE
                         | _ => NONE) sgis of
              NONE => NONE
-           | SOME (xncs, subs) => SOME (map (fn (x, n, to) => (x, n, Option.map (sgnSubCon (str, subs)) to)) xncs))
+           | SOME ((xs, xncs), subs) => SOME (xs,
+                                              map (fn (x, n, to) => (x, n, Option.map (sgnSubCon (str, subs)) to)) xncs))
       | _ => NONE
 
 fun projectConstructor env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         let
-            fun consider (n, xncs) =
+            fun consider (n, xs, xncs) =
                 ListUtil.search (fn (x, n', to) =>
                                     if x <> field then
                                         NONE
                                     else
-                                        SOME (U.classifyDatatype xncs, n', to, (CNamed n, #2 str))) xncs
+                                        SOME (U.classifyDatatype xncs, n', xs, to, (CNamed n, #2 str))) xncs
         in
-            case sgnSeek (fn SgiDatatype (_, n, xncs) => consider (n, xncs)
-                           | SgiDatatypeImp (_, n, _, _, _, xncs) => consider (n, xncs)
+            case sgnSeek (fn SgiDatatype (_, n, xs, xncs) => consider (n, xs, xncs)
+                           | SgiDatatypeImp (_, n, _, _, _, xs, xncs) => consider (n, xs, xncs)
                            | _ => NONE) sgis of
                 NONE => NONE
-              | SOME ((dk, n, to, t), subs) => SOME (dk, n, Option.map (sgnSubCon (str, subs)) to,
-                                                     sgnSubCon (str, subs) t)
+              | SOME ((dk, n, xs, to, t), subs) => SOME (dk, n, xs, Option.map (sgnSubCon (str, subs)) to,
+                                                         sgnSubCon (str, subs) t)
         end
       | _ => NONE
 
@@ -598,18 +620,25 @@ fun projectVal env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         let
-            fun seek (n, xncs) =
+            fun seek (n, xs, xncs) =
                 ListUtil.search (fn (x, _, to) =>
                                     if x = field then
-                                        SOME (case to of
-                                                  NONE => (CNamed n, #2 sgn)
-                                                | SOME t => (TFun (t, (CNamed n, #2 sgn)), #2 sgn))
+                                        SOME (let
+                                                  val t =
+                                                      case to of
+                                                          NONE => (CNamed n, #2 sgn)
+                                                        | SOME t => (TFun (t, (CNamed n, #2 sgn)), #2 sgn)
+                                                  val k = (KType, #2 sgn)
+                                              in
+                                                  foldr (fn (x, t) => (TCFun (Explicit, x, k, t), #2 sgn))
+                                                  t xs
+                                              end)
                                     else
                                         NONE) xncs
         in
             case sgnSeek (fn SgiVal (x, _, c) => if x = field then SOME c else NONE
-                           | SgiDatatype (_, n, xncs) => seek (n, xncs)
-                           | SgiDatatypeImp (_, n, _, _, _, xncs) => seek (n, xncs)
+                           | SgiDatatype (_, n, xs, xncs) => seek (n, xs, xncs)
+                           | SgiDatatypeImp (_, n, _, _, _, xs, xncs) => seek (n, xs, xncs)
                            | _ => NONE) sgis of
                 NONE => NONE
               | SOME (c, subs) => SOME (sgnSubCon (str, subs) c)
@@ -632,8 +661,8 @@ fun sgnSeekConstraints (str, sgis) =
                     end
                   | SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
-                  | SgiDatatype (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
-                  | SgiDatatypeImp (x, n, _, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiDatatype (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiDatatypeImp (x, n, _, _, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiVal _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
                   | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
@@ -650,26 +679,44 @@ fun projectConstraints env {sgn, str} =
 fun declBinds env (d, loc) =
     case d of
         DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
-      | DDatatype (x, n, xncs) =>
+      | DDatatype (x, n, xs, xncs) =>
         let
             val env = pushCNamedAs env x n (KType, loc) NONE
-            val env = pushDatatype env n xncs
+            val env = pushDatatype env n xs xncs
         in
-            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' (CNamed n, loc)
-                    | ((x', n', SOME t), env) => pushENamedAs env x' n' (TFun (t, (CNamed n, loc)), loc))
-            env xncs
+            foldl (fn ((x', n', to), env) =>
+                      let
+                          val t =
+                              case to of
+                                  NONE => (CNamed n, loc)
+                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
+                          val k = (KType, loc)
+                          val t = foldr (fn (x, t) => (TCFun (Explicit, x, k, t), loc)) t xs
+                      in
+                          pushENamedAs env x' n' t
+                      end)
+                  env xncs
         end
-      | DDatatypeImp (x, n, m, ms, x', xncs) =>
+      | DDatatypeImp (x, n, m, ms, x', xs, xncs) =>
         let
             val t = (CModProj (m, ms, x'), loc)
             val env = pushCNamedAs env x n (KType, loc) (SOME t)
-            val env = pushDatatype env n xncs
+            val env = pushDatatype env n xs xncs
 
             val t = (CNamed n, loc)
         in
-            foldl (fn ((x', n', NONE), env) => pushENamedAs env x' n' t
-                    | ((x', n', SOME t'), env) => pushENamedAs env x' n' (TFun (t', t), loc))
-            env xncs
+            foldl (fn ((x', n', to), env) =>
+                      let
+                          val t =
+                              case to of
+                                  NONE => (CNamed n, loc)
+                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
+                          val k = (KType, loc)
+                          val t = foldr (fn (x, t) => (TCFun (Explicit, x, k, t), loc)) t xs
+                      in
+                          pushENamedAs env x' n' t
+                      end)
+                  env xncs
         end
       | DVal (x, n, t, _) => pushENamedAs env x n t
       | DValRec vis => foldl (fn ((x, n, t, _), env) => pushENamedAs env x n t) env vis
