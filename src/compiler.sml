@@ -214,10 +214,19 @@ fun reduce job =
         if ErrorMsg.anyErrors () then
             NONE
         else
-            SOME (Reduce.reduce (Shake.shake file))
+            SOME (Reduce.reduce file)
+
+fun specialize job =
+    case reduce job of
+        NONE => NONE
+      | SOME file =>
+        if ErrorMsg.anyErrors () then
+            NONE
+        else
+            SOME (Specialize.specialize file)
 
 fun shake job =
-    case reduce job of
+    case specialize job of
         NONE => NONE
       | SOME file =>
         if ErrorMsg.anyErrors () then
@@ -332,8 +341,8 @@ fun testShake' job =
     handle CoreEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testTag job =
-    (case tag job of
+fun testReduce job =
+    (case reduce job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (CorePrint.p_file CoreEnv.empty file);
@@ -341,8 +350,17 @@ fun testTag job =
     handle CoreEnv.UnboundNamed n =>
            print ("Unbound named " ^ Int.toString n ^ "\n")
 
-fun testReduce job =
-    (case reduce job of
+fun testSpecialize job =
+    (case specialize job of
+         NONE => print "Failed\n"
+       | SOME file =>
+         (Print.print (CorePrint.p_file CoreEnv.empty file);
+          print "\n"))
+    handle CoreEnv.UnboundNamed n =>
+           print ("Unbound named " ^ Int.toString n ^ "\n")
+
+fun testTag job =
+    (case tag job of
          NONE => print "Failed\n"
        | SOME file =>
          (Print.print (CorePrint.p_file CoreEnv.empty file);

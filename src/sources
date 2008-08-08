@@ -4,6 +4,9 @@ search.sml
 list_util.sig
 list_util.sml
 
+order.sig
+order.sml
+
 errormsg.sig
 errormsg.sml
 
@@ -74,6 +77,9 @@ reduce.sml
 
 shake.sig
 shake.sml
+
+specialize.sig
+specialize.sml
 
 tag.sig
 tag.sml

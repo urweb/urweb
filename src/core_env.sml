@@ -51,6 +51,19 @@ val liftConInCon =
 
 val lift = liftConInCon 0
 
+val subConInCon =
+    U.Con.mapB {kind = fn k => k,
+                con = fn (xn, rep) => fn c =>
+                                  case c of
+                                      CRel xn' =>
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER => CRel (xn' - 1)
+                                         | LESS => c)
+                                    | _ => c,
+                bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
+                        | (ctx, _) => ctx}
+
 
 (* Back to environments *)
 
@@ -174,5 +187,14 @@ fun declBinds env (d, loc) =
       | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
       | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t NONE s) env vis
       | DExport _ => env
+
+fun patBinds env (p, loc) =
+    case p of
+        PWild => env
+      | PVar (x, t) => pushERel env x t
+      | PPrim _ => env
+      | PCon (_, _, _, NONE) => env
+      | PCon (_, _, _, SOME p) => patBinds env p
+      | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
 
 end

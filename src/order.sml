@@ -25,36 +25,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature CORE_ENV = sig
+(* Utility code for implementing comparisons *)
 
-    val liftConInCon : int -> Core.con -> Core.con
-    val subConInCon : (int * Core.con) -> Core.con -> Core.con
+structure Order :> ORDER = struct
 
-    type env
+fun join (o1, o2) =
+    case o1 of
+        EQUAL => o2 ()
+      | v => v
+             
+fun joinL f (os1, os2) =
+    case (os1, os2) of
+        (nil, nil) => EQUAL
+      | (nil, _) => LESS
+      | (h1 :: t1, h2 :: t2) =>
+        join (f (h1, h2), fn () => joinL f (t1, t2))
+      | (_ :: _, nil) => GREATER
 
-    val empty : env
-
-    exception UnboundRel of int
-    exception UnboundNamed of int
-
-    val pushCRel : env -> string -> Core.kind -> env
-    val lookupCRel : env -> int -> string * Core.kind
-
-    val pushCNamed : env -> string -> int -> Core.kind -> Core.con option -> env
-    val lookupCNamed : env -> int -> string * Core.kind * Core.con option
-
-    val pushDatatype : env -> string -> int -> string list -> (string * int * Core.con option) list -> env
-    val lookupDatatype : env -> int -> string * string list * (string * int * Core.con option) list
-
-    val lookupConstructor : env -> int -> string * string list * Core.con option * int
-
-    val pushERel : env -> string -> Core.con -> env
-    val lookupERel : env -> int -> string * Core.con
-
-    val pushENamed : env -> string -> int -> Core.con -> Core.exp option -> string -> env
-    val lookupENamed : env -> int -> string * Core.con * Core.exp option * string
-
-    val declBinds : env -> Core.decl -> env
-    val patBinds : env -> Core.pat -> env
-                                                 
 end

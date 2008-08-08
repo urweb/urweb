@@ -46,6 +46,7 @@ signature COMPILER = sig
     val shake' : job -> Core.file option
     val tag : job -> Core.file option
     val reduce : job -> Core.file option
+    val specialize : job -> Core.file option
     val shake : job -> Core.file option
     val monoize : job -> Mono.file option
     val mono_opt' : job -> Mono.file option
@@ -62,6 +63,7 @@ signature COMPILER = sig
     val testShake' : job -> unit
     val testTag : job -> unit
     val testReduce : job -> unit
+    val testSpecialize : job -> unit
     val testShake : job -> unit
     val testMonoize : job -> unit
     val testMono_opt' : job -> unit

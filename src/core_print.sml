@@ -199,10 +199,14 @@ fun p_exp' par env (e, _) =
               string (#1 (E.lookupERel env n)))
          handle E.UnboundRel _ => string ("UNBOUND_" ^ Int.toString n))
       | ENamed n => p_enamed env n
-      | ECon (_, pc, _, NONE) => p_patCon env pc
-      | ECon (_, pc, _, SOME e) => parenIf par (box [p_patCon env pc,
-                                                     space,
-                                                     p_exp' true env e])
+      | ECon (_, pc, _, NONE) => box [string "[",
+                                      p_patCon env pc,
+                                      string "]"]
+      | ECon (_, pc, _, SOME e) => box [string "[",
+                                        p_patCon env pc,
+                                        space,
+                                        p_exp' true env e,
+                                        string "]"]
       | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
       | EFfiApp (m, x, es) => box [string "FFI(",
                                    string m,
@@ -301,7 +305,7 @@ fun p_exp' par env (e, _) =
                                                                              space,
                                                                              string "=>",
                                                                              space,
-                                                                             p_exp env e]) pes])
+                                                                             p_exp (E.patBinds env p) e]) pes])
 
       | EWrite e => box [string "write(",
                          p_exp env e,
@@ -349,10 +353,15 @@ fun p_datatype env (x, n, xs, cons) =
         val k = (KType, ErrorMsg.dummySpan)
         val env = E.pushCNamed env x n (KType, ErrorMsg.dummySpan) NONE
         val env = foldl (fn (x, env) => E.pushCRel env x k) env xs
+
+        val xp = if !debug then
+                     string (x ^ "__" ^ Int.toString n)
+                 else
+                     string x
     in
         box [string "datatype",
              space,
-             string x,
+             xp,
              p_list_sep (box []) (fn x => box [space, string x]) xs,
              space,
              string "=",
@@ -360,7 +369,7 @@ fun p_datatype env (x, n, xs, cons) =
              p_list_sep (box [space, string "|", space])
                         (fn (x, n, NONE) => if !debug then (string (x ^ "__" ^ Int.toString n))
                                             else string x
-                          | (x, _, SOME t) => box [if !debug then (string (x ^ "__" ^ Int.toString n))
+                          | (x, n, SOME t) => box [if !debug then (string (x ^ "__" ^ Int.toString n))
                                                    else string x, space, string "of", space, p_con env t])
                         cons]
     end

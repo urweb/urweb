@@ -25,36 +25,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature CORE_ENV = sig
+(* Utility code for implementing comparisons *)
 
-    val liftConInCon : int -> Core.con -> Core.con
-    val subConInCon : (int * Core.con) -> Core.con -> Core.con
-
-    type env
-
-    val empty : env
-
-    exception UnboundRel of int
-    exception UnboundNamed of int
-
-    val pushCRel : env -> string -> Core.kind -> env
-    val lookupCRel : env -> int -> string * Core.kind
-
-    val pushCNamed : env -> string -> int -> Core.kind -> Core.con option -> env
-    val lookupCNamed : env -> int -> string * Core.kind * Core.con option
-
-    val pushDatatype : env -> string -> int -> string list -> (string * int * Core.con option) list -> env
-    val lookupDatatype : env -> int -> string * string list * (string * int * Core.con option) list
-
-    val lookupConstructor : env -> int -> string * string list * Core.con option * int
-
-    val pushERel : env -> string -> Core.con -> env
-    val lookupERel : env -> int -> string * Core.con
-
-    val pushENamed : env -> string -> int -> Core.con -> Core.exp option -> string -> env
-    val lookupENamed : env -> int -> string * Core.con * Core.exp option * string
-
-    val declBinds : env -> Core.decl -> env
-    val patBinds : env -> Core.pat -> env
-                                                 
+signature ORDER = sig
+    
+    val join : order * (unit -> order) -> order
+    val joinL : ('a * 'b -> order) -> 'a list * 'b list -> order
+                                                       
 end

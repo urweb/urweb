@@ -39,18 +39,7 @@ structure S = Search
 
 structure Typ = struct
 
-fun join (o1, o2) =
-    case o1 of
-        EQUAL => o2 ()
-      | v => v
-
-fun joinL f (os1, os2) =
-    case (os1, os2) of
-        (nil, nil) => EQUAL
-      | (nil, _) => LESS
-      | (h1 :: t1, h2 :: t2) =>
-        join (f (h1, h2), fn () => joinL f (t1, t2))
-      | (_ :: _, nil) => GREATER
+open Order
 
 fun compare ((t1, _), (t2, _)) =
     case (t1, t2) of

@@ -30,6 +30,8 @@ signature CORE_UTIL = sig
 val classifyDatatype : (string * int * Core.con option) list -> Core.datatype_kind
 
 structure Kind : sig
+    val compare : Core.kind * Core.kind -> order
+
     val mapfold : (Core.kind', 'state, 'abort) Search.mapfolder
                   -> (Core.kind, 'state, 'abort) Search.mapfolder
     val map : (Core.kind' -> Core.kind') -> Core.kind -> Core.kind
@@ -37,6 +39,8 @@ structure Kind : sig
 end
 
 structure Con : sig
+    val compare : Core.con * Core.con -> order
+
     datatype binder =
              Rel of string * Core.kind
            | Named of string * int * Core.kind * Core.con option
@@ -64,6 +68,10 @@ structure Con : sig
 
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool} -> Core.con -> bool
+
+    val foldMap : {kind : Core.kind' * 'state -> Core.kind' * 'state,
+                   con : Core.con' * 'state -> Core.con' * 'state}
+                  -> 'state -> Core.con -> Core.con * 'state
 end
 
 structure Exp : sig

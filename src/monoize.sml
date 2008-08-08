@@ -67,14 +67,16 @@ fun monoType env (all as (c, loc)) =
             (L'.TFfi ("Basis", "string"), loc)
 
           | L.CRel _ => poly ()
-          | L.CNamed n => raise Fail "Monoize CNamed"
-            (*let
-                val (_, xncs) = Env.lookupDatatype env n
+          | L.CNamed n =>
+            let
+                val (_, xs, xncs) = Env.lookupDatatype env n
 
                 val xncs = map (fn (x, n, to) => (x, n, Option.map (monoType env) to)) xncs
             in
-                (L'.TDatatype (MonoUtil.classifyDatatype xncs, n, xncs), loc)
-            end*)
+                case xs of
+                    [] => (L'.TDatatype (MonoUtil.classifyDatatype xncs, n, xncs), loc)
+                  | _ => poly ()
+            end
           | L.CFfi mx => (L'.TFfi mx, loc)
           | L.CApp _ => poly ()
           | L.CAbs _ => poly ()
@@ -206,7 +208,7 @@ fun fooifyExp fk env =
                     let
                         fun makeDecl n fm =
                             let
-                                val (x, xncs) = raise Fail "Monoize TDataype" (*Env.lookupDatatype env i*)
+                                val (x, _, xncs) = Env.lookupDatatype env i
 
                                 val (branches, fm) =
                                     ListUtil.foldlMap
@@ -292,13 +294,23 @@ fun monoPatCon env pc =
       | L.PConFfi {mod = m, datatyp, con, arg, ...} => L'.PConFfi {mod = m, datatyp = datatyp, con = con,
                                                                    arg = Option.map (monoType env) arg}
 
-fun monoPat env (p, loc) =
-    case p of
-        L.PWild => (L'.PWild, loc)
-      | L.PVar (x, t) => (L'.PVar (x, monoType env t), loc)
-      | L.PPrim p => (L'.PPrim p, loc)
-      | L.PCon (dk, pc, _, po) => raise Fail "Monoize PCon" (*(L'.PCon (dk, monoPatCon env pc, Option.map (monoPat env) po), loc)*)
-      | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, monoPat env p, monoType env t)) xps), loc)
+val dummyPat = (L'.PPrim (Prim.Int 0), ErrorMsg.dummySpan)
+
+fun monoPat env (all as (p, loc)) =
+    let
+        fun poly () =
+            (E.errorAt loc "Unsupported pattern";
+             Print.eprefaces' [("Pattern", CorePrint.p_pat env all)];
+             dummyPat)
+    in
+        case p of
+            L.PWild => (L'.PWild, loc)
+          | L.PVar (x, t) => (L'.PVar (x, monoType env t), loc)
+          | L.PPrim p => (L'.PPrim p, loc)
+          | L.PCon (dk, pc, [], po) => (L'.PCon (dk, monoPatCon env pc, Option.map (monoPat env) po), loc)
+          | L.PCon _ => poly ()
+          | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, monoPat env p, monoType env t)) xps), loc)
+    end
 
 fun monoExp (env, st, fm) (all as (e, loc)) =
     let
@@ -311,8 +323,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             L.EPrim p => ((L'.EPrim p, loc), fm)
           | L.ERel n => ((L'.ERel n, loc), fm)
           | L.ENamed n => ((L'.ENamed n, loc), fm)
-          | L.ECon (dk, pc, _, eo) => raise Fail "Monoize ECon"
-            (*let
+          | L.ECon (dk, pc, [], eo) =>
+            let
                 val (eo, fm) =
                     case eo of
                         NONE => (NONE, fm)
@@ -324,7 +336,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         end
             in
                 ((L'.ECon (dk, monoPatCon env pc, eo), loc), fm)
-            end*)
+            end
+          | L.ECon _ => poly ()
           | L.EFfi mx => ((L'.EFfi mx, loc), fm)
           | L.EFfiApp (m, x, es) =>
             let
@@ -718,12 +731,13 @@ fun monoDecl (env, fm) (all as (d, loc)) =
     in
         case d of
             L.DCon _ => NONE
-          | L.DDatatype (x, n, _, xncs) => raise Fail "Monoize DDatatype"
-            (*let
+          | L.DDatatype (x, n, [], xncs) =>
+            let
                 val d = (L'.DDatatype (x, n, map (fn (x, n, to) => (x, n, Option.map (monoType env) to)) xncs), loc)
             in
                 SOME (Env.declBinds env all, fm, d)
-            end*)
+            end
+          | L.DDatatype _ => poly ()
           | L.DVal (x, n, t, e, s) =>
             let
                 val (e, fm) = monoExp (env, St.empty, fm) e

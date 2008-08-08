@@ -538,7 +538,7 @@ structure St : sig
              val k = (L'.KType, loc)
              val dcons = map (fn (x, n, to) =>
                                  let
-                                     val args = ListUtil.mapi (fn (i, _) => (L'.CRel n, loc)) xs
+                                     val args = ListUtil.mapi (fn (i, _) => (L'.CRel i, loc)) xs
                                      val (e, t) =
                                          case to of
                                              NONE => ((L'.ECon (dk, L'.PConVar n, args, NONE), loc), t)

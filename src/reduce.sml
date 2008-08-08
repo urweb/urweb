@@ -35,19 +35,7 @@ structure E = CoreEnv
 structure U = CoreUtil
 
 val liftConInCon = E.liftConInCon
-
-val subConInCon =
-    U.Con.mapB {kind = fn k => k,
-                con = fn (xn, rep) => fn c =>
-                                  case c of
-                                      CRel xn' =>
-                                      (case Int.compare (xn', xn) of
-                                           EQUAL => #1 rep
-                                         | GREATER => CRel (xn' - 1)
-                                         | LESS => c)
-                                    | _ => c,
-                bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
-                        | (ctx, _) => ctx}
+val subConInCon = E.subConInCon
 
 val liftExpInExp =
     U.Exp.mapB {kind = fn k => k,
