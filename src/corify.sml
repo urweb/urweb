@@ -62,7 +62,7 @@ structure St : sig
 
     val enter : t -> t
     val leave : t -> {outer : t, inner : t}
-    val ffi : string -> L'.con SM.map -> (string * L'.con option * L'.datatype_kind) SM.map -> t
+    val ffi : string -> L'.con SM.map -> (string * string list * L'.con option * L'.datatype_kind) SM.map -> t
 
     datatype core_con =
              CNormal of int
@@ -101,7 +101,7 @@ structure St : sig
                       funs : (string * int * L.str) SM.map}
         | FFfi of {mod : string,
                    vals : L'.con SM.map,
-                   constructors : (string * L'.con option * L'.datatype_kind) SM.map}
+                   constructors : (string * string list * L'.con option * L'.datatype_kind) SM.map}
 
  type t = {
       cons : int IM.map,
@@ -263,7 +263,7 @@ structure St : sig
          FFfi {mod = m, constructors, ...} =>
          (case SM.find (constructors, x) of
               NONE => NONE
-            | SOME (n, to, dk) => SOME (L'.PConFfi {mod = m, datatyp = n, con = x, arg = to, kind = dk}))
+            | SOME (n, xs, to, dk) => SOME (L'.PConFfi {mod = m, datatyp = n, params = xs, con = x, arg = to, kind = dk}))
        | FNormal {constructors, ...} =>
          case SM.find (constructors, x) of
              NONE => NONE
@@ -274,7 +274,7 @@ structure St : sig
          FFfi {mod = m, constructors, ...} =>
          (case SM.find (constructors, x) of
               NONE => raise Fail "Corify.St.lookupConstructorByName [1]"
-            | SOME (n, to, dk) => L'.PConFfi {mod = m, datatyp = n, con = x, arg = to, kind = dk})
+            | SOME (n, xs, to, dk) => L'.PConFfi {mod = m, datatyp = n, params = xs, con = x, arg = to, kind = dk})
        | FNormal {constructors, ...} =>
          case SM.find (constructors, x) of
              NONE => raise Fail "Corify.St.lookupConstructorByName [2]"
@@ -429,7 +429,8 @@ structure St : sig
          L.PWild => (L'.PWild, loc)
        | L.PVar (x, t) => (L'.PVar (x, corifyCon st t), loc)
        | L.PPrim p => (L'.PPrim p, loc)
-       | L.PCon (dk, pc, ts, po) => raise Fail "Corify PCon" (*(L'.PCon (dk, corifyPatCon st pc, Option.map (corifyPat st) po), loc)*)
+       | L.PCon (dk, pc, ts, po) => (L'.PCon (dk, corifyPatCon st pc, map (corifyCon st) ts,
+                                              Option.map (corifyPat st) po), loc)
        | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, corifyPat st p, corifyCon st t)) xps), loc)
 
  fun corifyExp st (e, loc) =
@@ -446,11 +447,18 @@ structure St : sig
              val st = foldl St.lookupStrByName st ms
          in
              case St.lookupConstructorByNameOpt st x of
-                 SOME (pc as L'.PConFfi {mod = m, datatyp, arg, kind, ...}) =>
-                 (case arg of
-                      NONE => (L'.ECon (kind, pc, NONE), loc)
-                    | SOME dom => (L'.EAbs ("x", dom, (L'.CFfi (m, datatyp), loc),
-                                            (L'.ECon (kind, pc, SOME (L'.ERel 0, loc)), loc)), loc))
+                 SOME (pc as L'.PConFfi {mod = m, datatyp, params, arg, kind, ...}) =>
+                 let
+                     val args = ListUtil.mapi (fn (i, _) => (L'.CRel i, loc)) params
+                     val e = case arg of
+                                 NONE => (L'.ECon (kind, pc, args, NONE), loc)
+                               | SOME dom => (L'.EAbs ("x", dom, (L'.CFfi (m, datatyp), loc),
+                                                       (L'.ECon (kind, pc, args, SOME (L'.ERel 0, loc)), loc)), loc)
+
+                     val k = (L'.KType, loc)
+                 in
+                     foldr (fn (x, e) => (L'.ECAbs (x, k, e), loc)) e params
+                 end
                | _ =>
                  case St.lookupValByName st x of
                      St.ENormal n => (L'.ENamed n, loc)
@@ -512,8 +520,8 @@ structure St : sig
          in
              ([(L'.DCon (x, n, corifyKind k, corifyCon st c), loc)], st)
          end
-       | L.DDatatype (x, n, xs, xncs) => raise Fail "Corify DDatatype"
-         (*let
+       | L.DDatatype (x, n, xs, xncs) =>
+         let
              val (st, n) = St.bindCon st x n
              val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
                                                     let
@@ -526,24 +534,31 @@ structure St : sig
 
              val dk = CoreUtil.classifyDatatype xncs
              val t = (L'.CNamed n, loc)
+             val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel i, loc)), loc)) t xs
+             val k = (L'.KType, loc)
              val dcons = map (fn (x, n, to) =>
                                  let
+                                     val args = ListUtil.mapi (fn (i, _) => (L'.CRel n, loc)) xs
                                      val (e, t) =
                                          case to of
-                                             NONE => ((L'.ECon (dk, L'.PConVar n, NONE), loc), t)
+                                             NONE => ((L'.ECon (dk, L'.PConVar n, args, NONE), loc), t)
                                            | SOME t' => ((L'.EAbs ("x", t', t,
-                                                                   (L'.ECon (dk, L'.PConVar n, SOME (L'.ERel 0, loc)),
+                                                                   (L'.ECon (dk, L'.PConVar n, args,
+                                                                             SOME (L'.ERel 0, loc)),
                                                                     loc)),
                                                           loc),
                                                          (L'.TFun (t', t), loc))
+
+                                     val t = foldr (fn (x, t) => (L'.TCFun (x, k, t), loc)) t xs
+                                     val e = foldr (fn (x, e) => (L'.ECAbs (x, k, e), loc)) e xs
                                  in
                                      (L'.DVal (x, n, t, e, ""), loc)
                                  end) xncs
          in
-             ((L'.DDatatype (x, n, xncs), loc) :: dcons, st)
-         end*)
-       | L.DDatatypeImp (x, n, m1, ms, s, xs, xncs) => raise Fail "Corify DDatatypeImp"
-         (*let
+             ((L'.DDatatype (x, n, xs, xncs), loc) :: dcons, st)
+         end
+       | L.DDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
+         let
              val (st, n) = St.bindCon st x n
              val c = corifyCon st (L.CModProj (m1, ms, s), loc)
 
@@ -560,18 +575,24 @@ structure St : sig
                                                         ((x, n, co), st)
                                                     end) st xncs
 
+             val c = ListUtil.foldli (fn (i, _, c) => (L'.CApp (c, (L'.CRel i, loc)), loc)) c xs
+             val k = (L'.KType, loc)
+             val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
+
              val cds = map (fn (x, n, co) =>
                                let
                                    val t = case co of
                                                NONE => c
                                              | SOME t' => (L'.TFun (t', c), loc)
                                    val e = corifyExp st (L.EModProj (m1, ms, x), loc)
+
+                                   val t = foldr (fn (x, t) => (L'.TCFun (x, k, t), loc)) t xs
                                in
                                    (L'.DVal (x, n, t, e, x), loc)
                                end) xncs
          in
-             ((L'.DCon (x, n, (L'.KType, loc), c), loc) :: cds, st)
-         end*)
+             ((L'.DCon (x, n, k', c), loc) :: cds, st)
+         end
        | L.DVal (x, n, t, e) =>
          let
              val (st, n) = St.bindVal st x n
@@ -648,8 +669,9 @@ structure St : sig
                                          st)
                                     end
 
-                                  | L.SgiDatatype (x, n, xs, xnts) => raise Fail "Corify FFI SgiDatatype"
-                                    (*let
+                                  | L.SgiDatatype (x, n, xs, xnts) =>
+                                    let
+                                        val k = (L'.KType, loc)
                                         val dk = ExplUtil.classifyDatatype xnts
                                         val (st, n') = St.bindCon st x n
                                         val (xnts, (ds', st, cmap, conmap)) =
@@ -657,48 +679,57 @@ structure St : sig
                                                 (fn ((x', n, to), (ds', st, cmap, conmap)) =>
                                                     let
                                                         val dt = (L'.CNamed n', loc)
+                                                        val args = ListUtil.mapi (fn (i, _) => (L'.CRel i, loc)) xs
 
                                                         val to = Option.map (corifyCon st) to
 
                                                         val pc = L'.PConFfi {mod = m,
                                                                              datatyp = x,
+                                                                             params = xs,
                                                                              con = x',
                                                                              arg = to,
                                                                              kind = dk}
 
+                                                        fun wrapT t =
+                                                            foldr (fn (x, t) => (L'.TCFun (x, k, t), loc)) t xs
+                                                        fun wrapE e =
+                                                            foldr (fn (x, e) => (L'.ECAbs (x, k, e), loc)) e xs
+
                                                         val (cmap, d) =
                                                             case to of
-                                                                NONE => (SM.insert (cmap, x', dt),
-                                                                         (L'.DVal (x', n, dt,
-                                                                                   (L'.ECon (dk, pc, NONE), loc),
+                                                                NONE => (SM.insert (cmap, x', wrapT dt),
+                                                                         (L'.DVal (x', n, wrapT dt,
+                                                                                   wrapE
+                                                                                       (L'.ECon (dk, pc, args, NONE),
+                                                                                        loc),
                                                                                    ""), loc))
                                                               | SOME t =>
                                                                 let
                                                                     val tf = (L'.TFun (t, dt), loc)
-                                                                    val d = (L'.DVal (x', n, tf,
-                                                                                      (L'.EAbs ("x", t, tf,
-                                                                                                (L'.ECon (dk, pc,
-                                                                                                          SOME (L'.ERel 0,
-                                                                                                               loc)),
-                                                                                                loc)), loc), ""), loc)
+                                                                    val e = wrapE (L'.EAbs ("x", t, tf,
+                                                                                            (L'.ECon (dk, pc, args,
+                                                                                                      SOME (L'.ERel 0,
+                                                                                                            loc)),
+                                                                                             loc)), loc)
+                                                                    val d = (L'.DVal (x', n, wrapT tf,
+                                                                                      e, ""), loc)
                                                                in
-                                                                   (SM.insert (cmap, x', tf), d)
+                                                                   (SM.insert (cmap, x', wrapT tf), d)
                                                                end
 
                                                        val st = St.bindConstructor st x' n pc
-                                                       (*val st = St.bindConstructorVal st x' n*)
 
-                                                       val conmap = SM.insert (conmap, x', (x, to, dk))
+                                                       val conmap = SM.insert (conmap, x', (x, xs, to, dk))
                                                    in
                                                        ((x', n, to),
                                                         (d :: ds', st, cmap, conmap))
                                                    end) ([], st, cmap, conmap) xnts
                                    in
-                                       (ds' @ (L'.DDatatype (x, n', xnts), loc) :: ds,
+                                       (ds' @ (L'.DDatatype (x, n', xs, xnts), loc) :: ds,
                                         cmap,
                                         conmap,
                                         st)
-                                   end*)
+                                   end
 
                                  | L.SgiVal (x, _, c) =>
                                    (ds,

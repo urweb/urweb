@@ -173,10 +173,10 @@ fun p_pat' par env (p, _) =
         PWild => string "_"
       | PVar (s, _) => string s
       | PPrim p => Prim.p_t p
-      | PCon (_, n, NONE) => p_patCon env n
-      | PCon (_,n, SOME p) => parenIf par (box [p_patCon env n,
-                                                space,
-                                                p_pat' true env p])
+      | PCon (_, n, _, NONE) => p_patCon env n
+      | PCon (_, n, _, SOME p) => parenIf par (box [p_patCon env n,
+                                                    space,
+                                                    p_pat' true env p])
       | PRecord xps =>
         box [string "{",
              p_list_sep (box [string ",", space]) (fn (x, p, _) =>
@@ -199,10 +199,10 @@ fun p_exp' par env (e, _) =
               string (#1 (E.lookupERel env n)))
          handle E.UnboundRel _ => string ("UNBOUND_" ^ Int.toString n))
       | ENamed n => p_enamed env n
-      | ECon (_, pc, NONE) => p_patCon env pc
-      | ECon (_, pc, SOME e) => parenIf par (box [p_patCon env pc,
-                                                  space,
-                                                  p_exp' true env e])
+      | ECon (_, pc, _, NONE) => p_patCon env pc
+      | ECon (_, pc, _, SOME e) => parenIf par (box [p_patCon env pc,
+                                                     space,
+                                                     p_exp' true env e])
       | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
       | EFfiApp (m, x, es) => box [string "FFI(",
                                    string m,
@@ -344,13 +344,16 @@ fun p_export_kind ck =
         Link => string "link"
       | Action => string "action"
 
-fun p_datatype env (x, n, cons) =
+fun p_datatype env (x, n, xs, cons) =
     let
+        val k = (KType, ErrorMsg.dummySpan)
         val env = E.pushCNamed env x n (KType, ErrorMsg.dummySpan) NONE
+        val env = foldl (fn (x, env) => E.pushCRel env x k) env xs
     in
         box [string "datatype",
              space,
              string x,
+             p_list_sep (box []) (fn x => box [space, string x]) xs,
              space,
              string "=",
              space,

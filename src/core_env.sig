@@ -42,10 +42,10 @@ signature CORE_ENV = sig
     val pushCNamed : env -> string -> int -> Core.kind -> Core.con option -> env
     val lookupCNamed : env -> int -> string * Core.kind * Core.con option
 
-    val pushDatatype : env -> string -> int -> (string * int * Core.con option) list -> env
-    val lookupDatatype : env -> int -> string * (string * int * Core.con option) list
+    val pushDatatype : env -> string -> int -> string list -> (string * int * Core.con option) list -> env
+    val lookupDatatype : env -> int -> string * string list * (string * int * Core.con option) list
 
-    val lookupConstructor : env -> int -> string * Core.con option * int
+    val lookupConstructor : env -> int -> string * string list * Core.con option * int
 
     val pushERel : env -> string -> Core.con -> env
     val lookupERel : env -> int -> string * Core.con

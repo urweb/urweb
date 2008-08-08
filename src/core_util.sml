@@ -233,14 +233,19 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                 EPrim _ => S.return2 eAll
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
-              | ECon (_, _, NONE) => S.return2 eAll
-              | ECon (dk, n, SOME e) =>
-                S.map2 (mfe ctx e,
-                        fn e' =>
-                           (ECon (dk, n, SOME e'), loc))
+              | ECon (dk, pc, cs, NONE) =>
+                S.map2 (ListUtil.mapfold (mfc ctx) cs,
+                        fn cs' =>
+                           (ECon (dk, pc, cs', NONE), loc))
+              | ECon (dk, n, cs, SOME e) =>
+                S.bind2 (mfe ctx e,
+                      fn e' =>
+                         S.map2 (ListUtil.mapfold (mfc ctx) cs,
+                                 fn cs' =>
+                                    (ECon (dk, n, cs', SOME e'), loc)))
               | EFfi _ => S.return2 eAll
               | EFfiApp (m, x, es) =>
-                S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,
+                S.map2 (ListUtil.mapfold (mfe ctx) es,
                      fn es' =>
                         (EFfiApp (m, x, es'), loc))
               | EApp (e1, e2) =>
@@ -414,7 +419,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                          S.map2 (mfc ctx c,
                               fn c' =>
                                  (DCon (x, n, k', c'), loc)))
-              | DDatatype (x, n, xncs) =>
+              | DDatatype (x, n, xs, xncs) =>
                 S.map2 (ListUtil.mapfold (fn (x, n, c) =>
                                              case c of
                                                  NONE => S.return2 (x, n, c)
@@ -422,7 +427,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                                                  S.map2 (mfc ctx c,
                                                       fn c' => (x, n, SOME c'))) xncs,
                         fn xncs' =>
-                           (DDatatype (x, n, xncs'), loc))
+                           (DDatatype (x, n, xs, xncs'), loc))
               | DVal vi =>
                 S.map2 (mfvi ctx vi,
                      fn vi' =>
@@ -491,16 +496,24 @@ fun mapfoldB (all as {bind, ...}) =
                                 val ctx' =
                                     case #1 d' of
                                         DCon (x, n, k, c) => bind (ctx, NamedC (x, n, k, SOME c))
-                                      | DDatatype (x, n, xncs) =>
+                                      | DDatatype (x, n, xs, xncs) =>
                                         let
-                                            val ctx = bind (ctx, NamedC (x, n, (KType, #2 d'), NONE))
+                                            val loc = #2 d'
+                                            val k = (KType, loc)
+                                            val k' = foldl (fn (_, k') => (KArrow (k, k'), loc)) k xs
+
+                                            val ctx = bind (ctx, NamedC (x, n, k', NONE))
                                             val t = (CNamed n, #2 d')
+                                            val t = ListUtil.foldli (fn (i, _, t) => (CApp (t, (CRel i, loc)), loc))
+                                                                    t xs
                                         in
                                             foldl (fn ((x, n, to), ctx) =>
                                                       let
                                                           val t = case to of
                                                                       NONE => t
                                                                     | SOME t' => (TFun (t', t), #2 d')
+                                                          val t = foldr (fn (x, t) => (TCFun (x, k, t), loc))
+                                                                        t xs
                                                       in
                                                           bind (ctx, NamedE (x, n, t, NONE, ""))
                                                       end)
@@ -555,7 +568,7 @@ fun foldMap {kind, con, exp, decl} s d =
 val maxName = foldl (fn ((d, _) : decl, count) =>
                         case d of
                             DCon (_, n, _, _) => Int.max (n, count)
-                          | DDatatype (_, n, _) => Int.max (n, count)
+                          | DDatatype (_, n, _, _) => Int.max (n, count)
                           | DVal (_, n, _, _, _) => Int.max (n, count)
                           | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
                           | DExport _ => count) 0
