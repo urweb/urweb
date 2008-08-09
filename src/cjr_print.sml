@@ -80,6 +80,7 @@ fun p_typ' par env (t, loc) =
            | SOME t =>
              case #1 t of
                  TDatatype _ => p_typ' par env t
+               | TFfi ("Basis", "string") => p_typ' par env t
                | _ => box [p_typ' par env t,
                            string "*"])
       | TDatatype (Default, n, _) =>
@@ -216,6 +217,8 @@ fun p_pat (env, exit, depth) (p, _) =
                                   case #1 t of
                                       TDatatype _ => box [string "disc",
                                                           string (Int.toString depth)]
+                                    | TFfi ("Basis", "string") => box [string "disc",
+                                                                       string (Int.toString depth)]
                                     | _ => box [string "*disc",
                                                 string (Int.toString depth)],
                               string ";",
@@ -336,6 +339,7 @@ fun p_exp' par env (e, loc) =
         in
             case #1 t of
                 TDatatype _ => p_exp' par env e
+              | TFfi ("Basis", "string") => p_exp' par env e
               | _ => box [string "({",
                           newline,
                           p_typ env t,
@@ -914,6 +918,7 @@ fun p_file env (ds, ps) =
                          
                          case #1 t of
                              TDatatype _ => unurlify t
+                           | TFfi ("Basis", "string") => unurlify t
                            | _ => box [string "({",
                                        newline,
                                        p_typ env t,
@@ -984,8 +989,6 @@ fun p_file env (ds, ps) =
                                  space,
                                  string (Int.toString (size x')),
                                  string ";",
-                                 newline,
-                                 string "if (request[0] == '/') ++request;",
                                  newline,
                                  case to of
                                      NONE => box []

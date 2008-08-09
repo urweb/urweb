@@ -543,8 +543,6 @@ lw_Basis_string lw_Basis_strcat(lw_context ctx, lw_Basis_string s1, lw_Basis_str
   int len = strlen(s1) + strlen(s2) + 1;
   char *s;
 
-  printf("s1 = %s\ns2 = %s\n", s1, s2);
-
   lw_check_heap(ctx, len);
 
   s = ctx->heap_front;
@@ -552,8 +550,6 @@ lw_Basis_string lw_Basis_strcat(lw_context ctx, lw_Basis_string s1, lw_Basis_str
   strcpy(s, s1);
   strcat(s, s2);
   ctx->heap_front += len;
-
-  printf("s = %s\n", s);
 
   return s;
 }
