@@ -853,7 +853,7 @@ fun p_file env (ds, ps) =
                                  newline,
                                  case to of
                                      NONE => box []
-                                   | SOME t => box [string "tmp->data.__lwc_",
+                                   | SOME t => box [string "tmp->data.lw_",
                                                     string x',
                                                     space,
                                                     string "=",
