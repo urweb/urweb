@@ -532,7 +532,7 @@ structure St : sig
                                                         ((x, n, co), st)
                                                     end) st xncs
 
-             val dk = CoreUtil.classifyDatatype xncs
+             val dk = ElabUtil.classifyDatatype xncs
              val t = (L'.CNamed n, loc)
              val nxs = length xs - 1
              val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
@@ -674,7 +674,7 @@ structure St : sig
                                   | L.SgiDatatype (x, n, xs, xnts) =>
                                     let
                                         val k = (L'.KType, loc)
-                                        val dk = ExplUtil.classifyDatatype xnts
+                                        val dk = ElabUtil.classifyDatatype xnts
                                         val (st, n') = St.bindCon st x n
                                         val (xnts, (ds', st, cmap, conmap)) =
                                             ListUtil.foldlMap

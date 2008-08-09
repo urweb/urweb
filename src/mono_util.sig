@@ -27,8 +27,6 @@
 
 signature MONO_UTIL = sig
 
-val classifyDatatype : (string * int * Mono.typ option) list -> Mono.datatype_kind
-
 structure Typ : sig
     val compare : Mono.typ * Mono.typ -> order
     val sortFields : (string * Mono.typ) list -> (string * Mono.typ) list

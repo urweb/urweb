@@ -29,12 +29,6 @@ structure MonoUtil :> MONO_UTIL = struct
 
 open Mono
 
-fun classifyDatatype xncs =
-    if List.all (fn (_, _, NONE) => true | _ => false) xncs then
-        Enum
-    else
-        Default
-
 structure S = Search
 
 structure Typ = struct
@@ -354,7 +348,7 @@ fun mapfoldB (all as {bind, ...}) =
                                         DDatatype (x, n, xncs) =>
                                         let
                                             val ctx = bind (ctx, Datatype (x, n, xncs))
-                                            val t = (TDatatype (n, ref (classifyDatatype xncs, xncs)), #2 d')
+                                            val t = (TDatatype (n, ref (ElabUtil.classifyDatatype xncs, xncs)), #2 d')
                                         in
                                             foldl (fn ((x, n, to), ctx) =>
                                                       let

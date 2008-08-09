@@ -84,7 +84,7 @@ fun monoType env =
                              val xncs = map (fn (x, n, to) => (x, n, Option.map (mt env dtmap') to)) xncs
                          in
                              case xs of
-                                 [] =>(r := (MonoUtil.classifyDatatype xncs, xncs);
+                                 [] =>(r := (ElabUtil.classifyDatatype xncs, xncs);
                                        (L'.TDatatype (n, r), loc))
                                | _ => poly ()
                          end)

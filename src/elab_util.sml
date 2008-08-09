@@ -30,10 +30,14 @@ structure ElabUtil :> ELAB_UTIL = struct
 open Elab
 
 fun classifyDatatype xncs =
-    if List.all (fn (_, _, NONE) => true | _ => false) xncs then
-        Enum
-    else
-        Default
+    case xncs of
+        [(_, _, NONE), (_, _, SOME _)] => Option
+      | [(_, _, SOME _), (_, _, NONE)] => Option
+      | _ =>
+        if List.all (fn (_, _, NONE) => true | _ => false) xncs then
+            Enum
+        else
+            Default
 
 structure S = Search
 

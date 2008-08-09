@@ -74,6 +74,14 @@ fun p_typ' par env (t, loc) =
               space,
               string ("__lwe_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n)]
          handle CjrEnv.UnboundNamed _ => string ("__lwd_UNBOUND__" ^ Int.toString n))
+      | TDatatype (Option, n, xncs) =>
+        (case ListUtil.search #3 (!xncs) of
+             NONE => raise Fail "CjrPrint: TDatatype marked Option has no constructor with an argument"
+           | SOME t =>
+             case #1 t of
+                 TDatatype _ => p_typ' par env t
+               | _ => box [p_typ' par env t,
+                           string "*"])
       | TDatatype (Default, n, _) =>
         (box [string "struct",
               space,
@@ -198,10 +206,18 @@ fun p_pat (env, exit, depth) (p, _) =
                               space,
                               string "=",
                               space,
-                              string "disc",
-                              string (Int.toString depth),
-                              string "->data.",
-                              string x,
+                              case dk of
+                                  Enum => raise Fail "CjrPrint: Looking at argument of no-argument constructor"
+                                | Default => box [string "disc",
+                                                  string (Int.toString depth),
+                                                  string "->data.",
+                                                  string x]
+                                | Option =>
+                                  case #1 t of
+                                      TDatatype _ => box [string "disc",
+                                                          string (Int.toString depth)]
+                                    | _ => box [string "*disc",
+                                                string (Int.toString depth)],
                               string ";",
                               newline,
                               p,
@@ -214,13 +230,24 @@ fun p_pat (env, exit, depth) (p, _) =
                   space,
                   string "(disc",
                   string (Int.toString depth),
-                  case dk of
-                      Enum => box []
-                    | Default => string "->tag",
-                  space,
-                  string "!=",
-                  space,
-                  p_patCon env pc,
+                  case (dk, po) of
+                      (Enum, _) => box [space,
+                                        string "!=",
+                                        space,
+                                        p_patCon env pc]
+                    | (Default, _) => box [string "->tag",
+                                           space,
+                                           string "!=",
+                                           space,
+                                           p_patCon env pc]
+                    | (Option, NONE) => box [space,
+                                             string "!=",
+                                             space,
+                                             string "NULL"]
+                    | (Option, SOME _) => box [space,
+                                               string "==",
+                                               space,
+                                               string "NULL"],
                   string ")",
                   space,
                   exit,
@@ -296,6 +323,41 @@ fun p_exp' par env (e, loc) =
       | ERel n => p_rel env n
       | ENamed n => p_enamed env n
       | ECon (Enum, pc, _) => p_patCon env pc
+      | ECon (Option, pc, NONE) => string "NULL"
+      | ECon (Option, pc, SOME e) =>
+        let
+            val to = case pc of
+                         PConVar n => #2 (E.lookupConstructor env n)
+                       | PConFfi {arg, ...} => arg
+
+            val t = case to of
+                        NONE => raise Fail "CjrPrint: ECon argument status mismatch"
+                      | SOME t => t
+        in
+            case #1 t of
+                TDatatype _ => p_exp' par env e
+              | _ => box [string "({",
+                          newline,
+                          p_typ env t,
+                          space,
+                          string "*tmp",
+                          space,
+                          string "=",
+                          space,
+                          string "lw_malloc(ctx, sizeof(",
+                          p_typ env t,
+                          string "));",
+                          newline,
+                          string "*tmp",
+                          space,
+                          string "=",
+                          p_exp' par env e,
+                          string ";",
+                          newline,
+                          string "tmp;",
+                          newline,
+                          string "})"]
+        end
       | ECon (Default, pc, eo) =>
         let
             val (xd, xc, xn) = patConInfo env pc
@@ -522,6 +584,7 @@ fun p_decl env (dAll as (d, _) : decl) =
              p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__lwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
              space,
              string "};"]
+      | DDatatype (Option, _, _, _) => box []
       | DDatatype (Default, x, n, xncs) =>
         let
             val xncsArgs = List.mapPartial (fn (x, n, NONE) => NONE
@@ -807,6 +870,79 @@ fun p_file env (ds, ps) =
                     doEm xncs
                 end
 
+              | TDatatype (Option, i, xncs) =>
+                let
+                    val (x, _) = E.lookupDatatype env i
+
+                    val (no_arg, has_arg, t) =
+                        case !xncs of
+                            [(no_arg, _, NONE), (has_arg, _, SOME t)] =>
+                            (no_arg, has_arg, t)
+                          | [(has_arg, _, SOME t), (no_arg, _, NONE)] =>
+                            (no_arg, has_arg, t)
+                          | _ => raise Fail "CjrPrint: unfooify misclassified Option datatype"
+                in
+                    box [string "(request[0] == '/' ? ++request : request,",
+                         newline,
+                         string "((!strncmp(request, \"",
+                         string no_arg,
+                         string "\", ",
+                         string (Int.toString (size no_arg)),
+                         string ") && (request[",
+                         string (Int.toString (size no_arg)),
+                         string "] == 0 || request[",
+                         string (Int.toString (size no_arg)),
+                         string "] == '/')) ? (request",
+                         space,
+                         string "+=",
+                         space,
+                         string (Int.toString (size no_arg)),
+                         string ", NULL) : ((!strncmp(request, \"",
+                         string has_arg,
+                         string "\", ",
+                         string (Int.toString (size has_arg)),
+                         string ") && (request[",
+                         string (Int.toString (size has_arg)),
+                         string "] == 0 || request[",
+                         string (Int.toString (size has_arg)),
+                         string "] == '/')) ? (request",
+                         space,
+                         string "+=",
+                         space,
+                         string (Int.toString (size has_arg)),
+                         string ", ",
+                         
+                         case #1 t of
+                             TDatatype _ => unurlify t
+                           | _ => box [string "({",
+                                       newline,
+                                       p_typ env t,
+                                       space,
+                                       string "*tmp",
+                                       space,
+                                       string "=",
+                                       space,
+                                       string "lw_malloc(ctx, sizeof(",
+                                       p_typ env t,
+                                       string "));",
+                                       newline,
+                                       string "*tmp",
+                                       space,
+                                       string "=",
+                                       space,
+                                       unurlify t,
+                                       string ";",
+                                       newline,
+                                       string "tmp;",
+                                       newline,
+                                       string "})"],
+                         string ")",
+                         newline,
+                         string ":",
+                         space,
+                         string ("(lw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL))))")]
+                end                     
+
               | TDatatype (Default, i, _) =>
                 let
                     val (x, xncs) = E.lookupDatatype env i
@@ -955,7 +1091,11 @@ fun p_file env (ds, ps) =
                      string (String.toString s),
                      string "\", ",
                      string (Int.toString (size s)),
-                     string ")) {",
+                     string ") && (request[",
+                     string (Int.toString (size s)),
+                     string "] == 0 || request[",
+                     string (Int.toString (size s)),
+                     string "] == '/')) {",
                      newline,
                      string "request += ",
                      string (Int.toString (size s)),

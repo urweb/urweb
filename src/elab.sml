@@ -73,6 +73,7 @@ withtype con = con' located
 
 datatype datatype_kind =
          Enum
+       | Option
        | Default
 
 datatype patCon =

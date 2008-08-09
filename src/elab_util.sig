@@ -27,7 +27,7 @@
 
 signature ELAB_UTIL = sig
 
-val classifyDatatype : (string * int * Elab.con option) list -> Elab.datatype_kind
+val classifyDatatype : (string * int * 'a option) list -> Elab.datatype_kind
 
 structure Kind : sig
     val mapfold : (Elab.kind', 'state, 'abort) Search.mapfolder

@@ -282,7 +282,7 @@ fun cifyDecl ((d, loc), sm) =
     case d of
         L.DDatatype (x, n, xncs) =>
         let
-            val dk = MonoUtil.classifyDatatype xncs
+            val dk = ElabUtil.classifyDatatype xncs
             val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
                                                    case to of
                                                        NONE => ((x, n, NONE), sm)
