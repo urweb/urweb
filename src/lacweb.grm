@@ -47,7 +47,7 @@ fun uppercaseFirst "" = ""
  | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT
  | DATATYPE | OF
  | TYPE | NAME
- | ARROW | LARROW | DARROW
+ | ARROW | LARROW | DARROW | STAR
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT
@@ -87,6 +87,7 @@ fun uppercaseFirst "" = ""
  | cexp of con
  | capps of con
  | cterm of con
+ | ctuple of con list
  | ident of con
  | rcon of (con * con) list
  | rconn of (con * con) list
@@ -95,6 +96,7 @@ fun uppercaseFirst "" = ""
  | eexp of exp
  | eapps of exp
  | eterm of exp
+ | etuple of exp list
  | rexp of (con * exp) list
  | xml of exp
  | xmlOne of exp
@@ -106,6 +108,7 @@ fun uppercaseFirst "" = ""
  | pat of pat
  | pterm of pat
  | rpat of (string * pat) list * bool
+ | ptuple of pat list
 
  | attrs of (con * exp) list
  | attr of con * exp
@@ -120,12 +123,14 @@ fun uppercaseFirst "" = ""
 
 %name Lacweb
 
+%nonassoc IF THEN ELSE
 %nonassoc DARROW
 %nonassoc COLON
 %nonassoc DCOLON TCOLON
 %right COMMA
 %right ARROW LARROW
 %right PLUSPLUS MINUSMINUS
+%right STAR
 %nonassoc TWIDDLE
 %nonassoc DOLLAR
 %left DOT
@@ -268,6 +273,14 @@ cexp   : capps                          (capps)
        | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, kindright))
 
        | UNDER DCOLON kind              (CWild kind, s (UNDERleft, UNDERright))
+       | ctuple                         (let
+                                             val loc = s (ctupleleft, ctupleright)
+                                         in
+                                             (TRecord (CRecord (ListUtil.mapi (fn (i, c) =>
+                                                                                  ((CName (Int.toString (i + 1)), loc),
+                                                                                   c)) ctuple),
+                                                       loc), loc)
+                                         end)
 
 kcolon : DCOLON                         (Explicit)
        | TCOLON                         (Implicit)
@@ -288,11 +301,15 @@ cterm  : LPAREN cexp RPAREN             (#1 cexp, s (LPARENleft, RPARENright))
 					 s (LBRACEleft, RBRACEright))
        | DOLLAR cterm                   (TRecord cterm, s (DOLLARleft, ctermright))
        | HASH CSYMBOL                   (CName CSYMBOL, s (HASHleft, CSYMBOLright))
+       | HASH INT                       (CName (Int64.toString INT), s (HASHleft, INTright))
 
        | path                           (CVar path, s (pathleft, pathright))
        | UNDER                          (CWild (KWild, s (UNDERleft, UNDERright)), s (UNDERleft, UNDERright))
        | FOLD                           (CFold, s (FOLDleft, FOLDright))
        | UNIT                           (CUnit, s (UNITleft, UNITright))
+
+ctuple : cterm STAR cterm               ([cterm1, cterm2])
+       | cterm STAR ctuple              (cterm :: ctuple)
 
 rcon   :                                ([])
        | ident EQ cexp                  ([(ident, cexp)])
@@ -306,6 +323,7 @@ rcone  :                                ([])
        | ident COLON cexp COMMA rcone   ((ident, cexp) :: rcone)
 
 ident  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | INT                            (CName (Int64.toString INT), s (INTleft, INTright))
        | path                           (CVar path, s (pathleft, pathright))
 
 eapps  : eterm                          (eterm)
@@ -323,7 +341,9 @@ eexp   : eapps                          (eapps)
                                              (EAbs ("_", SOME (TRecord (CRecord [], loc), loc), eexp), loc)
                                          end)
 
-       | LPAREN eexp RPAREN DCOLON cexp (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
+       | LPAREN etuple RPAREN COLON cexp(case etuple of
+                                             [eexp] => (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
+                                           | _ => raise Fail "Multiple arguments to expression type annotation")
        | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
        | CASE eexp OF barOpt branch branchs (ECase (eexp, branch :: branchs), s (CASEleft, branchsright))
        | IF eexp THEN eexp ELSE eexp    (let
@@ -334,6 +354,13 @@ eexp   : eapps                          (eapps)
                                          end)
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
+       | LPAREN etuple RPAREN           (let
+                                             val loc = s (LPARENleft, RPARENright)
+                                         in
+                                             (ERecord (ListUtil.mapi (fn (i, e) =>
+                                                                         ((CName (Int.toString (i + 1)), loc),
+                                                                          e)) etuple), loc)
+                                         end)
 
        | path                           (EVar path, s (pathleft, pathright))
        | cpath                          (EVar cpath, s (cpathleft, cpathright))
@@ -352,6 +379,9 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
                                          s (XML_BEGINleft, XML_ENDright))
 
+etuple : eexp COMMA eexp                ([eexp1, eexp2])
+       | eexp COMMA etuple              (eexp :: etuple)
+
 branch : pat DARROW eexp                (pat, eexp)
 
 branchs:                                ([])
@@ -369,10 +399,16 @@ pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright
        | LBRACE RBRACE                  (PRecord ([], false), s (LBRACEleft, RBRACEright))
        | UNIT                           (PRecord ([], false), s (UNITleft, UNITright))
        | LBRACE rpat RBRACE             (PRecord rpat, s (LBRACEleft, RBRACEright))
+       | LPAREN ptuple RPAREN           (PRecord (ListUtil.mapi (fn (i, p) => (Int.toString (i + 1), p)) ptuple,
+                                                  false),
+                                         s (LPARENleft, RPARENright))
 
 rpat   : CSYMBOL EQ pat                 ([(CSYMBOL, pat)], false)
        | DOTDOTDOT                      ([], true)
        | CSYMBOL EQ pat COMMA rpat      ((CSYMBOL, pat) :: #1 rpat, #2 rpat)
+
+ptuple : pat COMMA pat                  ([pat1, pat2])
+       | pat COMMA ptuple               (pat :: ptuple)
 
 rexp   :                                ([])
        | ident EQ eexp                  ([(ident, eexp)])
