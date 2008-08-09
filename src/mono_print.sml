@@ -53,7 +53,7 @@ fun p_typ' par env (t, _) =
                                             space,
                                             p_typ env t]) xcs,
                             string "}"]
-      | TDatatype (_, n, _) =>
+      | TDatatype (n, _) =>
         ((if !debug then
               string (#1 (E.lookupDatatype env n) ^ "__" ^ Int.toString n)
           else

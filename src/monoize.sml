@@ -33,7 +33,9 @@ structure Env = CoreEnv
 structure L = Core
 structure L' = Mono
 
-val dummyTyp = (L'.TDatatype (L'.Enum, 0, []), E.dummySpan)
+structure IM = IntBinaryMap
+
+val dummyTyp = (L'.TDatatype (0, ref (L'.Enum, [])), E.dummySpan)
 
 fun monoName env (all as (c, loc)) =
     let
@@ -47,46 +49,58 @@ fun monoName env (all as (c, loc)) =
           | _ => poly ()
     end
 
-fun monoType env (all as (c, loc)) =
+fun monoType env =
     let
-        fun poly () =
-            (E.errorAt loc "Unsupported type constructor";
-             Print.eprefaces' [("Constructor", CorePrint.p_con env all)];
-             dummyTyp)
-    in
-        case c of
-            L.TFun (c1, c2) => (L'.TFun (monoType env c1, monoType env c2), loc)
-          | L.TCFun _ => poly ()
-          | L.TRecord (L.CRecord ((L.KType, _), xcs), _) =>
-            (L'.TRecord (map (fn (x, t) => (monoName env x, monoType env t)) xcs), loc)
-          | L.TRecord _ => poly ()
-
-          | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
-            (L'.TFfi ("Basis", "string"), loc)
-          | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
-            (L'.TFfi ("Basis", "string"), loc)
-
-          | L.CRel _ => poly ()
-          | L.CNamed n =>
+        fun mt env dtmap (all as (c, loc)) =
             let
-                val (_, xs, xncs) = Env.lookupDatatype env n
-
-                val xncs = map (fn (x, n, to) => (x, n, Option.map (monoType env) to)) xncs
+                fun poly () =
+                    (E.errorAt loc "Unsupported type constructor";
+                     Print.eprefaces' [("Constructor", CorePrint.p_con env all)];
+                     dummyTyp)
             in
-                case xs of
-                    [] => (L'.TDatatype (MonoUtil.classifyDatatype xncs, n, xncs), loc)
-                  | _ => poly ()
+                case c of
+                    L.TFun (c1, c2) => (L'.TFun (mt env dtmap c1, mt env dtmap c2), loc)
+                  | L.TCFun _ => poly ()
+                  | L.TRecord (L.CRecord ((L.KType, _), xcs), _) =>
+                    (L'.TRecord (map (fn (x, t) => (monoName env x, mt env dtmap t)) xcs), loc)
+                  | L.TRecord _ => poly ()
+
+                  | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+
+                  | L.CRel _ => poly ()
+                  | L.CNamed n =>
+                    (case IM.find (dtmap, n) of
+                         SOME r => (L'.TDatatype (n, r), loc)
+                       | NONE =>
+                         let
+                             val r = ref (L'.Default, [])
+                             val (_, xs, xncs) = Env.lookupDatatype env n
+                                                 
+                             val dtmap' = IM.insert (dtmap, n, r)
+                                          
+                             val xncs = map (fn (x, n, to) => (x, n, Option.map (mt env dtmap') to)) xncs
+                         in
+                             case xs of
+                                 [] =>(r := (MonoUtil.classifyDatatype xncs, xncs);
+                                       (L'.TDatatype (n, r), loc))
+                               | _ => poly ()
+                         end)
+                  | L.CFfi mx => (L'.TFfi mx, loc)
+                  | L.CApp _ => poly ()
+                  | L.CAbs _ => poly ()
+
+                  | L.CName _ => poly ()
+
+                  | L.CRecord _ => poly ()
+                  | L.CConcat _ => poly ()
+                  | L.CFold _ => poly ()
+                  | L.CUnit => poly ()
             end
-          | L.CFfi mx => (L'.TFfi mx, loc)
-          | L.CApp _ => poly ()
-          | L.CAbs _ => poly ()
-
-          | L.CName _ => poly ()
-
-          | L.CRecord _ => poly ()
-          | L.CConcat _ => poly ()
-          | L.CFold _ => poly ()
-          | L.CUnit => poly ()
+    in
+        mt env IM.empty
     end
 
 val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
@@ -204,7 +218,7 @@ fun fooifyExp fk env =
                     L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [e]), loc), fm)
                   | L'.TRecord [] => ((L'.EPrim (Prim.String ""), loc), fm)
 
-                  | L'.TDatatype (dk, i, _) =>
+                  | L'.TDatatype (i, ref (dk, _)) =>
                     let
                         fun makeDecl n fm =
                             let
@@ -733,9 +747,10 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             L.DCon _ => NONE
           | L.DDatatype (x, n, [], xncs) =>
             let
-                val d = (L'.DDatatype (x, n, map (fn (x, n, to) => (x, n, Option.map (monoType env) to)) xncs), loc)
+                val env' = Env.declBinds env all
+                val d = (L'.DDatatype (x, n, map (fn (x, n, to) => (x, n, Option.map (monoType env') to)) xncs), loc)
             in
-                SOME (Env.declBinds env all, fm, d)
+                SOME (env', fm, d)
             end
           | L.DDatatype _ => poly ()
           | L.DVal (x, n, t, e, s) =>

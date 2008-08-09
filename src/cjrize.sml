@@ -30,6 +30,8 @@ structure Cjrize :> CJRIZE = struct
 structure L = Mono
 structure L' = Cjr
 
+structure IM = IntBinaryMap
+
 structure Sm :> sig
     type t
 
@@ -61,45 +63,57 @@ fun declares (_, _, ds) = ds
 
 end
 
-fun cifyTyp ((t, loc), sm) =
-    case t of
-        L.TFun (t1, t2) =>
-        let
-            val (t1, sm) = cifyTyp (t1, sm)
-            val (t2, sm) = cifyTyp (t2, sm)
-        in
-            ((L'.TFun (t1, t2), loc), sm)
-        end
-      | L.TRecord xts =>
-        let
-            val old_xts = xts
-            val (xts, sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
-                                                  let
-                                                      val (t, sm) = cifyTyp (t, sm)
-                                                  in
-                                                      ((x, t), sm)
-                                                  end)
-                                              sm xts
-            val (sm, si) = Sm.find (sm, old_xts, xts)
-        in
-            ((L'.TRecord si, loc), sm)
-        end
-      | L.TDatatype (dk, n, xncs) =>
-        let
-            val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
-                                                   case to of
-                                                       NONE => ((x, n, NONE), sm)
-                                                     | SOME t =>
-                                                       let
-                                                           val (t, sm) = cifyTyp (t, sm)
-                                                       in
-                                                           ((x, n, SOME t), sm)
-                                                       end)
-                             sm xncs
-        in
-            ((L'.TDatatype (dk, n, xncs), loc), sm)
-        end
-      | L.TFfi mx => ((L'.TFfi mx, loc), sm)
+fun cifyTyp x =
+    let
+        fun cify dtmap ((t, loc), sm) =
+            case t of
+                L.TFun (t1, t2) =>
+                let
+                    val (t1, sm) = cify dtmap (t1, sm)
+                    val (t2, sm) = cify dtmap (t2, sm)
+                in
+                    ((L'.TFun (t1, t2), loc), sm)
+                end
+              | L.TRecord xts =>
+                let
+                    val old_xts = xts
+                    val (xts, sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
+                                                          let
+                                                              val (t, sm) = cify dtmap (t, sm)
+                                                          in
+                                                              ((x, t), sm)
+                                                          end)
+                                                      sm xts
+                    val (sm, si) = Sm.find (sm, old_xts, xts)
+                in
+                    ((L'.TRecord si, loc), sm)
+                end
+              | L.TDatatype (n, ref (dk, xncs)) =>
+                (case IM.find (dtmap, n) of
+                     SOME r => ((L'.TDatatype (dk, n, r), loc), sm)
+                   | NONE =>
+                     let
+                         val r = ref []
+                         val dtmap = IM.insert (dtmap, n, r)
+
+                         val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
+                                                                case to of
+                                                                    NONE => ((x, n, NONE), sm)
+                                                                  | SOME t =>
+                                                                    let
+                                                                        val (t, sm) = cify dtmap (t, sm)
+                                                                    in
+                                                                        ((x, n, SOME t), sm)
+                                                                    end)
+                                                            sm xncs
+                     in
+                         r := xncs;
+                         ((L'.TDatatype (dk, n, r), loc), sm)
+                     end)
+              | L.TFfi mx => ((L'.TFfi mx, loc), sm)
+    in
+        cify IM.empty x
+    end
 
 val dummye = (L'.EPrim (Prim.Int 0), ErrorMsg.dummySpan)
 
@@ -356,22 +370,26 @@ fun cifyDecl ((d, loc), sm) =
 
 fun cjrize ds =
     let
-        val (ds, ps, sm) = foldl (fn (d, (ds, ps, sm)) =>
-                                     let
-                                         val (dop, pop, sm) = cifyDecl (d, sm)
-                                         val ds = case dop of
-                                                      NONE => ds
-                                                    | SOME d => d :: ds
-                                         val ps = case pop of
-                                                      NONE => ps
-                                                    | SOME p => p :: ps 
-                                     in
-                                         (ds, ps, sm)
-                                     end)
-                           ([], [], Sm.empty) ds
+        val (dsF, ds, ps, sm) = foldl (fn (d, (dsF, ds, ps, sm)) =>
+                                          let
+                                              val (dop, pop, sm) = cifyDecl (d, sm)
+                                              val (dsF, ds) = case dop of
+                                                                  NONE => (dsF, ds)
+                                                                | SOME (d as (L'.DDatatype (dk, x, n, _), loc)) =>
+                                                                  ((L'.DDatatypeForward (dk, x, n), loc) :: dsF,
+                                                                   d :: ds)
+                                                                | SOME d => (dsF, d :: ds)
+                                              val ps = case pop of
+                                                           NONE => ps
+                                                         | SOME p => p :: ps
+                                          in
+                                              (dsF, ds, ps, sm)
+                                          end)
+                                      ([], [], [], Sm.empty) ds
     in
-        (List.revAppend (map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm),
-                         rev ds),
+        (List.revAppend (dsF,
+                         List.revAppend (map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm),
+                                         rev ds)),
          ps)
     end
 

@@ -58,7 +58,7 @@ fun shake file =
 
         fun typ (c, s) =
             case c of
-                TDatatype (_, n, _) =>
+                TDatatype (n, _) =>
                 if IS.member (#con s, n) then
                     s
                 else

@@ -308,8 +308,8 @@ cterm  : LPAREN cexp RPAREN             (#1 cexp, s (LPARENleft, RPARENright))
        | FOLD                           (CFold, s (FOLDleft, FOLDright))
        | UNIT                           (CUnit, s (UNITleft, UNITright))
 
-ctuple : cterm STAR cterm               ([cterm1, cterm2])
-       | cterm STAR ctuple              (cterm :: ctuple)
+ctuple : capps STAR capps               ([capps1, capps2])
+       | capps STAR ctuple              (capps :: ctuple)
 
 rcon   :                                ([])
        | ident EQ cexp                  ([(ident, cexp)])
@@ -341,9 +341,7 @@ eexp   : eapps                          (eapps)
                                              (EAbs ("_", SOME (TRecord (CRecord [], loc), loc), eexp), loc)
                                          end)
 
-       | LPAREN etuple RPAREN COLON cexp(case etuple of
-                                             [eexp] => (EAnnot (eexp, cexp), s (LPARENleft, cexpright))
-                                           | _ => raise Fail "Multiple arguments to expression type annotation")
+       | eexp COLON cexp                (EAnnot (eexp, cexp), s (eexpleft, cexpright))
        | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
        | CASE eexp OF barOpt branch branchs (ECase (eexp, branch :: branchs), s (CASEleft, branchsright))
        | IF eexp THEN eexp ELSE eexp    (let

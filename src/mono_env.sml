@@ -98,7 +98,7 @@ fun declBinds env (d, loc) =
         DDatatype (x, n, xncs) =>
         let
             val env = pushDatatype env x n xncs
-            val dt = (TDatatype (MonoUtil.classifyDatatype xncs, n, xncs), loc)
+            val dt = (TDatatype (n, ref (MonoUtil.classifyDatatype xncs, xncs)), loc)
         in
             foldl (fn ((x', n', NONE), env) => pushENamed env x' n' dt NONE ""
                     | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, dt), loc) NONE "")

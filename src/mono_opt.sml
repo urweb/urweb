@@ -135,6 +135,11 @@ fun exp e =
       | ESeq ((EWrite (EPrim (Prim.String s1), _), loc),
               (EWrite (EPrim (Prim.String s2), _), _)) =>
         EWrite (EPrim (Prim.String (s1 ^ s2)), loc)
+      | ESeq ((EWrite (EPrim (Prim.String s1), _), loc),
+              (ESeq ((EWrite (EPrim (Prim.String s2), _), _),
+                     e), _)) =>
+        ESeq ((EWrite (EPrim (Prim.String (s1 ^ s2)), loc), loc),
+              e)
 
       | EFfiApp ("Basis", "htmlifyString", [(EPrim (Prim.String s), _)]) =>
         EPrim (Prim.String (htmlifyString s))
@@ -142,6 +147,8 @@ fun exp e =
         EWrite (EPrim (Prim.String (htmlifyString s)), loc)
       | EWrite (EFfiApp ("Basis", "htmlifyString", [e]), _) =>
         EFfiApp ("Basis", "htmlifyString_w", [e])
+      | EFfiApp ("Basis", "htmlifyString_w", [(EPrim (Prim.String s), loc)]) =>
+        EWrite (EPrim (Prim.String (htmlifyString s)), loc)
 
       | EFfiApp ("Basis", "attrifyInt", [(EPrim (Prim.Int n), _)]) =>
         EPrim (Prim.String (attrifyInt n))

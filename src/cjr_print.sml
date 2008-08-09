@@ -53,7 +53,7 @@ structure CM = BinaryMapFn(struct
 
 val debug = ref false
 
-val dummyTyp = (TDatatype (Enum, 0, []), ErrorMsg.dummySpan)
+val dummyTyp = (TDatatype (Enum, 0, ref []), ErrorMsg.dummySpan)
 
 fun p_typ' par env (t, loc) =
     case t of
@@ -106,7 +106,7 @@ fun p_pat_preamble env (p, _) =
                              string (Int.toString (E.countERels env)),
                              string ";",
                              newline],
-                        env)
+                        E.pushERel env x t)
       | PPrim _ => (box [], env)
       | PCon (_, _, NONE) => (box [], env)
       | PCon (_, _, SOME p) => p_pat_preamble env p
@@ -180,7 +180,7 @@ fun p_pat (env, exit, depth) (p, _) =
                                           let
                                               val (x, to, _) = E.lookupConstructor env n
                                           in
-                                              ("__lwc_" ^ x, to)
+                                              ("lw_" ^ x, to)
                                           end
                                         | PConFfi {mod = m, con, arg, ...} =>
                                           ("lw_" ^ m ^ "_" ^ con, arg)
@@ -247,7 +247,7 @@ fun p_pat (env, exit, depth) (p, _) =
                                                        space,
                                                        string "disc",
                                                        string (Int.toString depth),
-                                                       string ".",
+                                                       string ".__lwf_",
                                                        string x,
                                                        string ";",
                                                        newline,
@@ -282,11 +282,13 @@ fun patConInfo env pc =
             val (dx, _) = E.lookupDatatype env dn
         in
             ("__lwd_" ^ dx ^ "_" ^ Int.toString dn,
-             "__lwc_" ^ x ^ "_" ^ Int.toString n)
+             "__lwc_" ^ x ^ "_" ^ Int.toString n,
+             "lw_" ^ x)
         end
       | PConFfi {mod = m, datatyp, con, ...} =>
         ("lw_" ^ m ^ "_" ^ datatyp,
-         "lw_" ^ m ^ "_" ^ con)
+         "lw_" ^ m ^ "_" ^ con,
+         "lw_" ^ con)
 
 fun p_exp' par env (e, loc) =
     case e of
@@ -296,7 +298,7 @@ fun p_exp' par env (e, loc) =
       | ECon (Enum, pc, _) => p_patCon env pc
       | ECon (Default, pc, eo) =>
         let
-            val (xd, xc) = patConInfo env pc
+            val (xd, xc, xn) = patConInfo env pc
         in
             box [string "({",
                  newline,
@@ -322,7 +324,7 @@ fun p_exp' par env (e, loc) =
                  case eo of
                      NONE => box []
                    | SOME e => box [string "tmp->data.",
-                                    string xd,
+                                    string xn,
                                     space,
                                     string "=",
                                     space,
@@ -493,19 +495,23 @@ fun p_fun env (fx, n, args, ran, e) =
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DStruct (n, xts) =>
-        box [string "struct",
-             space,
-             string ("__lws_" ^ Int.toString n),
-             space,
-             string "{",
-             newline,
-             p_list_sep (box []) (fn (x, t) => box [p_typ env t,
-                                                    space,
-                                                    string "__lwf_",
-                                                    string x,
-                                                    string ";",
-                                                    newline]) xts,
-             string "};"]
+        let
+            val env = E.declBinds env dAll
+        in
+            box [string "struct",
+                 space,
+                 string ("__lws_" ^ Int.toString n),
+                 space,
+                 string "{",
+                 newline,
+                 p_list_sep (box []) (fn (x, t) => box [p_typ env t,
+                                                        space,
+                                                        string "__lwf_",
+                                                        string x,
+                                                        string ";",
+                                                        newline]) xts,
+                 string "};"]
+        end
       | DDatatype (Enum, x, n, xncs) =>
         box [string "enum",
              space,
@@ -552,7 +558,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 newline,
                                 p_list_sep newline (fn (x, n, t) => box [p_typ env t,
                                                                          space,
-                                                                         string ("__lwc_" ^ x),
+                                                                         string ("lw_" ^ x),
                                                                          string ";"]) xncsArgs,
                                 newline,
                                 string "}",
@@ -561,6 +567,8 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 newline]),
                  string "};"]
         end
+
+      | DDatatypeForward _ => box []
 
       | DVal (x, n, t, e) =>
         box [p_typ env t,
@@ -1002,18 +1010,6 @@ fun p_file env (ds, ps) =
              newline,
              newline,
              string "int lw_input_num(char *name) {",
-             newline,
-             string "if",
-             space,
-             string "(name[0]",
-             space,
-             string "==",
-             space,
-             string "0)",
-             space,
-             string "return",
-             space,
-             string "-1;",
              newline,
              makeSwitch (fnums, 0),
              string "}",

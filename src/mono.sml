@@ -34,7 +34,7 @@ datatype datatype_kind = datatype Core.datatype_kind
 datatype typ' =
          TFun of typ * typ
        | TRecord of (string * typ) list
-       | TDatatype of datatype_kind * int * (string * int * typ option) list
+       | TDatatype of int * (datatype_kind * (string * int * typ option) list) ref
        | TFfi of string * string
 
 withtype typ = typ' located

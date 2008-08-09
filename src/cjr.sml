@@ -35,7 +35,7 @@ datatype typ' =
          TTop
        | TFun of typ * typ
        | TRecord of int
-       | TDatatype of datatype_kind * int * (string * int * typ option) list
+       | TDatatype of datatype_kind * int * (string * int * typ option) list ref
        | TFfi of string * string
 
 withtype typ = typ' located
@@ -75,6 +75,7 @@ withtype exp = exp' located
 datatype decl' =
          DStruct of int * (string * typ) list
        | DDatatype of datatype_kind * string * int * (string * int * typ option) list
+       | DDatatypeForward of datatype_kind * string * int
        | DVal of string * int * typ * exp
        | DFun of string * int * (string * typ) list * typ * exp
        | DFunRec of (string * int * (string * typ) list * typ * exp) list

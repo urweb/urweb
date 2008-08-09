@@ -52,7 +52,7 @@ fun compare ((t1, _), (t2, _)) =
         in
             joinL compareFields (xts1, xts2)
         end
-      | (TDatatype (_, n1, _), TDatatype (_, n2, _)) => Int.compare (n1, n2)
+      | (TDatatype (n1, _), TDatatype (n2, _)) => Int.compare (n1, n2)
       | (TFfi (m1, x1), TFfi (m2, x2)) => join (String.compare (m1, m2), fn () => String.compare (x1, x2))
 
       | (TFun _, _) => LESS
@@ -297,9 +297,13 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                      fn vi' =>
                         (DVal vi', loc))
               | DValRec vis =>
-                S.map2 (ListUtil.mapfold (mfvi ctx) vis,
-                     fn vis' =>
-                        (DValRec vis', loc))
+                let
+                    val ctx' = foldl (fn ((x, n, t, _, s), ctx') => bind (ctx', NamedE (x, n, t, NONE, s))) ctx vis
+                in
+                    S.map2 (ListUtil.mapfold (mfvi ctx') vis,
+                         fn vis' =>
+                            (DValRec vis', loc))
+                end
               | DExport (ek, s, n, ts) =>
                 S.map2 (ListUtil.mapfold mft ts,
                         fn ts' =>
@@ -350,7 +354,7 @@ fun mapfoldB (all as {bind, ...}) =
                                         DDatatype (x, n, xncs) =>
                                         let
                                             val ctx = bind (ctx, Datatype (x, n, xncs))
-                                            val t = (TDatatype (classifyDatatype xncs, n, xncs), #2 d')
+                                            val t = (TDatatype (n, ref (classifyDatatype xncs, xncs)), #2 d')
                                         in
                                             foldl (fn ((x, n, to), ctx) =>
                                                       let
@@ -364,7 +368,7 @@ fun mapfoldB (all as {bind, ...}) =
                                         end
                                       | DVal (x, n, t, e, s) => bind (ctx, NamedE (x, n, t, SOME e, s))
                                       | DValRec vis => foldl (fn ((x, n, t, e, s), ctx) =>
-                                                                 bind (ctx, NamedE (x, n, t, SOME e, s))) ctx vis
+                                                                 bind (ctx, NamedE (x, n, t, NONE, s))) ctx vis
                                       | DExport _ => ctx
                             in
                                 S.map2 (mff ctx' ds',

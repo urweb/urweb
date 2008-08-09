@@ -571,14 +571,20 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                               fn c' =>
                                  (DCon (x, n, k', c'), loc)))
               | DDatatype (x, n, xs, xncs) =>
-                S.map2 (ListUtil.mapfold (fn (x, n, c) =>
-                                             case c of
-                                                 NONE => S.return2 (x, n, c)
-                                               | SOME c =>
-                                                 S.map2 (mfc ctx c,
-                                                      fn c' => (x, n, SOME c'))) xncs,
-                        fn xncs' =>
-                           (DDatatype (x, n, xs, xncs'), loc))
+                let
+                    val k = (KType, loc)
+                    val k' = foldl (fn (_, k') => (KArrow (k, k'), loc)) k xs
+                    val ctx' = bind (ctx, NamedC (x, n, k', NONE))
+                in
+                    S.map2 (ListUtil.mapfold (fn (x, n, c) =>
+                                                 case c of
+                                                     NONE => S.return2 (x, n, c)
+                                                   | SOME c =>
+                                                     S.map2 (mfc ctx' c,
+                                                          fn c' => (x, n, SOME c'))) xncs,
+                         fn xncs' =>
+                            (DDatatype (x, n, xs, xncs'), loc))
+                end
               | DVal vi =>
                 S.map2 (mfvi ctx vi,
                      fn vi' =>
