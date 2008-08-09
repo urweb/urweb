@@ -77,10 +77,13 @@ fun considerSpecialization (st : state, n, args, dt : datatyp) =
         SOME dt' => (#name dt', #constructors dt', st)
       | NONE =>
         let
+            (*val () = Print.prefaces "Args" [("args", Print.p_list (CorePrint.p_con CoreEnv.empty) args)]*)
+
             val n' = #count st
 
+            val nxs = length args - 1
             fun sub t = ListUtil.foldli (fn (i, arg, t) =>
-                                            subConInCon (i, arg) t) t args
+                                            subConInCon (nxs - i, arg) t) t args
 
             val (cons, (count, cmap)) =
                 ListUtil.foldlMap (fn ((x, n, to), (count, cmap)) =>
@@ -240,28 +243,32 @@ val specDecl = U.Decl.foldMap {kind = kind, con = con, exp = exp, decl = decl}
 fun specialize file =
     let
         fun doDecl (all as (d, _), st : state) =
-            case d of
-                DDatatype (x, n, xs, xnts) =>
-                ([all], {count = #count st,
-                         datatypes = IM.insert (#datatypes st, n,
-                                                {name = x,
-                                                 params = length xs,
-                                                 constructors = xnts,
-                                                 specializations = CM.empty}),
-                         constructors = foldl (fn ((_, n', _), constructors) =>
-                                                  IM.insert (constructors, n', n))
-                                              (#constructors st) xnts,
-                         decls = []})
-              | _ =>
-                let
-                    val (d, st) = specDecl st all
-                in
-                    (rev (d :: #decls st),
-                     {count = #count st,
-                      datatypes = #datatypes st,
-                      constructors = #constructors st,
-                      decls = []})
-                end
+            let
+                (*val () = Print.preface ("decl:", CorePrint.p_decl CoreEnv.empty all)*)
+            in
+                case d of
+                    DDatatype (x, n, xs, xnts) =>
+                    ([all], {count = #count st,
+                             datatypes = IM.insert (#datatypes st, n,
+                                                    {name = x,
+                                                     params = length xs,
+                                                     constructors = xnts,
+                                                     specializations = CM.empty}),
+                             constructors = foldl (fn ((_, n', _), constructors) =>
+                                                      IM.insert (constructors, n', n))
+                                                  (#constructors st) xnts,
+                             decls = []})
+                  | _ =>
+                    let
+                        val (d, st) = specDecl st all
+                    in
+                        (rev (d :: #decls st),
+                         {count = #count st,
+                          datatypes = #datatypes st,
+                          constructors = #constructors st,
+                          decls = []})
+                    end
+            end
 
         val (ds, _) = ListUtil.foldlMapConcat doDecl
                       {count = U.File.maxName file + 1,

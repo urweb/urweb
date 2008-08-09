@@ -954,7 +954,8 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
 
                     val k = (L'.KType, loc)
                     val unifs = map (fn _ => cunif (loc, k)) xs
-                    val t = ListUtil.foldli (fn (i, u, t) => subConInCon (i, u) t) t unifs
+                    val nxs = length unifs - 1
+                    val t = ListUtil.foldli (fn (i, u, t) => subConInCon (nxs - i, u) t) t unifs
                     val dn = foldl (fn (u, dn) => (L'.CApp (dn, u), loc)) dn unifs
                 in
                     ignore (checkPatCon (env, denv) p' pt t);
@@ -1600,7 +1601,8 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
             val (env, n) = E.pushCNamed env x k' NONE
             val t = (L'.CNamed n, loc)
-            val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel i, loc)), loc)) t xs
+            val nxs = length xs - 1
+            val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
 
             val (xcs, (used, env, gs)) =
                 ListUtil.foldlMap
@@ -2269,7 +2271,8 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
             val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
             val (env, n) = E.pushCNamed env x k' NONE
             val t = (L'.CNamed n, loc)
-            val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel i, loc)), loc)) t xs
+            val nxs = length xs - 1
+            val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
 
             val (env', denv') = foldl (fn (x, (env', denv')) =>
                                           (E.pushCRel env' x k,

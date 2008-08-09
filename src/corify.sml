@@ -534,11 +534,12 @@ structure St : sig
 
              val dk = CoreUtil.classifyDatatype xncs
              val t = (L'.CNamed n, loc)
-             val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel i, loc)), loc)) t xs
+             val nxs = length xs - 1
+             val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
              val k = (L'.KType, loc)
              val dcons = map (fn (x, n, to) =>
                                  let
-                                     val args = ListUtil.mapi (fn (i, _) => (L'.CRel i, loc)) xs
+                                     val args = ListUtil.mapi (fn (i, _) => (L'.CRel (nxs - i), loc)) xs
                                      val (e, t) =
                                          case to of
                                              NONE => ((L'.ECon (dk, L'.PConVar n, args, NONE), loc), t)
@@ -575,7 +576,8 @@ structure St : sig
                                                         ((x, n, co), st)
                                                     end) st xncs
 
-             val c = ListUtil.foldli (fn (i, _, c) => (L'.CApp (c, (L'.CRel i, loc)), loc)) c xs
+             val nxs = length xs - 1
+             val c = ListUtil.foldli (fn (i, _, c) => (L'.CApp (c, (L'.CRel (nxs - i), loc)), loc)) c xs
              val k = (L'.KType, loc)
              val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
 

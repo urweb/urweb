@@ -199,13 +199,15 @@ fun p_exp' par env (e, _) =
               string (#1 (E.lookupERel env n)))
          handle E.UnboundRel _ => string ("UNBOUND_" ^ Int.toString n))
       | ENamed n => p_enamed env n
-      | ECon (_, pc, _, NONE) => box [string "[",
-                                      p_patCon env pc,
-                                      string "]"]
-      | ECon (_, pc, _, SOME e) => box [string "[",
+      | ECon (_, pc, ts, NONE) => box [string "[",
+                                       p_patCon env pc,
+                                       p_list_sep (box []) (fn t => box [space, string "[", p_con env t, string "]"]) ts,
+                                       string "]"]
+      | ECon (_, pc, ts, SOME e) => box [string "[",
                                         p_patCon env pc,
                                         space,
                                         p_exp' true env e,
+                                        p_list_sep (box []) (fn t => box [space, string "[", p_con env t, string "]"]) ts,
                                         string "]"]
       | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
       | EFfiApp (m, x, es) => box [string "FFI(",
