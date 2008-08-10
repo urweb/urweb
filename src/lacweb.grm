@@ -89,6 +89,7 @@ fun uppercaseFirst "" = ""
  | cterm of con
  | ctuple of con list
  | ident of con
+ | idents of con list
  | rcon of (con * con) list
  | rconn of (con * con) list
  | rcone of (con * con) list
@@ -324,7 +325,7 @@ rcone  :                                ([])
 
 ident  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | INT                            (CName (Int64.toString INT), s (INTleft, INTright))
-       | path                           (CVar path, s (pathleft, pathright))
+       | SYMBOL                         (CVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright))
 
 eapps  : eterm                          (eterm)
        | eapps eterm                    (EApp (eapps, eterm), s (eappsleft, etermright))
@@ -369,13 +370,22 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
 
-       | path DOT ident                 (EField ((EVar path, s (pathleft, pathright)), ident), s (pathleft, identright))
+       | path DOT idents                (let
+                                             val loc = s (pathleft, identsright)
+                                         in
+                                             foldl (fn (ident, e) =>
+                                                       (EField (e, ident), loc))
+                                                   (EVar path, s (pathleft, pathright)) idents
+                                         end)
        | FOLD                           (EFold, s (FOLDleft, FOLDright))
 
        | XML_BEGIN xml XML_END          (xml)
        | XML_BEGIN XML_END              (EApp ((EVar (["Basis"], "cdata"), s (XML_BEGINleft, XML_ENDright)),
                                                (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
                                          s (XML_BEGINleft, XML_ENDright))
+
+idents : ident                          ([ident])
+       | ident DOT idents               (ident :: idents)
 
 etuple : eexp COMMA eexp                ([eexp1, eexp2])
        | eexp COMMA etuple              (eexp :: etuple)

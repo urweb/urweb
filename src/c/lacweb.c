@@ -471,11 +471,11 @@ lw_Basis_string lw_Basis_unurlifyString(lw_context ctx, char **s) {
   char *r, *s1, *s2;
   int len, n;
 
-  len = strlen(new_s);
+  len = strlen(*s);
   lw_check_heap(ctx, len + 1);
 
   r = ctx->heap_front;
-  ctx->heap_front = lw_unurlifyString_to(ctx, ctx->heap_front, new_s);
+  ctx->heap_front = lw_unurlifyString_to(ctx, ctx->heap_front, *s);
   *s = new_s;
   return r;
 }

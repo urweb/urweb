@@ -216,7 +216,22 @@ fun fooifyExp fk env =
               | _ =>
                 case t of
                     L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [e]), loc), fm)
+
                   | L'.TRecord [] => ((L'.EPrim (Prim.String ""), loc), fm)
+                  | L'.TRecord ((x, t) :: xts) =>
+                    let
+                        val (se, fm) = fooify fm ((L'.EField (e, x), loc), t)
+                    in
+                        foldl (fn ((x, t), (se, fm)) =>
+                                  let
+                                      val (se', fm) = fooify fm ((L'.EField (e, x), loc), t)
+                                  in
+                                      ((L'.EStrcat (se,
+                                                    (L'.EStrcat ((L'.EPrim (Prim.String "/"), loc),
+                                                                 se'), loc)), loc),
+                                       fm)
+                                  end) (se, fm) xts
+                    end
 
                   | L'.TDatatype (i, ref (dk, _)) =>
                     let

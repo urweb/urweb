@@ -914,7 +914,8 @@ fun p_file env (ds, ps) =
                          string "+=",
                          space,
                          string (Int.toString (size has_arg)),
-                         string ", ",
+                         string ", (request[0] == '/' ? ++request : NULL), ",
+                         newline,
                          
                          case #1 t of
                              TDatatype _ => unurlify t
@@ -989,6 +990,8 @@ fun p_file env (ds, ps) =
                                  space,
                                  string (Int.toString (size x')),
                                  string ";",
+                                 newline,
+                                 string "if (request[0] == '/') ++request;",
                                  newline,
                                  case to of
                                      NONE => box []
