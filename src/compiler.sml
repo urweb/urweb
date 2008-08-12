@@ -257,256 +257,79 @@ val corify = {
 
 val toCorify = toExplify o transform corify "corify"
 
-(*fun shake' job =
-    case corify job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Shake.shake file)
+val shake = {
+    func = Shake.shake,
+    print = CorePrint.p_file CoreEnv.empty
+}
 
-fun tag job =
-    case shake' job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Tag.tag file)
+val toShake1 = toCorify o transform shake "shake1"
 
-fun reduce job =
-    case tag job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Reduce.reduce file)
+val tag = {
+    func = Tag.tag,
+    print = CorePrint.p_file CoreEnv.empty
+}
 
-fun specialize job =
-    case reduce job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Specialize.specialize file)
+val toTag = toShake1 o transform tag "tag"
 
-fun shake job =
-    case specialize job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Shake.shake file)
+val reduce = {
+    func = Reduce.reduce,
+    print = CorePrint.p_file CoreEnv.empty
+}
 
-fun monoize job =
-    case shake job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Monoize.monoize CoreEnv.empty file)
+val toReduce = toTag o transform reduce "reduce"
 
-fun mono_opt' job =
-    case monoize job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (MonoOpt.optimize file)
+val specialize = {
+    func = Specialize.specialize,
+    print = CorePrint.p_file CoreEnv.empty
+}
 
-fun untangle job =
-    case mono_opt' job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Untangle.untangle file)
+val toSpecialize = toReduce o transform specialize "specialize"
 
-fun mono_reduce job =
-    case untangle job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (MonoReduce.reduce file)
+val toShake2 = toSpecialize o transform shake "shake2"
 
-fun mono_shake job =
-    case mono_reduce job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (MonoShake.shake file)
+val monoize = {
+    func = Monoize.monoize CoreEnv.empty,
+    print = MonoPrint.p_file MonoEnv.empty
+}
 
-fun mono_opt job =
-    case mono_shake job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (MonoOpt.optimize file)
+val toMonoize = toShake2 o transform monoize "monoize"
 
-fun cjrize job =
-    case mono_opt job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Cjrize.cjrize file)
+val mono_opt = {
+    func = MonoOpt.optimize,
+    print = MonoPrint.p_file MonoEnv.empty
+}
 
-fun testParse job =
-    case parse job of
-        NONE => print "Failed\n"
-      | SOME file =>
-        (Print.print (SourcePrint.p_file file);
-         print "\n")
+val toMono_opt1 = toMonoize o transform mono_opt "mono_opt1"
 
-fun testElaborate job =
-    (case elaborate job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (print "Succeeded\n";
-          Print.print (ElabPrint.p_file ElabEnv.empty file);
-          print "\n"))
-    handle ElabEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+val untangle = {
+    func = Untangle.untangle,
+    print = MonoPrint.p_file MonoEnv.empty
+}
 
-fun testExplify job =
-    (case explify job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (ExplPrint.p_file ExplEnv.empty file);
-          print "\n"))
-    handle ExplEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+val toUntangle = toMono_opt1 o transform untangle "untangle"
 
-fun testCorify job =
-    (case corify job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.empty file);
-          print "\n"))
-    handle CoreEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+val mono_reduce = {
+    func = MonoReduce.reduce,
+    print = MonoPrint.p_file MonoEnv.empty
+}
 
-fun testShake' job =
-    (case shake' job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.empty file);
-          print "\n"))
-    handle CoreEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+val toMono_reduce = toUntangle o transform mono_reduce "mono_reduce"
 
-fun testReduce job =
-    (case reduce job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.empty file);
-          print "\n"))
-    handle CoreEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+val mono_shake = {
+    func = MonoShake.shake,
+    print = MonoPrint.p_file MonoEnv.empty
+}
 
-fun testSpecialize job =
-    (case specialize job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.empty file);
-          print "\n"))
-    handle CoreEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+val toMono_shake = toMono_reduce o transform mono_shake "mono_shake"
 
-fun testTag job =
-    (case tag job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.empty file);
-          print "\n"))
-    handle CoreEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+val toMono_opt2 = toMono_shake o transform mono_opt "mono_opt2"
 
-fun testShake job =
-    (case shake job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (CorePrint.p_file CoreEnv.empty file);
-          print "\n"))
-    handle CoreEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+val cjrize = {
+    func = Cjrize.cjrize,
+    print = CjrPrint.p_file CjrEnv.empty
+}
 
-fun testMonoize job =
-    (case monoize job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (MonoPrint.p_file MonoEnv.empty file);
-          print "\n"))
-    handle MonoEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
-
-fun testMono_opt' job =
-    (case mono_opt' job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (MonoPrint.p_file MonoEnv.empty file);
-          print "\n"))
-    handle MonoEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
-
-fun testUntangle job =
-    (case untangle job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (MonoPrint.p_file MonoEnv.empty file);
-          print "\n"))
-    handle MonoEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
-
-fun testMono_reduce job =
-    (case mono_reduce job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (MonoPrint.p_file MonoEnv.empty file);
-          print "\n"))
-    handle MonoEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
-
-fun testMono_shake job =
-    (case mono_shake job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (MonoPrint.p_file MonoEnv.empty file);
-          print "\n"))
-    handle MonoEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
-
-fun testMono_opt job =
-    (case mono_opt job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (MonoPrint.p_file MonoEnv.empty file);
-          print "\n"))
-    handle MonoEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
-
-fun testCjrize job =
-    (case cjrize job of
-         NONE => print "Failed\n"
-       | SOME file =>
-         (Print.print (CjrPrint.p_file CjrEnv.empty file);
-          print "\n"))
-    handle CjrEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")*)
+val toCjrize = toMono_opt2 o transform cjrize "cjrize"
 
 fun compileC {cname, oname, ename} =
     let
@@ -521,25 +344,22 @@ fun compileC {cname, oname, ename} =
             print "Success\n"
     end
 
-(*fun compile job =
-    case cjrize job of
+fun compile job =
+    case run toCjrize job of
         NONE => print "Laconic compilation failed\n"
       | SOME file =>
-        if ErrorMsg.anyErrors () then
-            print "Laconic compilation failed\n"
-        else
-            let
-                val cname = "/tmp/lacweb.c"
-                val oname = "/tmp/lacweb.o"
-                val ename = "/tmp/webapp"
+        let
+            val cname = "/tmp/lacweb.c"
+            val oname = "/tmp/lacweb.o"
+            val ename = "/tmp/webapp"
 
-                val outf = TextIO.openOut cname
-                val s = TextIOPP.openOut {dst = outf, wid = 80}
-            in
-                Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
-                TextIO.closeOut outf;
+            val outf = TextIO.openOut cname
+            val s = TextIOPP.openOut {dst = outf, wid = 80}
+        in
+            Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
+            TextIO.closeOut outf;
 
-                compileC {cname = cname, oname = oname, ename = ename}
-            end*)
+            compileC {cname = cname, oname = oname, ename = ename}
+        end
 
 end

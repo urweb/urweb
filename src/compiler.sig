@@ -30,7 +30,7 @@
 signature COMPILER = sig
 
     type job = string list
-    (*val compile : job -> unit*)
+    val compile : job -> unit
     val compileC : {cname : string, oname : string, ename : string} -> unit
 
     type ('src, 'dst) phase
@@ -51,10 +51,32 @@ signature COMPILER = sig
     val elaborate : (Source.file, Elab.file) phase
     val explify : (Elab.file, Expl.file) phase
     val corify : (Expl.file, Core.file) phase
+    val shake : (Core.file, Core.file) phase
+    val tag : (Core.file, Core.file) phase
+    val reduce : (Core.file, Core.file) phase
+    val specialize : (Core.file, Core.file) phase
+    val monoize : (Core.file, Mono.file) phase
+    val mono_opt : (Mono.file, Mono.file) phase
+    val untangle : (Mono.file, Mono.file) phase
+    val mono_reduce : (Mono.file, Mono.file) phase
+    val mono_shake : (Mono.file, Mono.file) phase
+    val cjrize : (Mono.file, Cjr.file) phase
 
     val toParse : (job, Source.file) transform
     val toElaborate : (job, Elab.file) transform
     val toExplify : (job, Expl.file) transform
-    val toCorify : (job, Core.file) transform    
+    val toCorify : (job, Core.file) transform
+    val toShake1 : (job, Core.file) transform
+    val toTag : (job, Core.file) transform
+    val toReduce : (job, Core.file) transform
+    val toSpecialize : (job, Core.file) transform
+    val toShake2 : (job, Core.file) transform
+    val toMonoize : (job, Mono.file) transform
+    val toMono_opt1 : (job, Mono.file) transform
+    val toUntangle : (job, Mono.file) transform
+    val toMono_reduce : (job, Mono.file) transform
+    val toMono_shake : (job, Mono.file) transform
+    val toMono_opt2 : (job, Mono.file) transform
+    val toCjrize : (job, Cjr.file) transform
 
 end
