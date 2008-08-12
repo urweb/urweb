@@ -30,47 +30,31 @@
 signature COMPILER = sig
 
     type job = string list
-    val compile : job -> unit
+    (*val compile : job -> unit*)
     val compileC : {cname : string, oname : string, ename : string} -> unit
 
-    val parseLig : string -> Source.sgn_item list option
-    val testLig : string -> unit
+    type ('src, 'dst) phase
+    type ('src, 'dst) transform
 
-    val parseLac : string -> Source.file option
-    val testLac : string -> unit
+    val transform : ('src, 'dst) phase -> string -> ('src, 'dst) transform
+    val o : ('a, 'b) transform * ('b, 'c) transform -> ('a, 'c) transform
 
-    val parse : job -> Source.file option
-    val elaborate : job -> Elab.file option
-    val explify : job -> Expl.file option
-    val corify : job -> Core.file option
-    val shake' : job -> Core.file option
-    val tag : job -> Core.file option
-    val reduce : job -> Core.file option
-    val specialize : job -> Core.file option
-    val shake : job -> Core.file option
-    val monoize : job -> Mono.file option
-    val mono_opt' : job -> Mono.file option
-    val untangle : job -> Mono.file option
-    val mono_reduce : job -> Mono.file option
-    val mono_shake : job -> Mono.file option
-    val mono_opt : job -> Mono.file option
-    val cjrize : job -> Cjr.file option
+    val run : ('src, 'dst) transform -> 'src -> 'dst option
+    val runPrint : ('src, 'dst) transform -> 'src -> unit
+    val time : ('src, 'dst) transform -> 'src -> unit
+    val timePrint : ('src, 'dst) transform -> 'src -> unit
 
-    val testParse : job -> unit
-    val testElaborate : job -> unit
-    val testExplify : job -> unit
-    val testCorify : job -> unit
-    val testShake' : job -> unit
-    val testTag : job -> unit
-    val testReduce : job -> unit
-    val testSpecialize : job -> unit
-    val testShake : job -> unit
-    val testMonoize : job -> unit
-    val testMono_opt' : job -> unit
-    val testUntangle : job -> unit
-    val testMono_reduce : job -> unit
-    val testMono_shake : job -> unit
-    val testMono_opt : job -> unit
-    val testCjrize : job -> unit
+    val parseLac : (string, Source.file) phase
+    val parseLig : (string, Source.sgn_item list) phase
+
+    val parse : (job, Source.file) phase
+    val elaborate : (Source.file, Elab.file) phase
+    val explify : (Elab.file, Expl.file) phase
+    val corify : (Expl.file, Core.file) phase
+
+    val toParse : (job, Source.file) transform
+    val toElaborate : (job, Elab.file) transform
+    val toExplify : (job, Expl.file) transform
+    val toCorify : (job, Core.file) transform    
 
 end

@@ -35,161 +35,229 @@ structure LacwebP = Join(structure ParserData = LacwebLrVals.ParserData
                          structure Lex = Lex
                          structure LrParser = LrParser)
 
-fun parseLig filename =
+type job = string list
+
+type ('src, 'dst) phase = {
+     func : 'src -> 'dst,
+     print : 'dst -> Print.PD.pp_desc
+}
+
+type pmap = (string * Time.time) list
+
+type ('src, 'dst) transform = {
+     func : 'src -> 'dst option,
+     print : 'dst -> Print.PD.pp_desc,
+     time : 'src * pmap -> 'dst option * pmap
+}
+
+fun transform (ph : ('src, 'dst) phase) name = {
+    func = fn input => let
+                  val v = #func ph input
+              in
+                  if ErrorMsg.anyErrors () then
+                      NONE
+                  else
+                      SOME v
+              end,
+    print = #print ph,
+    time = fn (input, pmap) => let
+                  val befor = Time.now ()
+                  val v = #func ph input
+                  val elapsed = Time.- (Time.now (), befor)
+              in
+                  (if ErrorMsg.anyErrors () then
+                       NONE
+                   else
+                       SOME v,
+                   (name, elapsed) :: pmap)
+              end
+}
+
+fun op o (tr1 : ('a, 'b) transform, tr2 : ('b, 'c) transform) = {
+    func = fn input => case #func tr1 input of
+                           NONE => NONE
+                         | SOME v => #func tr2 v,
+    print = #print tr2,
+    time = fn (input, pmap) => let
+                  val (ro, pmap) = #time tr1 (input, pmap)
+              in
+                  case ro of
+                      NONE => (NONE, pmap)
+                    | SOME v => #time tr2 (v, pmap)
+              end
+}
+
+fun run (tr : ('src, 'dst) transform) = #func tr
+
+fun runPrint (tr : ('src, 'dst) transform) input =
+    case #func tr input of
+        NONE => print "Failure\n"
+      | SOME v =>
+        (print "Success\n";
+         Print.print (#print tr v);
+         print "\n")
+
+fun time (tr : ('src, 'dst) transform) input =
     let
-        val fname = OS.FileSys.tmpName ()
-        val outf = TextIO.openOut fname
-        val () = TextIO.output (outf, "sig\n")
-        val inf = TextIO.openIn filename
-        fun loop () =
-            case TextIO.inputLine inf of
-                NONE => ()
-              | SOME line => (TextIO.output (outf, line);
-                              loop ())
-        val () = loop ()
-        val () = TextIO.closeIn inf
-        val () = TextIO.closeOut outf
-
-        val () = (ErrorMsg.resetErrors ();
-                  ErrorMsg.resetPositioning filename;
-                  Lex.UserDeclarations.initialize ())
-	val file = TextIO.openIn fname
-	fun get _ = TextIO.input file
-	fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
-	val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
-	val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
+        val (_, pmap) = #time tr (input, [])
     in
-        TextIO.closeIn file;
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            case absyn of
-                [(Source.DSgn ("?", (Source.SgnConst sgis, _)), _)] => SOME sgis
-              | _ => NONE
+        app (fn (name, time) =>
+                print (name ^ ": " ^ LargeReal.toString (Time.toReal time) ^ "\n")) (rev pmap);
+        print ("TOTAL: " ^ LargeReal.toString (Time.toReal (foldl Time.+ Time.zeroTime (map #2 pmap))) ^ "\n");
+        print "\n"
     end
-    handle LrParser.ParseError => NONE
 
-fun testLig fname =
-    case parseLig fname of
-        NONE => ()
-      | SOME sgis =>
-        app (fn sgi => (Print.print (SourcePrint.p_sgn_item sgi);
-                        print "\n")) sgis
+fun timePrint (tr : ('src, 'dst) transform) input =
+    let
+        val (ro, pmap) = #time tr (input, [])
+    in
+        app (fn (name, time) =>
+                print (name ^ ": " ^ LargeReal.toString (Time.toReal time) ^ "\n")) (rev pmap);
+        print ("TOTAL: " ^ LargeReal.toString (Time.toReal (foldl Time.+ Time.zeroTime (map #2 pmap))) ^ "\n");
+        print "\n";
+        case ro of
+            NONE => print "Failure\n"
+          | SOME v =>
+            (print "Success\n";
+             Print.print (#print tr v);
+             print "\n")
+    end
+
+val parseLig =
+    {func = fn filename => let
+                   val fname = OS.FileSys.tmpName ()
+                   val outf = TextIO.openOut fname
+                   val () = TextIO.output (outf, "sig\n")
+                   val inf = TextIO.openIn filename
+                   fun loop () =
+                       case TextIO.inputLine inf of
+                           NONE => ()
+                         | SOME line => (TextIO.output (outf, line);
+                                         loop ())
+                   val () = loop ()
+                   val () = TextIO.closeIn inf
+                   val () = TextIO.closeOut outf
+
+                   val () = (ErrorMsg.resetErrors ();
+                             ErrorMsg.resetPositioning filename;
+                             Lex.UserDeclarations.initialize ())
+	           val file = TextIO.openIn fname
+	           fun get _ = TextIO.input file
+	           fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
+	           val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
+	           val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
+               in
+                   TextIO.closeIn file;
+                   case absyn of
+                       [(Source.DSgn ("?", (Source.SgnConst sgis, _)), _)] => sgis
+                     | _ => (ErrorMsg.errorAt {file = filename,
+                                               first = {line = 0,
+                                                        char = 0},
+                                               last = {line = 0,
+                                                       char = 0}} "Not a signature";
+                             [])
+               end
+               handle LrParser.ParseError => [],
+     print = Print.p_list_sep Print.PD.newline SourcePrint.p_sgn_item}
 
 (* The main parsing routine *)
-fun parseLac filename =
-    let
-        val () = (ErrorMsg.resetErrors ();
-                  ErrorMsg.resetPositioning filename;
-                  Lex.UserDeclarations.initialize ())
-	val file = TextIO.openIn filename
-	fun get _ = TextIO.input file
-	fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
-	val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
-	val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
-    in
-        TextIO.closeIn file;
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            case absyn of
-                [(Source.DSgn ("?", _), _)] =>
-                (ErrorMsg.error "File starts with 'sig'";
-                 NONE)
-              | _ => SOME absyn
-    end
-    handle LrParser.ParseError => NONE
-
-fun testLac fname =
-    case parseLac fname of
-        NONE => ()
-      | SOME file => (Print.print (SourcePrint.p_file file);
-                      print "\n")
-
-type job = string list
+val parseLac = {
+    func = fn filename =>
+              let
+                  val () = (ErrorMsg.resetErrors ();
+                            ErrorMsg.resetPositioning filename;
+                            Lex.UserDeclarations.initialize ())
+	          val file = TextIO.openIn filename
+	          fun get _ = TextIO.input file
+	          fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
+	          val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
+	          val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
+              in
+                  TextIO.closeIn file;
+                  case absyn of
+                      [(Source.DSgn ("?", _), _)] =>
+                      (ErrorMsg.errorAt {file = filename,
+                                         first = {line = 0,
+                                                  char = 0},
+                                         last = {line = 0,
+                                                 char = 0}} "File starts with 'sig'";
+                       [])
+                    | _ => absyn
+              end
+              handle LrParser.ParseError => [],
+     print = SourcePrint.p_file}    
 
 fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
-fun parse fnames =
-    let
-        fun nameOf fname = capitalize (OS.Path.file fname)
+val parse = {
+    func = fn fnames =>
+              let
+                  fun nameOf fname = capitalize (OS.Path.file fname)
 
-        fun parseOne fname =
-            let
-                val mname = nameOf fname
-                val lac = OS.Path.joinBaseExt {base = fname, ext = SOME "lac"}
-                val lig = OS.Path.joinBaseExt {base = fname, ext = SOME "lig"}
+                  fun parseOne fname =
+                      let
+                          val mname = nameOf fname
+                          val lac = OS.Path.joinBaseExt {base = fname, ext = SOME "lac"}
+                          val lig = OS.Path.joinBaseExt {base = fname, ext = SOME "lig"}
 
-                val sgnO =
-                    if Posix.FileSys.access (lig, []) then
-                        case parseLig lig of
-                            NONE => NONE
-                          | SOME sgis => SOME (Source.SgnConst sgis, {file = lig,
-                                                                      first = ErrorMsg.dummyPos,
-                                                                      last = ErrorMsg.dummyPos})
-                    else
-                        NONE
+                          val sgnO =
+                              if Posix.FileSys.access (lig, []) then
+                                  SOME (Source.SgnConst (#func parseLig lig),
+                                        {file = lig,
+                                         first = ErrorMsg.dummyPos,
+                                         last = ErrorMsg.dummyPos})
+                              else
+                                  NONE
 
-                val loc = {file = lac,
-                           first = ErrorMsg.dummyPos,
-                           last = ErrorMsg.dummyPos}
-            in
-                case parseLac lac of
-                    NONE => NONE
-                  | SOME ds =>
-                    SOME (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
-            end
+                          val loc = {file = lac,
+                                     first = ErrorMsg.dummyPos,
+                                     last = ErrorMsg.dummyPos}
 
-        val ds = List.mapPartial parseOne fnames
-        val ds =
-            let
-                val final = nameOf (List.last fnames)
-            in
-                ds @ [(Source.DExport (Source.StrVar final, ErrorMsg.dummySpan), ErrorMsg.dummySpan)]
-            end handle Empty => ds
-    in
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME ds
-    end
+                          val ds = #func parseLac lac
+                      in
+                          (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
+                      end
 
-fun elaborate job =
-    case parseLig "lib/basis.lig" of
-        NONE => NONE
-      | SOME empty =>
-        case parse job of
-            NONE => NONE
-          | SOME file =>
-            let
-                val out = Elaborate.elabFile empty ElabEnv.empty file
-            in
-                if ErrorMsg.anyErrors () then
-                    NONE
-                else
-                    SOME out
-            end
+                  val ds = map parseOne fnames
+              in
+                  let
+                      val final = nameOf (List.last fnames)
+                  in
+                      ds @ [(Source.DExport (Source.StrVar final, ErrorMsg.dummySpan), ErrorMsg.dummySpan)]
+                  end handle Empty => ds
+              end,
+    print = SourcePrint.p_file
+}
 
-fun explify job =
-    case elaborate job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Explify.explify file)
+val toParse = transform parse "parse"
 
-fun corify job =
-    case explify job of
-        NONE => NONE
-      | SOME file =>
-        if ErrorMsg.anyErrors () then
-            NONE
-        else
-            SOME (Corify.corify file)
+val elaborate = {
+    func = fn file => let
+                  val basis = #func parseLig "lib/basis.lig"
+              in
+                  Elaborate.elabFile basis ElabEnv.empty file
+              end,
+    print = ElabPrint.p_file ElabEnv.empty
+}
 
-fun shake' job =
+val toElaborate = toParse o transform elaborate "elaborate"
+
+val explify = {
+    func = Explify.explify,
+    print = ExplPrint.p_file ExplEnv.empty
+}
+
+val toExplify = toElaborate o transform explify "explify"
+
+val corify = {
+    func = Corify.corify,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toCorify = toExplify o transform corify "corify"
+
+(*fun shake' job =
     case corify job of
         NONE => NONE
       | SOME file =>
@@ -438,7 +506,7 @@ fun testCjrize job =
          (Print.print (CjrPrint.p_file CjrEnv.empty file);
           print "\n"))
     handle CjrEnv.UnboundNamed n =>
-           print ("Unbound named " ^ Int.toString n ^ "\n")
+           print ("Unbound named " ^ Int.toString n ^ "\n")*)
 
 fun compileC {cname, oname, ename} =
     let
@@ -453,7 +521,7 @@ fun compileC {cname, oname, ename} =
             print "Success\n"
     end
 
-fun compile job =
+(*fun compile job =
     case cjrize job of
         NONE => print "Laconic compilation failed\n"
       | SOME file =>
@@ -472,6 +540,6 @@ fun compile job =
                 TextIO.closeOut outf;
 
                 compileC {cname = cname, oname = oname, ename = ename}
-            end
+            end*)
 
 end
