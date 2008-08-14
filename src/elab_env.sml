@@ -404,15 +404,12 @@ fun sgiBinds env (sgi, loc) =
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
       | SgiConstraint _ => env
 
-      | SgiTable (x, n, c) =>
-        (case lookupStr env "Basis" of
-             NONE => raise Fail "ElabEnv.sgiBinds: Can't find Basis"
-           | SOME (n, _) =>
-             let
-                 val t = (CApp ((CModProj (n, [], "table"), loc), c), loc)
-             in
-                 pushENamedAs env x n t
-             end)
+      | SgiTable (tn, x, n, c) =>
+        let
+            val t = (CApp ((CModProj (tn, [], "table"), loc), c), loc)
+        in
+            pushENamedAs env x n t
+        end
 
 fun sgnSeek f sgis =
     let
@@ -737,14 +734,11 @@ fun declBinds env (d, loc) =
       | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | DConstraint _ => env
       | DExport _ => env
-      | DTable (x, n, c) =>
-        (case lookupStr env "Basis" of
-             NONE => raise Fail "ElabEnv.declBinds: Can't find Basis"
-           | SOME (n, _) =>
-             let
-                 val t = (CApp ((CModProj (n, [], "table"), loc), c), loc)
-             in
-                 pushENamedAs env x n t
-             end)
+      | DTable (tn, x, n, c) =>
+        let
+            val t = (CApp ((CModProj (tn, [], "table"), loc), c), loc)
+        in
+            pushENamedAs env x n t
+        end
 
 end

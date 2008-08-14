@@ -436,10 +436,10 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                             S.map2 (con ctx c2,
                                     fn c2' =>
                                        (SgiConstraint (c1', c2'), loc)))
-              | SgiTable (x, n, c) =>
+              | SgiTable (tn, x, n, c) =>
                 S.map2 (con ctx c,
                         fn c' =>
-                           (SgiTable (x, n, c'), loc))
+                           (SgiTable (tn, x, n, c'), loc))
 
         and sg ctx s acc =
             S.bindP (sg' ctx s acc, sgn ctx)
@@ -600,7 +600,9 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                    bind (ctx, Str (x, sgn))
                                                  | DConstraint _ => ctx
                                                  | DExport _ => ctx
-                                                 | DTable _ => ctx,
+                                                 | DTable (tn, x, n, c) =>
+                                                   bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "table"), loc),
+                                                                                c), loc))),
                                                mfd ctx d)) ctx ds,
                      fn ds' => (StrConst ds', loc))
               | StrVar _ => S.return2 strAll
@@ -688,10 +690,10 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                     fn str' =>
                                        (DExport (en, sgn', str'), loc)))
 
-              | DTable (x, n, c) =>
+              | DTable (tn, x, n, c) =>
                 S.map2 (mfc ctx c,
                         fn c' =>
-                           (DTable (x, n, c'), loc))
+                           (DTable (tn, x, n, c'), loc))
 
         and mfvi ctx (x, n, c, e) =
             S.bind2 (mfc ctx c,

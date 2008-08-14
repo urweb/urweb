@@ -1,3 +1,12 @@
-table t : {A : int, B : string, C : float}
+table t1 : {A : int, B : string, C : float}
 
-val my_query = (SELECT * FROM t)
+val q1 = (SELECT * FROM t1)
+
+table t2 : {A : float, D : int}
+
+val q2 = (SELECT * FROM t1, t2)
+
+(*val q3 = (SELECT * FROM t1, t1)*)
+val q3 = (SELECT * FROM t1, t1 AS T2)
+
+val q4 = (SELECT * FROM {t1} AS T, t1 AS T2)
