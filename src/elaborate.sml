@@ -793,7 +793,7 @@ and unifyCons' (env, denv) c1 c2 =
                                   val concat = (L'.CConcat (singleton, rest), loc)
                                   val gs7 = unifyCons (env, denv) r concat
                               in
-                                  (loc, env, denv, singleton, rest) :: gs1 @ gs2 @ gs3 @ gs4 @ gs5 @ gs6 @ gs7
+                                  gs1 @ gs2 @ gs3 @ gs4 @ gs5 @ gs6 @ gs7
                               end
                            else
                              raise ex
