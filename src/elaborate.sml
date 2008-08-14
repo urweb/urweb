@@ -163,6 +163,7 @@ val strerror = (L'.StrError, dummy)
 val int = ref cerror
 val float = ref cerror
 val string = ref cerror
+val table = ref cerror
 
 local
     val count = ref 0
@@ -1735,6 +1736,15 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             ([(L'.SgiConstraint (c1', c2'), loc)], (env, denv, gs1 @ gs2 @ gs3))
         end
 
+      | L.SgiTable (x, c) =>
+        let
+            val (c', k, gs) = elabCon (env, denv) c
+            val (env, n) = E.pushENamed env x c'
+        in
+            checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
+            ([(L'.SgiTable (x, n, c'), loc)], (env, denv, gs))
+        end
+
 and elabSgn (env, denv) (sgn, loc) =
     case sgn of
         L.SgnConst sgis =>
@@ -1795,7 +1805,13 @@ and elabSgn (env, denv) (sgn, loc) =
                                    else
                                        ();
                                    (cons, vals, sgns, SS.add (strs, x)))
-                                | L'.SgiConstraint _ => (cons, vals, sgns, strs))
+                                | L'.SgiConstraint _ => (cons, vals, sgns, strs)
+                                | L'.SgiTable (x, _, _) =>
+                                  (if SS.member (vals, x) then
+                                       sgnError env (DuplicateVal (loc, x))
+                                   else
+                                       ();
+                                   (cons, SS.add (vals, x), sgns, strs)))
                     (SS.empty, SS.empty, SS.empty, SS.empty) sgis'
         in
             ((L'.SgnConst sgis', loc), gs)
@@ -1894,6 +1910,11 @@ fun selfifyAt env {str, sgn} =
           | SOME (str, strs) => selfify env {sgn = sgn, str = str, strs = strs}
     end
 
+fun tableOf env =
+    case E.lookupStr env "Basis" of
+        NONE => raise Fail "Elaborate.tableOf: Can't find Basis"
+      | SOME (n, _) => (L'.CModProj (n, [], "sql_table"), ErrorMsg.dummySpan)
+
 fun dopen (env, denv) {str, strs, sgn} =
     let
         val m = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
@@ -1925,6 +1946,9 @@ fun dopen (env, denv) {str, strs, sgn} =
                                               (L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc)
                                             | L'.SgiConstraint (c1, c2) =>
                                               (L'.DConstraint (c1, c2), loc)
+                                            | L'.SgiTable (x, n, c) =>
+                                              (L'.DVal (x, n, (L'.CApp (tableOf env, c), loc),
+                                                        (L'.EModProj (str, strs, x), loc)), loc)
                                   in
                                       (d, (E.declBinds env' d, denv'))
                                   end)
@@ -1977,6 +2001,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DFfiStr (x, n, sgn) => [(L'.SgiStr (x, n, sgn), loc)]
       | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
       | L'.DExport _ => []
+      | L'.DTable (x, n, c) => [(L'.SgiTable (x, n, c), loc)]
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
@@ -2169,6 +2194,16 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                  SOME (env, denv))
                                      else
                                          NONE
+                                   | L'.SgiTable (x', n1, c1) =>
+                                     if x = x' then
+                                         (case unifyCons (env, denv) (L'.CApp (tableOf env, c1), loc) c2 of
+                                              [] => SOME (env, denv)
+                                            | _ => NONE)
+                                         handle CUnify (c1, c2, err) =>
+                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                 SOME (env, denv))
+                                     else
+                                         NONE
                                    | _ => NONE)
 
                       | L'.SgiStr (x, n2, sgn2) =>
@@ -2227,6 +2262,21 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
 
                                              SOME (env, denv)
                                          end
+                                     else
+                                         NONE
+                                   | _ => NONE)
+
+                      | L'.SgiTable (x, n2, c2) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 case sgi1 of
+                                     L'.SgiTable (x', n1, c1) =>
+                                     if x = x' then
+                                         (case unifyCons (env, denv) c1 c2 of
+                                              [] => SOME (env, denv)
+                                            | _ => NONE)
+                                         handle CUnify (c1, c2, err) =>
+                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                 SOME (env, denv))
                                      else
                                          NONE
                                    | _ => NONE)
@@ -2579,6 +2629,15 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
             ([(L'.DExport (E.newNamed (), sgn, str'), loc)], (env, denv, gs))
         end
 
+      | L.DTable (x, c) =>
+        let
+            val (c', k, gs) = elabCon (env, denv) c
+            val (env, n) = E.pushENamed env x c'
+        in
+            checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
+            ([(L'.DTable (x, n, c'), loc)], (env, denv, gs))
+        end
+
 and elabStr (env, denv) (str, loc) =
     case str of
         L.StrConst ds =>
@@ -2669,7 +2728,17 @@ and elabStr (env, denv) (str, loc) =
                               in
                                   ((L'.SgiStr (x, n, sgn), loc) :: sgis, cons, vals, sgns, strs)
                               end
-                            | L'.SgiConstraint _ => ((sgi, loc) :: sgis, cons, vals, sgns, strs))
+                            | L'.SgiConstraint _ => ((sgi, loc) :: sgis, cons, vals, sgns, strs)
+                            | L'.SgiTable (x, n, c) =>
+                              let
+                                  val (vals, x) =
+                                      if SS.member (vals, x) then
+                                          (vals, "?" ^ x)
+                                      else
+                                          (SS.add (vals, x), x)
+                              in
+                                  ((L'.SgiTable (x, n, c), loc) :: sgis, cons, vals, sgns, strs)
+                              end)
 
                 ([], SS.empty, SS.empty, SS.empty, SS.empty) sgis
         in
@@ -2751,6 +2820,7 @@ fun elabFile basis env file =
         val () = discoverC int "int"
         val () = discoverC float "float"
         val () = discoverC string "string"
+        val () = discoverC table "sql_table"
 
         fun elabDecl' (d, (env, gs)) =
             let

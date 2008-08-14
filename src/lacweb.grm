@@ -34,6 +34,11 @@ val s = ErrorMsg.spanOf
 fun uppercaseFirst "" = ""
   | uppercaseFirst s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
+fun entable t =
+    case #1 t of
+        TRecord c => c
+      | _ => t
+
 %%
 %header (functor LacwebLrValsFn(structure Token : TOKEN))
 
@@ -50,7 +55,7 @@ fun uppercaseFirst "" = ""
  | ARROW | LARROW | DARROW | STAR
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
- | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT
+ | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE
  | CASE | IF | THEN | ELSE
 
  | XML_BEGIN of string | XML_END
@@ -177,6 +182,7 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                            | m :: ms => (DOpenConstraints (m, ms), s (OPENleft, mpathright)))
        | CONSTRAINT cterm TWIDDLE cterm (DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
        | EXPORT spath                   (DExport spath, s (EXPORTleft, spathright))
+       | TABLE SYMBOL COLON cexp        (DTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))
 
 dargs  :                                ([])
        | SYMBOL dargs                   (SYMBOL :: dargs)
@@ -234,6 +240,7 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
                                          s (FUNCTORleft, sgn2right))
        | INCLUDE sgn                    (SgiInclude sgn, s (INCLUDEleft, sgnright))
        | CONSTRAINT cterm TWIDDLE cterm (SgiConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
+       | TABLE SYMBOL COLON cexp        (SgiTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))
 
 sgis   :                                ([])
        | sgi sgis                       (sgi :: sgis)

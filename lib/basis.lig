@@ -7,6 +7,13 @@ type unit = {}
 datatype bool = False | True
 
 
+(** SQL *)
+
+con sql_table :: {Type} -> Type
+
+
+(** XML *)
+
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 
 

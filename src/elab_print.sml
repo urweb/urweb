@@ -447,6 +447,13 @@ fun p_sgn_item env (sgi, _) =
                                        string "~",
                                        space,
                                        p_con env c2]
+      | SgiTable (x, n, c) => box [string "table",
+                                   space,
+                                   p_named x n,
+                                   space,
+                                   string ":",
+                                   space,
+                                   p_con env c]
 
 and p_sgn env (sgn, _) =
     case sgn of
@@ -596,6 +603,13 @@ fun p_decl env (dAll as (d, _) : decl) =
                                       string ":",
                                       space,
                                       p_sgn env sgn]
+      | DTable (x, n, c) => box [string "table",
+                                 space,
+                                 p_named x n,
+                                 space,
+                                 string ":",
+                                 space,
+                                 p_con env c]
 
 and p_str env (str, _) =
     case str of

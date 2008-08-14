@@ -78,6 +78,7 @@ datatype sgn_item' =
        | SgiSgn of string * sgn
        | SgiInclude of sgn
        | SgiConstraint of con * con
+       | SgiTable of string * con
 
 and sgn' =
     SgnConst of sgn_item list
@@ -131,6 +132,7 @@ datatype decl' =
        | DConstraint of con * con
        | DOpenConstraints of string * string list
        | DExport of str
+       | DTable of string * con
 
      and str' =
          StrConst of decl list

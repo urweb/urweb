@@ -360,6 +360,13 @@ fun p_sgn_item (sgi, _) =
                                        string "~",
                                        space,
                                        p_con c2]
+      | SgiTable (x, c) => box [string "table",
+                                space,
+                                string x,
+                                space,
+                                string ":",
+                                space,
+                                p_con c]
 
 and p_sgn (sgn, _) =
     case sgn of
@@ -505,6 +512,13 @@ fun p_decl ((d, _) : decl) =
       | DExport str => box [string "export",
                             space,
                             p_str str]
+      | DTable (x, c) => box [string "table",
+                              space,
+                              string x,
+                              space,
+                              string ":",
+                              space,
+                              p_con c]
 
 and p_str (str, _) =
     case str of

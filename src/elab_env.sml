@@ -404,6 +404,16 @@ fun sgiBinds env (sgi, loc) =
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
       | SgiConstraint _ => env
 
+      | SgiTable (x, n, c) =>
+        (case lookupStr env "Basis" of
+             NONE => raise Fail "ElabEnv.sgiBinds: Can't find Basis"
+           | SOME (n, _) =>
+             let
+                 val t = (CApp ((CModProj (n, [], "table"), loc), c), loc)
+             in
+                 pushENamedAs env x n t
+             end)
+
 fun sgnSeek f sgis =
     let
         fun seek (sgis, sgns, strs, cons) =
@@ -431,6 +441,7 @@ fun sgnSeek f sgis =
                       | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons)
                       | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons)
                       | SgiConstraint _ => seek (sgis, sgns, strs, cons)
+                      | SgiTable _ => seek (sgis, sgns, strs, cons)
     in
         seek (sgis, IM.empty, IM.empty, IM.empty)
     end
@@ -666,6 +677,7 @@ fun sgnSeekConstraints (str, sgis) =
                   | SgiVal _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
                   | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
+                  | SgiTable _ => seek (sgis, sgns, strs, cons, acc)
     in
         seek (sgis, IM.empty, IM.empty, IM.empty, [])
     end
@@ -725,5 +737,14 @@ fun declBinds env (d, loc) =
       | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | DConstraint _ => env
       | DExport _ => env
+      | DTable (x, n, c) =>
+        (case lookupStr env "Basis" of
+             NONE => raise Fail "ElabEnv.declBinds: Can't find Basis"
+           | SOME (n, _) =>
+             let
+                 val t = (CApp ((CModProj (n, [], "table"), loc), c), loc)
+             in
+                 pushENamedAs env x n t
+             end)
 
 end

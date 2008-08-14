@@ -279,6 +279,7 @@ notags = [^<{\n]+;
 <INITIAL> "constraint"=> (Tokens.CONSTRAINT (pos yypos, pos yypos + size yytext));
 <INITIAL> "constraints"=> (Tokens.CONSTRAINTS (pos yypos, pos yypos + size yytext));
 <INITIAL> "export"    => (Tokens.EXPORT (pos yypos, pos yypos + size yytext));
+<INITIAL> "table"     => (Tokens.TABLE (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));
 <INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));
