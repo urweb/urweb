@@ -138,6 +138,11 @@ fun hnormCon env (cAll as (c, loc)) =
              hnormCon env (CConcat (c11, (CConcat (c12, c2'), loc)), loc)
            | _ => cAll)
 
+      | CProj (c, n) =>
+        (case hnormCon env c of
+             (CTuple cs, _) => hnormCon env (List.nth (cs, n - 1))
+           | _ => cAll)
+
       | _ => cAll
 
 end

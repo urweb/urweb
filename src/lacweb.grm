@@ -39,6 +39,39 @@ fun entable t =
         TRecord c => c
       | _ => t
 
+datatype select_item =
+         Field of con * con
+
+datatype select =
+         Star
+       | Items of select_item list
+
+fun eqTnames ((c1, _), (c2, _)) =
+    case (c1, c2) of
+        (CVar (ms1, x1), CVar (ms2, x2)) => ms1 = ms2 andalso x1 = x2
+      | (CName x1, CName x2) => x1 = x2
+      | _ => false
+
+fun amend_select loc (si, tabs) =
+    let
+        val (tx, c) = case si of
+                          Field (tx, fx) => (tx, (CRecord ([(fx, (CWild (KType, loc), loc))]), loc))
+
+        val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
+                                                  if eqTnames (tx, tx') then
+                                                      ((tx', (CConcat (c, c'), loc)), true)
+                                                  else
+                                                      ((tx', c'), found))
+                            false tabs
+    in
+        if found then
+            ()
+        else
+            ErrorMsg.errorAt loc "Select of field from unbound table";
+
+        tabs
+    end
+
 %%
 %header (functor LacwebLrValsFn(structure Token : TOKEN))
 
@@ -84,6 +117,7 @@ fun entable t =
  | str of str
 
  | kind of kind
+ | ktuple of kind list
  | kcolon of explicitness
 
  | path of string list * string
@@ -95,6 +129,7 @@ fun entable t =
  | capps of con
  | cterm of con
  | ctuple of con list
+ | ctuplev of con list
  | ident of con
  | idents of con list
  | rcon of (con * con) list
@@ -126,6 +161,12 @@ fun entable t =
  | tables of (con * exp) list
  | tname of con
  | table of con * exp
+ | tident of con
+ | fident of con
+ | seli of select_item
+ | selis of select_item list
+ | select of select
+
 
 %verbose                                (* print summary of errors *)
 %pos int                                (* positions *)
@@ -270,6 +311,10 @@ kind   : TYPE                           (KType, s (TYPEleft, TYPEright))
        | LPAREN kind RPAREN             (#1 kind, s (LPARENleft, RPARENright))
        | KUNIT                          (KUnit, s (KUNITleft, KUNITright))
        | UNDERUNDER                     (KWild, s (UNDERUNDERleft, UNDERUNDERright))
+       | LPAREN ktuple RPAREN           (KTuple ktuple, s (LPARENleft, RPARENright))
+
+ktuple : kind STAR kind                 ([kind1, kind2])
+       | kind STAR ktuple               (kind :: ktuple)
 
 capps  : cterm                          (cterm)
        | capps cterm                    (CApp (capps, cterm), s (cappsleft, ctermright))
@@ -319,9 +364,15 @@ cterm  : LPAREN cexp RPAREN             (#1 cexp, s (LPARENleft, RPARENright))
        | HASH INT                       (CName (Int64.toString INT), s (HASHleft, INTright))
 
        | path                           (CVar path, s (pathleft, pathright))
+       | path DOT INT                   (CProj ((CVar path, s (pathleft, pathright)), Int64.toInt INT),
+                                         s (pathleft, INTright))
        | UNDER                          (CWild (KWild, s (UNDERleft, UNDERright)), s (UNDERleft, UNDERright))
        | FOLD                           (CFold, s (FOLDleft, FOLDright))
        | UNIT                           (CUnit, s (UNITleft, UNITright))
+       | LPAREN ctuplev RPAREN          (CTuple ctuplev, s (LPARENleft, RPARENright))
+
+ctuplev: cexp COMMA cexp                ([cexp1, cexp2])
+       | cexp COMMA ctuplev             (cexp :: ctuplev)
 
 ctuple : capps STAR capps               ([capps1, capps2])
        | capps STAR ctuple              (capps :: ctuple)
@@ -503,11 +554,34 @@ attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTri
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LBRACE eexp RBRACE             (eexp)
                 
-query  : SELECT STAR FROM tables        (let
+query  : SELECT select FROM tables      (let
                                              val loc = s (SELECTleft, tablesright)
+
+                                             val sel =
+                                                 case select of
+                                                     Star => map (fn (nm, _) =>
+                                                                     (nm, (CTuple [(CWild (KRecord (KType, loc), loc),
+                                                                                    loc),
+                                                                                   (CRecord [], loc)],
+                                                                           loc))) tables
+                                                   | Items sis =>
+                                                     let
+                                                         val tabs = map (fn (nm, _) => (nm, (CRecord [], loc))) tables
+                                                         val tabs = foldl (amend_select loc) tabs sis
+                                                     in
+                                                         map (fn (nm, c) => (nm,
+                                                                             (CTuple [c,
+                                                                                      (CWild (KRecord (KType, loc), loc),
+                                                                                       loc)], loc))) tabs
+                                                     end
+
+                                             val sel = (CRecord sel, loc)
+
+                                             val e = (EVar (["Basis"], "sql_query"), loc)
+                                             val e = (ECApp (e, sel), loc)
+                                             val e = (EApp (e, (ERecord tables, loc)), loc)
                                          in
-                                             (EApp ((EVar (["Basis"], "sql_query"), loc),
-                                                    (ERecord tables, loc)), loc)
+                                             e
                                          end)
 
 tables : table                          ([table])
@@ -516,7 +590,22 @@ tables : table                          ([table])
 tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | LBRACE cexp RBRACE             (cexp)
 
-table  : SYMBOL                         ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)),
+table  : SYMBOL                         ((CName SYMBOL, s (SYMBOLleft, SYMBOLright)),
                                          (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
        | SYMBOL AS tname                (tname, (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
        | LBRACE eexp RBRACE AS tname    (tname, eexp)
+
+tident : SYMBOL                         (CName SYMBOL, s (SYMBOLleft, SYMBOLright))
+       | CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | LBRACE cexp RBRACE             (cexp)
+
+fident : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | LBRACE cexp RBRACE             (cexp)
+
+seli   : tident DOT fident              (Field (tident, fident))
+
+selis  : seli                           ([seli])
+       | seli COMMA selis               (seli :: selis)
+
+select : STAR                           (Star)
+       | selis                          (Items selis)

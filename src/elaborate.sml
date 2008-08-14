@@ -86,6 +86,9 @@ fun unifyKinds' (k1All as (k1, _)) (k2All as (k2, _)) =
              unifyKinds' r1 r2)
           | (L'.KName, L'.KName) => ()
           | (L'.KRecord k1, L'.KRecord k2) => unifyKinds' k1 k2
+          | (L'.KTuple ks1, L'.KTuple ks2) =>
+            ((ListPair.appEq (fn (k1, k2) => unifyKinds' k1 k2) (ks1, ks2))
+             handle ListPair.UnequalLengths => err KIncompatible)
 
           | (L'.KError, _) => ()
           | (_, L'.KError) => ()
@@ -125,6 +128,8 @@ datatype con_error =
        | UnboundStrInCon of ErrorMsg.span * string
        | WrongKind of L'.con * L'.kind * L'.kind * kunify_error
        | DuplicateField of ErrorMsg.span * string
+       | ProjBounds of L'.con * int
+       | ProjMismatch of L'.con * L'.kind
 
 fun conError env err =
     case err of
@@ -142,6 +147,14 @@ fun conError env err =
          kunifyError kerr)
       | DuplicateField (loc, s) =>
         ErrorMsg.errorAt loc ("Duplicate record field " ^ s)
+      | ProjBounds (c, n) =>
+        (ErrorMsg.errorAt (#2 c) "Out of bounds constructor projection";
+         eprefaces' [("Constructor", p_con env c),
+                     ("Index", Print.PD.string (Int.toString n))])
+      | ProjMismatch (c, k) =>
+        (ErrorMsg.errorAt (#2 c) "Projection from non-tuple constructor";
+         eprefaces' [("Constructor", p_con env c),
+                     ("Kind", p_kind k)])
 
 fun checkKind env c k1 k2 =
     unifyKinds k1 k2
@@ -212,6 +225,7 @@ fun elabKind (k, loc) =
       | L.KName => (L'.KName, loc)
       | L.KRecord k => (L'.KRecord (elabKind k), loc)
       | L.KUnit => (L'.KUnit, loc)
+      | L.KTuple ks => (L'.KTuple (map elabKind ks), loc)
       | L.KWild => kunif loc
 
 fun foldKind (dom, ran, loc)=
@@ -221,6 +235,11 @@ fun foldKind (dom, ran, loc)=
                 (L'.KArrow (ran,
                             (L'.KArrow ((L'.KRecord dom, loc),
                                         ran), loc)), loc)), loc)
+
+fun hnormKind (kAll as (k, _)) =
+    case k of
+        L'.KUnif (_, _, ref (SOME k)) => hnormKind k
+      | _ => kAll
 
 fun elabCon (env, denv) (c, loc) =
     case c of
@@ -411,6 +430,32 @@ fun elabCon (env, denv) (c, loc) =
 
       | L.CUnit => ((L'.CUnit, loc), (L'.KUnit, loc), [])
 
+      | L.CTuple cs =>
+        let
+            val (cs', ks, gs) = foldl (fn (c, (cs', ks, gs)) =>
+                                          let
+                                              val (c', k, gs') = elabCon (env, denv) c
+                                          in
+                                              (c' :: cs', k :: ks, gs' @ gs)
+                                          end) ([], [], []) cs
+        in
+            ((L'.CTuple (rev cs'), loc), (L'.KTuple (rev ks), loc), gs)
+        end
+      | L.CProj (c, n) =>
+        let
+            val (c', k, gs) = elabCon (env, denv) c
+        in
+            case hnormKind k of
+                (L'.KTuple ks, _) =>
+                if n <= 0 orelse n > length ks then
+                    (conError env (ProjBounds (c', n));
+                     (cerror, kerror, []))
+                else
+                    ((L'.CProj (c', n), loc), List.nth (ks, n - 1), gs)
+              | k => (conError env (ProjMismatch (c', k));
+                      (cerror, kerror, []))
+        end
+
       | L.CWild k =>
         let
             val k' = elabKind k
@@ -509,11 +554,6 @@ fun p_summary env s = p_con env (summaryToCon s)
 
 exception CUnify of L'.con * L'.con * cunify_error
 
-fun hnormKind (kAll as (k, _)) =
-    case k of
-        L'.KUnif (_, _, ref (SOME k)) => hnormKind k
-      | _ => kAll
-
 fun kindof env (c, loc) =
     case c of
         L'.TFun _ => ktype
@@ -552,6 +592,12 @@ fun kindof env (c, loc) =
       | L'.CFold (dom, ran) => foldKind (dom, ran, loc)
 
       | L'.CUnit => (L'.KUnit, loc)
+
+      | L'.CTuple cs => (L'.KTuple (map (kindof env) cs), loc)
+      | L'.CProj (c, n) =>
+        (case hnormKind (kindof env c) of
+             (L'.KTuple ks, _) => List.nth (ks, n - 1)
+           | k => raise CUnify' (CKindof (k, c)))
 
       | L'.CError => kerror
       | L'.CUnif (_, k, _, _) => k
@@ -862,6 +908,20 @@ and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
             else
                 err CIncompatible
 
+          | (L'.CTuple cs1, L'.CTuple cs2) =>
+            ((ListPair.foldlEq (fn (c1, c2, gs) =>
+                                   let
+                                       val gs' = unifyCons' (env, denv) c1 c2
+                                   in
+                                       gs' @ gs
+                                   end) [] (cs1, cs2))
+             handle ListPair.UnequalLengths => err CIncompatible)
+          | (L'.CProj (c1, n1), L'.CProj (c2, n2)) =>
+            if n1 = n2 then
+                unifyCons' (env, denv) c1 c2
+            else
+                err CIncompatible
+
           | (L'.CError, _) => []
           | (_, L'.CError) => []
 
@@ -869,8 +929,6 @@ and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
           | (_, L'.CRecord _) => isRecord ()
           | (L'.CConcat _, _) => isRecord ()
           | (_, L'.CConcat _) => isRecord ()
-          (*| (L'.CUnif (_, (L'.KRecord _, _), _, _), _) => isRecord ()
-          | (_, L'.CUnif (_, (L'.KRecord _, _), _, _)) => isRecord ()*)
 
           | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
             if r1 = r2 then
@@ -2908,7 +2966,11 @@ fun elabFile basis env file =
         val (sgn, gs) = elabSgn (env, D.empty) (L.SgnConst basis, ErrorMsg.dummySpan)
         val () = case gs of
                      [] => ()
-                   | _ => raise Fail "Unresolved disjointness constraints in Basis"
+                   | _ => (app (fn (_, env, _, c1, c2) =>
+                                   prefaces "Unresolved"
+                                   [("c1", p_con env c1),
+                                    ("c2", p_con env c2)]) gs;
+                           raise Fail "Unresolved disjointness constraints in Basis")
 
         val (env', basis_n) = E.pushStrNamed env "Basis" sgn
 

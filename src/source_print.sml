@@ -46,6 +46,9 @@ fun p_kind' par (k, _) =
       | KRecord k => box [string "{", p_kind k, string "}"]
       | KUnit => string "Unit"
       | KWild => string "_"
+      | KTuple ks => box [string "(",
+                          p_list_sep (box [space, string "*", space]) p_kind ks,
+                          string ")"]
 
 and p_kind k = p_kind' false k
 
@@ -154,6 +157,13 @@ fun p_con' par (c, _) =
                         string "::",
                         space,
                         p_kind k]
+
+      | CTuple cs => box [string "(",
+                          p_list p_con cs,
+                          string ")"]
+      | CProj (c, n) => box [p_con c,
+                             string ".",
+                             string (Int.toString n)]
         
 and p_con c = p_con' false c
 

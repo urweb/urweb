@@ -15,10 +15,12 @@ con sql_table :: {Type} -> Type
 
 con sql_query :: {{Type}} -> Type
 
-val sql_query : tables ::: {{Type}}
-        -> $(fold (fn nm => fn ts => fn acc => [nm] ~ acc =>
-                [nm = sql_table ts] ++ acc) [] tables)
-        -> sql_query tables
+val sql_query : tables :: {({Type} * {Type})}
+        -> $(fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc =>
+                [nm] ~ acc => selected_unselected.1 ~ selected_unselected.2 =>
+                [nm = sql_table (selected_unselected.1 ++ selected_unselected.2)] ++ acc) [] tables)
+        -> sql_query (fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc => [nm] ~ acc =>
+                [nm = selected_unselected.1] ++ acc) [] tables)
 
 
 (** XML *)

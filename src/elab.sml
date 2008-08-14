@@ -35,6 +35,7 @@ datatype kind' =
        | KName
        | KRecord of kind
        | KUnit
+       | KTuple of kind list
 
        | KError
        | KUnif of ErrorMsg.span * string * kind option ref
@@ -65,6 +66,9 @@ datatype con' =
        | CFold of kind * kind
 
        | CUnit
+
+       | CTuple of con list
+       | CProj of con * int
 
        | CError
        | CUnif of ErrorMsg.span * kind * string * con option ref

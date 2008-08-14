@@ -35,6 +35,7 @@ datatype kind' =
        | KName
        | KRecord of kind
        | KUnit
+       | KTuple of kind list
        | KWild
 
 withtype kind = kind' located
@@ -63,6 +64,9 @@ datatype con' =
        | CFold
 
        | CUnit
+
+       | CTuple of con list
+       | CProj of con * int
 
        | CWild of kind
 
