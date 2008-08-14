@@ -31,8 +31,8 @@ open Source
 
 val s = ErrorMsg.spanOf
 
-fun uppercaseFirst "" = ""
-  | uppercaseFirst s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+fun capitalize "" = ""
+  | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
 fun entable t =
     case #1 t of
@@ -61,6 +61,8 @@ fun entable t =
  | XML_BEGIN of string | XML_END
  | NOTAGS of string 
  | BEGIN_TAG of string | END_TAG of string
+
+ | SELECT | FROM | AS
 
 %nonterm
    file of decl list
@@ -119,6 +121,11 @@ fun entable t =
  | attrs of (con * exp) list
  | attr of con * exp
  | attrv of exp
+
+ | query of exp
+ | tables of (con * exp) list
+ | tname of con
+ | table of con * exp
 
 %verbose                                (* print summary of errors *)
 %pos int                                (* positions *)
@@ -390,6 +397,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | XML_BEGIN XML_END              (EApp ((EVar (["Basis"], "cdata"), s (XML_BEGINleft, XML_ENDright)),
                                                (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
                                          s (XML_BEGINleft, XML_ENDright))
+       | LPAREN query RPAREN            (query)
 
 idents : ident                          ([ident])
        | ident DOT idents               (ident :: idents)
@@ -488,9 +496,27 @@ tagHead: BEGIN_TAG                      (let
 attrs  :                                ([])
        | attr attrs                     (attr :: attrs)
 
-attr   : SYMBOL EQ attrv                ((CName (uppercaseFirst SYMBOL), s (SYMBOLleft, SYMBOLright)), attrv)
-
+attr   : SYMBOL EQ attrv                ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)), attrv)
+                
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LBRACE eexp RBRACE             (eexp)
+                
+query  : SELECT STAR FROM tables        (let
+                                             val loc = s (SELECTleft, tablesright)
+                                         in
+                                             (EApp ((EVar (["Basis"], "sql_query"), loc),
+                                                    (ERecord tables, loc)), loc)
+                                         end)
+
+tables : table                          ([table])
+       | table COMMA tables             (table :: tables)
+
+tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | LBRACE cexp RBRACE             (cexp)
+
+table  : SYMBOL                         ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)),
+                                         (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
+       | SYMBOL AS tname                (tname, (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
+       | LBRACE eexp RBRACE AS tname    (tname, eexp)

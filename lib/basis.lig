@@ -11,6 +11,15 @@ datatype bool = False | True
 
 con sql_table :: {Type} -> Type
 
+(*** Queries *)
+
+con sql_query :: {{Type}} -> Type
+
+val sql_query : tables ::: {{Type}}
+        -> $(fold (fn nm => fn ts => fn acc => [nm] ~ acc =>
+                [nm = sql_table ts] ++ acc) [] tables)
+        -> sql_query tables
+
 
 (** XML *)
 
@@ -40,6 +49,8 @@ val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type} -> bind ::: {
 
 con xhtml = xml [Html]
 con page = xhtml [] []
+
+(*** HTML details *)
 
 con html = [Html]
 con head = [Head]

@@ -285,6 +285,10 @@ notags = [^<{\n]+;
 <INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));
 <INITIAL> "Unit"      => (Tokens.KUNIT (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "SELECT"    => (Tokens.SELECT (pos yypos, pos yypos + size yytext));
+<INITIAL> "FROM"      => (Tokens.FROM (pos yypos, pos yypos + size yytext));
+<INITIAL> "AS"        => (Tokens.AS (pos yypos, pos yypos + size yytext));
+
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));
 
