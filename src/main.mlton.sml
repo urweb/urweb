@@ -25,4 +25,26 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-val () = Compiler.compile (CommandLine.arguments ())
+fun doArgs (args, (timing, sources)) =
+    case args of
+        [] => (timing, rev sources)
+      | arg :: rest =>
+        let
+            val acc =
+                if size arg > 0 andalso String.sub (arg, 0) = #"-" then
+                    case arg of
+                        "-timing" => (true, sources)
+                      | _ => raise Fail ("Unknown option " ^ arg)
+                else
+                    (timing, arg :: sources)
+        in
+            doArgs (rest, acc)
+        end
+
+val (timing, sources) = doArgs (CommandLine.arguments (), (false, []))
+
+val () =
+    if timing then
+        Compiler.time Compiler.toCjrize sources
+    else
+        Compiler.compile sources

@@ -39,6 +39,7 @@ fun explifyKind (k, loc) =
       | L.KRecord k => (L'.KRecord (explifyKind k), loc)
 
       | L.KUnit => (L'.KUnit, loc)
+      | L.KTuple _ => raise Fail "Explify KTuple"
 
       | L.KError => raise Fail ("explifyKind: KError at " ^ EM.spanToString loc)
       | L.KUnif (_, _, ref (SOME k)) => explifyKind k
@@ -66,6 +67,9 @@ fun explifyCon (c, loc) =
       | L.CFold (dom, ran) => (L'.CFold (explifyKind dom, explifyKind ran), loc)
 
       | L.CUnit => (L'.CUnit, loc)
+
+      | L.CTuple _ => raise Fail "Explify CTuple"
+      | L.CProj _ => raise Fail "Explify CProj"
 
       | L.CError => raise Fail ("explifyCon: CError at " ^ EM.spanToString loc)
       | L.CUnif (_, _, _, ref (SOME c)) => explifyCon c
