@@ -286,7 +286,7 @@ fun p_exp' par (e, _) =
                                                                space,
                                                                p_exp e]) pes])
 
-      | ESqlInfer => string "<sql-infer>"
+      | EWild => string "_"
 
 and p_exp e = p_exp' false e
 

@@ -79,6 +79,16 @@ fun sql_inject (v, t, loc) =
         (EApp (e, (t, loc)), loc)
     end
 
+fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
+    let
+        val e = (EVar (["Basis"], "sql_comparison"), loc)
+        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+        val e = (EApp (e, sqlexp1), loc)
+        val e = (EApp (e, sqlexp2), loc)
+    in
+                (EApp (e, (EWild, loc)), loc)
+    end
+
 %%
 %header (functor LacwebLrValsFn(structure Token : TOKEN))
 
@@ -88,7 +98,7 @@ fun sql_inject (v, t, loc) =
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
- | DIVIDE | GT | DOTDOTDOT
+ | DIVIDE | DOTDOTDOT
  | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
@@ -104,6 +114,7 @@ fun sql_inject (v, t, loc) =
 
  | SELECT | FROM | AS | CWHERE
  | TRUE | FALSE
+ | NE | LT | LE | GT | GE
 
 %nonterm
    file of decl list
@@ -192,6 +203,7 @@ fun sql_inject (v, t, loc) =
 %nonassoc COLON
 %nonassoc DCOLON TCOLON
 %right COMMA
+%nonassoc EQ NE LT LE GT GE
 %right ARROW LARROW
 %right PLUSPLUS MINUSMINUS
 %right STAR
@@ -650,6 +662,13 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
        | FALSE                          (sql_inject (EVar (["Basis"], "False"),
                                                      EVar (["Basis"], "sql_bool"),
                                                      s (FALSEleft, FALSEright)))
+
+       | sqlexp EQ sqlexp               (sql_compare ("eq", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp NE sqlexp               (sql_compare ("ne", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp LT sqlexp               (sql_compare ("lt", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp LE sqlexp               (sql_compare ("le", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp GT sqlexp               (sql_compare ("gt", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp GE sqlexp               (sql_compare ("ge", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
 
        | LBRACE eexp RBRACE             (sql_inject (#1 eexp,
                                                      EWild,

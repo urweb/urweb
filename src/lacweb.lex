@@ -238,6 +238,11 @@ notags = [^<{\n]+;
 <INITIAL> "--"        => (Tokens.MINUSMINUS (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "="         => (Tokens.EQ (pos yypos, pos yypos + size yytext));
+<INITIAL> "<>"        => (Tokens.NE (pos yypos, pos yypos + size yytext));
+<INITIAL> "<"         => (Tokens.LT (pos yypos, pos yypos + size yytext));
+<INITIAL> ">"         => (Tokens.GT (pos yypos, pos yypos + size yytext));
+<INITIAL> "<="        => (Tokens.LE (pos yypos, pos yypos + size yytext));
+<INITIAL> ">="        => (Tokens.GE (pos yypos, pos yypos + size yytext));
 <INITIAL> ","         => (Tokens.COMMA (pos yypos, pos yypos + size yytext));
 <INITIAL> ":::"       => (Tokens.TCOLON (pos yypos, pos yypos + size yytext));
 <INITIAL> "::"        => (Tokens.DCOLON (pos yypos, pos yypos + size yytext));

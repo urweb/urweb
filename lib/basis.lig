@@ -34,6 +34,16 @@ val sql_string : sql_type string
 
 val sql_inject : tables ::: {{Type}} -> t ::: Type -> t -> sql_type t -> sql_exp tables t
 
+type sql_comparison
+val sql_eq : sql_comparison
+val sql_ne : sql_comparison
+val sql_lt : sql_comparison
+val sql_le : sql_comparison
+val sql_gt : sql_comparison
+val sql_ge : sql_comparison
+val sql_comparison : sql_comparison
+        -> tables ::: {{Type}} -> t ::: Type -> sql_exp tables t -> sql_exp tables t
+        -> sql_type t -> sql_exp tables bool
 
 (** XML *)
 
