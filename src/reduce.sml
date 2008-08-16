@@ -123,6 +123,9 @@ fun con env c =
              (_, _, SOME c') => #1 c'
            | _ => c)
       | CConcat ((CRecord (k, xcs1), loc), (CRecord (_, xcs2), _)) => CRecord (k, xcs1 @ xcs2)
+
+      | CProj ((CTuple cs, _), n) => #1 (List.nth (cs, n - 1))
+
       | _ => c
 
 and reduceCon env = U.Con.mapB {kind = kind, con = con, bind = bindC} env
