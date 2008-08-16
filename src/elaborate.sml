@@ -2235,6 +2235,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
       | L'.DExport _ => []
       | L'.DTable (tn, x, n, c) => [(L'.SgiTable (tn, x, n, c), loc)]
+      | L'.DClass (x, n, c) => [(L'.SgiClass (x, n, c), loc)]
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
@@ -2941,7 +2942,7 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
             val env = E.pushClass env n
         in
             checkKind env c' ck k;
-            ([(L'.DCon (x, n, k, c'), loc)], (env, denv, []))
+            ([(L'.DClass (x, n, c'), loc)], (env, denv, []))
         end
 
 and elabStr (env, denv) (str, loc) =

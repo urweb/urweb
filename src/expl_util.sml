@@ -57,6 +57,11 @@ fun mapfold f =
                            (KRecord k', loc))
 
               | KUnit => S.return2 kAll
+
+              | KTuple ks =>
+                S.map2 (ListUtil.mapfold mfk ks,
+                        fn ks' =>
+                           (KTuple ks', loc))
     in
         mfk
     end
@@ -148,6 +153,16 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                                        (CFold (k1', k2'), loc)))
 
               | CUnit => S.return2 cAll
+
+              | CTuple cs =>
+                S.map2 (ListUtil.mapfold (mfc ctx) cs,
+                        fn cs' =>
+                           (CTuple cs', loc))
+
+              | CProj (c, n) =>
+                S.map2 (mfc ctx c,
+                        fn c' =>
+                           (CProj (c', n), loc))
     in
         mfc
     end

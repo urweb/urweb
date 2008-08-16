@@ -39,7 +39,7 @@ fun explifyKind (k, loc) =
       | L.KRecord k => (L'.KRecord (explifyKind k), loc)
 
       | L.KUnit => (L'.KUnit, loc)
-      | L.KTuple _ => raise Fail "Explify KTuple"
+      | L.KTuple ks => (L'.KTuple (map explifyKind ks), loc)
 
       | L.KError => raise Fail ("explifyKind: KError at " ^ EM.spanToString loc)
       | L.KUnif (_, _, ref (SOME k)) => explifyKind k
@@ -68,8 +68,8 @@ fun explifyCon (c, loc) =
 
       | L.CUnit => (L'.CUnit, loc)
 
-      | L.CTuple _ => raise Fail "Explify CTuple"
-      | L.CProj _ => raise Fail "Explify CProj"
+      | L.CTuple cs => (L'.CTuple (map explifyCon cs), loc)
+      | L.CProj (c, n) => (L'.CProj (explifyCon c, n), loc)
 
       | L.CError => raise Fail ("explifyCon: CError at " ^ EM.spanToString loc)
       | L.CUnif (_, _, _, ref (SOME c)) => explifyCon c
@@ -160,6 +160,8 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DConstraint (c1, c2) => NONE
       | L.DExport (en, sgn, str) => SOME (L'.DExport (en, explifySgn sgn, explifyStr str), loc)
       | L.DTable _ => raise Fail "Explify DTable"
+      | L.DClass (x, n, c) => SOME (L'.DCon (x, n,
+                                             (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc), explifyCon c), loc)
 
 and explifyStr (str, loc) =
     case str of

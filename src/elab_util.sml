@@ -634,7 +634,9 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                  | DExport _ => ctx
                                                  | DTable (tn, x, n, c) =>
                                                    bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "table"), loc),
-                                                                                c), loc))),
+                                                                                c), loc)))
+                                                 | DClass (x, _, _) =>
+                                                   bind (ctx, NamedC (x, (KArrow ((KType, loc), (KType, loc)), loc))),
                                                mfd ctx d)) ctx ds,
                      fn ds' => (StrConst ds', loc))
               | StrVar _ => S.return2 strAll
@@ -726,6 +728,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                 S.map2 (mfc ctx c,
                         fn c' =>
                            (DTable (tn, x, n, c'), loc))
+
+             | DClass (x, n, c) =>
+                S.map2 (mfc ctx c,
+                        fn c' =>
+                           (DClass (x, n, c'), loc))
 
         and mfvi ctx (x, n, c, e) =
             S.bind2 (mfc ctx c,

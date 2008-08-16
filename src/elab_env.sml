@@ -958,5 +958,12 @@ fun declBinds env (d, loc) =
         in
             pushENamedAs env x n t
         end
+      | DClass (x, n, c) =>
+        let
+            val k = (KArrow ((KType, loc), (KType, loc)), loc)
+            val env = pushCNamedAs env x n k (SOME c)
+        in
+            pushClass env n
+        end
 
 end
