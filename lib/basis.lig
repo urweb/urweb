@@ -14,13 +14,25 @@ con sql_table :: {Type} -> Type
 (*** Queries *)
 
 con sql_query :: {{Type}} -> Type
+con sql_exp :: {{Type}} -> Type -> Type
 
 val sql_query : tables :: {({Type} * {Type})}
-        -> $(fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc =>
+        -> {From : $(fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc =>
                 [nm] ~ acc => selected_unselected.1 ~ selected_unselected.2 =>
-                [nm = sql_table (selected_unselected.1 ++ selected_unselected.2)] ++ acc) [] tables)
+                [nm = sql_table (selected_unselected.1 ++ selected_unselected.2)] ++ acc) [] tables),
+            Where : sql_exp (fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc =>
+                [nm] ~ acc => selected_unselected.1 ~ selected_unselected.2 =>
+                [nm = selected_unselected.1 ++ selected_unselected.2] ++ acc) [] tables) bool}
         -> sql_query (fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc => [nm] ~ acc =>
                 [nm = selected_unselected.1] ++ acc) [] tables)
+
+con sql_type :: Type -> Type
+val sql_bool : sql_type bool
+val sql_int : sql_type int
+val sql_float : sql_type float
+val sql_string : sql_type string
+
+val sql_inject : tables ::: {{Type}} -> t ::: Type -> t -> sql_type t -> sql_exp tables t
 
 
 (** XML *)

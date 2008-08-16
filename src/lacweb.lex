@@ -288,6 +288,10 @@ notags = [^<{\n]+;
 <INITIAL> "SELECT"    => (Tokens.SELECT (pos yypos, pos yypos + size yytext));
 <INITIAL> "FROM"      => (Tokens.FROM (pos yypos, pos yypos + size yytext));
 <INITIAL> "AS"        => (Tokens.AS (pos yypos, pos yypos + size yytext));
+<INITIAL> "WHERE"     => (Tokens.CWHERE (pos yypos, pos yypos + size yytext));
+
+<INITIAL> "TRUE"      => (Tokens.TRUE (pos yypos, pos yypos + size yytext));
+<INITIAL> "FALSE"     => (Tokens.FALSE (pos yypos, pos yypos + size yytext));
 
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));

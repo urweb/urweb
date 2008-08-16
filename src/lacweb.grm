@@ -72,6 +72,13 @@ fun amend_select loc (si, tabs) =
         tabs
     end
 
+fun sql_inject (v, t, loc) =
+    let
+        val e = (EApp ((EVar (["Basis"], "sql_inject"), loc), (v, loc)), loc)
+    in
+        (EApp (e, (t, loc)), loc)
+    end
+
 %%
 %header (functor LacwebLrValsFn(structure Token : TOKEN))
 
@@ -95,7 +102,8 @@ fun amend_select loc (si, tabs) =
  | NOTAGS of string 
  | BEGIN_TAG of string | END_TAG of string
 
- | SELECT | FROM | AS
+ | SELECT | FROM | AS | CWHERE
+ | TRUE | FALSE
 
 %nonterm
    file of decl list
@@ -166,6 +174,8 @@ fun amend_select loc (si, tabs) =
  | seli of select_item
  | selis of select_item list
  | select of select
+ | sqlexp of exp
+ | wopt of exp
 
 
 %verbose                                (* print summary of errors *)
@@ -554,7 +564,8 @@ attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTri
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LBRACE eexp RBRACE             (eexp)
                 
-query  : SELECT select FROM tables      (let
+query  : SELECT select FROM tables wopt
+                                        (let
                                              val loc = s (SELECTleft, tablesright)
 
                                              val sel =
@@ -579,7 +590,11 @@ query  : SELECT select FROM tables      (let
 
                                              val e = (EVar (["Basis"], "sql_query"), loc)
                                              val e = (ECApp (e, sel), loc)
-                                             val e = (EApp (e, (ERecord tables, loc)), loc)
+                                             val re = (ERecord [((CName "From", loc),
+                                                                 (ERecord tables, loc)),
+                                                                ((CName "Where", loc),
+                                                                 wopt)], loc)
+                                             val e = (EApp (e, re), loc)
                                          in
                                              e
                                          end)
@@ -609,3 +624,15 @@ selis  : seli                           ([seli])
 
 select : STAR                           (Star)
        | selis                          (Items selis)
+
+sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
+                                                     EVar (["Basis"], "sql_bool"),
+                                                     s (TRUEleft, TRUEright)))
+       | FALSE                          (sql_inject (EVar (["Basis"], "False"),
+                                                     EVar (["Basis"], "sql_bool"),
+                                                     s (FALSEleft, FALSEright)))
+
+wopt   :                                (sql_inject (EVar (["Basis"], "True"),
+                                                     EVar (["Basis"], "sql_bool"),
+                                                     ErrorMsg.dummySpan))
+       | CWHERE sqlexp                  (sqlexp)

@@ -682,9 +682,14 @@ and recordSummary (env, denv) c =
     end
 
 and consEq (env, denv) (c1, c2) =
-    (case unifyCons (env, denv) c1 c2 of
-         [] => true
-       | _ => false)
+    let
+        val gs = unifyCons (env, denv) c1 c2
+    in
+        List.all (fn (loc, env, denv, c1, c2) =>
+                     case D.prove env denv (c1, c2, loc) of
+                         [] => true
+                       | _ => false) gs
+    end
     handle CUnify _ => false
 
 and consNeq env (c1, c2) =
@@ -857,7 +862,9 @@ and unifyCons' (env, denv) c1 c2 =
     
 and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
     let
-        fun err f = raise CUnify' (f (c1All, c2All))
+        fun err f = (prefaces "unifyCons'' fails" [("c1All", p_con env c1All),
+                                                   ("c2All", p_con env c2All)];
+                     raise CUnify' (f (c1All, c2All)))
 
         fun isRecord () = unifyRecordCons (env, denv) (c1All, c2All)
     in
@@ -955,7 +962,6 @@ and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
             (unifyKinds dom1 dom2;
              unifyKinds ran1 ran2;
              [])
-
 
           | _ => err CIncompatible
     end

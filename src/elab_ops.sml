@@ -136,6 +136,7 @@ fun hnormCon env (cAll as (c, loc)) =
            | ((CRecord (_, []), _), c2') => c2'
            | ((CConcat (c11, c12), loc), c2') =>
              hnormCon env (CConcat (c11, (CConcat (c12, c2'), loc)), loc)
+           | (c1', (CRecord (_, []), _)) => c1'
            | _ => cAll)
 
       | CProj (c, n) =>
