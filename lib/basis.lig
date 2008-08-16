@@ -34,6 +34,17 @@ val sql_string : sql_type string
 
 val sql_inject : tables ::: {{Type}} -> t ::: Type -> t -> sql_type t -> sql_exp tables t
 
+con sql_unary :: Type -> Type -> Type
+val sql_not : sql_unary bool bool
+val sql_unary : tables ::: {{Type}} -> arg ::: Type -> res ::: Type
+        -> sql_unary arg res -> sql_exp tables arg -> sql_exp tables res
+
+con sql_binary :: Type -> Type -> Type -> Type
+val sql_and : sql_binary bool bool bool
+val sql_or : sql_binary bool bool bool
+val sql_binary : tables ::: {{Type}} -> arg1 ::: Type -> arg2 ::: Type -> res ::: Type
+        -> sql_binary arg1 arg2 res -> sql_exp tables arg1 -> sql_exp tables arg2 -> sql_exp tables res
+
 type sql_comparison
 val sql_eq : sql_comparison
 val sql_ne : sql_comparison

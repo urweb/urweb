@@ -86,7 +86,24 @@ fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
         val e = (EApp (e, sqlexp1), loc)
         val e = (EApp (e, sqlexp2), loc)
     in
-                (EApp (e, (EWild, loc)), loc)
+        (EApp (e, (EWild, loc)), loc)
+    end
+
+fun sql_binary (oper, sqlexp1, sqlexp2, loc) =
+    let
+        val e = (EVar (["Basis"], "sql_binary"), loc)
+        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+        val e = (EApp (e, sqlexp1), loc)
+    in
+        (EApp (e, sqlexp2), loc)
+    end
+
+fun sql_unary (oper, sqlexp, loc) =
+    let
+        val e = (EVar (["Basis"], "sql_unary"), loc)
+        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+    in
+        (EApp (e, sqlexp), loc)
     end
 
 %%
@@ -113,7 +130,7 @@ fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
  | BEGIN_TAG of string | END_TAG of string
 
  | SELECT | FROM | AS | CWHERE
- | TRUE | FALSE
+ | TRUE | FALSE | CAND | OR | NOT
  | NE | LT | LE | GT | GE
 
 %nonterm
@@ -203,10 +220,13 @@ fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
 %nonassoc COLON
 %nonassoc DCOLON TCOLON
 %right COMMA
+%right OR
+%right CAND
 %nonassoc EQ NE LT LE GT GE
 %right ARROW LARROW
 %right PLUSPLUS MINUSMINUS
 %right STAR
+%left NOT
 %nonassoc TWIDDLE
 %nonassoc DOLLAR
 %left DOT
@@ -670,9 +690,14 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
        | sqlexp GT sqlexp               (sql_compare ("gt", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp GE sqlexp               (sql_compare ("ge", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
 
+       | sqlexp CAND sqlexp             (sql_binary ("and", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp OR sqlexp               (sql_binary ("or", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | NOT sqlexp                     (sql_unary ("not", sqlexp, s (NOTleft, sqlexpright)))
+
        | LBRACE eexp RBRACE             (sql_inject (#1 eexp,
                                                      EWild,
                                                      s (LBRACEleft, RBRACEright)))
+       | LPAREN sqlexp RPAREN           (sqlexp)
 
 wopt   :                                (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),

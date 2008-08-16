@@ -298,6 +298,9 @@ notags = [^<{\n]+;
 
 <INITIAL> "TRUE"      => (Tokens.TRUE (pos yypos, pos yypos + size yytext));
 <INITIAL> "FALSE"     => (Tokens.FALSE (pos yypos, pos yypos + size yytext));
+<INITIAL> "AND"       => (Tokens.CAND (pos yypos, pos yypos + size yytext));
+<INITIAL> "OR"        => (Tokens.OR (pos yypos, pos yypos + size yytext));
+<INITIAL> "NOT"       => (Tokens.NOT (pos yypos, pos yypos + size yytext));
 
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));

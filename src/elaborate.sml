@@ -986,7 +986,7 @@ datatype exp_error =
      | Inexhaustive of ErrorMsg.span
      | DuplicatePatField of ErrorMsg.span * string
      | Unresolvable of ErrorMsg.span * L'.con
-     | OutOfContext of ErrorMsg.span
+     | OutOfContext of ErrorMsg.span * (L'.exp * L'.con) option
 
 fun expError env err =
     case err of
@@ -1029,8 +1029,10 @@ fun expError env err =
         ErrorMsg.errorAt loc "Inexhaustive 'case'"
       | DuplicatePatField (loc, s) =>
         ErrorMsg.errorAt loc ("Duplicate record field " ^ s ^ " in pattern")
-      | OutOfContext loc =>
-        ErrorMsg.errorAt loc "Type class wildcard occurs out of context"
+      | OutOfContext (loc, co) =>
+        (ErrorMsg.errorAt loc "Type class wildcard occurs out of context";
+         Option.app (fn (e, c) => eprefaces' [("Function", p_exp env e),
+                                              ("Type", p_con env c)]) co)
       | Unresolvable (loc, c) =>
         (ErrorMsg.errorAt loc "Can't resolve type class instance";
          eprefaces' [("Class constraint", p_con env c)])
@@ -1466,10 +1468,10 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                      (eerror, cerror, []))
                           | SOME pf => ((L'.EApp (e1', pf), loc), ran, gs1 @ gs2 @ gs3 @ gs4)
                     end
-                  | _ => (expError env (OutOfContext loc);
+                  | _ => (expError env (OutOfContext (loc, SOME (e1', t1)));
                           (eerror, cerror, []))
             end
-          | L.EWild => (expError env (OutOfContext loc);
+          | L.EWild => (expError env (OutOfContext (loc, NONE));
                         (eerror, cerror, []))
 
           | L.EApp (e1, e2) =>
