@@ -230,6 +230,7 @@ fun sql_unary (oper, sqlexp, loc) =
 %nonassoc TWIDDLE
 %nonassoc DOLLAR
 %left DOT
+%nonassoc LBRACE RBRACE
 
 %%
 
@@ -659,11 +660,11 @@ tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLr
 table  : SYMBOL                         ((CName SYMBOL, s (SYMBOLleft, SYMBOLright)),
                                          (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
        | SYMBOL AS tname                (tname, (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
-       | LBRACE eexp RBRACE AS tname    (tname, eexp)
+       | LBRACE LBRACE eexp RBRACE RBRACE AS tname    (tname, eexp)
 
 tident : SYMBOL                         (CName SYMBOL, s (SYMBOLleft, SYMBOLright))
        | CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
-       | LBRACE cexp RBRACE             (cexp)
+       | LBRACE LBRACE cexp RBRACE RBRACE (cexp)
 
 fident : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | LBRACE cexp RBRACE             (cexp)
@@ -682,6 +683,14 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
        | FALSE                          (sql_inject (EVar (["Basis"], "False"),
                                                      EVar (["Basis"], "sql_bool"),
                                                      s (FALSEleft, FALSEright)))
+
+       | tident DOT fident              (let
+                                             val loc = s (tidentleft, fidentright)
+                                             val e = (EVar (["Basis"], "sql_field"), loc)
+                                             val e = (ECApp (e, tident), loc)
+                                         in
+                                             (ECApp (e, fident), loc)
+                                         end)
 
        | sqlexp EQ sqlexp               (sql_compare ("eq", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp NE sqlexp               (sql_compare ("ne", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))

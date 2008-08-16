@@ -26,13 +26,16 @@ val sql_query : tables :: {({Type} * {Type})}
         -> sql_query (fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc => [nm] ~ acc =>
                 [nm = selected_unselected.1] ++ acc) [] tables)
 
-class sql_type
-val sql_bool : sql_type bool
-val sql_int : sql_type int
-val sql_float : sql_type float
-val sql_string : sql_type string
+val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type
+        -> tab :: Name -> field :: Name
+        -> sql_exp ([tab = [field = fieldType] ++ otherFields] ++ otherTabs) fieldType
 
-val sql_inject : tables ::: {{Type}} -> t ::: Type -> t -> sql_type t -> sql_exp tables t
+class sql_injectable
+val sql_bool : sql_injectable bool
+val sql_int : sql_injectable int
+val sql_float : sql_injectable float
+val sql_string : sql_injectable string
+val sql_inject : tables ::: {{Type}} -> t ::: Type -> t -> sql_injectable t -> sql_exp tables t
 
 con sql_unary :: Type -> Type -> Type
 val sql_not : sql_unary bool bool
@@ -54,7 +57,7 @@ val sql_gt : sql_comparison
 val sql_ge : sql_comparison
 val sql_comparison : sql_comparison
         -> tables ::: {{Type}} -> t ::: Type -> sql_exp tables t -> sql_exp tables t
-        -> sql_type t -> sql_exp tables bool
+        -> sql_injectable t -> sql_exp tables bool
 
 (** XML *)
 
