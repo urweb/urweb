@@ -1373,20 +1373,33 @@ fun exhaustive (env, denv, t, ps) =
         isTotal (combinedCoverage ps, t)
     end
 
-fun normClassConstraint envs c =
-    let
-        val ((c, loc), gs1) = hnormCon envs c
-    in
-        case c of
-            L'.CApp (f, x) =>
-            let
-                val (f, gs2) = hnormCon envs f
-                val (x, gs3) = hnormCon envs x
-            in
-                ((L'.CApp (f, x), loc), gs1 @ gs2 @ gs3)
-            end
-          | _ => ((c, loc), gs1)
-    end
+fun unmodCon env (c, loc) =
+    case c of
+        L'.CNamed n =>
+        (case E.lookupCNamed env n of
+             (_, _, SOME (c as (L'.CModProj _, _))) => unmodCon env c
+           | _ => (c, loc))
+      | L'.CModProj (m1, ms, x) =>
+        let
+            val (str, sgn) = E.chaseMpath env (m1, ms)
+        in
+            case E.projectCon env {str = str, sgn = sgn, field = x} of
+                NONE => raise Fail "unmodCon: Can't projectCon"
+              | SOME (_, SOME (c as (L'.CModProj _, _))) => unmodCon env c
+              | _ => (c, loc)
+        end
+      | _ => (c, loc)
+
+fun normClassConstraint envs (c, loc) =
+    case c of
+        L'.CApp (f, x) =>
+        let
+            val f = unmodCon (#1 envs) f
+            val (x, gs) = hnormCon envs x
+        in
+            ((L'.CApp (f, x), loc), gs)
+        end
+      | _ => ((c, loc), [])
 
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
@@ -2728,11 +2741,13 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                                   | SOME c => elabCon (env, denv) c
 
             val (e', et, gs2) = elabExp (env, denv) e
-            val (env', n) = E.pushENamed env x c'
-
             val gs3 = checkCon (env, denv) e' et c'
+            val (c', gs4) = normClassConstraint (env, denv) c'
+            val (env', n) = E.pushENamed env x c'
         in
-            ([(L'.DVal (x, n, c', e'), loc)], (env', denv, gs1 @ gs2 @ gs3 @ gs))
+            (*prefaces "DVal" [("x", Print.PD.string x),
+                             ("c'", p_con env c')];*)
+            ([(L'.DVal (x, n, c', e'), loc)], (env', denv, gs1 @ gs2 @ gs3 @ gs4 @ gs))
         end
       | L.DValRec vis =>
         let

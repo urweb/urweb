@@ -713,7 +713,11 @@ fun enrichClasses env classes (m1, ms) sgn =
                               fun default () = (classes, newClasses, sgiSeek (#1 sgi, fmap))
                           in
                               case #1 sgi of
-                                  SgiClassAbs xn => found xn
+                                  SgiStr (x, _, sgn) =>
+                                  (enrichClasses env classes (m1, ms @ [x]) sgn,
+                                   newClasses,
+                                   sgiSeek (#1 sgi, fmap))
+                                | SgiClassAbs xn => found xn
                                 | SgiClass (x, n, _) => found (x, n)
                                 | SgiVal (x, n, (CApp ((CNamed f, _), a), _)) =>
                                   (case IM.find (newClasses, f) of
@@ -735,6 +739,7 @@ fun enrichClasses env classes (m1, ms) sgn =
                                                 newClasses,
                                                 fmap)
                                            end)
+                                | SgiVal _ => default ()
                                 | _ => default ()
                           end)
                 (classes, IM.empty, (IM.empty, IM.empty, IM.empty)) sgis
