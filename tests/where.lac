@@ -4,3 +4,4 @@ table t2 : {A : float, D : int}
 val q1 = (SELECT * FROM t1)
 val q2 = (SELECT * FROM t1 WHERE TRUE)
 val q3 = (SELECT * FROM t1 WHERE FALSE)
+val q4 = (SELECT * FROM t1 WHERE {True})

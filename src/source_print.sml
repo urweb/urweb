@@ -286,6 +286,8 @@ fun p_exp' par (e, _) =
                                                                space,
                                                                p_exp e]) pes])
 
+      | ESqlInfer => string "<sql-infer>"
+
 and p_exp e = p_exp' false e
 
 fun p_datatype (x, xs, cons) =

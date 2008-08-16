@@ -119,6 +119,8 @@ datatype exp' =
        | ECut of exp * con
        | EFold
 
+       | ESqlInfer
+
        | ECase of exp * (pat * exp) list
 
 withtype exp = exp' located

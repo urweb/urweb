@@ -632,6 +632,10 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),
                                                      s (FALSEleft, FALSEright)))
 
+       | LBRACE eexp RBRACE             (sql_inject (#1 eexp,
+                                                     ESqlInfer,
+                                                     s (LBRACEleft, RBRACEright)))
+
 wopt   :                                (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),
                                                      ErrorMsg.dummySpan))
