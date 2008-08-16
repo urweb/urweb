@@ -684,6 +684,13 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),
                                                      s (FALSEleft, FALSEright)))
 
+       | INT                            (sql_inject (EPrim (Prim.Int INT),
+                                                     EVar (["Basis"], "sql_int"),
+                                                     s (INTleft, INTright)))
+       | FLOAT                          (sql_inject (EPrim (Prim.Float FLOAT),
+                                                     EVar (["Basis"], "sql_float"),
+                                                     s (FLOATleft, FLOATright)))
+
        | tident DOT fident              (let
                                              val loc = s (tidentleft, fidentright)
                                              val e = (EVar (["Basis"], "sql_field"), loc)
