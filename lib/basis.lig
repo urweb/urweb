@@ -26,7 +26,7 @@ val sql_query : tables :: {({Type} * {Type})}
         -> sql_query (fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc => [nm] ~ acc =>
                 [nm = selected_unselected.1] ++ acc) [] tables)
 
-con sql_type :: Type -> Type
+class sql_type
 val sql_bool : sql_type bool
 val sql_int : sql_type int
 val sql_float : sql_type float

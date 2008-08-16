@@ -31,7 +31,6 @@ open Elab
 
 structure U = ElabUtil
 
-structure IS = IntBinarySet
 structure IM = IntBinaryMap
 structure SM = BinaryMapFn(struct
                            type ord_key = string
@@ -96,6 +95,11 @@ datatype class_name =
          ClNamed of int
        | ClProj of int * string list * string
 
+fun cn2s cn =
+    case cn of
+        ClNamed n => "Named(" ^ Int.toString n ^ ")"
+      | ClProj (m, ms, x) => "Proj(" ^ Int.toString m ^ "," ^ String.concatWith "," ms ^ "," ^ x ^ ")"
+
 structure CK = struct
 type ord_key = class_name
 open Order
@@ -117,6 +121,14 @@ datatype class_key =
          CkNamed of int
        | CkRel of int
        | CkProj of int * string list * string
+
+fun ck2s ck =
+    case ck of
+        CkNamed n => "Named(" ^ Int.toString n ^ ")"
+      | CkRel n => "Rel(" ^ Int.toString n ^ ")"
+      | CkProj (m, ms, x) => "Proj(" ^ Int.toString m ^ "," ^ String.concatWith "," ms ^ "," ^ x ^ ")"
+
+fun cp2s (cn, ck) = "(" ^ cn2s cn ^ "," ^ ck2s ck ^ ")"
 
 structure KK = struct
 type ord_key = class_key
@@ -146,6 +158,11 @@ type class = {
 val empty_class = {
     ground = KM.empty
 }
+
+fun printClasses cs = CM.appi (fn (cn, {ground = km}) =>
+                                  (print (cn2s cn ^ ":");
+                                   KM.appi (fn (ck, _) => print (" " ^ ck2s ck)) km;
+                                   print "\n")) cs
 
 type env = {
      renameC : kind var' SM.map,
@@ -515,6 +532,20 @@ fun lookupStrNamed (env : env) n =
 fun lookupStr (env : env) x = SM.find (#renameStr env, x)
 
 
+fun sgiSeek (sgi, (sgns, strs, cons)) =
+    case sgi of
+        SgiConAbs (x, n, _) => (sgns, strs, IM.insert (cons, n, x))
+      | SgiCon (x, n, _, _) => (sgns, strs, IM.insert (cons, n, x))
+      | SgiDatatype (x, n, _, _) => (sgns, strs, IM.insert (cons, n, x))
+      | SgiDatatypeImp (x, n, _, _, _, _, _) => (sgns, strs, IM.insert (cons, n, x))
+      | SgiVal _ => (sgns, strs, cons)
+      | SgiSgn (x, n, _) => (IM.insert (sgns, n, x), strs, cons)
+      | SgiStr (x, n, _) => (sgns, IM.insert (strs, n, x), cons)
+      | SgiConstraint _ => (sgns, strs, cons)
+      | SgiTable _ => (sgns, strs, cons)
+      | SgiClassAbs (x, n) => (sgns, strs, IM.insert (cons, n, x))
+      | SgiClass (x, n, _) => (sgns, strs, IM.insert (cons, n, x))
+
 fun sgnSeek f sgis =
     let
         fun seek (sgis, sgns, strs, cons) =
@@ -533,18 +564,11 @@ fun sgnSeek f sgis =
                         SOME (v, (sgns, strs, cons))
                     end
                   | NONE =>
-                    case sgi of
-                        SgiConAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                      | SgiCon (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                      | SgiDatatype (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                      | SgiDatatypeImp (x, n, _, _, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                      | SgiVal _ => seek (sgis, sgns, strs, cons)
-                      | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons)
-                      | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons)
-                      | SgiConstraint _ => seek (sgis, sgns, strs, cons)
-                      | SgiTable _ => seek (sgis, sgns, strs, cons)
-                      | SgiClassAbs (x, n) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
-                      | SgiClass (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x))
+                    let
+                        val (sgns, strs, cons) = sgiSeek (sgi, (sgns, strs, cons))
+                    in
+                        seek (sgis, sgns, strs, cons)
+                    end
     in
         seek (sgis, IM.empty, IM.empty, IM.empty)
     end
@@ -582,6 +606,18 @@ fun sgnS_con (str, (sgns, strs, cons)) c =
              in
                  CModProj (m1, ms, nx)
              end)
+      | _ => c
+
+fun sgnS_con' (m1, ms', (sgns, strs, cons)) c =
+    case c of
+        CModProj (m1, ms, x) =>
+        (case IM.find (strs, m1) of
+             NONE => c
+           | SOME m1x => CModProj (m1, ms' @ m1x :: ms, x))
+      | CNamed n =>
+        (case IM.find (cons, n) of
+             NONE => c
+           | SOME nx => CModProj (m1, ms', nx))
       | _ => c
 
 fun sgnS_sgn (str, (sgns, strs, cons)) sgn =
@@ -664,21 +700,44 @@ fun enrichClasses env classes (m1, ms) sgn =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         let
-            val (classes, _) =
-                foldl (fn (sgi, (classes, newClasses)) =>
+            val (classes, _, _) =
+                foldl (fn (sgi, (classes, newClasses, fmap)) =>
                           let
                               fun found (x, n) =
                                   (CM.insert (classes,
                                               ClProj (m1, ms, x),
                                               empty_class),
-                                   IS.add (newClasses, n))
+                                   IM.insert (newClasses, n, x),
+                                   sgiSeek (#1 sgi, fmap))
+
+                              fun default () = (classes, newClasses, sgiSeek (#1 sgi, fmap))
                           in
                               case #1 sgi of
                                   SgiClassAbs xn => found xn
                                 | SgiClass (x, n, _) => found (x, n)
-                                | _ => (classes, newClasses)
+                                | SgiVal (x, n, (CApp ((CNamed f, _), a), _)) =>
+                                  (case IM.find (newClasses, f) of
+                                       NONE => default ()
+                                     | SOME fx =>
+                                       case class_key_in (sgnS_con' (m1, ms, fmap) (#1 a), #2 a) of
+                                           NONE => default ()
+                                         | SOME ck =>
+                                           let
+                                               val cn = ClProj (m1, ms, fx)
+                                               val class = Option.getOpt (CM.find (classes, cn), empty_class)
+                                               val class = {
+                                                   ground = KM.insert (#ground class, ck,
+                                                                       (EModProj (m1, ms, x), #2 sgn))
+                                               }
+
+                                           in
+                                               (CM.insert (classes, cn, class),
+                                                newClasses,
+                                                fmap)
+                                           end)
+                                | _ => default ()
                           end)
-                (classes, IS.empty) sgis
+                (classes, IM.empty, (IM.empty, IM.empty, IM.empty)) sgis
         in
             classes
         end
@@ -803,6 +862,14 @@ fun projectCon env {sgn, str, field} =
                               SOME ((KType, #2 sgn), SOME (CModProj (m1, ms, x'), #2 sgn))
                           else
                               NONE
+                        | SgiClassAbs (x, _) => if x = field then
+                                                    SOME ((KArrow ((KType, #2 sgn), (KType, #2 sgn)), #2 sgn), NONE)
+                                                else
+                                                    NONE
+                        | SgiClass (x, _, c) => if x = field then
+                                                    SOME ((KArrow ((KType, #2 sgn), (KType, #2 sgn)), #2 sgn), SOME c)
+                                                else
+                                                    NONE
                         | _ => NONE) sgis of
              NONE => NONE
            | SOME ((k, co), subs) => SOME (k, Option.map (sgnSubCon (str, subs)) co))

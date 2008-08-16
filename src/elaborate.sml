@@ -1373,6 +1373,21 @@ fun exhaustive (env, denv, t, ps) =
         isTotal (combinedCoverage ps, t)
     end
 
+fun normClassConstraint envs c =
+    let
+        val ((c, loc), gs1) = hnormCon envs c
+    in
+        case c of
+            L'.CApp (f, x) =>
+            let
+                val (f, gs2) = hnormCon envs f
+                val (x, gs3) = hnormCon envs x
+            in
+                ((L'.CApp (f, x), loc), gs1 @ gs2 @ gs3)
+            end
+          | _ => ((c, loc), gs1)
+    end
+
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
         
@@ -1430,10 +1445,14 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
             in
                 case t1 of
                     (L'.TFun (dom, ran), _) =>
-                    (case E.resolveClass env dom of
-                         NONE => (expError env (Unresolvable (loc, dom));
-                                  (eerror, cerror, []))
-                       | SOME pf => ((L'.EApp (e1', pf), loc), ran, gs1 @ gs2 @ gs3))
+                    let
+                        val (dom, gs4) = normClassConstraint (env, denv) dom
+                    in
+                        case E.resolveClass env dom of
+                            NONE => (expError env (Unresolvable (loc, dom));
+                                     (eerror, cerror, []))
+                          | SOME pf => ((L'.EApp (e1', pf), loc), ran, gs1 @ gs2 @ gs3 @ gs4)
+                    end
                   | _ => (expError env (OutOfContext loc);
                           (eerror, cerror, []))
             end
