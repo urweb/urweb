@@ -98,6 +98,9 @@ fun monoType env =
                   | L.CConcat _ => poly ()
                   | L.CFold _ => poly ()
                   | L.CUnit => poly ()
+
+                  | L.CTuple _ => poly ()
+                  | L.CProj _ => poly ()
             end
     in
         mt env IM.empty

@@ -380,7 +380,7 @@ structure St : sig
        | L.KName => (L'.KName, loc)
        | L.KRecord k => (L'.KRecord (corifyKind k), loc)
        | L.KUnit => (L'.KUnit, loc)
-       | L.KTuple _ => raise Fail "Corify KTuple"
+       | L.KTuple ks => (L'.KTuple (map corifyKind ks), loc)
 
  fun corifyCon st (c, loc) =
      case c of
@@ -414,8 +414,8 @@ structure St : sig
        | L.CFold (k1, k2) => (L'.CFold (corifyKind k1, corifyKind k2), loc)
        | L.CUnit => (L'.CUnit, loc)
 
-       | L.CTuple _ => raise Fail "Corify CTuple"
-       | L.CProj _ => raise Fail "Corify CProj"
+       | L.CTuple cs => (L'.CTuple (map (corifyCon st) cs), loc)
+       | L.CProj (c, n) => (L'.CProj (corifyCon st c, n), loc)
 
  fun corifyPatCon st pc =
      case pc of
