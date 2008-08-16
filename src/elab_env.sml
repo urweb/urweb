@@ -700,23 +700,31 @@ fun enrichClasses env classes (m1, ms) sgn =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
         let
-            val (classes, _, _) =
-                foldl (fn (sgi, (classes, newClasses, fmap)) =>
+            val (classes, _, _, _) =
+                foldl (fn (sgi, (classes, newClasses, fmap, env)) =>
                           let
                               fun found (x, n) =
                                   (CM.insert (classes,
                                               ClProj (m1, ms, x),
                                               empty_class),
                                    IM.insert (newClasses, n, x),
-                                   sgiSeek (#1 sgi, fmap))
+                                   sgiSeek (#1 sgi, fmap),
+                                   env)
 
-                              fun default () = (classes, newClasses, sgiSeek (#1 sgi, fmap))
+                              fun default () = (classes, newClasses, sgiSeek (#1 sgi, fmap), env)
                           in
                               case #1 sgi of
                                   SgiStr (x, _, sgn) =>
                                   (enrichClasses env classes (m1, ms @ [x]) sgn,
                                    newClasses,
-                                   sgiSeek (#1 sgi, fmap))
+                                   sgiSeek (#1 sgi, fmap),
+                                   env)
+                                | SgiSgn (x, n, sgn) =>
+                                  (classes,
+                                   newClasses,
+                                   fmap,
+                                   pushSgnNamedAs env x n sgn)
+
                                 | SgiClassAbs xn => found xn
                                 | SgiClass (x, n, _) => found (x, n)
                                 | SgiVal (x, n, (CApp ((CNamed f, _), a), _)) =>
@@ -737,12 +745,13 @@ fun enrichClasses env classes (m1, ms) sgn =
                                            in
                                                (CM.insert (classes, cn, class),
                                                 newClasses,
-                                                fmap)
+                                                fmap,
+                                                env)
                                            end)
                                 | SgiVal _ => default ()
                                 | _ => default ()
                           end)
-                (classes, IM.empty, (IM.empty, IM.empty, IM.empty)) sgis
+                      (classes, IM.empty, (IM.empty, IM.empty, IM.empty), env) sgis
         in
             classes
         end

@@ -1913,11 +1913,12 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             val (c', ck, gs') = elabCon (env, denv) c
 
             val (env', n) = E.pushENamed env x c'
+            val (c', gs'') = normClassConstraint (env, denv) c'
         in
             (unifyKinds ck ktype
              handle KUnify ue => strError env (NotType (ck, ue)));
 
-            ([(L'.SgiVal (x, n, c'), loc)], (env', denv, gs' @ gs))
+            ([(L'.SgiVal (x, n, c'), loc)], (env', denv, gs' @ gs'' @ gs))
         end
 
       | L.SgiStr (x, sgn) =>
@@ -2137,6 +2138,8 @@ fun selfify env {str, strs, sgn} =
                               (L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
                             | (L'.SgiDatatype (x, n, xs, xncs), loc) =>
                               (L'.SgiDatatypeImp (x, n, str, strs, x, xs, xncs), loc)
+                            | (L'.SgiClassAbs (x, n), loc) =>
+                              (L'.SgiClass (x, n, (L'.CModProj (str, strs, x), loc)), loc)
                             | (L'.SgiStr (x, n, sgn), loc) =>
                               (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
                             | x => x) sgis), #2 sgn)
@@ -2339,9 +2342,9 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                              found (x', n1, k', SOME (L'.CModProj (m1, ms, s), loc))
                                          end
                                        | L'.SgiClassAbs (x', n1) => found (x', n1,
-                                                                        (L'.KArrow ((L'.KType, loc),
-                                                                                    (L'.KType, loc)), loc),
-                                                                        NONE)
+                                                                           (L'.KArrow ((L'.KType, loc),
+                                                                                       (L'.KType, loc)), loc),
+                                                                           NONE)
                                        | L'.SgiClass (x', n1, c) => found (x', n1,
                                                                            (L'.KArrow ((L'.KType, loc),
                                                                                        (L'.KType, loc)), loc),
@@ -2592,7 +2595,16 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                      fun found (x', n1, c1) =
                                          if x = x' then
                                              let
-                                                 fun good () = SOME (E.pushCNamedAs env x n2 k (SOME c2), denv)
+                                                 fun good () =
+                                                     let
+                                                         val env = E.pushCNamedAs env x n2 k (SOME c2)
+                                                         val env = if n1 = n2 then
+                                                                       env
+                                                                   else
+                                                                       E.pushCNamedAs env x n1 k (SOME c1)
+                                                     in
+                                                         SOME (env, denv)
+                                                     end
                                              in
                                                  (case unifyCons (env, denv) c1 c2 of
                                                       [] => good ()
@@ -2823,6 +2835,8 @@ fun elabDecl ((d, loc), (env, denv, gs)) =
                                                                 case d of
                                                                     L.DCon (x, _, _) => (SS.delete (needed, x)
                                                                                          handle NotFound => needed)
+                                                                  | L.DClass (x, _) => (SS.delete (needed, x)
+                                                                                        handle NotFound => needed)
                                                                   | L.DOpen _ => SS.empty
                                                                   | _ => needed)
                                                             needed ds
