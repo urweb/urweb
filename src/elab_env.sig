@@ -60,6 +60,9 @@ signature ELAB_ENV = sig
 
     val lookupConstructor : env -> string -> (Elab.datatype_kind * int * string list * Elab.con option * int) option
 
+    val pushClass : env -> int -> env
+    val resolveClass : env -> Elab.con -> Elab.exp option
+
     val pushERel : env -> string -> Elab.con -> env
     val lookupERel : env -> int -> string * Elab.con
 

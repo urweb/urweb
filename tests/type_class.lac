@@ -1,0 +1,9 @@
+class default t = t
+
+val string_default : default string = ""
+val int_default : default int = 0
+
+val default : t :: Type -> default t -> t =
+        fn t :: Type => fn d : default t => d
+val empty = default [string] _
+val zero = default [int] _

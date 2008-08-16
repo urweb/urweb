@@ -128,6 +128,9 @@ fun explifySgi (sgi, loc) =
       | L.SgiSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, explifySgn sgn), loc)
       | L.SgiConstraint _ => NONE
       | L.SgiTable _ => raise Fail "Explify SgiTable"
+      | L.SgiClassAbs (x, n) => SOME (L'.SgiConAbs (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)), loc)
+      | L.SgiClass (x, n, c) => SOME (L'.SgiCon (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc),
+                                                 explifyCon c), loc)
 
 and explifySgn (sgn, loc) =
     case sgn of

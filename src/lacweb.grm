@@ -89,7 +89,7 @@ fun sql_inject (v, t, loc) =
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
  | DIVIDE | GT | DOTDOTDOT
- | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT
+ | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR
@@ -241,6 +241,14 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
        | CONSTRAINT cterm TWIDDLE cterm (DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
        | EXPORT spath                   (DExport spath, s (EXPORTleft, spathright))
        | TABLE SYMBOL COLON cexp        (DTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))
+       | CLASS SYMBOL EQ cexp           (DClass (SYMBOL, cexp), s (CLASSleft, cexpright))
+       | CLASS SYMBOL SYMBOL EQ cexp    (let
+                                             val loc = s (CLASSleft, cexpright)
+                                             val k = (KType, loc)
+                                             val c = (CAbs (SYMBOL2, SOME k, cexp), loc)
+                                         in
+                                             (DClass (SYMBOL1, c), s (CLASSleft, cexpright))
+                                         end)
 
 dargs  :                                ([])
        | SYMBOL dargs                   (SYMBOL :: dargs)
@@ -299,6 +307,15 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
        | INCLUDE sgn                    (SgiInclude sgn, s (INCLUDEleft, sgnright))
        | CONSTRAINT cterm TWIDDLE cterm (SgiConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
        | TABLE SYMBOL COLON cexp        (SgiTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))
+       | CLASS SYMBOL                   (SgiClassAbs SYMBOL, s (CLASSleft, SYMBOLright))
+       | CLASS SYMBOL EQ cexp           (SgiClass (SYMBOL, cexp), s (CLASSleft, cexpright))
+       | CLASS SYMBOL SYMBOL EQ cexp    (let
+                                             val loc = s (CLASSleft, cexpright)
+                                             val k = (KType, loc)
+                                             val c = (CAbs (SYMBOL2, SOME k, cexp), loc)
+                                         in
+                                             (SgiClass (SYMBOL1, c), s (CLASSleft, cexpright))
+                                         end)
 
 sgis   :                                ([])
        | sgi sgis                       (sgi :: sgis)
@@ -459,6 +476,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
                                          s (XML_BEGINleft, XML_ENDright))
        | LPAREN query RPAREN            (query)
+       | UNDER                          (EWild, s (UNDERleft, UNDERright))
 
 idents : ident                          ([ident])
        | ident DOT idents               (ident :: idents)
@@ -633,7 +651,7 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
                                                      s (FALSEleft, FALSEright)))
 
        | LBRACE eexp RBRACE             (sql_inject (#1 eexp,
-                                                     ESqlInfer,
+                                                     EWild,
                                                      s (LBRACEleft, RBRACEright)))
 
 wopt   :                                (sql_inject (EVar (["Basis"], "True"),

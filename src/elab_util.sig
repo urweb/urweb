@@ -75,6 +75,11 @@ structure Exp : sig
                    con : (Elab.con', 'state, 'abort) Search.mapfolder,
                    exp : (Elab.exp', 'state, 'abort) Search.mapfolder}
                   -> (Elab.exp, 'state, 'abort) Search.mapfolder
+    val mapB : {kind : Elab.kind' -> Elab.kind',
+                con : 'context -> Elab.con' -> Elab.con',
+                exp : 'context -> Elab.exp' -> Elab.exp',
+                bind : 'context * binder -> 'context}
+               -> 'context -> (Elab.exp -> Elab.exp)
     val exists : {kind : Elab.kind' -> bool,
                   con : Elab.con' -> bool,
                   exp : Elab.exp' -> bool} -> Elab.exp -> bool

@@ -83,6 +83,8 @@ datatype sgn_item' =
        | SgiInclude of sgn
        | SgiConstraint of con * con
        | SgiTable of string * con
+       | SgiClassAbs of string
+       | SgiClass of string * con
 
 and sgn' =
     SgnConst of sgn_item list
@@ -119,7 +121,7 @@ datatype exp' =
        | ECut of exp * con
        | EFold
 
-       | ESqlInfer
+       | EWild
 
        | ECase of exp * (pat * exp) list
 
@@ -139,6 +141,7 @@ datatype decl' =
        | DOpenConstraints of string * string list
        | DExport of str
        | DTable of string * con
+       | DClass of string * con
 
      and str' =
          StrConst of decl list

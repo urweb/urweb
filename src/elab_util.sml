@@ -376,6 +376,14 @@ fun exists {kind, con, exp} k =
         S.Return _ => true
       | S.Continue _ => false
 
+fun mapB {kind, con, exp, bind} ctx e =
+    case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
+                   con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
+                   exp = fn ctx => fn e => fn () => S.Continue (exp ctx e, ()),
+                   bind = bind} ctx e () of
+        S.Continue (e, ()) => e
+      | S.Return _ => raise Fail "ElabUtil.Exp.mapB: Impossible"
+
 end
 
 structure Sgn = struct
@@ -455,6 +463,11 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                 S.map2 (con ctx c,
                         fn c' =>
                            (SgiTable (tn, x, n, c'), loc))
+              | SgiClassAbs _ => S.return2 siAll
+              | SgiClass (x, n, c) =>
+                S.map2 (con ctx c,
+                        fn c' =>
+                           (SgiClass (x, n, c'), loc))
 
         and sg ctx s acc =
             S.bindP (sg' ctx s acc, sgn ctx)
@@ -478,7 +491,11 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                  | SgiSgn (x, _, sgn) =>
                                                    bind (ctx, Sgn (x, sgn))
                                                  | SgiConstraint _ => ctx
-                                                 | SgiTable _ => ctx,
+                                                 | SgiTable _ => ctx
+                                                 | SgiClassAbs (x, _) =>
+                                                   bind (ctx, NamedC (x, (KArrow ((KType, loc), (KType, loc)), loc)))
+                                                 | SgiClass (x, _, _) =>
+                                                   bind (ctx, NamedC (x, (KArrow ((KType, loc), (KType, loc)), loc))),
                                                sgi ctx si)) ctx sgis,
                      fn sgis' =>
                         (SgnConst sgis', loc))

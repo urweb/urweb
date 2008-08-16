@@ -464,6 +464,16 @@ fun p_sgn_item env (sgi, _) =
                                       string ":",
                                       space,
                                       p_con env c]
+      | SgiClassAbs (x, n) => box [string "class",
+                                   space,
+                                   p_named x n]
+      | SgiClass (x, n, c) => box [string "class",
+                                   space,
+                                   p_named x n,
+                                   space,
+                                   string "=",
+                                   space,
+                                   p_con env c]
 
 and p_sgn env (sgn, _) =
     case sgn of

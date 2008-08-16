@@ -379,6 +379,16 @@ fun p_sgn_item (sgi, _) =
                                 string ":",
                                 space,
                                 p_con c]
+      | SgiClassAbs x => box [string "class",
+                              space,
+                              string x]
+      | SgiClass (x, c) => box [string "class",
+                                space,
+                                string x,
+                                space,
+                                string "=",
+                                space,
+                                p_con c]
 
 and p_sgn (sgn, _) =
     case sgn of
@@ -529,6 +539,13 @@ fun p_decl ((d, _) : decl) =
                               string x,
                               space,
                               string ":",
+                              space,
+                              p_con c]
+      | DClass (x, c) => box [string "class",
+                              space,
+                              string x,
+                              space,
+                              string "=",
                               space,
                               p_con c]
 

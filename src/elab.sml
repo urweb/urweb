@@ -124,6 +124,8 @@ datatype sgn_item' =
        | SgiSgn of string * int * sgn
        | SgiConstraint of con * con
        | SgiTable of int * string * int * con
+       | SgiClassAbs of string * int
+       | SgiClass of string * int * con
 
 and sgn' =
     SgnConst of sgn_item list
