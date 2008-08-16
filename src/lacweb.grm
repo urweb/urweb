@@ -427,6 +427,7 @@ eexp   : eapps                          (eapps)
        | FN SYMBOL kcolon kind DARROW eexp (ECAbs (kcolon, SYMBOL, kind, eexp), s (FNleft, eexpright))
        | FN SYMBOL COLON cexp DARROW eexp (EAbs (SYMBOL, SOME cexp, eexp), s (FNleft, eexpright))
        | FN SYMBOL DARROW eexp          (EAbs (SYMBOL, NONE, eexp), s (FNleft, eexpright))
+       | FN UNDER COLON cexp DARROW eexp (EAbs ("_", SOME cexp, eexp), s (FNleft, eexpright))
        | LBRACK cterm TWIDDLE cterm RBRACK DARROW eexp(EDisjoint (cterm1, cterm2, eexp), s (LBRACKleft, RBRACKright))
        | FN UNIT DARROW eexp            (let
                                              val loc = s (FNleft, eexpright)
