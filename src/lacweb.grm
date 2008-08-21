@@ -46,6 +46,9 @@ datatype select =
          Star
        | Items of select_item list
 
+datatype group_item =
+         GField of con * con
+
 fun eqTnames ((c1, _), (c2, _)) =
     case (c1, c2) of
         (CVar (ms1, x1), CVar (ms2, x2)) => ms1 = ms2 andalso x1 = x2
@@ -56,6 +59,26 @@ fun amend_select loc (si, tabs) =
     let
         val (tx, c) = case si of
                           Field (tx, fx) => (tx, (CRecord ([(fx, (CWild (KType, loc), loc))]), loc))
+
+        val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
+                                                  if eqTnames (tx, tx') then
+                                                      ((tx', (CConcat (c, c'), loc)), true)
+                                                  else
+                                                      ((tx', c'), found))
+                            false tabs
+    in
+        if found then
+            ()
+        else
+            ErrorMsg.errorAt loc "Select of field from unbound table";
+
+        tabs
+    end
+
+fun amend_group loc (gi, tabs) =
+    let
+        val (tx, c) = case gi of
+                          GField (tx, fx) => (tx, (CRecord ([(fx, (CWild (KType, loc), loc))]), loc))
 
         val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
                                                   if eqTnames (tx, tx') then
@@ -129,7 +152,7 @@ fun sql_unary (oper, sqlexp, loc) =
  | NOTAGS of string 
  | BEGIN_TAG of string | END_TAG of string
 
- | SELECT | FROM | AS | CWHERE
+ | SELECT | FROM | AS | CWHERE | GROUP | BY
  | TRUE | FALSE | CAND | OR | NOT
  | NE | LT | LE | GT | GE
 
@@ -194,6 +217,7 @@ fun sql_unary (oper, sqlexp, loc) =
  | attrv of exp
 
  | query of exp
+ | query1 of exp
  | tables of (con * exp) list
  | tname of con
  | table of con * exp
@@ -204,6 +228,9 @@ fun sql_unary (oper, sqlexp, loc) =
  | select of select
  | sqlexp of exp
  | wopt of exp
+ | groupi of group_item
+ | groupis of group_item list
+ | gopt of group_item list option
 
 
 %verbose                                (* print summary of errors *)
@@ -615,8 +642,10 @@ attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTri
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LBRACE eexp RBRACE             (eexp)
+
+query  : query1                         (query1)
                 
-query  : SELECT select FROM tables wopt
+query1 : SELECT select FROM tables wopt gopt
                                         (let
                                              val loc = s (SELECTleft, tablesright)
 
@@ -640,6 +669,27 @@ query  : SELECT select FROM tables wopt
 
                                              val sel = (CRecord sel, loc)
 
+                                             val grp = case gopt of
+                                                           NONE => (ECApp ((EVar (["Basis"], "sql_subset_all"), loc),
+                                                                           (CWild (KRecord (KRecord (KType, loc), loc),
+                                                                                   loc), loc)), loc)
+                                                         | SOME gis =>
+                                                           let
+                                                               val tabs = map (fn (nm, _) =>
+                                                                                  (nm, (CRecord [], loc))) tables
+                                                               val tabs = foldl (amend_group loc) tabs gis
+
+                                                               val tabs = map (fn (nm, c) =>
+                                                                                  (nm,
+                                                                                   (CTuple [c,
+                                                                                            (CWild (KRecord (KType, loc),
+                                                                                                    loc),
+                                                                                             loc)], loc))) tabs
+                                                           in
+                                                               (ECApp ((EVar (["Basis"], "sql_subset"), loc),
+                                                                       (CRecord tabs, loc)), loc)
+                                                           end
+
                                              val hopt = (sql_inject (EVar (["Basis"], "True"),
                                                                      EVar (["Basis"], "sql_bool"),
                                                                      loc))
@@ -650,9 +700,7 @@ query  : SELECT select FROM tables wopt
                                                                 ((CName "Where", loc),
                                                                  wopt),
                                                                 ((CName "GroupBy", loc),
-                                                                 (ECApp ((EVar (["Basis"], "sql_subset_all"), loc),
-                                                                         (CWild (KRecord (KRecord (KType, loc), loc),
-                                                                                 loc), loc)), loc)),
+                                                                 grp),
                                                                 ((CName "Having", loc),
                                                                  hopt),
                                                                 ((CName "SelectFields", loc),
@@ -732,3 +780,11 @@ wopt   :                                (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),
                                                      ErrorMsg.dummySpan))
        | CWHERE sqlexp                  (sqlexp)
+
+groupi : tident DOT fident              (GField (tident, fident))
+
+groupis: groupi                         ([groupi])
+       | groupi COMMA groupis           (groupi :: groupis)
+
+gopt   :                                (NONE)
+       | GROUP BY groupis               (SOME groupis)
