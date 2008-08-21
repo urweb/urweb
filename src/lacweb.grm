@@ -654,6 +654,12 @@ query  : SELECT select FROM tables wopt
                                                                  (ERecord tables, loc)),
                                                                 ((CName "Where", loc),
                                                                  wopt),
+                                                                ((CName "GroupBy", loc),
+                                                                 (ECApp ((EVar (["Basis"], "sql_subset_all"), loc),
+                                                                         (CWild (KRecord (KRecord (KType, loc), loc),
+                                                                                 loc), loc)), loc)),
+                                                                ((CName "Having", loc),
+                                                                 hopt),
                                                                 ((CName "SelectFields", loc),
                                                                  (ECApp ((EVar (["Basis"], "sql_subset"), loc),
                                                                          sel), loc))], loc)

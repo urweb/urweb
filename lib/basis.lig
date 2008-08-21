@@ -29,14 +29,14 @@ val sql_subset_all : tables :: {{Type}}
         -> sql_subset tables tables
 
 val sql_query : tables ::: {{Type}}
-        (*-> grouped ::: {{Type}}*)
+        -> grouped ::: {{Type}}
         -> selected ::: {{Type}}
         -> {From : $(fold (fn nm => fn fields :: {Type} => fn acc =>
                 [nm] ~ acc => [nm = sql_table fields] ++ acc) [] tables),
             Where : sql_exp tables [] bool,
-            (*GroupBy : sql_subset tables grouped,
-            Having : sql_exp grouped tables bool,*)
-            SelectFields : sql_subset tables selected}
+            GroupBy : sql_subset tables grouped,
+            Having : sql_exp grouped tables bool,
+            SelectFields : sql_subset grouped selected}
         -> sql_query selected
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type
