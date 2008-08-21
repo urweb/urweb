@@ -39,9 +39,8 @@ val sql_query : tables ::: {{Type}}
             SelectFields : sql_subset grouped selected}
         -> sql_query selected
 
-val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type
+val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type -> agg ::: {{Type}}
         -> tab :: Name -> field :: Name
-        -> agg ::: {{Type}}
         -> sql_exp ([tab = [field = fieldType] ++ otherFields] ++ otherTabs) agg fieldType
 
 class sql_injectable

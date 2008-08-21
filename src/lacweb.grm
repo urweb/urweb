@@ -645,11 +645,6 @@ query  : SELECT select FROM tables wopt
                                                                      loc))
 
                                              val e = (EVar (["Basis"], "sql_query"), loc)
-                                             val _ = [((CName "GroupBy", loc),
-                                                       (ECApp ((EVar (["Basis"], "sql_subset_all"), loc),
-                                                               (CWild (KRecord (KType, loc), loc), loc)), loc)),
-                                                      ((CName "Having", loc),
-                                                       hopt)]
                                              val re = (ERecord [((CName "From", loc),
                                                                  (ERecord tables, loc)),
                                                                 ((CName "Where", loc),
