@@ -363,6 +363,7 @@ fun class_name_in (c, _) =
     case c of
         CNamed n => SOME (ClNamed n)
       | CModProj x => SOME (ClProj x)
+      | CUnif (_, _, _, ref (SOME c)) => class_name_in c
       | _ => NONE
 
 fun class_key_in (c, _) =
@@ -370,6 +371,7 @@ fun class_key_in (c, _) =
         CRel n => SOME (CkRel n)
       | CNamed n => SOME (CkNamed n)
       | CModProj x => SOME (CkProj x)
+      | CUnif (_, _, _, ref (SOME c)) => class_key_in c
       | _ => NONE
 
 fun class_pair_in (c, _) =

@@ -363,6 +363,8 @@ fun p_exp' par env (e, _) =
                                                                              p_exp env e]) pes])
 
       | EError => string "<ERROR>"
+      | EUnif (ref (SOME e)) => p_exp env e
+      | EUnif _ => string "_"
 
 and p_exp env = p_exp' false env
 

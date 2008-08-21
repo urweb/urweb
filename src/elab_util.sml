@@ -347,6 +347,8 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                                         (ECase (e', pes', {disc = disc', result = result'}), loc)))))
 
               | EError => S.return2 eAll
+              | EUnif (ref (SOME e)) => mfe ctx e
+              | EUnif _ => S.return2 eAll
     in
         mfe
     end

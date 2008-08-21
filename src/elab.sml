@@ -111,6 +111,7 @@ datatype exp' =
        | ECase of exp * (pat * exp) list * { disc : con, result : con }
 
        | EError
+       | EUnif of exp option ref
 
 withtype exp = exp' located
 

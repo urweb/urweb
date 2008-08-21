@@ -112,6 +112,8 @@ fun explifyExp (e, loc) =
                    {disc = explifyCon disc, result = explifyCon result}), loc)
 
       | L.EError => raise Fail ("explifyExp: EError at " ^ EM.spanToString loc)
+      | L.EUnif (ref (SOME e)) => explifyExp e
+      | L.EUnif _ => raise Fail ("explifyExp: Undetermined EUnif at " ^ EM.spanToString loc)
 
 fun explifySgi (sgi, loc) =
     case sgi of
