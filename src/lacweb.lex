@@ -59,6 +59,7 @@ in
     end
 end
 
+val strEnder = ref #"\""
 val str = ref ([] : char list)
 val strStart = ref 0
 
@@ -141,16 +142,25 @@ notags = [^<{\n]+;
 <COMMENT> "*)"        => (if exitComment () then YYBEGIN INITIAL else ();
 			  continue ());
 
-<INITIAL> "\""        => (YYBEGIN STRING; strStart := pos yypos; str := []; continue());
+<INITIAL> "\""        => (YYBEGIN STRING; strEnder := #"\""; strStart := pos yypos; str := []; continue());
+<INITIAL> "'"         => (YYBEGIN STRING; strEnder := #"'"; strStart := pos yypos; str := []; continue());
 <STRING> "\\\""       => (str := #"\"" :: !str; continue());
-<STRING> "\""         => (if !xmlString then
-			  (xmlString := false; YYBEGIN XMLTAG)
-			  else
-			  YYBEGIN INITIAL;
-			  Tokens.STRING (String.implode (List.rev (!str)), !strStart, pos yypos + 1));
+<STRING> "\\'"        => (str := #"'" :: !str; continue());
 <STRING> "\n"         => (newline yypos;
 			  str := #"\n" :: !str; continue());
-<STRING> .            => (str := String.sub (yytext, 0) :: !str; continue());
+<STRING> .            => (let
+                              val ch = String.sub (yytext, 0)
+                          in
+                              if ch = !strEnder then
+                                  (if !xmlString then
+			               (xmlString := false; YYBEGIN XMLTAG)
+			           else
+			               YYBEGIN INITIAL;
+			           Tokens.STRING (String.implode (List.rev (!str)), !strStart, pos yypos + 1))
+                              else
+                                  (str := ch :: !str;
+                                   continue ())
+                          end);
 
 <INITIAL> "<" {id} ">"=> (let
 			      val tag = String.substring (yytext, 1, size yytext - 2)
@@ -298,6 +308,10 @@ notags = [^<{\n]+;
 <INITIAL> "GROUP"     => (Tokens.GROUP (pos yypos, pos yypos + size yytext));
 <INITIAL> "BY"        => (Tokens.BY (pos yypos, pos yypos + size yytext));
 <INITIAL> "HAVING"    => (Tokens.HAVING (pos yypos, pos yypos + size yytext));
+
+<INITIAL> "UNION"     => (Tokens.UNION (pos yypos, pos yypos + size yytext));
+<INITIAL> "INTERSECT" => (Tokens.INTERSECT (pos yypos, pos yypos + size yytext));
+<INITIAL> "EXCEPT"    => (Tokens.EXCEPT (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "TRUE"      => (Tokens.TRUE (pos yypos, pos yypos + size yytext));
 <INITIAL> "FALSE"     => (Tokens.FALSE (pos yypos, pos yypos + size yytext));

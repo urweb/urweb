@@ -129,6 +129,15 @@ fun sql_unary (oper, sqlexp, loc) =
         (EApp (e, sqlexp), loc)
     end
 
+fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
+    let
+        val e = (EVar (["Basis"], "sql_relop"), loc)
+        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+        val e = (EApp (e, sqlexp1), loc)
+    in
+        (EApp (e, sqlexp2), loc)
+    end
+
 %%
 %header (functor LacwebLrValsFn(structure Token : TOKEN))
 
@@ -153,6 +162,7 @@ fun sql_unary (oper, sqlexp, loc) =
  | BEGIN_TAG of string | END_TAG of string
 
  | SELECT | FROM | AS | CWHERE | GROUP | BY | HAVING
+ | UNION | INTERSECT | EXCEPT
  | TRUE | FALSE | CAND | OR | NOT
  | NE | LT | LE | GT | GE
 
@@ -247,6 +257,7 @@ fun sql_unary (oper, sqlexp, loc) =
 %nonassoc DARROW
 %nonassoc COLON
 %nonassoc DCOLON TCOLON
+%left UNION INTERSECT EXCEPT
 %right COMMA
 %right OR
 %right CAND
@@ -644,7 +655,11 @@ attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTri
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LBRACE eexp RBRACE             (eexp)
 
-query  : query1                         (query1)
+query  : query1                         (let
+                                             val loc = s (query1left, query1right)
+                                         in
+                                             (EApp ((EVar (["Basis"], "sql_query"), loc), query1), loc)
+                                         end)
                 
 query1 : SELECT select FROM tables wopt gopt hopt
                                         (let
@@ -691,7 +706,7 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                                                        (CRecord tabs, loc)), loc)
                                                            end
 
-                                             val e = (EVar (["Basis"], "sql_query"), loc)
+                                             val e = (EVar (["Basis"], "sql_query1"), loc)
                                              val re = (ERecord [((CName "From", loc),
                                                                  (ERecord tables, loc)),
                                                                 ((CName "Where", loc),
@@ -708,6 +723,9 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                          in
                                              e
                                          end)
+       | query1 UNION query1            (sql_relop ("union", query11, query12, s (query11left, query12right)))
+       | query1 INTERSECT query1        (sql_relop ("intersect", query11, query12, s (query11left, query12right)))
+       | query1 EXCEPT query1           (sql_relop ("except", query11, query12, s (query11left, query12right)))
 
 tables : table                          ([table])
        | table COMMA tables             (table :: tables)
@@ -748,6 +766,9 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
        | FLOAT                          (sql_inject (EPrim (Prim.Float FLOAT),
                                                      EVar (["Basis"], "sql_float"),
                                                      s (FLOATleft, FLOATright)))
+       | STRING                         (sql_inject (EPrim (Prim.String STRING),
+                                                     EVar (["Basis"], "sql_string"),
+                                                     s (STRINGleft, STRINGright)))
 
        | tident DOT fident              (let
                                              val loc = s (tidentleft, fidentright)
