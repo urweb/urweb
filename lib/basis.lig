@@ -14,39 +14,53 @@ con sql_table :: {Type} -> Type
 (*** Queries *)
 
 con sql_query :: {{Type}} -> Type
-con sql_exp :: {{Type}} -> Type -> Type
+con sql_exp :: {{Type}} -> {{Type}} -> Type -> Type
 
-val sql_query : tables :: {({Type} * {Type})}
-        -> {From : $(fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc =>
-                [nm] ~ acc => selected_unselected.1 ~ selected_unselected.2 =>
-                [nm = sql_table (selected_unselected.1 ++ selected_unselected.2)] ++ acc) [] tables),
-            Where : sql_exp (fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc =>
-                [nm] ~ acc => selected_unselected.1 ~ selected_unselected.2 =>
-                [nm = selected_unselected.1 ++ selected_unselected.2] ++ acc) [] tables) bool}
-        -> sql_query (fold (fn nm => fn selected_unselected :: ({Type} * {Type}) => fn acc => [nm] ~ acc =>
-                [nm = selected_unselected.1] ++ acc) [] tables)
+con sql_subset :: {{Type}} -> {{Type}} -> Type
+val sql_subset : keep_drop :: {({Type} * {Type})}
+        -> sql_subset
+                (fold (fn nm => fn fields :: ({Type} * {Type}) => fn acc =>
+                        [nm] ~ acc => fields.1 ~ fields.2 =>
+                        [nm = fields.1 ++ fields.2] ++ acc) [] keep_drop)
+                (fold (fn nm => fn fields :: ({Type} * {Type}) => fn acc =>
+                        [nm] ~ acc =>
+                        [nm = fields.1] ++ acc) [] keep_drop)
+val sql_subset_all : tables :: {{Type}}
+        -> sql_subset tables tables
+
+val sql_query : tables ::: {{Type}}
+        (*-> grouped ::: {{Type}}*)
+        -> selected ::: {{Type}}
+        -> {From : $(fold (fn nm => fn fields :: {Type} => fn acc =>
+                [nm] ~ acc => [nm = sql_table fields] ++ acc) [] tables),
+            Where : sql_exp tables [] bool,
+            (*GroupBy : sql_subset tables grouped,
+            Having : sql_exp grouped tables bool,*)
+            SelectFields : sql_subset tables selected}
+        -> sql_query selected
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type
         -> tab :: Name -> field :: Name
-        -> sql_exp ([tab = [field = fieldType] ++ otherFields] ++ otherTabs) fieldType
+        -> agg ::: {{Type}}
+        -> sql_exp ([tab = [field = fieldType] ++ otherFields] ++ otherTabs) agg fieldType
 
 class sql_injectable
 val sql_bool : sql_injectable bool
 val sql_int : sql_injectable int
 val sql_float : sql_injectable float
 val sql_string : sql_injectable string
-val sql_inject : tables ::: {{Type}} -> t ::: Type -> t -> sql_injectable t -> sql_exp tables t
+val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> t ::: Type -> t -> sql_injectable t -> sql_exp tables agg t
 
 con sql_unary :: Type -> Type -> Type
 val sql_not : sql_unary bool bool
-val sql_unary : tables ::: {{Type}} -> arg ::: Type -> res ::: Type
-        -> sql_unary arg res -> sql_exp tables arg -> sql_exp tables res
+val sql_unary : tables ::: {{Type}} -> agg ::: {{Type}} -> arg ::: Type -> res ::: Type
+        -> sql_unary arg res -> sql_exp tables agg arg -> sql_exp tables agg res
 
 con sql_binary :: Type -> Type -> Type -> Type
 val sql_and : sql_binary bool bool bool
 val sql_or : sql_binary bool bool bool
-val sql_binary : tables ::: {{Type}} -> arg1 ::: Type -> arg2 ::: Type -> res ::: Type
-        -> sql_binary arg1 arg2 res -> sql_exp tables arg1 -> sql_exp tables arg2 -> sql_exp tables res
+val sql_binary : tables ::: {{Type}} -> agg ::: {{Type}} -> arg1 ::: Type -> arg2 ::: Type -> res ::: Type
+        -> sql_binary arg1 arg2 res -> sql_exp tables agg arg1 -> sql_exp tables agg arg2 -> sql_exp tables agg res
 
 type sql_comparison
 val sql_eq : sql_comparison
@@ -56,8 +70,8 @@ val sql_le : sql_comparison
 val sql_gt : sql_comparison
 val sql_ge : sql_comparison
 val sql_comparison : sql_comparison
-        -> tables ::: {{Type}} -> t ::: Type -> sql_exp tables t -> sql_exp tables t
-        -> sql_injectable t -> sql_exp tables bool
+        -> tables ::: {{Type}} -> agg ::: {{Type}} -> t ::: Type -> sql_exp tables agg t -> sql_exp tables agg t
+        -> sql_injectable t -> sql_exp tables agg bool
 
 (** XML *)
 

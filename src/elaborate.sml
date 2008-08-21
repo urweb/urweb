@@ -640,6 +640,8 @@ fun p_con_summary s =
                        | Cons => "Cons"
                        | Unknown => "Unknown")
 
+exception SummaryFailure
+
 fun unifyRecordCons (env, denv) (c1, c2) =
     let
         fun rkindof c =
@@ -701,8 +703,9 @@ and consNeq env (c1, c2) =
 
 and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
     let
+        val loc = #2 k
         (*val () = eprefaces "Summaries" [("#1", p_summary env s1),
-                                          ("#2", p_summary env s2)]*)
+                                        ("#2", p_summary env s2)]*)
 
         fun eatMatching p (ls1, ls2) =
             let
@@ -732,9 +735,11 @@ and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
                                          andalso consEq (env, denv) (x1, x2))
                                      (#fields s1, #fields s2)
         (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
-                                           ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
+                                         ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
         val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
         val (others1, others2) = eatMatching (consEq (env, denv)) (#others s1, #others s2)
+        (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
+                                         ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
         fun unifFields (fs, others, unifs) =
             case (fs, others, unifs) of
@@ -765,10 +770,37 @@ and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
         val (fs1, others1, unifs2) = unifFields (fs1, others1, unifs2)
         val (fs2, others2, unifs1) = unifFields (fs2, others2, unifs1)
 
+        (*val () = eprefaces "Summaries4" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
+                                         ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+
+        fun isGuessable (other, fs) =
+            let
+                val gs = guessFold (env, denv) (other, (L'.CRecord (k, fs), loc), [], SummaryFailure)
+            in
+                List.all (fn (loc, env, denv, c1, c2) =>
+                             case D.prove env denv (c1, c2, loc) of
+                                 [] => true
+                               | _ => false) gs
+            end
+            handle SummaryFailure => false
+
+        val (fs1, fs2, others1, others2) =
+            case (fs1, fs2, others1, others2) of
+                ([], _, [other1], []) =>
+                if isGuessable (other1, fs2) then
+                    ([], [], [], [])
+                else
+                    (fs1, fs2, others1, others2)
+              | _ => (fs1, fs2, others1, others2)
+
+        (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
+                                         ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+
         val clear = case (fs1, others1, fs2, others2) of
                          ([], [], [], []) => true
                        | _ => false
         val empty = (L'.CRecord (k, []), dummy)
+
         fun pairOffUnifs (unifs1, unifs2) =
             case (unifs1, unifs2) of
                 ([], _) =>
@@ -786,6 +818,81 @@ and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
                  pairOffUnifs (rest1, rest2))
     in
         pairOffUnifs (unifs1, unifs2)
+        (*before eprefaces "Summaries'" [("#1", p_summary env s1),
+                                      ("#2", p_summary env s2)]*)
+    end
+
+and guessFold (env, denv) (c1, c2, gs, ex) =
+    let
+        val loc = #2 c1
+
+        fun unfold (dom, ran, f, i, r, c) =
+            let
+                val nm = cunif (loc, (L'.KName, loc))
+                val v = cunif (loc, dom)
+                val rest = cunif (loc, (L'.KRecord dom, loc))
+                val acc = (L'.CFold (dom, ran), loc)
+                val acc = (L'.CApp (acc, f), loc)
+                val acc = (L'.CApp (acc, i), loc)
+                val acc = (L'.CApp (acc, rest), loc)
+
+                val (iS, gs3) = summarizeCon (env, denv) i
+
+                val app = (L'.CApp (f, nm), loc)
+                val app = (L'.CApp (app, v), loc)
+                val app = (L'.CApp (app, acc), loc)
+                val (appS, gs4) = summarizeCon (env, denv) app
+
+                val (cS, gs5) = summarizeCon (env, denv) c
+            in
+                (*prefaces "Summaries" [("iS", p_con_summary iS),
+                                        ("appS", p_con_summary appS),
+                                        ("cS", p_con_summary cS)];*)
+
+                if compatible (iS, appS) then
+                    raise ex
+                else if compatible (cS, iS) then
+                    let
+                        (*val () = prefaces "Same?" [("i", p_con env i),
+                                                   ("c", p_con env c)]*)
+                        val gs6 = unifyCons (env, denv) i c
+                        (*val () = TextIO.print "Yes!\n"*)
+
+                        val gs7 = unifyCons (env, denv) r (L'.CRecord (dom, []), loc)
+                    in
+                        gs @ gs3 @ gs5 @ gs6 @ gs7
+                    end
+                else if compatible (cS, appS) then
+                    let
+                        (*val () = prefaces "Same?" [("app", p_con env app),
+                                                     ("c", p_con env c),
+                                                     ("app'", p_con env (#1 (hnormCon (env, denv) app)))]*)
+                        val gs6 = unifyCons (env, denv) app c
+                        (*val () = TextIO.print "Yes!\n"*)
+
+                        val singleton = (L'.CRecord (dom, [(nm, v)]), loc)
+                        val concat = (L'.CConcat (singleton, rest), loc)
+                        (*val () = prefaces "Pre-crew" [("r", p_con env r),
+                                                        ("concat", p_con env concat)]*)
+                        val gs7 = unifyCons (env, denv) r concat
+                    in
+                        (*prefaces "The crew" [("nm", p_con env nm),
+                                               ("v", p_con env v),
+                                               ("rest", p_con env rest)];*)
+
+                        gs @ gs3 @ gs4 @ gs5 @ gs6 @ gs7
+                    end
+                else
+                    raise ex
+            end
+            handle _ => raise ex
+    in
+        case (#1 c1, #1 c2) of
+            (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold (dom, ran), _), f), _), i), _), r), _) =>
+            unfold (dom, ran, f, i, r, c2)
+          | (_, L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold (dom, ran), _), f), _), i), _), r)) =>
+            unfold (dom, ran, f, i, r, c1)
+          | _ => raise ex
     end
 
 and unifyCons' (env, denv) c1 c2 =
@@ -798,68 +905,7 @@ and unifyCons' (env, denv) c1 c2 =
         in
             gs1 @ gs2 @ gs3
         end
-        handle ex =>
-               let
-                   val loc = #2 c1
-
-                   fun unfold (dom, f, i, r, c) =
-                       let
-                           val nm = cunif (loc, (L'.KName, loc))
-                           val v = cunif (loc, dom)
-                           val rest = cunif (loc, (L'.KRecord dom, loc))
-
-                           val (iS, gs3) = summarizeCon (env, denv) i
-
-                           val app = (L'.CApp (f, nm), loc)
-                           val app = (L'.CApp (app, v), loc)
-                           val app = (L'.CApp (app, rest), loc)
-                           val (appS, gs4) = summarizeCon (env, denv) app
-
-                           val (cS, gs5) = summarizeCon (env, denv) c
-                       in
-                           (*prefaces "Summaries" [("iS", p_con_summary iS),
-                                                 ("appS", p_con_summary appS),
-                                                 ("cS", p_con_summary cS)];*)
-
-                           if compatible (iS, appS) then
-                               raise ex
-                           else if compatible (cS, iS) then
-                               let
-                                   (*val () = prefaces "Same?" [("i", p_con env i),
-                                                              ("c", p_con env c)]*)
-                                   val gs6 = unifyCons (env, denv) i c
-                                   (*val () = TextIO.print "Yes!\n"*)
-
-                                   val gs7 = unifyCons (env, denv) r (L'.CRecord (dom, []), loc)
-                               in
-                                   gs1 @ gs2 @ gs3 @ gs4 @ gs5 @ gs6 @ gs7
-                               end
-                           else if compatible (cS, appS) then
-                               let
-                                  (*val () = prefaces "Same?" [("app", p_con env app),
-                                                             ("c", p_con env c),
-                                                             ("app'", p_con env (#1 (hnormCon (env, denv) app)))]*)
-                                  val gs6 = unifyCons (env, denv) app c
-                                  (*val () = TextIO.print "Yes!\n"*)
-
-                                  val singleton = (L'.CRecord (dom, [(nm, v)]), loc)
-                                  val concat = (L'.CConcat (singleton, rest), loc)
-                                  val gs7 = unifyCons (env, denv) r concat
-                              in
-                                  gs1 @ gs2 @ gs3 @ gs4 @ gs5 @ gs6 @ gs7
-                              end
-                           else
-                             raise ex
-                       end
-                       handle _ => raise ex
-               in
-                   case (#1 c1, #1 c2) of
-                       (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold (dom, _), _), f), _), i), _), r), _) =>
-                       unfold (dom, f, i, r, c2)
-                     | (_, L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold (dom, _), _), f), _), i), _), r)) =>
-                       unfold (dom, f, i, r, c1)
-                     | _ => raise ex
-               end
+        handle ex => guessFold (env, denv) (c1, c2, gs1 @ gs2, ex)
     end
     
 and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =

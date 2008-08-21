@@ -156,7 +156,8 @@ fun p_con' par (c, _) =
                         space,
                         string "::",
                         space,
-                        p_kind k]
+                        p_kind k,
+                        string ")"]
 
       | CTuple cs => box [string "(",
                           p_list p_con cs,

@@ -52,7 +52,7 @@ fun p_list_sep sep f ls =
       | x :: rest =>
         let
             val tokens = foldr (fn (x, tokens) =>
-                                   sep :: f x :: tokens)
+                                   sep :: PD.cut :: f x :: tokens)
                                [] rest
         in
             box (f x :: tokens)
