@@ -30,6 +30,7 @@
 open Source
 
 val s = ErrorMsg.spanOf
+val dummy = ErrorMsg.dummySpan
 
 fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
@@ -161,7 +162,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | NOTAGS of string 
  | BEGIN_TAG of string | END_TAG of string
 
- | SELECT | FROM | AS | CWHERE | GROUP | BY | HAVING
+ | SELECT | FROM | AS | CWHERE | GROUP | ORDER | BY | HAVING
  | UNION | INTERSECT | EXCEPT
  | TRUE | FALSE | CAND | OR | NOT
  | NE | LT | LE | GT | GE
@@ -242,6 +243,8 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | groupis of group_item list
  | gopt of group_item list option
  | hopt of exp
+ | obopt of exp
+ | obexps of exp
 
 
 %verbose                                (* print summary of errors *)
@@ -655,10 +658,15 @@ attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTri
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LBRACE eexp RBRACE             (eexp)
 
-query  : query1                         (let
+query  : query1 obopt                   (let
                                              val loc = s (query1left, query1right)
+
+                                             val re = (ERecord [((CName "Rows", loc),
+                                                                 query1),
+                                                                ((CName "OrderBy", loc),
+                                                                 obopt)], loc)
                                          in
-                                             (EApp ((EVar (["Basis"], "sql_query"), loc), query1), loc)
+                                             (EApp ((EVar (["Basis"], "sql_query"), loc), re), loc)
                                          end)
                 
 query1 : SELECT select FROM tables wopt gopt hopt
@@ -796,7 +804,7 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
 
 wopt   :                                (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),
-                                                     ErrorMsg.dummySpan))
+                                                     dummy))
        | CWHERE sqlexp                  (sqlexp)
 
 groupi : tident DOT fident              (GField (tident, fident))
@@ -809,5 +817,30 @@ gopt   :                                (NONE)
 
 hopt   :                                (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),
-                                                     ErrorMsg.dummySpan))
+                                                     dummy))
        | HAVING sqlexp                  (sqlexp)
+
+obopt  :                                (ECApp ((EVar (["Basis"], "sql_order_by_Nil"), dummy),
+                                                (CWild (KRecord (KRecord (KType, dummy), dummy), dummy), dummy)),
+                                         dummy)
+       | ORDER BY obexps                (obexps)
+
+obexps : sqlexp                         (let
+                                             val loc = s (sqlexpleft, sqlexpright)
+
+                                             val e' = (ECApp ((EVar (["Basis"], "sql_order_by_Nil"), loc),
+                                                              (CWild (KRecord (KRecord (KType, loc), loc), loc), loc)),
+                                                       loc)
+                                             val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons"), loc),
+                                                            sqlexp), loc)
+                                         in
+                                             (EApp (e, e'), loc)
+                                         end)
+       | sqlexp COMMA obexps            (let
+                                             val loc = s (sqlexpleft, obexpsright)
+
+                                             val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons"), loc),
+                                                            sqlexp), loc)
+                                         in
+                                             (EApp (e, obexps), loc)
+                                         end)

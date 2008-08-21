@@ -50,9 +50,20 @@ val sql_relop : sql_relop
         -> selected ::: {{Type}}
         -> sql_query1 tables1 selected -> sql_query1 tables2 selected -> sql_query1 selected selected
 
+type sql_direction
+val sql_asc : sql_direction
+val sql_desc : sql_direction
+
+con sql_order_by :: {{Type}} -> Type
+val sql_order_by_Nil : tables :: {{Type}} -> sql_order_by tables
+val sql_order_by_Cons : tables ::: {{Type}} -> t ::: Type
+        -> sql_exp tables [] t -> sql_order_by tables
+        -> sql_order_by tables
+
 val sql_query : tables ::: {{Type}}
         -> selected ::: {{Type}}
-        -> sql_query1 tables selected
+        -> {Rows : sql_query1 tables selected,
+            OrderBy : sql_order_by tables}
         -> sql_query selected
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type -> agg ::: {{Type}}

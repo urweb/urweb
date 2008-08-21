@@ -306,6 +306,7 @@ notags = [^<{\n]+;
 <INITIAL> "AS"        => (Tokens.AS (pos yypos, pos yypos + size yytext));
 <INITIAL> "WHERE"     => (Tokens.CWHERE (pos yypos, pos yypos + size yytext));
 <INITIAL> "GROUP"     => (Tokens.GROUP (pos yypos, pos yypos + size yytext));
+<INITIAL> "ORDER"     => (Tokens.ORDER (pos yypos, pos yypos + size yytext));
 <INITIAL> "BY"        => (Tokens.BY (pos yypos, pos yypos + size yytext));
 <INITIAL> "HAVING"    => (Tokens.HAVING (pos yypos, pos yypos + size yytext));
 
