@@ -164,7 +164,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
 
  | SELECT | FROM | AS | CWHERE | GROUP | ORDER | BY | HAVING
  | UNION | INTERSECT | EXCEPT
- | LIMIT | OFFSET
+ | LIMIT | OFFSET | ALL
  | TRUE | FALSE | CAND | OR | NOT
  | NE | LT | LE | GT | GE
 
@@ -247,6 +247,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | obopt of exp
  | obexps of exp
  | lopt of exp
+ | ofopt of exp
  | sqlint of exp
 
 
@@ -661,7 +662,7 @@ attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTri
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
        | LBRACE eexp RBRACE             (eexp)
 
-query  : query1 obopt lopt              (let
+query  : query1 obopt lopt ofopt        (let
                                              val loc = s (query1left, query1right)
 
                                              val re = (ERecord [((CName "Rows", loc),
@@ -669,7 +670,9 @@ query  : query1 obopt lopt              (let
                                                                 ((CName "OrderBy", loc),
                                                                  obopt),
                                                                 ((CName "Limit", loc),
-                                                                 lopt)], loc)
+                                                                 lopt),
+                                                                ((CName "Offset", loc),
+                                                                 ofopt)], loc)
                                          in
                                              (EApp ((EVar (["Basis"], "sql_query"), loc), re), loc)
                                          end)
@@ -851,10 +854,18 @@ obexps : sqlexp                         (let
                                          end)
 
 lopt   :                                 (EVar (["Basis"], "sql_no_limit"), dummy)
+       | LIMIT ALL                       (EVar (["Basis"], "sql_no_limit"), dummy)
        | LIMIT sqlint                    (let
                                               val loc = s (LIMITleft, sqlintright)
                                           in
                                               (EApp ((EVar (["Basis"], "sql_limit"), loc), sqlint), loc)
+                                          end)
+
+ofopt  :                                 (EVar (["Basis"], "sql_no_offset"), dummy)
+       | OFFSET sqlint                   (let
+                                              val loc = s (OFFSETleft, sqlintright)
+                                          in
+                                              (EApp ((EVar (["Basis"], "sql_offset"), loc), sqlint), loc)
                                           end)
 
 sqlint : INT                             (EPrim (Prim.Int INT), s (INTleft, INTright))
