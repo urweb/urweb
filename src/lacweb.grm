@@ -152,7 +152,7 @@ fun sql_unary (oper, sqlexp, loc) =
  | NOTAGS of string 
  | BEGIN_TAG of string | END_TAG of string
 
- | SELECT | FROM | AS | CWHERE | GROUP | BY
+ | SELECT | FROM | AS | CWHERE | GROUP | BY | HAVING
  | TRUE | FALSE | CAND | OR | NOT
  | NE | LT | LE | GT | GE
 
@@ -231,6 +231,7 @@ fun sql_unary (oper, sqlexp, loc) =
  | groupi of group_item
  | groupis of group_item list
  | gopt of group_item list option
+ | hopt of exp
 
 
 %verbose                                (* print summary of errors *)
@@ -645,7 +646,7 @@ attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTri
 
 query  : query1                         (query1)
                 
-query1 : SELECT select FROM tables wopt gopt
+query1 : SELECT select FROM tables wopt gopt hopt
                                         (let
                                              val loc = s (SELECTleft, tablesright)
 
@@ -689,10 +690,6 @@ query1 : SELECT select FROM tables wopt gopt
                                                                (ECApp ((EVar (["Basis"], "sql_subset"), loc),
                                                                        (CRecord tabs, loc)), loc)
                                                            end
-
-                                             val hopt = (sql_inject (EVar (["Basis"], "True"),
-                                                                     EVar (["Basis"], "sql_bool"),
-                                                                     loc))
 
                                              val e = (EVar (["Basis"], "sql_query"), loc)
                                              val re = (ERecord [((CName "From", loc),
@@ -788,3 +785,8 @@ groupis: groupi                         ([groupi])
 
 gopt   :                                (NONE)
        | GROUP BY groupis               (SOME groupis)
+
+hopt   :                                (sql_inject (EVar (["Basis"], "True"),
+                                                     EVar (["Basis"], "sql_bool"),
+                                                     ErrorMsg.dummySpan))
+       | HAVING sqlexp                  (sqlexp)

@@ -297,6 +297,7 @@ notags = [^<{\n]+;
 <INITIAL> "WHERE"     => (Tokens.CWHERE (pos yypos, pos yypos + size yytext));
 <INITIAL> "GROUP"     => (Tokens.GROUP (pos yypos, pos yypos + size yytext));
 <INITIAL> "BY"        => (Tokens.BY (pos yypos, pos yypos + size yytext));
+<INITIAL> "HAVING"    => (Tokens.HAVING (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "TRUE"      => (Tokens.TRUE (pos yypos, pos yypos + size yytext));
 <INITIAL> "FALSE"     => (Tokens.FALSE (pos yypos, pos yypos + size yytext));
