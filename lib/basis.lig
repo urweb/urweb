@@ -60,10 +60,15 @@ val sql_order_by_Cons : tables ::: {{Type}} -> t ::: Type
         -> sql_exp tables [] t -> sql_order_by tables
         -> sql_order_by tables
 
+type sql_limit
+val sql_no_limit : sql_limit
+val sql_limit : int -> sql_limit
+
 val sql_query : tables ::: {{Type}}
         -> selected ::: {{Type}}
         -> {Rows : sql_query1 tables selected,
-            OrderBy : sql_order_by tables}
+            OrderBy : sql_order_by tables,
+            Limit : sql_limit}
         -> sql_query selected
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type -> agg ::: {{Type}}

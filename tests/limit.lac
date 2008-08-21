@@ -1,0 +1,4 @@
+table t : {A : int, B : string, C : float}
+
+val q1 = (SELECT * FROM t LIMIT 42)
+val q2 = fn n => (SELECT * FROM t LIMIT {n})

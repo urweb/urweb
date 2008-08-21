@@ -309,6 +309,8 @@ notags = [^<{\n]+;
 <INITIAL> "ORDER"     => (Tokens.ORDER (pos yypos, pos yypos + size yytext));
 <INITIAL> "BY"        => (Tokens.BY (pos yypos, pos yypos + size yytext));
 <INITIAL> "HAVING"    => (Tokens.HAVING (pos yypos, pos yypos + size yytext));
+<INITIAL> "LIMIT"     => (Tokens.LIMIT (pos yypos, pos yypos + size yytext));
+<INITIAL> "OFFSET"    => (Tokens.OFFSET (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "UNION"     => (Tokens.UNION (pos yypos, pos yypos + size yytext));
 <INITIAL> "INTERSECT" => (Tokens.INTERSECT (pos yypos, pos yypos + size yytext));
