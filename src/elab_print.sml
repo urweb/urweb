@@ -360,7 +360,7 @@ fun p_exp' par env (e, _) =
                                                                              space,
                                                                              string "=>",
                                                                              space,
-                                                                             p_exp env e]) pes])
+                                                                             p_exp (E.patBinds env p) e]) pes])
 
       | EError => string "<ERROR>"
       | EUnif (ref (SOME e)) => p_exp env e

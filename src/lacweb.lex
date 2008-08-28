@@ -266,6 +266,8 @@ notags = [^<{\n]+;
 <INITIAL> "~"         => (Tokens.TWIDDLE (pos yypos, pos yypos + size yytext));
 <INITIAL> "|"         => (Tokens.BAR (pos yypos, pos yypos + size yytext));
 <INITIAL> "*"         => (Tokens.STAR (pos yypos, pos yypos + size yytext));
+<INITIAL> "<-"        => (Tokens.LARROW (pos yypos, pos yypos + size yytext));
+<INITIAL> ";"         => (Tokens.SEMI (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "con"       => (Tokens.CON (pos yypos, pos yypos + size yytext));
 <INITIAL> "type"      => (Tokens.LTYPE (pos yypos, pos yypos + size yytext));

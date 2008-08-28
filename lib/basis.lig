@@ -146,6 +146,26 @@ val sql_max : t ::: Type -> sql_maxable t -> sql_aggregate t
 val sql_min : t ::: Type -> sql_maxable t -> sql_aggregate t
 
 
+(*** Executing queries *)
+
+con transaction :: Type -> Type
+val return : t ::: Type
+        -> t -> transaction t
+val bind : t1 ::: Type -> t2 ::: Type
+        -> transaction t1 -> (t1 -> transaction t2)
+        -> transaction t2
+
+val query : tables ::: {{Type}} -> exps ::: {Type}
+        -> sql_query tables exps
+        -> state ::: Type
+        -> ($(fold (fn nm (fields :: {Type}) acc => [nm] ~ acc => [nm = $fields] ++ acc) [] tables)
+                -> $exps
+                -> state
+                -> transaction state)
+        -> state
+        -> transaction state
+
+
 (** XML *)
 
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type

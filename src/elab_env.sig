@@ -103,4 +103,6 @@ signature ELAB_ENV = sig
 
     val chaseMpath : env -> (int * string list) -> Elab.str * Elab.sgn
 
+    val patBinds : env -> Elab.pat -> env
+
 end

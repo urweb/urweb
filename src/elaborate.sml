@@ -1268,6 +1268,13 @@ datatype coverage =
        | Datatype of coverage IM.map
        | Record of coverage SM.map list
 
+fun c2s c =
+    case c of
+        Wild => "Wild"
+      | None => "None"
+      | Datatype _ => "Datatype"
+      | Record _ => "Record"
+
 fun exhaustive (env, denv, t, ps) =
     let
         fun pcCoverage pc =
@@ -1359,26 +1366,39 @@ fun exhaustive (env, denv, t, ps) =
             end
 
         fun coverageImp (c1, c2) =
-            case (c1, c2) of
-                (Wild, _) => true
+            let
+                val r =
+                    case (c1, c2) of
+                        (Wild, _) => true
 
-              | (Datatype cmap1, Datatype cmap2) =>
-                List.all (fn (n, c2) =>
-                             case IM.find (cmap1, n) of
-                                 NONE => false
-                               | SOME c1 => coverageImp (c1, c2)) (IM.listItemsi cmap2)
+                      | (Datatype cmap1, Datatype cmap2) =>
+                        List.all (fn (n, c2) =>
+                                     case IM.find (cmap1, n) of
+                                         NONE => false
+                                       | SOME c1 => coverageImp (c1, c2)) (IM.listItemsi cmap2)
+                      | (Datatype cmap1, Wild) =>
+                        List.all (fn (n, c1) => coverageImp (c1, Wild)) (IM.listItemsi cmap1)
 
-              | (Record fmaps1, Record fmaps2) =>
-                List.all (fn fmap2 =>
-                             List.exists (fn fmap1 =>
-                                             List.all (fn (x, c2) =>
-                                                          case SM.find (fmap1, x) of
-                                                              NONE => true
-                                                            | SOME c1 => coverageImp (c1, c2))
-                                                      (SM.listItemsi fmap2))
-                                         fmaps1) fmaps2
+                      | (Record fmaps1, Record fmaps2) =>
+                        List.all (fn fmap2 =>
+                                     List.exists (fn fmap1 =>
+                                                     List.all (fn (x, c2) =>
+                                                                  case SM.find (fmap1, x) of
+                                                                      NONE => true
+                                                                    | SOME c1 => coverageImp (c1, c2))
+                                                              (SM.listItemsi fmap2))
+                                                 fmaps1) fmaps2
 
-              | _ => false
+                      | (Record fmaps1, Wild) =>
+                        List.exists (fn fmap1 =>
+                                        List.all (fn (x, c1) => coverageImp (c1, Wild))
+                                        (SM.listItemsi fmap1)) fmaps1
+
+                      | _ => false
+            in
+                (*TextIO.print ("coverageImp(" ^ c2s c1 ^ ", " ^ c2s c2 ^ ") = " ^ Bool.toString r ^ "\n");*)
+                r
+            end
 
         fun isTotal (c, t) =
             case c of

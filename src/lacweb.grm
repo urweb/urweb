@@ -154,7 +154,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | CON | LTYPE | VAL | REC | AND | FUN | FOLD | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
- | ARROW | LARROW | DARROW | STAR
+ | ARROW | LARROW | DARROW | STAR | SEMI
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE
@@ -277,6 +277,8 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
 
 %name Lacweb
 
+%right SEMI
+%nonassoc LARROW
 %nonassoc IF THEN ELSE
 %nonassoc DARROW
 %nonassoc COLON
@@ -286,7 +288,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
 %right OR
 %right CAND
 %nonassoc EQ NE LT LE GT GE
-%right ARROW LARROW
+%right ARROW
 %right PLUSPLUS MINUSMINUS
 %right STAR
 %left NOT
@@ -586,6 +588,13 @@ eexp   : eapps                          (eapps)
                                              (ECase (eexp1, [((PCon (["Basis"], "True", NONE), loc), eexp2),
                                                              ((PCon (["Basis"], "False", NONE), loc), eexp3)]), loc)
                                          end)
+       | SYMBOL LARROW eexp SEMI eexp   (let
+                                             val loc = s (SYMBOLleft, eexp2right)
+                                             val e = (EVar (["Basis"], "bind"), loc)
+                                             val e = (EApp (e, eexp1), loc)
+                                         in
+                                             (EApp (e, (EAbs (SYMBOL, NONE, eexp2), loc)), loc)
+                                         end)
 
 eargs  : earg                           (earg)
        | eargl                          (eargl)
@@ -725,8 +734,10 @@ pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright
                                          s (LPARENleft, RPARENright))
 
 rpat   : CSYMBOL EQ pat                 ([(CSYMBOL, pat)], false)
+       | INT EQ pat                     ([(Int64.toString INT, pat)], false)
        | DOTDOTDOT                      ([], true)
        | CSYMBOL EQ pat COMMA rpat      ((CSYMBOL, pat) :: #1 rpat, #2 rpat)
+       | INT EQ pat COMMA rpat          ((Int64.toString INT, pat) :: #1 rpat, #2 rpat)
 
 ptuple : pat COMMA pat                  ([pat1, pat2])
        | pat COMMA ptuple               (pat :: ptuple)
@@ -892,12 +903,12 @@ tables : table                          ([table])
 tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | LBRACE cexp RBRACE             (cexp)
 
-table  : SYMBOL                         ((CName SYMBOL, s (SYMBOLleft, SYMBOLright)),
+table  : SYMBOL                         ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)),
                                          (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
        | SYMBOL AS tname                (tname, (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
        | LBRACE LBRACE eexp RBRACE RBRACE AS tname    (tname, eexp)
 
-tident : SYMBOL                         (CName SYMBOL, s (SYMBOLleft, SYMBOLright))
+tident : SYMBOL                         (CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright))
        | CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | LBRACE LBRACE cexp RBRACE RBRACE (cexp)
 

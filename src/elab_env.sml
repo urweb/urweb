@@ -1049,4 +1049,13 @@ fun declBinds env (d, loc) =
             pushClass env n
         end
 
+fun patBinds env (p, loc) =
+    case p of
+        PWild => env
+      | PVar (x, t) => pushERel env x t
+      | PPrim _ => env
+      | PCon (_, _, _, NONE) => env
+      | PCon (_, _, _, SOME p) => patBinds env p
+      | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
+
 end
