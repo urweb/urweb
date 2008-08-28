@@ -1,0 +1,4 @@
+table t1 : {A : int, B : string, C : float}
+table t2 : {A : float, D : int}
+
+val q1 = (SELECT COUNT( * ) AS N FROM t1)

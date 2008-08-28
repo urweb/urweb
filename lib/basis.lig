@@ -125,6 +125,10 @@ val sql_comparison : sql_comparison
         -> sql_exp tables agg exps t -> sql_exp tables agg exps t
         -> sql_exp tables agg exps bool
 
+val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+        -> unit -> sql_exp tables agg exps int
+
+
 (** XML *)
 
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type

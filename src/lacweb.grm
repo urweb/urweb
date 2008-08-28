@@ -169,6 +169,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | UNION | INTERSECT | EXCEPT
  | LIMIT | OFFSET | ALL
  | TRUE | FALSE | CAND | OR | NOT
+ | COUNT
  | NE | LT | LE | GT | GE
 
 %nonterm
@@ -823,6 +824,13 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
                                                      EWild,
                                                      s (LBRACEleft, RBRACEright)))
        | LPAREN sqlexp RPAREN           (sqlexp)
+
+       | COUNT LPAREN STAR RPAREN       (let
+                                             val loc = s (COUNTleft, RPARENright)
+                                         in
+                                             (EApp ((EVar (["Basis"], "sql_count"), loc),
+                                                    (ERecord [], loc)), loc)
+                                         end)
 
 wopt   :                                (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),
