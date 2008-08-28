@@ -226,6 +226,11 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | tag of string * exp
  | tagHead of string * exp
 
+ | earg of exp * con -> exp * con
+ | eargp of exp * con -> exp * con
+ | eargs of exp * con -> exp * con
+ | eargl of exp * con -> exp * con
+
  | branch of pat * exp
  | branchs of (pat * exp) list
  | pat of pat
@@ -478,27 +483,14 @@ cargl  : cargp cargp                    (cargp1 o cargp2)
 cargl2 :                                (fn x => x)
        | cargp cargl2                   (cargp o cargl2)
 
-carg   : SYMBOL                         (fn (c, k) =>
-                                            let
-                                                val loc = s (SYMBOLleft, SYMBOLright)
-                                            in
-                                                ((CAbs (SYMBOL, NONE, c), loc),
-                                                 (KArrow ((KWild, loc), k), loc))
-                                            end)
-       | SYMBOL DCOLON kind             (fn (c, k) =>
+carg   : SYMBOL DCOLON kind             (fn (c, k) =>
                                             let
                                                 val loc = s (SYMBOLleft, kindright)
                                             in
                                                 ((CAbs (SYMBOL, SOME kind, c), loc),
                                                  (KArrow (kind, k), loc))
                                             end)
-       | LPAREN SYMBOL DCOLON kind RPAREN (fn (c, k) =>
-                                              let
-                                                  val loc = s (LPARENleft, RPARENright)
-                                              in
-                                                  ((CAbs (SYMBOL, SOME kind, c), loc),
-                                                   (KArrow (kind, k), loc))
-                                              end)
+       | cargp                          (cargp)
 
 cargp  : SYMBOL                         (fn (c, k) =>
                                             let
@@ -567,17 +559,12 @@ eapps  : eterm                          (eterm)
        | eapps LBRACK cexp RBRACK       (ECApp (eapps, cexp), s (eappsleft, RBRACKright))
 
 eexp   : eapps                          (eapps)
-       | FN SYMBOL kcolon kind DARROW eexp (ECAbs (kcolon, SYMBOL, kind, eexp), s (FNleft, eexpright))
-       | FN SYMBOL COLON cexp DARROW eexp (EAbs (SYMBOL, SOME cexp, eexp), s (FNleft, eexpright))
-       | FN SYMBOL DARROW eexp          (EAbs (SYMBOL, NONE, eexp), s (FNleft, eexpright))
-       | FN UNDER COLON cexp DARROW eexp (EAbs ("_", SOME cexp, eexp), s (FNleft, eexpright))
-       | LBRACK cterm TWIDDLE cterm RBRACK DARROW eexp(EDisjoint (cterm1, cterm2, eexp), s (LBRACKleft, RBRACKright))
-       | FN UNIT DARROW eexp            (let
+       | FN eargs DARROW eexp           (let
                                              val loc = s (FNleft, eexpright)
                                          in
-                                             (EAbs ("_", SOME (TRecord (CRecord [], loc), loc), eexp), loc)
+                                             #1 (eargs (eexp, (CWild (KType, loc), loc)))
                                          end)
-
+       | LBRACK cterm TWIDDLE cterm RBRACK DARROW eexp(EDisjoint (cterm1, cterm2, eexp), s (LBRACKleft, RBRACKright))
        | eexp COLON cexp                (EAnnot (eexp, cexp), s (eexpleft, cexpright))
        | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
        | CASE eexp OF barOpt branch branchs (ECase (eexp, branch :: branchs), s (CASEleft, branchsright))
@@ -587,6 +574,79 @@ eexp   : eapps                          (eapps)
                                              (ECase (eexp1, [((PCon (["Basis"], "True", NONE), loc), eexp2),
                                                              ((PCon (["Basis"], "False", NONE), loc), eexp3)]), loc)
                                          end)
+
+eargs  : earg                           (earg)
+       | eargl                          (eargl)
+
+eargl  : eargp eargp                    (eargp1 o eargp2)
+       | eargp eargl                    (eargp o eargl)
+
+earg   : SYMBOL kcolon kind             (fn (e, t) =>
+                                            let
+                                                val loc = s (SYMBOLleft, kindright)
+                                            in
+                                                ((ECAbs (kcolon, SYMBOL, kind, e), loc),
+                                                 (TCFun (kcolon, SYMBOL, kind, t), loc))
+                                            end)
+       | SYMBOL COLON cexp              (fn (e, t) =>
+                                            let
+                                                val loc = s (SYMBOLleft, cexpright)
+                                            in
+                                                ((EAbs (SYMBOL, SOME cexp, e), loc),
+                                                 (TFun (cexp, t), loc))
+                                            end)
+       | UNDER COLON cexp               (fn (e, t) =>
+                                            let
+                                                val loc = s (UNDERleft, cexpright)
+                                            in
+                                                ((EAbs ("_", SOME cexp, e), loc),
+                                                 (TFun (cexp, t), loc))
+                                            end)
+       | eargp                          (eargp)
+
+eargp  : SYMBOL                         (fn (e, t) =>
+                                            let
+                                                val loc = s (SYMBOLleft, SYMBOLright)
+                                            in
+                                                ((EAbs (SYMBOL, NONE, e), loc),
+                                                 (TFun ((CWild (KType, loc), loc), t), loc))
+                                            end)
+       | UNIT                           (fn (e, t) =>
+                                            let
+                                                val loc = s (UNITleft, UNITright)
+                                                val t' = (TRecord (CRecord [], loc), loc)
+                                            in
+                                                ((EAbs ("_", SOME t', e), loc),
+                                                 (TFun (t', t), loc))
+                                            end)
+       | UNDER                          (fn (e, t) =>
+                                            let
+                                                val loc = s (UNDERleft, UNDERright)
+                                            in
+                                                ((EAbs ("_", NONE, e), loc),
+                                                 (TFun ((CWild (KType, loc), loc), t), loc))
+                                            end)
+       | LPAREN SYMBOL kcolon kind RPAREN(fn (e, t) =>
+                                             let
+                                                 val loc = s (LPARENleft, RPARENright)
+                                             in
+                                                 ((ECAbs (kcolon, SYMBOL, kind, e), loc),
+                                                  (TCFun (kcolon, SYMBOL, kind, t), loc))
+                                             end)
+       | LPAREN SYMBOL COLON cexp RPAREN  (fn (e, t) =>
+                                              let
+                                                  val loc = s (LPARENleft, RPARENright)
+                                              in
+                                                  ((EAbs (SYMBOL, SOME cexp, e), loc),
+                                                   (TFun (cexp, t), loc))
+                                              end)
+       | LPAREN UNDER COLON cexp RPAREN   (fn (e, t) =>
+                                            let
+                                                val loc = s (LPARENleft, RPARENright)
+                                            in
+                                                ((EAbs ("_", SOME cexp, e), loc),
+                                                 (TFun (cexp, t), loc))
+                                            end)
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | LPAREN etuple RPAREN           (let
