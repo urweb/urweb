@@ -209,6 +209,10 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | rcon of (con * con) list
  | rconn of (con * con) list
  | rcone of (con * con) list
+ | cargs of con * kind -> con * kind
+ | cargl of con * kind -> con * kind
+ | carg of con * kind -> con * kind
+ | cargp of con * kind -> con * kind
 
  | eexp of exp
  | eapps of exp
@@ -435,8 +439,7 @@ cexp   : capps                          (capps)
 
        | cexp PLUSPLUS cexp             (CConcat (cexp1, cexp2), s (cexp1left, cexp1right))
 
-       | FN SYMBOL DARROW cexp          (CAbs (SYMBOL, NONE, cexp), s (FNleft, cexpright))
-       | FN SYMBOL DCOLON kind DARROW cexp (CAbs (SYMBOL, SOME kind, cexp), s (FNleft, cexpright))
+       | FN cargs DARROW cexp           (#1 (cargs (cexp, (KWild, s (FNleft, cexpright)))))
        | cterm TWIDDLE cterm DARROW cexp(CDisjoint (cterm1, cterm2, cexp), s (cterm1left, cexpright))
        | cterm TWIDDLE cterm ARROW cexp (TDisjoint (cterm1, cterm2, cexp), s (cterm1left, cexpright))
 
@@ -454,6 +457,49 @@ cexp   : capps                          (capps)
 
 kcolon : DCOLON                         (Explicit)
        | TCOLON                         (Implicit)
+
+cargs  : carg                           (carg)
+       | cargl                          (cargl)
+
+cargl  : cargp cargp                    (cargp1 o cargp2)
+       | cargp cargl                    (cargp o cargl)
+
+carg   : SYMBOL                         (fn (c, k) =>
+                                            let
+                                                val loc = s (SYMBOLleft, SYMBOLright)
+                                            in
+                                                ((CAbs (SYMBOL, NONE, c), loc),
+                                                 (KArrow ((KWild, loc), k), loc))
+                                            end)
+       | SYMBOL DCOLON kind             (fn (c, k) =>
+                                            let
+                                                val loc = s (SYMBOLleft, kindright)
+                                            in
+                                                ((CAbs (SYMBOL, SOME kind, c), loc),
+                                                 (KArrow (kind, k), loc))
+                                            end)
+       | LPAREN SYMBOL DCOLON kind RPAREN (fn (c, k) =>
+                                              let
+                                                  val loc = s (LPARENleft, RPARENright)
+                                              in
+                                                  ((CAbs (SYMBOL, SOME kind, c), loc),
+                                                   (KArrow (kind, k), loc))
+                                              end)
+
+cargp  : SYMBOL                         (fn (c, k) =>
+                                            let
+                                                val loc = s (SYMBOLleft, SYMBOLright)
+                                            in
+                                                ((CAbs (SYMBOL, NONE, c), loc),
+                                                 (KArrow ((KWild, loc), k), loc))
+                                            end)
+       | LPAREN SYMBOL DCOLON kind RPAREN (fn (c, k) =>
+                                              let
+                                                  val loc = s (LPARENleft, RPARENright)
+                                              in
+                                                  ((CAbs (SYMBOL, SOME kind, c), loc),
+                                                   (KArrow (kind, k), loc))
+                                              end)
 
 path   : SYMBOL                         ([], SYMBOL)
        | CSYMBOL DOT path               (let val (ms, x) = path in (CSYMBOL :: ms, x) end)

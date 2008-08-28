@@ -6,4 +6,4 @@ val rec append : t ::: Type -> list t -> list t -> list t = fn t ::: Type => fn 
           | Cons (h, t) => Cons (h, append t ls2)
 
 (*val rec ones : list int = Cons (1, ones)*)
-val rec ones : unit -> list int = fn () => Cons (1, ones ())
+val rec ones = fn () => Cons (1, ones ())

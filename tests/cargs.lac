@@ -1,0 +1,7 @@
+con id = fn t :: Type => t
+con id2 = fn (t :: Type) => id t
+con id3 = fn t => id2 t
+
+con pair = fn (t :: Type) (u :: Type) => (t, u)
+con pair2 = fn t u => pair t u
+con pair3 = fn t (u :: Type) => pair2 t u
