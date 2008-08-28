@@ -42,6 +42,7 @@ fun entable t =
 
 datatype select_item =
          Field of con * con
+       | Exp of con * exp
 
 datatype select =
          Star
@@ -56,25 +57,27 @@ fun eqTnames ((c1, _), (c2, _)) =
       | (CName x1, CName x2) => x1 = x2
       | _ => false
 
-fun amend_select loc (si, tabs) =
-    let
-        val (tx, c) = case si of
-                          Field (tx, fx) => (tx, (CRecord ([(fx, (CWild (KType, loc), loc))]), loc))
+fun amend_select loc (si, (tabs, exps)) =
+    case si of
+        Field (tx, fx) =>
+        let
+            val c = (CRecord ([(fx, (CWild (KType, loc), loc))]), loc)
 
-        val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
-                                                  if eqTnames (tx, tx') then
-                                                      ((tx', (CConcat (c, c'), loc)), true)
-                                                  else
-                                                      ((tx', c'), found))
-                            false tabs
-    in
-        if found then
-            ()
-        else
-            ErrorMsg.errorAt loc "Select of field from unbound table";
-
-        tabs
-    end
+            val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
+                                                      if eqTnames (tx, tx') then
+                                                          ((tx', (CConcat (c, c'), loc)), true)
+                                                      else
+                                                          ((tx', c'), found))
+                                                  false tabs
+        in
+            if found then
+                ()
+            else
+                ErrorMsg.errorAt loc "Select of field from unbound table";
+            
+            (tabs, exps)
+        end
+      | Exp (c, e) => (tabs, (c, e) :: exps)
 
 fun amend_group loc (gi, tabs) =
     let
@@ -681,22 +684,24 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                         (let
                                              val loc = s (SELECTleft, tablesright)
 
-                                             val sel =
+                                             val (sel, exps) =
                                                  case select of
-                                                     Star => map (fn (nm, _) =>
-                                                                     (nm, (CTuple [(CWild (KRecord (KType, loc), loc),
-                                                                                    loc),
-                                                                                   (CRecord [], loc)],
-                                                                           loc))) tables
+                                                     Star => (map (fn (nm, _) =>
+                                                                      (nm, (CTuple [(CWild (KRecord (KType, loc), loc),
+                                                                                     loc),
+                                                                                    (CRecord [], loc)],
+                                                                            loc))) tables,
+                                                              [])
                                                    | Items sis =>
                                                      let
                                                          val tabs = map (fn (nm, _) => (nm, (CRecord [], loc))) tables
-                                                         val tabs = foldl (amend_select loc) tabs sis
+                                                         val (tabs, exps) = foldl (amend_select loc) (tabs, []) sis
                                                      in
-                                                         map (fn (nm, c) => (nm,
-                                                                             (CTuple [c,
-                                                                                      (CWild (KRecord (KType, loc), loc),
-                                                                                       loc)], loc))) tabs
+                                                         (map (fn (nm, c) => (nm,
+                                                                              (CTuple [c,
+                                                                                       (CWild (KRecord (KType, loc), loc),
+                                                                                        loc)], loc))) tabs,
+                                                          exps)
                                                      end
 
                                              val sel = (CRecord sel, loc)
@@ -733,7 +738,9 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                                                  hopt),
                                                                 ((CName "SelectFields", loc),
                                                                  (ECApp ((EVar (["Basis"], "sql_subset"), loc),
-                                                                         sel), loc))], loc)
+                                                                         sel), loc)),
+                                                                ((CName "SelectExps", loc),
+                                                                 (ERecord exps, loc))], loc)
 
                                              val e = (EApp (e, re), loc)
                                          in
@@ -762,6 +769,7 @@ fident : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLr
        | LBRACE cexp RBRACE             (cexp)
 
 seli   : tident DOT fident              (Field (tident, fident))
+       | sqlexp AS fident               (Exp (fident, sqlexp))
 
 selis  : seli                           ([seli])
        | seli COMMA selis               (seli :: selis)

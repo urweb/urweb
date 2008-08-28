@@ -13,8 +13,8 @@ con sql_table :: {Type} -> Type
 
 (*** Queries *)
 
-con sql_query :: {{Type}} -> Type
-con sql_query1 :: {{Type}} -> {{Type}} -> Type
+con sql_query :: {{Type}} -> {Type} -> Type
+con sql_query1 :: {{Type}} -> {{Type}} -> {Type} -> Type
 con sql_exp :: {{Type}} -> {{Type}} -> Type -> Type
 
 con sql_subset :: {{Type}} -> {{Type}} -> Type
@@ -31,14 +31,17 @@ val sql_subset_all : tables :: {{Type}}
 
 val sql_query1 : tables ::: {{Type}}
         -> grouped ::: {{Type}}
-        -> selected ::: {{Type}}
+        -> selectedFields ::: {{Type}}
+        -> selectedExps ::: {Type}
         -> {From : $(fold (fn nm => fn fields :: {Type} => fn acc =>
                 [nm] ~ acc => [nm = sql_table fields] ++ acc) [] tables),
             Where : sql_exp tables [] bool,
             GroupBy : sql_subset tables grouped,
             Having : sql_exp grouped tables bool,
-            SelectFields : sql_subset grouped selected}
-        -> sql_query1 tables selected
+            SelectFields : sql_subset grouped selectedFields,
+            SelectExps : $(fold (fn nm => fn t :: Type => fn acc =>
+                [nm] ~ acc => [nm = sql_exp grouped tables t] ++ acc) [] selectedExps) }
+        -> sql_query1 tables selectedFields selectedExps
 
 type sql_relop 
 val sql_union : sql_relop
@@ -47,8 +50,11 @@ val sql_except : sql_relop
 val sql_relop : sql_relop
         -> tables1 ::: {{Type}}
         -> tables2 ::: {{Type}}
-        -> selected ::: {{Type}}
-        -> sql_query1 tables1 selected -> sql_query1 tables2 selected -> sql_query1 selected selected
+        -> selectedFields ::: {{Type}}
+        -> selectedExps ::: {Type}
+        -> sql_query1 tables1 selectedFields selectedExps
+        -> sql_query1 tables2 selectedFields selectedExps
+        -> sql_query1 selectedFields selectedFields selectedExps
 
 type sql_direction
 val sql_asc : sql_direction
@@ -69,12 +75,13 @@ val sql_no_offset : sql_offset
 val sql_offset : int -> sql_offset
 
 val sql_query : tables ::: {{Type}}
-        -> selected ::: {{Type}}
-        -> {Rows : sql_query1 tables selected,
+        -> selectedFields ::: {{Type}}
+        -> selectedExps ::: {Type}
+        -> {Rows : sql_query1 tables selectedFields selectedExps,
             OrderBy : sql_order_by tables,
             Limit : sql_limit,
             Offset : sql_offset}
-        -> sql_query selected
+        -> sql_query selectedFields selectedExps
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type -> agg ::: {{Type}}
         -> tab :: Name -> field :: Name

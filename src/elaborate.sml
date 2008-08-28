@@ -1520,7 +1520,8 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                             let
                                 val r = ref NONE
                             in
-                                ((L'.EUnif r, loc), ran, [TypeClass (env, dom, r, loc)])
+                                ((L'.EApp (e1', (L'.EUnif r, loc)), loc),
+                                 ran, [TypeClass (env, dom, r, loc)])
                             end
                           | SOME pf => ((L'.EApp (e1', pf), loc), ran, gs1 @ gs2 @ enD gs3 @ enD gs4)
                     end
