@@ -15,7 +15,7 @@ con sql_table :: {Type} -> Type
 
 con sql_query :: {{Type}} -> {Type} -> Type
 con sql_query1 :: {{Type}} -> {{Type}} -> {Type} -> Type
-con sql_exp :: {{Type}} -> {{Type}} -> Type -> Type
+con sql_exp :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
 
 con sql_subset :: {{Type}} -> {{Type}} -> Type
 val sql_subset : keep_drop :: {({Type} * {Type})}
@@ -35,12 +35,12 @@ val sql_query1 : tables ::: {{Type}}
         -> selectedExps ::: {Type}
         -> {From : $(fold (fn nm => fn fields :: {Type} => fn acc =>
                 [nm] ~ acc => [nm = sql_table fields] ++ acc) [] tables),
-            Where : sql_exp tables [] bool,
+            Where : sql_exp tables [] [] bool,
             GroupBy : sql_subset tables grouped,
-            Having : sql_exp grouped tables bool,
+            Having : sql_exp grouped tables [] bool,
             SelectFields : sql_subset grouped selectedFields,
             SelectExps : $(fold (fn nm => fn t :: Type => fn acc =>
-                [nm] ~ acc => [nm = sql_exp grouped tables t] ++ acc) [] selectedExps) }
+                [nm] ~ acc => [nm = sql_exp grouped tables [] t] ++ acc) [] selectedExps) }
         -> sql_query1 tables selectedFields selectedExps
 
 type sql_relop 
@@ -60,11 +60,11 @@ type sql_direction
 val sql_asc : sql_direction
 val sql_desc : sql_direction
 
-con sql_order_by :: {{Type}} -> Type
-val sql_order_by_Nil : tables :: {{Type}} -> sql_order_by tables
-val sql_order_by_Cons : tables ::: {{Type}} -> t ::: Type
-        -> sql_exp tables [] t -> sql_order_by tables
-        -> sql_order_by tables
+con sql_order_by :: {{Type}} -> {Type} -> Type
+val sql_order_by_Nil : tables ::: {{Type}} -> exps :: {Type} -> sql_order_by tables exps
+val sql_order_by_Cons : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+        -> sql_exp tables [] exps t -> sql_order_by tables exps
+        -> sql_order_by tables exps
 
 type sql_limit
 val sql_no_limit : sql_limit
@@ -78,32 +78,39 @@ val sql_query : tables ::: {{Type}}
         -> selectedFields ::: {{Type}}
         -> selectedExps ::: {Type}
         -> {Rows : sql_query1 tables selectedFields selectedExps,
-            OrderBy : sql_order_by tables,
+            OrderBy : sql_order_by tables selectedExps,
             Limit : sql_limit,
             Offset : sql_offset}
         -> sql_query selectedFields selectedExps
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type} -> fieldType ::: Type -> agg ::: {{Type}}
+        -> exps ::: {Type}
         -> tab :: Name -> field :: Name
-        -> sql_exp ([tab = [field = fieldType] ++ otherFields] ++ otherTabs) agg fieldType
+        -> sql_exp ([tab = [field = fieldType] ++ otherFields] ++ otherTabs) agg exps fieldType
+
+val sql_exp : tabs ::: {{Type}} -> agg ::: {{Type}} -> t ::: Type -> rest ::: {Type} -> nm :: Name
+        -> sql_exp tabs agg ([nm = t] ++ rest) t
 
 class sql_injectable
 val sql_bool : sql_injectable bool
 val sql_int : sql_injectable int
 val sql_float : sql_injectable float
 val sql_string : sql_injectable string
-val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> t ::: Type -> t -> sql_injectable t -> sql_exp tables agg t
+val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+        -> sql_injectable t -> t -> sql_exp tables agg exps t
 
 con sql_unary :: Type -> Type -> Type
 val sql_not : sql_unary bool bool
-val sql_unary : tables ::: {{Type}} -> agg ::: {{Type}} -> arg ::: Type -> res ::: Type
-        -> sql_unary arg res -> sql_exp tables agg arg -> sql_exp tables agg res
+val sql_unary : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> arg ::: Type -> res ::: Type
+        -> sql_unary arg res -> sql_exp tables agg exps arg -> sql_exp tables agg exps res
 
 con sql_binary :: Type -> Type -> Type -> Type
 val sql_and : sql_binary bool bool bool
 val sql_or : sql_binary bool bool bool
-val sql_binary : tables ::: {{Type}} -> agg ::: {{Type}} -> arg1 ::: Type -> arg2 ::: Type -> res ::: Type
-        -> sql_binary arg1 arg2 res -> sql_exp tables agg arg1 -> sql_exp tables agg arg2 -> sql_exp tables agg res
+val sql_binary : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+        -> arg1 ::: Type -> arg2 ::: Type -> res ::: Type
+        -> sql_binary arg1 arg2 res -> sql_exp tables agg exps arg1 -> sql_exp tables agg exps arg2
+        -> sql_exp tables agg exps res
 
 type sql_comparison
 val sql_eq : sql_comparison
@@ -113,8 +120,10 @@ val sql_le : sql_comparison
 val sql_gt : sql_comparison
 val sql_ge : sql_comparison
 val sql_comparison : sql_comparison
-        -> tables ::: {{Type}} -> agg ::: {{Type}} -> t ::: Type -> sql_exp tables agg t -> sql_exp tables agg t
-        -> sql_injectable t -> sql_exp tables agg bool
+        -> tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+        -> t ::: Type -> sql_injectable t
+        -> sql_exp tables agg exps t -> sql_exp tables agg exps t
+        -> sql_exp tables agg exps bool
 
 (** XML *)
 

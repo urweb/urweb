@@ -101,19 +101,19 @@ fun amend_group loc (gi, tabs) =
 
 fun sql_inject (v, t, loc) =
     let
-        val e = (EApp ((EVar (["Basis"], "sql_inject"), loc), (v, loc)), loc)
+        val e = (EApp ((EVar (["Basis"], "sql_inject"), loc), (t, loc)), loc)
     in
-        (EApp (e, (t, loc)), loc)
+        (EApp (e, (v, loc)), loc)
     end
 
 fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
     let
         val e = (EVar (["Basis"], "sql_comparison"), loc)
         val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+        val e = (EApp (e, (EWild, loc)), loc)
         val e = (EApp (e, sqlexp1), loc)
-        val e = (EApp (e, sqlexp2), loc)
     in
-        (EApp (e, (EWild, loc)), loc)
+        (EApp (e, sqlexp2), loc)
     end
 
 fun sql_binary (oper, sqlexp1, sqlexp2, loc) =
@@ -801,6 +801,12 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
                                          in
                                              (ECApp (e, fident), loc)
                                          end)
+       | CSYMBOL                         (let
+                                             val loc = s (CSYMBOLleft, CSYMBOLright)
+                                             val e = (EVar (["Basis"], "sql_exp"), loc)
+                                         in
+                                             (ECApp (e, (CName CSYMBOL, loc)), loc)
+                                         end)
 
        | sqlexp EQ sqlexp               (sql_compare ("eq", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp NE sqlexp               (sql_compare ("ne", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
@@ -837,7 +843,7 @@ hopt   :                                (sql_inject (EVar (["Basis"], "True"),
        | HAVING sqlexp                  (sqlexp)
 
 obopt  :                                (ECApp ((EVar (["Basis"], "sql_order_by_Nil"), dummy),
-                                                (CWild (KRecord (KRecord (KType, dummy), dummy), dummy), dummy)),
+                                                (CWild (KRecord (KType, dummy), dummy), dummy)),
                                          dummy)
        | ORDER BY obexps                (obexps)
 
@@ -845,7 +851,7 @@ obexps : sqlexp                         (let
                                              val loc = s (sqlexpleft, sqlexpright)
 
                                              val e' = (ECApp ((EVar (["Basis"], "sql_order_by_Nil"), loc),
-                                                              (CWild (KRecord (KRecord (KType, loc), loc), loc), loc)),
+                                                              (CWild (KRecord (KType, loc), loc), loc)),
                                                        loc)
                                              val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons"), loc),
                                                             sqlexp), loc)
