@@ -1033,6 +1033,7 @@ datatype exp_error =
      | DuplicatePatField of ErrorMsg.span * string
      | Unresolvable of ErrorMsg.span * L'.con
      | OutOfContext of ErrorMsg.span * (L'.exp * L'.con) option
+     | IllegalRec of string * L'.exp
 
 fun expError env err =
     case err of
@@ -1082,6 +1083,10 @@ fun expError env err =
       | Unresolvable (loc, c) =>
         (ErrorMsg.errorAt loc "Can't resolve type class instance";
          eprefaces' [("Class constraint", p_con env c)])
+      | IllegalRec (x, e) =>
+        (ErrorMsg.errorAt (#2 e) "Illegal 'val rec' righthand side (must be a function abstraction)";
+         eprefaces' [("Variable", PD.string x),
+                     ("Expression", p_exp env e)])
          
 fun checkCon (env, denv) e c1 c2 =
     unifyCons (env, denv) c1 c2
@@ -2826,6 +2831,13 @@ fun elabDecl ((d, loc), (env, denv, gs : constraint list)) =
         end
       | L.DValRec vis =>
         let
+            fun allowable (e, _) =
+                case e of
+                    L.EAbs _ => true
+                  | L.ECAbs (_, _, _, e) => allowable e
+                  | L.EDisjoint (_, _, e) => allowable e
+                  | _ => false
+
             val (vis, gs) = ListUtil.foldlMap
                                 (fn ((x, co, e), gs) =>
                                     let
@@ -2849,6 +2861,10 @@ fun elabDecl ((d, loc), (env, denv, gs : constraint list)) =
                                                                           
                                                       val gs2 = checkCon (env, denv) e' et c'
                                                   in
+                                                      if allowable e then
+                                                          ()
+                                                      else
+                                                          expError env (IllegalRec (x, e'));
                                                       ((x, n, c', e'), gs1 @ enD gs2 @ gs)
                                                   end) gs vis
         in
