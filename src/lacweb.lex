@@ -324,6 +324,10 @@ notags = [^<{\n]+;
 <INITIAL> "NOT"       => (Tokens.NOT (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "COUNT"     => (Tokens.COUNT (pos yypos, pos yypos + size yytext));
+<INITIAL> "AVG"       => (Tokens.AVG (pos yypos, pos yypos + size yytext));
+<INITIAL> "SUM"       => (Tokens.SUM (pos yypos, pos yypos + size yytext));
+<INITIAL> "MIN"       => (Tokens.MIN (pos yypos, pos yypos + size yytext));
+<INITIAL> "MAX"       => (Tokens.MAX (pos yypos, pos yypos + size yytext));
 
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));

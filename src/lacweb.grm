@@ -110,7 +110,6 @@ fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
     let
         val e = (EVar (["Basis"], "sql_comparison"), loc)
         val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
-        val e = (EApp (e, (EWild, loc)), loc)
         val e = (EApp (e, sqlexp1), loc)
     in
         (EApp (e, sqlexp2), loc)
@@ -169,7 +168,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | UNION | INTERSECT | EXCEPT
  | LIMIT | OFFSET | ALL
  | TRUE | FALSE | CAND | OR | NOT
- | COUNT
+ | COUNT | AVG | SUM | MIN | MAX
  | NE | LT | LE | GT | GE
 
 %nonterm
@@ -253,6 +252,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | lopt of exp
  | ofopt of exp
  | sqlint of exp
+ | sqlagg of string
 
 
 %verbose                                (* print summary of errors *)
@@ -831,6 +831,16 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
                                              (EApp ((EVar (["Basis"], "sql_count"), loc),
                                                     (ERecord [], loc)), loc)
                                          end)
+       | sqlagg LPAREN sqlexp RPAREN    (let
+                                             val loc = s (sqlaggleft, RPARENright)
+
+                                             val e = (EApp ((EVar (["Basis"], "sql_" ^ sqlagg), loc),
+                                                            (EWild, loc)), loc)
+                                             val e = (EApp ((EVar (["Basis"], "sql_aggregate"), loc),
+                                                            e), loc)
+                                         in
+                                             (EApp (e, sqlexp), loc)
+                                         end)
 
 wopt   :                                (sql_inject (EVar (["Basis"], "True"),
                                                      EVar (["Basis"], "sql_bool"),
@@ -892,3 +902,8 @@ ofopt  :                                 (EVar (["Basis"], "sql_no_offset"), dum
 
 sqlint : INT                             (EPrim (Prim.Int INT), s (INTleft, INTright))
        | LBRACE eexp RBRACE              (eexp)
+
+sqlagg : AVG                             ("avg")
+       | SUM                             ("sum")
+       | MIN                             ("min")
+       | MAX                             ("max")
