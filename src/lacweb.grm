@@ -151,7 +151,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
  | DIVIDE | DOTDOTDOT
- | CON | LTYPE | VAL | REC | AND | FOLD | UNIT | KUNIT | CLASS
+ | CON | LTYPE | VAL | REC | AND | FUN | FOLD | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR
@@ -177,6 +177,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | decl of decl
  | vali of string * con option * exp
  | valis of (string * con option * exp) list
+ | copt of con option
 
  | dargs of string list
  | barOpt of unit
@@ -230,6 +231,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | eargp of exp * con -> exp * con
  | eargs of exp * con -> exp * con
  | eargl of exp * con -> exp * con
+ | eargl2 of exp * con -> exp * con
 
  | branch of pat * exp
  | branchs of (pat * exp) list
@@ -319,6 +321,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                    | _ => raise Fail "Arguments specified for imported datatype")
        | VAL vali                       (DVal vali, s (VALleft, valiright))
        | VAL REC valis                  (DValRec valis, s (VALleft, valisright))
+       | FUN valis                      (DValRec valis, s (FUNleft, valisright))
 
        | SIGNATURE CSYMBOL EQ sgn       (DSgn (CSYMBOL, sgn), s (SIGNATUREleft, sgnright))
        | STRUCTURE CSYMBOL EQ str       (DStr (CSYMBOL, NONE, str), s (STRUCTUREleft, strright))
@@ -365,8 +368,17 @@ dcons  : dcon                           ([dcon])
 dcon   : CSYMBOL                        (CSYMBOL, NONE)
        | CSYMBOL OF cexp                (CSYMBOL, SOME cexp)
 
-vali   : SYMBOL EQ eexp                 (SYMBOL, NONE, eexp)
-       | SYMBOL COLON cexp EQ eexp      (SYMBOL, SOME cexp, eexp)
+vali   : SYMBOL eargl2 copt EQ eexp     (let
+                                             val loc = s (SYMBOLleft, eexpright)
+                                             val t = Option.getOpt (copt, (CWild (KType, loc), loc))
+
+                                             val (e, t) = eargl2 (eexp, t)
+                                         in
+                                             (SYMBOL, SOME t, e)
+                                         end)
+
+copt   :                                (NONE)
+       | COLON cexp                     (SOME cexp)
 
 valis  : vali                           ([vali])
        | vali AND valis                 (vali :: valis)
@@ -580,6 +592,9 @@ eargs  : earg                           (earg)
 
 eargl  : eargp eargp                    (eargp1 o eargp2)
        | eargp eargl                    (eargp o eargl)
+
+eargl2 :                                (fn x => x)
+       | eargp eargl2                   (eargp o eargl2)
 
 earg   : SYMBOL kcolon kind             (fn (e, t) =>
                                             let

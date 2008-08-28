@@ -274,6 +274,7 @@ notags = [^<{\n]+;
 <INITIAL> "val"       => (Tokens.VAL (pos yypos, pos yypos + size yytext));
 <INITIAL> "rec"       => (Tokens.REC (pos yypos, pos yypos + size yytext));
 <INITIAL> "and"       => (Tokens.AND (pos yypos, pos yypos + size yytext));
+<INITIAL> "fun"       => (Tokens.FUN (pos yypos, pos yypos + size yytext));
 <INITIAL> "fn"        => (Tokens.FN (pos yypos, pos yypos + size yytext));
 <INITIAL> "fold"      => (Tokens.FOLD (pos yypos, pos yypos + size yytext));
 <INITIAL> "case"      => (Tokens.CASE (pos yypos, pos yypos + size yytext));

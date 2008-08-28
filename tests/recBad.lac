@@ -1,6 +1,6 @@
 datatype list a = Nil | Cons of a * list a
 
-val rec append : t ::: Type -> list t -> list t -> list t = fn t ::: Type => fn ls1 => fn ls2 =>
+fun append (t ::: Type) (ls1 : list t) (ls2 : list t) : list t =
         case ls1 of
             Nil => ls2
           | Cons (h, t) => Cons (h, append t ls2)
