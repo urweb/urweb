@@ -193,6 +193,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | kind of kind
  | ktuple of kind list
  | kcolon of explicitness
+ | kopt of kind option
 
  | path of string list * string
  | cpath of string list * string
@@ -211,6 +212,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
  | rcone of (con * con) list
  | cargs of con * kind -> con * kind
  | cargl of con * kind -> con * kind
+ | cargl2 of con * kind -> con * kind
  | carg of con * kind -> con * kind
  | cargp of con * kind -> con * kind
 
@@ -295,8 +297,14 @@ file   : decls                          (decls)
 decls  :                                ([])
        | decl decls                     (decl :: decls)
 
-decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, cexpright))
-       | CON SYMBOL DCOLON kind EQ cexp (DCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
+decl   : CON SYMBOL cargl2 kopt EQ cexp (let
+                                             val loc = s (CONleft, cexpright)
+
+                                             val k = Option.getOpt (kopt, (KWild, loc))
+                                             val (c, k) = cargl2 (cexp, k)
+                                         in
+                                             (DCon (SYMBOL, SOME k, c), loc)
+                                         end)
        | LTYPE SYMBOL EQ cexp           (DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                          s (LTYPEleft, cexpright))
        | DATATYPE SYMBOL dargs EQ barOpt dcons(DDatatype (SYMBOL, dargs, dcons), s (DATATYPEleft, dconsright))
@@ -336,6 +344,9 @@ decl   : CON SYMBOL EQ cexp             (DCon (SYMBOL, NONE, cexp), s (CONleft, 
                                          in
                                              (DClass (SYMBOL1, c), s (CLASSleft, cexpright))
                                          end)
+
+kopt   :                                (NONE)
+       | DCOLON kind                    (SOME kind)
 
 dargs  :                                ([])
        | SYMBOL dargs                   (SYMBOL :: dargs)
@@ -463,6 +474,9 @@ cargs  : carg                           (carg)
 
 cargl  : cargp cargp                    (cargp1 o cargp2)
        | cargp cargl                    (cargp o cargl)
+
+cargl2 :                                (fn x => x)
+       | cargp cargl2                   (cargp o cargl2)
 
 carg   : SYMBOL                         (fn (c, k) =>
                                             let
