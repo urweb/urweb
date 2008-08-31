@@ -1681,6 +1681,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val gsD = List.mapPartial (fn Disjoint d => SOME d | _ => NONE) gs
                 val gsO = List.filter (fn Disjoint _ => false | _ => true) gs
             in
+                (*TextIO.print ("|gsO| = " ^ Int.toString (length gsO) ^ "\n");*)
                 ((L'.ERecord xes', loc),
                  (L'.TRecord (L'.CRecord (ktype, map (fn (x', _, et) => (x', et)) xes'), loc), loc),
                  enD (prove (xes', gsD)) @ gsO)
@@ -2729,377 +2730,387 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
 
 
 fun elabDecl ((d, loc), (env, denv, gs : constraint list)) =
-    case d of
-        L.DCon (x, ko, c) =>
-        let
-            val k' = case ko of
-                         NONE => kunif loc
-                       | SOME k => elabKind k
+    let
+        (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
 
-            val (c', ck, gs') = elabCon (env, denv) c
-            val (env', n) = E.pushCNamed env x k' (SOME c')
-        in
-            checkKind env c' ck k';
+        val r = 
+            case d of
+                L.DCon (x, ko, c) =>
+                let
+                    val k' = case ko of
+                                 NONE => kunif loc
+                               | SOME k => elabKind k
 
-            ([(L'.DCon (x, n, k', c'), loc)], (env', denv, enD gs' @ gs))
-        end
-      | L.DDatatype (x, xs, xcs) =>
-        let
-            val k = (L'.KType, loc)
-            val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
-            val (env, n) = E.pushCNamed env x k' NONE
-            val t = (L'.CNamed n, loc)
-            val nxs = length xs - 1
-            val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
+                    val (c', ck, gs') = elabCon (env, denv) c
+                    val (env', n) = E.pushCNamed env x k' (SOME c')
+                in
+                    checkKind env c' ck k';
 
-            val (env', denv') = foldl (fn (x, (env', denv')) =>
-                                          (E.pushCRel env' x k,
-                                           D.enter denv')) (env, denv) xs
+                    ([(L'.DCon (x, n, k', c'), loc)], (env', denv, enD gs' @ gs))
+                end
+              | L.DDatatype (x, xs, xcs) =>
+                let
+                    val k = (L'.KType, loc)
+                    val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
+                    val (env, n) = E.pushCNamed env x k' NONE
+                    val t = (L'.CNamed n, loc)
+                    val nxs = length xs - 1
+                    val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
 
-            val (xcs, (used, env, gs)) =
-                ListUtil.foldlMap
-                (fn ((x, to), (used, env, gs)) =>
-                    let
-                        val (to, t, gs') = case to of
-                                           NONE => (NONE, t, gs)
-                                         | SOME t' =>
-                                           let
-                                               val (t', tk, gs') = elabCon (env', denv') t'
-                                           in
-                                               checkKind env' t' tk k;
-                                               (SOME t', (L'.TFun (t', t), loc), enD gs' @ gs)
-                                           end
-                        val t = foldr (fn (x, t) => (L'.TCFun (L'.Implicit, x, k, t), loc)) t xs
+                    val (env', denv') = foldl (fn (x, (env', denv')) =>
+                                                  (E.pushCRel env' x k,
+                                                   D.enter denv')) (env, denv) xs
 
-                        val (env, n') = E.pushENamed env x t
-                    in
-                        if SS.member (used, x) then
-                            strError env (DuplicateConstructor (x, loc))
-                        else
-                            ();
-                        ((x, n', to), (SS.add (used, x), env, gs'))
-                    end)
-                (SS.empty, env, []) xcs
+                    val (xcs, (used, env, gs')) =
+                        ListUtil.foldlMap
+                            (fn ((x, to), (used, env, gs)) =>
+                                let
+                                    val (to, t, gs') = case to of
+                                                           NONE => (NONE, t, gs)
+                                                         | SOME t' =>
+                                                           let
+                                                               val (t', tk, gs') = elabCon (env', denv') t'
+                                                           in
+                                                               checkKind env' t' tk k;
+                                                               (SOME t', (L'.TFun (t', t), loc), enD gs' @ gs)
+                                                           end
+                                    val t = foldr (fn (x, t) => (L'.TCFun (L'.Implicit, x, k, t), loc)) t xs
 
-            val env = E.pushDatatype env n xs xcs
-        in
-            ([(L'.DDatatype (x, n, xs, xcs), loc)], (env, denv, gs))
-        end
+                                    val (env, n') = E.pushENamed env x t
+                                in
+                                    if SS.member (used, x) then
+                                        strError env (DuplicateConstructor (x, loc))
+                                    else
+                                        ();
+                                    ((x, n', to), (SS.add (used, x), env, gs'))
+                                end)
+                            (SS.empty, env, []) xcs
 
-      | L.DDatatypeImp (_, [], _) => raise Fail "Empty DDatatypeImp"
+                    val env = E.pushDatatype env n xs xcs
+                in
+                    ([(L'.DDatatype (x, n, xs, xcs), loc)], (env, denv, gs' @ gs))
+                end
 
-      | L.DDatatypeImp (x, m1 :: ms, s) =>
-        (case E.lookupStr env m1 of
-             NONE => (expError env (UnboundStrInExp (loc, m1));
-                      ([], (env, denv, gs)))
-           | SOME (n, sgn) =>
-             let
-                 val (str, sgn) = foldl (fn (m, (str, sgn)) =>
-                                     case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                         NONE => (conError env (UnboundStrInCon (loc, m));
-                                                  (strerror, sgnerror))
-                                       | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                                  ((L'.StrVar n, loc), sgn) ms
-             in
-                 case hnormCon (env, denv) (L'.CModProj (n, ms, s), loc) of
-                     ((L'.CModProj (n, ms, s), _), gs') =>
-                     (case E.projectDatatype env {sgn = sgn, str = str, field = s} of
-                          NONE => (conError env (UnboundDatatype (loc, s));
-                                   ([], (env, denv, gs)))
-                        | SOME (xs, xncs) =>
-                          let
-                              val k = (L'.KType, loc)
-                              val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
-                              val t = (L'.CModProj (n, ms, s), loc)
-                              val (env, n') = E.pushCNamed env x k' (SOME t)
-                              val env = E.pushDatatype env n' xs xncs
+              | L.DDatatypeImp (_, [], _) => raise Fail "Empty DDatatypeImp"
 
-                              val t = (L'.CNamed n', loc)
-                              val env = foldl (fn ((x, n, to), env) =>
-                                                  let
-                                                      val t = case to of
-                                                                  NONE => t
-                                                                | SOME t' => (L'.TFun (t', t), loc)
+              | L.DDatatypeImp (x, m1 :: ms, s) =>
+                (case E.lookupStr env m1 of
+                     NONE => (expError env (UnboundStrInExp (loc, m1));
+                              ([], (env, denv, gs)))
+                   | SOME (n, sgn) =>
+                     let
+                         val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                                    case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                                        NONE => (conError env (UnboundStrInCon (loc, m));
+                                                                 (strerror, sgnerror))
+                                                      | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                                ((L'.StrVar n, loc), sgn) ms
+                     in
+                         case hnormCon (env, denv) (L'.CModProj (n, ms, s), loc) of
+                             ((L'.CModProj (n, ms, s), _), gs') =>
+                             (case E.projectDatatype env {sgn = sgn, str = str, field = s} of
+                                  NONE => (conError env (UnboundDatatype (loc, s));
+                                           ([], (env, denv, gs)))
+                                | SOME (xs, xncs) =>
+                                  let
+                                      val k = (L'.KType, loc)
+                                      val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
+                                      val t = (L'.CModProj (n, ms, s), loc)
+                                      val (env, n') = E.pushCNamed env x k' (SOME t)
+                                      val env = E.pushDatatype env n' xs xncs
 
-                                                      val t = foldr (fn (x, t) =>
-                                                                        (L'.TCFun (L'.Implicit, x, k, t), loc))
-                                                              t xs
-                                                  in
-                                                      E.pushENamedAs env x n t
-                                                  end) env xncs
-                          in
-                              ([(L'.DDatatypeImp (x, n', n, ms, s, xs, xncs), loc)], (env, denv, enD gs' @ gs))
-                          end)
-                   | _ => (strError env (NotDatatype loc);
-                           ([], (env, denv, [])))
-             end)
+                                      val t = (L'.CNamed n', loc)
+                                      val env = foldl (fn ((x, n, to), env) =>
+                                                          let
+                                                              val t = case to of
+                                                                          NONE => t
+                                                                        | SOME t' => (L'.TFun (t', t), loc)
 
-      | L.DVal (x, co, e) =>
-        let
-            val (c', _, gs1) = case co of
-                                    NONE => (cunif (loc, ktype), ktype, [])
-                                  | SOME c => elabCon (env, denv) c
+                                                              val t = foldr (fn (x, t) =>
+                                                                                (L'.TCFun (L'.Implicit, x, k, t), loc))
+                                                                            t xs
+                                                          in
+                                                              E.pushENamedAs env x n t
+                                                          end) env xncs
+                                  in
+                                      ([(L'.DDatatypeImp (x, n', n, ms, s, xs, xncs), loc)], (env, denv, enD gs' @ gs))
+                                  end)
+                           | _ => (strError env (NotDatatype loc);
+                                   ([], (env, denv, [])))
+                     end)
 
-            val (e', et, gs2) = elabExp (env, denv) e
-            val gs3 = checkCon (env, denv) e' et c'
-            val (c', gs4) = normClassConstraint (env, denv) c'
-            val (env', n) = E.pushENamed env x c'
-        in
-            (*prefaces "DVal" [("x", Print.PD.string x),
-                             ("c'", p_con env c')];*)
-            ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ enD gs3 @ enD gs4 @ gs))
-        end
-      | L.DValRec vis =>
-        let
-            fun allowable (e, _) =
-                case e of
-                    L.EAbs _ => true
-                  | L.ECAbs (_, _, _, e) => allowable e
-                  | L.EDisjoint (_, _, e) => allowable e
-                  | _ => false
+              | L.DVal (x, co, e) =>
+                let
+                    val (c', _, gs1) = case co of
+                                           NONE => (cunif (loc, ktype), ktype, [])
+                                         | SOME c => elabCon (env, denv) c
 
-            val (vis, gs) = ListUtil.foldlMap
-                                (fn ((x, co, e), gs) =>
-                                    let
-                                        val (c', _, gs1) = case co of
-                                                               NONE => (cunif (loc, ktype), ktype, [])
-                                                             | SOME c => elabCon (env, denv) c
-                                    in
-                                        ((x, c', e), enD gs1 @ gs)
-                                    end) [] vis
+                    val (e', et, gs2) = elabExp (env, denv) e
+                    val gs3 = checkCon (env, denv) e' et c'
+                    val (c', gs4) = normClassConstraint (env, denv) c'
+                    val (env', n) = E.pushENamed env x c'
+                in
+                    (*prefaces "DVal" [("x", Print.PD.string x),
+                                       ("c'", p_con env c')];*)
+                    ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ enD gs3 @ enD gs4 @ gs))
+                end
+              | L.DValRec vis =>
+                let
+                    fun allowable (e, _) =
+                        case e of
+                            L.EAbs _ => true
+                          | L.ECAbs (_, _, _, e) => allowable e
+                          | L.EDisjoint (_, _, e) => allowable e
+                          | _ => false
 
-            val (vis, env) = ListUtil.foldlMap (fn ((x, c', e), env) =>
-                                                   let
-                                                       val (env, n) = E.pushENamed env x c'
-                                                   in
-                                                       ((x, n, c', e), env)
-                                                   end) env vis
+                    val (vis, gs) = ListUtil.foldlMap
+                                        (fn ((x, co, e), gs) =>
+                                            let
+                                                val (c', _, gs1) = case co of
+                                                                       NONE => (cunif (loc, ktype), ktype, [])
+                                                                     | SOME c => elabCon (env, denv) c
+                                            in
+                                                ((x, c', e), enD gs1 @ gs)
+                                            end) [] vis
 
-            val (vis, gs) = ListUtil.foldlMap (fn ((x, n, c', e), gs) =>
-                                                  let
-                                                      val (e', et, gs1) = elabExp (env, denv) e
-                                                                          
-                                                      val gs2 = checkCon (env, denv) e' et c'
-                                                  in
-                                                      if allowable e then
-                                                          ()
-                                                      else
-                                                          expError env (IllegalRec (x, e'));
-                                                      ((x, n, c', e'), gs1 @ enD gs2 @ gs)
-                                                  end) gs vis
-        in
-            ([(L'.DValRec vis, loc)], (env, denv, gs))
-        end
+                    val (vis, env) = ListUtil.foldlMap (fn ((x, c', e), env) =>
+                                                           let
+                                                               val (env, n) = E.pushENamed env x c'
+                                                           in
+                                                               ((x, n, c', e), env)
+                                                           end) env vis
 
-      | L.DSgn (x, sgn) =>
-        let
-            val (sgn', gs') = elabSgn (env, denv) sgn
-            val (env', n) = E.pushSgnNamed env x sgn'
-        in
-            ([(L'.DSgn (x, n, sgn'), loc)], (env', denv, enD gs' @ gs))
-        end
+                    val (vis, gs) = ListUtil.foldlMap (fn ((x, n, c', e), gs) =>
+                                                          let
+                                                              val (e', et, gs1) = elabExp (env, denv) e
+                                                                                  
+                                                              val gs2 = checkCon (env, denv) e' et c'
+                                                          in
+                                                              if allowable e then
+                                                                  ()
+                                                              else
+                                                                  expError env (IllegalRec (x, e'));
+                                                              ((x, n, c', e'), gs1 @ enD gs2 @ gs)
+                                                          end) gs vis
+                in
+                    ([(L'.DValRec vis, loc)], (env, denv, gs))
+                end
 
-      | L.DStr (x, sgno, str) =>
-        let
-            val () = if x = "Basis" then
-                         raise Fail "Not allowed to redefine structure 'Basis'"
-                     else
-                         ()
+              | L.DSgn (x, sgn) =>
+                let
+                    val (sgn', gs') = elabSgn (env, denv) sgn
+                    val (env', n) = E.pushSgnNamed env x sgn'
+                in
+                    ([(L'.DSgn (x, n, sgn'), loc)], (env', denv, enD gs' @ gs))
+                end
 
-            val formal = Option.map (elabSgn (env, denv)) sgno
+              | L.DStr (x, sgno, str) =>
+                let
+                    val () = if x = "Basis" then
+                                 raise Fail "Not allowed to redefine structure 'Basis'"
+                             else
+                                 ()
 
-            val (str', sgn', gs') =
-                case formal of
-                    NONE =>
-                    let
-                        val (str', actual, ds) = elabStr (env, denv) str
-                    in
-                        (str', selfifyAt env {str = str', sgn = actual}, ds)
-                    end
-                  | SOME (formal, gs1) =>
-                    let
-                        val str =
-                            case #1 (hnormSgn env formal) of
-                                L'.SgnConst sgis =>
-                                (case #1 str of
-                                     L.StrConst ds =>
-                                     let
-                                         val needed = foldl (fn ((sgi, _), needed) =>
-                                                                case sgi of
-                                                                    L'.SgiConAbs (x, _, _) => SS.add (needed, x)
-                                                                  | _ => needed)
-                                                            SS.empty sgis
-                                                      
-                                         val needed = foldl (fn ((d, _), needed) =>
-                                                                case d of
-                                                                    L.DCon (x, _, _) => (SS.delete (needed, x)
-                                                                                         handle NotFound => needed)
-                                                                  | L.DClass (x, _) => (SS.delete (needed, x)
-                                                                                        handle NotFound => needed)
-                                                                  | L.DOpen _ => SS.empty
-                                                                  | _ => needed)
-                                                            needed ds
-                                     in
-                                         case SS.listItems needed of
-                                             [] => str
-                                           | xs =>
+                    val formal = Option.map (elabSgn (env, denv)) sgno
+
+                    val (str', sgn', gs') =
+                        case formal of
+                            NONE =>
+                            let
+                                val (str', actual, gs') = elabStr (env, denv) str
+                            in
+                                (str', selfifyAt env {str = str', sgn = actual}, gs')
+                            end
+                          | SOME (formal, gs1) =>
+                            let
+                                val str =
+                                    case #1 (hnormSgn env formal) of
+                                        L'.SgnConst sgis =>
+                                        (case #1 str of
+                                             L.StrConst ds =>
                                              let
-                                                 val kwild = (L.KWild, #2 str)
-                                                 val cwild = (L.CWild kwild, #2 str)
-                                                 val ds' = map (fn x => (L.DCon (x, NONE, cwild), #2 str)) xs
+                                                 val needed = foldl (fn ((sgi, _), needed) =>
+                                                                        case sgi of
+                                                                            L'.SgiConAbs (x, _, _) => SS.add (needed, x)
+                                                                          | _ => needed)
+                                                                    SS.empty sgis
+                                                              
+                                                 val needed = foldl (fn ((d, _), needed) =>
+                                                                        case d of
+                                                                            L.DCon (x, _, _) => (SS.delete (needed, x)
+                                                                                                 handle NotFound =>
+                                                                                                        needed)
+                                                                          | L.DClass (x, _) => (SS.delete (needed, x)
+                                                                                                handle NotFound => needed)
+                                                                          | L.DOpen _ => SS.empty
+                                                                          | _ => needed)
+                                                                    needed ds
                                              in
-                                                 (L.StrConst (ds @ ds'), #2 str)
+                                                 case SS.listItems needed of
+                                                     [] => str
+                                                   | xs =>
+                                                     let
+                                                         val kwild = (L.KWild, #2 str)
+                                                         val cwild = (L.CWild kwild, #2 str)
+                                                         val ds' = map (fn x => (L.DCon (x, NONE, cwild), #2 str)) xs
+                                                     in
+                                                         (L.StrConst (ds @ ds'), #2 str)
+                                                     end
                                              end
-                                     end
-                                   | _ => str)
-                              | _ => str
+                                           | _ => str)
+                                      | _ => str
 
-                        val (str', actual, gs2) = elabStr (env, denv) str
-                    in
-                        subSgn (env, denv) (selfifyAt env {str = str', sgn = actual}) formal;
-                        (str', formal, enD gs1 @ gs2)
-                    end
+                                val (str', actual, gs2) = elabStr (env, denv) str
+                            in
+                                subSgn (env, denv) (selfifyAt env {str = str', sgn = actual}) formal;
+                                (str', formal, enD gs1 @ gs2)
+                            end
 
-            val (env', n) = E.pushStrNamed env x sgn'
-        in
-            case #1 (hnormSgn env sgn') of
-                L'.SgnFun _ =>
-                (case #1 str' of
-                     L'.StrFun _ => ()
-                   | _ => strError env (FunctorRebind loc))
-              | _ => ();
+                    val (env', n) = E.pushStrNamed env x sgn'
+                in
+                    case #1 (hnormSgn env sgn') of
+                        L'.SgnFun _ =>
+                        (case #1 str' of
+                             L'.StrFun _ => ()
+                           | _ => strError env (FunctorRebind loc))
+                      | _ => ();
 
-            ([(L'.DStr (x, n, sgn', str'), loc)], (env', denv, gs' @ gs))
-        end
+                    ([(L'.DStr (x, n, sgn', str'), loc)], (env', denv, gs' @ gs))
+                end
 
-      | L.DFfiStr (x, sgn) =>
-        let
-            val (sgn', gs') = elabSgn (env, denv) sgn
+              | L.DFfiStr (x, sgn) =>
+                let
+                    val (sgn', gs') = elabSgn (env, denv) sgn
 
-            val (env', n) = E.pushStrNamed env x sgn'
-        in
-            ([(L'.DFfiStr (x, n, sgn'), loc)], (env', denv, enD gs' @ gs))
-        end
+                    val (env', n) = E.pushStrNamed env x sgn'
+                in
+                    ([(L'.DFfiStr (x, n, sgn'), loc)], (env', denv, enD gs' @ gs))
+                end
 
-      | L.DOpen (m, ms) =>
-        (case E.lookupStr env m of
-             NONE => (strError env (UnboundStr (loc, m));
-                      ([], (env, denv, gs)))
-           | SOME (n, sgn) =>
-             let
-                 val (_, sgn) = foldl (fn (m, (str, sgn)) =>
-                                          case E.projectStr env {str = str, sgn = sgn, field = m} of
-                                              NONE => (strError env (UnboundStr (loc, m));
-                                                       (strerror, sgnerror))
-                                            | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                                      ((L'.StrVar n, loc), sgn) ms
+              | L.DOpen (m, ms) =>
+                (case E.lookupStr env m of
+                     NONE => (strError env (UnboundStr (loc, m));
+                              ([], (env, denv, gs)))
+                   | SOME (n, sgn) =>
+                     let
+                         val (_, sgn) = foldl (fn (m, (str, sgn)) =>
+                                                  case E.projectStr env {str = str, sgn = sgn, field = m} of
+                                                      NONE => (strError env (UnboundStr (loc, m));
+                                                               (strerror, sgnerror))
+                                                    | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                              ((L'.StrVar n, loc), sgn) ms
 
-                 val (ds, (env', denv')) = dopen (env, denv) {str = n, strs = ms, sgn = sgn}
-                 val denv' = dopenConstraints (loc, env', denv') {str = m, strs = ms}
-             in
-                 (ds, (env', denv', gs))
-             end)
+                         val (ds, (env', denv')) = dopen (env, denv) {str = n, strs = ms, sgn = sgn}
+                         val denv' = dopenConstraints (loc, env', denv') {str = m, strs = ms}
+                     in
+                         (ds, (env', denv', gs))
+                     end)
 
-      | L.DConstraint (c1, c2) =>
-        let
-            val (c1', k1, gs1) = elabCon (env, denv) c1
-            val (c2', k2, gs2) = elabCon (env, denv) c2
-            val gs3 = D.prove env denv (c1', c2', loc)
+              | L.DConstraint (c1, c2) =>
+                let
+                    val (c1', k1, gs1) = elabCon (env, denv) c1
+                    val (c2', k2, gs2) = elabCon (env, denv) c2
+                    val gs3 = D.prove env denv (c1', c2', loc)
 
-            val (denv', gs4) = D.assert env denv (c1', c2')
-        in
-            checkKind env c1' k1 (L'.KRecord (kunif loc), loc);
-            checkKind env c2' k2 (L'.KRecord (kunif loc), loc);
+                    val (denv', gs4) = D.assert env denv (c1', c2')
+                in
+                    checkKind env c1' k1 (L'.KRecord (kunif loc), loc);
+                    checkKind env c2' k2 (L'.KRecord (kunif loc), loc);
 
-            ([(L'.DConstraint (c1', c2'), loc)], (env, denv', enD gs1 @ enD gs2 @ enD gs3 @ enD gs4 @ gs))
-        end
+                    ([(L'.DConstraint (c1', c2'), loc)], (env, denv', enD gs1 @ enD gs2 @ enD gs3 @ enD gs4 @ gs))
+                end
 
-      | L.DOpenConstraints (m, ms) =>
-        let
-            val denv = dopenConstraints (loc, env, denv) {str = m, strs = ms}
-        in
-            ([], (env, denv, gs))
-        end
+              | L.DOpenConstraints (m, ms) =>
+                let
+                    val denv = dopenConstraints (loc, env, denv) {str = m, strs = ms}
+                in
+                    ([], (env, denv, gs))
+                end
 
-      | L.DExport str =>
-        let
-            val (str', sgn, gs') = elabStr (env, denv) str
+              | L.DExport str =>
+                let
+                    val (str', sgn, gs') = elabStr (env, denv) str
 
-            val sgn =
-                case #1 (hnormSgn env sgn) of
-                    L'.SgnConst sgis =>
-                    let
-                        fun doOne (all as (sgi, _), env) =
-                            (case sgi of
-                                 L'.SgiVal (x, n, t) =>
-                                 (case hnormCon (env, denv) t of
-                                      ((L'.TFun (dom, ran), _), []) =>
-                                      (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
-                                           (((L'.TRecord domR, _), []),
-                                            ((L'.CApp (tf, arg), _), [])) =>
-                                           (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg) of
-                                                (((L'.CModProj (basis, [], "transaction"), _), []),
-                                                 ((L'.CApp (tf, arg3), _), [])) =>
-                                                (case (basis = !basis_r,
-                                                       hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
-                                                     (true,
-                                                      ((L'.CApp (tf, arg2), _), []),
-                                                      (((L'.CRecord (_, []), _), []))) =>
-                                                     (case (hnormCon (env, denv) tf) of
-                                                          ((L'.CApp (tf, arg1), _), []) =>
-                                                          (case (hnormCon (env, denv) tf,
-                                                                 hnormCon (env, denv) domR,
-                                                                 hnormCon (env, denv) arg1,
-                                                                 hnormCon (env, denv) arg2) of
-                                                               ((tf, []), (domR, []), (arg1, []),
-                                                                ((L'.CRecord (_, []), _), [])) =>
-                                                               let
-                                                                   val t = (L'.CApp (tf, arg1), loc)
-                                                                   val t = (L'.CApp (t, arg2), loc)
-                                                                   val t = (L'.CApp (t, arg3), loc)
-                                                                   val t = (L'.CApp (
-                                                                            (L'.CModProj (basis, [], "transaction"), loc),
-                                                                            t), loc)
-                                                               in
-                                                                   (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
-                                                                                               t),
-                                                                                      loc)), loc)
-                                                               end
-                                                             | _ => all)
-                                                        | _ => all)
-                                                   | _ => all)
-                                              | _ => all)
-                                         | _ => all)
-                                    | _ => all)
-                               | _ => all,
-                             E.sgiBinds env all)
-                    in
-                        (L'.SgnConst (#1 (ListUtil.foldlMap doOne env sgis)), loc)
-                    end
-                  | _ => sgn
-        in
-            ([(L'.DExport (E.newNamed (), sgn, str'), loc)], (env, denv, gs' @ gs))
-        end
+                    val sgn =
+                        case #1 (hnormSgn env sgn) of
+                            L'.SgnConst sgis =>
+                            let
+                                fun doOne (all as (sgi, _), env) =
+                                    (case sgi of
+                                         L'.SgiVal (x, n, t) =>
+                                         (case hnormCon (env, denv) t of
+                                              ((L'.TFun (dom, ran), _), []) =>
+                                              (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
+                                                   (((L'.TRecord domR, _), []),
+                                                    ((L'.CApp (tf, arg), _), [])) =>
+                                                   (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg) of
+                                                        (((L'.CModProj (basis, [], "transaction"), _), []),
+                                                         ((L'.CApp (tf, arg3), _), [])) =>
+                                                        (case (basis = !basis_r,
+                                                               hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
+                                                             (true,
+                                                              ((L'.CApp (tf, arg2), _), []),
+                                                              (((L'.CRecord (_, []), _), []))) =>
+                                                             (case (hnormCon (env, denv) tf) of
+                                                                  ((L'.CApp (tf, arg1), _), []) =>
+                                                                  (case (hnormCon (env, denv) tf,
+                                                                         hnormCon (env, denv) domR,
+                                                                         hnormCon (env, denv) arg1,
+                                                                         hnormCon (env, denv) arg2) of
+                                                                       ((tf, []), (domR, []), (arg1, []),
+                                                                        ((L'.CRecord (_, []), _), [])) =>
+                                                                       let
+                                                                           val t = (L'.CApp (tf, arg1), loc)
+                                                                           val t = (L'.CApp (t, arg2), loc)
+                                                                           val t = (L'.CApp (t, arg3), loc)
+                                                                           val t = (L'.CApp (
+                                                                                    (L'.CModProj
+                                                                                         (basis, [], "transaction"), loc),
+                                                                                    t), loc)
+                                                                       in
+                                                                           (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR,
+                                                                                                        loc),
+                                                                                                       t),
+                                                                                              loc)), loc)
+                                                                       end
+                                                                     | _ => all)
+                                                                | _ => all)
+                                                           | _ => all)
+                                                      | _ => all)
+                                                 | _ => all)
+                                            | _ => all)
+                                       | _ => all,
+                                     E.sgiBinds env all)
+                            in
+                                (L'.SgnConst (#1 (ListUtil.foldlMap doOne env sgis)), loc)
+                            end
+                          | _ => sgn
+                in
+                    ([(L'.DExport (E.newNamed (), sgn, str'), loc)], (env, denv, gs' @ gs))
+                end
 
-      | L.DTable (x, c) =>
-        let
-            val (c', k, gs') = elabCon (env, denv) c
-            val (env, n) = E.pushENamed env x (L'.CApp (tableOf (), c'), loc)
-        in
-            checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
-            ([(L'.DTable (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
-        end
+              | L.DTable (x, c) =>
+                let
+                    val (c', k, gs') = elabCon (env, denv) c
+                    val (env, n) = E.pushENamed env x (L'.CApp (tableOf (), c'), loc)
+                in
+                    checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
+                    ([(L'.DTable (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
+                end
 
-      | L.DClass (x, c) =>
-        let
-            val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
-            val (c', ck, gs) = elabCon (env, denv) c
-            val (env, n) = E.pushCNamed env x k (SOME c')
-            val env = E.pushClass env n
-        in
-            checkKind env c' ck k;
-            ([(L'.DClass (x, n, c'), loc)], (env, denv, []))
-        end
+              | L.DClass (x, c) =>
+                let
+                    val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
+                    val (c', ck, gs) = elabCon (env, denv) c
+                    val (env, n) = E.pushCNamed env x k (SOME c')
+                    val env = E.pushClass env n
+                in
+                    checkKind env c' ck k;
+                    ([(L'.DClass (x, n, c'), loc)], (env, denv, []))
+                end
+    in
+        r
+    end
 
 and elabStr (env, denv) (str, loc) =
     case str of
