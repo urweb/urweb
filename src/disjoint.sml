@@ -104,7 +104,9 @@ structure PM = BinaryMapFn(PK)
 
 type env = PS.set PM.map
 
-type goal = ErrorMsg.span * ElabEnv.env * env * Elab.con * Elab.con
+structure E = ElabEnv
+
+type goal = ErrorMsg.span * E.env * env * Elab.con * Elab.con
 
 val empty = PM.empty
 
@@ -151,6 +153,8 @@ fun prove1 denv (p1, p2) =
 
 fun decomposeRow (env, denv) c =
     let
+        val loc = #2 c
+
         fun decomposeProj c =
             let
                 val (c, gs) = hnormCon (env, denv) c
@@ -179,21 +183,59 @@ fun decomposeRow (env, denv) c =
                 (acc, gs' @ gs)
             end
 
-        fun decomposeRow (c, (acc, gs)) =
+        fun decomposeRow' (c, (acc, gs)) =
             let
-                val (cAll as (c, _), ns, gs') = decomposeProj c
-                val gs = gs' @ gs
+                fun default () =
+                    let
+                        val (cAll as (c, _), ns, gs') = decomposeProj c
+                        val gs = gs' @ gs
+                    in
+                        case c of
+                            CRecord (_, xcs) => foldl (fn ((x, _), acc_gs) => decomposeName (x, acc_gs)) (acc, gs) xcs
+                          | CConcat (c1, c2) => decomposeRow' (c1, decomposeRow' (c2, (acc, gs)))
+                          | CRel n => (Piece (RowR n, ns) :: acc, gs)
+                          | CNamed n => (Piece (RowN n, ns) :: acc, gs)
+                          | CModProj (m1, ms, x) => (Piece (RowM (m1, ms, x), ns) :: acc, gs)
+                          | _ => (Unknown cAll :: acc, gs)
+                    end
             in
-                case c of
-                    CRecord (_, xcs) => foldl (fn ((x, _), acc_gs) => decomposeName (x, acc_gs)) (acc, gs) xcs
-                  | CConcat (c1, c2) => decomposeRow (c1, decomposeRow (c2, (acc, gs)))
-                  | CRel n => (Piece (RowR n, ns) :: acc, gs)
-                  | CNamed n => (Piece (RowN n, ns) :: acc, gs)
-                  | CModProj (m1, ms, x) => (Piece (RowM (m1, ms, x), ns) :: acc, gs)
-                  | _ => (Unknown cAll :: acc, gs)
+                case #1 (#1 (hnormCon (env, denv) c)) of
+                    CApp (
+                    (CApp (
+                     (CApp ((CFold (dom, ran), _), f), _),
+                     i), _),
+                    r) =>
+                    let
+                        val (env', nm) = E.pushCNamed env "nm" (KName, loc) NONE
+                        val (env', v) = E.pushCNamed env' "v" dom NONE
+                        val (env', st) = E.pushCNamed env' "st" ran NONE
+
+                        val (denv', gs') = assert env' denv ((CRecord (dom, [((CNamed nm, loc),
+                                                                              (CUnit, loc))]), loc),
+                                                             (CNamed st, loc))
+
+                        val c' = (CApp (f, (CNamed nm, loc)), loc)
+                        val c' = (CApp (c', (CNamed v, loc)), loc)
+                        val c' = (CApp (c', (CNamed st, loc)), loc)
+                        val (ps, gs'') = decomposeRow (env', denv') c'
+
+                        fun covered p =
+                            case p of
+                                Unknown _ => false
+                              | Piece p =>
+                                case p of
+                                    (NameN n, []) => n = nm
+                                  | (RowN n, []) => n = st
+                                  | _ => false
+
+                        val ps = List.filter (not o covered) ps
+                    in
+                        decomposeRow' (i, decomposeRow' (r, (ps @ acc, gs'' @ gs' @ gs)))
+                    end
+                  | _ => default ()
             end
     in
-        decomposeRow (c, ([], []))
+        decomposeRow' (c, ([], []))
     end
 
 and assert env denv (c1, c2) =

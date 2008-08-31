@@ -185,6 +185,21 @@ fun p_exp' par env (e, _) =
                               string ";",
                               space,
                               p_exp env e2]
+      | ELet (x, t, e1, e2) => box [string "let",
+                                    space,
+                                    string x,
+                                    space,
+                                    string ":",
+                                    space,
+                                    p_typ env t,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_exp env e1,
+                                    space,
+                                    string "in",
+                                    space,
+                                    p_exp (E.pushERel env x t NONE) e2]
 
       | EClosure (n, es) => box [string "CLOSURE(",
                                  p_enamed env n,

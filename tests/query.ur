@@ -6,7 +6,7 @@ datatype list a = Nil | Cons of a * list a
 val q1 = (SELECT * FROM t1)
 val r1 : transaction (list {A : int, B : string, C : float}) =
         query q1
-        (fn fs _ acc => return (Cons (fs.T1, acc)))
+        (fn fs acc => return (Cons (fs.T1, acc)))
         Nil
 
 val r2 : transaction string =

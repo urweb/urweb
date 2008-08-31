@@ -275,6 +275,8 @@ fun cifyExp ((e, loc), sm) =
             ((L'.ESeq (e1, e2), loc), sm)
         end
 
+      | L.ELet _ => raise Fail "Cjrize ELet"
+
       | L.EClosure _ => (ErrorMsg.errorAt loc "Nested closure remains in code generation";
                          (dummye, sm))
 

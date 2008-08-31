@@ -71,6 +71,7 @@ datatype exp' =
 
        | EWrite of exp
        | ESeq of exp * exp
+       | ELet of string * typ * exp * exp
 
        | EClosure of int * exp list
 

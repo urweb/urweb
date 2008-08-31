@@ -817,6 +817,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
 
                                           val ef = (L.EModProj (basis, [], "bind"), loc)
                                           val ef = (L.ECApp (ef, ran'), loc)
+                                          val ef = (L.ECApp (ef, ran), loc)
                                           val ef = (L.EApp (ef, (L.EApp (e, (L.ERel 0, loc)), loc)), loc)
 
                                           val eat = (L.CApp ((L.CModProj (basis, [], "transaction"), loc),

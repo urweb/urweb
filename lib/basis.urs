@@ -155,11 +155,10 @@ val bind : t1 ::: Type -> t2 ::: Type
         -> transaction t1 -> (t1 -> transaction t2)
         -> transaction t2
 
-val query : tables ::: {{Type}} -> exps ::: {Type}
+val query : tables ::: {{Type}} -> exps ::: {Type} -> tables ~ exps
         -> sql_query tables exps
         -> state ::: Type
-        -> ($(fold (fn nm (fields :: {Type}) acc => [nm] ~ acc => [nm = $fields] ++ acc) [] tables)
-                -> $exps
+        -> ($(exps ++ fold (fn nm (fields :: {Type}) acc => [nm] ~ acc => [nm = $fields] ++ acc) [] tables)
                 -> state
                 -> transaction state)
         -> state

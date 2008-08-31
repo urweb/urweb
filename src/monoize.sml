@@ -70,6 +70,9 @@ fun monoType env =
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
 
+                  | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
+                    (L'.TFun (mt env dtmap t, (L'.TRecord [], loc)), loc)
+
                   | L.CRel _ => poly ()
                   | L.CNamed n =>
                     (case IM.find (dtmap, n) of
@@ -376,6 +379,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
             in
                 ((L'.EFfiApp (m, x, es), loc), fm)
+            end
+
+          | L.ECApp ((L.EFfi ("Basis", "return"), _), t) =>
+            ((L'.EAbs ("x", monoType env t, (L'.TRecord [], loc), (L'.ERel 0, loc)), loc), fm)
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "bind"), _), t1), _), t2) =>
+            let
+                val t1 = monoType env t1
+                val t2 = monoType env t2
+                val un = (L'.TRecord [], loc)
+                val mt1 = (L'.TFun (t1, un), loc)
+                val mt2 = (L'.TFun (t2, un), loc)
+            in
+                ((L'.EAbs ("m1", mt1, (L'.TFun (mt1, (L'.TFun (mt2, un), loc)), loc),
+                           (L'.EAbs ("m2", mt2, un,
+                                     (L'.ELet ("r", t1, (L'.ERel 1, loc),
+                                               (L'.EApp ((L'.ERel 1, loc), (L'.ERel 0, loc)),
+                                                loc)), loc)), loc)), loc),
+                 fm)
             end
 
           | L.EApp (
@@ -809,7 +830,16 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (env, fm, (L'.DExport (ek, s, n, ts), loc))
             end
-          | L.DTable _ => raise Fail "Monoize DTable"
+          | L.DTable (x, n, _, s) =>
+            let
+                val t = (L.CFfi ("Basis", "string"), loc)
+                val t' = (L'.TFfi ("Basis", "string"), loc)
+                val e = (L'.EPrim (Prim.String s), loc)
+            in
+                SOME (Env.pushENamed env x n t NONE s,
+                      fm,
+                      (L'.DVal (x, n, t', e, s), loc))
+            end
     end
 
 fun monoize env ds =
