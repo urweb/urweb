@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing monomorphic Laconic/Web *)
+(* Pretty-printing monomorphic Ur/Web *)
 
 structure MonoPrint :> MONO_PRINT = struct
 

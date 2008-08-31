@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing Laconic/Web internal language *)
+(* Pretty-printing Ur/Web internal language *)
 
 signature CORE_PRINT = sig
     val p_kind : Core.kind Print.printer

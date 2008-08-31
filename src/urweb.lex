@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Lexing info for Laconic/Web programs *)
+(* Lexing info for Ur/Web programs *)
 
 type pos = int
 type svalue = Tokens.svalue
@@ -107,7 +107,7 @@ fun initialize () = (xmlTag := [];
 
 
 %%
-%header (functor LacwebLexFn(structure Tokens : Lacweb_TOKENS));
+%header (functor UrwebLexFn(structure Tokens : Urweb_TOKENS));
 %full
 %s COMMENT STRING XML XMLTAG;
 

@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing Laconic/Web *)
+(* Pretty-printing Ur/Web *)
 
 signature SOURCE_PRINT = sig
     val p_kind : Source.kind Print.printer

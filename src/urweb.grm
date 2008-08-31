@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Grammar for Laconic/Web programs *)
+(* Grammar for Ur/Web programs *)
 
 open Source
 
@@ -142,7 +142,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
     end
 
 %%
-%header (functor LacwebLrValsFn(structure Token : TOKEN))
+%header (functor UrwebLrValsFn(structure Token : TOKEN))
 
 %term 
    EOF
@@ -275,7 +275,7 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
 %eop EOF
 %noshift EOF
 
-%name Lacweb
+%name Urweb
 
 %right SEMI
 %nonassoc LARROW

@@ -18,8 +18,8 @@ prim.sml
 
 source.sml
 
-lacweb.grm
-lacweb.lex
+urweb.grm
+urweb.lex
 
 source_print.sig
 source_print.sml

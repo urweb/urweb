@@ -6,8 +6,8 @@ src/.cm
 
 bin/*
 
-src/lacweb.cm
-src/lacweb.mlb
+src/urweb.cm
+src/urweb.mlb
 
 *.lex.*
 *.grm.*

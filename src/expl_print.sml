@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing elaborated Laconic/Web *)
+(* Pretty-printing elaborated Ur/Web *)
 
 structure ExplPrint :> EXPL_PRINT = struct
 

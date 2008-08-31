@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing core Laconic/Web *)
+(* Pretty-printing core Ur/Web *)
 
 structure CorePrint :> CORE_PRINT = struct
 

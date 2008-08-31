@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing Laconic/Web monomorphic language *)
+(* Pretty-printing Ur/Web monomorphic language *)
 
 signature MONO_PRINT = sig
     val p_typ : MonoEnv.env -> Mono.typ Print.printer

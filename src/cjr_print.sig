@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing Laconic/Web C jr. language *)
+(* Pretty-printing Ur/Web C jr. language *)
 
 signature CJR_PRINT = sig
     val p_typ : CjrEnv.env -> Cjr.typ Print.printer

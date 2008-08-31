@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing Laconic/Web *)
+(* Pretty-printing Ur/Web *)
 
 structure SourcePrint :> SOURCE_PRINT = struct
 

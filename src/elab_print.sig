@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing Laconic/Web *)
+(* Pretty-printing Ur/Web *)
 
 signature ELAB_PRINT = sig
     val p_kind : Elab.kind Print.printer

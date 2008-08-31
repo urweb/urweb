@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Pretty-printing Laconic/Web *)
+(* Generic printing support code *)
 
 structure Print :> PRINT = struct
 

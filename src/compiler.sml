@@ -25,13 +25,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web language parser *)
+(* Ur/Web language parser *)
 
 structure Compiler :> COMPILER = struct 
 
-structure LacwebLrVals = LacwebLrValsFn(structure Token = LrParser.Token)
-structure Lex = LacwebLexFn(structure Tokens = LacwebLrVals.Tokens)
-structure LacwebP = Join(structure ParserData = LacwebLrVals.ParserData
+structure UrwebLrVals = UrwebLrValsFn(structure Token = LrParser.Token)
+structure Lex = UrwebLexFn(structure Tokens = UrwebLrVals.Tokens)
+structure UrwebP = Join(structure ParserData = UrwebLrVals.ParserData
                          structure Lex = Lex
                          structure LrParser = LrParser)
 
@@ -123,7 +123,7 @@ fun timePrint (tr : ('src, 'dst) transform) input =
              print "\n")
     end
 
-val parseLig =
+val parseUrs =
     {func = fn filename => let
                    val fname = OS.FileSys.tmpName ()
                    val outf = TextIO.openOut fname
@@ -145,7 +145,7 @@ val parseLig =
 	           fun get _ = TextIO.input file
 	           fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
 	           val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
-	           val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
+	           val (absyn, _) = UrwebP.parse (30, lexer, parseerror, ())
                in
                    TextIO.closeIn file;
                    case absyn of
@@ -161,7 +161,7 @@ val parseLig =
      print = Print.p_list_sep Print.PD.newline SourcePrint.p_sgn_item}
 
 (* The main parsing routine *)
-val parseLac = {
+val parseUr = {
     func = fn filename =>
               let
                   val () = (ErrorMsg.resetErrors ();
@@ -171,7 +171,7 @@ val parseLac = {
 	          fun get _ = TextIO.input file
 	          fun parseerror (s, p1, p2) = ErrorMsg.errorAt' (p1, p2) s
 	          val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
-	          val (absyn, _) = LacwebP.parse (30, lexer, parseerror, ())
+	          val (absyn, _) = UrwebP.parse (30, lexer, parseerror, ())
               in
                   TextIO.closeIn file;
                   case absyn of
@@ -198,23 +198,23 @@ val parse = {
                   fun parseOne fname =
                       let
                           val mname = nameOf fname
-                          val lac = OS.Path.joinBaseExt {base = fname, ext = SOME "lac"}
-                          val lig = OS.Path.joinBaseExt {base = fname, ext = SOME "lig"}
+                          val ur = OS.Path.joinBaseExt {base = fname, ext = SOME "ur"}
+                          val urs = OS.Path.joinBaseExt {base = fname, ext = SOME "urs"}
 
                           val sgnO =
-                              if Posix.FileSys.access (lig, []) then
-                                  SOME (Source.SgnConst (#func parseLig lig),
-                                        {file = lig,
+                              if Posix.FileSys.access (urs, []) then
+                                  SOME (Source.SgnConst (#func parseUrs urs),
+                                        {file = urs,
                                          first = ErrorMsg.dummyPos,
                                          last = ErrorMsg.dummyPos})
                               else
                                   NONE
 
-                          val loc = {file = lac,
+                          val loc = {file = ur,
                                      first = ErrorMsg.dummyPos,
                                      last = ErrorMsg.dummyPos}
 
-                          val ds = #func parseLac lac
+                          val ds = #func parseUr ur
                       in
                           (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
                       end
@@ -234,7 +234,7 @@ val toParse = transform parse "parse"
 
 val elaborate = {
     func = fn file => let
-                  val basis = #func parseLig "lib/basis.lig"
+                  val basis = #func parseUrs "lib/basis.urs"
               in
                   Elaborate.elabFile basis ElabEnv.empty file
               end,
@@ -334,7 +334,7 @@ val toCjrize = toMono_opt2 o transform cjrize "cjrize"
 fun compileC {cname, oname, ename} =
     let
         val compile = "gcc -O3 -I include -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -pthread -O3 clib/lacweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
+        val link = "gcc -pthread -O3 clib/urweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"
@@ -346,11 +346,11 @@ fun compileC {cname, oname, ename} =
 
 fun compile job =
     case run toCjrize job of
-        NONE => print "Laconic compilation failed\n"
+        NONE => print "Ur compilation failed\n"
       | SOME file =>
         let
-            val cname = "/tmp/lacweb.c"
-            val oname = "/tmp/lacweb.o"
+            val cname = "/tmp/urweb.c"
+            val oname = "/tmp/urweb.o"
             val ename = "/tmp/webapp"
 
             val outf = TextIO.openOut cname

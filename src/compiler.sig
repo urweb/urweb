@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Laconic/Web main compiler interface *)
+(* Ur/Web main compiler interface *)
 
 signature COMPILER = sig
 
@@ -44,8 +44,8 @@ signature COMPILER = sig
     val time : ('src, 'dst) transform -> 'src -> unit
     val timePrint : ('src, 'dst) transform -> 'src -> unit
 
-    val parseLac : (string, Source.file) phase
-    val parseLig : (string, Source.sgn_item list) phase
+    val parseUr : (string, Source.file) phase
+    val parseUrs : (string, Source.sgn_item list) phase
 
     val parse : (job, Source.file) phase
     val elaborate : (Source.file, Elab.file) phase
