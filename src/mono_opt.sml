@@ -84,7 +84,9 @@ val urlifyString = String.translate (fn #" " => "+"
 val sqlifyInt = attrifyInt
 val sqlifyFloat = attrifyFloat
 
-fun sqlifyString s = "E'" ^ String.toString s ^ "'"
+fun sqlifyString s = "E'" ^ String.translate (fn #"'" => "\\'"
+                                               | ch => str ch)
+                                             (String.toString s) ^ "'"
         
 fun exp e =
     case e of

@@ -637,7 +637,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                     (map (fn (x', _) =>
                                                                                              sc (x ^ "." ^ x'))
                                                                                          xts)) grouped)
-                                               ]
+                                               ],
+
+                                           (L'.ECase (gf "Having",
+                                                      [((L'.PPrim (Prim.String "TRUE"), loc),
+                                                        sc ""),
+                                                       ((L'.PWild, loc),
+                                                        strcat loc [sc " HAVING ", gf "Having"])],
+                                                      {disc = s,
+                                                       result = s}), loc)
                               ]), loc),
                      fm)
                   | _ => poly ()
