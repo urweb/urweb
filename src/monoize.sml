@@ -423,8 +423,9 @@ fun strcatComma loc es =
             val es = List.take (es, length es - 1)
         in
             foldr (fn (e, e') =>
-                      case e of
-                          (L'.EPrim (Prim.String ""), _) => e'
+                      case (e, e') of
+                          ((L'.EPrim (Prim.String ""), _), _) => e'
+                        | (_, (L'.EPrim (Prim.String ""), _)) => e
                         | _ =>
                           (L'.EStrcat (e,
                                        (L'.EStrcat ((L'.EPrim (Prim.String ", "), loc), e'), loc)), loc))
@@ -621,15 +622,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                     strcat loc [
                                                                     (L'.EField (gf "SelectExps", x), loc),
                                                                     sc (" AS _" ^ x)
-                                                                    ]) sexps),
-                                           case sexps of
-                                               [] => sc ""
-                                             | _ => sc ", ",
-                                           strcatComma loc (map (fn (x, xts) =>
-                                                                    strcatComma loc
-                                                                        (map (fn (x', _) =>
-                                                                                 sc (x ^ "." ^ x'))
-                                                                         xts)) stables),
+                                                                    ]) sexps
+                                                            @ map (fn (x, xts) =>
+                                                                      strcatComma loc
+                                                                                  (map (fn (x', _) =>
+                                                                                           sc (x ^ "." ^ x'))
+                                                                                       xts)) stables),
                                            sc " FROM ",
                                            strcatComma loc (map (fn (x, _) => strcat loc [(L'.EField (gf "From", x), loc),
                                                                                           sc (" AS " ^ x)]) tables),
@@ -918,6 +916,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfi ("Basis", "sql_intersect") => ((L'.EPrim (Prim.String "INTERSECT"), loc), fm)
           | L.EFfi ("Basis", "sql_except") => ((L'.EPrim (Prim.String "EXCEPT"), loc), fm)
 
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.EFfi ("Basis", "sql_count"), _),
+              _), _),
+             _), _),
+            _) => ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                             (L'.EPrim (Prim.String "COUNT(*)"), loc)), loc),
+                   fm)
+            
           | L.EApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
