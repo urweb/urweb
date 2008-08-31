@@ -31,6 +31,8 @@ open Mono
 
 structure S = Search
 
+val dummyt = (TRecord [], ErrorMsg.dummySpan)
+
 structure Typ = struct
 
 open Order
@@ -243,17 +245,19 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                               fn state' =>
                                                  S.bind2 (mfe ctx query,
                                                           fn query' =>
-                                                             S.bind2 (mfe ctx body,
-                                                                     fn body' =>
-                                                                        S.map2 (mfe ctx initial,
-                                                                                fn initial' =>
-                                                                                   (EQuery {exps = exps',
-                                                                                            tables = tables',
-                                                                                            state = state',
-                                                                                            query = query',
-                                                                                            body = body',
-                                                                                            initial = initial'},
-                                                                                    loc)))))))
+                                                             S.bind2 (mfe (bind (bind (ctx, RelE ("r", dummyt)),
+                                                                                 RelE ("acc", dummyt)))
+                                                                          body,
+                                                                   fn body' =>
+                                                                      S.map2 (mfe ctx initial,
+                                                                           fn initial' =>
+                                                                              (EQuery {exps = exps',
+                                                                                       tables = tables',
+                                                                                       state = state',
+                                                                                       query = query',
+                                                                                       body = body',
+                                                                                       initial = initial'},
+                                                                               loc)))))))
     in
         mfe
     end

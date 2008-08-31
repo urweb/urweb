@@ -519,15 +519,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                           (L'.TFun (un, state), loc)),
                                                  loc)), loc)
 
-                             val body' = (L'.EAbs ("r", (L'.TRecord rt, loc),
-                                                   (L'.TFun (state, state), loc),
-                                                   (L'.EAbs ("acc", state, state,
-                                                             (L'.EApp (
-                                                              (L'.EApp (
-                                                               (L'.EApp ((L'.ERel 4, loc),
-                                                                         (L'.ERel 1, loc)), loc),
-                                                               (L'.ERel 0, loc)), loc),
-                                                              (L'.ERecord [], loc)), loc)), loc)), loc)
+                             val body' = (L'.EApp (
+                                          (L'.EApp (
+                                           (L'.EApp ((L'.ERel 4, loc),
+                                                     (L'.ERel 1, loc)), loc),
+                                           (L'.ERel 0, loc)), loc),
+                                          (L'.ERecord [], loc)), loc)
 
                              val body = (L'.EQuery {exps = exps,
                                                     tables = tables,
