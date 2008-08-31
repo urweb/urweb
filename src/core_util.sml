@@ -160,9 +160,15 @@ fun compare ((c1, _), (c2, _)) =
 
       | (CRecord (k1, xvs1), CRecord (k2, xvs2)) =>
         join (Kind.compare (k1, k2),
-              fn () => joinL (fn ((x1, v1), (x2, v2)) =>
-                                 join (compare (x1, x2),
-                                       fn () => compare (v1, v2))) (xvs1, xvs2))
+              fn () =>
+                 let
+                     val sort = ListMergeSort.sort (fn ((x1, _), (x2, _)) =>
+                                                       compare (x1, x2) = GREATER)
+                 in
+                     joinL (fn ((x1, v1), (x2, v2)) =>
+                               join (compare (x1, x2),
+                                  fn () => compare (v1, v2))) (sort xvs1, sort xvs2)
+                 end)
       | (CRecord _, _) => LESS
       | (_, CRecord _) => GREATER
 
