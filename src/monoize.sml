@@ -555,7 +555,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.TRecord [("Rows", s), ("OrderBy", s), ("Limit", s), ("Offset", s)], loc),
                            s,
                            strcat loc [gf "Rows",
-                                       gf "OrderBy",
+                                       (L'.ECase (gf "OrderBy",
+                                                  [((L'.PPrim (Prim.String ""), loc), sc ""),
+                                                   ((L'.PWild, loc),
+                                                    strcat loc [sc " ORDER BY ",
+                                                                gf "OrderBy"])],
+                                                  {disc = s, result = s}), loc),
                                        gf "Limit",
                                        gf "Offset"]), loc), fm)
             end
@@ -612,7 +617,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                 loc),
                                s,
                                strcat loc [sc "SELECT ",
-                                           strcatR loc (gf "SelectExps") sexps,
+                                           strcatComma loc (map (fn (x, t) =>
+                                                                    strcat loc [
+                                                                    (L'.EField (gf "SelectExps", x), loc),
+                                                                    sc (" AS _" ^ x)
+                                                                    ]) sexps),
                                            case sexps of
                                                [] => sc ""
                                              | _ => sc ", ",
@@ -703,6 +712,30 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_Nil"), _), _), _), _) =>
             ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.EFfi ("Basis", "sql_order_by_Cons"), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                           (L'.EAbs ("e2", s, s,
+                                     (L'.ECase ((L'.ERel 0, loc),
+                                                [((L'.PPrim (Prim.String ""), loc),
+                                                  (L'.ERel 1, loc)),
+                                                 ((L'.PWild, loc),
+                                                  strcat loc [(L'.ERel 1, loc),
+                                                              sc ", ",
+                                                              (L'.ERel 0, loc),
+                                                              sc ")"])],
+                                                {disc = s, result = s}), loc)), loc)), loc),
+                 fm)
+            end
 
           | L.EFfi ("Basis", "sql_no_limit") =>
             ((L'.EPrim (Prim.String ""), loc), fm)
@@ -795,6 +828,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               _), _),
              (L.CName tab, _)), _),
             (L.CName field, _)) => ((L'.EPrim (Prim.String (tab ^ "." ^ field)), loc), fm)
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_exp"), _),
+                _), _),
+               _), _),
+              _), _),
+             _), _),
+            (L.CName nm, _)) => ((L'.EPrim (Prim.String ("_" ^ nm)), loc), fm)
 
           | L.ECApp (
             (L.ECApp (

@@ -10,6 +10,26 @@ val q3 = (SELECT t1.B FROM t1
 val q4 = (SELECT t1.A, t2.D, t1.A < t2.D AS Lt
         FROM t1, t2
         ORDER BY Lt)
-val q5 = (SELECT t1.A, t2.D, t1.A < t2.D AS Lt
+val q5 = (SELECT t1.A, t1.B, t2.D, t1.A < t2.D AS Lt
         FROM t1, t2
         ORDER BY t1.A, Lt, t2.D)
+
+
+datatype list a = Nil | Cons of a * list a
+
+val r1 : transaction (list string) =
+        query q5
+        (fn fs acc => return (Cons (fs.T1.B, acc)))
+        Nil
+
+val r2 : transaction string =
+        ls <- r1;
+        return (case ls of
+                    Nil => "Problem"
+                  | Cons (b, _) => b)
+
+val main : unit -> transaction page = fn () =>
+        s <- r2;
+        return <html><body>
+                {cdata s}
+        </body></html>
