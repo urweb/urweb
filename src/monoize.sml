@@ -684,6 +684,38 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             (L.ECApp (
              (L.ECApp (
               (L.ECApp (
+               (L.ECApp (
+                (L.ECApp (
+                 (L.EFfi ("Basis", "sql_binary"), _),
+                 _), _),
+                _), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                     (L'.EAbs ("e2", s, s,
+                                               strcat loc [sc "(",
+                                                           (L'.ERel 1, loc),
+                                                           sc " ",
+                                                           (L'.ERel 2, loc),
+                                                           sc " ",
+                                                           (L'.ERel 0, loc),
+                                                           sc ")"]), loc)), loc)), loc),
+                 fm)
+            end
+          | L.EFfi ("Basis", "sql_and") => ((L'.EPrim (Prim.String "AND"), loc), fm)
+          | L.EFfi ("Basis", "sql_or") => ((L'.EPrim (Prim.String "OR"), loc), fm)
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
                (L.EFfi ("Basis", "sql_comparison"), _),
                _), _),
               _), _),
@@ -696,11 +728,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
                                      (L'.EAbs ("e2", s, s,
-                                               strcat loc [(L'.ERel 1, loc),
+                                               strcat loc [sc "(",
+                                                           (L'.ERel 1, loc),
                                                            sc " ",
                                                            (L'.ERel 2, loc),
                                                            sc " ",
-                                                           (L'.ERel 0, loc)]), loc)), loc)), loc),
+                                                           (L'.ERel 0, loc),
+                                                           sc ")"]), loc)), loc)), loc),
                  fm)
             end
 
