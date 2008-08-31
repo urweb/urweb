@@ -586,7 +586,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         if List.exists (fn x => x = NONE) tables then
                             NONE
                         else
-                            SOME (List.mapPartial (fn x => x) tables)
+                            let
+                                val tables = List.mapPartial (fn x => x) tables
+                                val tables = ListMergeSort.sort
+                                                 (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER)
+                                                 tables
+                                val tables = map (fn (x, xts) =>
+                                                     (x, ListMergeSort.sort
+                                                             (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER)
+                                                             xts)) tables
+                            in
+                                SOME tables
+                            end
                     end
             in
                 case (doTables tables, doTables grouped, doTables stables, monoType env (L.TRecord sexps, loc)) of
@@ -784,7 +795,37 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               _), _),
              (L.CName tab, _)), _),
             (L.CName field, _)) => ((L'.EPrim (Prim.String (tab ^ "." ^ field)), loc), fm)
-                    
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_relop"), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                     (L'.EAbs ("e2", s, s,
+                                               strcat loc [sc "((",
+                                                           (L'.ERel 1, loc),
+                                                           sc ") ",
+                                                           (L'.ERel 2, loc),
+                                                           sc " (",
+                                                           (L'.ERel 0, loc),
+                                                           sc "))"]), loc)), loc)), loc),
+                 fm)
+            end
+
+          | L.EFfi ("Basis", "sql_union") => ((L'.EPrim (Prim.String "UNION"), loc), fm)
+          | L.EFfi ("Basis", "sql_intersect") => ((L'.EPrim (Prim.String "INTERSECT"), loc), fm)
+          | L.EFfi ("Basis", "sql_except") => ((L'.EPrim (Prim.String "EXCEPT"), loc), fm)
+
           | L.EApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),

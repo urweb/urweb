@@ -57,11 +57,11 @@ type sql_relop
 val sql_union : sql_relop
 val sql_intersect : sql_relop
 val sql_except : sql_relop
-val sql_relop : sql_relop
-        -> tables1 ::: {{Type}}
+val sql_relop : tables1 ::: {{Type}}
         -> tables2 ::: {{Type}}
         -> selectedFields ::: {{Type}}
         -> selectedExps ::: {Type}
+        -> sql_relop
         -> sql_query1 tables1 selectedFields selectedExps
         -> sql_query1 tables2 selectedFields selectedExps
         -> sql_query1 selectedFields selectedFields selectedExps
