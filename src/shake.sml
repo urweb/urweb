@@ -41,6 +41,8 @@ type free = {
      exp : IS.set
 }
 
+val dummye = (EPrim (Prim.String ""), ErrorMsg.dummySpan)
+
 fun shake file =
     let
         val page_es = List.foldl
@@ -53,7 +55,9 @@ fun shake file =
                                    | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
                                    | ((DValRec vis, _), (cdef, edef)) =>
                                      (cdef, foldl (fn ((_, n, t, e, _), edef) => IM.insert (edef, n, (t, e))) edef vis)
-                                   | ((DExport _, _), acc) => acc)
+                                   | ((DExport _, _), acc) => acc
+                                   | ((DTable (_, n, c, _), _), (cdef, edef)) =>
+                                     (cdef, IM.insert (edef, n, (c, dummye))))
                                  (IM.empty, IM.empty) file
 
         fun kind (_, s) = s
@@ -105,7 +109,8 @@ fun shake file =
                       | (DDatatype (_, n, _, _), _) => IS.member (#con s, n)
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
-                      | (DExport _, _) => true) file
+                      | (DExport _, _) => true
+                      | (DTable _, _) => true) file
     end
 
 end

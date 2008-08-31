@@ -809,6 +809,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (env, fm, (L'.DExport (ek, s, n, ts), loc))
             end
+          | L.DTable _ => raise Fail "Monoize DTable"
     end
 
 fun monoize env ds =

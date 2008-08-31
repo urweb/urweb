@@ -806,7 +806,13 @@ structure St : sig
              end
            | _ => raise Fail "Non-const signature for 'export'")
 
-      | L.DTable _ => raise Fail "Corify DTable"
+       | L.DTable (_, x, n, c) =>
+         let
+             val (st, n) = St.bindVal st x n
+             val s = x
+         in
+             ([(L'.DTable (x, n, corifyCon st c, s), loc)], st)
+         end
 
 and corifyStr ((str, _), st) =
     case str of

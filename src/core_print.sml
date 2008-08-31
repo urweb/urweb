@@ -331,14 +331,17 @@ fun p_exp' par env (e, _) =
 
 and p_exp env = p_exp' false env
 
+fun p_named x n =
+    if !debug then
+        box [string x,
+             string "__",
+             string (Int.toString n)]
+    else
+        string x        
+
 fun p_vali env (x, n, t, e, s) =
     let
-        val xp = if !debug then
-                     box [string x,
-                          string "__",
-                          string (Int.toString n)]
-                 else
-                     string x        
+        val xp = p_named x n
     in
         box [xp,
              space,
@@ -432,6 +435,17 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 string "as",
                                 space,
                                 p_con env (#2 (E.lookupENamed env n))]
+      | DTable (x, n, c, s) => box [string "table",
+                                    space,
+                                    p_named x n,
+                                    space,
+                                    string "as",
+                                    space,
+                                    string s,
+                                    space,
+                                    string ":",
+                                    space,
+                                    p_con env c]
 
 fun p_file env file =
     let

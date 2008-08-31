@@ -114,6 +114,7 @@ datatype decl' =
        | DVal of string * int * con * exp * string
        | DValRec of (string * int * con * exp * string) list
        | DExport of export_kind * int
+       | DTable of string * int * con * string
 
 withtype decl = decl' located
 
