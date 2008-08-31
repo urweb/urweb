@@ -752,6 +752,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_no_offset") =>
             ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.EFfiApp ("Basis", "sql_offset", [e]) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                (strcat loc [
+                 (L'.EPrim (Prim.String " OFFSET "), loc),
+                 (L'.EFfiApp ("Basis", "sqlifyInt", [e]), loc)
+                 ],
+                 fm)
+            end
 
           | L.EFfi ("Basis", "sql_eq") =>
             ((L'.EPrim (Prim.String "="), loc), fm)

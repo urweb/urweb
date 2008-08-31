@@ -10,7 +10,7 @@ val q4 = fn n => fn m => (SELECT * FROM t LIMIT {n} OFFSET {m})
 datatype list a = Nil | Cons of a * list a
 
 val r1 : transaction (list {A : int, B : string, C : float}) =
-        query (q2 3)
+        query (q4 3 7)
         (fn fs acc => return (Cons (fs.T, acc)))
         Nil
 
