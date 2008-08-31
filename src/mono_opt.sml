@@ -79,6 +79,12 @@ val urlifyString = String.translate (fn #" " => "+"
                                                   str ch
                                               else
                                                   "%" ^ hexIt ch)
+
+
+val sqlifyInt = attrifyInt
+val sqlifyFloat = attrifyFloat
+
+fun sqlifyString s = "E'" ^ String.toString s ^ "'"
         
 fun exp e =
     case e of
@@ -202,6 +208,21 @@ fun exp e =
         EWrite (EPrim (Prim.String "0"), loc)
       | EWrite (EFfiApp ("Basis", "urlifyBool", [e]), _) =>
         EFfiApp ("Basis", "urlifyBool_w", [e])
+
+      | EFfiApp ("Basis", "sqlifyInt", [(EPrim (Prim.Int n), _)]) =>
+        EPrim (Prim.String (sqlifyInt n))
+      | EFfiApp ("Basis", "sqlifyFloat", [(EPrim (Prim.Float n), _)]) =>
+        EPrim (Prim.String (sqlifyFloat n))
+      | EFfiApp ("Basis", "sqlifyBool", [b as (_, loc)]) =>
+        optExp (ECase (b,
+                       [((PCon (Enum, PConFfi {mod = "Basis", datatyp = "bool", con = "True", arg = NONE}, NONE), loc),
+                         (EPrim (Prim.String "TRUE"), loc)),
+                        ((PCon (Enum, PConFfi {mod = "Basis", datatyp = "bool", con = "False", arg = NONE}, NONE), loc),
+                         (EPrim (Prim.String "FALSE"), loc))],
+                       {disc = (TFfi ("Basis", "bool"), loc),
+                        result = (TFfi ("Basis", "string"), loc)}), loc)
+      | EFfiApp ("Basis", "sqlifyString", [(EPrim (Prim.String n), _)]) =>
+        EPrim (Prim.String (sqlifyString n))
 
       | EWrite (ECase (discE, pes, {disc, ...}), loc) =>
         optExp (ECase (discE,

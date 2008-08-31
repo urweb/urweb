@@ -119,9 +119,9 @@ val sql_lt : sql_comparison
 val sql_le : sql_comparison
 val sql_gt : sql_comparison
 val sql_ge : sql_comparison
-val sql_comparison : sql_comparison
-        -> tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+val sql_comparison : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
         -> t ::: Type
+        -> sql_comparison
         -> sql_exp tables agg exps t -> sql_exp tables agg exps t
         -> sql_exp tables agg exps bool
 

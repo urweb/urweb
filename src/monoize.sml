@@ -612,7 +612,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                          xts)) stables),
                                            sc " FROM ",
                                            strcatComma loc (map (fn (x, _) => strcat loc [(L'.EField (gf "From", x), loc),
-                                                                                          sc (" AS " ^ x)]) tables)
+                                                                                          sc (" AS " ^ x)]) tables),
+                                           sc " WHERE ",
+                                           gf "Where"
                               ]), loc),
                      fm)
                   | _ => poly ()
@@ -635,6 +637,23 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.ERel 0, loc)), loc), fm)
             end
 
+          | L.EFfi ("Basis", "sql_int") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "int"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyInt", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_float") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "float"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyFloat", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_bool") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "bool"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyBool", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_string") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyString", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+
           | L.ECApp ((L.EFfi ("Basis", "sql_subset"), _), _) =>
             ((L'.ERecord [], loc), fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_subset_all"), _), _) =>
@@ -647,6 +666,59 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EPrim (Prim.String ""), loc), fm)
           | L.EFfi ("Basis", "sql_no_offset") =>
             ((L'.EPrim (Prim.String ""), loc), fm)
+
+          | L.EFfi ("Basis", "sql_eq") =>
+            ((L'.EPrim (Prim.String "="), loc), fm)
+          | L.EFfi ("Basis", "sql_ne") =>
+            ((L'.EPrim (Prim.String "<>"), loc), fm)
+          | L.EFfi ("Basis", "sql_lt") =>
+            ((L'.EPrim (Prim.String "<"), loc), fm)
+          | L.EFfi ("Basis", "sql_le") =>
+            ((L'.EPrim (Prim.String "<="), loc), fm)
+          | L.EFfi ("Basis", "sql_gt") =>
+            ((L'.EPrim (Prim.String ">"), loc), fm)
+          | L.EFfi ("Basis", "sql_ge") =>
+            ((L'.EPrim (Prim.String ">="), loc), fm)
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_comparison"), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                     (L'.EAbs ("e2", s, s,
+                                               strcat loc [(L'.ERel 1, loc),
+                                                           sc " ",
+                                                           (L'.ERel 2, loc),
+                                                           sc " ",
+                                                           (L'.ERel 0, loc)]), loc)), loc)), loc),
+                 fm)
+            end
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.ECApp (
+                 (L.ECApp (
+                  (L.EFfi ("Basis", "sql_field"), _),
+                  _), _),
+                 _), _),
+                _), _),
+               _), _),
+              _), _),
+             (L.CName tab, _)), _),
+            (L.CName field, _)) => ((L'.EPrim (Prim.String (tab ^ "." ^ field)), loc), fm)
                     
           | L.EApp (
             (L.ECApp (

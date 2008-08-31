@@ -181,8 +181,8 @@ fun exp env e =
                             (ELet (x1, t1, b1,
                                    liftExpInExp 1 b2), loc)), loc)
         in
-            Print.prefaces "ELet commute" [("e", MonoPrint.p_exp env (e, loc)),
-                                           ("e'", MonoPrint.p_exp env e')];
+            (*Print.prefaces "ELet commute" [("e", MonoPrint.p_exp env (e, loc)),
+                                           ("e'", MonoPrint.p_exp env e')];*)
             #1 (reduceExp env e')
         end
       | EApp ((ELet (x, t, e, b), loc), e') =>
