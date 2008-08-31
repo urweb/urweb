@@ -129,7 +129,7 @@ fun explifySgi (sgi, loc) =
       | L.SgiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, explifySgn sgn), loc)
       | L.SgiSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, explifySgn sgn), loc)
       | L.SgiConstraint _ => NONE
-      | L.SgiTable _ => raise Fail "Explify SgiTable"
+      | L.SgiTable (nt, x, n, c) => SOME (L'.SgiTable (nt, x, n, explifyCon c), loc)
       | L.SgiClassAbs (x, n) => SOME (L'.SgiConAbs (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)), loc)
       | L.SgiClass (x, n, c) => SOME (L'.SgiCon (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc),
                                                  explifyCon c), loc)
@@ -161,7 +161,7 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DFfiStr (x, n, sgn) => SOME (L'.DFfiStr (x, n, explifySgn sgn), loc)
       | L.DConstraint (c1, c2) => NONE
       | L.DExport (en, sgn, str) => SOME (L'.DExport (en, explifySgn sgn, explifyStr str), loc)
-      | L.DTable _ => raise Fail "Explify DTable"
+      | L.DTable (nt, x, n, c) => SOME (L'.DTable (nt, x, n, explifyCon c), loc)
       | L.DClass (x, n, c) => SOME (L'.DCon (x, n,
                                              (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc), explifyCon c), loc)
 

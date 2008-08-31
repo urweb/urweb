@@ -806,6 +806,8 @@ structure St : sig
              end
            | _ => raise Fail "Non-const signature for 'export'")
 
+      | L.DTable _ => raise Fail "Corify DTable"
+
 and corifyStr ((str, _), st) =
     case str of
         L.StrConst ds =>
@@ -855,7 +857,8 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DSgn (_, n', _) => Int.max (n, n')
                              | L.DStr (_, n', _, str) => Int.max (n, Int.max (n', maxNameStr str))
                              | L.DFfiStr (_, n', _) => Int.max (n, n')
-                             | L.DExport _ => n)
+                             | L.DExport _ => n
+                             | L.DTable (_, _, n', _) => Int.max (n, n'))
                  0 ds
 
 and maxNameStr (str, _) =

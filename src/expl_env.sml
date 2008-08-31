@@ -282,6 +282,12 @@ fun declBinds env (d, loc) =
       | DStr (x, n, sgn, _) => pushStrNamed env x n sgn
       | DFfiStr (x, n, sgn) => pushStrNamed env x n sgn
       | DExport _ => env
+      | DTable (tn, x, n, c) =>
+        let
+            val t = (CApp ((CModProj (tn, [], "table"), loc), c), loc)
+        in
+            pushENamed env x n t
+        end
 
 fun sgiBinds env (sgi, loc) =
     case sgi of
@@ -327,5 +333,12 @@ fun sgiBinds env (sgi, loc) =
       | SgiVal (x, n, t) => pushENamed env x n t
       | SgiSgn (x, n, sgn) => pushSgnNamed env x n sgn
       | SgiStr (x, n, sgn) => pushStrNamed env x n sgn
+
+      | SgiTable (tn, x, n, c) =>
+        let
+            val t = (CApp ((CModProj (tn, [], "table"), loc), c), loc)
+        in
+            pushENamed env x n t
+        end
 
 end

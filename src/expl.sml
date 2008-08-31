@@ -107,6 +107,7 @@ datatype sgn_item' =
        | SgiVal of string * int * con
        | SgiSgn of string * int * sgn
        | SgiStr of string * int * sgn
+       | SgiTable of int * string * int * con
 
 and sgn' =
     SgnConst of sgn_item list
@@ -128,6 +129,7 @@ datatype decl' =
        | DStr of string * int * sgn * str
        | DFfiStr of string * int * sgn
        | DExport of int * sgn * str
+       | DTable of int * string * int * con
 
      and str' =
          StrConst of decl list
