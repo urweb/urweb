@@ -37,6 +37,21 @@ structure IM = IntBinaryMap
 
 val dummyTyp = (L'.TDatatype (0, ref (L'.Enum, [])), E.dummySpan)
 
+structure U = MonoUtil
+
+val liftExpInExp =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn bound => fn e =>
+                                     case e of
+                                         L'.ERel xn =>
+                                         if xn < bound then
+                                             e
+                                         else
+                                             L'.ERel (xn + 1)
+                                       | _ => e,
+                bind = fn (bound, U.Exp.RelE _) => bound + 1
+                        | (bound, _) => bound}
+
 fun monoName env (all as (c, loc)) =
     let
         fun poly () =
@@ -71,7 +86,43 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
-                    (L'.TFun (mt env dtmap t, (L'.TRecord [], loc)), loc)
+                    (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_table"), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_query"), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_query1"), _), _), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_exp"), _), _), _), _), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_subset"), _), _), _), _) =>
+                    (L'.TRecord [], loc)
+                  | L.CFfi ("Basis", "sql_relop") =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "sql_direction") =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_order_by"), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "sql_limit") =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "sql_offset") =>
+                    (L'.TFfi ("Basis", "string"), loc)
+
+                  | L.CApp ((L.CFfi ("Basis", "sql_injectable"), _), t) =>
+                    (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_unary"), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_binary"), _), _), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "sql_comparison") =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_aggregate"), _), t) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_summable"), _), _) =>
+                    (L'.TRecord [], loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_maxable"), _), _) =>
+                    (L'.TRecord [], loc)
 
                   | L.CRel _ => poly ()
                   | L.CNamed n =>
@@ -347,6 +398,41 @@ fun monoPat env (all as (p, loc)) =
           | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, monoPat env p, monoType env t)) xps), loc)
     end
 
+fun strcat loc es =
+    case es of
+        [] => (L'.EPrim (Prim.String ""), loc)
+      | [e] => e
+      | _ =>
+        let
+            val e2 = List.last es
+            val es = List.take (es, length es - 1)
+            val e1 = List.last es
+            val es = List.take (es, length es - 1)
+        in
+            foldr (fn (e, e') => (L'.EStrcat (e, e'), loc))
+            (L'.EStrcat (e1, e2), loc) es
+        end
+
+fun strcatComma loc es =
+    case es of
+        [] => (L'.EPrim (Prim.String ""), loc)
+      | [e] => e
+      | _ =>
+        let
+            val e1 = List.last es
+            val es = List.take (es, length es - 1)
+        in
+            foldr (fn (e, e') =>
+                      case e of
+                          (L'.EPrim (Prim.String ""), _) => e'
+                        | _ =>
+                          (L'.EStrcat (e,
+                                       (L'.EStrcat ((L'.EPrim (Prim.String ", "), loc), e'), loc)), loc))
+            e1 es
+        end
+
+fun strcatR loc e xs = strcatComma loc (map (fn (x, _) => (L'.EField (e, x), loc)) xs)
+
 fun monoExp (env, st, fm) (all as (e, loc)) =
     let
         fun poly () =
@@ -373,32 +459,195 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ECon (dk, monoPatCon env pc, eo), loc), fm)
             end
           | L.ECon _ => poly ()
-          | L.EFfi mx => ((L'.EFfi mx, loc), fm)
-          | L.EFfiApp (m, x, es) =>
-            let
-                val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
-            in
-                ((L'.EFfiApp (m, x, es), loc), fm)
-            end
 
           | L.ECApp ((L.EFfi ("Basis", "return"), _), t) =>
-            ((L'.EAbs ("x", monoType env t, (L'.TRecord [], loc), (L'.ERel 0, loc)), loc), fm)
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("x", t,
+                           (L'.TFun ((L'.TRecord [], loc), t), loc),
+                           (L'.EAbs ("_", (L'.TRecord [], loc), t,
+                                     (L'.ERel 1, loc)), loc)), loc), fm)
+            end
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "bind"), _), t1), _), t2) =>
             let
                 val t1 = monoType env t1
                 val t2 = monoType env t2
                 val un = (L'.TRecord [], loc)
-                val mt1 = (L'.TFun (t1, un), loc)
-                val mt2 = (L'.TFun (t2, un), loc)
+                val mt1 = (L'.TFun (un, t1), loc)
+                val mt2 = (L'.TFun (un, t2), loc)
             in
-                ((L'.EAbs ("m1", mt1, (L'.TFun (mt1, (L'.TFun (mt2, un), loc)), loc),
-                           (L'.EAbs ("m2", mt2, un,
-                                     (L'.ELet ("r", t1, (L'.ERel 1, loc),
-                                               (L'.EApp ((L'.ERel 1, loc), (L'.ERel 0, loc)),
-                                                loc)), loc)), loc)), loc),
+                ((L'.EAbs ("m1", mt1, (L'.TFun (mt1, (L'.TFun (mt2, (L'.TFun (un, un), loc)), loc)), loc),
+                           (L'.EAbs ("m2", mt2, (L'.TFun (un, un), loc),
+                                     (L'.EAbs ("_", un, un,
+                                               (L'.ELet ("r", t1, (L'.EApp ((L'.ERel 2, loc),
+                                                                            (L'.ERecord [], loc)), loc),
+                                                         (L'.EApp (
+                                                          (L'.EApp ((L'.ERel 2, loc), (L'.ERel 0, loc)), loc),
+                                                          (L'.ERecord [], loc)),
+                                                          loc)), loc)), loc)), loc)), loc),
                  fm)
             end
 
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp ((L.EFfi ("Basis", "query"), _), (L.CRecord (_, tables), _)), _),
+             exps), _),
+            state) =>
+            (case monoType env (L.TRecord exps, loc) of
+                 (L'.TRecord exps, _) =>
+                 let
+                     val tables = map (fn ((L.CName x, _), xts) =>
+                                        (case monoType env (L.TRecord xts, loc) of
+                                             (L'.TRecord xts, _) => SOME (x, xts)
+                                           | _ => NONE)
+                                      | _ => NONE) tables
+                 in
+                     if List.exists (fn x => x = NONE) tables then
+                         poly ()
+                     else
+                         let
+                             val tables = List.mapPartial (fn x => x) tables
+                             val state = monoType env state
+                             val s = (L'.TFfi ("Basis", "string"), loc)
+                             val un = (L'.TRecord [], loc)
+
+                             val rt = exps @ map (fn (x, xts) => (x, (L'.TRecord xts, loc))) tables
+                             val ft = (L'.TFun ((L'.TRecord rt, loc),
+                                                (L'.TFun (state,
+                                                          (L'.TFun (un, state), loc)),
+                                                 loc)), loc)
+
+                             val body' = (L'.EAbs ("r", (L'.TRecord rt, loc),
+                                                   (L'.TFun (state, state), loc),
+                                                   (L'.EAbs ("acc", state, state,
+                                                             (L'.EApp (
+                                                              (L'.EApp (
+                                                               (L'.EApp ((L'.ERel 4, loc),
+                                                                         (L'.ERel 1, loc)), loc),
+                                                               (L'.ERel 0, loc)), loc),
+                                                              (L'.ERecord [], loc)), loc)), loc)), loc)
+
+                             val body = (L'.EQuery {exps = exps,
+                                                    tables = tables,
+                                                    state = state,
+                                                    query = (L'.ERel 3, loc),
+                                                    body = body',
+                                                    initial = (L'.ERel 1, loc)},
+                                         loc)
+                         in
+                             ((L'.EAbs ("q", s, (L'.TFun (ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc)), loc),
+                                        (L'.EAbs ("f", ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc),
+                                                  (L'.EAbs ("i", state, (L'.TFun (un, state), loc),
+                                                            (L'.EAbs ("_", un, state,
+                                                                      body), loc)), loc)), loc)), loc), fm)
+                         end
+                 end
+               | _ => poly ())
+
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_query"), _), _), _), _), _), _) =>
+            let
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun gf s = (L'.EField ((L'.ERel 0, loc), s), loc)
+            in
+                ((L'.EAbs ("r",
+                           (L'.TRecord [("Rows", s), ("OrderBy", s), ("Limit", s), ("Offset", s)], loc),
+                           s,
+                           strcat loc [gf "Rows",
+                                       gf "OrderBy",
+                                       gf "Limit",
+                                       gf "Offset"]), loc), fm)
+            end
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_query1"), _),
+               (L.CRecord (_, tables), _)), _),
+              (L.CRecord (_, grouped), _)), _),
+             (L.CRecord (_, stables), _)), _),
+            sexps) =>
+            let
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                val un = (L'.TRecord [], loc)
+                fun gf s = (L'.EField ((L'.ERel 0, loc), s), loc)
+
+                fun doTables tables =
+                    let
+                        val tables = map (fn ((L.CName x, _), xts) =>
+                                             (case monoType env (L.TRecord xts, loc) of
+                                                  (L'.TRecord xts, _) => SOME (x, xts)
+                                                | _ => NONE)
+                                           | _ => NONE) tables
+                    in
+                        if List.exists (fn x => x = NONE) tables then
+                            NONE
+                        else
+                            SOME (List.mapPartial (fn x => x) tables)
+                    end
+            in
+                case (doTables tables, doTables grouped, doTables stables, monoType env (L.TRecord sexps, loc)) of
+                    (SOME tables, SOME grouped, SOME stables, (L'.TRecord sexps, _)) =>
+                    ((L'.EAbs ("r",
+                               (L'.TRecord [("From", (L'.TRecord (map (fn (x, _) => (x, s)) tables), loc)),
+                                            ("Where", s),
+                                            ("GroupBy", un),
+                                            ("Having", s),
+                                            ("SelectFields", un),
+                                            ("SelectExps", (L'.TRecord (map (fn (x, _) => (x, s)) sexps), loc))],
+                                loc),
+                               s,
+                               strcat loc [sc "SELECT ",
+                                           strcatR loc (gf "SelectExps") sexps,
+                                           case sexps of
+                                               [] => sc ""
+                                             | _ => sc ", ",
+                                           strcatComma loc (map (fn (x, xts) =>
+                                                                    strcatComma loc
+                                                                        (map (fn (x', _) =>
+                                                                                 sc (x ^ "." ^ x'))
+                                                                         xts)) stables),
+                                           sc " FROM ",
+                                           strcatComma loc (map (fn (x, _) => strcat loc [(L'.EField (gf "From", x), loc),
+                                                                                          sc (" AS " ^ x)]) tables)
+                              ]), loc),
+                     fm)
+                  | _ => poly ()
+            end
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_inject"), _),
+               _), _),
+              _), _),
+             _), _),
+            t) =>
+            let
+                val t = monoType env t
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("f", (L'.TFun (t, s), loc), (L'.TFun (t, s), loc),
+                           (L'.ERel 0, loc)), loc), fm)
+            end
+
+          | L.ECApp ((L.EFfi ("Basis", "sql_subset"), _), _) =>
+            ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_subset_all"), _), _) =>
+            ((L'.ERecord [], loc), fm)
+
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_Nil"), _), _), _), _) =>
+            ((L'.EPrim (Prim.String ""), loc), fm)
+
+          | L.EFfi ("Basis", "sql_no_limit") =>
+            ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.EFfi ("Basis", "sql_no_offset") =>
+            ((L'.EPrim (Prim.String ""), loc), fm)
+                    
           | L.EApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
@@ -721,6 +970,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp _ => poly ()
           | L.ECAbs _ => poly ()
 
+          | L.EFfi mx => ((L'.EFfi mx, loc), fm)
+          | L.EFfiApp (m, x, es) =>
+            let
+                val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
+            in
+                ((L'.EFfiApp (m, x, es), loc), fm)
+            end
+
           | L.ERecord xes =>
             let
                 val (xes, fm) = ListUtil.foldlMap
@@ -762,7 +1019,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EWrite e, loc), fm)
+                ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                           (L'.EWrite (liftExpInExp 0 e), loc)), loc), fm)
             end
 
           | L.EClosure (n, es) =>

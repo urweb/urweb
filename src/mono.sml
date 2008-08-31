@@ -75,6 +75,13 @@ datatype exp' =
 
        | EClosure of int * exp list
 
+       | EQuery of { exps : (string * typ) list,
+                     tables : (string * (string * typ) list) list,
+                     state : typ,
+                     query : exp,
+                     body : exp,
+                     initial : exp }
+
 
 withtype exp = exp' located
 

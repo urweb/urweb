@@ -38,6 +38,8 @@ structure E = MonoEnv
 
 val debug = ref false
 
+val dummyt = (TRecord [], ErrorMsg.dummySpan)
+
 fun p_typ' par env (t, _) =
     case t of
         TFun (t1, t2) => parenIf par (box [p_typ' true env t1,
@@ -133,17 +135,17 @@ fun p_exp' par env (e, _) =
       | EApp (e1, e2) => parenIf par (box [p_exp env e1,
                                            space,
                                            p_exp' true env e2])
-      | EAbs (x, t, _, e) => parenIf par (box [string "fn",
-                                               space,
-                                               string x,
-                                               space,
-                                               string ":",
-                                               space,
-                                               p_typ env t,
-                                               space,
-                                               string "=>",
-                                               space,
-                                               p_exp (E.pushERel env x t NONE) e])
+      | EAbs (x, t, _, e) => parenIf true (box [string "fn",
+                                                space,
+                                                string x,
+                                                space,
+                                                string ":",
+                                                space,
+                                                p_typ env t,
+                                                space,
+                                                string "=>",
+                                                space,
+                                                p_exp (E.pushERel env x t NONE) e])
 
       | ERecord xes => box [string "{",
                             p_list (fn (x, e, _) =>
@@ -158,18 +160,18 @@ fun p_exp' par env (e, _) =
              string ".",
              string x]
 
-      | ECase (e, pes, _) => parenIf par (box [string "case",
-                                               space,
-                                               p_exp env e,
-                                               space,
-                                               string "of",
-                                               space,
-                                               p_list_sep (box [space, string "|", space])
-                                                          (fn (p, e) => box [p_pat env p,
-                                                                             space,
-                                                                             string "=>",
-                                                                             space,
-                                                                             p_exp (E.patBinds env p) e]) pes])
+      | ECase (e, pes, _) => parenIf true (box [string "case",
+                                                space,
+                                                p_exp env e,
+                                                space,
+                                                string "of",
+                                                space,
+                                                p_list_sep (box [space, string "|", space])
+                                                           (fn (p, e) => box [p_pat env p,
+                                                                              space,
+                                                                              string "=>",
+                                                                              space,
+                                                                              p_exp (E.patBinds env p) e]) pes])
 
       | EStrcat (e1, e2) => box [p_exp' true env e1,
                                  space,
@@ -185,7 +187,7 @@ fun p_exp' par env (e, _) =
                               string ";",
                               space,
                               p_exp env e2]
-      | ELet (x, t, e1, e2) => box [string "let",
+      | ELet (x, t, e1, e2) => box [string "(let",
                                     space,
                                     string x,
                                     space,
@@ -195,17 +197,46 @@ fun p_exp' par env (e, _) =
                                     space,
                                     string "=",
                                     space,
+                                    string "(",
                                     p_exp env e1,
+                                    string ")",
                                     space,
                                     string "in",
                                     space,
-                                    p_exp (E.pushERel env x t NONE) e2]
+                                    string "(",
+                                    p_exp (E.pushERel env x t NONE) e2,
+                                    string "))"]
 
       | EClosure (n, es) => box [string "CLOSURE(",
                                  p_enamed env n,
                                  p_list_sep (string "") (fn e => box [string ", ",
                                                                       p_exp env e]) es,
                                  string ")"]
+
+      | EQuery {exps, tables, state, query, body, initial} =>
+        box [string "query[",
+             p_list (fn (x, t) => box [string x, space, string ":", space, p_typ env t]) exps,
+             string "] [",
+             p_list (fn (x, xts) => box [string x,
+                                         space,
+                                         string ":",
+                                         space,
+                                         string "{",
+                                         p_list (fn (x, t) => box [string x, space, string ":", space, p_typ env t]) xts,
+                                         string "}"]) tables,
+             string "] [",
+             p_typ env state,
+             string "]",
+             space,
+             p_exp env query,
+             space,
+             string "initial",
+             space,
+             p_exp env initial,
+             space,
+             string "in",
+             space,
+             p_exp (E.pushERel (E.pushERel env "r" dummyt NONE) "acc" dummyt NONE) body]
 
 and p_exp env = p_exp' false env
 

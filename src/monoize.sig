@@ -29,4 +29,6 @@ signature MONOIZE = sig
 
     val monoize : CoreEnv.env -> Core.file -> Mono.file
 
+    val liftExpInExp : int -> Mono.exp -> Mono.exp
+
 end

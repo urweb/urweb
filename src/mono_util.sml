@@ -218,7 +218,7 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                          fn t' =>
                             S.bind2 (mfe ctx e1,
                                   fn e1' =>
-                                     S.map2 (mfe (bind (ctx, RelE (x, t))) e2,
+                                     S.map2 (mfe (bind (ctx, RelE (x, t'))) e2,
                                           fn e2' =>
                                              (ELet (x, t', e1', e2'), loc))))
 
@@ -226,6 +226,34 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (ListUtil.mapfold (mfe ctx) es,
                      fn es' =>
                         (EClosure (n, es'), loc))
+
+              | EQuery {exps, tables, state, query, body, initial} =>
+                S.bind2 (ListUtil.mapfold (fn (x, t) =>
+                                              S.map2 (mft t,
+                                                      fn t' => (x, t'))) exps,
+                         fn exps' =>
+                            S.bind2 (ListUtil.mapfold (fn (x, xts) =>
+                                                          S.map2 (ListUtil.mapfold
+                                                                       (fn (x, t) =>
+                                                                           S.map2 (mft t,
+                                                                                fn t' => (x, t'))) xts,
+                                                                   fn xts' => (x, xts'))) tables,
+                                  fn tables' =>
+                                     S.bind2 (mft state,
+                                              fn state' =>
+                                                 S.bind2 (mfe ctx query,
+                                                          fn query' =>
+                                                             S.bind2 (mfe ctx body,
+                                                                     fn body' =>
+                                                                        S.map2 (mfe ctx initial,
+                                                                                fn initial' =>
+                                                                                   (EQuery {exps = exps',
+                                                                                            tables = tables',
+                                                                                            state = state',
+                                                                                            query = query',
+                                                                                            body = body',
+                                                                                            initial = initial'},
+                                                                                    loc)))))))
     in
         mfe
     end

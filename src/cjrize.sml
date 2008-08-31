@@ -280,6 +280,8 @@ fun cifyExp ((e, loc), sm) =
       | L.EClosure _ => (ErrorMsg.errorAt loc "Nested closure remains in code generation";
                          (dummye, sm))
 
+      | L.EQuery _ => raise Fail "Cjrize EQuery"
+
 fun cifyDecl ((d, loc), sm) =
     case d of
         L.DDatatype (x, n, xncs) =>

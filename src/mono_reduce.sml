@@ -34,20 +34,38 @@ open Mono
 structure E = MonoEnv
 structure U = MonoUtil
 
-val liftExpInExp =
-    U.Exp.mapB {typ = fn t => t,
-                exp = fn bound => fn e =>
-                                     case e of
-                                         ERel xn =>
-                                         if xn < bound then
-                                             e
-                                         else
-                                             ERel (xn + 1)
-                                       | _ => e,
-                bind = fn (bound, U.Exp.RelE _) => bound + 1
-                        | (bound, _) => bound}
 
-val subExpInExp =
+fun impure (e, _) =
+    case e of
+        EWrite _ => true
+      | EQuery _ => true
+      | EAbs _ => false
+
+      | EPrim _ => false
+      | ERel _ => false
+      | ENamed _ => false
+      | ECon (_, _, eo) => (case eo of NONE => false | SOME e => impure e)
+      | EFfi _ => false
+      | EFfiApp _ => false
+      | EApp ((EFfi _, _), _) => false
+      | EApp _ => true
+
+      | ERecord xes => List.exists (fn (_, e, _) => impure e) xes
+      | EField (e, _) => impure e
+
+      | ECase (e, pes, _) => impure e orelse List.exists (fn (_, e) => impure e) pes
+
+      | EStrcat (e1, e2) => impure e1 orelse impure e2
+
+      | ESeq (e1, e2) => impure e1 orelse impure e2
+      | ELet (_, _, e1, e2) => impure e1 orelse impure e2
+
+      | EClosure (_, es) => List.exists impure es
+
+
+val liftExpInExp = Monoize.liftExpInExp
+
+val subExpInExp' =
     U.Exp.mapB {typ = fn t => t,
                 exp = fn (xn, rep) => fn e =>
                                   case e of
@@ -60,11 +78,15 @@ val subExpInExp =
                 bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
                         | (ctx, _) => ctx}
 
-fun bind (env, b) =
-    case b of
-        U.Decl.Datatype (x, n, xncs) => E.pushDatatype env x n xncs
-      | U.Decl.RelE (x, t) => E.pushERel env x t NONE
-      | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
+fun subExpInExp (n, e1) e2 =
+    let
+        val r = subExpInExp' (n, e1) e2
+    in
+        (*Print.prefaces "subExpInExp" [("e1", MonoPrint.p_exp MonoEnv.empty e1),
+                                      ("e2", MonoPrint.p_exp MonoEnv.empty e2),
+                                      ("r", MonoPrint.p_exp MonoEnv.empty r)];*)
+        r
+    end
 
 fun typ c = c
 
@@ -132,8 +154,13 @@ fun exp env e =
              (_, _, SOME e', _) => #1 e'
            | _ => e)
 
-      | EApp ((EAbs (_, _, _, e1), loc), e2) =>
-        #1 (reduceExp env (subExpInExp (0, e2) e1))
+      | EApp ((EAbs (x, t, _, e1), loc), e2) =>
+        ((*Print.prefaces "Considering" [("e1", MonoPrint.p_exp env e1),
+                                       ("e2", MonoPrint.p_exp env e2)];*)
+        if impure e2 then
+            #1 (reduceExp env (ELet (x, t, e2, e1), loc))
+        else
+            #1 (reduceExp env (subExpInExp (0, e2) e1)))
 
       | ECase (disc, pes, _) =>
         (case ListUtil.search (fn (p, body) =>
@@ -143,7 +170,37 @@ fun exp env e =
              NONE => e
            | SOME e' => e')
 
+      | EField ((ERecord xes, _), x) =>
+        (case List.find (fn (x', _, _) => x' = x) xes of
+             SOME (_, e, _) => #1 e
+           | NONE => e)
+
+      | ELet (x1, t1, (ELet (x2, t2, e1, b1), loc), b2) =>
+        let
+            val e' = (ELet (x2, t2, e1,
+                            (ELet (x1, t1, b1,
+                                   liftExpInExp 1 b2), loc)), loc)
+        in
+            Print.prefaces "ELet commute" [("e", MonoPrint.p_exp env (e, loc)),
+                                           ("e'", MonoPrint.p_exp env e')];
+            #1 (reduceExp env e')
+        end
+      | EApp ((ELet (x, t, e, b), loc), e') =>
+        #1 (reduceExp env (ELet (x, t, e,
+                                 (EApp (b, liftExpInExp 0 e'), loc)), loc))
+      | ELet (x, t, e', b) =>
+        if impure e' then
+            e
+        else
+            #1 (reduceExp env (subExpInExp (0, e') b))
+
       | _ => e
+
+and bind (env, b) =
+    case b of
+        U.Decl.Datatype (x, n, xncs) => E.pushDatatype env x n xncs
+      | U.Decl.RelE (x, t) => E.pushERel env x t NONE
+      | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t (Option.map (reduceExp env) eo) s
 
 and reduceExp env = U.Exp.mapB {typ = typ, exp = exp, bind = bind} env
 
