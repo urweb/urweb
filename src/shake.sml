@@ -45,9 +45,11 @@ val dummye = (EPrim (Prim.String ""), ErrorMsg.dummySpan)
 
 fun shake file =
     let
-        val page_es = List.foldl
-                          (fn ((DExport (_, n), _), page_es) => n :: page_es
-                            | (_, page_es) => page_es) [] file
+        val (page_es, table_cs) =
+            List.foldl
+                (fn ((DExport (_, n), _), (page_es, table_cs)) => (n :: page_es, table_cs)
+                  | ((DTable (_, _, c, _), _), (page_es, table_cs)) => (page_es, c :: table_cs)
+                  | (_, acc) => acc) ([], []) file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
                                    | ((DDatatype (_, n, _, xncs), _), (cdef, edef)) =>
@@ -104,6 +106,8 @@ fun shake file =
                           case IM.find (edef, n) of
                               NONE => raise Fail "Shake: Couldn't find 'val'"
                             | SOME (t, e) => shakeExp (shakeCon s t) e) s page_es
+
+        val s = foldl (fn (c, s) => shakeCon s c) s table_cs
     in
         List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
                       | (DDatatype (_, n, _, _), _) => IS.member (#con s, n)
