@@ -613,8 +613,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                            sc " FROM ",
                                            strcatComma loc (map (fn (x, _) => strcat loc [(L'.EField (gf "From", x), loc),
                                                                                           sc (" AS " ^ x)]) tables),
-                                           sc " WHERE ",
-                                           gf "Where",
+                                           (L'.ECase (gf "Where",
+                                                      [((L'.PPrim (Prim.String "TRUE"), loc),
+                                                        sc ""),
+                                                       ((L'.PWild, loc),
+                                                        strcat loc [sc " WHERE ", gf "Where"])],
+                                                      {disc = s,
+                                                       result = s}), loc),
+                                                        
                                            if List.all (fn (x, xts) =>
                                                            case List.find (fn (x', _) => x' = x) grouped of
                                                                NONE => List.null xts

@@ -313,23 +313,29 @@ val mono_reduce = {
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMono_reduce = toUntangle o transform mono_reduce "mono_reduce"
+val toMono_reduce1 = toUntangle o transform mono_reduce "mono_reduce1"
 
 val mono_shake = {
     func = MonoShake.shake,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMono_shake = toMono_reduce o transform mono_shake "mono_shake"
+val toMono_shake1 = toMono_reduce1 o transform mono_shake "mono_shake1"
 
-val toMono_opt2 = toMono_shake o transform mono_opt "mono_opt2"
+val toMono_opt2 = toMono_shake1 o transform mono_opt "mono_opt2"
+
+val toMono_reduce2 = toMono_opt2 o transform mono_reduce "mono_reduce2"
+
+val toMono_opt3 = toMono_reduce2 o transform mono_opt "mono_opt3"
+
+val toMono_shake2 = toMono_opt3 o transform mono_shake "mono_shake2"
 
 val cjrize = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toCjrize = toMono_opt2 o transform cjrize "cjrize"
+val toCjrize = toMono_shake2 o transform cjrize "cjrize"
 
 fun compileC {cname, oname, ename} =
     let

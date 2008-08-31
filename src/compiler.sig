@@ -74,9 +74,12 @@ signature COMPILER = sig
     val toMonoize : (job, Mono.file) transform
     val toMono_opt1 : (job, Mono.file) transform
     val toUntangle : (job, Mono.file) transform
-    val toMono_reduce : (job, Mono.file) transform
-    val toMono_shake : (job, Mono.file) transform
+    val toMono_reduce1 : (job, Mono.file) transform
+    val toMono_shake1 : (job, Mono.file) transform
     val toMono_opt2 : (job, Mono.file) transform
+    val toMono_reduce2 : (job, Mono.file) transform
+    val toMono_opt3 : (job, Mono.file) transform
+    val toMono_shake2 : (job, Mono.file) transform
     val toCjrize : (job, Cjr.file) transform
 
 end

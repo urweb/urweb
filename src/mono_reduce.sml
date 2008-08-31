@@ -90,58 +90,61 @@ fun subExpInExp (n, e1) e2 =
 
 fun typ c = c
 
+datatype result = Yes of E.env | No | Maybe
+
 fun match (env, p : pat, e : exp) =
     case (#1 p, #1 e) of
-        (PWild, _) => SOME env
-      | (PVar (x, t), _) => SOME (E.pushERel env x t (SOME e))
+        (PWild, _) => Yes env
+      | (PVar (x, t), _) => Yes (E.pushERel env x t (SOME e))
 
       | (PPrim p, EPrim p') =>
         if Prim.equal (p, p') then
-            SOME env
+            Yes env
         else
-            NONE
+            No
 
       | (PCon (_, PConVar n1, NONE), ECon (_, PConVar n2, NONE)) =>
         if n1 = n2 then
-            SOME env
+            Yes env
         else
-            NONE
+            No
 
       | (PCon (_, PConVar n1, SOME p), ECon (_, PConVar n2, SOME e)) =>
         if n1 = n2 then
             match (env, p, e)
         else
-            NONE
+            No
 
       | (PCon (_, PConFfi {mod = m1, con = con1, ...}, NONE), ECon (_, PConFfi {mod = m2, con = con2, ...}, NONE)) =>
         if m1 = m2 andalso con1 = con2 then
-            SOME env
+            Yes env
         else
-            NONE
+            No
 
       | (PCon (_, PConFfi {mod = m1, con = con1, ...}, SOME ep), ECon (_, PConFfi {mod = m2, con = con2, ...}, SOME e)) =>
         if m1 = m2 andalso con1 = con2 then
             match (env, p, e)
         else
-            NONE
+            No
 
       | (PRecord xps, ERecord xes) =>
         let
             fun consider (xps, env) =
                 case xps of
-                    [] => SOME env
+                    [] => Yes env
                   | (x, p, _) :: rest =>
                     case List.find (fn (x', _, _) => x' = x) xes of
-                        NONE => NONE
+                        NONE => No
                       | SOME (_, e, _) =>
                         case match (env, p, e) of
-                            NONE => NONE
-                          | SOME env => consider (rest, env)
+                            No => No
+                          | Maybe => Maybe
+                          | Yes env => consider (rest, env)
         in
             consider (xps, env)
         end
 
-      | _ => NONE
+      | _ => Maybe
 
 fun exp env e =
     case e of
@@ -163,12 +166,18 @@ fun exp env e =
             #1 (reduceExp env (subExpInExp (0, e2) e1)))
 
       | ECase (disc, pes, _) =>
-        (case ListUtil.search (fn (p, body) =>
-                                  case match (env, p, disc) of
-                                      NONE => NONE
-                                    | SOME env => SOME (#1 (reduceExp env body))) pes of
-             NONE => e
-           | SOME e' => e')
+        let
+            fun search pes =
+                case pes of
+                    [] => e
+                  | (p, body) :: pes =>
+                    case match (env, p, disc) of
+                        No => search pes
+                      | Maybe => e
+                      | Yes env => #1 (reduceExp env body)
+        in
+            search pes
+        end
 
       | EField ((ERecord xes, _), x) =>
         (case List.find (fn (x', _, _) => x' = x) xes of
