@@ -141,6 +141,15 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
         (EApp (e, sqlexp2), loc)
     end
 
+fun native_op (oper, e1, e2, loc) =
+    let
+        val e = (EVar (["Basis"], oper), loc)
+        val e = (EApp (e, (EWild, loc)), loc)
+        val e = (EApp (e, e1), loc)
+    in
+        (EApp (e, e2), loc)
+    end
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -595,6 +604,7 @@ eexp   : eapps                          (eapps)
                                          in
                                              (EApp (e, (EAbs (SYMBOL, NONE, eexp2), loc)), loc)
                                          end)
+       | eexp EQ eexp                   (native_op ("eq", eexp1, eexp2, s (eexp1left, eexp2right)))
 
 eargs  : earg                           (earg)
        | eargl                          (eargl)

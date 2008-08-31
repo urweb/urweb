@@ -1584,11 +1584,12 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                         checkKind env t' tk ktype;
                                         (t', gs)
                                     end
-                val (e', et, gs2) = elabExp (E.pushERel env x t', denv) e
+                val (dom, gs2) = normClassConstraint (env, denv) t'
+                val (e', et, gs3) = elabExp (E.pushERel env x dom, denv) e
             in
                 ((L'.EAbs (x, t', et, e'), loc),
                  (L'.TFun (t', et), loc),
-                 enD gs1 @ gs2)
+                 enD gs1 @ enD gs2 @ gs3)
             end
           | L.ECApp (e, c) =>
             let
