@@ -13,7 +13,7 @@ val q8 = (SELECT * FROM t1 WHERE t1.A = 1 OR t1.C < 3.0)
 datatype list a = Nil | Cons of a * list a
 
 val r1 : transaction (list {A : int, B : string, C : float}) =
-        query q8
+        query q7
         (fn fs acc => return (Cons (fs.T1, acc)))
         Nil
 

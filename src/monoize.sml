@@ -781,6 +781,32 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
+                 (L.EFfi ("Basis", "sql_unary"), _),
+                 _), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                     strcat loc [sc "(",
+                                                 (L'.ERel 1, loc),
+                                                 sc " ",
+                                                 (L'.ERel 0, loc),
+                                                 sc ")"]), loc)), loc),
+                 fm)
+            end
+          | L.EFfi ("Basis", "sql_not") => ((L'.EPrim (Prim.String "NOT"), loc), fm)
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
                 (L.ECApp (
                  (L.EFfi ("Basis", "sql_binary"), _),
                  _), _),
