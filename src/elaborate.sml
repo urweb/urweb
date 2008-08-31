@@ -3036,27 +3036,36 @@ fun elabDecl ((d, loc), (env, denv, gs : constraint list)) =
                                       ((L'.TFun (dom, ran), _), []) =>
                                       (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
                                            (((L'.TRecord domR, _), []),
-                                            ((L'.CApp (tf, arg3), _), [])) =>
-                                           (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
-                                                (((L'.CApp (tf, arg2), _), []),
-                                                 (((L'.CRecord (_, []), _), []))) =>
-                                                (case (hnormCon (env, denv) tf) of
-                                                     ((L'.CApp (tf, arg1), _), []) =>
-                                                     (case (hnormCon (env, denv) tf,
-                                                            hnormCon (env, denv) domR,
-                                                            hnormCon (env, denv) arg1,
-                                                            hnormCon (env, denv) arg2) of
-                                                          ((tf, []), (domR, []), (arg1, []),
-                                                           ((L'.CRecord (_, []), _), [])) =>
-                                                          let
-                                                              val t = (L'.CApp (tf, arg1), loc)
-                                                              val t = (L'.CApp (t, arg2), loc)
-                                                              val t = (L'.CApp (t, arg3), loc)
-                                                          in
-                                                              (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
-                                                                                          t),
-                                                                                 loc)), loc)
-                                                          end
+                                            ((L'.CApp (tf, arg), _), [])) =>
+                                           (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg) of
+                                                (((L'.CModProj (basis, [], "transaction"), _), []),
+                                                 ((L'.CApp (tf, arg3), _), [])) =>
+                                                (case (basis = !basis_r,
+                                                       hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
+                                                     (true,
+                                                      ((L'.CApp (tf, arg2), _), []),
+                                                      (((L'.CRecord (_, []), _), []))) =>
+                                                     (case (hnormCon (env, denv) tf) of
+                                                          ((L'.CApp (tf, arg1), _), []) =>
+                                                          (case (hnormCon (env, denv) tf,
+                                                                 hnormCon (env, denv) domR,
+                                                                 hnormCon (env, denv) arg1,
+                                                                 hnormCon (env, denv) arg2) of
+                                                               ((tf, []), (domR, []), (arg1, []),
+                                                                ((L'.CRecord (_, []), _), [])) =>
+                                                               let
+                                                                   val t = (L'.CApp (tf, arg1), loc)
+                                                                   val t = (L'.CApp (t, arg2), loc)
+                                                                   val t = (L'.CApp (t, arg3), loc)
+                                                                   val t = (L'.CApp (
+                                                                            (L'.CModProj (basis, [], "transaction"), loc),
+                                                                            t), loc)
+                                                               in
+                                                                   (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR, loc),
+                                                                                               t),
+                                                                                      loc)), loc)
+                                                               end
+                                                             | _ => all)
                                                         | _ => all)
                                                    | _ => all)
                                               | _ => all)

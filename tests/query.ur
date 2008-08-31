@@ -9,8 +9,14 @@ val r1 : transaction (list {A : int, B : string, C : float}) =
         (fn fs _ acc => return (Cons (fs.T1, acc)))
         Nil
 
-val r2 : transaction int =
+val r2 : transaction string =
         ls <- r1;
         return (case ls of
-                    Nil => 0
-                  | Cons ({A = a, ...}, _) => a)
+                    Nil => "Problem"
+                  | Cons ({B = b, ...}, _) => b)
+
+val main : unit -> transaction page = fn () =>
+        s <- r2;
+        return <html><body>
+                {cdata s}
+        </body></html>
