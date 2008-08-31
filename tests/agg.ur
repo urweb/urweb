@@ -12,8 +12,8 @@ val q5 = (SELECT SUM(t1.A) AS X FROM t1 GROUP BY t1.B)
 
 datatype list a = Nil | Cons of a * list a
 
-val r1 : transaction (list int) =
-        query q1
+val r1 : transaction (list string) =
+        query q4
         (fn fs acc => return (Cons (fs.X, acc)))
         Nil
 

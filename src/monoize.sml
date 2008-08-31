@@ -925,7 +925,52 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) => ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
                              (L'.EPrim (Prim.String "COUNT(*)"), loc)), loc),
                    fm)
-            
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_aggregate"), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                     strcat loc [(L'.ERel 1, loc),
+                                                 sc "(",
+                                                 (L'.ERel 0, loc),
+                                                 sc ")"]), loc)), loc),
+                 fm)
+            end
+
+          | L.EFfi ("Basis", "sql_summable_int") => ((L'.ERecord [], loc), fm)
+          | L.EFfi ("Basis", "sql_summable_float") => ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_avg"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "AVG"), loc)), loc),
+             fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_sum"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "SUM"), loc)), loc),
+             fm)
+
+          | L.EFfi ("Basis", "sql_maxable_int") => ((L'.ERecord [], loc), fm)
+          | L.EFfi ("Basis", "sql_maxable_float") => ((L'.ERecord [], loc), fm)
+          | L.EFfi ("Basis", "sql_maxable_string") => ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_max"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "MAX"), loc)), loc),
+             fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_min"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "MIN"), loc)), loc),
+             fm)
+
           | L.EApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
