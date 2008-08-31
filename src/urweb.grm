@@ -605,6 +605,7 @@ eexp   : eapps                          (eapps)
                                              (EApp (e, (EAbs (SYMBOL, NONE, eexp2), loc)), loc)
                                          end)
        | eexp EQ eexp                   (native_op ("eq", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp NE eexp                   (native_op ("ne", eexp1, eexp2, s (eexp1left, eexp2right)))
 
 eargs  : earg                           (earg)
        | eargl                          (eargl)

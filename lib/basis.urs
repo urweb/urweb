@@ -11,8 +11,8 @@ datatype bool = False | True
 
 class eq
 val eq : t ::: Type -> eq t -> t -> t -> bool
+val ne : t ::: Type -> eq t -> t -> t -> bool
 val eq_int : eq int
-val eq_float : eq float
 val eq_string : eq string
 val eq_bool : eq bool
 
