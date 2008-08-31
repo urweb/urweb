@@ -203,6 +203,9 @@ fun exp env e =
         else
             #1 (reduceExp env (subExpInExp (0, e') b))
 
+      | EStrcat ((EPrim (Prim.String s1), _), (EPrim (Prim.String s2), _)) =>
+        EPrim (Prim.String (s1 ^ s2))
+
       | _ => e
 
 and bind (env, b) =

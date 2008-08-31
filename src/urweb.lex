@@ -332,6 +332,9 @@ notags = [^<{\n]+;
 <INITIAL> "MIN"       => (Tokens.MIN (pos yypos, pos yypos + size yytext));
 <INITIAL> "MAX"       => (Tokens.MAX (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "ASC"       => (Tokens.ASC (pos yypos, pos yypos + size yytext));
+<INITIAL> "DESC"      => (Tokens.DESC (pos yypos, pos yypos + size yytext));
+
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));
 

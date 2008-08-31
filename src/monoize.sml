@@ -718,17 +718,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
             in
-                ((L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
-                           (L'.EAbs ("e2", s, s,
-                                     (L'.ECase ((L'.ERel 0, loc),
-                                                [((L'.PPrim (Prim.String ""), loc),
-                                                  (L'.ERel 1, loc)),
-                                                 ((L'.PWild, loc),
-                                                  strcat loc [(L'.ERel 1, loc),
-                                                              sc ", ",
-                                                              (L'.ERel 0, loc),
-                                                              sc ")"])],
-                                                {disc = s, result = s}), loc)), loc)), loc),
+                ((L'.EAbs ("e1", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("d", s, (L'.TFun (s, s), loc),
+                                     (L'.EAbs ("e2", s, s,
+                                               (L'.ECase ((L'.ERel 0, loc),
+                                                          [((L'.PPrim (Prim.String ""), loc),
+                                                            strcat loc [(L'.ERel 2, loc),
+                                                                        (L'.ERel 1, loc)]),
+                                                           ((L'.PWild, loc),
+                                                            strcat loc [(L'.ERel 2, loc),
+                                                                        (L'.ERel 1, loc),
+                                                                        sc ", ",
+                                                                        (L'.ERel 0, loc)])],
+                                                          {disc = s, result = s}), loc)), loc)), loc)), loc),
                  fm)
             end
 
@@ -967,6 +969,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EPrim (Prim.String "MIN"), loc)), loc),
              fm)
+
+          | L.EFfi ("Basis", "sql_asc") => ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.EFfi ("Basis", "sql_desc") => ((L'.EPrim (Prim.String " DESC"), loc), fm)
 
           | L.EApp (
             (L.ECApp (

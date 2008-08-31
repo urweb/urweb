@@ -178,6 +178,7 @@ fun native_op (oper, e1, e2, loc) =
  | LIMIT | OFFSET | ALL
  | TRUE | FALSE | CAND | OR | NOT
  | COUNT | AVG | SUM | MIN | MAX
+ | ASC | DESC
  | NE | LT | LE | GT | GE
 
 %nonterm
@@ -270,7 +271,9 @@ fun native_op (oper, e1, e2, loc) =
  | gopt of group_item list option
  | hopt of exp
  | obopt of exp
+ | obitem of exp * exp
  | obexps of exp
+ | diropt of exp
  | lopt of exp
  | ofopt of exp
  | sqlint of exp
@@ -1022,25 +1025,33 @@ obopt  :                                (ECApp ((EVar (["Basis"], "sql_order_by_
                                          dummy)
        | ORDER BY obexps                (obexps)
 
-obexps : sqlexp                         (let
-                                             val loc = s (sqlexpleft, sqlexpright)
+obitem : sqlexp diropt                  (sqlexp, diropt)
+
+obexps : obitem                         (let
+                                             val loc = s (obitemleft, obitemright)
 
                                              val e' = (ECApp ((EVar (["Basis"], "sql_order_by_Nil"), loc),
                                                               (CWild (KRecord (KType, loc), loc), loc)),
                                                        loc)
                                              val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons"), loc),
-                                                            sqlexp), loc)
+                                                            #1 obitem), loc)
+                                             val e = (EApp (e, #2 obitem), loc)
                                          in
                                              (EApp (e, e'), loc)
                                          end)
-       | sqlexp COMMA obexps            (let
-                                             val loc = s (sqlexpleft, obexpsright)
+       | obitem COMMA obexps            (let
+                                             val loc = s (obitemleft, obexpsright)
 
                                              val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons"), loc),
-                                                            sqlexp), loc)
+                                                            #1 obitem), loc)
+                                             val e = (EApp (e, #2 obitem), loc)
                                          in
                                              (EApp (e, obexps), loc)
                                          end)
+
+diropt :                                (EVar (["Basis"], "sql_asc"), dummy)
+       | ASC                            (EVar (["Basis"], "sql_asc"), s (ASCleft, ASCright))
+       | DESC                           (EVar (["Basis"], "sql_desc"), s (DESCleft, DESCright))
 
 lopt   :                                 (EVar (["Basis"], "sql_no_limit"), dummy)
        | LIMIT ALL                       (EVar (["Basis"], "sql_no_limit"), dummy)

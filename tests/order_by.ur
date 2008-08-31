@@ -12,7 +12,7 @@ val q4 = (SELECT t1.A, t2.D, t1.A < t2.D AS Lt
         ORDER BY Lt)
 val q5 = (SELECT t1.A, t1.B, t2.D, t1.A < t2.D AS Lt
         FROM t1, t2
-        ORDER BY t1.A, Lt, t2.D)
+        ORDER BY t1.A DESC, Lt ASC, t2.D DESC)
 
 
 datatype list a = Nil | Cons of a * list a

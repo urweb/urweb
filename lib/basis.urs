@@ -73,7 +73,7 @@ val sql_desc : sql_direction
 con sql_order_by :: {{Type}} -> {Type} -> Type
 val sql_order_by_Nil : tables ::: {{Type}} -> exps :: {Type} -> sql_order_by tables exps
 val sql_order_by_Cons : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
-        -> sql_exp tables [] exps t -> sql_order_by tables exps
+        -> sql_exp tables [] exps t -> sql_direction -> sql_order_by tables exps
         -> sql_order_by tables exps
 
 type sql_limit
