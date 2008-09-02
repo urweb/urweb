@@ -275,12 +275,63 @@ fun cifyExp ((e, loc), sm) =
             ((L'.ESeq (e1, e2), loc), sm)
         end
 
-      | L.ELet _ => raise Fail "Cjrize ELet"
+      | L.ELet (x, t, e1, e2) =>
+        let
+            val (t, sm) = cifyTyp (t, sm)
+            val (e1, sm) = cifyExp (e1, sm)
+            val (e2, sm) = cifyExp (e2, sm)
+        in
+            ((L'.ELet (x, t, e1, e2), loc), sm)
+        end
 
       | L.EClosure _ => (ErrorMsg.errorAt loc "Nested closure remains in code generation";
                          (dummye, sm))
 
-      | L.EQuery _ => raise Fail "Cjrize EQuery"
+      | L.EQuery {exps, tables, state, query, body, initial} =>
+        let
+            val (exps', sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
+                                                    let
+                                                        val (t, sm) = cifyTyp (t, sm)
+                                                    in
+                                                        ((x, t), sm)
+                                                    end) sm exps
+            val (tables', sm) = ListUtil.foldlMap (fn ((x, xts), sm) =>
+                                                      let
+                                                          val (xts, sm) = ListUtil.foldlMap
+                                                                              (fn ((x, t), sm) =>
+                                                                                  let
+                                                                                      val (t, sm) = cifyTyp (t, sm)
+                                                                                  in
+                                                                                      ((x, t), sm)
+                                                                                  end) sm xts
+                                                      in
+                                                          ((x, xts), sm)
+                                                      end) sm tables
+
+            val row = exps @ map (fn (x, xts) => (x, (L.TRecord xts, loc))) tables
+            val row = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) row
+
+            val (tableRows, sm) = ListUtil.foldlMap (fn (((x, xts), (_, xts')), sm) =>
+                                                        let
+                                                            val (sm, rnum) = Sm.find (sm, xts, xts')
+                                                        in
+                                                            ((x, rnum), sm)
+                                                        end)
+                                                    sm (ListPair.zip (tables, tables'))
+            val row' = exps' @ map (fn (x, n) => (x, (L'.TRecord n, loc))) tableRows
+            val row' = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) row'
+
+            val (sm, rnum) = Sm.find (sm, row, row')
+
+            val (state, sm) = cifyTyp (state, sm)
+            val (query, sm) = cifyExp (query, sm)
+            val (body, sm) = cifyExp (body, sm)
+            val (initial, sm) = cifyExp (initial, sm)
+        in
+            ((L'.EQuery {exps = exps', tables = tables', rnum = rnum, state = state,
+                         query = query, body = body, initial = initial}, loc), sm)
+        end
+
 
 fun cifyDecl ((d, loc), sm) =
     case d of

@@ -32,8 +32,7 @@ type 'a located = 'a ErrorMsg.located
 datatype datatype_kind = datatype Mono.datatype_kind
 
 datatype typ' =
-         TTop
-       | TFun of typ * typ
+         TFun of typ * typ
        | TRecord of int
        | TDatatype of datatype_kind * int * (string * int * typ option) list ref
        | TFfi of string * string
@@ -69,6 +68,15 @@ datatype exp' =
 
        | EWrite of exp
        | ESeq of exp * exp
+       | ELet of string * typ * exp * exp
+
+       | EQuery of { exps : (string * typ) list,
+                     tables : (string * (string * typ) list) list,
+                     rnum : int,
+                     state : typ,
+                     query : exp,
+                     body : exp,
+                     initial : exp }
 
 withtype exp = exp' located
 

@@ -34,6 +34,8 @@ open Print
 
 open Cjr
 
+val dummyt = (TRecord 0, ErrorMsg.dummySpan)
+
 structure E = CjrEnv
 structure EM = ErrorMsg
 
@@ -57,8 +59,7 @@ val dummyTyp = (TDatatype (Enum, 0, ref []), ErrorMsg.dummySpan)
 
 fun p_typ' par env (t, loc) =
     case t of
-        TTop => string "void*"
-      | TFun (t1, t2) => parenIf par (box [p_typ' true env t2,
+        TFun (t1, t2) => parenIf par (box [p_typ' true env t2,
                                            space,
                                            string "(*)",
                                            space,
@@ -528,6 +529,48 @@ fun p_exp' par env (e, loc) =
                               space,
                               p_exp env e2,
                               string ")"]
+      | ELet (x, t, e1, e2) => box [string "({",
+                                    newline,
+                                    p_typ env t,
+                                    space,
+                                    p_rel env 0,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_exp env e1,
+                                    string ";",
+                                    newline,
+                                    p_exp (E.pushERel env x t) e2,
+                                    string ";",
+                                    newline,
+                                    string "})"]
+
+      | EQuery {exps, tables, rnum, state, query, body, initial} =>
+        box [string "query[",
+             p_list (fn (x, t) => box [string x, space, string ":", space, p_typ env t]) exps,
+             string "] [",
+             p_list (fn (x, xts) => box [string x,
+                                         space,
+                                         string ":",
+                                         space,
+                                         string "{",
+                                         p_list (fn (x, t) => box [string x, space, string ":", space, p_typ env t]) xts,
+                                         string "}"]) tables,
+             string "] [",
+             p_typ env state,
+             string "] [",
+             string (Int.toString rnum),
+             string "]",
+             space,
+             p_exp env query,
+             space,
+             string "initial",
+             space,
+             p_exp env initial,
+             space,
+             string "in",
+             space,
+             p_exp (E.pushERel (E.pushERel env "r" dummyt) "acc" dummyt) body]
 
 and p_exp env = p_exp' false env
 
