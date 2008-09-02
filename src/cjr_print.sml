@@ -533,7 +533,10 @@ fun p_exp' par env (e, loc) =
                                     newline,
                                     p_typ env t,
                                     space,
-                                    p_rel env 0,
+                                    string "__lwr_",
+                                    string x,
+                                    string "_",
+                                    string (Int.toString (E.countERels env)),
                                     space,
                                     string "=",
                                     space,
@@ -546,31 +549,7 @@ fun p_exp' par env (e, loc) =
                                     string "})"]
 
       | EQuery {exps, tables, rnum, state, query, body, initial} =>
-        box [string "query[",
-             p_list (fn (x, t) => box [string x, space, string ":", space, p_typ env t]) exps,
-             string "] [",
-             p_list (fn (x, xts) => box [string x,
-                                         space,
-                                         string ":",
-                                         space,
-                                         string "{",
-                                         p_list (fn (x, t) => box [string x, space, string ":", space, p_typ env t]) xts,
-                                         string "}"]) tables,
-             string "] [",
-             p_typ env state,
-             string "] [",
-             string (Int.toString rnum),
-             string "]",
-             space,
-             p_exp env query,
-             space,
-             string "initial",
-             space,
-             p_exp env initial,
-             space,
-             string "in",
-             space,
-             p_exp (E.pushERel (E.pushERel env "r" dummyt) "acc" dummyt) body]
+        string "(lw_error(ctx, FATAL, \"I would have run a query.\"), NULL)"
 
 and p_exp env = p_exp' false env
 
@@ -709,9 +688,41 @@ fun p_decl env (dAll as (d, _) : decl) =
                  p_list_sep newline (p_fun env) vis,
                  newline]
         end
-      | DDatabase s => box [string "database",
-                            space,
-                            string s]
+      | DDatabase s => box [string "void lw_db_init(lw_context ctx) {",
+                            newline,
+                            string "PGconn *conn = PQconnectdb(\"",
+                            string (String.toString s),
+                            string "\");",
+                            newline,
+                            string "if (conn == NULL) lw_error(ctx, BOUNDED_RETRY, ",
+                            string "\"libpq can't allocate a connection.\");",
+                            newline,
+                            string "if (PQstatus(conn) != CONNECTION_OK) {",
+                            newline,
+                            box [string "char msg[1024];",
+                                 newline,
+                                 string "strncpy(msg, PQerrorMessage(conn), 1024);",
+                                 newline,
+                                 string "msg[1023] = 0;",
+                                 newline,
+                                 string "PQfinish(conn);",
+                                 newline,
+                                 string "lw_error(ctx, BOUNDED_RETRY, ",
+                                 string "\"Connection to Postgres server failed: %s\", msg);"],
+                            newline,
+                            string "}",
+                            newline,
+                            string "lw_set_db(ctx, conn);",
+                            newline,
+                            string "}",
+                            newline,
+                            newline,
+                            string "void lw_db_close(lw_context ctx) {",
+                            newline,
+                            string "PQfinish(lw_get_db(ctx));",
+                            newline,
+                            string "}",
+                            newline]
 
 datatype 'a search =
          Found of 'a
@@ -1172,7 +1183,9 @@ fun p_file env (ds, ps) =
                           string "(",
                           p_list_sep (box [string ",", space])
                                      (fn x => x)
-                                     (string "ctx" :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts),
+                                     (string "ctx"
+                                      :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts
+                                      @ [string "lw_unit_v"]),
                           inputsVar,
                           string ");",
                           newline,
@@ -1189,6 +1202,10 @@ fun p_file env (ds, ps) =
         box [string "#include <stdio.h>",
              newline,
              string "#include <stdlib.h>",
+             newline,
+             string "#include <string.h>",
+             newline,
+             string "#include <postgresql/libpq-fe.h>",
              newline,
              newline,
              string "#include \"urweb.h\"",

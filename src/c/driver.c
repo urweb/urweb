@@ -52,8 +52,37 @@ static pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 #define MAX_RETRIES 5
 
 static void *worker(void *data) {
-  int me = *(int *)data;
+  int me = *(int *)data, retries_left = MAX_RETRIES;;
   lw_context ctx = lw_init(1024, 1024);
+  
+  while (1) {
+    failure_kind fk = lw_begin_init(ctx);
+
+    if (fk == SUCCESS) {
+      lw_db_init(ctx);
+      printf("Database connection initialized.\n");
+      break;
+    } else if (fk == BOUNDED_RETRY) {
+      if (retries_left) {
+        printf("Initialization error triggers bounded retry: %s\n", lw_error_message(ctx));
+        --retries_left;
+      } else {
+        printf("Fatal initialization error (out of retries): %s\n", lw_error_message(ctx));
+        lw_free(ctx);
+        return NULL;
+      }
+    } else if (fk == UNLIMITED_RETRY)
+      printf("Initialization error triggers unlimited retry: %s\n", lw_error_message(ctx));
+    else if (fk == FATAL) {
+      printf("Fatal initialization error: %s\n", lw_error_message(ctx));
+      lw_free(ctx);
+      return NULL;
+    } else {
+      printf("Unknown lw_handle return code!\n");
+      lw_free(ctx);
+      return NULL;
+    }
+  }
 
   while (1) {
     char buf[lw_bufsize+1], *back = buf, *s;

@@ -417,7 +417,7 @@ val toCjrize = transform cjrize "cjrize" o toMono_opt2
 fun compileC {cname, oname, ename} =
     let
         val compile = "gcc -O3 -I include -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -pthread -O3 clib/urweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
+        val link = "gcc -O3 -pthread -lpq clib/urweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"

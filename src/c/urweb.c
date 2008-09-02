@@ -16,6 +16,8 @@ struct lw_context {
   char *heap, *heap_front, *heap_back;
   char **inputs;
 
+  void *db;
+
   jmp_buf jmp_buf;
 
   char error_message[ERROR_BUF_LEN];
@@ -34,9 +36,19 @@ lw_context lw_init(size_t page_len, size_t heap_len) {
 
   ctx->inputs = calloc(lw_inputs_len, sizeof(char *));
 
+  ctx->db = NULL;
+
   ctx->error_message[0] = 0;
 
   return ctx;
+}
+
+void lw_set_db(lw_context ctx, void *db) {
+  ctx->db = db;
+}
+
+void *lw_get_db(lw_context ctx) {
+  return ctx->db;
 }
 
 void lw_free(lw_context ctx) {
@@ -63,7 +75,17 @@ void lw_reset(lw_context ctx) {
   memset(ctx->inputs, 0, lw_inputs_len * sizeof(char *));
 }
 
+void lw_db_init(lw_context);
 void lw_handle(lw_context, char *);
+
+failure_kind lw_begin_init(lw_context ctx) {
+  int r = setjmp(ctx->jmp_buf);
+
+  if (r == 0)
+    lw_db_init(ctx);
+
+  return r;
+}
 
 failure_kind lw_begin(lw_context ctx, char *path) {
   int r = setjmp(ctx->jmp_buf);

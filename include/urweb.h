@@ -7,10 +7,14 @@ int lw_really_send(int sock, void *buf, ssize_t len);
 extern lw_unit lw_unit_v;
 
 lw_context lw_init(size_t page_len, size_t heap_len);
+void lw_set_db(lw_context, void*);
+void *lw_get_db(lw_context);
 void lw_free(lw_context);
 void lw_reset(lw_context);
 void lw_reset_keep_request(lw_context);
 void lw_reset_keep_error_message(lw_context);
+
+failure_kind lw_begin_init(lw_context);
 failure_kind lw_begin(lw_context, char *path);
 
 void lw_error(lw_context, failure_kind, const char *fmt, ...);
