@@ -33,5 +33,7 @@ signature CJR_PRINT = sig
     val p_decl : CjrEnv.env -> Cjr.decl Print.printer
     val p_file : CjrEnv.env -> Cjr.file Print.printer
 
+    val p_sql : CjrEnv.env -> Cjr.file Print.printer
+
     val debug : bool ref
 end

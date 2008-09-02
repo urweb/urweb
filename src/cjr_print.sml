@@ -1238,4 +1238,51 @@ fun p_file env (ds, ps) =
              newline]
     end
 
+fun p_sqltype env (tAll as (t, loc)) =
+    let
+        val s = case t of
+                    TFfi ("Basis", "int") => "int8"
+                  | TFfi ("Basis", "float") => "float8"
+                  | TFfi ("Basis", "string") => "text"
+                  | TFfi ("Basis", "bool") => "bool"
+                  | _ => (ErrorMsg.errorAt loc "Don't know SQL equivalent of type";
+                          Print.eprefaces' [("Type", p_typ env tAll)];
+                          "ERROR")
+    in
+        string s
+    end
+
+fun p_sql env (ds, _) =
+    let
+        val (pps, _) = ListUtil.foldlMap
+                       (fn (dAll as (d, _), env) =>
+                           let
+                               val pp = case d of
+                                            DTable (s, xts) =>
+                                            box [string "CREATE TABLE ",
+                                                 string s,
+                                                 string "(",
+                                                 p_list (fn (x, t) =>
+                                                            box [string "lw_",
+                                                                 string x,
+                                                                 space,
+                                                                 string ":",
+                                                                 space,
+                                                                 p_sqltype env t,
+                                                                 space,
+                                                                 string "NOT",
+                                                                 space,
+                                                                 string "NULL"]) xts,
+                                                 string ");",
+                                                 newline,
+                                                 newline]
+                                          | _ => box []
+                           in
+                               (pp, E.declBinds env dAll)
+                           end)
+                       env ds
+    in
+        box pps
+    end
+
 end

@@ -37,7 +37,10 @@ structure UrwebP = Join(structure ParserData = UrwebLrVals.ParserData
 
 type job = {
      database : string option,
-     sources : string list
+     sources : string list,
+     exe : string,
+     sql : string option,
+     debug : bool
 }
 
 type ('src, 'dst) phase = {
@@ -190,15 +193,25 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}    
 
-fun p_job {database, sources} =
+fun p_job {database, exe, sql, sources, debug} =
     let
         open Print.PD
         open Print
     in
-        box [case database of
+        box [if debug then
+                 box [string "DEBUG", newline]
+             else
+                 box [],
+             case database of
                  NONE => string "No database."
                | SOME db => string ("Database: " ^ db),
              newline,
+             string "Exe: ",
+             string exe,
+             newline,
+             case sql of
+                 NONE => string "No SQL file."
+               | SOME sql => string ("SQL fle: " ^ sql),
              string "Sources:",
              p_list string sources,
              newline]
@@ -218,6 +231,10 @@ val parseUrp = {
                   val dir = OS.Path.dir filename
                   val inf = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
 
+                  fun relify fname =
+                      OS.Path.concat (dir, fname)
+                      handle OS.Path.Path => fname
+
                   fun readSources acc =
                       case TextIO.inputLine inf of
                           NONE => rev acc
@@ -229,8 +246,7 @@ val parseUrp = {
                                             let
                                                 val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
                                                                                         (String.explode line))
-                                                val fname = OS.Path.concat (dir, fname)
-                                                            handle OS.Path.Path => fname
+                                                val fname = relify fname
                                             in
                                                 fname :: acc
                                             end
@@ -238,10 +254,18 @@ val parseUrp = {
                               readSources acc
                           end
 
-                  fun read database =
+                  fun finish (database, exe, sql, debug, sources) =
+                      {database = database,
+                       exe = Option.getOpt (exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
+                                                                      ext = SOME "exe"}),
+                       sql = sql,
+                       debug = debug,
+                       sources = sources}
+
+                  fun read (database, exe, sql, debug) =
                       case TextIO.inputLine inf of
-                          NONE => {database = database, sources = []}
-                        | SOME "\n" => {database = database, sources = readSources []}
+                          NONE => finish (database, exe, sql, debug, [])
+                        | SOME "\n" => finish (database, exe, sql, debug, readSources [])
                         | SOME line =>
                           let
                               val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
@@ -253,12 +277,23 @@ val parseUrp = {
                                   (case database of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
-                                   read (SOME arg))
+                                   read (SOME arg, exe, sql, debug))
+                                | "exe" =>
+                                  (case exe of
+                                       NONE => ()
+                                     | SOME _ => ErrorMsg.error "Duplicate 'exe' directive";
+                                   read (database, SOME (relify arg), sql, debug))
+                                | "sql" =>
+                                  (case sql of
+                                       NONE => ()
+                                     | SOME _ => ErrorMsg.error "Duplicate 'sql' directive";
+                                   read (database, exe, SOME (relify arg), debug))
+                                | "debug" => read (database, exe, sql, true)
                                 | _ => (ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
-                                        read database)
+                                        read (database, exe, sql, debug))
                           end
               in
-                  read NONE
+                  read (NONE, NONE, NONE, false)
                   before TextIO.closeIn inf
               end,
     print = p_job
@@ -270,7 +305,7 @@ fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
 val parse = {
-    func = fn {database, sources = fnames} =>
+    func = fn {database, sources = fnames, ...} : job =>
               let
                   fun nameOf fname = capitalize (OS.Path.file fname)
 
@@ -414,6 +449,13 @@ val cjrize = {
 
 val toCjrize = transform cjrize "cjrize" o toMono_opt2
 
+val sqlify = {
+    func = Cjrize.cjrize,
+    print = CjrPrint.p_sql CjrEnv.empty
+}
+
+val toSqlify = transform sqlify "sqlify" o toMono_opt2
+
 fun compileC {cname, oname, ename} =
     let
         val compile = "gcc -O3 -I include -c " ^ cname ^ " -o " ^ oname
@@ -432,17 +474,48 @@ fun compile job =
         NONE => print "Ur compilation failed\n"
       | SOME file =>
         let
-            val cname = "/tmp/urweb.c"
-            val oname = "/tmp/urweb.o"
-            val ename = "/tmp/webapp"
+            val job = valOf (run (transform parseUrp "parseUrp") job)
 
-            val outf = TextIO.openOut cname
-            val s = TextIOPP.openOut {dst = outf, wid = 80}
+            val (cname, oname, cleanup) =
+                if #debug job then
+                    ("/tmp/urweb.c", "/tmp/urweb.o", fn () => ())
+                else
+                    let
+                        val dir = OS.FileSys.tmpName ()
+                        val cname = OS.Path.joinDirFile {dir = dir, file = "urweb.c"}
+                        val oname = OS.Path.joinDirFile {dir = dir, file = "urweb.o"}
+                    in
+                        OS.FileSys.mkDir dir;
+                        (cname, oname,
+                         fn () => (OS.FileSys.remove cname;
+                                   OS.FileSys.remove oname;
+                                   OS.FileSys.rmDir dir))
+                    end
+            val ename = #exe job
         in
-            Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
-            TextIO.closeOut outf;
+            let
+                val outf = TextIO.openOut cname
+                val s = TextIOPP.openOut {dst = outf, wid = 80}
+            in
+                Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
+                TextIO.closeOut outf;
 
-            compileC {cname = cname, oname = oname, ename = ename}
+                case #sql job of
+                    NONE => ()
+                  | SOME sql =>
+                    let
+                        val outf = TextIO.openOut sql
+                        val s = TextIOPP.openOut {dst = outf, wid = 80}
+                    in
+                        Print.fprint s (CjrPrint.p_sql CjrEnv.empty file);
+                        TextIO.closeOut outf
+                    end;
+
+                compileC {cname = cname, oname = oname, ename = ename};
+                
+                cleanup ()
+            end
+            handle ex => (((cleanup ()) handle _ => ()); raise ex)
         end
 
 end

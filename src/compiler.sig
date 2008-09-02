@@ -31,7 +31,10 @@ signature COMPILER = sig
 
     type job = {
          database : string option,
-         sources : string list
+         sources : string list,
+         exe : string,
+         sql : string option,
+         debug : bool
     }
     val compile : string -> unit
     val compileC : {cname : string, oname : string, ename : string} -> unit
@@ -65,6 +68,7 @@ signature COMPILER = sig
     val mono_reduce : (Mono.file, Mono.file) phase
     val mono_shake : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
+    val sqlify : (Mono.file, Cjr.file) phase
 
     val toParseJob : (string, job) transform
     val toParse : (string, Source.file) transform
@@ -83,5 +87,6 @@ signature COMPILER = sig
     val toMono_shake : (string, Mono.file) transform
     val toMono_opt2 : (string, Mono.file) transform
     val toCjrize : (string, Cjr.file) transform
+    val toSqlify : (string, Cjr.file) transform
 
 end

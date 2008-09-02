@@ -1417,6 +1417,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
+                val s = "lw_" ^ s
                 val e = (L'.EPrim (Prim.String s), loc)
 
                 val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
