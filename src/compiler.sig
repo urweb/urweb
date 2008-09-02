@@ -29,15 +29,18 @@
 
 signature COMPILER = sig
 
-    type job = string list
-    val compile : job -> unit
+    type job = {
+         database : string option,
+         sources : string list
+    }
+    val compile : string -> unit
     val compileC : {cname : string, oname : string, ename : string} -> unit
 
     type ('src, 'dst) phase
     type ('src, 'dst) transform
 
     val transform : ('src, 'dst) phase -> string -> ('src, 'dst) transform
-    val o : ('a, 'b) transform * ('b, 'c) transform -> ('a, 'c) transform
+    val o : ('b, 'c) transform * ('a, 'b) transform -> ('a, 'c) transform
 
     val run : ('src, 'dst) transform -> 'src -> 'dst option
     val runPrint : ('src, 'dst) transform -> 'src -> unit
@@ -46,6 +49,7 @@ signature COMPILER = sig
 
     val parseUr : (string, Source.file) phase
     val parseUrs : (string, Source.sgn_item list) phase
+    val parseUrp : (string, job) phase
 
     val parse : (job, Source.file) phase
     val elaborate : (Source.file, Elab.file) phase
@@ -62,21 +66,22 @@ signature COMPILER = sig
     val mono_shake : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
 
-    val toParse : (job, Source.file) transform
-    val toElaborate : (job, Elab.file) transform
-    val toExplify : (job, Expl.file) transform
-    val toCorify : (job, Core.file) transform
-    val toShake1 : (job, Core.file) transform
-    val toTag : (job, Core.file) transform
-    val toReduce : (job, Core.file) transform
-    val toSpecialize : (job, Core.file) transform
-    val toShake2 : (job, Core.file) transform
-    val toMonoize : (job, Mono.file) transform
-    val toMono_opt1 : (job, Mono.file) transform
-    val toUntangle : (job, Mono.file) transform
-    val toMono_reduce : (job, Mono.file) transform
-    val toMono_shake : (job, Mono.file) transform
-    val toMono_opt2 : (job, Mono.file) transform
-    val toCjrize : (job, Cjr.file) transform
+    val toParseJob : (string, job) transform
+    val toParse : (string, Source.file) transform
+    val toElaborate : (string, Elab.file) transform
+    val toExplify : (string, Expl.file) transform
+    val toCorify : (string, Core.file) transform
+    val toShake1 : (string, Core.file) transform
+    val toTag : (string, Core.file) transform
+    val toReduce : (string, Core.file) transform
+    val toSpecialize : (string, Core.file) transform
+    val toShake2 : (string, Core.file) transform
+    val toMonoize : (string, Mono.file) transform
+    val toMono_opt1 : (string, Mono.file) transform
+    val toUntangle : (string, Mono.file) transform
+    val toMono_reduce : (string, Mono.file) transform
+    val toMono_shake : (string, Mono.file) transform
+    val toMono_opt2 : (string, Mono.file) transform
+    val toCjrize : (string, Cjr.file) transform
 
 end

@@ -35,7 +35,10 @@ structure UrwebP = Join(structure ParserData = UrwebLrVals.ParserData
                          structure Lex = Lex
                          structure LrParser = LrParser)
 
-type job = string list
+type job = {
+     database : string option,
+     sources : string list
+}
 
 type ('src, 'dst) phase = {
      func : 'src -> 'dst,
@@ -73,7 +76,7 @@ fun transform (ph : ('src, 'dst) phase) name = {
               end
 }
 
-fun op o (tr1 : ('a, 'b) transform, tr2 : ('b, 'c) transform) = {
+fun op o (tr2 : ('b, 'c) transform, tr1 : ('a, 'b) transform) = {
     func = fn input => case #func tr1 input of
                            NONE => NONE
                          | SOME v => #func tr2 v,
@@ -187,11 +190,86 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}    
 
+fun p_job {database, sources} =
+    let
+        open Print.PD
+        open Print
+    in
+        box [case database of
+                 NONE => string "No database."
+               | SOME db => string ("Database: " ^ db),
+             newline,
+             string "Sources:",
+             p_list string sources,
+             newline]
+    end
+
+fun trim s =
+    let
+        val (_, s) = Substring.splitl Char.isSpace s
+        val (s, _) = Substring.splitr Char.isSpace s
+    in
+        s
+    end
+
+val parseUrp = {
+    func = fn filename =>
+              let
+                  val dir = OS.Path.dir filename
+                  val inf = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
+
+                  fun readSources acc =
+                      case TextIO.inputLine inf of
+                          NONE => rev acc
+                        | SOME line =>
+                          let
+                              val acc = if CharVector.all Char.isSpace line then
+                                            acc
+                                        else
+                                            let
+                                                val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
+                                                                                        (String.explode line))
+                                                val fname = OS.Path.concat (dir, fname)
+                                            in
+                                                fname :: acc
+                                            end
+                          in
+                              readSources acc
+                          end
+
+                  fun read database =
+                      case TextIO.inputLine inf of
+                          NONE => {database = database, sources = []}
+                        | SOME "\n" => {database = database, sources = readSources []}
+                        | SOME line =>
+                          let
+                              val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
+                              val cmd = Substring.string (trim cmd)
+                              val arg = Substring.string (trim arg)
+                          in
+                              case cmd of
+                                  "database" =>
+                                  (case database of
+                                       NONE => ()
+                                     | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
+                                   read (SOME arg))
+                                | _ => (ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
+                                        read database)
+                          end
+              in
+                  read NONE
+                  before TextIO.closeIn inf
+              end,
+    print = p_job
+}
+
+val toParseJob = transform parseUrp "parseJob"
+
 fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
 val parse = {
-    func = fn fnames =>
+    func = fn {database, sources = fnames} =>
               let
                   fun nameOf fname = capitalize (OS.Path.file fname)
 
@@ -230,7 +308,7 @@ val parse = {
     print = SourcePrint.p_file
 }
 
-val toParse = transform parse "parse"
+val toParse = transform parse "parse" o toParseJob
 
 val elaborate = {
     func = fn file => let
@@ -241,95 +319,95 @@ val elaborate = {
     print = ElabPrint.p_file ElabEnv.empty
 }
 
-val toElaborate = toParse o transform elaborate "elaborate"
+val toElaborate = transform elaborate "elaborate" o toParse
 
 val explify = {
     func = Explify.explify,
     print = ExplPrint.p_file ExplEnv.empty
 }
 
-val toExplify = toElaborate o transform explify "explify"
+val toExplify = transform explify "explify" o toElaborate
 
 val corify = {
     func = Corify.corify,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toCorify = toExplify o transform corify "corify"
+val toCorify = transform corify "corify" o toExplify
 
 val shake = {
     func = Shake.shake,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toShake1 = toCorify o transform shake "shake1"
+val toShake1 = transform shake "shake1" o toCorify
 
 val tag = {
     func = Tag.tag,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toTag = toShake1 o transform tag "tag"
+val toTag = transform tag "tag" o toShake1
 
 val reduce = {
     func = Reduce.reduce,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toReduce = toTag o transform reduce "reduce"
+val toReduce = transform reduce "reduce" o toTag
 
 val specialize = {
     func = Specialize.specialize,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toSpecialize = toReduce o transform specialize "specialize"
+val toSpecialize = transform specialize "specialize" o toReduce
 
-val toShake2 = toSpecialize o transform shake "shake2"
+val toShake2 = transform shake "shake2" o toSpecialize
 
 val monoize = {
     func = Monoize.monoize CoreEnv.empty,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMonoize = toShake2 o transform monoize "monoize"
+val toMonoize = transform monoize "monoize" o toShake2
 
 val mono_opt = {
     func = MonoOpt.optimize,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMono_opt1 = toMonoize o transform mono_opt "mono_opt1"
+val toMono_opt1 = transform mono_opt "mono_opt1" o toMonoize
 
 val untangle = {
     func = Untangle.untangle,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toUntangle = toMono_opt1 o transform untangle "untangle"
+val toUntangle = transform untangle "untangle" o toMono_opt1
 
 val mono_reduce = {
     func = MonoReduce.reduce,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMono_reduce = toUntangle o transform mono_reduce "mono_reduce"
+val toMono_reduce = transform mono_reduce "mono_reduce" o toUntangle
 
 val mono_shake = {
     func = MonoShake.shake,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMono_shake = toMono_reduce o transform mono_shake "mono_shake1"
+val toMono_shake = transform mono_shake "mono_shake1" o toMono_reduce
 
-val toMono_opt2 = toMono_shake o transform mono_opt "mono_opt2"
+val toMono_opt2 = transform mono_opt "mono_opt2" o toMono_shake
 
 val cjrize = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toCjrize = toMono_opt2 o transform cjrize "cjrize"
+val toCjrize = transform cjrize "cjrize" o toMono_opt2
 
 fun compileC {cname, oname, ename} =
     let
