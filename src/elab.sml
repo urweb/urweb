@@ -152,6 +152,7 @@ datatype decl' =
        | DExport of int * sgn * str
        | DTable of int * string * int * con
        | DClass of string * int * con
+       | DDatabase of string
 
      and str' =
          StrConst of decl list

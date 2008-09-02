@@ -631,6 +631,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                 S.map2 (mfc ctx c,
                         fn c' =>
                            (DTable (x, n, c', s), loc))
+              | DDatabase _ => S.return2 dAll
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mfc ctx t,
@@ -719,6 +720,7 @@ fun mapfoldB (all as {bind, ...}) =
                                         in
                                             bind (ctx, NamedE (x, n, t, NONE, s))
                                         end
+                                      | DDatabase _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
                                      fn ds' =>
@@ -767,7 +769,8 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DVal (_, n, _, _, _) => Int.max (n, count)
                           | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
                           | DExport _ => count
-                          | DTable (_, n, _, _) => Int.max (n, count)) 0
+                          | DTable (_, n, _, _) => Int.max (n, count)
+                          | DDatabase _ => count) 0
               
 end
 

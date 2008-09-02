@@ -312,6 +312,10 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                                             string "(",
                                                                             p_typ env t,
                                                                             string ")"]) ts]
+
+      | DDatabase s => box [string "database",
+                            space,
+                            string s]
                           
 fun p_file env file =
     let

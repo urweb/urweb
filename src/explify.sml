@@ -164,6 +164,7 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DTable (nt, x, n, c) => SOME (L'.DTable (nt, x, n, explifyCon c), loc)
       | L.DClass (x, n, c) => SOME (L'.DCon (x, n,
                                              (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc), explifyCon c), loc)
+      | L.DDatabase s => SOME (L'.DDatabase s, loc)
 
 and explifyStr (str, loc) =
     case str of

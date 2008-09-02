@@ -2361,6 +2361,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DExport _ => []
       | L'.DTable (tn, x, n, c) => [(L'.SgiTable (tn, x, n, c), loc)]
       | L'.DClass (x, n, c) => [(L'.SgiClass (x, n, c), loc)]
+      | L'.DDatabase _ => []
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
@@ -3109,6 +3110,8 @@ fun elabDecl ((d, loc), (env, denv, gs : constraint list)) =
                     checkKind env c' ck k;
                     ([(L'.DClass (x, n, c'), loc)], (env, denv, []))
                 end
+
+              | L.DDatabase s => ([(L'.DDatabase s, loc)], (env, denv, []))
     in
         r
     end

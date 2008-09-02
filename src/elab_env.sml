@@ -1048,6 +1048,7 @@ fun declBinds env (d, loc) =
         in
             pushClass env n
         end
+      | DDatabase _ => env
 
 fun patBinds env (p, loc) =
     case p of

@@ -1423,6 +1423,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                       fm,
                       (L'.DVal (x, n, t', e, s), loc))
             end
+          | L.DDatabase s => SOME (env, fm, (L'.DDatabase s, loc))
     end
 
 fun monoize env ds =

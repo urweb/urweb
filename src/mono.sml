@@ -90,6 +90,7 @@ datatype decl' =
        | DVal of string * int * typ * exp * string
        | DValRec of (string * int * typ * exp * string) list
        | DExport of Core.export_kind * string * int * typ list
+       | DDatabase of string
 
 withtype decl = decl' located
 

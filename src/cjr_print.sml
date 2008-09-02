@@ -709,6 +709,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                  p_list_sep newline (p_fun env) vis,
                  newline]
         end
+      | DDatabase s => box [string "database",
+                            space,
+                            string s]
 
 datatype 'a search =
          Found of 'a

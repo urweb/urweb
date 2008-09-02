@@ -632,13 +632,16 @@ fun p_decl env (dAll as (d, _) : decl) =
                                     string ":",
                                     space,
                                     p_con env c]
-      | DClass ( x, n, c) => box [string "class",
-                                  space,
-                                  p_named x n,
-                                  space,
-                                  string "=",
-                                  space,
-                                  p_con env c]
+      | DClass (x, n, c) => box [string "class",
+                                 space,
+                                 p_named x n,
+                                 space,
+                                 string "=",
+                                 space,
+                                 p_con env c]
+      | DDatabase s => box [string "database",
+                            space,
+                            string s]
 
 and p_str env (str, _) =
     case str of

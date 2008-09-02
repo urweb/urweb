@@ -230,6 +230,7 @@ val parseUrp = {
                                                 val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
                                                                                         (String.explode line))
                                                 val fname = OS.Path.concat (dir, fname)
+                                                            handle OS.Path.Path => fname
                                             in
                                                 fname :: acc
                                             end
@@ -301,8 +302,12 @@ val parse = {
               in
                   let
                       val final = nameOf (List.last fnames)
+
+                      val ds = ds @ [(Source.DExport (Source.StrVar final, ErrorMsg.dummySpan), ErrorMsg.dummySpan)]
                   in
-                      ds @ [(Source.DExport (Source.StrVar final, ErrorMsg.dummySpan), ErrorMsg.dummySpan)]
+                      case database of
+                          NONE => ds
+                        | SOME s => (Source.DDatabase s, ErrorMsg.dummySpan) :: ds
                   end handle Empty => ds
               end,
     print = SourcePrint.p_file

@@ -423,6 +423,8 @@ fun cifyDecl ((d, loc), sm) =
             (NONE, SOME (ek, "/" ^ s, n, ts), sm)
         end
 
+      | L.DDatabase s => (SOME (L'.DDatabase s, loc), NONE, sm)
+
 fun cjrize ds =
     let
         val (dsF, ds, ps, sm) = foldl (fn (d, (dsF, ds, ps, sm)) =>

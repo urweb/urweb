@@ -550,6 +550,10 @@ fun p_decl ((d, _) : decl) =
                               space,
                               p_con c]
 
+      | DDatabase s => box [string "database",
+                            space,
+                            string s]
+
 and p_str (str, _) =
     case str of
         StrConst ds => box [string "struct",

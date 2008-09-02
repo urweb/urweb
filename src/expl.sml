@@ -130,6 +130,7 @@ datatype decl' =
        | DFfiStr of string * int * sgn
        | DExport of int * sgn * str
        | DTable of int * string * int * con
+       | DDatabase of string
 
      and str' =
          StrConst of decl list
