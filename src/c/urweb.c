@@ -575,3 +575,17 @@ lw_Basis_string lw_Basis_strcat(lw_context ctx, lw_Basis_string s1, lw_Basis_str
 
   return s;
 }
+
+lw_Basis_string lw_Basis_strdup(lw_context ctx, lw_Basis_string s1) {
+  int len = strlen(s1) + 1;
+  char *s;
+
+  lw_check_heap(ctx, len);
+
+  s = ctx->heap_front;
+
+  strcpy(s, s1);
+  ctx->heap_front += len;
+
+  return s;
+}

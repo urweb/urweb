@@ -321,6 +321,18 @@ fun patConInfo env pc =
          "lw_" ^ m ^ "_" ^ con,
          "lw_" ^ con)
 
+fun p_unsql env (tAll as (t, loc)) e =
+    case t of
+        TFfi ("Basis", "int") => box [string "*(lw_Basis_int *)", e]
+      | TFfi ("Basis", "float") => box [string "*(lw_Basis_float *)", e]
+      | TFfi ("Basis", "string") => box [string "lw_Basis_strdup(ctx, ", e, string ")"]
+      | TFfi ("Basis", "bool") => box [string "(*(int *)",
+                                       e,
+                                       string " ? lw_Basis_True : lw_Basis_False)"]
+      | _ => (ErrorMsg.errorAt loc "Don't know how to unmarshal type from SQL";
+              Print.eprefaces' [("Type", p_typ env tAll)];
+              string "ERROR")
+
 fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t_GCC p
@@ -549,86 +561,115 @@ fun p_exp' par env (e, loc) =
                                     string "})"]
 
       | EQuery {exps, tables, rnum, state, query, body, initial} =>
-        box [string "({",
-             newline,
-             string "PGconn *conn = lw_get_db(ctx);",
-             newline,
-             string "char *query = ",
-             p_exp env query,
-             string ";",
-             newline,
-             string "int n, i;",
-             newline,
-             p_typ env state,
-             space,
-             string "acc",
-             space,
-             string "=",
-             space,
-             p_exp env initial,
-             string ";",
-             newline,
-             string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 1);",
-             newline,
-             newline,
+        let
+            val exps = map (fn (x, t) => ("__lwf_" ^ x, t)) exps
+            val tables = ListUtil.mapConcat (fn (x, xts) =>
+                                                map (fn (x', t) => ("__lwf_" ^ x ^ ".__lwf_" ^ x', t)) xts)
+                                            tables
+                                                                                              
+            val outputs = exps @ tables
+        in
+            box [string "({",
+                 newline,
+                 string "PGconn *conn = lw_get_db(ctx);",
+                 newline,
+                 string "char *query = ",
+                 p_exp env query,
+                 string ";",
+                 newline,
+                 string "int n, i;",
+                 newline,
+                 p_typ env state,
+                 space,
+                 string "acc",
+                 space,
+                 string "=",
+                 space,
+                 p_exp env initial,
+                 string ";",
+                 newline,
+                 string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 1);",
+                 newline,
+                 newline,
 
-             string "if (res == NULL) lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-             newline,
-             newline,
+                 string "if (res == NULL) lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                 newline,
+                 newline,
 
-             string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-             newline,
-             box [string "PQclear(res);",
-                  newline,
-                  string "lw_error(ctx, FATAL, \"",
-                  string (ErrorMsg.spanToString loc),
-                  string ": Query failed:\\n%s\\n%s\", query, PQerrorMessage(conn));",
-                  newline],
-             string "}",
-             newline,
-             newline,
+                 string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+                 newline,
+                 box [string "PQclear(res);",
+                      newline,
+                      string "lw_error(ctx, FATAL, \"",
+                      string (ErrorMsg.spanToString loc),
+                      string ": Query failed:\\n%s\\n%s\", query, PQerrorMessage(conn));",
+                      newline],
+                 string "}",
+                 newline,
+                 newline,
 
-             string "n = PQntuples(res);",
-             newline,
-             string "for (i = 0; i < n; ++i) {",
-             newline,
-             box [string "struct",
-                  space,
-                  string "__lws_",
-                  string (Int.toString rnum),
-                  space,
-                  string "__lwr_r_",
-                  string (Int.toString (E.countERels env)),
-                  string ";",
-                  newline,
-                  p_typ env state,
-                  space,
-                  string "__lwr_acc_",
-                  string (Int.toString (E.countERels env + 1)),
-                  space,
-                  string "=",
-                  space,
-                  string "acc;",
-                  newline,
-                  newline,
-                  string "acc",
-                  space,
-                  string "=",
-                  space,
-                  p_exp (E.pushERel
-                             (E.pushERel env "r" (TRecord rnum, loc))
-                             "acc" state) 
-                        body,
-                  string ";",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "PQclear(res);",
-             newline,
-             string "acc;",
-             newline,
-             string "})"]
+                 string "n = PQntuples(res);",
+                 newline,
+                 string "for (i = 0; i < n; ++i) {",
+                 newline,
+                 box [string "struct",
+                      space,
+                      string "__lws_",
+                      string (Int.toString rnum),
+                      space,
+                      string "__lwr_r_",
+                      string (Int.toString (E.countERels env)),
+                      string ";",
+                      newline,
+                      p_typ env state,
+                      space,
+                      string "__lwr_acc_",
+                      string (Int.toString (E.countERels env + 1)),
+                      space,
+                      string "=",
+                      space,
+                      string "acc;",
+                      newline,
+                      newline,
+
+                      p_list_sepi (box []) (fn i =>
+                                            fn (proj, t) =>
+                                               box [string "__lwr_r_",
+                                                    string (Int.toString (E.countERels env)),
+                                                    string ".",
+                                                    string proj,
+                                                    space,
+                                                    string "=",
+                                                    space,
+                                                    p_unsql env t
+                                                            (box [string "PQgetvalue(res, i, ",
+                                                                  string (Int.toString i),
+                                                                  string ")"]),
+                                                    string ";",
+                                                    newline]) outputs,
+             
+                      newline,
+                      newline,
+
+                      string "acc",
+                      space,
+                      string "=",
+                      space,
+                      p_exp (E.pushERel
+                                 (E.pushERel env "r" (TRecord rnum, loc))
+                                 "acc" state) 
+                            body,
+                      string ";",
+                      newline],
+                 string "}",
+                 newline,
+                 newline,
+                 string "PQclear(res);",
+                 newline,
+                 string "acc;",
+                 newline,
+                 string "})"]
+        end
 
 and p_exp env = p_exp' false env
 
