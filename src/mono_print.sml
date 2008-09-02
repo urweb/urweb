@@ -313,6 +313,18 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                                             p_typ env t,
                                                                             string ")"]) ts]
 
+      | DTable (s, xts) => box [string "(* SQL table ",
+                                string s,
+                                space,
+                                string ":",
+                                space,
+                                p_list (fn (x, t) => box [string x,
+                                                          space,
+                                                          string ":",
+                                                          space,
+                                                          p_typ env t]) xts,
+                                space,
+                                string "*)"]
       | DDatabase s => box [string "database",
                             space,
                             string s]

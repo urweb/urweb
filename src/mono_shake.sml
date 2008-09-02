@@ -54,6 +54,7 @@ fun shake file =
                                    | ((DValRec vis, _), (cdef, edef)) =>
                                      (cdef, foldl (fn ((_, n, t, e, _), edef) => IM.insert (edef, n, (t, e))) edef vis)
                                    | ((DExport _, _), acc) => acc
+                                   | ((DTable _, _), acc) => acc
                                    | ((DDatabase _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
@@ -108,6 +109,7 @@ fun shake file =
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => true
+                      | (DTable _, _) => true
                       | (DDatabase _, _) => true) file
     end
 

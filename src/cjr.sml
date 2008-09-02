@@ -87,6 +87,8 @@ datatype decl' =
        | DVal of string * int * typ * exp
        | DFun of string * int * (string * typ) list * typ * exp
        | DFunRec of (string * int * (string * typ) list * typ * exp) list
+
+       | DTable of string * (string * typ) list
        | DDatabase of string
 
 withtype decl = decl' located

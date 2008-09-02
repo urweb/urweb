@@ -342,6 +342,7 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                 S.map2 (ListUtil.mapfold mft ts,
                         fn ts' =>
                            (DExport (ek, s, n, ts'), loc))
+              | DTable _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll
 
         and mfvi ctx (x, n, t, e, s) =
@@ -405,6 +406,7 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DValRec vis => foldl (fn ((x, n, t, e, s), ctx) =>
                                                                  bind (ctx, NamedE (x, n, t, NONE, s))) ctx vis
                                       | DExport _ => ctx
+                                      | DTable _ => ctx
                                       | DDatabase _ => ctx
                             in
                                 S.map2 (mff ctx' ds',

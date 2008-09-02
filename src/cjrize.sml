@@ -423,6 +423,17 @@ fun cifyDecl ((d, loc), sm) =
             (NONE, SOME (ek, "/" ^ s, n, ts), sm)
         end
 
+      | L.DTable (s, xts) =>
+        let
+            val (xts, sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
+                                                  let
+                                                      val (t, sm) = cifyTyp (t, sm)
+                                                  in
+                                                      ((x, t), sm)
+                                                  end) sm xts
+        in
+            (SOME (L'.DTable (s, xts), loc), NONE, sm)
+        end
       | L.DDatabase s => (SOME (L'.DDatabase s, loc), NONE, sm)
 
 fun cjrize ds =

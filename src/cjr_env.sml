@@ -162,6 +162,7 @@ fun declBinds env (d, loc) =
                   in
                       pushENamed env fx n t
                   end) env vis
+      | DTable _ => env
       | DDatabase _ => env
 
 

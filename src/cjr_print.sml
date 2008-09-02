@@ -688,7 +688,13 @@ fun p_decl env (dAll as (d, _) : decl) =
                  p_list_sep newline (p_fun env) vis,
                  newline]
         end
+      | DTable (x, _) => box [string "/* SQL table ",
+                              string x,
+                              string " */",
+                              newline]
       | DDatabase s => box [string "void lw_db_init(lw_context ctx) {",
+                            newline,
+                            string "PGresult *res;",
                             newline,
                             string "PGconn *conn = PQconnectdb(\"",
                             string (String.toString s),

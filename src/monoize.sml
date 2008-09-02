@@ -1372,7 +1372,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                 val env' = Env.declBinds env all
                 val d = (L'.DDatatype (x, n, map (fn (x, n, to) => (x, n, Option.map (monoType env') to)) xncs), loc)
             in
-                SOME (env', fm, d)
+                SOME (env', fm, [d])
             end
           | L.DDatatype _ => poly ()
           | L.DVal (x, n, t, e, s) =>
@@ -1381,7 +1381,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
-                      (L'.DVal (x, n, monoType env t, e, s), loc))
+                      [(L'.DVal (x, n, monoType env t, e, s), loc)])
             end
           | L.DValRec vis =>
             let
@@ -1398,7 +1398,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (env,
                       fm,
-                      (L'.DValRec vis, loc))
+                      [(L'.DValRec vis, loc)])
             end
           | L.DExport (ek, n) =>
             let
@@ -1411,19 +1411,23 @@ fun monoDecl (env, fm) (all as (d, loc)) =
 
                 val ts = map (monoType env) (unwind t)
             in
-                SOME (env, fm, (L'.DExport (ek, s, n, ts), loc))
+                SOME (env, fm, [(L'.DExport (ek, s, n, ts), loc)])
             end
-          | L.DTable (x, n, _, s) =>
+          | L.DTable (x, n, (L.CRecord (_, xts), _), s) =>
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
                 val e = (L'.EPrim (Prim.String s), loc)
+
+                val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
-                      (L'.DVal (x, n, t', e, s), loc))
+                      [(L'.DTable (s, xts), loc),
+                       (L'.DVal (x, n, t', e, s), loc)])
             end
-          | L.DDatabase s => SOME (env, fm, (L'.DDatabase s, loc))
+          | L.DTable _ => poly ()
+          | L.DDatabase s => SOME (env, fm, [(L'.DDatabase s, loc)])
     end
 
 fun monoize env ds =
@@ -1431,10 +1435,10 @@ fun monoize env ds =
         val (_, _, ds) = List.foldl (fn (d, (env, fm, ds)) =>
                                      case monoDecl (env, fm) d of
                                          NONE => (env, fm, ds)
-                                       | SOME (env, fm, d) =>
+                                       | SOME (env, fm, ds') =>
                                          (env,
                                           Fm.enter fm,
-                                          d :: Fm.decls fm @ ds))
+                                          ds' @ Fm.decls fm @ ds))
                                     (env, Fm.empty (CoreUtil.File.maxName ds + 1), []) ds
     in
         rev ds
