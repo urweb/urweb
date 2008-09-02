@@ -156,4 +156,11 @@ fun foldli f =
         m 0
     end
 
+fun foldri f i ls =
+    let
+        val len = length ls
+    in
+        foldli (fn (n, x, s) => f (len - n - 1, x, s)) i (rev ls)
+    end
+
 end

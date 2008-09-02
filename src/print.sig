@@ -42,6 +42,8 @@ signature PRINT = sig
     val p_list_sep : PD.pp_desc -> 'a printer -> 'a list printer
     val p_list : 'a printer -> 'a list printer
 
+    val p_list_sepi : PD.pp_desc -> (int -> 'a printer) -> 'a list printer
+
     val fprint : PD.PPS.stream -> PD.pp_desc -> unit
     val print : PD.pp_desc -> unit
     val eprint : PD.pp_desc -> unit

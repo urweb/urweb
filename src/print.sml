@@ -59,6 +59,19 @@ fun p_list_sep sep f ls =
         end
 fun p_list f = p_list_sep (box [PD.string ",", space]) f
 
+fun p_list_sepi sep f ls =
+    case ls of
+        [] => PD.string ""
+      | [x] => f 0 x
+      | x :: rest =>
+        let
+            val tokens = ListUtil.foldri (fn (n, x, tokens) =>
+                                             sep :: PD.cut :: f (n + 1) x :: tokens)
+                                         [] rest
+        in
+            box (f 0 x :: tokens)
+        end
+
 fun fprint f d = (PD.description (f, d);
                   PD.PPS.flushStream f)
 val print = fprint out

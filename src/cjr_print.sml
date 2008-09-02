@@ -692,9 +692,10 @@ fun p_decl env (dAll as (d, _) : decl) =
                               string x,
                               string " */",
                               newline]
-      | DDatabase s => box [string "void lw_db_init(lw_context ctx) {",
+      | DDatabase s => box [string "static void lw_db_validate(lw_context);",
                             newline,
-                            string "PGresult *res;",
+                            newline,
+                            string "void lw_db_init(lw_context ctx) {",
                             newline,
                             string "PGconn *conn = PQconnectdb(\"",
                             string (String.toString s),
@@ -720,6 +721,8 @@ fun p_decl env (dAll as (d, _) : decl) =
                             newline,
                             string "lw_set_db(ctx, conn);",
                             newline,
+                            string "lw_db_validate(ctx);",
+                            newline,
                             string "}",
                             newline,
                             newline,
@@ -735,6 +738,17 @@ datatype 'a search =
        | NotFound
        | Error
 
+fun p_sqltype' env (tAll as (t, loc)) =
+    case t of
+        TFfi ("Basis", "int") => "int8"
+      | TFfi ("Basis", "float") => "float8"
+      | TFfi ("Basis", "string") => "text"
+      | TFfi ("Basis", "bool") => "bool"
+      | _ => (ErrorMsg.errorAt loc "Don't know SQL equivalent of type";
+              Print.eprefaces' [("Type", p_typ env tAll)];
+              "ERROR")
+
+fun p_sqltype env t = string (p_sqltype' env t)
 
 fun p_file env (ds, ps) =
     let
@@ -1204,6 +1218,195 @@ fun p_file env (ds, ps) =
             end
 
         val pds' = map p_page ps
+
+        val tables = List.mapPartial (fn (DTable (s, xts), _) => SOME (s, xts)
+                                       | _ => NONE) ds
+
+        val validate =
+            box [string "static void lw_db_validate(lw_context ctx) {",
+                 newline,
+                 string "PGconn *conn = lw_get_db(ctx);",
+                 newline,
+                 string "PGresult *res;",
+                 newline,
+                 newline,
+                 p_list_sep newline
+                            (fn (s, xts) =>
+                                let
+                                    val q = "SELECT COUNT(*) FROM pg_class WHERE relname = '"
+                                            ^ s ^ "'"
+
+                                    val q' = String.concat ["SELECT COUNT(*) FROM pg_attribute WHERE attrelid = (SELECT oid FROM pg_class WHERE relname = '",
+                                                            s,
+                                                            "') AND (",
+                                                            String.concatWith " OR "
+                                                              (map (fn (x, t) =>
+                                                                       String.concat ["(attname = 'lw_",
+                                                                                      CharVector.map
+                                                                                          Char.toLower x,
+                                                                                      "' AND atttypid = (SELECT oid FROM pg_type",
+                                                                                      " WHERE typname = '",
+                                                                                      p_sqltype' env t,
+                                                                                      "'))"]) xts),
+                                                            ")"]
+
+                                    val q'' = String.concat ["SELECT COUNT(*) FROM pg_attribute WHERE attrelid = (SELECT oid FROM pg_class WHERE relname = '",
+                                                             s,
+                                                             "') AND attnum >= 0"]
+                                in
+                                    box [string "res = PQexec(conn, \"",
+                                         string q,
+                                         string "\");",
+                                         newline,
+                                         newline,
+                                         string "if (res == NULL) {",
+                                         newline,
+                                         box [string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+                                         newline,
+                                         box [string "char msg[1024];",
+                                              newline,
+                                              string "strncpy(msg, PQerrorMessage(conn), 1024);",
+                                              newline,
+                                              string "msg[1023] = 0;",
+                                              newline,
+                                              string "PQclear(res);",
+                                              newline,
+                                              string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Query failed:\\n",
+                                              string q,
+                                              string "\\n%s\", msg);",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "if (strcmp(PQgetvalue(res, 0, 0), \"1\")) {",
+                                         newline,
+                                         box [string "PQclear(res);",
+                                              newline,
+                                              string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Table '",
+                                              string s,
+                                              string "' does not exist.\");",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "PQclear(res);",
+                                         newline,
+
+                                         string "res = PQexec(conn, \"",
+                                         string q',
+                                         string "\");",
+                                         newline,
+                                         newline,
+                                         string "if (res == NULL) {",
+                                         newline,
+                                         box [string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+                                         newline,
+                                         box [string "char msg[1024];",
+                                              newline,
+                                              string "strncpy(msg, PQerrorMessage(conn), 1024);",
+                                              newline,
+                                              string "msg[1023] = 0;",
+                                              newline,
+                                              string "PQclear(res);",
+                                              newline,
+                                              string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Query failed:\\n",
+                                              string q',
+                                              string "\\n%s\", msg);",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "if (strcmp(PQgetvalue(res, 0, 0), \"",
+                                         string (Int.toString (length xts)),
+                                         string "\")) {",
+                                         newline,
+                                         box [string "PQclear(res);",
+                                              newline,
+                                              string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Table '",
+                                              string s,
+                                              string "' has the wrong column types.\");",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "PQclear(res);",
+                                         newline,
+                                         newline,
+
+                                         string "res = PQexec(conn, \"",
+                                         string q'',
+                                         string "\");",
+                                         newline,
+                                         newline,
+                                         string "if (res == NULL) {",
+                                         newline,
+                                         box [string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+                                         newline,
+                                         box [string "char msg[1024];",
+                                              newline,
+                                              string "strncpy(msg, PQerrorMessage(conn), 1024);",
+                                              newline,
+                                              string "msg[1023] = 0;",
+                                              newline,
+                                              string "PQclear(res);",
+                                              newline,
+                                              string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Query failed:\\n",
+                                              string q'',
+                                              string "\\n%s\", msg);",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "if (strcmp(PQgetvalue(res, 0, 0), \"",
+                                         string (Int.toString (length xts)),
+                                         string "\")) {",
+                                         newline,
+                                         box [string "PQclear(res);",
+                                              newline,
+                                              string "PQfinish(conn);",
+                                              newline,
+                                              string "lw_error(ctx, FATAL, \"Table '",
+                                              string s,
+                                              string "' has extra columns.\");",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "PQclear(res);",
+                                         newline]
+                                end) tables,
+                 string "}"]
     in
         box [string "#include <stdio.h>",
              newline,
@@ -1235,21 +1438,10 @@ fun p_file env (ds, ps) =
              p_list_sep newline (fn x => x) pds',
              newline,
              string "}",
+             newline,
+             newline,
+             validate,
              newline]
-    end
-
-fun p_sqltype env (tAll as (t, loc)) =
-    let
-        val s = case t of
-                    TFfi ("Basis", "int") => "int8"
-                  | TFfi ("Basis", "float") => "float8"
-                  | TFfi ("Basis", "string") => "text"
-                  | TFfi ("Basis", "bool") => "bool"
-                  | _ => (ErrorMsg.errorAt loc "Don't know SQL equivalent of type";
-                          Print.eprefaces' [("Type", p_typ env tAll)];
-                          "ERROR")
-    in
-        string s
     end
 
 fun p_sql env (ds, _) =
@@ -1264,9 +1456,7 @@ fun p_sql env (ds, _) =
                                                  string "(",
                                                  p_list (fn (x, t) =>
                                                             box [string "lw_",
-                                                                 string x,
-                                                                 space,
-                                                                 string ":",
+                                                                 string (CharVector.map Char.toLower x),
                                                                  space,
                                                                  p_sqltype env t,
                                                                  space,
