@@ -171,7 +171,7 @@ fun cifyPat ((p, loc), sm) =
             ((L'.PRecord xps, loc), sm)
         end
 
-fun cifyExp ((e, loc), sm) =
+fun cifyExp (eAll as (e, loc), sm) =
     case e of
         L.EPrim p => ((L'.EPrim p, loc), sm)
       | L.ERel n => ((L'.ERel n, loc), sm)
@@ -206,6 +206,7 @@ fun cifyExp ((e, loc), sm) =
             ((L'.EApp (e1, e2), loc), sm)
         end
       | L.EAbs _ => (ErrorMsg.errorAt loc "Anonymous function remains at code generation";
+                     Print.prefaces' [("Function", MonoPrint.p_exp MonoEnv.empty eAll)];
                      (dummye, sm))
 
       | L.ERecord xes =>

@@ -216,7 +216,9 @@ fun tag file =
                                                                                  ((EApp (app, (ERel n, loc)), loc),
                                                                                   n - 1))
                                                                              ((ENamed f, loc), length args - 1) args
+                                                        val app = (EApp (app, (ERecord [], loc)), loc)
                                                         val body = (EWrite app, loc)
+                                                        val t = (TFun (unit, unit), loc)
                                                         val (abs, _, t) = foldr (fn (t, (abs, n, rest)) =>
                                                                                     ((EAbs ("x" ^ Int.toString n,
                                                                                             t,
@@ -224,7 +226,7 @@ fun tag file =
                                                                                             abs), loc),
                                                                                      n + 1,
                                                                                      (TFun (t, rest), loc)))
-                                                                                (body, 0, unit) args
+                                                                                (body, 0, t) args
                                                     in
                                                         (abs, t)
                                                     end

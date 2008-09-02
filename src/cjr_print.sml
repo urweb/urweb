@@ -881,7 +881,7 @@ fun p_file env (ds, ps) =
                                case ek of
                                    Core.Link => fields
                                  | Core.Action =>
-                                   case List.last ts of
+                                   case List.nth (ts, length ts - 2) of
                                        (TRecord i, _) =>
                                        let
                                            val xts = E.lookupStruct env i
@@ -1222,12 +1222,12 @@ fun p_file env (ds, ps) =
                     case ek of
                         Core.Link => (ts, string "", string "")
                       | Core.Action =>
-                        case List.last ts of
+                        case List.nth (ts, length ts - 2) of
                             (TRecord i, _) =>
                             let
                                 val xts = E.lookupStruct env i
                             in
-                                (List.drop (ts, 1),
+                                (List.take (ts, length ts - 2),
                                  box [box (map (fn (x, t) => box [p_typ env t,
                                                                   space,
                                                                   string "lw_input_",
@@ -1324,10 +1324,9 @@ fun p_file env (ds, ps) =
                           p_list_sep (box [string ",", space])
                                      (fn x => x)
                                      (string "ctx"
-                                      :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts
-                                      @ [string "lw_unit_v"]),
+                                      :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts),
                           inputsVar,
-                          string ");",
+                          string ", lw_unit_v);",
                           newline,
                           string "return;",
                           newline,

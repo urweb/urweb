@@ -589,3 +589,41 @@ lw_Basis_string lw_Basis_strdup(lw_context ctx, lw_Basis_string s1) {
 
   return s;
 }
+
+
+lw_Basis_string lw_Basis_sqlifyString(lw_context ctx, lw_Basis_string s) {
+  char *r, *s2;
+
+  lw_check_heap(ctx, strlen(s) * 2 + 4);
+
+  r = s2 = ctx->heap_front;
+  *s2++ = 'E';
+  *s2++ = '\'';
+
+  for (; *s; s++) {
+    char c = *s;
+
+    switch (c) {
+    case '\'':
+      strcpy(s2, "\\'");
+      s2 += 2;
+      break;
+    case '\\':
+      strcpy(s2, "\\\\");
+      s2 += 2;
+      break;
+    default:
+      if (isprint(c))
+        *s2++ = c;
+      else {
+        sprintf(s2, "\\%3o", c);
+        s2 += 4;
+      }
+    }
+  }
+
+  *s2++ = '\'';
+  *s2++ = 0;
+  ctx->heap_front = s2;
+  return r;
+}

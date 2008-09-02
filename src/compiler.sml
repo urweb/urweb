@@ -93,15 +93,17 @@ fun op o (tr2 : ('b, 'c) transform, tr1 : ('a, 'b) transform) = {
               end
 }
 
-fun run (tr : ('src, 'dst) transform) = #func tr
+fun run (tr : ('src, 'dst) transform) x = (ErrorMsg.resetErrors ();
+                                           #func tr x)
 
 fun runPrint (tr : ('src, 'dst) transform) input =
-    case #func tr input of
-        NONE => print "Failure\n"
-      | SOME v =>
-        (print "Success\n";
-         Print.print (#print tr v);
-         print "\n")
+    (ErrorMsg.resetErrors ();
+     case #func tr input of
+         NONE => print "Failure\n"
+       | SOME v =>
+         (print "Success\n";
+          Print.print (#print tr v);
+          print "\n"))
 
 fun time (tr : ('src, 'dst) transform) input =
     let

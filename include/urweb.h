@@ -59,3 +59,5 @@ lw_Basis_bool lw_Basis_unurlifyBool(lw_context, char **);
 
 lw_Basis_string lw_Basis_strcat(lw_context, lw_Basis_string, lw_Basis_string);
 lw_Basis_string lw_Basis_strdup(lw_context, lw_Basis_string);
+
+lw_Basis_string lw_Basis_sqlifyString(lw_context, lw_Basis_string);

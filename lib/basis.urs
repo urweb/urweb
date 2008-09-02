@@ -230,7 +230,7 @@ val font : bodyTag [Size = int, Face = string]
 val h1 : bodyTag []
 val li : bodyTag []
 
-val a : bodyTag [Link = page]
+val a : bodyTag [Link = transaction page]
 
 val lform : ctx ::: {Unit} -> [Body] ~ ctx -> bind ::: {Type}
         -> xml lform [] bind
@@ -255,4 +255,4 @@ val loption : unit -> tag [Value = string] select [] [] []
 
 val submit : ctx ::: {Unit} -> [LForm] ~ ctx
         -> use ::: {Type} -> unit
-        -> tag [Action = $use -> page] ([LForm] ++ ctx) ([LForm] ++ ctx) use []
+        -> tag [Action = $use -> transaction page] ([LForm] ++ ctx) ([LForm] ++ ctx) use []

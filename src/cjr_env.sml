@@ -48,7 +48,7 @@ type env = {
      structs : (string * typ) list IM.map
 }
 
-val empty = {
+val empty : env = {
     datatypes = IM.empty,
     constructors = IM.empty,
 
@@ -56,7 +56,7 @@ val empty = {
     relE = [],
     namedE = IM.empty,
 
-    structs = IM.empty
+    structs = IM.insert (IM.empty, 0, [])
 }
 
 fun pushDatatype (env : env) x n xncs =

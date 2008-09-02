@@ -97,6 +97,12 @@ fun match (env, p : pat, e : exp) =
         (PWild, _) => Yes env
       | (PVar (x, t), _) => Yes (E.pushERel env x t (SOME e))
 
+      | (PPrim (Prim.String s), EStrcat ((EPrim (Prim.String s'), _), _)) =>
+        if String.isPrefix s' s then
+            Maybe
+        else
+            No
+
       | (PPrim p, EPrim p') =>
         if Prim.equal (p, p') then
             Yes env

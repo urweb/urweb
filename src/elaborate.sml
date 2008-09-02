@@ -1482,11 +1482,9 @@ fun normClassConstraint envs (c, loc) =
 
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
-        
-    in
-        (*eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)];*)
+        (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)];*)
 
-        case e of
+        val r = case e of
             L.EAnnot (e, t) =>
             let
                 val (e', et, gs1) = elabExp (env, denv) e
@@ -1756,6 +1754,12 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 
                 ((L'.ECase (e', pes', {disc = et, result = result}), loc), result, enD gs' @ gs)
             end
+
+        (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 r)*)
+    in
+        (*prefaces "elabExp" [("e", SourcePrint.p_exp eAll),
+                            ("|tcs|", PD.string (Int.toString (length tcs)))];*)
+        r
     end
             
 
@@ -2731,7 +2735,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
       | _ => sgnError env (SgnWrongForm (sgn1, sgn2))
 
 
-fun elabDecl ((d, loc), (env, denv, gs : constraint list)) =
+fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
     let
         (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
 
@@ -2873,7 +2877,7 @@ fun elabDecl ((d, loc), (env, denv, gs : constraint list)) =
                                                                      | SOME c => elabCon (env, denv) c
                                             in
                                                 ((x, c', e), enD gs1 @ gs)
-                                            end) [] vis
+                                            end) gs vis
 
                     val (vis, env) = ListUtil.foldlMap (fn ((x, c', e), env) =>
                                                            let
@@ -3103,16 +3107,21 @@ fun elabDecl ((d, loc), (env, denv, gs : constraint list)) =
               | L.DClass (x, c) =>
                 let
                     val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
-                    val (c', ck, gs) = elabCon (env, denv) c
+                    val (c', ck, gs') = elabCon (env, denv) c
                     val (env, n) = E.pushCNamed env x k (SOME c')
                     val env = E.pushClass env n
                 in
                     checkKind env c' ck k;
-                    ([(L'.DClass (x, n, c'), loc)], (env, denv, []))
+                    ([(L'.DClass (x, n, c'), loc)], (env, denv, enD gs' @ gs))
                 end
 
-              | L.DDatabase s => ([(L'.DDatabase s, loc)], (env, denv, []))
+              | L.DDatabase s => ([(L'.DDatabase s, loc)], (env, denv, gs))
+
+        (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
     in
+        (*prefaces "elabDecl" [("e", SourcePrint.p_decl dAll),
+                            ("|tcs|", PD.string (Int.toString (length tcs)))];*)
+
         r
     end
 
