@@ -1,5 +1,5 @@
-typedef int lw_Basis_int;
-typedef float lw_Basis_float;
+typedef long long lw_Basis_int;
+typedef double lw_Basis_float;
 typedef char* lw_Basis_string;
 
 struct __lws_0 {

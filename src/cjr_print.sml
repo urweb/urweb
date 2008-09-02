@@ -157,7 +157,7 @@ fun p_pat (env, exit, depth) (p, _) =
               space,
               string "!=",
               space,
-              Prim.p_t (Prim.Int n),
+              Prim.p_t_GCC (Prim.Int n),
               string ")",
               space,
               exit],
@@ -169,7 +169,7 @@ fun p_pat (env, exit, depth) (p, _) =
               string (Int.toString depth),
               string ",",
               space,
-              Prim.p_t (Prim.String s),
+              Prim.p_t_GCC (Prim.String s),
               string "))",
               space,
               exit],
@@ -323,7 +323,7 @@ fun patConInfo env pc =
 
 fun p_exp' par env (e, loc) =
     case e of
-        EPrim p => Prim.p_t p
+        EPrim p => Prim.p_t_GCC p
       | ERel n => p_rel env n
       | ENamed n => p_enamed env n
       | ECon (Enum, pc, _) => p_patCon env pc

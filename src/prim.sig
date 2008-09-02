@@ -33,6 +33,7 @@ signature PRIM = sig
            | String of string
 
     val p_t : t Print.printer
+    val p_t_GCC : t Print.printer
 
     val equal : t * t -> bool
 

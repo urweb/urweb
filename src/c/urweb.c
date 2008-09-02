@@ -233,7 +233,7 @@ char *lw_Basis_attrifyInt(lw_context ctx, lw_Basis_int n) {
   int len;
   lw_check_heap(ctx, INTS_MAX);
   result = ctx->heap_front;
-  sprintf(result, "%d%n", n, &len);
+  sprintf(result, "%lld%n", n, &len);
   ctx->heap_front += len+1;
   return result;
 }
@@ -282,7 +282,7 @@ char *lw_Basis_attrifyString(lw_context ctx, lw_Basis_string s) {
 static void lw_Basis_attrifyInt_w_unsafe(lw_context ctx, lw_Basis_int n) {
   int len;
 
-  sprintf(ctx->page_front, "%d%n", n, &len);
+  sprintf(ctx->page_front, "%lld%n", n, &len);
   ctx->page_front += len;
 }
 
@@ -326,7 +326,7 @@ char *lw_Basis_urlifyInt(lw_context ctx, lw_Basis_int n) {
 
   lw_check_heap(ctx, INTS_MAX);
   r = ctx->heap_front;
-  sprintf(r, "%d%n", n, &len);
+  sprintf(r, "%lld%n", n, &len);
   ctx->heap_front += len+1;
   return r;
 }
@@ -375,7 +375,7 @@ char *lw_Basis_urlifyBool(lw_context ctx, lw_Basis_bool b) {
 static void lw_Basis_urlifyInt_w_unsafe(lw_context ctx, lw_Basis_int n) {
   int len;
 
-  sprintf(ctx->page_front, "%d%n", n, &len);
+  sprintf(ctx->page_front, "%lld%n", n, &len);
   ctx->page_front += len;
 }
 
@@ -430,16 +430,16 @@ static char *lw_unurlify_advance(char *s) {
 
 lw_Basis_int lw_Basis_unurlifyInt(lw_context ctx, char **s) {
   char *new_s = lw_unurlify_advance(*s);
-  int r;
+  lw_Basis_int r;
 
-  r = atoi(*s);
+  r = atoll(*s);
   *s = new_s;
   return r;
 }
 
 lw_Basis_float lw_Basis_unurlifyFloat(lw_context ctx, char **s) {
   char *new_s = lw_unurlify_advance(*s);
-  int r;
+  lw_Basis_float r;
 
   r = atof(*s);
   *s = new_s;
