@@ -7,7 +7,7 @@ val q3 = (SELECT * FROM t1 WHERE FALSE)
 val q4 = (SELECT * FROM t1 WHERE {True})
 val q5 = (SELECT * FROM t1 WHERE {1} = {1})
 val q6 = (SELECT * FROM t1 WHERE {"Hi"} < {"Bye"})
-val q7 = (SELECT * FROM t1 WHERE {1} <> {1} AND NOT ({"Hi"} >= {"Bye"}))
+val q7 = (SELECT * FROM t1 WHERE {1} = {1} AND NOT ({"Hi"} <= {"Bye"}))
 val q8 = (SELECT * FROM t1 WHERE t1.A = 1 OR t1.C < 3.0)
 
 datatype list a = Nil | Cons of a * list a

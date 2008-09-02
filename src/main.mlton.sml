@@ -43,8 +43,13 @@ fun doArgs (args, (timing, sources)) =
 
 val (timing, sources) = doArgs (CommandLine.arguments (), (false, []))
 
+val job =
+    case sources of
+        [file] => file
+      | _ => raise Fail "Multiple job files specified"
+
 val () =
     if timing then
-        Compiler.time Compiler.toCjrize sources
+        Compiler.time Compiler.toCjrize job
     else
-        Compiler.compile sources
+        Compiler.compile job
