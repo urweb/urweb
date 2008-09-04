@@ -591,10 +591,33 @@ lw_Basis_string lw_Basis_strdup(lw_context ctx, lw_Basis_string s1) {
 }
 
 
+char *lw_Basis_sqlifyInt(lw_context ctx, lw_Basis_int n) {
+  int len;
+  char *r;
+
+  lw_check_heap(ctx, INTS_MAX + 6);
+  r = ctx->heap_front;
+  sprintf(r, "%lld::int8%n", n, &len);
+  ctx->heap_front += len+1;
+  return r;
+}
+
+char *lw_Basis_sqlifyFloat(lw_context ctx, lw_Basis_float n) {
+  int len;
+  char *r;
+
+  lw_check_heap(ctx, FLOATS_MAX + 8);
+  r = ctx->heap_front;
+  sprintf(r, "%g::float8%n", n, &len);
+  ctx->heap_front += len+1;
+  return r;
+}
+
+
 lw_Basis_string lw_Basis_sqlifyString(lw_context ctx, lw_Basis_string s) {
   char *r, *s2;
 
-  lw_check_heap(ctx, strlen(s) * 2 + 4);
+  lw_check_heap(ctx, strlen(s) * 2 + 10);
 
   r = s2 = ctx->heap_front;
   *s2++ = 'E';
@@ -622,8 +645,14 @@ lw_Basis_string lw_Basis_sqlifyString(lw_context ctx, lw_Basis_string s) {
     }
   }
 
-  *s2++ = '\'';
-  *s2++ = 0;
-  ctx->heap_front = s2;
+  strcpy(s2, "'::text");
+  ctx->heap_front = s2 + 8;
   return r;
+}
+
+char *lw_Basis_sqlifyBool(lw_context ctx, lw_Basis_bool b) {
+  if (b == lw_Basis_False)
+    return "FALSE";
+  else
+    return "TRUE";
 }
