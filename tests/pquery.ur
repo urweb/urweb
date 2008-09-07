@@ -17,16 +17,16 @@ fun display (q : sql_query [T1 = [A = int, B = string, C = float, D = bool]] [])
         </body></html>
 
 fun lookupA (inp : {A : string}) =
-        display (SELECT * FROM t1 WHERE t1.A = {readError _ inp.A : int})
+        display (SELECT * FROM t1 WHERE t1.A = {readError _ inp.A})
 
 fun lookupB (inp : {B : string}) =
         display (SELECT * FROM t1 WHERE t1.B = {inp.B})
 
 fun lookupC (inp : {C : string}) =
-        display (SELECT * FROM t1 WHERE t1.C = {readError _ inp.C : float})
+        display (SELECT * FROM t1 WHERE t1.C = {readError _ inp.C})
 
 fun lookupD (inp : {D : string}) =
-        display (SELECT * FROM t1 WHERE t1.D = {readError _ inp.D : bool})
+        display (SELECT * FROM t1 WHERE t1.D = {readError _ inp.D})
 
 fun main () : transaction page = return <html><body>
         <lform>
