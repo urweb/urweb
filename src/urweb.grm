@@ -150,6 +150,8 @@ fun native_op (oper, e1, e2, loc) =
         (EApp (e, e2), loc)
     end
 
+val inDml = ref false
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -284,6 +286,8 @@ fun native_op (oper, e1, e2, loc) =
  | fields of con list
  | sqlexps of exp list
  | fsets of (con * exp) list
+ | enterDml of unit
+ | leaveDml of unit
 
 
 %verbose                                (* print summary of errors *)
@@ -748,7 +752,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                  ();
                                              (EApp (e, (ERecord (ListPair.zip (fields, sqlexps)), loc)), loc)
                                          end)
-       | LPAREN UPDATE texp SET fsets CWHERE sqlexp RPAREN
+       | LPAREN enterDml UPDATE texp SET fsets CWHERE sqlexp leaveDml RPAREN
                                         (let
                                              val loc = s (LPARENleft, RPARENright)
 
@@ -758,7 +762,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                          in
                                              (EApp (e, sqlexp), loc)
                                          end)
-       | LPAREN DELETE FROM texp CWHERE sqlexp RPAREN
+       | LPAREN enterDml DELETE FROM texp CWHERE sqlexp leaveDml RPAREN
                                         (let
                                              val loc = s (LPARENleft, RPARENright)
 
@@ -769,6 +773,9 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                          end)
 
        | UNDER                          (EWild, s (UNDERleft, UNDERright))
+
+enterDml :                              (inDml := true)
+leaveDml :                              (inDml := false)
 
 texp   : SYMBOL                         (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright))
        | LBRACE LBRACE eexp RBRACE RBRACE (eexp)
@@ -1026,10 +1033,21 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
                                          end)
        | CSYMBOL                         (let
                                              val loc = s (CSYMBOLleft, CSYMBOLright)
-                                             val e = (EVar (["Basis"], "sql_exp"), loc)
-                                         in
-                                             (ECApp (e, (CName CSYMBOL, loc)), loc)
-                                         end)
+                                          in
+                                              if !inDml then
+                                                  let
+                                                      val e = (EVar (["Basis"], "sql_field"), loc)
+                                                      val e = (ECApp (e, (CName "T", loc)), loc)
+                                                  in
+                                                      (ECApp (e, (CName CSYMBOL, loc)), loc)
+                                                  end
+                                              else
+                                                  let
+                                                      val e = (EVar (["Basis"], "sql_exp"), loc)
+                                                  in
+                                                      (ECApp (e, (CName CSYMBOL, loc)), loc)
+                                                  end
+                                          end)
 
        | sqlexp EQ sqlexp               (sql_compare ("eq", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp NE sqlexp               (sql_compare ("ne", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
