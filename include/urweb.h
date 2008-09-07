@@ -77,3 +77,5 @@ char *lw_Basis_ensqlBool(lw_Basis_bool);
 lw_Basis_string lw_Basis_intToString(lw_context, lw_Basis_int);
 lw_Basis_string lw_Basis_floatToString(lw_context, lw_Basis_float);
 lw_Basis_string lw_Basis_boolToString(lw_context, lw_Basis_bool);
+
+lw_Basis_int *lw_Basis_stringToInt(lw_context, lw_Basis_string);

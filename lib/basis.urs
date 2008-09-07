@@ -6,7 +6,7 @@ type unit = {}
 
 datatype bool = False | True
 
-(*datatype option t = None | Some of t*)
+datatype option t = None | Some of t
 
 
 (** Basic type classes *)
@@ -23,16 +23,14 @@ val eq_bool : eq bool
 
 val strcat : string -> string -> string
 
-val intToString : int -> string
-val floatToString : float -> string
-val boolToString : bool -> string
-
 class show
 val show : t ::: Type -> show t -> t -> string
 val show_int : show int
 val show_float : show float
 val show_string : show string
 val show_bool : show bool
+
+val stringToInt : string -> option int
 
 
 (** SQL *)

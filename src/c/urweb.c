@@ -756,3 +756,16 @@ lw_Basis_string lw_Basis_boolToString(lw_context ctx, lw_Basis_bool b) {
   else
     return "True";
 }
+
+
+lw_Basis_int *lw_Basis_stringToInt(lw_context ctx, lw_Basis_string s) {
+  char *endptr;
+  lw_Basis_int n = strtoll(s, &endptr, 10);
+
+  if (*s != '\0' && *endptr == '\0') {
+    lw_Basis_int *r = lw_malloc(ctx, sizeof(lw_Basis_int));
+    *r = n;
+    return r;
+  } else
+    return NULL;
+}

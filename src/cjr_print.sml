@@ -90,6 +90,12 @@ fun p_typ' par env (t, loc) =
               string ("__lwd_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n ^ "*")]
          handle CjrEnv.UnboundNamed _ => string ("__lwd_UNBOUND__" ^ Int.toString n))
       | TFfi (m, x) => box [string "lw_", string m, string "_", string x]
+      | TOption t =>
+        (case #1 t of
+             TDatatype _ => p_typ' par env t
+           | TFfi ("Basis", "string") => p_typ' par env t
+           | _ => box [p_typ' par env t,
+                       string "*"])
 
 and p_typ env = p_typ' false env
 
@@ -127,6 +133,8 @@ fun p_pat_preamble env (p, _) =
                   in
                       (box [pp', pp], env)
                   end) (box [], env) xps
+      | PNone _ => (box [], env)
+      | PSome (_, p) => p_pat_preamble env p
 
 fun p_patCon env pc =
     case pc of
@@ -290,6 +298,65 @@ fun p_pat (env, exit, depth) (p, _) =
                                       end) env xps
         in
             (p_list_sep newline (fn x => x) xps,
+             env)
+        end
+
+      | PNone t =>
+        (box [string "if",
+              space,
+              string "(disc",
+              string (Int.toString depth),
+              space,
+              string "!=",
+              space,
+              string "NULL)",
+              space,
+              exit,
+              newline],
+         env)
+
+      | PSome (t, p) =>
+        let
+            val (p, env) =
+                let
+                    val (p, env) = p_pat (env, exit, depth + 1) p
+                in
+                    (box [string "{",
+                          newline,
+                          p_typ env t,
+                          space,
+                          string "disc",
+                          string (Int.toString (depth + 1)),
+                          space,
+                          string "=",
+                          space,
+                          case #1 t of
+                              TDatatype _ => box [string "disc",
+                                                  string (Int.toString depth)]
+                            | TFfi ("Basis", "string") => box [string "disc",
+                                                               string (Int.toString depth)]
+                            | _ => box [string "*disc",
+                                        string (Int.toString depth)],
+                          string ";",
+                          newline,
+                          p,
+                          newline,
+                          string "}"],
+                     env)
+                end
+        in
+            (box [string "if",
+                  space,
+                  string "(disc",
+                  string (Int.toString depth),
+                  space,
+                  string "==",
+                  space,
+                  string "NULL)",
+                  space,
+                  exit,
+                  newline,
+                  p],
              env)
         end
 

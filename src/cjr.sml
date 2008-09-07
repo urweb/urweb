@@ -36,6 +36,7 @@ datatype typ' =
        | TRecord of int
        | TDatatype of datatype_kind * int * (string * int * typ option) list ref
        | TFfi of string * string
+       | TOption of typ
 
 withtype typ = typ' located
 
@@ -49,6 +50,8 @@ datatype pat' =
        | PPrim of Prim.t
        | PCon of datatype_kind * patCon * pat option
        | PRecord of (string * pat * typ) list
+       | PNone of typ
+       | PSome of typ * pat
 
 withtype pat = pat' located
 

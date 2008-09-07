@@ -62,6 +62,11 @@ fun p_typ' par env (t, _) =
               string (#1 (E.lookupDatatype env n)))
          handle E.UnboundNamed _ => string ("UNBOUND_DATATYPE_" ^ Int.toString n))
       | TFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
+      | TOption t =>
+        (case #1 t of
+             TDatatype _ => p_typ env t
+           | TFfi ("Basis", "string") => p_typ env t
+           | _ => box [p_typ env t, string "*"])
 
 and p_typ env = p_typ' false env
 
@@ -95,8 +100,8 @@ fun p_pat' par env (p, _) =
       | PPrim p => Prim.p_t p
       | PCon (_, n, NONE) => p_patCon env n
       | PCon (_, n, SOME p) => parenIf par (box [p_patCon env n,
-                                              space,
-                                              p_pat' true env p])
+                                                 space,
+                                                 p_pat' true env p])
       | PRecord xps =>
         box [string "{",
              p_list_sep (box [string ",", space]) (fn (x, p, _) =>
@@ -106,6 +111,10 @@ fun p_pat' par env (p, _) =
                                                            space,
                                                            p_pat env p]) xps,
              string "}"]
+      | PNone _ => string "None"
+      | PSome (_, p) => box [string "Some",
+                             space,
+                             p_pat' true env p]
 
 and p_pat x = p_pat' false x
 

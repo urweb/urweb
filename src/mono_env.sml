@@ -118,5 +118,7 @@ fun patBinds env (p, loc) =
       | PCon (_, _, NONE) => env
       | PCon (_, _, SOME p) => patBinds env p
       | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
+      | PNone _ => env
+      | PSome (_, p) => patBinds env p
 
 end

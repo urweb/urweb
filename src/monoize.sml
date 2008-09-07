@@ -80,6 +80,9 @@ fun monoType env =
                     (L'.TRecord (map (fn (x, t) => (monoName env x, mt env dtmap t)) xcs), loc)
                   | L.TRecord _ => poly ()
 
+                  | L.CApp ((L.CFfi ("Basis", "option"), _), t) =>
+                    (L'.TOption (mt env dtmap t), loc)
+
                   | L.CApp ((L.CFfi ("Basis", "show"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
 
@@ -397,6 +400,8 @@ fun monoPat env (all as (p, loc)) =
           | L.PVar (x, t) => (L'.PVar (x, monoType env t), loc)
           | L.PPrim p => (L'.PPrim p, loc)
           | L.PCon (dk, pc, [], po) => (L'.PCon (dk, monoPatCon env pc, Option.map (monoPat env) po), loc)
+          | L.PCon (L.Option, _, [t], NONE) => (L'.PNone (monoType env t), loc)
+          | L.PCon (L.Option, _, [t], SOME p) => (L'.PSome (monoType env t, monoPat env p), loc)
           | L.PCon _ => poly ()
           | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, monoPat env p, monoType env t)) xps), loc)
     end

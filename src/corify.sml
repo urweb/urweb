@@ -607,6 +607,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                                    end) st xncs
 
             val nxs = length xs - 1
+            val cBase = c
             val c = ListUtil.foldli (fn (i, _, c) => (L'.CApp (c, (L'.CRel (nxs - i), loc)), loc)) c xs
             val k = (L'.KType, loc)
             val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
@@ -623,7 +624,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
                                   (L'.DVal (x, n, t, e, x), loc)
                               end) xncs
         in
-            ((L'.DCon (x, n, k', c), loc) :: cds, st)
+            ((L'.DCon (x, n, k', cBase), loc) :: cds, st)
         end
       | L.DVal (x, n, t, e) =>
         let

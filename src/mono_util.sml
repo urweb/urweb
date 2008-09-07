@@ -50,6 +50,7 @@ fun compare ((t1, _), (t2, _)) =
         end
       | (TDatatype (n1, _), TDatatype (n2, _)) => Int.compare (n1, n2)
       | (TFfi (m1, x1), TFfi (m2, x2)) => join (String.compare (m1, m2), fn () => String.compare (x1, x2))
+      | (TOption t1, TOption t2) => compare (t1, t2)
 
       | (TFun _, _) => LESS
       | (_, TFun _) => GREATER
@@ -59,6 +60,9 @@ fun compare ((t1, _), (t2, _)) =
 
       | (TDatatype _, _) => LESS
       | (_, TDatatype _) => GREATER
+
+      | (TFfi _, _) => LESS
+      | (_, TFfi _) => GREATER
 
 and compareFields ((x1, t1), (x2, t2)) =
     join (String.compare (x1, x2),
@@ -88,6 +92,10 @@ fun mapfold fc =
                      fn xts' => (TRecord xts', loc))
               | TDatatype _ => S.return2 cAll
               | TFfi _ => S.return2 cAll
+              | TOption t =>
+                S.map2 (mft t,
+                        fn t' =>
+                           (TOption t, loc))
     in
         mft
     end
@@ -186,6 +194,8 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                                                     | PCon (_, _, SOME p) => pb (p, ctx)
                                                                     | PRecord xps => foldl (fn ((_, p, _), ctx) =>
                                                                                                pb (p, ctx)) ctx xps
+                                                                    | PNone _ => ctx
+                                                                    | PSome (_, p) => pb (p, ctx)
                                                           in
                                                               S.map2 (mfe (pb (p, ctx)) e,
                                                                    fn e' => (p, e'))

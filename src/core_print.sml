@@ -306,18 +306,30 @@ fun p_exp' par env (e, _) =
                               p_con' true env c])
       | EFold _ => string "fold"
 
-      | ECase (e, pes, _) => parenIf par (box [string "case",
-                                               space,
-                                               p_exp env e,
-                                               space,
-                                               string "of",
-                                               space,
-                                               p_list_sep (box [space, string "|", space])
-                                                          (fn (p, e) => box [p_pat env p,
-                                                                             space,
-                                                                             string "=>",
-                                                                             space,
-                                                                             p_exp (E.patBinds env p) e]) pes])
+      | ECase (e, pes, {disc, result}) =>
+        parenIf par (box [string "case",
+                          space,
+                          p_exp env e,
+                          space,
+                          if !debug then
+                              box [string "in",
+                                   space,
+                                   p_con env disc,
+                                   space,
+                                   string "return",
+                                   space,
+                                   p_con env result,
+                                   space]
+                          else
+                              box [],
+                          string "of",
+                          space,
+                          p_list_sep (box [space, string "|", space])
+                                     (fn (p, e) => box [p_pat env p,
+                                                        space,
+                                                        string "=>",
+                                                        space,
+                                                        p_exp (E.patBinds env p) e]) pes])
 
       | EWrite e => box [string "write(",
                          p_exp env e,

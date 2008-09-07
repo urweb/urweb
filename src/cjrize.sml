@@ -111,6 +111,12 @@ fun cifyTyp x =
                          ((L'.TDatatype (dk, n, r), loc), sm)
                      end)
               | L.TFfi mx => ((L'.TFfi mx, loc), sm)
+              | L.TOption t =>
+                let
+                    val (t, sm) = cify dtmap (t, sm)
+                in
+                    ((L'.TOption t, loc), sm)
+                end
     in
         cify IM.empty x
     end
@@ -170,6 +176,20 @@ fun cifyPat ((p, loc), sm) =
         in
             ((L'.PRecord xps, loc), sm)
         end
+      | L.PNone t =>
+        let
+            val (t, sm) = cifyTyp (t, sm)
+        in
+            ((L'.PNone t, loc), sm)
+        end
+      | L.PSome (t, p) =>
+        let
+            val (t, sm) = cifyTyp (t, sm)
+            val (p, sm) = cifyPat (p, sm)
+        in
+            ((L'.PSome (t, p), loc), sm)
+        end
+
 
 fun cifyExp (eAll as (e, loc), sm) =
     case e of
