@@ -68,13 +68,13 @@ fun p_typ' par env (t, loc) =
                                            string ")"])
       | TRecord i => box [string "struct",
                           space,
-                          string "__lws_",
+                          string "__uws_",
                           string (Int.toString i)]
       | TDatatype (Enum, n, _) =>
         (box [string "enum",
               space,
-              string ("__lwe_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n)]
-         handle CjrEnv.UnboundNamed _ => string ("__lwd_UNBOUND__" ^ Int.toString n))
+              string ("__uwe_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n)]
+         handle CjrEnv.UnboundNamed _ => string ("__uwd_UNBOUND__" ^ Int.toString n))
       | TDatatype (Option, n, xncs) =>
         (case ListUtil.search #3 (!xncs) of
              NONE => raise Fail "CjrPrint: TDatatype marked Option has no constructor with an argument"
@@ -87,9 +87,9 @@ fun p_typ' par env (t, loc) =
       | TDatatype (Default, n, _) =>
         (box [string "struct",
               space,
-              string ("__lwd_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n ^ "*")]
-         handle CjrEnv.UnboundNamed _ => string ("__lwd_UNBOUND__" ^ Int.toString n))
-      | TFfi (m, x) => box [string "lw_", string m, string "_", string x]
+              string ("__uwd_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n ^ "*")]
+         handle CjrEnv.UnboundNamed _ => string ("__uwd_UNBOUND__" ^ Int.toString n))
+      | TFfi (m, x) => box [string "uw_", string m, string "_", string x]
       | TOption t =>
         (case #1 t of
              TDatatype _ => p_typ' par env t
@@ -99,16 +99,16 @@ fun p_typ' par env (t, loc) =
 
 and p_typ env = p_typ' false env
 
-fun p_rel env n = string ("__lwr_" ^ #1 (E.lookupERel env n) ^ "_" ^ Int.toString (E.countERels env - n - 1))
-    handle CjrEnv.UnboundRel _ => string ("__lwr_UNBOUND_" ^ Int.toString (E.countERels env - n - 1))
+fun p_rel env n = string ("__uwr_" ^ #1 (E.lookupERel env n) ^ "_" ^ Int.toString (E.countERels env - n - 1))
+    handle CjrEnv.UnboundRel _ => string ("__uwr_UNBOUND_" ^ Int.toString (E.countERels env - n - 1))
 
 fun p_enamed env n =
-    string ("__lwn_" ^ #1 (E.lookupENamed env n) ^ "_" ^ Int.toString n)
-    handle CjrEnv.UnboundNamed _ => string ("__lwn_UNBOUND_" ^ Int.toString n)
+    string ("__uwn_" ^ #1 (E.lookupENamed env n) ^ "_" ^ Int.toString n)
+    handle CjrEnv.UnboundNamed _ => string ("__uwn_UNBOUND_" ^ Int.toString n)
 
 fun p_con_named env n =
-    string ("__lwc_" ^ #1 (E.lookupConstructor env n) ^ "_" ^ Int.toString n)
-    handle CjrEnv.UnboundNamed _ => string ("__lwc_UNBOUND_" ^ Int.toString n)
+    string ("__uwc_" ^ #1 (E.lookupConstructor env n) ^ "_" ^ Int.toString n)
+    handle CjrEnv.UnboundNamed _ => string ("__uwc_UNBOUND_" ^ Int.toString n)
 
 fun p_pat_preamble env (p, _) =
     case p of
@@ -116,7 +116,7 @@ fun p_pat_preamble env (p, _) =
                   env)
       | PVar (x, t) => (box [p_typ env t,
                              space,
-                             string "__lwr_",
+                             string "__uwr_",
                              string x,
                              string "_",
                              string (Int.toString (E.countERels env)),
@@ -139,14 +139,14 @@ fun p_pat_preamble env (p, _) =
 fun p_patCon env pc =
     case pc of
         PConVar n => p_con_named env n
-      | PConFfi {mod = m, con, ...} => string ("lw_" ^ m ^ "_" ^ con)
+      | PConFfi {mod = m, con, ...} => string ("uw_" ^ m ^ "_" ^ con)
 
 fun p_pat (env, exit, depth) (p, _) =
     case p of
         PWild =>
         (box [], env)
       | PVar (x, t) =>
-        (box [string "__lwr_",
+        (box [string "__uwr_",
               string x,
               string "_",
               string (Int.toString (E.countERels env)),
@@ -198,10 +198,10 @@ fun p_pat (env, exit, depth) (p, _) =
                                           let
                                               val (x, to, _) = E.lookupConstructor env n
                                           in
-                                              ("lw_" ^ x, to)
+                                              ("uw_" ^ x, to)
                                           end
                                         | PConFfi {mod = m, con, arg, ...} =>
-                                          ("lw_" ^ m ^ "_" ^ con, arg)
+                                          ("uw_" ^ m ^ "_" ^ con, arg)
 
                         val t = case to of
                                     NONE => raise Fail "CjrPrint: Constructor mismatch"
@@ -286,7 +286,7 @@ fun p_pat (env, exit, depth) (p, _) =
                                                        space,
                                                        string "disc",
                                                        string (Int.toString depth),
-                                                       string ".__lwf_",
+                                                       string ".__uwf_",
                                                        string x,
                                                        string ";",
                                                        newline,
@@ -379,21 +379,21 @@ fun patConInfo env pc =
             val (x, _, dn) = E.lookupConstructor env n
             val (dx, _) = E.lookupDatatype env dn
         in
-            ("__lwd_" ^ dx ^ "_" ^ Int.toString dn,
-             "__lwc_" ^ x ^ "_" ^ Int.toString n,
-             "lw_" ^ x)
+            ("__uwd_" ^ dx ^ "_" ^ Int.toString dn,
+             "__uwc_" ^ x ^ "_" ^ Int.toString n,
+             "uw_" ^ x)
         end
       | PConFfi {mod = m, datatyp, con, ...} =>
-        ("lw_" ^ m ^ "_" ^ datatyp,
-         "lw_" ^ m ^ "_" ^ con,
-         "lw_" ^ con)
+        ("uw_" ^ m ^ "_" ^ datatyp,
+         "uw_" ^ m ^ "_" ^ con,
+         "uw_" ^ con)
 
 fun p_unsql env (tAll as (t, loc)) e =
     case t of
-        TFfi ("Basis", "int") => box [string "lw_Basis_stringToInt_error(ctx, ", e, string ")"]
-      | TFfi ("Basis", "float") => box [string "lw_Basis_stringToFloat_error(ctx, ", e, string ")"]
-      | TFfi ("Basis", "string") => box [string "lw_Basis_strdup(ctx, ", e, string ")"]
-      | TFfi ("Basis", "bool") => box [string "lw_Basis_stringToBool_error(ctx, ", e, string ")"]
+        TFfi ("Basis", "int") => box [string "uw_Basis_stringToInt_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "float") => box [string "uw_Basis_stringToFloat_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "string") => box [string "uw_Basis_strdup(ctx, ", e, string ")"]
+      | TFfi ("Basis", "bool") => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
       | _ => (ErrorMsg.errorAt loc "Don't know how to unmarshal type from SQL";
               Print.eprefaces' [("Type", p_typ env tAll)];
               string "ERROR")
@@ -406,10 +406,10 @@ datatype sql_type =
 
 fun p_sql_type t =
     string (case t of
-                Int => "lw_Basis_int"
-              | Float => "lw_Basis_float"
-              | String => "lw_Basis_string"
-              | Bool => "lw_Basis_bool")
+                Int => "uw_Basis_int"
+              | Float => "uw_Basis_float"
+              | String => "uw_Basis_string"
+              | Bool => "uw_Basis_bool")
 
 fun getPargs (e, _) =
     case e of
@@ -425,17 +425,17 @@ fun getPargs (e, _) =
 
 fun p_ensql t e =
     case t of
-        Int => box [string "lw_Basis_attrifyInt(ctx, ", e, string ")"]
-      | Float => box [string "lw_Basis_attrifyFloat(ctx, ", e, string ")"]
+        Int => box [string "uw_Basis_attrifyInt(ctx, ", e, string ")"]
+      | Float => box [string "uw_Basis_attrifyFloat(ctx, ", e, string ")"]
       | String => e
       | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
 
 fun p_ensql_len t e =
     case t of
-        Int => string "sizeof(lw_Basis_int)"
-      | Float => string "sizeof(lw_Basis_float)"
+        Int => string "sizeof(uw_Basis_int)"
+      | Float => string "sizeof(uw_Basis_float)"
       | String => box [string "strlen(", e, string ")"]
-      | Bool => string "sizeof(lw_Basis_bool)"
+      | Bool => string "sizeof(uw_Basis_bool)"
 
 fun p_exp' par env (e, loc) =
     case e of
@@ -465,7 +465,7 @@ fun p_exp' par env (e, loc) =
                           space,
                           string "=",
                           space,
-                          string "lw_malloc(ctx, sizeof(",
+                          string "uw_malloc(ctx, sizeof(",
                           p_typ env t,
                           string "));",
                           newline,
@@ -493,7 +493,7 @@ fun p_exp' par env (e, loc) =
                  space,
                  string "=",
                  space,
-                 string "lw_malloc(ctx, sizeof(struct ",
+                 string "uw_malloc(ctx, sizeof(struct ",
                  string xd,
                  string "));",
                  newline,
@@ -531,7 +531,7 @@ fun p_exp' par env (e, loc) =
                        space,
                        string "=",
                        space,
-                       string "lw_malloc(ctx, sizeof(",
+                       string "uw_malloc(ctx, sizeof(",
                        p_typ env t,
                        string "));",
                        newline,
@@ -545,7 +545,7 @@ fun p_exp' par env (e, loc) =
                        newline,
                        string "})"])
 
-      | EFfi (m, x) => box [string "lw_", string m, string "_", string x]
+      | EFfi (m, x) => box [string "uw_", string m, string "_", string x]
       | EError (e, t) =>
         box [string "({",
              newline,
@@ -553,7 +553,7 @@ fun p_exp' par env (e, loc) =
              space,
              string "tmp;",
              newline,
-             string "lw_error(ctx, FATAL, \"",
+             string "uw_error(ctx, FATAL, \"",
              string (ErrorMsg.spanToString loc),
              string ": %s\", ",
              p_exp env e,
@@ -562,7 +562,7 @@ fun p_exp' par env (e, loc) =
              string "tmp;",
              newline,
              string "})"]
-      | EFfiApp (m, x, es) => box [string "lw_",
+      | EFfiApp (m, x, es) => box [string "uw_",
                                    string m,
                                    string "_",
                                    string x,
@@ -589,7 +589,7 @@ fun p_exp' par env (e, loc) =
                                  space,
                                  string "struct",
                                  space,
-                                 string ("__lws_" ^ Int.toString i),
+                                 string ("__uws_" ^ Int.toString i),
                                  space,
                                  string "tmp",
                                  space,
@@ -605,7 +605,7 @@ fun p_exp' par env (e, loc) =
                                  string "})" ]
       | EField (e, x) =>
         box [p_exp' true env e,
-             string ".__lwf_",
+             string ".__uwf_",
              string x]
 
       | ECase (e, pes, {disc, result}) =>
@@ -665,7 +665,7 @@ fun p_exp' par env (e, loc) =
                  string "result;",
                  newline,
                  body,
-                 string "lw_error(ctx, FATAL, \"",
+                 string "uw_error(ctx, FATAL, \"",
                  string (ErrorMsg.spanToString loc),
                  string ": pattern match failure\");",
                  newline,
@@ -677,9 +677,9 @@ fun p_exp' par env (e, loc) =
                  string "})"]
         end
 
-      | EWrite e => box [string "(lw_write(ctx, ",
+      | EWrite e => box [string "(uw_write(ctx, ",
                          p_exp env e,
-                         string "), lw_unit_v)"]
+                         string "), uw_unit_v)"]
 
       | ESeq (e1, e2) => box [string "(",
                               p_exp env e1,
@@ -691,7 +691,7 @@ fun p_exp' par env (e, loc) =
                                     newline,
                                     p_typ env t,
                                     space,
-                                    string "__lwr_",
+                                    string "__uwr_",
                                     string x,
                                     string "_",
                                     string (Int.toString (E.countERels env)),
@@ -708,16 +708,16 @@ fun p_exp' par env (e, loc) =
 
       | EQuery {exps, tables, rnum, state, query, body, initial, prepared} =>
         let
-            val exps = map (fn (x, t) => ("__lwf_" ^ x, t)) exps
+            val exps = map (fn (x, t) => ("__uwf_" ^ x, t)) exps
             val tables = ListUtil.mapConcat (fn (x, xts) =>
-                                                map (fn (x', t) => ("__lwf_" ^ x ^ ".__lwf_" ^ x', t)) xts)
+                                                map (fn (x', t) => ("__uwf_" ^ x ^ ".__uwf_" ^ x', t)) xts)
                                             tables
                                                                                               
             val outputs = exps @ tables
         in
             box [string "({",
                  newline,
-                 string "PGconn *conn = lw_get_db(ctx);",
+                 string "PGconn *conn = uw_get_db(ctx);",
                  newline,
                  case prepared of
                      NONE => box [string "char *query = ",
@@ -766,7 +766,7 @@ fun p_exp' par env (e, loc) =
                  string "PGresult *res = ",
                  case prepared of
                      NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
-                   | SOME n => box [string "PQexecPrepared(conn, \"lw",
+                   | SOME n => box [string "PQexecPrepared(conn, \"uw",
                                     string (Int.toString n),
                                     string "\", ",
                                     string (Int.toString (length (getPargs query))),
@@ -774,7 +774,7 @@ fun p_exp' par env (e, loc) =
                  newline,
                  newline,
 
-                 string "if (res == NULL) lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                 string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
                  newline,
                  newline,
 
@@ -782,7 +782,7 @@ fun p_exp' par env (e, loc) =
                  newline,
                  box [string "PQclear(res);",
                       newline,
-                      string "lw_error(ctx, FATAL, \"",
+                      string "uw_error(ctx, FATAL, \"",
                       string (ErrorMsg.spanToString loc),
                       string ": Query failed:\\n%s\\n%s\", ",
                       case prepared of
@@ -800,16 +800,16 @@ fun p_exp' par env (e, loc) =
                  newline,
                  box [string "struct",
                       space,
-                      string "__lws_",
+                      string "__uws_",
                       string (Int.toString rnum),
                       space,
-                      string "__lwr_r_",
+                      string "__uwr_r_",
                       string (Int.toString (E.countERels env)),
                       string ";",
                       newline,
                       p_typ env state,
                       space,
-                      string "__lwr_acc_",
+                      string "__uwr_acc_",
                       string (Int.toString (E.countERels env + 1)),
                       space,
                       string "=",
@@ -820,7 +820,7 @@ fun p_exp' par env (e, loc) =
 
                       p_list_sepi (box []) (fn i =>
                                             fn (proj, t) =>
-                                               box [string "__lwr_r_",
+                                               box [string "__uwr_r_",
                                                     string (Int.toString (E.countERels env)),
                                                     string ".",
                                                     string proj,
@@ -860,7 +860,7 @@ fun p_exp' par env (e, loc) =
       | EDml {dml, prepared} =>
         box [string "({",
              newline,
-             string "PGconn *conn = lw_get_db(ctx);",
+             string "PGconn *conn = uw_get_db(ctx);",
              newline,
              case prepared of
                  NONE => box [string "char *dml = ",
@@ -900,7 +900,7 @@ fun p_exp' par env (e, loc) =
              string "PGresult *res = ",
              case prepared of
                  NONE => string "PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);"
-               | SOME n => box [string "PQexecPrepared(conn, \"lw",
+               | SOME n => box [string "PQexecPrepared(conn, \"uw",
                                 string (Int.toString n),
                                 string "\", ",
                                 string (Int.toString (length (getPargs dml))),
@@ -908,7 +908,7 @@ fun p_exp' par env (e, loc) =
              newline,
              newline,
 
-             string "if (res == NULL) lw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+             string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
              newline,
              newline,
 
@@ -916,7 +916,7 @@ fun p_exp' par env (e, loc) =
              newline,
              box [string "PQclear(res);",
                   newline,
-                  string "lw_error(ctx, FATAL, \"",
+                  string "uw_error(ctx, FATAL, \"",
                   string (ErrorMsg.spanToString loc),
                   string ": DML failed:\\n%s\\n%s\", ",
                   case prepared of
@@ -930,7 +930,7 @@ fun p_exp' par env (e, loc) =
 
              string "PQclear(res);",
              newline,
-             string "lw_unit_v;",
+             string "uw_unit_v;",
              newline,
              string "})"]
 
@@ -945,10 +945,10 @@ fun p_fun env (fx, n, args, ran, e) =
              space,
              p_typ env ran,
              space,
-             string ("__lwn_" ^ fx ^ "_" ^ Int.toString n),
+             string ("__uwn_" ^ fx ^ "_" ^ Int.toString n),
              string "(",
              p_list_sep (box [string ",", space]) (fn x => x)
-                        (string "lw_context ctx" :: ListUtil.mapi (fn (i, (_, dom)) =>
+                        (string "uw_context ctx" :: ListUtil.mapi (fn (i, (_, dom)) =>
                                                                       box [p_typ env dom,
                                                                            space,
                                                                            p_rel env' (nargs - i - 1)]) args),
@@ -971,13 +971,13 @@ fun p_decl env (dAll as (d, _) : decl) =
         in
             box [string "struct",
                  space,
-                 string ("__lws_" ^ Int.toString n),
+                 string ("__uws_" ^ Int.toString n),
                  space,
                  string "{",
                  newline,
                  p_list_sep (box []) (fn (x, t) => box [p_typ env t,
                                                         space,
-                                                        string "__lwf_",
+                                                        string "__uwf_",
                                                         string x,
                                                         string ";",
                                                         newline]) xts,
@@ -986,11 +986,11 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DDatatype (Enum, x, n, xncs) =>
         box [string "enum",
              space,
-             string ("__lwe_" ^ x ^ "_" ^ Int.toString n),
+             string ("__uwe_" ^ x ^ "_" ^ Int.toString n),
              space,
              string "{",
              space,
-             p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__lwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
+             p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__uwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
              space,
              string "};"]
       | DDatatype (Option, _, _, _) => box []
@@ -1001,24 +1001,24 @@ fun p_decl env (dAll as (d, _) : decl) =
         in
             box [string "enum",
                  space,
-                 string ("__lwe_" ^ x ^ "_" ^ Int.toString n),
+                 string ("__uwe_" ^ x ^ "_" ^ Int.toString n),
                  space,
                  string "{",
                  space,
-                 p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__lwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
+                 p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__uwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
                  space,
                  string "};",
                  newline,
                  newline,
                  string "struct",
                  space,
-                 string ("__lwd_" ^ x ^ "_" ^ Int.toString n),
+                 string ("__uwd_" ^ x ^ "_" ^ Int.toString n),
                  space,
                  string "{",
                  newline,
                  string "enum",
                  space,
-                 string ("__lwe_" ^ x ^ "_" ^ Int.toString n),
+                 string ("__uwe_" ^ x ^ "_" ^ Int.toString n),
                  space,
                  string "tag;",
                  newline,
@@ -1030,7 +1030,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 newline,
                                 p_list_sep newline (fn (x, n, t) => box [p_typ env t,
                                                                          space,
-                                                                         string ("lw_" ^ x),
+                                                                         string ("uw_" ^ x),
                                                                          string ";"]) xncsArgs,
                                 newline,
                                 string "}",
@@ -1045,7 +1045,7 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DVal (x, n, t, e) =>
         box [p_typ env t,
              space,
-             string ("__lwn_" ^ x ^ "_" ^ Int.toString n),
+             string ("__uwn_" ^ x ^ "_" ^ Int.toString n),
              space,
              string "=",
              space,
@@ -1061,8 +1061,8 @@ fun p_decl env (dAll as (d, _) : decl) =
                                              space,
                                              p_typ env ran,
                                              space,
-                                             string ("__lwn_" ^ fx ^ "_" ^ Int.toString n),
-                                             string "(lw_context,",
+                                             string ("__uwn_" ^ fx ^ "_" ^ Int.toString n),
+                                             string "(uw_context,",
                                              space,
                                              p_list_sep (box [string ",", space])
                                                         (fn (_, dom) => p_typ env dom) args,
@@ -1075,18 +1075,18 @@ fun p_decl env (dAll as (d, _) : decl) =
                               string x,
                               string " */",
                               newline]
-      | DDatabase s => box [string "static void lw_db_validate(lw_context);",
+      | DDatabase s => box [string "static void uw_db_validate(uw_context);",
                             newline,
-                            string "static void lw_db_prepare(lw_context);",
+                            string "static void uw_db_prepare(uw_context);",
                             newline,
                             newline,
-                            string "void lw_db_init(lw_context ctx) {",
+                            string "void uw_db_init(uw_context ctx) {",
                             newline,
                             string "PGconn *conn = PQconnectdb(\"",
                             string (String.toString s),
                             string "\");",
                             newline,
-                            string "if (conn == NULL) lw_error(ctx, BOUNDED_RETRY, ",
+                            string "if (conn == NULL) uw_error(ctx, BOUNDED_RETRY, ",
                             string "\"libpq can't allocate a connection.\");",
                             newline,
                             string "if (PQstatus(conn) != CONNECTION_OK) {",
@@ -1099,38 +1099,38 @@ fun p_decl env (dAll as (d, _) : decl) =
                                  newline,
                                  string "PQfinish(conn);",
                                  newline,
-                                 string "lw_error(ctx, BOUNDED_RETRY, ",
+                                 string "uw_error(ctx, BOUNDED_RETRY, ",
                                  string "\"Connection to Postgres server failed: %s\", msg);"],
                             newline,
                             string "}",
                             newline,
-                            string "lw_set_db(ctx, conn);",
+                            string "uw_set_db(ctx, conn);",
                             newline,
-                            string "lw_db_validate(ctx);",
+                            string "uw_db_validate(ctx);",
                             newline,
-                            string "lw_db_prepare(ctx);",
+                            string "uw_db_prepare(ctx);",
                             newline,
                             string "}",
                             newline,
                             newline,
-                            string "void lw_db_close(lw_context ctx) {",
+                            string "void uw_db_close(uw_context ctx) {",
                             newline,
-                            string "PQfinish(lw_get_db(ctx));",
+                            string "PQfinish(uw_get_db(ctx));",
                             newline,
                             string "}",
                             newline]
 
       | DPreparedStatements ss =>
-        box [string "static void lw_db_prepare(lw_context ctx) {",
+        box [string "static void uw_db_prepare(uw_context ctx) {",
              newline,
-             string "PGconn *conn = lw_get_db(ctx);",
+             string "PGconn *conn = uw_get_db(ctx);",
              newline,
              string "PGresult *res;",
              newline,
              newline,
 
              p_list_sepi newline (fn i => fn (s, n) =>
-                                             box [string "res = PQprepare(conn, \"lw",
+                                             box [string "res = PQprepare(conn, \"uw",
                                                   string (Int.toString i),
                                                   string "\", \"",
                                                   string (String.toString s),
@@ -1150,7 +1150,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                        newline,
                                                        string "PQfinish(conn);",
                                                        newline,
-                                                       string "lw_error(ctx, FATAL, \"Unable to create prepared statement:\\n",
+                                                       string "uw_error(ctx, FATAL, \"Unable to create prepared statement:\\n",
                                                        string (String.toString s),
                                                        string "\\n%s\", msg);",
                                                        newline],
@@ -1314,9 +1314,9 @@ fun p_file env (ds, ps) =
 
         fun unurlify (t, loc) =
             case t of
-                TFfi (m, t) => string ("lw_" ^ m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
+                TFfi (m, t) => string ("uw_" ^ m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
 
-              | TRecord 0 => string "lw_unit_v"
+              | TRecord 0 => string "uw_unit_v"
               | TRecord i =>
                 let
                     val xts = E.lookupStruct env i
@@ -1335,7 +1335,7 @@ fun p_file env (ds, ps) =
                                            newline]) xts),
                          string "struct",
                          space,
-                         string "__lws_",
+                         string "__uws_",
                          string (Int.toString i),
                          space,
                          string "tmp",
@@ -1359,7 +1359,7 @@ fun p_file env (ds, ps) =
 
                     fun doEm xncs =
                         case xncs of
-                            [] => string ("(lw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), (enum __lwe_"
+                            [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), (enum __uwe_"
                                           ^ x ^ "_" ^ Int.toString i ^ ")0)")
                           | (x', n, to) :: rest =>
                             box [string "((!strncmp(request, \"",
@@ -1370,7 +1370,7 @@ fun p_file env (ds, ps) =
                                  string (Int.toString (size x')),
                                  string "] == 0 || request[",
                                  string (Int.toString (size x')),
-                                 string ("] == '/')) ? __lwc_" ^ x' ^ "_" ^ Int.toString n),
+                                 string ("] == '/')) ? __uwc_" ^ x' ^ "_" ^ Int.toString n),
                                  space,
                                  string ":",
                                  space,
@@ -1434,7 +1434,7 @@ fun p_file env (ds, ps) =
                                        space,
                                        string "=",
                                        space,
-                                       string "lw_malloc(ctx, sizeof(",
+                                       string "uw_malloc(ctx, sizeof(",
                                        p_typ env t,
                                        string "));",
                                        newline,
@@ -1452,7 +1452,7 @@ fun p_file env (ds, ps) =
                          newline,
                          string ":",
                          space,
-                         string ("(lw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL))))")]
+                         string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL))))")]
                 end                     
 
               | TDatatype (Default, i, _) =>
@@ -1461,7 +1461,7 @@ fun p_file env (ds, ps) =
 
                     fun doEm xncs =
                         case xncs of
-                            [] => string ("(lw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL)")
+                            [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL)")
                           | (x', n, to) :: rest =>
                             box [string "((!strncmp(request, \"",
                                  string x',
@@ -1475,9 +1475,9 @@ fun p_file env (ds, ps) =
                                  newline,
                                  string "struct",
                                  space,
-                                 string ("__lwd_" ^ x ^ "_" ^ Int.toString i),
+                                 string ("__uwd_" ^ x ^ "_" ^ Int.toString i),
                                  space,
-                                 string "*tmp = lw_malloc(ctx, sizeof(struct __lwd_",
+                                 string "*tmp = uw_malloc(ctx, sizeof(struct __uwd_",
                                  string x,
                                  string "_",
                                  string (Int.toString i),
@@ -1487,7 +1487,7 @@ fun p_file env (ds, ps) =
                                  space,
                                  string "=",
                                  space,
-                                 string ("__lwc_" ^ x' ^ "_" ^ Int.toString n),
+                                 string ("__uwc_" ^ x' ^ "_" ^ Int.toString n),
                                  string ";",
                                  newline,
                                  string "request",
@@ -1501,7 +1501,7 @@ fun p_file env (ds, ps) =
                                  newline,
                                  case to of
                                      NONE => box []
-                                   | SOME t => box [string "tmp->data.lw_",
+                                   | SOME t => box [string "tmp->data.uw_",
                                                     string x',
                                                     space,
                                                     string "=",
@@ -1539,7 +1539,7 @@ fun p_file env (ds, ps) =
                                 (List.take (ts, length ts - 2),
                                  box [box (map (fn (x, t) => box [p_typ env t,
                                                                   space,
-                                                                  string "lw_input_",
+                                                                  string "uw_input_",
                                                                   string x,
                                                                   string ";",
                                                                   newline]) xts),
@@ -1554,7 +1554,7 @@ fun p_file env (ds, ps) =
                                                                    (TFfi ("Basis", "bool"), _) => "optional_"
                                                                  | _ => ""
                                                    in
-                                                       box [string "request = lw_get_",
+                                                       box [string "request = uw_get_",
                                                             string f,
                                                             string "input(ctx, ",
                                                             string (Int.toString n),
@@ -1570,7 +1570,7 @@ fun p_file env (ds, ps) =
                                                             newline,
                                                             string "}",
                                                             newline,
-                                                            string "lw_input_",
+                                                            string "uw_input_",
                                                             string x,
                                                             space,
                                                             string "=",
@@ -1579,14 +1579,14 @@ fun p_file env (ds, ps) =
                                                             string ";",
                                                             newline]
                                                    end) xts),
-                                      string "struct __lws_",
+                                      string "struct __uws_",
                                       string (Int.toString i),
                                       space,
-                                      string "lw_inputs",
+                                      string "uw_inputs",
                                       space,
                                       string "= {",
                                       newline,
-                                      box (map (fn (x, _) => box [string "lw_input_",
+                                      box (map (fn (x, _) => box [string "uw_input_",
                                                                   string x,
                                                                   string ",",
                                                                   newline]) xts),
@@ -1594,7 +1594,7 @@ fun p_file env (ds, ps) =
                                       newline],
                                  box [string ",",
                                       space,
-                                      string "lw_inputs"])
+                                      string "uw_inputs"])
                             end
 
                           | _ => raise Fail "CjrPrint: Last argument to an action isn't a record"
@@ -1635,7 +1635,7 @@ fun p_file env (ds, ps) =
                                      (string "ctx"
                                       :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts),
                           inputsVar,
-                          string ", lw_unit_v);",
+                          string ", uw_unit_v);",
                           newline,
                           string "return;",
                           newline,
@@ -1651,9 +1651,9 @@ fun p_file env (ds, ps) =
                                        | _ => NONE) ds
 
         val validate =
-            box [string "static void lw_db_validate(lw_context ctx) {",
+            box [string "static void uw_db_validate(uw_context ctx) {",
                  newline,
-                 string "PGconn *conn = lw_get_db(ctx);",
+                 string "PGconn *conn = uw_get_db(ctx);",
                  newline,
                  string "PGresult *res;",
                  newline,
@@ -1669,7 +1669,7 @@ fun p_file env (ds, ps) =
                                                             "') AND (",
                                                             String.concatWith " OR "
                                                               (map (fn (x, t) =>
-                                                                       String.concat ["(attname = 'lw_",
+                                                                       String.concat ["(attname = 'uw_",
                                                                                       CharVector.map
                                                                                           Char.toLower x,
                                                                                       "' AND atttypid = (SELECT oid FROM pg_type",
@@ -1691,7 +1691,7 @@ fun p_file env (ds, ps) =
                                          newline,
                                          box [string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                                              string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
                                               newline],
                                          string "}",
                                          newline,
@@ -1708,7 +1708,7 @@ fun p_file env (ds, ps) =
                                               newline,
                                               string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Query failed:\\n",
+                                              string "uw_error(ctx, FATAL, \"Query failed:\\n",
                                               string q,
                                               string "\\n%s\", msg);",
                                               newline],
@@ -1721,7 +1721,7 @@ fun p_file env (ds, ps) =
                                               newline,
                                               string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Table '",
+                                              string "uw_error(ctx, FATAL, \"Table '",
                                               string s,
                                               string "' does not exist.\");",
                                               newline],
@@ -1740,7 +1740,7 @@ fun p_file env (ds, ps) =
                                          newline,
                                          box [string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                                              string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
                                               newline],
                                          string "}",
                                          newline,
@@ -1757,7 +1757,7 @@ fun p_file env (ds, ps) =
                                               newline,
                                               string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Query failed:\\n",
+                                              string "uw_error(ctx, FATAL, \"Query failed:\\n",
                                               string q',
                                               string "\\n%s\", msg);",
                                               newline],
@@ -1772,7 +1772,7 @@ fun p_file env (ds, ps) =
                                               newline,
                                               string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Table '",
+                                              string "uw_error(ctx, FATAL, \"Table '",
                                               string s,
                                               string "' has the wrong column types.\");",
                                               newline],
@@ -1792,7 +1792,7 @@ fun p_file env (ds, ps) =
                                          newline,
                                          box [string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                                              string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
                                               newline],
                                          string "}",
                                          newline,
@@ -1809,7 +1809,7 @@ fun p_file env (ds, ps) =
                                               newline,
                                               string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Query failed:\\n",
+                                              string "uw_error(ctx, FATAL, \"Query failed:\\n",
                                               string q'',
                                               string "\\n%s\", msg);",
                                               newline],
@@ -1824,7 +1824,7 @@ fun p_file env (ds, ps) =
                                               newline,
                                               string "PQfinish(conn);",
                                               newline,
-                                              string "lw_error(ctx, FATAL, \"Table '",
+                                              string "uw_error(ctx, FATAL, \"Table '",
                                               string s,
                                               string "' has extra columns.\");",
                                               newline],
@@ -1850,18 +1850,18 @@ fun p_file env (ds, ps) =
              newline,
              p_list_sep newline (fn x => x) pds,
              newline,
-             string "int lw_inputs_len = ",
+             string "int uw_inputs_len = ",
              string (Int.toString (SM.foldl Int.max 0 fnums + 1)),
              string ";",
              newline,
              newline,
-             string "int lw_input_num(char *name) {",
+             string "int uw_input_num(char *name) {",
              newline,
              makeSwitch (fnums, 0),
              string "}",
              newline,
              newline,
-             string "void lw_handle(lw_context ctx, char *request) {",
+             string "void uw_handle(uw_context ctx, char *request) {",
              newline,
              p_list_sep newline (fn x => x) pds',
              newline,
@@ -1883,7 +1883,7 @@ fun p_sql env (ds, _) =
                                                  string s,
                                                  string "(",
                                                  p_list (fn (x, t) =>
-                                                            box [string "lw_",
+                                                            box [string "uw_",
                                                                  string (CharVector.map Char.toLower x),
                                                                  space,
                                                                  p_sqltype env t,

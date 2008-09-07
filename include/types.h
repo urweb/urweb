@@ -1,19 +1,19 @@
-typedef long long lw_Basis_int;
-typedef double lw_Basis_float;
-typedef char* lw_Basis_string;
+typedef long long uw_Basis_int;
+typedef double uw_Basis_float;
+typedef char* uw_Basis_string;
 
-struct __lws_0 {
+struct __uws_0 {
 };
 
-typedef struct __lws_0 lw_unit;
-typedef lw_unit lw_Basis_unit;
+typedef struct __uws_0 uw_unit;
+typedef uw_unit uw_Basis_unit;
 
-typedef enum lw_Basis_bool { lw_Basis_False, lw_Basis_True } lw_Basis_bool;
+typedef enum uw_Basis_bool { uw_Basis_False, uw_Basis_True } uw_Basis_bool;
 
-typedef struct lw_context *lw_context;
+typedef struct uw_context *uw_context;
 
-typedef lw_Basis_string lw_Basis_xhtml;
-typedef lw_Basis_string lw_Basis_page;
+typedef uw_Basis_string uw_Basis_xhtml;
+typedef uw_Basis_string uw_Basis_page;
 
 
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY } failure_kind;

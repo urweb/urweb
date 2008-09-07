@@ -615,7 +615,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                           strcat loc [sc "INSERT INTO ",
                                                       (L'.ERel 1, loc),
                                                       sc " (",
-                                                      strcatComma loc (map (fn (x, _) => sc ("lw_" ^ x)) fields),
+                                                      strcatComma loc (map (fn (x, _) => sc ("uw_" ^ x)) fields),
                                                       sc ") VALUES (",
                                                       strcatComma loc (map (fn (x, _) =>
                                                                                (L'.EField ((L'.ERel 0, loc),
@@ -641,7 +641,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                 (L'.ERel 1, loc),
                                                                 sc " AS T SET ",
                                                                 strcatComma loc (map (fn (x, _) =>
-                                                                                         strcat loc [sc ("lw_" ^ x
+                                                                                         strcat loc [sc ("uw_" ^ x
                                                                                                          ^ " = "),
                                                                                                      (L'.EField
                                                                                                           ((L'.ERel 2,
@@ -801,7 +801,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                             @ map (fn (x, xts) =>
                                                                       strcatComma loc
                                                                                   (map (fn (x', _) =>
-                                                                                           sc (x ^ ".lw_" ^ x'))
+                                                                                           sc (x ^ ".uw_" ^ x'))
                                                                                        xts)) stables),
                                            sc " FROM ",
                                            strcatComma loc (map (fn (x, _) => strcat loc [(L'.EField (gf "From", x), loc),
@@ -828,7 +828,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                strcatComma loc (map (fn (x, xts) =>
                                                                         strcatComma loc
                                                                                     (map (fn (x', _) =>
-                                                                                             sc (x ^ ".lw_" ^ x'))
+                                                                                             sc (x ^ ".uw_" ^ x'))
                                                                                          xts)) grouped)
                                                ],
 
@@ -1049,7 +1049,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                _), _),
               _), _),
              (L.CName tab, _)), _),
-            (L.CName field, _)) => ((L'.EPrim (Prim.String (tab ^ ".lw_" ^ field)), loc), fm)
+            (L.CName field, _)) => ((L'.EPrim (Prim.String (tab ^ ".uw_" ^ field)), loc), fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -1604,7 +1604,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
-                val s = "lw_" ^ s
+                val s = "uw_" ^ s
                 val e = (L'.EPrim (Prim.String s), loc)
 
                 val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts

@@ -9,9 +9,9 @@
 
 #include "urweb.h"
 
-int lw_port = 8080;
-int lw_backlog = 10;
-int lw_bufsize = 1024;
+int uw_port = 8080;
+int uw_backlog = 10;
+int uw_bufsize = 1024;
 
 typedef struct node {
   int fd;
@@ -53,39 +53,39 @@ static pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 
 static void *worker(void *data) {
   int me = *(int *)data, retries_left = MAX_RETRIES;;
-  lw_context ctx = lw_init(1024, 1024);
+  uw_context ctx = uw_init(1024, 1024);
   
   while (1) {
-    failure_kind fk = lw_begin_init(ctx);
+    failure_kind fk = uw_begin_init(ctx);
 
     if (fk == SUCCESS) {
-      lw_db_init(ctx);
+      uw_db_init(ctx);
       printf("Database connection initialized.\n");
       break;
     } else if (fk == BOUNDED_RETRY) {
       if (retries_left) {
-        printf("Initialization error triggers bounded retry: %s\n", lw_error_message(ctx));
+        printf("Initialization error triggers bounded retry: %s\n", uw_error_message(ctx));
         --retries_left;
       } else {
-        printf("Fatal initialization error (out of retries): %s\n", lw_error_message(ctx));
-        lw_free(ctx);
+        printf("Fatal initialization error (out of retries): %s\n", uw_error_message(ctx));
+        uw_free(ctx);
         return NULL;
       }
     } else if (fk == UNLIMITED_RETRY)
-      printf("Initialization error triggers unlimited retry: %s\n", lw_error_message(ctx));
+      printf("Initialization error triggers unlimited retry: %s\n", uw_error_message(ctx));
     else if (fk == FATAL) {
-      printf("Fatal initialization error: %s\n", lw_error_message(ctx));
-      lw_free(ctx);
+      printf("Fatal initialization error: %s\n", uw_error_message(ctx));
+      uw_free(ctx);
       return NULL;
     } else {
-      printf("Unknown lw_handle return code!\n");
-      lw_free(ctx);
+      printf("Unknown uw_handle return code!\n");
+      uw_free(ctx);
       return NULL;
     }
   }
 
   while (1) {
-    char buf[lw_bufsize+1], *back = buf, *s;
+    char buf[uw_bufsize+1], *back = buf, *s;
     int sock;
 
     pthread_mutex_lock(&queue_mutex);
@@ -98,7 +98,7 @@ static void *worker(void *data) {
 
     while (1) {
       unsigned retries_left = MAX_RETRIES;
-      int r = recv(sock, back, lw_bufsize - (back - buf), 0);
+      int r = recv(sock, back, uw_bufsize - (back - buf), 0);
 
       if (r < 0) {
         fprintf(stderr, "Recv failed\n");
@@ -159,10 +159,10 @@ static void *worker(void *data) {
 
             if (value = strchr(name, '=')) {
               *value++ = 0;
-              lw_set_input(ctx, name, value);
+              uw_set_input(ctx, name, value);
             }
             else
-              lw_set_input(ctx, name, "");
+              uw_set_input(ctx, name, "");
           }
         }
 
@@ -171,57 +171,57 @@ static void *worker(void *data) {
         while (1) {
           failure_kind fk;
 
-          lw_write(ctx, "HTTP/1.1 200 OK\r\n");
-          lw_write(ctx, "Content-type: text/html\r\n\r\n");
-          lw_write(ctx, "<html>");
+          uw_write(ctx, "HTTP/1.1 200 OK\r\n");
+          uw_write(ctx, "Content-type: text/html\r\n\r\n");
+          uw_write(ctx, "<html>");
 
-          fk = lw_begin(ctx, path);
+          fk = uw_begin(ctx, path);
           if (fk == SUCCESS) {
-            lw_write(ctx, "</html>");
+            uw_write(ctx, "</html>");
             break;
           } else if (fk == BOUNDED_RETRY) {
             if (retries_left) {
-              printf("Error triggers bounded retry: %s\n", lw_error_message(ctx));
+              printf("Error triggers bounded retry: %s\n", uw_error_message(ctx));
               --retries_left;
             }
             else {
-              printf("Fatal error (out of retries): %s\n", lw_error_message(ctx));
+              printf("Fatal error (out of retries): %s\n", uw_error_message(ctx));
 
-              lw_reset_keep_error_message(ctx);
-              lw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-              lw_write(ctx, "Content-type: text/plain\r\n\r\n");
-              lw_write(ctx, "Fatal error (out of retries): ");
-              lw_write(ctx, lw_error_message(ctx));
-              lw_write(ctx, "\n");
+              uw_reset_keep_error_message(ctx);
+              uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+              uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+              uw_write(ctx, "Fatal error (out of retries): ");
+              uw_write(ctx, uw_error_message(ctx));
+              uw_write(ctx, "\n");
             }
           } else if (fk == UNLIMITED_RETRY)
-            printf("Error triggers unlimited retry: %s\n", lw_error_message(ctx));
+            printf("Error triggers unlimited retry: %s\n", uw_error_message(ctx));
           else if (fk == FATAL) {
-            printf("Fatal error: %s\n", lw_error_message(ctx));
+            printf("Fatal error: %s\n", uw_error_message(ctx));
 
-            lw_reset_keep_error_message(ctx);
-            lw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-            lw_write(ctx, "Content-type: text/plain\r\n\r\n");
-            lw_write(ctx, "Fatal error: ");
-            lw_write(ctx, lw_error_message(ctx));
-            lw_write(ctx, "\n");
+            uw_reset_keep_error_message(ctx);
+            uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+            uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+            uw_write(ctx, "Fatal error: ");
+            uw_write(ctx, uw_error_message(ctx));
+            uw_write(ctx, "\n");
 
             break;
           } else {
-            printf("Unknown lw_handle return code!\n");
+            printf("Unknown uw_handle return code!\n");
 
-            lw_reset_keep_request(ctx);
-            lw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-            lw_write(ctx, "Content-type: text/plain\r\n\r\n");
-            lw_write(ctx, "Unknown lw_handle return code!\n");
+            uw_reset_keep_request(ctx);
+            uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+            uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+            uw_write(ctx, "Unknown uw_handle return code!\n");
 
             break;
           }
 
-          lw_reset_keep_request(ctx);
+          uw_reset_keep_request(ctx);
         }
 
-        lw_send(ctx, sock);
+        uw_send(ctx, sock);
 
         printf("Done with client.\n\n");
         break;
@@ -229,7 +229,7 @@ static void *worker(void *data) {
     }
 
     close(sock);
-    lw_reset(ctx);
+    uw_reset(ctx);
   }
 }
 
@@ -266,7 +266,7 @@ int main(int argc, char *argv[]) {
   }
 
   my_addr.sin_family = AF_INET;         // host byte order
-  my_addr.sin_port = htons(lw_port);    // short, network byte order
+  my_addr.sin_port = htons(uw_port);    // short, network byte order
   my_addr.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
   memset(my_addr.sin_zero, '\0', sizeof my_addr.sin_zero);
 
@@ -275,14 +275,14 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (listen(sockfd, lw_backlog) < 0) {
+  if (listen(sockfd, uw_backlog) < 0) {
     fprintf(stderr, "Socket listen failed\n");
     return 1;
   }
 
   sin_size = sizeof their_addr;
 
-  printf("Listening on port %d....\n", lw_port);
+  printf("Listening on port %d....\n", uw_port);
 
   for (i = 0; i < nthreads; ++i) {
     pthread_t thread;    

@@ -7,11 +7,11 @@
 
 #include "types.h"
 
-lw_unit lw_unit_v = {};
+uw_unit uw_unit_v = {};
 
 #define ERROR_BUF_LEN 1024
 
-struct lw_context {
+struct uw_context {
   char *page, *page_front, *page_back;
   char *heap, *heap_front, *heap_back;
   char **inputs;
@@ -23,10 +23,10 @@ struct lw_context {
   char error_message[ERROR_BUF_LEN];
 };
 
-extern int lw_inputs_len;
+extern int uw_inputs_len;
 
-lw_context lw_init(size_t page_len, size_t heap_len) {
-  lw_context ctx = malloc(sizeof(struct lw_context));
+uw_context uw_init(size_t page_len, size_t heap_len) {
+  uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->page_front = ctx->page = malloc(page_len);
   ctx->page_back = ctx->page_front + page_len;
@@ -34,7 +34,7 @@ lw_context lw_init(size_t page_len, size_t heap_len) {
   ctx->heap_front = ctx->heap = malloc(heap_len);
   ctx->heap_back = ctx->heap_front + heap_len;
 
-  ctx->inputs = calloc(lw_inputs_len, sizeof(char *));
+  ctx->inputs = calloc(uw_inputs_len, sizeof(char *));
 
   ctx->db = NULL;
 
@@ -43,60 +43,60 @@ lw_context lw_init(size_t page_len, size_t heap_len) {
   return ctx;
 }
 
-void lw_set_db(lw_context ctx, void *db) {
+void uw_set_db(uw_context ctx, void *db) {
   ctx->db = db;
 }
 
-void *lw_get_db(lw_context ctx) {
+void *uw_get_db(uw_context ctx) {
   return ctx->db;
 }
 
-void lw_free(lw_context ctx) {
+void uw_free(uw_context ctx) {
   free(ctx->page);
   free(ctx->heap);
   free(ctx->inputs);
   free(ctx);
 }
 
-void lw_reset_keep_request(lw_context ctx) {
+void uw_reset_keep_request(uw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
 
   ctx->error_message[0] = 0;
 }
 
-void lw_reset_keep_error_message(lw_context ctx) {
+void uw_reset_keep_error_message(uw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
 }
 
-void lw_reset(lw_context ctx) {
-  lw_reset_keep_request(ctx);
-  memset(ctx->inputs, 0, lw_inputs_len * sizeof(char *));
+void uw_reset(uw_context ctx) {
+  uw_reset_keep_request(ctx);
+  memset(ctx->inputs, 0, uw_inputs_len * sizeof(char *));
 }
 
-void lw_db_init(lw_context);
-void lw_handle(lw_context, char *);
+void uw_db_init(uw_context);
+void uw_handle(uw_context, char *);
 
-failure_kind lw_begin_init(lw_context ctx) {
+failure_kind uw_begin_init(uw_context ctx) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0)
-    lw_db_init(ctx);
+    uw_db_init(ctx);
 
   return r;
 }
 
-failure_kind lw_begin(lw_context ctx, char *path) {
+failure_kind uw_begin(uw_context ctx, char *path) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0)
-    lw_handle(ctx, path);
+    uw_handle(ctx, path);
 
   return r;
 }
 
-__attribute__((noreturn)) void lw_error(lw_context ctx, failure_kind fk, const char *fmt, ...) {
+__attribute__((noreturn)) void uw_error(uw_context ctx, failure_kind fk, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
@@ -105,45 +105,45 @@ __attribute__((noreturn)) void lw_error(lw_context ctx, failure_kind fk, const c
   longjmp(ctx->jmp_buf, fk);
 }
 
-char *lw_error_message(lw_context ctx) {
+char *uw_error_message(uw_context ctx) {
   return ctx->error_message;
 }
 
-int lw_input_num(char*);
+int uw_input_num(char*);
 
-void lw_set_input(lw_context ctx, char *name, char *value) {
-  int n = lw_input_num(name);
+void uw_set_input(uw_context ctx, char *name, char *value) {
+  int n = uw_input_num(name);
 
   if (n < 0)
-    lw_error(ctx, FATAL, "Bad input name %s", name);
+    uw_error(ctx, FATAL, "Bad input name %s", name);
 
-  if (n >= lw_inputs_len)
-    lw_error(ctx, FATAL, "For input name %s, index %d is out of range", name, n);
+  if (n >= uw_inputs_len)
+    uw_error(ctx, FATAL, "For input name %s, index %d is out of range", name, n);
 
   ctx->inputs[n] = value;
 
   //printf("[%d] %s = %s\n", n, name, value);
 }
 
-char *lw_get_input(lw_context ctx, int n) {
+char *uw_get_input(uw_context ctx, int n) {
   if (n < 0)
-    lw_error(ctx, FATAL, "Negative input index %d", n);
-  if (n >= lw_inputs_len)
-    lw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
+    uw_error(ctx, FATAL, "Negative input index %d", n);
+  if (n >= uw_inputs_len)
+    uw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
   //printf("[%d] = %s\n", n, ctx->inputs[n]);
   return ctx->inputs[n];
 }
 
-char *lw_get_optional_input(lw_context ctx, int n) {
+char *uw_get_optional_input(uw_context ctx, int n) {
   if (n < 0)
-    lw_error(ctx, FATAL, "Negative input index %d", n);
-  if (n >= lw_inputs_len)
-    lw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
+    uw_error(ctx, FATAL, "Negative input index %d", n);
+  if (n >= uw_inputs_len)
+    uw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
   printf("[%d] = %s\n", n, ctx->inputs[n]);
   return (ctx->inputs[n] == NULL ? "" : ctx->inputs[n]);
 }
 
-static void lw_check_heap(lw_context ctx, size_t extra) {
+static void uw_check_heap(uw_context ctx, size_t extra) {
   if (ctx->heap_back - ctx->heap_front < extra) {
     size_t desired = ctx->heap_back - ctx->heap_front + extra, next;
     char *new_heap;
@@ -156,24 +156,24 @@ static void lw_check_heap(lw_context ctx, size_t extra) {
 
     if (new_heap != ctx->heap) {
       ctx->heap = new_heap;
-      lw_error(ctx, UNLIMITED_RETRY, "Couldn't allocate new heap chunk contiguously");
+      uw_error(ctx, UNLIMITED_RETRY, "Couldn't allocate new heap chunk contiguously");
     }
 
     ctx->heap = new_heap;
   }
 }
 
-void *lw_malloc(lw_context ctx, size_t len) {
+void *uw_malloc(uw_context ctx, size_t len) {
   void *result;
 
-  lw_check_heap(ctx, len);
+  uw_check_heap(ctx, len);
 
   result = ctx->heap_front;
   ctx->heap_front += len;
   return result;
 }
 
-int lw_really_send(int sock, const void *buf, ssize_t len) {
+int uw_really_send(int sock, const void *buf, ssize_t len) {
   while (len > 0) {
     ssize_t n = send(sock, buf, len, 0);
 
@@ -187,11 +187,11 @@ int lw_really_send(int sock, const void *buf, ssize_t len) {
   return 0;
 }
 
-int lw_send(lw_context ctx, int sock) {
-  return lw_really_send(sock, ctx->page, ctx->page_front - ctx->page);
+int uw_send(uw_context ctx, int sock) {
+  return uw_really_send(sock, ctx->page, ctx->page_front - ctx->page);
 }
 
-static void lw_check(lw_context ctx, size_t extra) {
+static void uw_check(uw_context ctx, size_t extra) {
   size_t desired = ctx->page_back - ctx->page_front + extra, next;
   char *new_page;
 
@@ -203,52 +203,52 @@ static void lw_check(lw_context ctx, size_t extra) {
   ctx->page = new_page;
 }
 
-static void lw_writec_unsafe(lw_context ctx, char c) {
+static void uw_writec_unsafe(uw_context ctx, char c) {
   *(ctx->page_front)++ = c;
 }
 
-void lw_writec(lw_context ctx, char c) {
-  lw_check(ctx, 1);
-  lw_writec_unsafe(ctx, c);
+void uw_writec(uw_context ctx, char c) {
+  uw_check(ctx, 1);
+  uw_writec_unsafe(ctx, c);
 }
 
-static void lw_write_unsafe(lw_context ctx, const char* s) {
+static void uw_write_unsafe(uw_context ctx, const char* s) {
   int len = strlen(s);
   memcpy(ctx->page_front, s, len);
   ctx->page_front += len;
 }
 
-void lw_write(lw_context ctx, const char* s) {
-  lw_check(ctx, strlen(s) + 1);
-  lw_write_unsafe(ctx, s);
+void uw_write(uw_context ctx, const char* s) {
+  uw_check(ctx, strlen(s) + 1);
+  uw_write_unsafe(ctx, s);
   *ctx->page_front = 0;
 }
 
 
-char *lw_Basis_attrifyInt(lw_context ctx, lw_Basis_int n) {
+char *uw_Basis_attrifyInt(uw_context ctx, uw_Basis_int n) {
   char *result;
   int len;
-  lw_check_heap(ctx, INTS_MAX);
+  uw_check_heap(ctx, INTS_MAX);
   result = ctx->heap_front;
   sprintf(result, "%lld%n", n, &len);
   ctx->heap_front += len+1;
   return result;
 }
 
-char *lw_Basis_attrifyFloat(lw_context ctx, lw_Basis_float n) {
+char *uw_Basis_attrifyFloat(uw_context ctx, uw_Basis_float n) {
   char *result;
   int len;
-  lw_check_heap(ctx, FLOATS_MAX);
+  uw_check_heap(ctx, FLOATS_MAX);
   result = ctx->heap_front;
   sprintf(result, "%g%n", n, &len);
   ctx->heap_front += len+1;
   return result;
 }
 
-char *lw_Basis_attrifyString(lw_context ctx, lw_Basis_string s) {
+char *uw_Basis_attrifyString(uw_context ctx, uw_Basis_string s) {
   int len = strlen(s);
   char *result, *p;
-  lw_check_heap(ctx, len * 6 + 1);
+  uw_check_heap(ctx, len * 6 + 1);
 
   result = p = ctx->heap_front;
 
@@ -276,73 +276,73 @@ char *lw_Basis_attrifyString(lw_context ctx, lw_Basis_string s) {
   return result;
 }
 
-static void lw_Basis_attrifyInt_w_unsafe(lw_context ctx, lw_Basis_int n) {
+static void uw_Basis_attrifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
   int len;
 
   sprintf(ctx->page_front, "%lld%n", n, &len);
   ctx->page_front += len;
 }
 
-void lw_Basis_attrifyInt_w(lw_context ctx, lw_Basis_int n) {
-  lw_check(ctx, INTS_MAX);
-  lw_Basis_attrifyInt_w_unsafe(ctx, n);
+void uw_Basis_attrifyInt_w(uw_context ctx, uw_Basis_int n) {
+  uw_check(ctx, INTS_MAX);
+  uw_Basis_attrifyInt_w_unsafe(ctx, n);
 }
 
-void lw_Basis_attrifyFloat_w(lw_context ctx, lw_Basis_float n) {
+void uw_Basis_attrifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
-  lw_check(ctx, FLOATS_MAX);
+  uw_check(ctx, FLOATS_MAX);
   sprintf(ctx->page_front, "%g%n", n, &len);
   ctx->page_front += len;
 }
 
-void lw_Basis_attrifyString_w(lw_context ctx, lw_Basis_string s) {
-  lw_check(ctx, strlen(s) * 6);
+void uw_Basis_attrifyString_w(uw_context ctx, uw_Basis_string s) {
+  uw_check(ctx, strlen(s) * 6);
 
   for (; *s; s++) {
     char c = *s;
 
     if (c == '"')
-      lw_write_unsafe(ctx, "&quot;");
+      uw_write_unsafe(ctx, "&quot;");
     else if (c == '&')
-      lw_write_unsafe(ctx, "&amp;");
+      uw_write_unsafe(ctx, "&amp;");
     else if (isprint(c))
-      lw_writec_unsafe(ctx, c);
+      uw_writec_unsafe(ctx, c);
     else {
-      lw_write_unsafe(ctx, "&#");
-      lw_Basis_attrifyInt_w_unsafe(ctx, c);
-      lw_writec_unsafe(ctx, ';');
+      uw_write_unsafe(ctx, "&#");
+      uw_Basis_attrifyInt_w_unsafe(ctx, c);
+      uw_writec_unsafe(ctx, ';');
     }
   }
 }
 
 
-char *lw_Basis_urlifyInt(lw_context ctx, lw_Basis_int n) {
+char *uw_Basis_urlifyInt(uw_context ctx, uw_Basis_int n) {
   int len;
   char *r;
 
-  lw_check_heap(ctx, INTS_MAX);
+  uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap_front;
   sprintf(r, "%lld%n", n, &len);
   ctx->heap_front += len+1;
   return r;
 }
 
-char *lw_Basis_urlifyFloat(lw_context ctx, lw_Basis_float n) {
+char *uw_Basis_urlifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;
   char *r;
 
-  lw_check_heap(ctx, FLOATS_MAX);
+  uw_check_heap(ctx, FLOATS_MAX);
   r = ctx->heap_front;
   sprintf(r, "%g%n", n, &len);
   ctx->heap_front += len+1;
   return r;
 }
 
-char *lw_Basis_urlifyString(lw_context ctx, lw_Basis_string s) {
+char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *p;
 
-  lw_check_heap(ctx, strlen(s) * 3 + 1);
+  uw_check_heap(ctx, strlen(s) * 3 + 1);
 
   for (r = p = ctx->heap_front; *s; s++) {
     char c = *s;
@@ -362,43 +362,43 @@ char *lw_Basis_urlifyString(lw_context ctx, lw_Basis_string s) {
   return r;
 }
 
-char *lw_Basis_urlifyBool(lw_context ctx, lw_Basis_bool b) {
-  if (b == lw_Basis_False)
+char *uw_Basis_urlifyBool(uw_context ctx, uw_Basis_bool b) {
+  if (b == uw_Basis_False)
     return "0";
   else
     return "1";
 }
 
-static void lw_Basis_urlifyInt_w_unsafe(lw_context ctx, lw_Basis_int n) {
+static void uw_Basis_urlifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
   int len;
 
   sprintf(ctx->page_front, "%lld%n", n, &len);
   ctx->page_front += len;
 }
 
-void lw_Basis_urlifyInt_w(lw_context ctx, lw_Basis_int n) {
-  lw_check(ctx, INTS_MAX);
-  lw_Basis_urlifyInt_w_unsafe(ctx, n);
+void uw_Basis_urlifyInt_w(uw_context ctx, uw_Basis_int n) {
+  uw_check(ctx, INTS_MAX);
+  uw_Basis_urlifyInt_w_unsafe(ctx, n);
 }
 
-void lw_Basis_urlifyFloat_w(lw_context ctx, lw_Basis_float n) {
+void uw_Basis_urlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
-  lw_check(ctx, FLOATS_MAX);
+  uw_check(ctx, FLOATS_MAX);
   sprintf(ctx->page_front, "%g%n", n, &len);
   ctx->page_front += len;
 }
 
-void lw_Basis_urlifyString_w(lw_context ctx, lw_Basis_string s) {
-  lw_check(ctx, strlen(s) * 3);
+void uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
+  uw_check(ctx, strlen(s) * 3);
 
   for (; *s; s++) {
     char c = *s;
 
     if (c == ' ')
-      lw_writec_unsafe(ctx, '+');
+      uw_writec_unsafe(ctx, '+');
     else if (isalnum(c))
-      lw_writec_unsafe(ctx, c);
+      uw_writec_unsafe(ctx, c);
     else {
       sprintf(ctx->page_front, "%%%02X", c);
       ctx->page_front += 3;
@@ -406,15 +406,15 @@ void lw_Basis_urlifyString_w(lw_context ctx, lw_Basis_string s) {
   }
 }
 
-void lw_Basis_urlifyBool_w(lw_context ctx, lw_Basis_bool b) {
-  if (b == lw_Basis_False)
-    lw_writec(ctx, '0');
+void uw_Basis_urlifyBool_w(uw_context ctx, uw_Basis_bool b) {
+  if (b == uw_Basis_False)
+    uw_writec(ctx, '0');
   else
-    lw_writec(ctx, '1');
+    uw_writec(ctx, '1');
 }
 
 
-static char *lw_unurlify_advance(char *s) {
+static char *uw_unurlify_advance(char *s) {
   char *new_s = strchr(s, '/');
 
   if (new_s)
@@ -425,25 +425,25 @@ static char *lw_unurlify_advance(char *s) {
   return new_s;
 }
 
-lw_Basis_int lw_Basis_unurlifyInt(lw_context ctx, char **s) {
-  char *new_s = lw_unurlify_advance(*s);
-  lw_Basis_int r;
+uw_Basis_int uw_Basis_unurlifyInt(uw_context ctx, char **s) {
+  char *new_s = uw_unurlify_advance(*s);
+  uw_Basis_int r;
 
   r = atoll(*s);
   *s = new_s;
   return r;
 }
 
-lw_Basis_float lw_Basis_unurlifyFloat(lw_context ctx, char **s) {
-  char *new_s = lw_unurlify_advance(*s);
-  lw_Basis_float r;
+uw_Basis_float uw_Basis_unurlifyFloat(uw_context ctx, char **s) {
+  char *new_s = uw_unurlify_advance(*s);
+  uw_Basis_float r;
 
   r = atof(*s);
   *s = new_s;
   return r;
 }
 
-static lw_Basis_string lw_unurlifyString_to(lw_context ctx, char *r, char *s) {
+static uw_Basis_string uw_unurlifyString_to(uw_context ctx, char *r, char *s) {
   char *s1, *s2;
   int n;
 
@@ -456,11 +456,11 @@ static lw_Basis_string lw_unurlifyString_to(lw_context ctx, char *r, char *s) {
       break;
     case '%':
       if (s2[1] == 0)
-        lw_error(ctx, FATAL, "Missing first character of escaped URL byte");
+        uw_error(ctx, FATAL, "Missing first character of escaped URL byte");
       if (s2[2] == 0)
-        lw_error(ctx, FATAL, "Missing second character of escaped URL byte");
+        uw_error(ctx, FATAL, "Missing second character of escaped URL byte");
       if (sscanf(s2+1, "%02X", &n) != 1)
-        lw_error(ctx, FATAL, "Invalid escaped URL byte starting at: %s", s2);
+        uw_error(ctx, FATAL, "Invalid escaped URL byte starting at: %s", s2);
       *s1 = n;
       s2 += 2;
       break;
@@ -472,76 +472,76 @@ static lw_Basis_string lw_unurlifyString_to(lw_context ctx, char *r, char *s) {
   return s1;
 }
 
-lw_Basis_bool lw_Basis_unurlifyBool(lw_context ctx, char **s) {
-  char *new_s = lw_unurlify_advance(*s);
-  lw_Basis_bool r;
+uw_Basis_bool uw_Basis_unurlifyBool(uw_context ctx, char **s) {
+  char *new_s = uw_unurlify_advance(*s);
+  uw_Basis_bool r;
   
   if (*s[0] == 0 || !strcmp(*s, "0") || !strcmp(*s, "off"))
-    r = lw_Basis_False;
+    r = uw_Basis_False;
   else
-    r = lw_Basis_True;
+    r = uw_Basis_True;
 
   *s = new_s;
   return r;
 }
 
-lw_Basis_string lw_Basis_unurlifyString(lw_context ctx, char **s) {
-  char *new_s = lw_unurlify_advance(*s);
+uw_Basis_string uw_Basis_unurlifyString(uw_context ctx, char **s) {
+  char *new_s = uw_unurlify_advance(*s);
   char *r, *s1, *s2;
   int len, n;
 
   len = strlen(*s);
-  lw_check_heap(ctx, len + 1);
+  uw_check_heap(ctx, len + 1);
 
   r = ctx->heap_front;
-  ctx->heap_front = lw_unurlifyString_to(ctx, ctx->heap_front, *s);
+  ctx->heap_front = uw_unurlifyString_to(ctx, ctx->heap_front, *s);
   *s = new_s;
   return r;
 }
 
 
-char *lw_Basis_htmlifyInt(lw_context ctx, lw_Basis_int n) {
+char *uw_Basis_htmlifyInt(uw_context ctx, uw_Basis_int n) {
   int len;
   char *r;
 
-  lw_check_heap(ctx, INTS_MAX);
+  uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap_front;
   sprintf(r, "%lld%n", n, &len);
   ctx->heap_front += len+1;
   return r;
 }
 
-void lw_Basis_htmlifyInt_w(lw_context ctx, lw_Basis_int n) {
+void uw_Basis_htmlifyInt_w(uw_context ctx, uw_Basis_int n) {
   int len;
 
-  lw_check(ctx, INTS_MAX);
+  uw_check(ctx, INTS_MAX);
   sprintf(ctx->page_front, "%lld%n", n, &len);
   ctx->page_front += len;
 }
 
-char *lw_Basis_htmlifyFloat(lw_context ctx, lw_Basis_float n) {
+char *uw_Basis_htmlifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;
   char *r;
 
-  lw_check_heap(ctx, FLOATS_MAX);
+  uw_check_heap(ctx, FLOATS_MAX);
   r = ctx->heap_front;
   sprintf(r, "%g%n", n, &len);
   ctx->heap_front += len+1;
   return r;
 }
 
-void lw_Basis_htmlifyFloat_w(lw_context ctx, lw_Basis_float n) {
+void uw_Basis_htmlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
-  lw_check(ctx, FLOATS_MAX);
+  uw_check(ctx, FLOATS_MAX);
   sprintf(ctx->page_front, "%g%n", n, &len);
   ctx->page_front += len;
 }
 
-char *lw_Basis_htmlifyString(lw_context ctx, lw_Basis_string s) {
+char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
 
-  lw_check_heap(ctx, strlen(s) * 5 + 1);
+  uw_check_heap(ctx, strlen(s) * 5 + 1);
 
   for (r = s2 = ctx->heap_front; *s; s++) {
     char c = *s;
@@ -571,55 +571,55 @@ char *lw_Basis_htmlifyString(lw_context ctx, lw_Basis_string s) {
   return r;
 }
 
-void lw_Basis_htmlifyString_w(lw_context ctx, lw_Basis_string s) {
-  lw_check(ctx, strlen(s) * 5);
+void uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
+  uw_check(ctx, strlen(s) * 5);
 
   for (; *s; s++) {
     char c = *s;
 
     switch (c) {
     case '<':
-      lw_write_unsafe(ctx, "&lt;");
+      uw_write_unsafe(ctx, "&lt;");
       break;
     case '&':
-      lw_write_unsafe(ctx, "&amp;");
+      uw_write_unsafe(ctx, "&amp;");
       break;
     default:
       if (isprint(c))
-        lw_writec_unsafe(ctx, c);
+        uw_writec_unsafe(ctx, c);
       else {
-        lw_write_unsafe(ctx, "&#");
-        lw_Basis_attrifyInt_w_unsafe(ctx, c);
-        lw_writec_unsafe(ctx, ';');
+        uw_write_unsafe(ctx, "&#");
+        uw_Basis_attrifyInt_w_unsafe(ctx, c);
+        uw_writec_unsafe(ctx, ';');
       }
     }
   }
 }
 
-lw_Basis_string lw_Basis_htmlifyBool(lw_context ctx, lw_Basis_bool b) {
-  if (b == lw_Basis_False)
+uw_Basis_string uw_Basis_htmlifyBool(uw_context ctx, uw_Basis_bool b) {
+  if (b == uw_Basis_False)
     return "False";
   else
     return "True";
 }
 
-void lw_Basis_htmlifyBool_w(lw_context ctx, lw_Basis_bool b) {
-  if (b == lw_Basis_False) {
-    lw_check(ctx, 6);
+void uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
+  if (b == uw_Basis_False) {
+    uw_check(ctx, 6);
     strcpy(ctx->page_front, "False");
     ctx->page_front += 5;
   } else {
-    lw_check(ctx, 5);
+    uw_check(ctx, 5);
     strcpy(ctx->page_front, "True");
     ctx->page_front += 4;
   }
 }
 
-lw_Basis_string lw_Basis_strcat(lw_context ctx, lw_Basis_string s1, lw_Basis_string s2) {
+uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_string s2) {
   int len = strlen(s1) + strlen(s2) + 1;
   char *s;
 
-  lw_check_heap(ctx, len);
+  uw_check_heap(ctx, len);
 
   s = ctx->heap_front;
 
@@ -630,11 +630,11 @@ lw_Basis_string lw_Basis_strcat(lw_context ctx, lw_Basis_string s1, lw_Basis_str
   return s;
 }
 
-lw_Basis_string lw_Basis_strdup(lw_context ctx, lw_Basis_string s1) {
+uw_Basis_string uw_Basis_strdup(uw_context ctx, uw_Basis_string s1) {
   int len = strlen(s1) + 1;
   char *s;
 
-  lw_check_heap(ctx, len);
+  uw_check_heap(ctx, len);
 
   s = ctx->heap_front;
 
@@ -645,22 +645,22 @@ lw_Basis_string lw_Basis_strdup(lw_context ctx, lw_Basis_string s1) {
 }
 
 
-char *lw_Basis_sqlifyInt(lw_context ctx, lw_Basis_int n) {
+char *uw_Basis_sqlifyInt(uw_context ctx, uw_Basis_int n) {
   int len;
   char *r;
 
-  lw_check_heap(ctx, INTS_MAX + 6);
+  uw_check_heap(ctx, INTS_MAX + 6);
   r = ctx->heap_front;
   sprintf(r, "%lld::int8%n", n, &len);
   ctx->heap_front += len+1;
   return r;
 }
 
-char *lw_Basis_sqlifyFloat(lw_context ctx, lw_Basis_float n) {
+char *uw_Basis_sqlifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;
   char *r;
 
-  lw_check_heap(ctx, FLOATS_MAX + 8);
+  uw_check_heap(ctx, FLOATS_MAX + 8);
   r = ctx->heap_front;
   sprintf(r, "%g::float8%n", n, &len);
   ctx->heap_front += len+1;
@@ -668,10 +668,10 @@ char *lw_Basis_sqlifyFloat(lw_context ctx, lw_Basis_float n) {
 }
 
 
-lw_Basis_string lw_Basis_sqlifyString(lw_context ctx, lw_Basis_string s) {
+uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
 
-  lw_check_heap(ctx, strlen(s) * 2 + 10);
+  uw_check_heap(ctx, strlen(s) * 2 + 10);
 
   r = s2 = ctx->heap_front;
   *s2++ = 'E';
@@ -704,80 +704,80 @@ lw_Basis_string lw_Basis_sqlifyString(lw_context ctx, lw_Basis_string s) {
   return r;
 }
 
-char *lw_Basis_sqlifyBool(lw_context ctx, lw_Basis_bool b) {
-  if (b == lw_Basis_False)
+char *uw_Basis_sqlifyBool(uw_context ctx, uw_Basis_bool b) {
+  if (b == uw_Basis_False)
     return "FALSE";
   else
     return "TRUE";
 }
 
-char *lw_Basis_ensqlBool(lw_Basis_bool b) {
-  static lw_Basis_int true = 1;
-  static lw_Basis_int false = 0;
+char *uw_Basis_ensqlBool(uw_Basis_bool b) {
+  static uw_Basis_int true = 1;
+  static uw_Basis_int false = 0;
 
-  if (b == lw_Basis_False)
+  if (b == uw_Basis_False)
     return (char *)&false;
   else
     return (char *)&true;
 }
 
-lw_Basis_string lw_Basis_intToString(lw_context ctx, lw_Basis_int n) {
+uw_Basis_string uw_Basis_intToString(uw_context ctx, uw_Basis_int n) {
   int len;
   char *r;
 
-  lw_check_heap(ctx, INTS_MAX);
+  uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap_front;
   sprintf(r, "%lld%n", n, &len);
   ctx->heap_front += len+1;
   return r;
 }
 
-lw_Basis_string lw_Basis_floatToString(lw_context ctx, lw_Basis_float n) {
+uw_Basis_string uw_Basis_floatToString(uw_context ctx, uw_Basis_float n) {
   int len;
   char *r;
 
-  lw_check_heap(ctx, FLOATS_MAX);
+  uw_check_heap(ctx, FLOATS_MAX);
   r = ctx->heap_front;
   sprintf(r, "%g%n", n, &len);
   ctx->heap_front += len+1;
   return r;
 }
 
-lw_Basis_string lw_Basis_boolToString(lw_context ctx, lw_Basis_bool b) {
-  if (b == lw_Basis_False)
+uw_Basis_string uw_Basis_boolToString(uw_context ctx, uw_Basis_bool b) {
+  if (b == uw_Basis_False)
     return "False";
   else
     return "True";
 }
 
 
-lw_Basis_int *lw_Basis_stringToInt(lw_context ctx, lw_Basis_string s) {
+uw_Basis_int *uw_Basis_stringToInt(uw_context ctx, uw_Basis_string s) {
   char *endptr;
-  lw_Basis_int n = strtoll(s, &endptr, 10);
+  uw_Basis_int n = strtoll(s, &endptr, 10);
 
   if (*s != '\0' && *endptr == '\0') {
-    lw_Basis_int *r = lw_malloc(ctx, sizeof(lw_Basis_int));
+    uw_Basis_int *r = uw_malloc(ctx, sizeof(uw_Basis_int));
     *r = n;
     return r;
   } else
     return NULL;
 }
 
-lw_Basis_float *lw_Basis_stringToFloat(lw_context ctx, lw_Basis_string s) {
+uw_Basis_float *uw_Basis_stringToFloat(uw_context ctx, uw_Basis_string s) {
   char *endptr;
-  lw_Basis_float n = strtod(s, &endptr);
+  uw_Basis_float n = strtod(s, &endptr);
 
   if (*s != '\0' && *endptr == '\0') {
-    lw_Basis_float *r = lw_malloc(ctx, sizeof(lw_Basis_float));
+    uw_Basis_float *r = uw_malloc(ctx, sizeof(uw_Basis_float));
     *r = n;
     return r;
   } else
     return NULL;
 }
 
-lw_Basis_bool *lw_Basis_stringToBool(lw_context ctx, lw_Basis_string s) {
-  static lw_Basis_bool true = lw_Basis_True;
-  static lw_Basis_bool false = lw_Basis_False;
+uw_Basis_bool *uw_Basis_stringToBool(uw_context ctx, uw_Basis_string s) {
+  static uw_Basis_bool true = uw_Basis_True;
+  static uw_Basis_bool false = uw_Basis_False;
 
   if (!strcasecmp (s, "True"))
     return &true;
@@ -787,31 +787,31 @@ lw_Basis_bool *lw_Basis_stringToBool(lw_context ctx, lw_Basis_string s) {
     return NULL;
 }
 
-lw_Basis_int lw_Basis_stringToInt_error(lw_context ctx, lw_Basis_string s) {
+uw_Basis_int uw_Basis_stringToInt_error(uw_context ctx, uw_Basis_string s) {
   char *endptr;
-  lw_Basis_int n = strtoll(s, &endptr, 10);
+  uw_Basis_int n = strtoll(s, &endptr, 10);
 
   if (*s != '\0' && *endptr == '\0')
     return n;
   else
-    lw_error(ctx, FATAL, "Can't parse int: %s", s);
+    uw_error(ctx, FATAL, "Can't parse int: %s", s);
 }
 
-lw_Basis_float lw_Basis_stringToFloat_error(lw_context ctx, lw_Basis_string s) {
+uw_Basis_float uw_Basis_stringToFloat_error(uw_context ctx, uw_Basis_string s) {
   char *endptr;
-  lw_Basis_float n = strtod(s, &endptr);
+  uw_Basis_float n = strtod(s, &endptr);
 
   if (*s != '\0' && *endptr == '\0')
     return n;
   else
-    lw_error(ctx, FATAL, "Can't parse float: %s", s);
+    uw_error(ctx, FATAL, "Can't parse float: %s", s);
 }
 
-lw_Basis_bool lw_Basis_stringToBool_error(lw_context ctx, lw_Basis_string s) {
+uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {
   if (!strcasecmp(s, "T") || !strcasecmp (s, "True"))
-    return lw_Basis_True;
+    return uw_Basis_True;
   else if (!strcasecmp(s, "F") || !strcasecmp (s, "False"))
-    return lw_Basis_False;
+    return uw_Basis_False;
   else
-    lw_error(ctx, FATAL, "Can't parse bool: %s", s);
+    uw_error(ctx, FATAL, "Can't parse bool: %s", s);
 }
