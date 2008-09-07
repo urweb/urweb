@@ -758,6 +758,15 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                          in
                                              (EApp (e, sqlexp), loc)
                                          end)
+       | LPAREN DELETE FROM texp CWHERE sqlexp RPAREN
+                                        (let
+                                             val loc = s (LPARENleft, RPARENright)
+
+                                             val e = (EVar (["Basis"], "delete"), loc)
+                                             val e = (EApp (e, texp), loc)
+                                         in
+                                             (EApp (e, sqlexp), loc)
+                                         end)
 
        | UNDER                          (EWild, s (UNDERleft, UNDERright))
 
