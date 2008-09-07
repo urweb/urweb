@@ -39,6 +39,7 @@ fun impure (e, _) =
     case e of
         EWrite _ => true
       | EQuery _ => true
+      | EDml _ => true
       | EAbs _ => false
 
       | EPrim _ => false

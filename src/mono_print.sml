@@ -257,6 +257,9 @@ fun p_exp' par env (e, _) =
              string "in",
              space,
              p_exp (E.pushERel (E.pushERel env "r" dummyt NONE) "acc" dummyt NONE) body]
+      | EDml e => box [string "dml(",
+                       p_exp env e,
+                       string ")"]
 
 and p_exp env = p_exp' false env
 

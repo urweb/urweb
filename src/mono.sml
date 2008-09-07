@@ -88,6 +88,7 @@ datatype exp' =
                      query : exp,
                      body : exp,
                      initial : exp }
+       | EDml of exp
 
 
 withtype exp = exp' located

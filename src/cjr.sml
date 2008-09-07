@@ -85,6 +85,8 @@ datatype exp' =
                      body : exp,
                      initial : exp,
                      prepared : int option }
+       | EDml of { dml : exp,
+                   prepared : int option }
 
 withtype exp = exp' located
 

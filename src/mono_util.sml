@@ -285,6 +285,11 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                                                                        body = body',
                                                                                        initial = initial'},
                                                                                loc)))))))
+
+              | EDml e =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (EDml e', loc))
     in
         mfe
     end

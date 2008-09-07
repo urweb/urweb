@@ -857,6 +857,83 @@ fun p_exp' par env (e, loc) =
                  string "})"]
         end
 
+      | EDml {dml, prepared} =>
+        box [string "({",
+             newline,
+             string "PGconn *conn = lw_get_db(ctx);",
+             newline,
+             case prepared of
+                 NONE => box [string "char *dml = ",
+                              p_exp env dml,
+                              string ";",
+                              newline]
+               | SOME _ =>
+                 let
+                     val ets = getPargs dml
+                 in
+                     box [p_list_sepi newline
+                                      (fn i => fn (e, t) =>
+                                                  box [p_sql_type t,
+                                                       space,
+                                                       string "arg",
+                                                       string (Int.toString (i + 1)),
+                                                       space,
+                                                       string "=",
+                                                       space,
+                                                       p_exp env e,
+                                                       string ";"])
+                                      ets,
+                          newline,
+                          newline,
+
+                          string "const char *paramValues[] = { ",
+                          p_list_sepi (box [string ",", space])
+                                      (fn i => fn (_, t) => p_ensql t (box [string "arg",
+                                                                            string (Int.toString (i + 1))]))
+                                      ets,
+                          string " };",
+                          newline,
+                          newline]
+                 end,
+             newline,
+             newline,
+             string "PGresult *res = ",
+             case prepared of
+                 NONE => string "PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);"
+               | SOME n => box [string "PQexecPrepared(conn, \"lw",
+                                string (Int.toString n),
+                                string "\", ",
+                                string (Int.toString (length (getPargs dml))),
+                                string ", paramValues, NULL, NULL, 0);"],
+             newline,
+             newline,
+
+             string "if (res == NULL) lw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+             newline,
+             newline,
+
+             string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
+             newline,
+             box [string "PQclear(res);",
+                  newline,
+                  string "lw_error(ctx, FATAL, \"",
+                  string (ErrorMsg.spanToString loc),
+                  string ": DML failed:\\n%s\\n%s\", ",
+                  case prepared of
+                      NONE => string "dml"
+                    | SOME _ => p_exp env dml,
+                  string ", PQerrorMessage(conn));",
+                  newline],
+             string "}",
+             newline,
+             newline,
+
+             string "PQclear(res);",
+             newline,
+             string "lw_unit_v;",
+             newline,
+             string "})"]
+
 and p_exp env = p_exp' false env
 
 fun p_fun env (fx, n, args, ran, e) =

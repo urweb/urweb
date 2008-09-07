@@ -150,6 +150,13 @@ fun prepExp (e as (_, loc), sns) =
                        initial = initial, prepared = SOME (#2 sns)}, loc),
               ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1)))
 
+      | EDml {dml, ...} =>
+        (case prepString (dml, [], 0) of
+             NONE => (e, sns)
+           | SOME (ss, n) =>
+             ((EDml {dml = dml, prepared = SOME (#2 sns)}, loc),
+              ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1)))
+
 fun prepDecl (d as (_, loc), sns) =
     case #1 d of
         DStruct _ => (d, sns)

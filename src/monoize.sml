@@ -591,6 +591,39 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.EFfiApp ("Basis", "dml", [e]) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+                val un = (L'.TRecord [], loc)
+            in
+                ((L'.EAbs ("_", un, un,
+                           (L'.EDml (liftExpInExp 0 e), loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "insert"), _), fields) =>
+            (case monoType env (L.TRecord fields, loc) of
+                 (L'.TRecord fields, _) =>
+                 let
+                     val s = (L'.TFfi ("Basis", "string"), loc)
+                     val fields = map (fn (x, _) => (x, s)) fields
+                     val rt = (L'.TRecord fields, loc)
+                     fun sc s = (L'.EPrim (Prim.String s), loc)
+                 in
+                     ((L'.EAbs ("tab", s, (L'.TFun (rt, s), loc),
+                                (L'.EAbs ("fs", rt, s,
+                                          strcat loc [sc "INSERT INTO ",
+                                                      (L'.ERel 1, loc),
+                                                      sc " (",
+                                                      strcatComma loc (map (fn (x, _) => sc ("lw_" ^ x)) fields),
+                                                      sc ") VALUES (",
+                                                      strcatComma loc (map (fn (x, _) =>
+                                                                               (L'.EField ((L'.ERel 0, loc),
+                                                                                           x), loc)) fields),
+                                                      sc ")"]), loc)), loc),
+                      fm)
+                 end
+               | _ => poly ())
+
           | L.ECApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "query"), _), (L.CRecord (_, tables), _)), _),

@@ -374,6 +374,13 @@ fun cifyExp (eAll as (e, loc), sm) =
                          query = query, body = body, initial = initial, prepared = NONE}, loc), sm)
         end
 
+      | L.EDml e =>
+        let
+            val (e, sm) = cifyExp (e, sm)
+        in
+            ((L'.EDml {dml = e, prepared = NONE}, loc), sm)
+        end
+
 
 fun cifyDecl ((d, loc), sm) =
     case d of
