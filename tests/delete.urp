@@ -1,0 +1,6 @@
+debug
+database dbname=test
+exe /tmp/webapp
+sql /tmp/urweb.sql
+
+delete
