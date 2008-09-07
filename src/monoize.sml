@@ -654,6 +654,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  end
                | _ => poly ())
 
+          | L.ECApp ((L.EFfi ("Basis", "delete"), _), _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("tab", s, (L'.TFun (s, s), loc),
+                           (L'.EAbs ("e", s, s,
+                                     strcat loc [sc "DELETE FROM ",
+                                                 (L'.ERel 1, loc),
+                                                 sc " AS T WHERE ",
+                                                 (L'.ERel 0, loc)]), loc)), loc),
+                 fm)
+            end
+
           | L.ECApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "query"), _), (L.CRecord (_, tables), _)), _),
