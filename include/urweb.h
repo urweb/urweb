@@ -30,9 +30,15 @@ char *lw_get_optional_input(lw_context, int name);
 
 void lw_write(lw_context, const char*);
 
-
+char *lw_Basis_htmlifyInt(lw_context, lw_Basis_int);
+char *lw_Basis_htmlifyFloat(lw_context, lw_Basis_float);
 char *lw_Basis_htmlifyString(lw_context, lw_Basis_string);
+char *lw_Basis_htmlifyBool(lw_context, lw_Basis_bool);
+
+void lw_Basis_htmlifyInt_w(lw_context, lw_Basis_int);
+void lw_Basis_htmlifyFloat_w(lw_context, lw_Basis_float);
 void lw_Basis_htmlifyString_w(lw_context, lw_Basis_string);
+void lw_Basis_htmlifyBool_w(lw_context, lw_Basis_bool);
 
 char *lw_Basis_attrifyInt(lw_context, lw_Basis_int);
 char *lw_Basis_attrifyFloat(lw_context, lw_Basis_float);

@@ -80,6 +80,9 @@ fun monoType env =
                     (L'.TRecord (map (fn (x, t) => (monoName env x, mt env dtmap t)) xcs), loc)
                   | L.TRecord _ => poly ()
 
+                  | L.CApp ((L.CFfi ("Basis", "show"), _), t) =>
+                    (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
+
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
@@ -460,6 +463,27 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ECon (dk, monoPatCon env pc, eo), loc), fm)
             end
           | L.ECon _ => poly ()
+
+          | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>
+            let
+                val t = monoType env t
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("f", (L'.TFun (t, s), loc), (L'.TFun (t, s), loc),
+                           (L'.ERel 0, loc)), loc), fm)
+            end
+          | L.EFfi ("Basis", "show_int") =>
+            ((L'.EFfi ("Basis", "intToString"), loc), fm)
+          | L.EFfi ("Basis", "show_float") =>
+            ((L'.EFfi ("Basis", "floatToString"), loc), fm)
+          | L.EFfi ("Basis", "show_string") =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
+            end
+          | L.EFfi ("Basis", "show_bool") =>
+            ((L'.EFfi ("Basis", "boolToString"), loc), fm)
 
           | L.ECApp ((L.EFfi ("Basis", "return"), _), t) =>
             let

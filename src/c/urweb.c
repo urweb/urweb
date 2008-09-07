@@ -507,6 +507,44 @@ lw_Basis_string lw_Basis_unurlifyString(lw_context ctx, char **s) {
 }
 
 
+char *lw_Basis_htmlifyInt(lw_context ctx, lw_Basis_int n) {
+  int len;
+  char *r;
+
+  lw_check_heap(ctx, INTS_MAX);
+  r = ctx->heap_front;
+  sprintf(r, "%lld%n", n, &len);
+  ctx->heap_front += len+1;
+  return r;
+}
+
+void lw_Basis_htmlifyInt_w(lw_context ctx, lw_Basis_int n) {
+  int len;
+
+  lw_check(ctx, INTS_MAX);
+  sprintf(ctx->page_front, "%lld%n", n, &len);
+  ctx->page_front += len;
+}
+
+char *lw_Basis_htmlifyFloat(lw_context ctx, lw_Basis_float n) {
+  int len;
+  char *r;
+
+  lw_check_heap(ctx, FLOATS_MAX);
+  r = ctx->heap_front;
+  sprintf(r, "%g%n", n, &len);
+  ctx->heap_front += len+1;
+  return r;
+}
+
+void lw_Basis_htmlifyFloat_w(lw_context ctx, lw_Basis_float n) {
+  int len;
+
+  lw_check(ctx, FLOATS_MAX);
+  sprintf(ctx->page_front, "%g%n", n, &len);
+  ctx->page_front += len;
+}
+
 char *lw_Basis_htmlifyString(lw_context ctx, lw_Basis_string s) {
   char *r, *s2;
 
@@ -562,6 +600,25 @@ void lw_Basis_htmlifyString_w(lw_context ctx, lw_Basis_string s) {
         lw_writec_unsafe(ctx, ';');
       }
     }
+  }
+}
+
+lw_Basis_string lw_Basis_htmlifyBool(lw_context ctx, lw_Basis_bool b) {
+  if (b == lw_Basis_False)
+    return "False";
+  else
+    return "True";
+}
+
+void lw_Basis_htmlifyBool_w(lw_context ctx, lw_Basis_bool b) {
+  if (b == lw_Basis_False) {
+    lw_check(ctx, 6);
+    strcpy(ctx->page_front, "False");
+    ctx->page_front += 5;
+  } else {
+    lw_check(ctx, 5);
+    strcpy(ctx->page_front, "True");
+    ctx->page_front += 4;
   }
 }
 

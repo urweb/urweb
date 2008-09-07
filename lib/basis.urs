@@ -27,6 +27,13 @@ val intToString : int -> string
 val floatToString : float -> string
 val boolToString : bool -> string
 
+class show
+val show : t ::: Type -> show t -> t -> string
+val show_int : show int
+val show_float : show float
+val show_string : show string
+val show_bool : show bool
+
 
 (** SQL *)
 

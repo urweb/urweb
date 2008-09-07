@@ -55,6 +55,8 @@ val attrifyString = String.translate (fn #"\"" => "&quot;"
 val urlifyInt = attrifyInt
 val urlifyFloat = attrifyFloat
 
+val htmlifyInt = attrifyInt
+val htmlifyFloat = attrifyFloat
 val htmlifyString = String.translate (fn ch => case ch of
                                                    #"<" => "&lt;"
                                                  | #"&" => "&amp;"
@@ -148,6 +150,31 @@ fun exp e =
                      e), _)) =>
         ESeq ((EWrite (EPrim (Prim.String (s1 ^ s2)), loc), loc),
               e)
+
+      | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "intToString", [(EPrim (Prim.Int n), _)]), _)]) =>
+        EPrim (Prim.String (htmlifyInt n))
+      | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "intToString", es), _)]) =>
+        EFfiApp ("Basis", "htmlifyInt", es)
+      | EWrite (EFfiApp ("Basis", "htmlifyInt", [e]), _) =>
+        EFfiApp ("Basis", "htmlifyInt_w", [e])
+
+      | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "floatToString", [(EPrim (Prim.Float n), _)]), _)]) =>
+        EPrim (Prim.String (htmlifyFloat n))
+      | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "floatToString", es), _)]) =>
+        EFfiApp ("Basis", "htmlifyFloat", es)
+      | EWrite (EFfiApp ("Basis", "htmlifyFloat", [e]), _) =>
+        EFfiApp ("Basis", "htmlifyFloat_w", [e])
+
+      | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "boolToString",
+                                                      [(ECon (Enum, PConFfi {con = "True", ...}, NONE), _)]), _)]) =>
+        EPrim (Prim.String "True")
+      | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "boolToString",
+                                                      [(ECon (Enum, PConFfi {con = "False", ...}, NONE), _)]), _)]) =>
+        EPrim (Prim.String "False")
+      | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "boolToString", es), _)]) =>
+        EFfiApp ("Basis", "htmlifyBool", es)
+      | EWrite (EFfiApp ("Basis", "htmlifyBool", [e]), _) =>
+        EFfiApp ("Basis", "htmlifyBool_w", [e])
 
       | EFfiApp ("Basis", "htmlifyString", [(EPrim (Prim.String s), _)]) =>
         EPrim (Prim.String (htmlifyString s))
