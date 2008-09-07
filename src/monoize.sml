@@ -600,6 +600,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.EDml (liftExpInExp 0 e), loc)), loc),
                  fm)
             end
+
           | L.ECApp ((L.EFfi ("Basis", "insert"), _), fields) =>
             (case monoType env (L.TRecord fields, loc) of
                  (L'.TRecord fields, _) =>
@@ -620,6 +621,35 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                (L'.EField ((L'.ERel 0, loc),
                                                                                            x), loc)) fields),
                                                       sc ")"]), loc)), loc),
+                      fm)
+                 end
+               | _ => poly ())
+
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "update"), _), changed), _), _) =>
+            (case monoType env (L.TRecord changed, loc) of
+                 (L'.TRecord changed, _) =>
+                 let
+                     val s = (L'.TFfi ("Basis", "string"), loc)
+                     val changed = map (fn (x, _) => (x, s)) changed
+                     val rt = (L'.TRecord changed, loc)
+                     fun sc s = (L'.EPrim (Prim.String s), loc)
+                 in
+                     ((L'.EAbs ("fs", rt, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                                (L'.EAbs ("tab", s, (L'.TFun (s, s), loc),
+                                          (L'.EAbs ("e", s, s,
+                                                    strcat loc [sc "UPDATE ",
+                                                                (L'.ERel 1, loc),
+                                                                sc " AS T SET ",
+                                                                strcatComma loc (map (fn (x, _) =>
+                                                                                         strcat loc [sc ("lw_" ^ x
+                                                                                                         ^ " = "),
+                                                                                                     (L'.EField
+                                                                                                          ((L'.ERel 2,
+                                                                                                            loc),
+                                                                                                           x), loc)])
+                                                                                     changed),
+                                                                sc " WHERE ",
+                                                                (L'.ERel 0, loc)]), loc)), loc)), loc),
                       fm)
                  end
                | _ => poly ())
