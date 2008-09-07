@@ -31,6 +31,8 @@ val show_string : show string
 val show_bool : show bool
 
 val stringToInt : string -> option int
+val stringToFloat : string -> option float
+val stringToBool : string -> option bool
 
 
 (** SQL *)

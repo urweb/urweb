@@ -769,3 +769,27 @@ lw_Basis_int *lw_Basis_stringToInt(lw_context ctx, lw_Basis_string s) {
   } else
     return NULL;
 }
+
+lw_Basis_float *lw_Basis_stringToFloat(lw_context ctx, lw_Basis_string s) {
+  char *endptr;
+  lw_Basis_float n = strtod(s, &endptr);
+
+  if (*s != '\0' && *endptr == '\0') {
+    lw_Basis_float *r = lw_malloc(ctx, sizeof(lw_Basis_float));
+    *r = n;
+    return r;
+  } else
+    return NULL;
+}
+
+lw_Basis_bool *lw_Basis_stringToBool(lw_context ctx, lw_Basis_string s) {
+  static lw_Basis_bool true = lw_Basis_True;
+  static lw_Basis_bool false = lw_Basis_False;
+
+  if (!strcasecmp (s, "True"))
+    return &true;
+  else if (!strcasecmp (s, "False"))
+    return &false;
+  else
+    return NULL;
+}
