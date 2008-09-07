@@ -62,11 +62,9 @@ fun p_typ' par env (t, _) =
               string (#1 (E.lookupDatatype env n)))
          handle E.UnboundNamed _ => string ("UNBOUND_DATATYPE_" ^ Int.toString n))
       | TFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
-      | TOption t =>
-        (case #1 t of
-             TDatatype _ => p_typ env t
-           | TFfi ("Basis", "string") => p_typ env t
-           | _ => box [p_typ env t, string "*"])
+      | TOption t => box [string "option(",
+                          p_typ env t,
+                          string ")"]
 
 and p_typ env = p_typ' false env
 

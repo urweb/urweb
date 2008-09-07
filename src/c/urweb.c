@@ -105,10 +105,6 @@ __attribute__((noreturn)) void lw_error(lw_context ctx, failure_kind fk, const c
   longjmp(ctx->jmp_buf, fk);
 }
 
-__attribute__((noreturn)) void lw_Basis_error(lw_context ctx, const char *s) {
-  lw_error(ctx, FATAL, s);
-}
-
 char *lw_error_message(lw_context ctx) {
   return ctx->error_message;
 }
@@ -792,4 +788,14 @@ lw_Basis_bool *lw_Basis_stringToBool(lw_context ctx, lw_Basis_string s) {
     return &false;
   else
     return NULL;
+}
+
+lw_Basis_int lw_Basis_stringToInt_error(lw_context ctx, lw_Basis_string s) {
+  char *endptr;
+  lw_Basis_int n = strtoll(s, &endptr, 10);
+
+  if (*s != '\0' && *endptr == '\0')
+    return n;
+  else
+    lw_error(ctx, FATAL, "Can't parse int: %s", s);
 }

@@ -18,7 +18,6 @@ failure_kind lw_begin_init(lw_context);
 failure_kind lw_begin(lw_context, char *path);
 
 __attribute__((noreturn)) void lw_error(lw_context, failure_kind, const char *fmt, ...);
-__attribute__((noreturn)) void lw_Basis_error(lw_context, lw_Basis_string);
 char *lw_error_message(lw_context);
 
 void *lw_malloc(lw_context, size_t);
@@ -81,3 +80,5 @@ lw_Basis_string lw_Basis_boolToString(lw_context, lw_Basis_bool);
 lw_Basis_int *lw_Basis_stringToInt(lw_context, lw_Basis_string);
 lw_Basis_float *lw_Basis_stringToFloat(lw_context, lw_Basis_string);
 lw_Basis_bool *lw_Basis_stringToBool(lw_context, lw_Basis_string);
+
+lw_Basis_int lw_Basis_stringToInt_error(lw_context, lw_Basis_string);

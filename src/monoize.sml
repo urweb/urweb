@@ -64,6 +64,15 @@ fun monoName env (all as (c, loc)) =
           | _ => poly ()
     end
 
+fun readType' (t, loc) = (L'.TFun ((L'.TFfi ("Basis", "string"), loc),
+                                   (L'.TOption t, loc)), loc)
+fun readErrType (t, loc) = (L'.TFun ((L'.TFfi ("Basis", "string"), loc),
+                                     t), loc)
+fun readType (t, loc) =
+    (L'.TRecord [("Read", readType' (t, loc)),
+                 ("ReadError", readErrType (t, loc))],
+     loc)
+
 fun monoType env =
     let
         fun mt env dtmap (all as (c, loc)) =
@@ -86,8 +95,7 @@ fun monoType env =
                   | L.CApp ((L.CFfi ("Basis", "show"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CFfi ("Basis", "read"), _), t) =>
-                    (L'.TFun ((L'.TFfi ("Basis", "string"), loc),
-                              (L'.TOption (mt env dtmap t), loc)), loc)
+                    readType (mt env dtmap t, loc)
 
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
@@ -498,22 +506,53 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val t = monoType env t
                 val s = (L'.TFfi ("Basis", "string"), loc)
             in
-                ((L'.EAbs ("f", (L'.TFun (t, s), loc), (L'.TFun (t, s), loc),
-                           (L'.ERel 0, loc)), loc), fm)
+                ((L'.EAbs ("f", readType (t, loc), readType' (t, loc),
+                           (L'.EField ((L'.ERel 0, loc), "Read"), loc)), loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "readError"), _), t) =>
+            let
+                val t = monoType env t
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("f", readType (t, loc), readErrType (t, loc),
+                           (L'.EField ((L'.ERel 0, loc), "ReadError"), loc)), loc), fm)
             end
           | L.EFfi ("Basis", "read_int") =>
-            ((L'.EFfi ("Basis", "stringToInt"), loc), fm)
+            let
+                val t = (L'.TFfi ("Basis", "int"), loc)
+            in
+                ((L'.ERecord [("Read", (L'.EFfi ("Basis", "stringToInt"), loc), readType' (t, loc)),
+                               ("ReadError", (L'.EFfi ("Basis", "stringToInt_error"), loc), readErrType (t, loc))],
+                  loc),
+                 fm)
+            end
           | L.EFfi ("Basis", "read_float") =>
-            ((L'.EFfi ("Basis", "stringToFloat"), loc), fm)
+            let
+                val t = (L'.TFfi ("Basis", "float"), loc)
+            in
+                ((L'.ERecord [("Read", (L'.EFfi ("Basis", "stringToFloat"), loc), readType' (t, loc)),
+                              ("ReadError", (L'.EFfi ("Basis", "stringToFloat_error"), loc), readErrType (t, loc))],
+                  loc),
+                 fm)
+            end
           | L.EFfi ("Basis", "read_string") =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
             in
-                ((L'.EAbs ("s", s, (L'.TOption s, loc),
-                           (L'.ESome (s, (L'.ERel 0, loc)), loc)), loc), fm)
+                ((L'.ERecord [("Read", (L'.EAbs ("s", s, (L'.TOption s, loc),
+                                                 (L'.ESome (s, (L'.ERel 0, loc)), loc)), loc), readType' (s, loc)),
+                              ("ReadError", (L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), readErrType (s, loc))], loc),
+                 fm)
             end
           | L.EFfi ("Basis", "read_bool") =>
-            ((L'.EFfi ("Basis", "stringToBool"), loc), fm)
+            let
+                val t = (L'.TFfi ("Basis", "bool"), loc)
+            in
+                ((L'.ERecord [("Read", (L'.EFfi ("Basis", "stringToBool"), loc), readType' (t, loc)),
+                              ("ReadError", (L'.EFfi ("Basis", "stringToBool_error"), loc), readErrType (t, loc))],
+                  loc),
+                 fm)
+            end
 
           | L.ECApp ((L.EFfi ("Basis", "return"), _), t) =>
             let

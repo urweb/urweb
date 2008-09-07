@@ -32,6 +32,8 @@ val show_bool : show bool
 
 class read
 val read : t ::: Type -> read t -> string -> option t
+val readError : t ::: Type -> read t -> string -> t
+(* [readError] calls [error] if the input is malformed. *)
 val read_int : read int
 val read_float : read float
 val read_string : read string
