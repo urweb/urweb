@@ -607,6 +607,14 @@ eexp   : eapps                          (eapps)
                                          in
                                              (EApp (e, (EAbs (SYMBOL, NONE, eexp2), loc)), loc)
                                          end)
+       | UNIT LARROW eexp SEMI eexp     (let
+                                             val loc = s (UNITleft, eexp2right)
+                                             val e = (EVar (["Basis"], "bind"), loc)
+                                             val e = (EApp (e, eexp1), loc)
+                                             val t = (TRecord (CRecord [], loc), loc)
+                                         in
+                                             (EApp (e, (EAbs ("_", SOME t, eexp2), loc)), loc)
+                                         end)
        | eexp EQ eexp                   (native_op ("eq", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp NE eexp                   (native_op ("ne", eexp1, eexp2, s (eexp1left, eexp2right)))
 

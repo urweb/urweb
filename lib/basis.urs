@@ -198,6 +198,28 @@ val query : tables ::: {{Type}} -> exps ::: {Type} -> tables ~ exps
         -> transaction state
 
 
+(*** Database mutators *)
+
+type dml
+val dml : dml -> transaction unit
+
+val insert : fields ::: {Type}
+        -> sql_table fields
+        -> $fields
+        -> dml
+
+val update : changed ::: {Type} -> unchanged ::: {Type} -> changed ~ unchanged
+        -> sql_table (changed ++ unchanged)
+        -> $changed
+        -> sql_exp [T = changed ++ unchanged] [] [] bool
+        -> dml
+
+val delete : fields ::: {Type}
+        -> sql_table fields
+        -> sql_exp [T = fields] [] [] bool
+        -> dml
+
+
 (** XML *)
 
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
