@@ -60,6 +60,7 @@ datatype exp' =
        | ERel of int
        | ENamed of int
        | ECon of datatype_kind * patCon * exp option
+       | ENone of typ
        | ESome of typ * exp
        | EFfi of string * string
        | EFfiApp of string * string * exp list

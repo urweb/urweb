@@ -145,6 +145,10 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                         fn e' =>
                            (ECon (dk, n, SOME e'), loc))
+              | ENone t =>
+                S.map2 (mft t,
+                        fn t' =>
+                           (ENone t', loc))
               | ESome (t, e) =>
                 S.bind2 (mft t,
                          fn t' =>

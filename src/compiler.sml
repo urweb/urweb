@@ -467,8 +467,8 @@ val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
 fun compileC {cname, oname, ename} =
     let
-        val compile = "gcc -s -O3 -I include -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -s -O3 -pthread -lpq clib/urweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
+        val compile = "gcc -Wstrict-prototypes -Werror -s -O3 -I include -c " ^ cname ^ " -o " ^ oname
+        val link = "gcc -Werror -s -O3 -pthread -lpq clib/urweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"

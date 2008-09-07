@@ -60,6 +60,7 @@ fun prepExp (e as (_, loc), sns) =
         in
             ((ECon (dk, pc, SOME e), loc), sns)
         end
+      | ENone t => (e, sns)
       | ESome (t, e) =>
         let
             val (e, sns) = prepExp (e, sns)

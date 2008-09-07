@@ -45,6 +45,7 @@ fun impure (e, _) =
       | ERel _ => false
       | ENamed _ => false
       | ECon (_, _, eo) => (case eo of NONE => false | SOME e => impure e)
+      | ENone _ => false
       | ESome (_, e) => impure e
       | EFfi _ => false
       | EFfiApp _ => false

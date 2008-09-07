@@ -518,6 +518,7 @@ fun p_exp' par env (e, loc) =
                  newline,
                  string "})"]          
         end
+      | ENone _ => string "NULL"
       | ESome (t, e) =>
         (case #1 t of
              TDatatype _ => p_exp' par env e

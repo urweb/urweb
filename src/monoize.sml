@@ -478,6 +478,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.ECon (dk, monoPatCon env pc, eo), loc), fm)
             end
+          | L.ECon (L.Option, _, [t], NONE) =>
+            ((L'.ENone (monoType env t), loc), fm)
+          | L.ECon (L.Option, _, [t], SOME e) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                ((L'.ESome (monoType env t, e), loc), fm)
+            end
           | L.ECon _ => poly ()
 
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>

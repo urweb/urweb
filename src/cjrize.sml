@@ -211,6 +211,12 @@ fun cifyExp (eAll as (e, loc), sm) =
         in
             ((L'.ECon (dk, pc, eo), loc), sm)
         end
+      | L.ENone t =>
+        let
+            val (t, sm) = cifyTyp (t, sm)
+        in
+            ((L'.ENone t, loc), sm)
+        end
       | L.ESome (t, e) =>
         let
             val (t, sm) = cifyTyp (t, sm)

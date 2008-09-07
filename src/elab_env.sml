@@ -991,17 +991,23 @@ fun declBinds env (d, loc) =
         DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
       | DDatatype (x, n, xs, xncs) =>
         let
-            val env = pushCNamedAs env x n (KType, loc) NONE
+            val k = (KType, loc) 
+            val nxs = length xs
+            val (tb, kb) = ListUtil.foldli (fn (i, x', (tb, kb)) =>
+                                               ((CApp (tb, (CRel (nxs - i - 1), loc)), loc),
+                                                (KArrow (k, kb), loc)))
+                                           ((CNamed n, loc), k) xs
+                                              
+            val env = pushCNamedAs env x n kb NONE
             val env = pushDatatype env n xs xncs
         in
             foldl (fn ((x', n', to), env) =>
                       let
                           val t =
                               case to of
-                                  NONE => (CNamed n, loc)
-                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
-                          val k = (KType, loc)
-                          val t = foldr (fn (x, t) => (TCFun (Explicit, x, k, t), loc)) t xs
+                                  NONE => tb
+                                | SOME t => (TFun (t, tb), loc)
+                          val t = foldr (fn (x, t) => (TCFun (Implicit, x, k, t), loc)) t xs
                       in
                           pushENamedAs env x' n' t
                       end)
@@ -1010,19 +1016,24 @@ fun declBinds env (d, loc) =
       | DDatatypeImp (x, n, m, ms, x', xs, xncs) =>
         let
             val t = (CModProj (m, ms, x'), loc)
-            val env = pushCNamedAs env x n (KType, loc) (SOME t)
-            val env = pushDatatype env n xs xncs
+            val k = (KType, loc) 
+            val nxs = length xs
+            val (tb, kb) = ListUtil.foldli (fn (i, x', (tb, kb)) =>
+                                               ((CApp (tb, (CRel (nxs - i - 1), loc)), loc),
+                                                (KArrow (k, kb), loc)))
+                                           ((CNamed n, loc), k) xs
 
-            val t = (CNamed n, loc)
+            val t' = foldr (fn (x, t) => (TCFun (Implicit, x, k, t), loc)) t xs
+            val env = pushCNamedAs env x n kb (SOME t')
+            val env = pushDatatype env n xs xncs
         in
             foldl (fn ((x', n', to), env) =>
                       let
                           val t =
                               case to of
-                                  NONE => (CNamed n, loc)
-                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
-                          val k = (KType, loc)
-                          val t = foldr (fn (x, t) => (TCFun (Explicit, x, k, t), loc)) t xs
+                                  NONE => tb
+                                | SOME t => (TFun (t, tb), loc)
+                          val t = foldr (fn (x, t) => (TCFun (Implicit, x, k, t), loc)) t xs
                       in
                           pushENamedAs env x' n' t
                       end)

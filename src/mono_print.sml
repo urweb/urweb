@@ -130,6 +130,7 @@ fun p_exp' par env (e, _) =
       | ECon (_, pc, SOME e) => parenIf par (box [p_patCon env pc,
                                                   space,
                                                   p_exp' true env e])
+      | ENone _ => string "None"
       | ESome (_, e) => parenIf par (box [string "Some",
                                           space,
                                           p_exp' true env e])
