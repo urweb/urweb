@@ -6,6 +6,8 @@ type unit = {}
 
 datatype bool = False | True
 
+(*datatype option t = None | Some of t*)
+
 
 (** Basic type classes *)
 
@@ -20,6 +22,9 @@ val eq_bool : eq bool
 (** String operations *)
 
 val strcat : string -> string -> string
+
+val intToString : int -> string
+
 
 
 (** SQL *)

@@ -1923,6 +1923,10 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             val nxs = length xs - 1
             val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
 
+            val (env', denv') = foldl (fn (x, (env', denv')) =>
+                                          (E.pushCRel env' x k,
+                                           D.enter denv')) (env, denv) xs
+
             val (xcs, (used, env, gs)) =
                 ListUtil.foldlMap
                 (fn ((x, to), (used, env, gs)) =>
@@ -1931,9 +1935,9 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
                                            NONE => (NONE, t, gs)
                                          | SOME t' =>
                                            let
-                                               val (t', tk, gs') = elabCon (env, denv) t'
+                                               val (t', tk, gs') = elabCon (env', denv') t'
                                            in
-                                               checkKind env t' tk k;
+                                               checkKind env' t' tk k;
                                                (SOME t', (L'.TFun (t', t), loc), gs' @ gs)
                                            end
                         val t = foldl (fn (x, t) => (L'.TCFun (L'.Implicit, x, k, t), loc)) t xs

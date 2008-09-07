@@ -670,3 +670,14 @@ char *lw_Basis_ensqlBool(lw_Basis_bool b) {
   else
     return (char *)&true;
 }
+
+lw_Basis_string lw_Basis_intToString(lw_context ctx, lw_Basis_int n) {
+  int len;
+  char *r;
+
+  lw_check_heap(ctx, INTS_MAX);
+  r = ctx->heap_front;
+  sprintf(r, "%lld%n", n, &len);
+  ctx->heap_front += len+1;
+  return r;
+}
