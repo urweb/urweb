@@ -799,3 +799,22 @@ lw_Basis_int lw_Basis_stringToInt_error(lw_context ctx, lw_Basis_string s) {
   else
     lw_error(ctx, FATAL, "Can't parse int: %s", s);
 }
+
+lw_Basis_float lw_Basis_stringToFloat_error(lw_context ctx, lw_Basis_string s) {
+  char *endptr;
+  lw_Basis_float n = strtod(s, &endptr);
+
+  if (*s != '\0' && *endptr == '\0')
+    return n;
+  else
+    lw_error(ctx, FATAL, "Can't parse float: %s", s);
+}
+
+lw_Basis_bool lw_Basis_stringToBool_error(lw_context ctx, lw_Basis_string s) {
+  if (!strcasecmp (s, "True"))
+    return lw_Basis_True;
+  else if (!strcasecmp (s, "False"))
+    return lw_Basis_False;
+  else
+    lw_error(ctx, FATAL, "Can't parse bool: %s", s);
+}

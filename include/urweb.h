@@ -82,3 +82,5 @@ lw_Basis_float *lw_Basis_stringToFloat(lw_context, lw_Basis_string);
 lw_Basis_bool *lw_Basis_stringToBool(lw_context, lw_Basis_string);
 
 lw_Basis_int lw_Basis_stringToInt_error(lw_context, lw_Basis_string);
+lw_Basis_float lw_Basis_stringToFloat_error(lw_context, lw_Basis_string);
+lw_Basis_bool lw_Basis_stringToBool_error(lw_context, lw_Basis_string);
