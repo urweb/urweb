@@ -197,6 +197,13 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                                         fn result' =>
                                                            (ECase (e', pes', {disc = disc', result = result'}), loc)))))
 
+              | EError (e, t) =>
+                S.bind2 (mfe ctx e,
+                         fn e' =>
+                            S.map2 (mft t,
+                                    fn t' =>
+                                       (EError (e', t'), loc)))
+
               | EStrcat (e1, e2) =>
                 S.bind2 (mfe ctx e1,
                       fn e1' =>

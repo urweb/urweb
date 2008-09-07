@@ -173,6 +173,15 @@ fun p_exp' par env (e, _) =
                                                                               space,
                                                                               p_exp (E.patBinds env p) e]) pes])
 
+      | EError (e, t) => box [string "(error",
+                              space,
+                              p_exp env e,
+                              space,
+                              string ":",
+                              space,
+                              p_typ env t,
+                              string ")"]
+
       | EStrcat (e1, e2) => box [p_exp' true env e1,
                                  space,
                                  string "^",

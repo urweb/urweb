@@ -17,6 +17,11 @@ val eq_string : eq string
 val eq_bool : eq bool
 
 
+(** String operations *)
+
+val strcat : string -> string -> string
+
+
 (** SQL *)
 
 con sql_table :: {Type} -> Type
@@ -256,3 +261,8 @@ val loption : unit -> tag [Value = string] select [] [] []
 val submit : ctx ::: {Unit} -> [LForm] ~ ctx
         -> use ::: {Type} -> unit
         -> tag [Action = $use -> transaction page] ([LForm] ++ ctx) ([LForm] ++ ctx) use []
+
+
+(** Aborting *)
+
+val error : t ::: Type -> xml [Body] [] [] -> t

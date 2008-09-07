@@ -96,13 +96,17 @@ failure_kind lw_begin(lw_context ctx, char *path) {
   return r;
 }
 
-void lw_error(lw_context ctx, failure_kind fk, const char *fmt, ...) {
+__attribute__((noreturn)) void lw_error(lw_context ctx, failure_kind fk, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
   vsnprintf(ctx->error_message, ERROR_BUF_LEN, fmt, ap);
 
   longjmp(ctx->jmp_buf, fk);
+}
+
+__attribute__((noreturn)) void lw_Basis_error(lw_context ctx, const char *s) {
+  lw_error(ctx, FATAL, s);
 }
 
 char *lw_error_message(lw_context ctx) {

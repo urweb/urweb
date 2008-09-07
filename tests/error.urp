@@ -1,0 +1,5 @@
+debug
+database dbname=test
+exe /tmp/webapp
+
+error

@@ -1279,6 +1279,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                      _), _),
                     xml) => monoExp (env, st, fm) xml
 
+          | L.ECApp ((L.EFfi ("Basis", "error"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("s", (L'.TFfi ("Basis", "string"), loc), t,
+                           (L'.EError ((L'.ERel 0, loc), t), loc)), loc),
+                 fm)
+            end
+
           | L.EApp (e1, e2) =>
             let
                 val (e1, fm) = monoExp (env, st, fm) e1

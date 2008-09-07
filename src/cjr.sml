@@ -66,6 +66,8 @@ datatype exp' =
 
        | ECase of exp * (pat * exp) list * { disc : typ, result : typ }
 
+       | EError of exp * typ
+
        | EWrite of exp
        | ESeq of exp * exp
        | ELet of string * typ * exp * exp

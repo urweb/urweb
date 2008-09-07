@@ -106,6 +106,13 @@ fun prepExp (e as (_, loc), sns) =
             ((ECase (e, pes, ts), loc), sns)
         end
 
+      | EError (e, t) =>
+        let
+            val (e, sns) = prepExp (e, sns)
+        in
+            ((EError (e, t), loc), sns)
+        end
+
       | EWrite e =>
         let
             val (e, sns) = prepExp (e, sns)

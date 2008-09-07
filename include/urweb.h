@@ -17,7 +17,8 @@ void lw_reset_keep_error_message(lw_context);
 failure_kind lw_begin_init(lw_context);
 failure_kind lw_begin(lw_context, char *path);
 
-void lw_error(lw_context, failure_kind, const char *fmt, ...);
+__attribute__((noreturn)) void lw_error(lw_context, failure_kind, const char *fmt, ...);
+__attribute__((noreturn)) void lw_Basis_error(lw_context, lw_Basis_string);
 char *lw_error_message(lw_context);
 
 void *lw_malloc(lw_context, size_t);

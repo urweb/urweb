@@ -253,6 +253,14 @@ fun cifyExp (eAll as (e, loc), sm) =
                 ((L'.ECase (e, pes, {disc = disc, result = result}), loc), sm)
             end
 
+      | L.EError (e, t) =>
+        let
+            val (e, sm) = cifyExp (e, sm)
+            val (t, sm) = cifyTyp (t, sm)
+        in
+            ((L'.EError (e, t), loc), sm)
+        end
+
       | L.EStrcat (e1, e2) =>
         let
             val (e1, sm) = cifyExp (e1, sm)

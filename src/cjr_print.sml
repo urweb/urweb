@@ -455,6 +455,20 @@ fun p_exp' par env (e, loc) =
         end
 
       | EFfi (m, x) => box [string "lw_", string m, string "_", string x]
+      | EError (e, t) =>
+        box [string "({",
+             newline,
+             p_typ env t,
+             space,
+             string "tmp;",
+             newline,
+             string "lw_Basis_error(ctx, ",
+             p_exp env e,
+             string ");",
+             newline,
+             string "tmp;",
+             newline,
+             string "})"]
       | EFfiApp (m, x, es) => box [string "lw_",
                                    string m,
                                    string "_",

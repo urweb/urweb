@@ -55,6 +55,8 @@ fun impure (e, _) =
 
       | ECase (e, pes, _) => impure e orelse List.exists (fn (_, e) => impure e) pes
 
+      | EError (e, _) => impure e
+
       | EStrcat (e1, e2) => impure e1 orelse impure e2
 
       | ESeq (e1, e2) => impure e1 orelse impure e2

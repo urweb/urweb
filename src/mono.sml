@@ -69,6 +69,8 @@ datatype exp' =
 
        | EStrcat of exp * exp
 
+       | EError of exp * typ
+
        | EWrite of exp
        | ESeq of exp * exp
        | ELet of string * typ * exp * exp
