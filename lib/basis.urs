@@ -210,7 +210,8 @@ val insert : fields ::: {Type}
         -> dml
 
 val update : changed ::: {Type} -> unchanged ::: {Type} -> changed ~ unchanged
-        -> $changed
+        -> $(fold (fn nm (t :: Type) acc => [nm] ~ acc =>
+                [nm = sql_exp [T = changed ++ unchanged] [] [] t] ++ acc) [] changed)
         -> sql_table (changed ++ unchanged)
         -> sql_exp [T = changed ++ unchanged] [] [] bool
         -> dml

@@ -283,6 +283,7 @@ fun native_op (oper, e1, e2, loc) =
  | texp of exp
  | fields of con list
  | sqlexps of exp list
+ | fsets of (con * exp) list
 
 
 %verbose                                (* print summary of errors *)
@@ -747,6 +748,16 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                  ();
                                              (EApp (e, (ERecord (ListPair.zip (fields, sqlexps)), loc)), loc)
                                          end)
+       | LPAREN UPDATE texp SET fsets CWHERE sqlexp RPAREN
+                                        (let
+                                             val loc = s (LPARENleft, RPARENright)
+
+                                             val e = (EVar (["Basis"], "update"), loc)
+                                             val e = (EApp (e, (ERecord fsets, loc)), loc)
+                                             val e = (EApp (e, texp), loc)
+                                         in
+                                             (EApp (e, sqlexp), loc)
+                                         end)
 
        | UNDER                          (EWild, s (UNDERleft, UNDERright))
 
@@ -758,6 +769,9 @@ fields : fident                         ([fident])
 
 sqlexps: sqlexp                         ([sqlexp])
        | sqlexp COMMA sqlexps           (sqlexp :: sqlexps)
+
+fsets  : fident EQ sqlexp               ([(fident, sqlexp)])
+       | fident EQ sqlexp COMMA fsets   ((fident, sqlexp) :: fsets)
 
 idents : ident                          ([ident])
        | ident DOT idents               (ident :: idents)
