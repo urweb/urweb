@@ -17,3 +17,7 @@ typedef lw_Basis_string lw_Basis_page;
 
 
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY } failure_kind;
+
+
+#define INTS_MAX 50
+#define FLOATS_MAX 100

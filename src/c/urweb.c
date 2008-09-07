@@ -225,9 +225,6 @@ void lw_write(lw_context ctx, const char* s) {
 }
 
 
-#define INTS_MAX 50
-#define FLOATS_MAX 100
-
 char *lw_Basis_attrifyInt(lw_context ctx, lw_Basis_int n) {
   char *result;
   int len;

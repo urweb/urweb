@@ -390,12 +390,10 @@ fun patConInfo env pc =
 
 fun p_unsql env (tAll as (t, loc)) e =
     case t of
-        TFfi ("Basis", "int") => box [string "*(lw_Basis_int *)", e]
-      | TFfi ("Basis", "float") => box [string "*(lw_Basis_float *)", e]
+        TFfi ("Basis", "int") => box [string "lw_Basis_stringToInt_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "float") => box [string "lw_Basis_stringToFloat_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "string") => box [string "lw_Basis_strdup(ctx, ", e, string ")"]
-      | TFfi ("Basis", "bool") => box [string "(*(int *)",
-                                       e,
-                                       string " ? lw_Basis_True : lw_Basis_False)"]
+      | TFfi ("Basis", "bool") => box [string "lw_Basis_stringToBool_error(ctx, ", e, string ")"]
       | _ => (ErrorMsg.errorAt loc "Don't know how to unmarshal type from SQL";
               Print.eprefaces' [("Type", p_typ env tAll)];
               string "ERROR")
@@ -427,10 +425,10 @@ fun getPargs (e, _) =
 
 fun p_ensql t e =
     case t of
-        Int => box [string "(char *)&", e]
-      | Float => box [string "(char *)&", e]
+        Int => box [string "lw_Basis_attrifyInt(ctx, ", e, string ")"]
+      | Float => box [string "lw_Basis_attrifyFloat(ctx, ", e, string ")"]
       | String => e
-      | Bool => box [string "lw_Basis_ensqlBool(", e, string ")"]
+      | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
 
 fun p_ensql_len t e =
     case t of
@@ -751,21 +749,6 @@ fun p_exp' par env (e, loc) =
                               ets,
                               string " };",
                               newline,
-                              newline,
-
-                              string "const int paramLengths[] = { ",
-                              p_list_sepi (box [string ",", space])
-                              (fn i => fn (_, t) => p_ensql_len t (box [string "arg",
-                                                                        string (Int.toString (i + 1))]))
-                              ets,
-                              string " };",
-                              newline,
-                              newline,
-                              
-                              string "const static int paramFormats[] = { ",
-                              p_list_sep (box [string ",", space]) (fn _ => string "1") ets,
-                              string " };",
-                              newline,
                               newline]
                      end,
                  string "int n, i;",
@@ -781,12 +764,12 @@ fun p_exp' par env (e, loc) =
                  newline,
                  string "PGresult *res = ",
                  case prepared of
-                     NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 1);"
+                     NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
                    | SOME n => box [string "PQexecPrepared(conn, \"lw",
                                     string (Int.toString n),
                                     string "\", ",
                                     string (Int.toString (length (getPargs query))),
-                                    string ", paramValues, paramLengths, paramFormats, 1);"],
+                                    string ", paramValues, NULL, NULL, 0);"],
                  newline,
                  newline,
 
