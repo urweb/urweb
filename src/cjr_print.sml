@@ -520,6 +520,31 @@ fun p_exp' par env (e, loc) =
                  newline,
                  string "})"]          
         end
+      | ESome (t, e) =>
+        (case #1 t of
+             TDatatype _ => p_exp' par env e
+           | TFfi ("Basis", "string") => p_exp' par env e
+           | _ => box [string "({",
+                       newline,
+                       p_typ env t,
+                       space,
+                       string "*tmp",
+                       space,
+                       string "=",
+                       space,
+                       string "lw_malloc(ctx, sizeof(",
+                       p_typ env t,
+                       string "));",
+                       newline,
+                       string "*tmp",
+                       space,
+                       string "=",
+                       p_exp' par env e,
+                       string ";",
+                       newline,
+                       string "tmp;",
+                       newline,
+                       string "})"])
 
       | EFfi (m, x) => box [string "lw_", string m, string "_", string x]
       | EError (e, t) =>

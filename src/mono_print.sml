@@ -132,6 +132,9 @@ fun p_exp' par env (e, _) =
       | ECon (_, pc, SOME e) => parenIf par (box [p_patCon env pc,
                                                   space,
                                                   p_exp' true env e])
+      | ESome (_, e) => parenIf par (box [string "Some",
+                                          space,
+                                          p_exp' true env e])
 
       | EFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
       | EFfiApp (m, x, es) => box [string "FFI(",

@@ -30,9 +30,12 @@ val show_float : show float
 val show_string : show string
 val show_bool : show bool
 
-val stringToInt : string -> option int
-val stringToFloat : string -> option float
-val stringToBool : string -> option bool
+class read
+val read : t ::: Type -> read t -> string -> option t
+val read_int : read int
+val read_float : read float
+val read_string : read string
+val read_bool : read bool
 
 
 (** SQL *)

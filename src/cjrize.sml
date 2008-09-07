@@ -211,6 +211,13 @@ fun cifyExp (eAll as (e, loc), sm) =
         in
             ((L'.ECon (dk, pc, eo), loc), sm)
         end
+      | L.ESome (t, e) =>
+        let
+            val (t, sm) = cifyTyp (t, sm)
+            val (e, sm) = cifyExp (e, sm)
+        in
+            ((L'.ESome (t, e), loc), sm)
+        end
       | L.EFfi mx => ((L'.EFfi mx, loc), sm)
       | L.EFfiApp (m, x, es) =>
         let

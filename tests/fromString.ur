@@ -1,15 +1,15 @@
 fun s2i s =
-        case stringToInt s of
+        case read _ s of
           None => 0
         | Some n => n
 
 fun s2f s =
-        case stringToFloat s of
+        case read _ s of
           None => 0.0
         | Some n => n
 
 fun s2b s =
-        case stringToBool s of
+        case read _ s of
           None => False
         | Some b => b
 

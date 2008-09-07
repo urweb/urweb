@@ -85,6 +85,9 @@ fun monoType env =
 
                   | L.CApp ((L.CFfi ("Basis", "show"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
+                  | L.CApp ((L.CFfi ("Basis", "read"), _), t) =>
+                    (L'.TFun ((L'.TFfi ("Basis", "string"), loc),
+                              (L'.TOption (mt env dtmap t), loc)), loc)
 
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
@@ -489,6 +492,28 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
           | L.EFfi ("Basis", "show_bool") =>
             ((L'.EFfi ("Basis", "boolToString"), loc), fm)
+
+          | L.ECApp ((L.EFfi ("Basis", "read"), _), t) =>
+            let
+                val t = monoType env t
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("f", (L'.TFun (t, s), loc), (L'.TFun (t, s), loc),
+                           (L'.ERel 0, loc)), loc), fm)
+            end
+          | L.EFfi ("Basis", "read_int") =>
+            ((L'.EFfi ("Basis", "stringToInt"), loc), fm)
+          | L.EFfi ("Basis", "read_float") =>
+            ((L'.EFfi ("Basis", "stringToFloat"), loc), fm)
+          | L.EFfi ("Basis", "read_string") =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, (L'.TOption s, loc),
+                           (L'.ESome (s, (L'.ERel 0, loc)), loc)), loc), fm)
+            end
+          | L.EFfi ("Basis", "read_bool") =>
+            ((L'.EFfi ("Basis", "stringToBool"), loc), fm)
 
           | L.ECApp ((L.EFfi ("Basis", "return"), _), t) =>
             let

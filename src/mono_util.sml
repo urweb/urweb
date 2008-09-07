@@ -145,6 +145,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                         fn e' =>
                            (ECon (dk, n, SOME e'), loc))
+              | ESome (t, e) =>
+                S.bind2 (mft t,
+                         fn t' =>
+                            S.map2 (mfe ctx e,
+                                 fn e' =>
+                                    (ESome (t', e'), loc)))
               | EFfi _ => S.return2 eAll
               | EFfiApp (m, x, es) =>
                 S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,
