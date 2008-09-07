@@ -753,8 +753,12 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                              val loc = s (LPARENleft, RPARENright)
 
                                              val e = (EVar (["Basis"], "update"), loc)
-                                             val e = (EApp (e, (ERecord fsets, loc)), loc)
+                                             val e = (ECApp (e, (CRecord (map (fn (nm, _) =>
+                                                                                  (nm,
+                                                                                   (CWild (KType, loc), loc)))
+                                                                          fsets), loc)), loc)
                                              val e = (EApp (e, texp), loc)
+                                             val e = (EApp (e, (ERecord fsets, loc)), loc)
                                          in
                                              (EApp (e, sqlexp), loc)
                                          end)
