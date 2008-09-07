@@ -8,6 +8,11 @@ fun s2f s =
           None => 0.0
         | Some n => n
 
+fun s2s s =
+        case read _ s of
+          None => "Error"
+        | Some s => s
+
 fun s2b s =
         case read _ s of
           None => False
@@ -23,4 +28,6 @@ fun main () : transaction page = return <html><body>
         Error = {cdata (show _ (s2b "Error"))}<br/>
         False = {cdata (show _ (s2b "false"))}<br/>
         True = {cdata (show _ (s2b "trUE"))}<br/>
+        <br/>
+        Hi = {cdata (s2s "Hi")}<br/>
 </body></html>

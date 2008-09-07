@@ -60,6 +60,12 @@ fun prepExp (e as (_, loc), sns) =
         in
             ((ECon (dk, pc, SOME e), loc), sns)
         end
+      | ESome (t, e) =>
+        let
+            val (e, sns) = prepExp (e, sns)
+        in
+            ((ESome (t, e), loc), sns)
+        end
       | EFfi _ => (e, sns)
       | EFfiApp (m, x, es) =>
         let
