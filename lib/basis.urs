@@ -205,7 +205,8 @@ val dml : dml -> transaction unit
 
 val insert : fields ::: {Type}
         -> sql_table fields
-        -> $fields
+        -> $(fold (fn nm (t :: Type) acc => [nm] ~ acc =>
+                [nm = sql_exp [T = fields] [] [] t] ++ acc) [] fields)
         -> dml
 
 val update : changed ::: {Type} -> unchanged ::: {Type} -> changed ~ unchanged

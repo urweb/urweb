@@ -335,6 +335,13 @@ notags = [^<{\n]+;
 <INITIAL> "ASC"       => (Tokens.ASC (pos yypos, pos yypos + size yytext));
 <INITIAL> "DESC"      => (Tokens.DESC (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "INSERT"    => (Tokens.INSERT (pos yypos, pos yypos + size yytext));
+<INITIAL> "INTO"      => (Tokens.INTO (pos yypos, pos yypos + size yytext));
+<INITIAL> "VALUES"    => (Tokens.VALUES (pos yypos, pos yypos + size yytext));
+<INITIAL> "UPDATE"    => (Tokens.UPDATE (pos yypos, pos yypos + size yytext));
+<INITIAL> "SET"       => (Tokens.SET (pos yypos, pos yypos + size yytext));
+<INITIAL> "DELETE"    => (Tokens.DELETE (pos yypos, pos yypos + size yytext));
+
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));
 

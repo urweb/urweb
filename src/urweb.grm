@@ -179,6 +179,7 @@ fun native_op (oper, e1, e2, loc) =
  | TRUE | FALSE | CAND | OR | NOT
  | COUNT | AVG | SUM | MIN | MAX
  | ASC | DESC
+ | INSERT | INTO | VALUES | UPDATE | SET | DELETE
  | NE | LT | LE | GT | GE
 
 %nonterm
@@ -278,6 +279,10 @@ fun native_op (oper, e1, e2, loc) =
  | ofopt of exp
  | sqlint of exp
  | sqlagg of string
+
+ | texp of exp
+ | fields of con list
+ | sqlexps of exp list
 
 
 %verbose                                (* print summary of errors *)
@@ -725,9 +730,34 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | XML_BEGIN XML_END              (EApp ((EVar (["Basis"], "cdata"), s (XML_BEGINleft, XML_ENDright)),
                                                (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
                                          s (XML_BEGINleft, XML_ENDright))
+
        | LPAREN query RPAREN            (query)
        | LPAREN CWHERE sqlexp RPAREN    (sqlexp)
+
+       | LPAREN INSERT INTO texp LPAREN fields RPAREN VALUES LPAREN sqlexps RPAREN RPAREN
+                                        (let
+                                             val loc = s (LPAREN1left, RPAREN3right)
+
+                                             val e = (EVar (["Basis"], "insert"), loc)
+                                             val e = (EApp (e, texp), loc)
+                                         in
+                                             if length fields <> length sqlexps then
+                                                 ErrorMsg.errorAt loc "Length mismatch in INSERT field specification"
+                                             else
+                                                 ();
+                                             (EApp (e, (ERecord (ListPair.zip (fields, sqlexps)), loc)), loc)
+                                         end)
+
        | UNDER                          (EWild, s (UNDERleft, UNDERright))
+
+texp   : SYMBOL                         (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright))
+       | LBRACE LBRACE eexp RBRACE RBRACE (eexp)
+
+fields : fident                         ([fident])
+       | fident COMMA fields            (fident :: fields)
+
+sqlexps: sqlexp                         ([sqlexp])
+       | sqlexp COMMA sqlexps           (sqlexp :: sqlexps)
 
 idents : ident                          ([ident])
        | ident DOT idents               (ident :: idents)
