@@ -64,3 +64,5 @@ lw_Basis_int lw_Basis_sqlifyInt(lw_context, lw_Basis_int);
 lw_Basis_float lw_Basis_sqlifyFloat(lw_context, lw_Basis_float);
 lw_Basis_string lw_Basis_sqlifyString(lw_context, lw_Basis_string);
 lw_Basis_bool lw_Basis_sqlifyBool(lw_context, lw_Basis_bool);
+
+char *lw_Basis_ensqlBool(lw_Basis_bool);

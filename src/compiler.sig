@@ -68,6 +68,7 @@ signature COMPILER = sig
     val mono_reduce : (Mono.file, Mono.file) phase
     val mono_shake : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
+    val prepare : (Cjr.file, Cjr.file) phase
     val sqlify : (Mono.file, Cjr.file) phase
 
     val toParseJob : (string, job) transform
@@ -87,6 +88,7 @@ signature COMPILER = sig
     val toMono_shake : (string, Mono.file) transform
     val toMono_opt2 : (string, Mono.file) transform
     val toCjrize : (string, Cjr.file) transform
+    val toPrepare : (string, Cjr.file) transform
     val toSqlify : (string, Cjr.file) transform
 
 end

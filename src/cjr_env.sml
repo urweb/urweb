@@ -164,6 +164,7 @@ fun declBinds env (d, loc) =
                   end) env vis
       | DTable _ => env
       | DDatabase _ => env
+      | DPreparedStatements _ => env
 
 
 end

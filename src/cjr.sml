@@ -76,7 +76,8 @@ datatype exp' =
                      state : typ,
                      query : exp,
                      body : exp,
-                     initial : exp }
+                     initial : exp,
+                     prepared : int option }
 
 withtype exp = exp' located
 
@@ -90,6 +91,7 @@ datatype decl' =
 
        | DTable of string * (string * typ) list
        | DDatabase of string
+       | DPreparedStatements of (string * int) list
 
 withtype decl = decl' located
 

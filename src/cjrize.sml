@@ -330,7 +330,7 @@ fun cifyExp (eAll as (e, loc), sm) =
             val (initial, sm) = cifyExp (initial, sm)
         in
             ((L'.EQuery {exps = exps', tables = tables', rnum = rnum, state = state,
-                         query = query, body = body, initial = initial}, loc), sm)
+                         query = query, body = body, initial = initial, prepared = NONE}, loc), sm)
         end
 
 

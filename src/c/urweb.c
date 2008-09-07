@@ -122,7 +122,7 @@ void lw_set_input(lw_context ctx, char *name, char *value) {
 
   ctx->inputs[n] = value;
 
-  printf("[%d] %s = %s\n", n, name, value);
+  //printf("[%d] %s = %s\n", n, name, value);
 }
 
 char *lw_get_input(lw_context ctx, int n) {
@@ -130,7 +130,7 @@ char *lw_get_input(lw_context ctx, int n) {
     lw_error(ctx, FATAL, "Negative input index %d", n);
   if (n >= lw_inputs_len)
     lw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
-  printf("[%d] = %s\n", n, ctx->inputs[n]);
+  //printf("[%d] = %s\n", n, ctx->inputs[n]);
   return ctx->inputs[n];
 }
 
@@ -655,4 +655,14 @@ char *lw_Basis_sqlifyBool(lw_context ctx, lw_Basis_bool b) {
     return "FALSE";
   else
     return "TRUE";
+}
+
+char *lw_Basis_ensqlBool(lw_Basis_bool b) {
+  static lw_Basis_int true = 1;
+  static lw_Basis_int false = 0;
+
+  if (b == lw_Basis_False)
+    return (char *)&false;
+  else
+    return (char *)&true;
 }

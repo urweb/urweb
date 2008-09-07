@@ -451,6 +451,13 @@ val cjrize = {
 
 val toCjrize = transform cjrize "cjrize" o toMono_opt2
 
+val prepare = {
+    func = Prepare.prepare,
+    print = CjrPrint.p_file CjrEnv.empty
+}
+
+val toPrepare = transform prepare "prepare" o toCjrize
+
 val sqlify = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_sql CjrEnv.empty
@@ -472,7 +479,7 @@ fun compileC {cname, oname, ename} =
     end
 
 fun compile job =
-    case run toCjrize job of
+    case run toPrepare job of
         NONE => print "Ur compilation failed\n"
       | SOME file =>
         let

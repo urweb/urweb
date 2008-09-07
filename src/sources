@@ -121,5 +121,8 @@ cjr_print.sml
 cjrize.sig
 cjrize.sml
 
+prepare.sig
+prepare.sml
+
 compiler.sig
 compiler.sml
