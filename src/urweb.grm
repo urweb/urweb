@@ -726,6 +726,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
                                          s (XML_BEGINleft, XML_ENDright))
        | LPAREN query RPAREN            (query)
+       | LPAREN CWHERE sqlexp RPAREN    (sqlexp)
        | UNDER                          (EWild, s (UNDERleft, UNDERright))
 
 idents : ident                          ([ident])

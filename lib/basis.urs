@@ -209,8 +209,8 @@ val insert : fields ::: {Type}
         -> dml
 
 val update : changed ::: {Type} -> unchanged ::: {Type} -> changed ~ unchanged
-        -> sql_table (changed ++ unchanged)
         -> $changed
+        -> sql_table (changed ++ unchanged)
         -> sql_exp [T = changed ++ unchanged] [] [] bool
         -> dml
 
