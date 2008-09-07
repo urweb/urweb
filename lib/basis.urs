@@ -24,7 +24,8 @@ val eq_bool : eq bool
 val strcat : string -> string -> string
 
 val intToString : int -> string
-
+val floatToString : float -> string
+val boolToString : bool -> string
 
 
 (** SQL *)

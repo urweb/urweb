@@ -681,3 +681,21 @@ lw_Basis_string lw_Basis_intToString(lw_context ctx, lw_Basis_int n) {
   ctx->heap_front += len+1;
   return r;
 }
+
+lw_Basis_string lw_Basis_floatToString(lw_context ctx, lw_Basis_float n) {
+  int len;
+  char *r;
+
+  lw_check_heap(ctx, FLOATS_MAX);
+  r = ctx->heap_front;
+  sprintf(r, "%g%n", n, &len);
+  ctx->heap_front += len+1;
+  return r;
+}
+
+lw_Basis_string lw_Basis_boolToString(lw_context ctx, lw_Basis_bool b) {
+  if (b == lw_Basis_False)
+    return "False";
+  else
+    return "True";
+}

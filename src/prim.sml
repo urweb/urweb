@@ -49,9 +49,9 @@ fun int2s n =
 
 fun float2s n =
     if Real64.compare (n, Real64.fromInt 0) = LESS then
-        "-" ^ Real64.toString (Real64.~ n) ^ "L"
+        "-" ^ Real64.toString (Real64.~ n)
     else
-        Real64.toString n ^ "L"
+        Real64.toString n
 
 fun p_t_GCC t =
     case t of
