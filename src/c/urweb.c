@@ -808,9 +808,9 @@ lw_Basis_float lw_Basis_stringToFloat_error(lw_context ctx, lw_Basis_string s) {
 }
 
 lw_Basis_bool lw_Basis_stringToBool_error(lw_context ctx, lw_Basis_string s) {
-  if (!strcasecmp (s, "True"))
+  if (!strcasecmp(s, "T") || !strcasecmp (s, "True"))
     return lw_Basis_True;
-  else if (!strcasecmp (s, "False"))
+  else if (!strcasecmp(s, "F") || !strcasecmp (s, "False"))
     return lw_Basis_False;
   else
     lw_error(ctx, FATAL, "Can't parse bool: %s", s);
