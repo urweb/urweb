@@ -1,3 +1,4 @@
-val rec main = fn () => <html><body>
+
+fun main () : transaction page = return <html><body>
         <a link={main ()}>Ride again!</a>
 </body></html>

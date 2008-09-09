@@ -126,7 +126,43 @@ fun declOk' env (d, loc) =
                         let
                             fun combiner calls e =
                                 case #1 e of
-                                    EApp (e1, e2) =>
+                                    EApp ((ECApp (
+                                           (ECApp (
+                                            (ECApp (
+                                             (ECApp (
+                                              (ECApp (
+                                               (ECApp (
+                                                (ECApp (
+                                                 (ECApp (
+                                                  (EModProj (m, [], "tag"), _),
+                                                  _), _),
+                                                 _), _),
+                                                _), _),
+                                               _), _),
+                                              _), _),
+                                             _), _),
+                                            _), _),
+                                           _), _),
+                                          (ERecord xets, _)) =>
+                                    let
+                                        val checkName =
+                                            case E.lookupStrNamed env m of
+                                                  ("Basis", _) => (fn x : con => case #1 x of
+                                                                                     CName s => s = "Link"
+                                                                                                orelse s = "Action"
+                                                                                   | _ => false)
+                                                | _ => (fn _ => false)
+
+                                        val calls = foldl (fn ((x, e, _), calls) =>
+                                                              if checkName x then
+                                                                  calls
+                                                              else
+                                                                  #2 (exp (penv, calls) e)) calls xets
+                                    in
+                                        (Rabble, [Rabble], calls)
+                                    end
+
+                                  | EApp (e1, e2) =>
                                     let
                                         val (p1, ps, calls) = combiner calls e1
                                         val (p2, calls) = exp (penv, calls) e2
@@ -187,6 +223,7 @@ fun declOk' env (d, loc) =
                             (p, calls)
                         end
                       | EModProj _ => default
+
                       | EApp _ => apps ()
                       | EAbs (_, _, _, e) => 
                         let

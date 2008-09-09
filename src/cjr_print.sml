@@ -1529,7 +1529,7 @@ fun p_file env (ds, ps) =
             let
                 val (ts, defInputs, inputsVar) =
                     case ek of
-                        Core.Link => (ts, string "", string "")
+                        Core.Link => (List.take (ts, length ts - 1), string "", string "")
                       | Core.Action =>
                         case List.nth (ts, length ts - 2) of
                             (TRecord i, _) =>

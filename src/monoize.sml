@@ -1594,6 +1594,8 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                 fun unwind (t, _) =
                     case t of
                         L.TFun (dom, ran) => dom :: unwind ran
+                      | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
+                        (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc) :: unwind t
                       | _ => []
 
                 val ts = map (monoType env) (unwind t)
