@@ -163,4 +163,19 @@ fun foldri f i ls =
         foldli (fn (n, x, s) => f (len - n - 1, x, s)) i (rev ls)
     end
 
+fun foldliMap f s =
+    let
+        fun fm (n, ls', s) ls =
+            case ls of
+                nil => (rev ls', s)
+              | h :: t =>
+                let
+                    val (h', s') = f (n, h, s)
+                in
+                    fm (n + 1, h' :: ls', s') t
+                end
+    in
+        fm (0, [], s)
+    end
+
 end

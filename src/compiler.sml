@@ -363,12 +363,19 @@ val elaborate = {
 
 val toElaborate = transform elaborate "elaborate" o toParse
 
+val termination = {
+    func = (fn file => (Termination.check file; file)),
+    print = ElabPrint.p_file ElabEnv.empty
+}
+
+val toTermination = transform termination "termination" o toElaborate
+
 val explify = {
     func = Explify.explify,
     print = ExplPrint.p_file ExplEnv.empty
 }
 
-val toExplify = transform explify "explify" o toElaborate
+val toExplify = transform explify "explify" o toTermination
 
 val corify = {
     func = Corify.corify,

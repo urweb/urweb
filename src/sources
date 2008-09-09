@@ -44,6 +44,9 @@ disjoint.sml
 elaborate.sig
 elaborate.sml
 
+termination.sig
+termination.sml
+
 expl.sml
 
 expl_util.sig

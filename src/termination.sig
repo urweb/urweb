@@ -25,25 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature LIST_UTIL = sig
+signature TERMINATION = sig
 
-    val mapConcat : ('a -> 'b list) -> 'a list -> 'b list
-
-    val mapfold : ('data, 'state, 'abort) Search.mapfolder
-                  -> ('data list, 'state, 'abort) Search.mapfolder
-    val mapfoldB : ('context * 'data -> 'context * ('state -> ('data * 'state, 'abort) Search.result))
-                   -> ('context, 'data list, 'state, 'abort) Search.mapfolderB
-
-    val foldlMap : ('data1 * 'state -> 'data2 * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
-    val foldlMapPartial : ('data1 * 'state -> 'data2 option * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
-    val foldlMapConcat : ('data1 * 'state -> 'data2 list * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
-
-    val search : ('a -> 'b option) -> 'a list -> 'b option
-
-    val mapi : (int * 'a -> 'b) -> 'a list -> 'b list
-    val foldli : (int * 'a * 'b -> 'b) -> 'b -> 'a list -> 'b
-    val foldri : (int * 'a * 'b -> 'b) -> 'b -> 'a list -> 'b
-
-    val foldliMap : (int * 'data1 * 'state -> 'data2 * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
+    val check : Elab.file -> unit
 
 end
