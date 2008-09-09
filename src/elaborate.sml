@@ -1766,6 +1766,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 datatype decl_error =
          KunifsRemain of L'.decl list
        | CunifsRemain of L'.decl list
+       | Nonpositive of L'.decl
 
 fun lspan [] = ErrorMsg.dummySpan
   | lspan ((_, loc) :: _) = loc
@@ -1778,6 +1779,9 @@ fun declError env err =
       | CunifsRemain ds =>
         (ErrorMsg.errorAt (lspan ds) "Some constructor unification variables are undetermined in declaration";
          eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
+      | Nonpositive d =>
+        (ErrorMsg.errorAt (#2 d) "Non-strictly-positive datatype declaration (could allow non-termination)";
+         eprefaces' [("Decl", p_decl env d)])
 
 datatype sgn_error =
          UnboundSgn of ErrorMsg.span * string
@@ -2739,6 +2743,68 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
       | _ => sgnError env (SgnWrongForm (sgn1, sgn2))
 
 
+fun positive self =
+    let
+        open L
+
+        fun none (c, _) =
+            case c of
+                CAnnot (c, _) => none c
+
+              | TFun (c1, c2) => none c1 andalso none c2
+              | TCFun (_, _, _, c) => none c
+              | TDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
+              | TRecord c => none c
+
+              | CVar ([], x) => x <> self
+              | CVar _ => true
+              | CApp (c1, c2) => none c1 andalso none c2
+              | CAbs _ => false
+              | CDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
+
+              | CName _ => true
+
+              | CRecord xcs => List.all (fn (c1, c2) => none c1 andalso none c2) xcs
+              | CConcat (c1, c2) => none c1 andalso none c2
+              | CFold => true
+
+              | CUnit => true
+
+              | CTuple cs => List.all none cs
+              | CProj (c, _) => none c
+
+              | CWild _ => false                
+
+        fun pos (c, _) =
+            case c of
+                CAnnot (c, _) => pos c
+
+              | TFun (c1, c2) => none c1 andalso pos c2
+              | TCFun (_, _, _, c) => pos c
+              | TDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
+              | TRecord c => pos c
+
+              | CVar _ => true
+              | CApp (c1, c2) => pos c1 andalso none c2
+              | CAbs _ => false
+              | CDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
+
+              | CName _ => true
+
+              | CRecord xcs => List.all (fn (c1, c2) => none c1 andalso pos c2) xcs
+              | CConcat (c1, c2) => pos c1 andalso pos c2
+              | CFold => true
+
+              | CUnit => true
+
+              | CTuple cs => List.all pos cs
+              | CProj (c, _) => pos c
+
+              | CWild _ => false
+    in
+        pos
+    end
+
 fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
     let
         (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
@@ -2760,6 +2826,11 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                 end
               | L.DDatatype (x, xs, xcs) =>
                 let
+                    val positive = List.all (fn (_, to) =>
+                                                case to of
+                                                    NONE => true
+                                                  | SOME t => positive x t) xcs
+
                     val k = (L'.KType, loc)
                     val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs
                     val (env, n) = E.pushCNamed env x k' NONE
@@ -2797,8 +2868,14 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                             (SS.empty, env, []) xcs
 
                     val env = E.pushDatatype env n xs xcs
+                    val d' = (L'.DDatatype (x, n, xs, xcs), loc)
                 in
-                    ([(L'.DDatatype (x, n, xs, xcs), loc)], (env, denv, gs' @ gs))
+                    if positive then
+                        ()
+                    else
+                        declError env (Nonpositive d');
+
+                    ([d'], (env, denv, gs' @ gs))
                 end
 
               | L.DDatatypeImp (_, [], _) => raise Fail "Empty DDatatypeImp"
