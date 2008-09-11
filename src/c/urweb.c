@@ -145,7 +145,7 @@ char *uw_get_optional_input(uw_context ctx, int n) {
 
 static void uw_check_heap(uw_context ctx, size_t extra) {
   if (ctx->heap_back - ctx->heap_front < extra) {
-    size_t desired = ctx->heap_back - ctx->heap + extra, next;
+    size_t desired = ctx->heap_front - ctx->heap + extra, next;
     char *new_heap;
 
     next = ctx->heap_back - ctx->heap;
@@ -154,7 +154,7 @@ static void uw_check_heap(uw_context ctx, size_t extra) {
     for (; next < desired; next *= 2);
 
     new_heap = realloc(ctx->heap, next);
-    ctx->heap_front = new_heap + (ctx->heap_back - ctx->heap_front);
+    ctx->heap_front = new_heap + (ctx->heap_front - ctx->heap);
     ctx->heap_back = new_heap + next;
 
     if (new_heap != ctx->heap) {
@@ -195,7 +195,7 @@ int uw_send(uw_context ctx, int sock) {
 }
 
 static void uw_check(uw_context ctx, size_t extra) {
-  size_t desired = ctx->page_back - ctx->page + extra, next;
+  size_t desired = ctx->page_front - ctx->page + extra, next;
   char *new_page;
 
   next = ctx->page_back - ctx->page;
@@ -578,7 +578,7 @@ char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
 }
 
 void uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
-  uw_check(ctx, strlen(s) * 5);
+  uw_check(ctx, strlen(s) * 6);
 
   for (; *s; s++) {
     char c = *s;
