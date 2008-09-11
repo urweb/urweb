@@ -95,6 +95,21 @@ fun subExpInExp (n, e1) e2 =
 
 fun typ c = c
 
+val swapExpVars =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn lower => fn e =>
+                                     case e of
+                                         ERel xn =>
+                                         if xn = lower then
+                                             ERel (lower + 1)
+                                         else if xn = lower + 1 then
+                                             ERel lower
+                                         else
+                                             e
+                                       | _ => e,
+                bind = fn (lower, U.Exp.RelE _) => lower+1
+                        | (lower, _) => lower}
+
 datatype result = Yes of E.env | No | Maybe
 
 fun match (env, p : pat, e : exp) =
@@ -208,6 +223,10 @@ fun exp env e =
       | EApp ((ELet (x, t, e, b), loc), e') =>
         #1 (reduceExp env (ELet (x, t, e,
                                  (EApp (b, liftExpInExp 0 e'), loc)), loc))
+
+      | ELet (x, t, e, (EAbs (x', t' as (TRecord [], _), ran, e'), loc)) =>
+        EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e, swapExpVars 0 e'), loc))
+
       | ELet (x, t, e', b) =>
         if impure e' then
             e

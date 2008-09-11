@@ -46,6 +46,19 @@ val subConInCon = E.subConInCon
 val liftConInExp = E.liftConInExp
 val subConInExp = E.subConInExp
 
+fun unpolyNamed (xn, rep) =
+    U.Exp.map {kind = fn k => k,
+               con = fn c => c,
+               exp = fn e =>
+                        case e of
+                            ENamed xn' =>
+                            if xn' = xn then
+                                rep
+                            else
+                                e
+                          | ECApp (e, _) => #1 e
+                          | _ => e}
+
 type state = {
      funcs : (kind list * (string * int * con * exp * string) list) IM.map,
      decls : decl list,
@@ -93,7 +106,14 @@ fun exp (e, st : state) =
                                         in
                                             trim (t, e, cargs)
                                         end
-                                      | (_, _, []) => SOME (t, e)
+                                      | (_, _, []) =>
+                                        let
+                                            val e = foldl (fn ((_, n, n_old, _, _, _), e) =>
+                                                              unpolyNamed (n_old, ENamed n) e)
+                                                    e vis
+                                        in
+                                            SOME (t, e)
+                                        end
                                       | _ => NONE
                             in
                                 (*Print.prefaces "specialize"
@@ -106,19 +126,25 @@ fun exp (e, st : state) =
 
                         val vis = List.map specialize vis
                     in
-                        if List.exists (not o Option.isSome) vis then
+                        if List.exists (not o Option.isSome) vis orelse length cargs > length ks then
                             (e, st)
                         else
                             let
                                 val vis = List.mapPartial (fn x => x) vis
+                                val vis = map (fn (x, n, n_old, t, e, s) =>
+                                                   (x ^ "_unpoly", n, n_old, t, e, s)) vis
                                 val vis' = map (fn (x, n, _, t, e, s) =>
-                                                   (x ^ "_unpoly", n, t, e, s)) vis
+                                                   (x, n, t, e, s)) vis
+
+                                val ks' = List.drop (ks, length cargs)
                             in
                                 case List.find (fn (_, _, n_old, _, _, _) => n_old = n) vis of
                                     NONE => raise Fail "Unpoly: Inconsistent 'val rec' record"
                                   | SOME (_, n, _, _, _, _) =>
                                     (ENamed n,
-                                     {funcs = #funcs st,
+                                     {funcs = foldl (fn (vi, funcs) =>
+                                                        IM.insert (funcs, #2 vi, (ks', vis')))
+                                                    (#funcs st) vis',
                                       decls = (DValRec vis', ErrorMsg.dummySpan) :: #decls st,
                                       nextName = nextName})
                             end

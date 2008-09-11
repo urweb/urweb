@@ -112,7 +112,7 @@ fun initialize () = (xmlTag := [];
 %s COMMENT STRING XML XMLTAG;
 
 id = [a-z_][A-Za-z0-9_']*;
-cid = [A-Z][A-Za-z0-9_']*;
+cid = [A-Z][A-Za-z0-9_]*;
 ws = [\ \t\012];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;

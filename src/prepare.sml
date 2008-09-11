@@ -74,12 +74,12 @@ fun prepExp (e as (_, loc), sns) =
         in
             ((EFfiApp (m, x, es), loc), sns)
         end
-      | EApp (e1, e2) =>
+      | EApp (e1, es) =>
         let
             val (e1, sns) = prepExp (e1, sns)
-            val (e2, sns) = prepExp (e2, sns)
+            val (es, sns) = ListUtil.foldlMap prepExp sns es
         in
-            ((EApp (e1, e2), loc), sns)
+            ((EApp (e1, es), loc), sns)
         end
 
       | ERecord (rn, xes) =>

@@ -233,10 +233,17 @@ fun cifyExp (eAll as (e, loc), sm) =
         end
       | L.EApp (e1, e2) =>
         let
-            val (e1, sm) = cifyExp (e1, sm)
-            val (e2, sm) = cifyExp (e2, sm)
+            fun unravel (e, args) =
+                case e of
+                    (L.EApp (e1, e2), _) => unravel (e1, e2 :: args)
+                  | _ => (e, args)
+
+            val (f, es) = unravel (e1, [e2])
+
+            val (f, sm) = cifyExp (f, sm)
+            val (es, sm) = ListUtil.foldlMap cifyExp sm es
         in
-            ((L'.EApp (e1, e2), loc), sm)
+            ((L'.EApp (f, es), loc), sm)
         end
       | L.EAbs _ => (ErrorMsg.errorAt loc "Anonymous function remains at code generation";
                      Print.prefaces' [("Function", MonoPrint.p_exp MonoEnv.empty eAll)];

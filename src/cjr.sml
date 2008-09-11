@@ -64,7 +64,7 @@ datatype exp' =
        | ESome of typ * exp
        | EFfi of string * string
        | EFfiApp of string * string * exp list
-       | EApp of exp * exp
+       | EApp of exp * exp list
 
        | ERecord of int * (string * exp) list
        | EField of exp * string

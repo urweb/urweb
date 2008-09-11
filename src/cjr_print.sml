@@ -57,6 +57,11 @@ val debug = ref false
 
 val dummyTyp = (TDatatype (Enum, 0, ref []), ErrorMsg.dummySpan)
 
+val ident = String.translate (fn #"'" => "PRIME"
+                               | ch => str ch)
+
+val p_ident = string o ident
+
 fun p_typ' par env (t, loc) =
     case t of
         TFun (t1, t2) => parenIf par (box [p_typ' true env t2,
@@ -89,7 +94,7 @@ fun p_typ' par env (t, loc) =
               space,
               string ("__uwd_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n ^ "*")]
          handle CjrEnv.UnboundNamed _ => string ("__uwd_UNBOUND__" ^ Int.toString n))
-      | TFfi (m, x) => box [string "uw_", string m, string "_", string x]
+      | TFfi (m, x) => box [string "uw_", p_ident m, string "_", p_ident x]
       | TOption t =>
         (case #1 t of
              TDatatype _ => p_typ' par env t
@@ -99,15 +104,15 @@ fun p_typ' par env (t, loc) =
 
 and p_typ env = p_typ' false env
 
-fun p_rel env n = string ("__uwr_" ^ #1 (E.lookupERel env n) ^ "_" ^ Int.toString (E.countERels env - n - 1))
+fun p_rel env n = string ("__uwr_" ^ ident (#1 (E.lookupERel env n)) ^ "_" ^ Int.toString (E.countERels env - n - 1))
     handle CjrEnv.UnboundRel _ => string ("__uwr_UNBOUND_" ^ Int.toString (E.countERels env - n - 1))
 
 fun p_enamed env n =
-    string ("__uwn_" ^ #1 (E.lookupENamed env n) ^ "_" ^ Int.toString n)
+    string ("__uwn_" ^ ident (#1 (E.lookupENamed env n)) ^ "_" ^ Int.toString n)
     handle CjrEnv.UnboundNamed _ => string ("__uwn_UNBOUND_" ^ Int.toString n)
 
 fun p_con_named env n =
-    string ("__uwc_" ^ #1 (E.lookupConstructor env n) ^ "_" ^ Int.toString n)
+    string ("__uwc_" ^ ident (#1 (E.lookupConstructor env n)) ^ "_" ^ Int.toString n)
     handle CjrEnv.UnboundNamed _ => string ("__uwc_UNBOUND_" ^ Int.toString n)
 
 fun p_pat_preamble env (p, _) =
@@ -117,7 +122,7 @@ fun p_pat_preamble env (p, _) =
       | PVar (x, t) => (box [p_typ env t,
                              space,
                              string "__uwr_",
-                             string x,
+                             p_ident x,
                              string "_",
                              string (Int.toString (E.countERels env)),
                              string ";",
@@ -139,7 +144,7 @@ fun p_pat_preamble env (p, _) =
 fun p_patCon env pc =
     case pc of
         PConVar n => p_con_named env n
-      | PConFfi {mod = m, con, ...} => string ("uw_" ^ m ^ "_" ^ con)
+      | PConFfi {mod = m, con, ...} => string ("uw_" ^ ident m ^ "_" ^ ident con)
 
 fun p_pat (env, exit, depth) (p, _) =
     case p of
@@ -147,7 +152,7 @@ fun p_pat (env, exit, depth) (p, _) =
         (box [], env)
       | PVar (x, t) =>
         (box [string "__uwr_",
-              string x,
+              p_ident x,
               string "_",
               string (Int.toString (E.countERels env)),
               space,
@@ -198,10 +203,10 @@ fun p_pat (env, exit, depth) (p, _) =
                                           let
                                               val (x, to, _) = E.lookupConstructor env n
                                           in
-                                              ("uw_" ^ x, to)
+                                              ("uw_" ^ ident x, to)
                                           end
                                         | PConFfi {mod = m, con, arg, ...} =>
-                                          ("uw_" ^ m ^ "_" ^ con, arg)
+                                          ("uw_" ^ ident m ^ "_" ^ ident con, arg)
 
                         val t = case to of
                                     NONE => raise Fail "CjrPrint: Constructor mismatch"
@@ -287,7 +292,7 @@ fun p_pat (env, exit, depth) (p, _) =
                                                        string "disc",
                                                        string (Int.toString depth),
                                                        string ".__uwf_",
-                                                       string x,
+                                                       p_ident x,
                                                        string ";",
                                                        newline,
                                                        p,
@@ -379,14 +384,14 @@ fun patConInfo env pc =
             val (x, _, dn) = E.lookupConstructor env n
             val (dx, _) = E.lookupDatatype env dn
         in
-            ("__uwd_" ^ dx ^ "_" ^ Int.toString dn,
-             "__uwc_" ^ x ^ "_" ^ Int.toString n,
-             "uw_" ^ x)
+            ("__uwd_" ^ ident dx ^ "_" ^ Int.toString dn,
+             "__uwc_" ^ ident x ^ "_" ^ Int.toString n,
+             "uw_" ^ ident x)
         end
       | PConFfi {mod = m, datatyp, con, ...} =>
-        ("uw_" ^ m ^ "_" ^ datatyp,
-         "uw_" ^ m ^ "_" ^ con,
-         "uw_" ^ con)
+        ("uw_" ^ ident m ^ "_" ^ ident datatyp,
+         "uw_" ^ ident m ^ "_" ^ ident con,
+         "uw_" ^ ident con)
 
 fun p_unsql env (tAll as (t, loc)) e =
     case t of
@@ -545,7 +550,7 @@ fun p_exp' par env (e, loc) =
                        newline,
                        string "})"])
 
-      | EFfi (m, x) => box [string "uw_", string m, string "_", string x]
+      | EFfi (m, x) => box [string "uw_", p_ident m, string "_", p_ident x]
       | EError (e, t) =>
         box [string "({",
              newline,
@@ -563,27 +568,18 @@ fun p_exp' par env (e, loc) =
              newline,
              string "})"]
       | EFfiApp (m, x, es) => box [string "uw_",
-                                   string m,
+                                   p_ident m,
                                    string "_",
-                                   string x,
+                                   p_ident x,
                                    string "(ctx, ",
                                    p_list (p_exp env) es,
                                    string ")"]
-      | EApp (e1, e2) =>
-        let
-            fun unravel (f, acc) =
-                case #1 f of
-                    EApp (f', arg) => unravel (f', arg :: acc)
-                  | _ => (f, acc)
-
-            val (f, args) = unravel (e1, [e2])
-        in
-            parenIf par (box [p_exp' true env e1,
-                              string "(ctx,",
-                              space,
-                              p_list_sep (box [string ",", space]) (p_exp env) args,
-                              string ")"])
-        end
+      | EApp (f, args) =>
+        parenIf par (box [p_exp' true env f,
+                          string "(ctx,",
+                          space,
+                          p_list_sep (box [string ",", space]) (p_exp env) args,
+                          string ")"])
 
       | ERecord (i, xes) => box [string "({",
                                  space,
@@ -606,7 +602,7 @@ fun p_exp' par env (e, loc) =
       | EField (e, x) =>
         box [p_exp' true env e,
              string ".__uwf_",
-             string x]
+             p_ident x]
 
       | ECase (e, pes, {disc, result}) =>
         let
@@ -692,7 +688,7 @@ fun p_exp' par env (e, loc) =
                                     p_typ env t,
                                     space,
                                     string "__uwr_",
-                                    string x,
+                                    p_ident x,
                                     string "_",
                                     string (Int.toString (E.countERels env)),
                                     space,
@@ -708,9 +704,9 @@ fun p_exp' par env (e, loc) =
 
       | EQuery {exps, tables, rnum, state, query, body, initial, prepared} =>
         let
-            val exps = map (fn (x, t) => ("__uwf_" ^ x, t)) exps
+            val exps = map (fn (x, t) => ("__uwf_" ^ ident x, t)) exps
             val tables = ListUtil.mapConcat (fn (x, xts) =>
-                                                map (fn (x', t) => ("__uwf_" ^ x ^ ".__uwf_" ^ x', t)) xts)
+                                                map (fn (x', t) => ("__uwf_" ^ ident x ^ ".__uwf_" ^ ident x', t)) xts)
                                             tables
                                                                                               
             val outputs = exps @ tables
@@ -945,7 +941,7 @@ fun p_fun env (fx, n, args, ran, e) =
              space,
              p_typ env ran,
              space,
-             string ("__uwn_" ^ fx ^ "_" ^ Int.toString n),
+             string ("__uwn_" ^ ident fx ^ "_" ^ Int.toString n),
              string "(",
              p_list_sep (box [string ",", space]) (fn x => x)
                         (string "uw_context ctx" :: ListUtil.mapi (fn (i, (_, dom)) =>
@@ -978,7 +974,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                  p_list_sep (box []) (fn (x, t) => box [p_typ env t,
                                                         space,
                                                         string "__uwf_",
-                                                        string x,
+                                                        p_ident x,
                                                         string ";",
                                                         newline]) xts,
                  string "};"]
@@ -986,11 +982,12 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DDatatype (Enum, x, n, xncs) =>
         box [string "enum",
              space,
-             string ("__uwe_" ^ x ^ "_" ^ Int.toString n),
+             string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
              space,
              string "{",
              space,
-             p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__uwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
+             p_list_sep (box [string ",", space]) (fn (x, n, _) =>
+                                                      string ("__uwc_" ^ ident x ^ "_" ^ Int.toString n)) xncs,
              space,
              string "};"]
       | DDatatype (Option, _, _, _) => box []
@@ -1001,24 +998,25 @@ fun p_decl env (dAll as (d, _) : decl) =
         in
             box [string "enum",
                  space,
-                 string ("__uwe_" ^ x ^ "_" ^ Int.toString n),
+                 string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
                  space,
                  string "{",
                  space,
-                 p_list_sep (box [string ",", space]) (fn (x, n, _) => string ("__uwc_" ^ x ^ "_" ^ Int.toString n)) xncs,
+                 p_list_sep (box [string ",", space]) (fn (x, n, _) =>
+                                                          string ("__uwc_" ^ ident x ^ "_" ^ Int.toString n)) xncs,
                  space,
                  string "};",
                  newline,
                  newline,
                  string "struct",
                  space,
-                 string ("__uwd_" ^ x ^ "_" ^ Int.toString n),
+                 string ("__uwd_" ^ ident x ^ "_" ^ Int.toString n),
                  space,
                  string "{",
                  newline,
                  string "enum",
                  space,
-                 string ("__uwe_" ^ x ^ "_" ^ Int.toString n),
+                 string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
                  space,
                  string "tag;",
                  newline,
@@ -1030,7 +1028,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 newline,
                                 p_list_sep newline (fn (x, n, t) => box [p_typ env t,
                                                                          space,
-                                                                         string ("uw_" ^ x),
+                                                                         string ("uw_" ^ ident x),
                                                                          string ";"]) xncsArgs,
                                 newline,
                                 string "}",
@@ -1045,7 +1043,7 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DVal (x, n, t, e) =>
         box [p_typ env t,
              space,
-             string ("__uwn_" ^ x ^ "_" ^ Int.toString n),
+             string ("__uwn_" ^ ident x ^ "_" ^ Int.toString n),
              space,
              string "=",
              space,
@@ -1061,7 +1059,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                              space,
                                              p_typ env ran,
                                              space,
-                                             string ("__uwn_" ^ fx ^ "_" ^ Int.toString n),
+                                             string ("__uwn_" ^ ident fx ^ "_" ^ Int.toString n),
                                              string "(uw_context,",
                                              space,
                                              p_list_sep (box [string ",", space])
@@ -1314,7 +1312,7 @@ fun p_file env (ds, ps) =
 
         fun unurlify (t, loc) =
             case t of
-                TFfi (m, t) => string ("uw_" ^ m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
+                TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
 
               | TRecord 0 => string "uw_unit_v"
               | TRecord i =>
@@ -1370,7 +1368,7 @@ fun p_file env (ds, ps) =
                                  string (Int.toString (size x')),
                                  string "] == 0 || request[",
                                  string (Int.toString (size x')),
-                                 string ("] == '/')) ? __uwc_" ^ x' ^ "_" ^ Int.toString n),
+                                 string ("] == '/')) ? __uwc_" ^ ident x' ^ "_" ^ Int.toString n),
                                  space,
                                  string ":",
                                  space,
@@ -1475,7 +1473,7 @@ fun p_file env (ds, ps) =
                                  newline,
                                  string "struct",
                                  space,
-                                 string ("__uwd_" ^ x ^ "_" ^ Int.toString i),
+                                 string ("__uwd_" ^ ident x ^ "_" ^ Int.toString i),
                                  space,
                                  string "*tmp = uw_malloc(ctx, sizeof(struct __uwd_",
                                  string x,
@@ -1487,7 +1485,7 @@ fun p_file env (ds, ps) =
                                  space,
                                  string "=",
                                  space,
-                                 string ("__uwc_" ^ x' ^ "_" ^ Int.toString n),
+                                 string ("__uwc_" ^ ident x' ^ "_" ^ Int.toString n),
                                  string ";",
                                  newline,
                                  string "request",
@@ -1502,7 +1500,7 @@ fun p_file env (ds, ps) =
                                  case to of
                                      NONE => box []
                                    | SOME t => box [string "tmp->data.uw_",
-                                                    string x',
+                                                    p_ident x',
                                                     space,
                                                     string "=",
                                                     space,
@@ -1540,7 +1538,7 @@ fun p_file env (ds, ps) =
                                  box [box (map (fn (x, t) => box [p_typ env t,
                                                                   space,
                                                                   string "uw_input_",
-                                                                  string x,
+                                                                  p_ident x,
                                                                   string ";",
                                                                   newline]) xts),
                                       newline,
@@ -1571,7 +1569,7 @@ fun p_file env (ds, ps) =
                                                             string "}",
                                                             newline,
                                                             string "uw_input_",
-                                                            string x,
+                                                            p_ident x,
                                                             space,
                                                             string "=",
                                                             space,
@@ -1587,7 +1585,7 @@ fun p_file env (ds, ps) =
                                       string "= {",
                                       newline,
                                       box (map (fn (x, _) => box [string "uw_input_",
-                                                                  string x,
+                                                                  p_ident x,
                                                                   string ",",
                                                                   newline]) xts),
                                       string "};",
@@ -1671,7 +1669,7 @@ fun p_file env (ds, ps) =
                                                               (map (fn (x, t) =>
                                                                        String.concat ["(attname = 'uw_",
                                                                                       CharVector.map
-                                                                                          Char.toLower x,
+                                                                                          Char.toLower (ident x),
                                                                                       "' AND atttypid = (SELECT oid FROM pg_type",
                                                                                       " WHERE typname = '",
                                                                                       p_sqltype' env t,
