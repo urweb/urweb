@@ -30,6 +30,9 @@ signature CORE_ENV = sig
     val liftConInCon : int -> Core.con -> Core.con
     val subConInCon : (int * Core.con) -> Core.con -> Core.con
 
+    val liftConInExp : int -> Core.exp -> Core.exp
+    val subConInExp : (int * Core.con) -> Core.exp -> Core.exp
+
     type env
 
     val empty : env

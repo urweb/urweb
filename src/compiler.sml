@@ -405,12 +405,19 @@ val reduce = {
 
 val toReduce = transform reduce "reduce" o toTag
 
+val unpoly = {
+    func = Unpoly.unpoly,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toUnpoly = transform unpoly "unpoly" o toReduce
+
 val specialize = {
     func = Specialize.specialize,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toSpecialize = transform specialize "specialize" o toReduce
+val toSpecialize = transform specialize "specialize" o toUnpoly
 
 val toShake2 = transform shake "shake2" o toSpecialize
 

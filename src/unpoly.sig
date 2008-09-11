@@ -25,10 +25,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Simplify a Core program by repeating polymorphic definitions of datatypes *)
+(* Simplify a Core program by repeating polymorphic function definitions *)
 
-signature SPECIALIZE = sig
+signature UNPOLY = sig
 
-    val specialize : Core.file -> Core.file
+    val unpoly : Core.file -> Core.file
     
 end

@@ -65,6 +65,34 @@ val subConInCon =
                         | (ctx, _) => ctx}
 
 
+val liftConInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn bound => fn c =>
+                                     case c of
+                                         CRel xn =>
+                                         if xn < bound then
+                                             c
+                                         else
+                                             CRel (xn + 1)
+                                       | _ => c,
+                exp = fn _ => fn e => e,
+                bind = fn (bound, U.Exp.RelC _) => bound + 1
+                        | (bound, _) => bound}
+
+val subConInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn (xn, rep) => fn c =>
+                                  case c of
+                                      CRel xn' =>
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER => CRel (xn' - 1)
+                                         | LESS => c)
+                                    | _ => c,
+                exp = fn _ => fn e => e,
+                bind = fn ((xn, rep), U.Exp.RelC _) => (xn+1, liftConInCon 0 rep)
+                        | (ctx, _) => ctx}
+
 (* Back to environments *)
 
 exception UnboundRel of int

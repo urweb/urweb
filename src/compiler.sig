@@ -62,6 +62,7 @@ signature COMPILER = sig
     val shake : (Core.file, Core.file) phase
     val tag : (Core.file, Core.file) phase
     val reduce : (Core.file, Core.file) phase
+    val unpoly : (Core.file, Core.file) phase
     val specialize : (Core.file, Core.file) phase
     val monoize : (Core.file, Mono.file) phase
     val mono_opt : (Mono.file, Mono.file) phase
@@ -81,7 +82,8 @@ signature COMPILER = sig
     val toShake1 : (string, Core.file) transform
     val toTag : (string, Core.file) transform
     val toReduce : (string, Core.file) transform
-    val toSpecialize : (string, Core.file) transform
+    val toUnpoly : (string, Core.file) transform 
+    val toSpecialize : (string, Core.file) transform 
     val toShake2 : (string, Core.file) transform
     val toMonoize : (string, Mono.file) transform
     val toMono_opt1 : (string, Mono.file) transform

@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Simplify a Core program algebraically *)
+(* Simplify a Core program by repeating polymorphic definitions of datatypes *)
 
 structure Specialize :> SPECIALIZE = struct
 
@@ -61,7 +61,7 @@ type state = {
      count : int,
      datatypes : datatyp IM.map,
      constructors : int IM.map,
-     decls : decl list
+     decls : decl list     
 }
 
 fun kind (k, st) = (k, st)
