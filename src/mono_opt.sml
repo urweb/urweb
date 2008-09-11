@@ -155,6 +155,12 @@ fun exp e =
         EPrim (Prim.String (htmlifyInt n))
       | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "intToString", es), _)]) =>
         EFfiApp ("Basis", "htmlifyInt", es)
+      | EFfiApp ("Basis", "htmlifyString", [(EApp ((EFfi ("Basis", "intToString"), _),
+                                                   (EPrim (Prim.Int n), _)), _)]) =>
+        EPrim (Prim.String (htmlifyInt n))
+      | EFfiApp ("Basis", "htmlifyString", [(EApp ((EFfi ("Basis", "intToString"), _),
+                                                   e), _)]) =>
+        EFfiApp ("Basis", "htmlifyInt", [e])
       | EWrite (EFfiApp ("Basis", "htmlifyInt", [e]), _) =>
         EFfiApp ("Basis", "htmlifyInt_w", [e])
 
@@ -162,6 +168,12 @@ fun exp e =
         EPrim (Prim.String (htmlifyFloat n))
       | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "floatToString", es), _)]) =>
         EFfiApp ("Basis", "htmlifyFloat", es)
+      | EFfiApp ("Basis", "htmlifyString", [(EApp ((EFfi ("Basis", "floatToString"), _),
+                                                   (EPrim (Prim.Float n), _)), _)]) =>
+        EPrim (Prim.String (htmlifyFloat n))
+      | EFfiApp ("Basis", "htmlifyString", [(EApp ((EFfi ("Basis", "floatToString"), _),
+                                                   e), _)]) =>
+        EFfiApp ("Basis", "htmlifyFloat", [e])
       | EWrite (EFfiApp ("Basis", "htmlifyFloat", [e]), _) =>
         EFfiApp ("Basis", "htmlifyFloat_w", [e])
 
@@ -173,6 +185,15 @@ fun exp e =
         EPrim (Prim.String "False")
       | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "boolToString", es), _)]) =>
         EFfiApp ("Basis", "htmlifyBool", es)
+      | EFfiApp ("Basis", "htmlifyString", [(EApp ((EFfi ("Basis", "boolToString"), _),
+                                                   (ECon (Enum, PConFfi {con = "True", ...}, NONE), _)), _)]) =>
+        EPrim (Prim.String "True")
+      | EFfiApp ("Basis", "htmlifyString", [(EApp ((EFfi ("Basis", "boolToString"), _),
+                                                   (ECon (Enum, PConFfi {con = "False", ...}, NONE), _)), _)]) =>
+        EPrim (Prim.String "False")
+      | EFfiApp ("Basis", "htmlifyString", [(EApp ((EFfi ("Basis", "boolToString"), _),
+                                                   e), _)]) =>
+        EFfiApp ("Basis", "htmlifyBool", [e])
       | EWrite (EFfiApp ("Basis", "htmlifyBool", [e]), _) =>
         EFfiApp ("Basis", "htmlifyBool_w", [e])
 
