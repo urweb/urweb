@@ -92,10 +92,10 @@ fun hnormCon env (cAll as (c, loc)) =
                      handle SynUnif => cAll
                  (*val env' = E.pushCRel env x k*)
              in
-                 (*eprefaces "Subst" [("x", Print.PD.string x),
-                                    ("cb", p_con env' cb),
-                                    ("c2", p_con env c2),
-                                    ("sc", p_con env sc)];*)
+                 (*Print.eprefaces "Subst" [("x", Print.PD.string x),
+                                          ("cb", ElabPrint.p_con env' cb),
+                                          ("c2", ElabPrint.p_con env c2),
+                                          ("sc", ElabPrint.p_con env sc)];*)
                  sc
              end
            | c1' as CApp (c', i) =>

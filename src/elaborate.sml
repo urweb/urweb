@@ -1609,19 +1609,26 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
           | L.ECApp (e, c) =>
             let
                 val (e', et, gs1) = elabExp (env, denv) e
+                val oldEt = et
                 val (e', et, gs2) = elabHead (env, denv) e' et
                 val (c', ck, gs3) = elabCon (env, denv) c
                 val ((et', _), gs4) = hnormCon (env, denv) et
             in
                 case et' of
                     L'.CError => (eerror, cerror, [])
-                  | L'.TCFun (_, _, k, eb) =>
+                  | L'.TCFun (_, x, k, eb) =>
                     let
                         val () = checkKind env c' ck k
                         val eb' = subConInCon (0, c') eb
                             handle SynUnif => (expError env (Unif ("substitution", eb));
                                                cerror)
                     in
+                        (*prefaces "Elab ECApp" [("e", SourcePrint.p_exp eAll),
+                                               ("et", p_con env oldEt),
+                                               ("x", PD.string x),
+                                               ("eb", p_con (E.pushCRel env x k) eb),
+                                               ("c", p_con env c'),
+                                               ("eb'", p_con env eb')];*)
                         ((L'.ECApp (e', c'), loc), eb', gs1 @ gs2 @ enD gs3 @ enD gs4)
                     end
 
@@ -1637,7 +1644,9 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
             let
                 val expl' = elabExplicitness expl
                 val k' = elabKind k
-                val (e', et, gs) = elabExp (E.pushCRel env x k', D.enter denv) e
+
+                val env' = E.pushCRel env x k'
+                val (e', et, gs) = elabExp (env', D.enter denv) e
             in
                 ((L'.ECAbs (expl', x, k', e'), loc),
                  (L'.TCFun (expl', x, k', et), loc),
