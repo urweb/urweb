@@ -98,36 +98,40 @@ fun hnormCon env (cAll as (c, loc)) =
                                     ("sc", p_con env sc)];*)
                  sc
              end
-           | CApp (c', i) =>
-             (case #1 (hnormCon env c') of
-                  CApp (c', f) =>
-                  (case #1 (hnormCon env c') of
-                       CFold ks =>
-                       (case #1 (hnormCon env c2) of
-                            CRecord (_, []) => hnormCon env i
-                          | CRecord (k, (x, c) :: rest) =>
-                            hnormCon env
-                                     (CApp ((CApp ((CApp (f, x), loc), c), loc),
+           | c1' as CApp (c', i) =>
+             let
+                 fun default () = (CApp ((c1', loc), hnormCon env c2), loc)
+             in
+                 case #1 (hnormCon env c') of
+                     CApp (c', f) =>
+                     (case #1 (hnormCon env c') of
+                          CFold ks =>
+                          (case #1 (hnormCon env c2) of
+                               CRecord (_, []) => hnormCon env i
+                             | CRecord (k, (x, c) :: rest) =>
+                               hnormCon env
+                                        (CApp ((CApp ((CApp (f, x), loc), c), loc),
                                                (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
-                                                         (CRecord (k, rest), loc)), loc)), loc)
-                          | CConcat ((CRecord (k, (x, c) :: rest), _), rest') =>
-                            let
-                                val rest'' = (CConcat ((CRecord (k, rest), loc), rest'), loc)
+                                                      (CRecord (k, rest), loc)), loc)), loc)
+                             | CConcat ((CRecord (k, (x, c) :: rest), _), rest') =>
+                               let
+                                   val rest'' = (CConcat ((CRecord (k, rest), loc), rest'), loc)
 
-                                (*val ccc = (CApp ((CApp ((CApp (f, x), loc), c), loc),
+                               (*val ccc = (CApp ((CApp ((CApp (f, x), loc), c), loc),
+                                                  (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
+                                                         rest''), loc)), loc)*)
+                               in
+                                   (*eprefaces "Red to" [("ccc", p_con env ccc), ("ccc'", p_con env (hnormCon env ccc))];*)
+                                   hnormCon env
+                                            (CApp ((CApp ((CApp (f, x), loc), c), loc),
                                                    (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
-                                                             rest''), loc)), loc)*)
-                            in
-                                (*eprefaces "Red to" [("ccc", p_con env ccc), ("ccc'", p_con env (hnormCon env ccc))];*)
-                                hnormCon env
-                                         (CApp ((CApp ((CApp (f, x), loc), c), loc),
-                                                   (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
-                                                             rest''), loc)), loc)
-                            end
-                          | _ => cAll)
-                     | _ => cAll)
-                | _ => cAll)
-           | _ => cAll)
+                                                          rest''), loc)), loc)
+                               end
+                             | _ => default ())
+                        | _ => default ())
+                   | _ => default ()
+             end
+           | c1' => (CApp ((c1', loc), hnormCon env c2), loc))
 
       | CConcat (c1, c2) =>
         (case (hnormCon env c1, hnormCon env c2) of

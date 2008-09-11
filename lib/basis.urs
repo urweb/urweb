@@ -251,6 +251,7 @@ val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type} -> bind ::: {
 con xhtml = xml [Html]
 con page = xhtml [] []
 con xbody = xml [Body] [] []
+con xtr = xml [Body, Tr] [] []
 
 (*** HTML details *)
 

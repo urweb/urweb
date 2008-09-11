@@ -199,6 +199,8 @@ fun decomposeRow (env, denv) c =
                           | _ => (Unknown cAll :: acc, gs)
                     end
             in
+                (*Print.prefaces "decomposeRow'" [("c", ElabPrint.p_con env c),
+                                                ("c'", ElabPrint.p_con env (#1 (hnormCon (env, denv) c)))];*)
                 case #1 (#1 (hnormCon (env, denv) c)) of
                     CApp (
                     (CApp (

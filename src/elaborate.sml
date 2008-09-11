@@ -896,17 +896,28 @@ and guessFold (env, denv) (c1, c2, gs, ex) =
     end
 
 and unifyCons' (env, denv) c1 c2 =
-    let
-        val (c1, gs1) = hnormCon (env, denv) c1
-        val (c2, gs2) = hnormCon (env, denv) c2
-    in
+    case (#1 c1, #1 c2) of
+        (L'.TDisjoint (x1, y1, t1), L'.TDisjoint (x2, y2, t2)) =>
         let
-            val gs3 = unifyCons'' (env, denv) c1 c2
+            val gs1 = unifyCons' (env, denv) x1 x2
+            val gs2 = unifyCons' (env, denv) y1 y2
+            val (denv', gs3) = D.assert env denv (x1, y1)
+            val gs4 = unifyCons' (env, denv') t1 t2
         in
-            gs1 @ gs2 @ gs3
+            gs1 @ gs2 @ gs3 @ gs4
         end
-        handle ex => guessFold (env, denv) (c1, c2, gs1 @ gs2, ex)
-    end
+      | _ =>
+        let
+            val (c1, gs1) = hnormCon (env, denv) c1
+            val (c2, gs2) = hnormCon (env, denv) c2
+        in
+            let
+                val gs3 = unifyCons'' (env, denv) c1 c2
+            in
+                gs1 @ gs2 @ gs3
+            end
+            handle ex => guessFold (env, denv) (c1, c2, gs1 @ gs2, ex)
+        end
     
 and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
     let
@@ -1116,12 +1127,18 @@ fun foldType (dom, loc) =
                                     (L'.TCFun (L'.Explicit, "v", dom,
                                                (L'.TCFun (L'.Explicit, "rest", (L'.KRecord dom, loc),
                                                           (L'.TFun ((L'.CApp ((L'.CRel 3, loc), (L'.CRel 0, loc)), loc),
-                                                                    (L'.CApp ((L'.CRel 3, loc),
-                                                                              recCons (dom,
-                                                                                       (L'.CRel 2, loc),
-                                                                                       (L'.CRel 1, loc),
-                                                                                       (L'.CRel 0, loc),
-                                                                                       loc)), loc)), loc)),
+                                                                    (L'.TDisjoint ((L'.CRecord
+                                                                                        ((L'.KUnit, loc),
+                                                                                         [((L'.CRel 2, loc),
+                                                                                           (L'.CUnit, loc))]), loc),
+                                                                                   (L'.CRel 0, loc),
+                                                                                   (L'.CApp ((L'.CRel 3, loc),
+                                                                                             recCons (dom,
+                                                                                                      (L'.CRel 2, loc),
+                                                                                                      (L'.CRel 1, loc),
+                                                                                                      (L'.CRel 0, loc),
+                                                                                                      loc)), loc)),
+                                                                     loc)), loc)),
                                                 loc)), loc)), loc),
                          (L'.TFun ((L'.CApp ((L'.CRel 0, loc), (L'.CRecord (dom, []), loc)), loc),
                                    (L'.TCFun (L'.Explicit, "r", (L'.KRecord dom, loc),

@@ -1,3 +1,5 @@
+con colMeta = fn cols :: {Type} => $(mapTT (fn t => {Show : t -> xbody}) cols)
+
 functor Make(M : sig
         con cols :: {Type}
         constraint [Id] ~ cols
@@ -5,7 +7,7 @@ functor Make(M : sig
 
         val title : string
 
-        val cols : $(mapTT (fn t => {Show : t -> xbody}) cols)
+        val cols : colMeta cols
 end) : sig
         val main : unit -> transaction page
 end

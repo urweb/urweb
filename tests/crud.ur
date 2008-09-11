@@ -1,3 +1,5 @@
+con colMeta = fn cols :: {Type} => $(Top.mapTT (fn t => {Show : t -> xbody}) cols)
+
 functor Make(M : sig
         con cols :: {Type}
         constraint [Id] ~ cols
@@ -5,7 +7,7 @@ functor Make(M : sig
 
         val title : string
 
-        val cols : $(mapTT (fn t => {Show : t -> xbody}) cols)
+        val cols : $(Top.mapTT (fn t => {Show : t -> xbody}) cols)
 end) = struct
 
 open constraints M
@@ -14,7 +16,20 @@ val tab = M.tab
 fun list () =
         rows <- query (SELECT * FROM tab AS T)
                 (fn fs acc => return <body>
-                        {acc} <tr> <td>{txt _ fs.T.Id}</td> </tr>
+                        {acc}
+                        <tr>
+                                <td>{txt _ fs.T.Id}</td>
+                                {fold [fn cols :: {Type} => $cols -> colMeta cols -> xtr]
+                                        (fn (nm :: Name) (t :: Type) (rest :: {Type}) acc =>
+                                                [[nm] ~ rest] =>
+                                                fn (r : $([nm = t] ++ rest)) cols =>
+                                                <tr>
+                                                        <td>{cols.nm.Show r.nm}</td>
+                                                        {acc (r -- nm) (cols -- nm)}
+                                                </tr>)
+                                        (fn _ _ => <tr></tr>)
+                                        [M.cols] (fs.T -- #Id) M.cols}
+                        </tr>
                 </body>) <body></body>;
         return <html><head>
                 <title>List</title>
