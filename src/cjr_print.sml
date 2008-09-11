@@ -393,11 +393,15 @@ fun patConInfo env pc =
          "uw_" ^ ident m ^ "_" ^ ident con,
          "uw_" ^ ident con)
 
-fun p_unsql env (tAll as (t, loc)) e =
+fun p_unsql wontLeakStrings env (tAll as (t, loc)) e =
     case t of
         TFfi ("Basis", "int") => box [string "uw_Basis_stringToInt_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "float") => box [string "uw_Basis_stringToFloat_error(ctx, ", e, string ")"]
-      | TFfi ("Basis", "string") => box [string "uw_Basis_strdup(ctx, ", e, string ")"]
+      | TFfi ("Basis", "string") =>
+        if wontLeakStrings then
+            e
+        else
+            box [string "uw_Basis_strdup(ctx, ", e, string ")"]
       | TFfi ("Basis", "bool") => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
       | _ => (ErrorMsg.errorAt loc "Don't know how to unmarshal type from SQL";
               Print.eprefaces' [("Type", p_typ env tAll)];
@@ -442,6 +446,29 @@ fun p_ensql_len t e =
       | Float => string "sizeof(uw_Basis_float)"
       | String => box [string "strlen(", e, string ")"]
       | Bool => string "sizeof(uw_Basis_bool)"
+
+fun notLeaky env allowHeapAllocated =
+    let
+        fun nl (t, _) =
+            case t of
+                TFun _ => false
+              | TRecord n =>
+                let
+                    val xts = E.lookupStruct env n
+                in
+                    List.all (fn (_, t) => nl t) xts
+                end
+              | TDatatype (dk, _, ref cons) =>
+                (allowHeapAllocated orelse dk = Enum)
+                andalso List.all (fn (_, _, to) => case to of
+                                                       NONE => true
+                                                     | SOME t => nl t) cons
+              | TFfi ("Basis", "string") => false
+              | TFfi _ => true
+              | TOption t => allowHeapAllocated andalso nl t
+    in
+        nl
+    end
 
 fun p_exp' par env (e, loc) =
     case e of
@@ -711,8 +738,16 @@ fun p_exp' par env (e, loc) =
                                             tables
                                                                                               
             val outputs = exps @ tables
+
+            val wontLeakStrings = notLeaky env true state
+            val wontLeakAnything = notLeaky env false state
         in
-            box [string "(uw_begin_region(ctx), ({",
+            box [string "(uw_begin_region(ctx), ",
+                 if wontLeakAnything then
+                     string "uw_begin_regio(ctx), "
+                 else
+                     box [],
+                 string "({",
                  newline,
                  string "PGconn *conn = uw_get_db(ctx);",
                  newline,
@@ -826,7 +861,7 @@ fun p_exp' par env (e, loc) =
                                                     space,
                                                     string "=",
                                                     space,
-                                                    p_unsql env t
+                                                    p_unsql wontLeakStrings env t
                                                             (box [string "PQgetvalue(res, i, ",
                                                                   string (Int.toString i),
                                                                   string ")"]),
@@ -851,6 +886,11 @@ fun p_exp' par env (e, loc) =
                  newline,
                  string "PQclear(res);",
                  newline,
+                 if wontLeakAnything then
+                     box [string "uw_end_region(ctx);",
+                          newline]
+                 else
+                     box [],
                  string "acc;",
                  newline,
                  string "}))"]

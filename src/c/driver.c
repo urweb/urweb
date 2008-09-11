@@ -52,8 +52,8 @@ static pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 #define MAX_RETRIES 5
 
 static void *worker(void *data) {
-  int me = *(int *)data, retries_left = MAX_RETRIES;;
-  uw_context ctx = uw_init(1024, 1024);
+  int me = *(int *)data, retries_left = MAX_RETRIES;
+  uw_context ctx = uw_init(1024, 0);
   
   while (1) {
     failure_kind fk = uw_begin_init(ctx);
@@ -224,6 +224,7 @@ static void *worker(void *data) {
         uw_send(ctx, sock);
 
         printf("Done with client.\n\n");
+        uw_memstats(ctx);
         break;
       }
     }

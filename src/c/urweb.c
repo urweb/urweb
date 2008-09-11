@@ -207,6 +207,11 @@ void uw_end_region(uw_context ctx) {
   ctx->regions = r->next;
 }
 
+void uw_memstats(uw_context ctx) {
+  printf("Page: %d/%d\n", ctx->page_front - ctx->page, ctx->page_back - ctx->page);
+  printf("Heap: %d/%d\n", ctx->heap_front - ctx->heap, ctx->heap_back - ctx->heap);
+}
+
 int uw_really_send(int sock, const void *buf, ssize_t len) {
   while (len > 0) {
     ssize_t n = send(sock, buf, len, 0);
