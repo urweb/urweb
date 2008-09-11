@@ -145,13 +145,16 @@ char *uw_get_optional_input(uw_context ctx, int n) {
 
 static void uw_check_heap(uw_context ctx, size_t extra) {
   if (ctx->heap_back - ctx->heap_front < extra) {
-    size_t desired = ctx->heap_back - ctx->heap_front + extra, next;
+    size_t desired = ctx->heap_back - ctx->heap + extra, next;
     char *new_heap;
 
-    for (next = ctx->heap_back - ctx->heap_front; next < desired; next *= 2);
+    next = ctx->heap_back - ctx->heap;
+    if (next == 0)
+      next = 1;
+    for (; next < desired; next *= 2);
 
     new_heap = realloc(ctx->heap, next);
-    ctx->heap_front = new_heap;
+    ctx->heap_front = new_heap + (ctx->heap_back - ctx->heap_front);
     ctx->heap_back = new_heap + next;
 
     if (new_heap != ctx->heap) {
@@ -192,14 +195,17 @@ int uw_send(uw_context ctx, int sock) {
 }
 
 static void uw_check(uw_context ctx, size_t extra) {
-  size_t desired = ctx->page_back - ctx->page_front + extra, next;
+  size_t desired = ctx->page_back - ctx->page + extra, next;
   char *new_page;
 
-  for (next = ctx->page_back - ctx->page_front; next < desired; next *= 2);
+  next = ctx->page_back - ctx->page;
+  if (next == 0)
+    next = 1;
+  for (; next < desired; next *= 2);
 
   new_page = realloc(ctx->page, next);
   ctx->page_front = new_page + (ctx->page_front - ctx->page);
-  ctx->page_back = new_page + (ctx->page_back - ctx->page);
+  ctx->page_back = new_page + next;
   ctx->page = new_page;
 }
 
