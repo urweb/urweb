@@ -172,6 +172,84 @@ fun match (env, p : pat, e : exp) =
 
       | _ => Maybe
 
+datatype event =
+         WritePage
+       | ReadDb
+       | WriteDb
+       | UseRel of int
+       | Unsure
+
+fun p_event e =
+    let
+        open Print.PD
+    in
+        case e of
+            WritePage => string "WritePage"
+          | ReadDb => string "ReadDb"
+          | WriteDb => string "WriteDb"
+          | UseRel n => string ("UseRel" ^ Int.toString n)
+          | Unsure => string "Unsure"
+    end
+
+fun patBinds (p, _) =
+    case p of
+        PWild => 0
+      | PVar _ => 1
+      | PPrim _ => 0
+      | PCon (_, _, NONE) => 0
+      | PCon (_, _, SOME p) => patBinds p
+      | PRecord xpts => foldl (fn ((_, p, _), n) => n + patBinds p) 0 xpts
+      | PNone _ => 0
+      | PSome (_, p) => patBinds p
+
+fun summarize d (e, _) =
+    case e of
+        EPrim _ => []
+      | ERel n => if n >= d then [UseRel (n - d)] else []
+      | ENamed _ => []
+      | ECon (_, _, NONE) => []
+      | ECon (_, _, SOME e) => summarize d e
+      | ENone _ => []
+      | ESome (_, e) => summarize d e
+      | EFfi _ => []
+      | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
+      | EApp _ => [Unsure]
+      | EAbs _ => []
+
+      | ERecord xets => List.concat (map (summarize d o #2) xets)
+      | EField (e, _) => summarize d e
+
+      | ECase (e, pes, _) =>
+        let
+            val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
+        in
+            case lss of
+                [] => raise Fail "Empty pattern match"
+              | ls :: lss =>
+                if List.all (fn ls' => ls' = ls) lss then
+                    summarize d e @ ls
+                else
+                    [Unsure]
+        end
+      | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
+
+      | EError (e, _) => summarize d e @ [Unsure]
+
+      | EWrite e => summarize d e @ [WritePage]
+        
+      | ESeq (e1, e2) => summarize d e1 @ summarize d e2
+      | ELet (_, _, e1, e2) => summarize d e1 @ summarize (d + 1) e2
+
+      | EClosure (_, es) => List.concat (map (summarize d) es)
+
+      | EQuery {query, body, initial, ...} =>
+        List.concat [summarize d query,
+                     summarize d body,
+                     summarize d initial,
+                     [ReadDb]]
+
+      | EDml e => summarize d e @ [WriteDb]
+
 fun exp env e =
     case e of
         ERel n =>
@@ -229,7 +307,46 @@ fun exp env e =
 
       | ELet (x, t, e', b) =>
         if impure e' then
-            e
+            let
+                val effs_e' = summarize 0 e'
+                val effs_b = summarize 0 b
+
+                fun does eff = List.exists (fn eff' => eff' = eff) effs_e'
+                val writesPage = does WritePage
+                val readsDb = does ReadDb
+                val writesDb = does WriteDb
+
+                fun verifyUnused eff =
+                    case eff of
+                        UseRel r => r <> 0
+                      | Unsure => false
+                      | _ => true
+
+                fun verifyCompatible effs =
+                    case effs of
+                        [] => false
+                      | eff :: effs =>
+                        case eff of
+                            Unsure => false
+                          | UseRel r =>
+                            if r = 0 then
+                                List.all verifyUnused effs
+                            else
+                                verifyCompatible effs
+                          | WritePage => not writesPage andalso verifyCompatible effs
+                          | ReadDb => not writesDb andalso verifyCompatible effs
+                          | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
+            in
+                (*Print.prefaces "verifyCompatible"
+                [("e'", MonoPrint.p_exp env e'),
+                 ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                 ("effs_e'", Print.p_list p_event effs_e'),
+                 ("effs_b", Print.p_list p_event effs_b)];*)
+                if verifyCompatible effs_b then
+                    #1 (reduceExp env (subExpInExp (0, e') b))
+                else
+                    e
+            end
         else
             #1 (reduceExp env (subExpInExp (0, e') b))
 

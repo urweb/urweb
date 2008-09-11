@@ -38,7 +38,3 @@ fun main () : transaction page = return <html><body>
 
         <p>{pairDelist (pairAppend pls' pls)}</p>
 </body></html>
-
-
-
-
