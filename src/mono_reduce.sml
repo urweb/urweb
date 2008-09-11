@@ -213,6 +213,7 @@ fun summarize d (e, _) =
       | ESome (_, e) => summarize d e
       | EFfi _ => []
       | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
+      | EApp ((EFfi _, _), e) => summarize d e
       | EApp _ => [Unsure]
       | EAbs _ => []
 
@@ -244,7 +245,7 @@ fun summarize d (e, _) =
 
       | EQuery {query, body, initial, ...} =>
         List.concat [summarize d query,
-                     summarize d body,
+                     summarize (d + 2) body,
                      summarize d initial,
                      [ReadDb]]
 
