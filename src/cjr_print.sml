@@ -738,6 +738,7 @@ fun p_exp' par env (e, loc) =
                                             tables
                                                                                               
             val outputs = exps @ tables
+            val outputs = ListMergeSort.sort (fn ((s1, _), (s2, _)) => String.compare (s1, s2) = GREATER) outputs
 
             val wontLeakStrings = notLeaky env true state
             val wontLeakAnything = notLeaky env false state
@@ -1721,7 +1722,7 @@ fun p_file env (ds, ps) =
 
                                     val q'' = String.concat ["SELECT COUNT(*) FROM pg_attribute WHERE attrelid = (SELECT oid FROM pg_class WHERE relname = '",
                                                              s,
-                                                             "') AND attnum >= 0"]
+                                                             "') AND attname LIKE 'uw_%'"]
                                 in
                                     box [string "res = PQexec(conn, \"",
                                          string q,

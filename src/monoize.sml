@@ -1372,6 +1372,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                   | "loption" => normal ("option", NONE)
 
+                  | "tabl" => normal ("table", NONE)
                   | _ => normal (tag, NONE)
             end
 

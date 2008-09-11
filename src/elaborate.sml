@@ -2805,6 +2805,98 @@ fun positive self =
         pos
     end
 
+fun wildifyStr env (str, sgn) =
+    case #1 (hnormSgn env sgn) of
+        L'.SgnConst sgis =>
+        (case #1 str of
+             L.StrConst ds =>
+             let
+                 fun decompileCon env (c, loc) =
+                     case c of
+                         L'.CRel i =>
+                         let
+                             val (s, _) = E.lookupCRel env i
+                         in
+                             SOME (L.CVar ([], s), loc)
+                         end
+                       | L'.CNamed i =>
+                         let
+                             val (s, _, _) = E.lookupCNamed env i
+                         in
+                             SOME (L.CVar ([], s), loc)
+                         end
+                       | L'.CModProj (m1, ms, x) =>
+                         let
+                             val (s, _) = E.lookupStrNamed env m1
+                         in
+                             SOME (L.CVar (s :: ms, x), loc)
+                         end
+                       | L'.CName s => SOME (L.CName s, loc)
+                       | L'.CRecord (_, xcs) =>
+                         let
+                             fun fields xcs =
+                                 case xcs of
+                                     [] => SOME []
+                                   | (x, t) :: xcs =>
+                                     case (decompileCon env x, decompileCon env t, fields xcs) of
+                                         (SOME x, SOME t, SOME xcs) => SOME ((x, t) :: xcs)
+                                       | _ => NONE
+                         in
+                             Option.map (fn xcs => (L.CRecord xcs, loc))
+                             (fields xcs)
+                         end
+                       | L'.CConcat (c1, c2) =>
+                         (case (decompileCon env c1, decompileCon env c2) of
+                              (SOME c1, SOME c2) => SOME (L.CConcat (c1, c2), loc)
+                            | _ => NONE)
+                       | L'.CUnit => SOME (L.CUnit, loc)
+
+                       | _ => NONE
+
+                 val (needed, constraints, _) =
+                     foldl (fn ((sgi, loc), (needed, constraints, env')) =>
+                               let
+                                   val (needed, constraints) =
+                                       case sgi of
+                                           L'.SgiConAbs (x, _, _) => (SS.add (needed, x), constraints)
+                                         | L'.SgiConstraint cs => (needed, (env', cs, loc) :: constraints)
+                                         | _ => (needed, constraints)
+                               in
+                                   (needed, constraints, E.sgiBinds env' (sgi, loc))
+                               end)
+                           (SS.empty, [], env) sgis
+                                                              
+                 val needed = foldl (fn ((d, _), needed) =>
+                                        case d of
+                                            L.DCon (x, _, _) => (SS.delete (needed, x)
+                                                                 handle NotFound =>
+                                                                        needed)
+                                          | L.DClass (x, _) => (SS.delete (needed, x)
+                                                                handle NotFound => needed)
+                                          | L.DOpen _ => SS.empty
+                                          | _ => needed)
+                                    needed ds
+
+                 val cds = List.mapPartial (fn (env', (c1, c2), loc) =>
+                                               case (decompileCon env' c1, decompileCon env' c2) of
+                                                   (SOME c1, SOME c2) =>
+                                                   SOME (L.DConstraint (c1, c2), loc)
+                                                 | _ => NONE) constraints
+             in
+                 case SS.listItems needed of
+                     [] => (L.StrConst (ds @ cds), #2 str)
+                   | xs =>
+                     let
+                         val kwild = (L.KWild, #2 str)
+                         val cwild = (L.CWild kwild, #2 str)
+                         val ds' = map (fn x => (L.DCon (x, NONE, cwild), #2 str)) xs
+                     in
+                         (L.StrConst (ds @ ds' @ cds), #2 str)
+                     end
+             end
+           | _ => str)
+      | _ => str
+
 fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
     let
         (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
@@ -3010,43 +3102,7 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                             end
                           | SOME (formal, gs1) =>
                             let
-                                val str =
-                                    case #1 (hnormSgn env formal) of
-                                        L'.SgnConst sgis =>
-                                        (case #1 str of
-                                             L.StrConst ds =>
-                                             let
-                                                 val needed = foldl (fn ((sgi, _), needed) =>
-                                                                        case sgi of
-                                                                            L'.SgiConAbs (x, _, _) => SS.add (needed, x)
-                                                                          | _ => needed)
-                                                                    SS.empty sgis
-                                                              
-                                                 val needed = foldl (fn ((d, _), needed) =>
-                                                                        case d of
-                                                                            L.DCon (x, _, _) => (SS.delete (needed, x)
-                                                                                                 handle NotFound =>
-                                                                                                        needed)
-                                                                          | L.DClass (x, _) => (SS.delete (needed, x)
-                                                                                                handle NotFound => needed)
-                                                                          | L.DOpen _ => SS.empty
-                                                                          | _ => needed)
-                                                                    needed ds
-                                             in
-                                                 case SS.listItems needed of
-                                                     [] => str
-                                                   | xs =>
-                                                     let
-                                                         val kwild = (L.KWild, #2 str)
-                                                         val cwild = (L.CWild kwild, #2 str)
-                                                         val ds' = map (fn x => (L.DCon (x, NONE, cwild), #2 str)) xs
-                                                     in
-                                                         (L.StrConst (ds @ ds'), #2 str)
-                                                     end
-                                             end
-                                           | _ => str)
-                                      | _ => str
-
+                                val str = wildifyStr env (str, formal)
                                 val (str', actual, gs2) = elabStr (env, denv) str
                             in
                                 subSgn (env, denv) (selfifyAt env {str = str', sgn = actual}) formal;
@@ -3125,47 +3181,52 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                 fun doOne (all as (sgi, _), env) =
                                     (case sgi of
                                          L'.SgiVal (x, n, t) =>
-                                         (case hnormCon (env, denv) t of
-                                              ((L'.TFun (dom, ran), _), []) =>
-                                              (case (hnormCon (env, denv) dom, hnormCon (env, denv) ran) of
-                                                   (((L'.TRecord domR, _), []),
-                                                    ((L'.CApp (tf, arg), _), [])) =>
-                                                   (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg) of
-                                                        (((L'.CModProj (basis, [], "transaction"), _), []),
-                                                         ((L'.CApp (tf, arg3), _), [])) =>
-                                                        (case (basis = !basis_r,
-                                                               hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
-                                                             (true,
-                                                              ((L'.CApp (tf, arg2), _), []),
-                                                              (((L'.CRecord (_, []), _), []))) =>
-                                                             (case (hnormCon (env, denv) tf) of
-                                                                  ((L'.CApp (tf, arg1), _), []) =>
-                                                                  (case (hnormCon (env, denv) tf,
-                                                                         hnormCon (env, denv) domR,
-                                                                         hnormCon (env, denv) arg1,
-                                                                         hnormCon (env, denv) arg2) of
-                                                                       ((tf, []), (domR, []), (arg1, []),
-                                                                        ((L'.CRecord (_, []), _), [])) =>
-                                                                       let
-                                                                           val t = (L'.CApp (tf, arg1), loc)
-                                                                           val t = (L'.CApp (t, arg2), loc)
-                                                                           val t = (L'.CApp (t, arg3), loc)
-                                                                           val t = (L'.CApp (
-                                                                                    (L'.CModProj
-                                                                                         (basis, [], "transaction"), loc),
-                                                                                    t), loc)
-                                                                       in
-                                                                           (L'.SgiVal (x, n, (L'.TFun ((L'.TRecord domR,
-                                                                                                        loc),
-                                                                                                       t),
-                                                                                              loc)), loc)
-                                                                       end
-                                                                     | _ => all)
-                                                                | _ => all)
-                                                           | _ => all)
-                                                      | _ => all)
-                                                 | _ => all)
-                                            | _ => all)
+                                         let
+                                             fun doPage (makeRes, ran) =
+                                                 case hnormCon (env, denv) ran of
+                                                     ((L'.CApp (tf, arg), _), []) =>
+                                                     (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg) of
+                                                          (((L'.CModProj (basis, [], "transaction"), _), []),
+                                                           ((L'.CApp (tf, arg3), _), [])) =>
+                                                          (case (basis = !basis_r,
+                                                                 hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
+                                                               (true,
+                                                                ((L'.CApp (tf, arg2), _), []),
+                                                                (((L'.CRecord (_, []), _), []))) =>
+                                                               (case (hnormCon (env, denv) tf) of
+                                                                    ((L'.CApp (tf, arg1), _), []) =>
+                                                                    (case (hnormCon (env, denv) tf,
+                                                                           hnormCon (env, denv) arg1,
+                                                                           hnormCon (env, denv) arg2) of
+                                                                         ((tf, []), (arg1, []),
+                                                                          ((L'.CRecord (_, []), _), [])) =>
+                                                                         let
+                                                                             val t = (L'.CApp (tf, arg1), loc)
+                                                                             val t = (L'.CApp (t, arg2), loc)
+                                                                             val t = (L'.CApp (t, arg3), loc)
+                                                                             val t = (L'.CApp (
+                                                                                      (L'.CModProj
+                                                                                           (basis, [], "transaction"), loc),
+                                                                                      t), loc)
+                                                                         in
+                                                                             (L'.SgiVal (x, n, makeRes t), loc)
+                                                                         end
+                                                                       | _ => all)
+                                                                  | _ => all)
+                                                             | _ => all)
+                                                        | _ => all)
+                                                   | _ => all
+                                         in
+                                             case hnormCon (env, denv) t of
+                                                 ((L'.TFun (dom, ran), _), []) =>
+                                                 (case hnormCon (env, denv) dom of
+                                                      ((L'.TRecord domR, _), []) =>
+                                                      doPage (fn t => (L'.TFun ((L'.TRecord domR,
+                                                                                 loc),
+                                                                                t), loc), ran)
+                                                    | _ => all)
+                                               | _ => doPage (fn t => t, t)
+                                         end
                                        | _ => all,
                                      E.sgiBinds env all)
                             in
@@ -3375,6 +3436,11 @@ and elabStr (env, denv) (str, loc) =
       | L.StrApp (str1, str2) =>
         let
             val (str1', sgn1, gs1) = elabStr (env, denv) str1
+            val str2 =
+                case sgn1 of
+                    (L'.SgnFun (_, _, dom, _), _) =>
+                    wildifyStr env (str2, dom)
+                  | _ => str2
             val (str2', sgn2, gs2) = elabStr (env, denv) str2
         in
             case #1 (hnormSgn env sgn1) of
@@ -3392,7 +3458,7 @@ and elabStr (env, denv) (str, loc) =
                       (strerror, sgnerror, []))
         end
 
-fun elabFile basis env file =
+fun elabFile basis topStr topSgn env file =
     let
         val (sgn, gs) = elabSgn (env, D.empty) (L.SgnConst basis, ErrorMsg.dummySpan)
         val () = case gs of
@@ -3418,6 +3484,25 @@ fun elabFile basis env file =
         val () = discoverC float "float"
         val () = discoverC string "string"
         val () = discoverC table "sql_table"
+
+        val (topSgn, gs) = elabSgn (env', D.empty) (L.SgnConst topSgn, ErrorMsg.dummySpan)
+        val () = case gs of
+                     [] => ()
+                   | _ => raise Fail "Unresolved disjointness constraints in top.urs"
+        val (topStr, topSgn', gs) = elabStr (env', D.empty) (L.StrConst topStr, ErrorMsg.dummySpan)
+        val () = case gs of
+                     [] => ()
+                   | _ => (app (fn Disjoint (_, env, _, c1, c2) =>
+                                   prefaces "Unresolved"
+                                            [("c1", p_con env c1),
+                                             ("c2", p_con env c2)]
+                                 | TypeClass _ => TextIO.print "Type class\n") gs;
+                           raise Fail "Unresolved constraints in top.ur")
+        val () = subSgn (env', D.empty) topSgn' topSgn
+
+        val (env', top_n) = E.pushStrNamed env' "Top" topSgn
+
+        val (ds', (env', _)) = dopen (env', D.empty) {str = top_n, strs = [], sgn = topSgn}
 
         fun elabDecl' (d, (env, gs)) =
             let
@@ -3461,7 +3546,10 @@ fun elabFile basis env file =
                         SOME e => r := SOME e
                       | NONE => expError env (Unresolvable (loc, c))) gs;
 
-        (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan) :: ds @ file
+        (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
+        :: ds
+        @ (L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan)
+        :: ds' @ file
     end
 
 end

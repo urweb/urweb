@@ -250,6 +250,7 @@ val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type} -> bind ::: {
 
 con xhtml = xml [Html]
 con page = xhtml [] []
+con xbody = xml [Body] [] []
 
 (*** HTML details *)
 
@@ -303,6 +304,13 @@ val loption : unit -> tag [Value = string] select [] [] []
 val submit : ctx ::: {Unit} -> [LForm] ~ ctx
         -> use ::: {Type} -> unit
         -> tag [Action = $use -> transaction page] ([LForm] ++ ctx) ([LForm] ++ ctx) use []
+
+(*** Tables *)
+
+val tabl : unit -> tag [Border = int] [Body] [Body, Table] [] []
+val tr : unit -> tag [] [Body, Table] [Body, Tr] [] []
+val th : unit -> tag [] [Body, Tr] [Body] [] []
+val td : unit -> tag [] [Body, Tr] [Body] [] []
 
 
 (** Aborting *)

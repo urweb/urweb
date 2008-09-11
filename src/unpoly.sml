@@ -56,7 +56,19 @@ fun unpolyNamed (xn, rep) =
                                 rep
                             else
                                 e
-                          | ECApp (e, _) => #1 e
+                          | ECApp (e', _) =>
+                            let
+                                fun isTheOne (e, _) =
+                                    case e of
+                                        ENamed xn' => xn' = xn
+                                      | ECApp (e, _) => isTheOne e
+                                      | _ => false
+                            in
+                                if isTheOne e' then
+                                    #1 e'
+                                else
+                                    e
+                            end
                           | _ => e}
 
 type state = {
@@ -110,7 +122,7 @@ fun exp (e, st : state) =
                                         let
                                             val e = foldl (fn ((_, n, n_old, _, _, _), e) =>
                                                               unpolyNamed (n_old, ENamed n) e)
-                                                    e vis
+                                                          e vis
                                         in
                                             SOME (t, e)
                                         end

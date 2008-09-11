@@ -355,8 +355,10 @@ val toParse = transform parse "parse" o toParseJob
 val elaborate = {
     func = fn file => let
                   val basis = #func parseUrs "lib/basis.urs"
+                  val topSgn = #func parseUrs "lib/top.urs"
+                  val topStr = #func parseUr "lib/top.ur"
               in
-                  Elaborate.elabFile basis ElabEnv.empty file
+                  Elaborate.elabFile basis topStr topSgn ElabEnv.empty file
               end,
     print = ElabPrint.p_file ElabEnv.empty
 }
