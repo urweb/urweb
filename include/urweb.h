@@ -21,6 +21,9 @@ __attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *fm
 char *uw_error_message(uw_context);
 
 void *uw_malloc(uw_context, size_t);
+void uw_begin_region(uw_context);
+void uw_end_region(uw_context);
+
 int uw_send(uw_context, int sock);
 
 void uw_set_input(uw_context, char *name, char *value);

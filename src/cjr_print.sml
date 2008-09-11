@@ -712,7 +712,7 @@ fun p_exp' par env (e, loc) =
                                                                                               
             val outputs = exps @ tables
         in
-            box [string "({",
+            box [string "(uw_begin_region(ctx), ({",
                  newline,
                  string "PGconn *conn = uw_get_db(ctx);",
                  newline,
@@ -791,6 +791,8 @@ fun p_exp' par env (e, loc) =
                  newline,
                  newline,
 
+                 string "uw_end_region(ctx);",
+                 newline,
                  string "n = PQntuples(res);",
                  newline,
                  string "for (i = 0; i < n; ++i) {",
@@ -851,7 +853,7 @@ fun p_exp' par env (e, loc) =
                  newline,
                  string "acc;",
                  newline,
-                 string "})"]
+                 string "}))"]
         end
 
       | EDml {dml, prepared} =>

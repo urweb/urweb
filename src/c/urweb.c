@@ -11,6 +11,10 @@ uw_unit uw_unit_v = {};
 
 #define ERROR_BUF_LEN 1024
 
+typedef struct regions {
+  struct regions *next;
+} regions;
+
 struct uw_context {
   char *page, *page_front, *page_back;
   char *heap, *heap_front, *heap_back;
@@ -19,6 +23,8 @@ struct uw_context {
   void *db;
 
   jmp_buf jmp_buf;
+
+  regions *regions;
 
   char error_message[ERROR_BUF_LEN];
 };
@@ -37,6 +43,8 @@ uw_context uw_init(size_t page_len, size_t heap_len) {
   ctx->inputs = calloc(uw_inputs_len, sizeof(char *));
 
   ctx->db = NULL;
+
+  ctx->regions = NULL;
 
   ctx->error_message[0] = 0;
 
@@ -61,6 +69,7 @@ void uw_free(uw_context ctx) {
 void uw_reset_keep_request(uw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
+  ctx->regions = NULL;
 
   ctx->error_message[0] = 0;
 }
@@ -68,6 +77,7 @@ void uw_reset_keep_request(uw_context ctx) {
 void uw_reset_keep_error_message(uw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
+  ctx->regions = NULL;
 }
 
 void uw_reset(uw_context ctx) {
@@ -174,6 +184,27 @@ void *uw_malloc(uw_context ctx, size_t len) {
   result = ctx->heap_front;
   ctx->heap_front += len;
   return result;
+}
+
+void uw_begin_region(uw_context ctx) {
+  regions *r = (regions *) ctx->heap_front;
+
+  uw_check_heap(ctx, sizeof(regions));
+
+  ctx->heap_front += sizeof(regions);
+
+  r->next = ctx->regions;
+  ctx->regions = r;
+}
+
+void uw_end_region(uw_context ctx) {
+  regions *r = ctx->regions;
+
+  if (r == NULL)
+    uw_error(ctx, FATAL, "Region stack underflow");
+
+  ctx->heap_front = (char *) r;
+  ctx->regions = r->next;
 }
 
 int uw_really_send(int sock, const void *buf, ssize_t len) {
