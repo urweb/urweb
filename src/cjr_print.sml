@@ -425,6 +425,7 @@ fun getPargs (e, _) =
       | EFfiApp ("Basis", "sqlifyFloat", [e]) => [(e, Float)]
       | EFfiApp ("Basis", "sqlifyString", [e]) => [(e, String)]
       | EFfiApp ("Basis", "sqlifyBool", [e]) => [(e, Bool)]
+      | ECase (e, _, _) => [(e, Bool)]
 
       | _ => raise Fail "CjrPrint: getPargs"
 
