@@ -7,7 +7,7 @@ functor Make(M : sig
 
         val title : string
 
-        val cols : $(Top.mapTT (fn t => {Show : t -> xbody}) cols)
+        val cols : colMeta cols
 end) = struct
 
 open constraints M
@@ -22,7 +22,7 @@ fun list () =
                                 {fold [fn cols :: {Type} => $cols -> colMeta cols -> xtr]
                                         (fn (nm :: Name) (t :: Type) (rest :: {Type}) acc =>
                                                 [[nm] ~ rest] =>
-                                                fn (r : $([nm = t] ++ rest)) cols =>
+                                                fn r cols =>
                                                 <tr>
                                                         <td>{cols.nm.Show r.nm}</td>
                                                         {acc (r -- nm) (cols -- nm)}

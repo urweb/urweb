@@ -2478,7 +2478,16 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                      fun found (x', n1, k1, c1) =
                                          if x = x' then
                                              let
-                                                 fun good () = SOME (E.pushCNamedAs env x n2 k2 (SOME c2), denv)
+                                                 fun good () =
+                                                     let
+                                                         val env = E.pushCNamedAs env x n2 k2 (SOME c2)
+                                                         val env = if n1 = n2 then
+                                                                       env
+                                                                   else
+                                                                       E.pushCNamedAs env x n1 k1 (SOME c1)
+                                                     in
+                                                         SOME (env, denv)
+                                                     end
                                              in
                                                  (case unifyCons (env, denv) c1 c2 of
                                                       [] => good ()
