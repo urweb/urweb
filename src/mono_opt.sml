@@ -293,6 +293,14 @@ fun exp e =
         else
             e
 
+      | EWrite (EQuery {exps, tables, state, query,
+                        initial = (EPrim (Prim.String ""), _),
+                        body = (EStrcat ((ERel 0, _), e'), _)}, loc) =>
+        EQuery {exps = exps, tables = tables, query = query,
+                state = (TRecord [], loc),
+                initial = (ERecord [], loc),
+                body = (optExp (EWrite e', loc), loc)}
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)

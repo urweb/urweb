@@ -14,10 +14,9 @@ end) = struct
 open constraints M
 val tab = M.tab
 
-fun list () =
-        rows <- query (SELECT * FROM tab AS T)
-                (fn (fs : {T : $([Id = int] ++ M.cols)}) acc => return <body>
-                        {acc}
+fun main () : transaction page =
+        rows <- queryX (SELECT * FROM tab AS T)
+                (fn (fs : {T : $([Id = int] ++ M.cols)}) => <body>
                         <tr>
                                 <td>{txt _ fs.T.Id}</td>
                                 {foldTRX2 [idT] [colMeta'] [tr]
@@ -28,26 +27,18 @@ fun list () =
                                                 </tr>)
                                         [M.cols] (fs.T -- #Id) M.cols}
                         </tr>
-                </body>) <body></body>;
+                </body>);
         return <html><head>
-                <title>List</title>
+                <title>{cdata M.title}</title>
 
                 </head><body>
 
-                <h1>List</h1>
+                <h1>{cdata M.title}</h1>
 
                 <table border={1}>
                 <tr> <th>ID</th> </tr>
                 {rows}
                 </table>
         </body></html>
-
-fun main () : transaction page = return <html><head>
-        <title>{cdata M.title}</title>
-        </head><body>
-        <h1>{cdata M.title}</h1>
-
-        <li> <a link={list ()}>List all rows</a></li>
-</body></html>
 
 end

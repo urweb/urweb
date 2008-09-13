@@ -19,3 +19,9 @@ val foldTRX2 : tf1 :: (Type -> Type) -> tf2 :: (Type -> Type) -> ctx :: {Unit}
         -> (nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
                 -> tf1 t -> tf2 t -> xml ctx [] [])
         -> r :: {Type} -> $(mapTT tf1 r) -> $(mapTT tf2 r) -> xml ctx [] []
+
+val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
+        -> sql_query tables exps -> tables ~ exps
+        -> ($(exps ++ fold (fn nm (fields :: {Type}) acc => [nm] ~ acc => [nm = $fields] ++ acc) [] tables)
+                -> xml ctx [] [])
+        -> transaction (xml ctx [] [])

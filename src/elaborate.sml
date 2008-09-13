@@ -239,7 +239,7 @@ fun elabCon (env, denv) (c, loc) =
             checkKind env c1' k1 (L'.KRecord ku1, loc);
             checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-            ((L'.TDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
+            ((L'.TDisjoint (L'.Instantiate, c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
         end
       | L.TRecord c =>
         let
@@ -824,7 +824,7 @@ and guessFold (env, denv) (c1, c2, gs, ex) =
 
 and unifyCons' (env, denv) c1 c2 =
     case (#1 c1, #1 c2) of
-        (L'.TDisjoint (x1, y1, t1), L'.TDisjoint (x2, y2, t2)) =>
+        (L'.TDisjoint (_, x1, y1, t1), L'.TDisjoint (_, x2, y2, t2)) =>
         let
             val gs1 = unifyCons' (env, denv) x1 x2
             val gs2 = unifyCons' (env, denv) y1 y2
@@ -983,7 +983,8 @@ fun foldType (dom, loc) =
                                     (L'.TCFun (L'.Explicit, "v", dom,
                                                (L'.TCFun (L'.Explicit, "rest", (L'.KRecord dom, loc),
                                                           (L'.TFun ((L'.CApp ((L'.CRel 3, loc), (L'.CRel 0, loc)), loc),
-                                                                    (L'.TDisjoint ((L'.CRecord
+                                                                    (L'.TDisjoint (L'.Instantiate,
+                                                                                   (L'.CRecord
                                                                                         ((L'.KUnit, loc),
                                                                                          [((L'.CRel 2, loc),
                                                                                            (L'.CUnit, loc))]), loc),
@@ -1523,7 +1524,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 checkKind env c1' k1 (L'.KRecord ku1, loc);
                 checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-                (e', (L'.TDisjoint (c1', c2', t), loc), enD gs1 @ enD gs2 @ enD gs3 @ gs4)
+                (e', (L'.TDisjoint (L'.LeaveAlone, c1', c2', t), loc), enD gs1 @ enD gs2 @ enD gs3 @ gs4)
             end
 
           | L.ERecord xes =>
@@ -2661,6 +2662,17 @@ fun wildifyStr env (str, sgn) =
            | _ => str)
       | _ => str
 
+val makeInstantiable =
+    let
+        fun kind k = k
+        fun con c =
+            case c of
+                L'.TDisjoint (L'.LeaveAlone, c1, c2, c) => L'.TDisjoint (L'.Instantiate, c1, c2, c)
+              | _ => c
+    in
+        U.Con.map {kind = kind, con = con}
+    end
+
 fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
     let
         (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
@@ -2792,6 +2804,7 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                     val gs3 = checkCon (env, denv) e' et c'
                     val (c', gs4) = normClassConstraint (env, denv) c'
                     val (env', n) = E.pushENamed env x c'
+                    val c' = makeInstantiable c'
                 in
                     (*prefaces "DVal" [("x", Print.PD.string x),
                                        ("c'", p_con env c')];*)
@@ -2828,6 +2841,8 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                                               val (e', et, gs1) = elabExp (env, denv) e
                                                                                   
                                                               val gs2 = checkCon (env, denv) e' et c'
+
+                                                              val c' = makeInstantiable c'
                                                           in
                                                               if allowable e then
                                                                   ()

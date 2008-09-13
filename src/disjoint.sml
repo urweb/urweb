@@ -314,7 +314,7 @@ and hnormCon (env, denv) c =
     in
         case c of
             CDisjoint cs => doDisj cs
-          | TDisjoint cs => doDisj cs
+          | TDisjoint (Instantiate, c1, c2, c) => doDisj (c1, c2, c)
           | _ => (cAll, [])
     end
 

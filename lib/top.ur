@@ -26,3 +26,11 @@ fun foldTRX2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (ctx :: {Unit})
                         [[nm] ~ rest] =>
                         fn r1 r2 acc => <xml>{f [nm] [t] [rest] r1 r2}{acc}</xml>)
                 <xml></xml>
+
+fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit}) (q : sql_query tables exps) =
+        [tables ~ exps] =>
+        fn (f : $(exps ++ fold (fn nm (fields :: {Type}) acc => [nm] ~ acc => [nm = $fields] ++ acc) [] tables)
+                -> xml ctx [] []) =>
+        query q
+                (fn fs acc => return <xml>{acc}{f fs}</xml>)
+                <xml></xml>

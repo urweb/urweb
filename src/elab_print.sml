@@ -80,15 +80,15 @@ fun p_con' par env (c, _) =
                                                 string "->",
                                                 space,
                                                 p_con (E.pushCRel env x k) c])
-      | TDisjoint (c1, c2, c3) => parenIf par (box [p_con env c1,
-                                                    space,
-                                                    string "~",
-                                                    space,
-                                                    p_con env c2,
-                                                    space,
-                                                    string "->",
-                                                    space,
-                                                    p_con env c3])
+      | TDisjoint (_, c1, c2, c3) => parenIf par (box [p_con env c1,
+                                                       space,
+                                                       string "~",
+                                                       space,
+                                                       p_con env c2,
+                                                       space,
+                                                       string "->",
+                                                       space,
+                                                       p_con env c3])
       | TRecord (CRecord (_, xcs), _) => box [string "{",
                                               p_list (fn (x, c) =>
                                                          box [p_name env x,
