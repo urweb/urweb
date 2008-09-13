@@ -8,7 +8,7 @@ fun compose (t1 ::: Type) (t2 ::: Type) (t3 ::: Type) (f1 : t2 -> t3) (f2 : t1 -
 
 fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (sh : show t) (v : t) = cdata (show sh v)
 
-val foldTR2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (tr :: {Type} -> Type)
+fun foldTR2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (tr :: {Type} -> Type)
         (f : nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
                 -> tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
         (i : tr []) =
