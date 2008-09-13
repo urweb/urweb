@@ -745,7 +745,7 @@ fun p_exp' par env (e, loc) =
         in
             box [string "(uw_begin_region(ctx), ",
                  if wontLeakAnything then
-                     string "uw_begin_regio(ctx), "
+                     string "uw_begin_region(ctx), "
                  else
                      box [],
                  string "({",

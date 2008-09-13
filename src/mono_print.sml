@@ -193,11 +193,11 @@ fun p_exp' par env (e, _) =
                               p_typ env t,
                               string ")"]
 
-      | EStrcat (e1, e2) => box [p_exp' true env e1,
-                                 space,
-                                 string "^",
-                                 space,
-                                 p_exp' true env e2]
+      | EStrcat (e1, e2) => parenIf par (box [p_exp' true env e1,
+                                              space,
+                                              string "^",
+                                              space,
+                                              p_exp env e2])
 
       | EWrite e => box [string "write(",
                          p_exp env e,

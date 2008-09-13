@@ -280,6 +280,19 @@ fun exp e =
                        {disc = disc,
                         result = (TRecord [], loc)}), loc)
 
+      | EWrite (EQuery {exps, tables, state, query,
+                        initial = (EPrim (Prim.String ""), _),
+                        body = (EStrcat ((EPrim (Prim.String s), _),
+                                         (EStrcat ((ERel 0, _),
+                                                   e'), _)), _)}, loc) =>
+        if CharVector.all Char.isSpace s then
+            EQuery {exps = exps, tables = tables, query = query,
+                    state = (TRecord [], loc),
+                    initial = (ERecord [], loc),
+                    body = (optExp (EWrite e', loc), loc)}
+        else
+            e
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)
