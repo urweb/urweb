@@ -2,5 +2,5 @@ Group is
 
 $/basis.cm
 $/smlnj-lib.cm
-$/ml-yacc-lib.cm
+$smlnj/ml-yacc/ml-yacc-lib.cm
 $/pp-lib.cm
