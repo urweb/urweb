@@ -143,9 +143,11 @@ fun enter denv =
                   PM.insert (denv', pieceEnter p, PS.map pieceEnter pset))
     PM.empty denv
 
+val lowercase = CharVector.map Char.toLower
+
 fun prove1 denv (p1, p2) =
     case (p1, p2) of
-        ((NameC s1, _), (NameC s2, _)) => s1 <> s2
+        ((NameC s1, _), (NameC s2, _)) => lowercase s1 <> lowercase s2
       | _ =>
         case PM.find (denv, p1) of
             NONE => false
