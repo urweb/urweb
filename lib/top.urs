@@ -14,3 +14,8 @@ val foldTR2 : tf1 :: (Type -> Type) -> tf2 :: (Type -> Type) -> tr :: ({Type} ->
         -> (nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
                 -> tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
         -> tr [] -> r :: {Type} -> $(mapTT tf1 r) -> $(mapTT tf2 r) -> tr r
+
+val foldTRX2 : tf1 :: (Type -> Type) -> tf2 :: (Type -> Type) -> ctx :: {Unit}
+        -> (nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
+                -> tf1 t -> tf2 t -> xml ctx [] [])
+        -> r :: {Type} -> $(mapTT tf1 r) -> $(mapTT tf2 r) -> xml ctx [] []

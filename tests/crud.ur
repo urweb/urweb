@@ -20,15 +20,12 @@ fun list () =
                         {acc}
                         <tr>
                                 <td>{txt _ fs.T.Id}</td>
-                                {foldTR2 [idT] [colMeta'] [fn _ => xtr]
+                                {foldTRX2 [idT] [colMeta'] [tr]
                                         (fn (nm :: Name) (t :: Type) (rest :: {Type}) =>
                                                 [[nm] ~ rest] =>
-                                                fn v funcs acc =>
-                                                <tr>
+                                                fn v funcs => <tr>
                                                         <td>{funcs.Show v}</td>
-                                                        {acc}
                                                 </tr>)
-                                        <tr></tr>
                                         [M.cols] (fs.T -- #Id) M.cols}
                         </tr>
                 </body>) <body></body>;

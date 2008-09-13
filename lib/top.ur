@@ -17,3 +17,12 @@ fun foldTR2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (tr :: {Type} -> Type)
                         [[nm] ~ rest] =>
                         fn r1 r2 => f [nm] [t] [rest] r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
                 (fn _ _ => i)
+
+fun foldTRX2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (ctx :: {Unit})
+        (f : nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
+                -> tf1 t -> tf2 t -> xml ctx [] []) =
+        foldTR2 [tf1] [tf2] [fn _ => xml ctx [] []]
+                (fn (nm :: Name) (t :: Type) (rest :: {Type}) =>
+                        [[nm] ~ rest] =>
+                        fn r1 r2 acc => <xml>{f [nm] [t] [rest] r1 r2}{acc}</xml>)
+                <xml></xml>

@@ -259,6 +259,8 @@ con html = [Html]
 con head = [Head]
 con body = [Body]
 con lform = [Body, LForm]
+con tabl = [Body, Table]
+con tr = [Body, Tr]
 
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
