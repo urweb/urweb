@@ -543,6 +543,13 @@ carg   : SYMBOL DCOLON kind             (fn (c, k) =>
                                                 ((CAbs (SYMBOL, SOME kind, c), loc),
                                                  (KArrow (kind, k), loc))
                                             end)
+       | UNDER DCOLON kind              (fn (c, k) =>
+                                            let
+                                                val loc = s (UNDERleft, kindright)
+                                            in
+                                                ((CAbs ("_", SOME kind, c), loc),
+                                                 (KArrow (kind, k), loc))
+                                            end)
        | cargp                          (cargp)
 
 cargp  : SYMBOL                         (fn (c, k) =>
@@ -550,6 +557,13 @@ cargp  : SYMBOL                         (fn (c, k) =>
                                                 val loc = s (SYMBOLleft, SYMBOLright)
                                             in
                                                 ((CAbs (SYMBOL, NONE, c), loc),
+                                                 (KArrow ((KWild, loc), k), loc))
+                                            end)
+       | UNDER                          (fn (c, k) =>
+                                            let
+                                                val loc = s (UNDERleft, UNDERright)
+                                            in
+                                                ((CAbs ("_", NONE, c), loc),
                                                  (KArrow ((KWild, loc), k), loc))
                                             end)
        | LPAREN SYMBOL DCOLON kind RPAREN (fn (c, k) =>

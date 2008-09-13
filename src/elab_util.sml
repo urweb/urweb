@@ -96,7 +96,7 @@ structure Con = struct
 
 datatype binder =
          Rel of string * Elab.kind
-       | Named of string * Elab.kind
+       | Named of string * int * Elab.kind
 
 fun mapfoldB {kind = fk, con = fc, bind} =
     let
@@ -240,7 +240,7 @@ structure Exp = struct
 
 datatype binder =
          RelC of string * Elab.kind
-       | NamedC of string * Elab.kind
+       | NamedC of string * int * Elab.kind
        | RelE of string * Elab.con
        | NamedE of string * Elab.con
 
@@ -392,7 +392,7 @@ structure Sgn = struct
 
 datatype binder =
          RelC of string * Elab.kind
-       | NamedC of string * Elab.kind
+       | NamedC of string * int * Elab.kind
        | Str of string * Elab.sgn
        | Sgn of string * Elab.sgn
 
@@ -479,14 +479,14 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                 SgnConst sgis =>
                 S.map2 (ListUtil.mapfoldB (fn (ctx, si)  =>
                                               (case #1 si of
-                                                   SgiConAbs (x, _, k) =>
-                                                   bind (ctx, NamedC (x, k))
-                                                 | SgiCon (x, _, k, _) =>
-                                                   bind (ctx, NamedC (x, k))
+                                                   SgiConAbs (x, n, k) =>
+                                                   bind (ctx, NamedC (x, n, k))
+                                                 | SgiCon (x, n, k, _) =>
+                                                   bind (ctx, NamedC (x, n, k))
                                                  | SgiDatatype (x, n, _, xncs) =>
-                                                   bind (ctx, NamedC (x, (KType, loc)))
-                                                 | SgiDatatypeImp (x, _, _, _, _, _, _) =>
-                                                   bind (ctx, NamedC (x, (KType, loc)))
+                                                   bind (ctx, NamedC (x, n, (KType, loc)))
+                                                 | SgiDatatypeImp (x, n, _, _, _, _, _) =>
+                                                   bind (ctx, NamedC (x, n, (KType, loc)))
                                                  | SgiVal _ => ctx
                                                  | SgiStr (x, _, sgn) =>
                                                    bind (ctx, Str (x, sgn))
@@ -494,10 +494,10 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                    bind (ctx, Sgn (x, sgn))
                                                  | SgiConstraint _ => ctx
                                                  | SgiTable _ => ctx
-                                                 | SgiClassAbs (x, _) =>
-                                                   bind (ctx, NamedC (x, (KArrow ((KType, loc), (KType, loc)), loc)))
-                                                 | SgiClass (x, _, _) =>
-                                                   bind (ctx, NamedC (x, (KArrow ((KType, loc), (KType, loc)), loc))),
+                                                 | SgiClassAbs (x, n) =>
+                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
+                                                 | SgiClass (x, n, _) =>
+                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc))),
                                                sgi ctx si)) ctx sgis,
                      fn sgis' =>
                         (SgnConst sgis', loc))
@@ -542,7 +542,7 @@ structure Decl = struct
 
 datatype binder =
          RelC of string * Elab.kind
-       | NamedC of string * Elab.kind
+       | NamedC of string * int * Elab.kind
        | RelE of string * Elab.con
        | NamedE of string * Elab.con
        | Str of string * Elab.sgn
@@ -594,11 +594,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                 StrConst ds => 
                 S.map2 (ListUtil.mapfoldB (fn (ctx, d)  =>
                                               (case #1 d of
-                                                   DCon (x, _, k, _) =>
-                                                   bind (ctx, NamedC (x, k))
+                                                   DCon (x, n, k, _) =>
+                                                   bind (ctx, NamedC (x, n, k))
                                                  | DDatatype (x, n, xs, xncs) =>
                                                    let
-                                                       val ctx = bind (ctx, NamedC (x, (KType, loc)))
+                                                       val ctx = bind (ctx, NamedC (x, n, (KType, loc)))
                                                    in
                                                        foldl (fn ((x, _, co), ctx) =>
                                                                  let
@@ -621,7 +621,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                        ctx xncs
                                                    end
                                                  | DDatatypeImp (x, n, m, ms, x', _, _) =>
-                                                   bind (ctx, NamedC (x, (KType, loc)))
+                                                   bind (ctx, NamedC (x, n, (KType, loc)))
                                                  | DVal (x, _, c, _) =>
                                                    bind (ctx, NamedE (x, c))
                                                  | DValRec vis =>
@@ -637,8 +637,8 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                  | DTable (tn, x, n, c) =>
                                                    bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "table"), loc),
                                                                                 c), loc)))
-                                                 | DClass (x, _, _) =>
-                                                   bind (ctx, NamedC (x, (KArrow ((KType, loc), (KType, loc)), loc)))
+                                                 | DClass (x, n, _) =>
+                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
                                                  | DDatabase _ => ctx,
                                                mfd ctx d)) ctx ds,
                      fn ds' => (StrConst ds', loc))

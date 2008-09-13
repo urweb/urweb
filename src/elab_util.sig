@@ -38,7 +38,7 @@ end
 structure Con : sig
     datatype binder =
              Rel of string * Elab.kind
-           | Named of string * Elab.kind
+           | Named of string * int * Elab.kind
 
     val mapfoldB : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
@@ -62,7 +62,7 @@ end
 structure Exp : sig
     datatype binder =
              RelC of string * Elab.kind
-           | NamedC of string * Elab.kind
+           | NamedC of string * int * Elab.kind
            | RelE of string * Elab.con
            | NamedE of string * Elab.con
 
@@ -88,7 +88,7 @@ end
 structure Sgn : sig
     datatype binder =
              RelC of string * Elab.kind
-           | NamedC of string * Elab.kind
+           | NamedC of string * int * Elab.kind
            | Str of string * Elab.sgn
            | Sgn of string * Elab.sgn
 
@@ -117,7 +117,7 @@ end
 structure Decl : sig
     datatype binder =
              RelC of string * Elab.kind
-           | NamedC of string * Elab.kind
+           | NamedC of string * int * Elab.kind
            | RelE of string * Elab.con
            | NamedE of string * Elab.con
            | Str of string * Elab.sgn

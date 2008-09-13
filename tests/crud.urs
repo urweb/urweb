@@ -1,4 +1,5 @@
-con colMeta = fn cols :: {Type} => $(mapTT (fn t => {Show : t -> xbody}) cols)
+con colMeta' = fn t :: Type => {Show : t -> xbody}
+con colMeta = fn cols :: {Type} => $(Top.mapTT colMeta' cols)
 
 functor Make(M : sig
         con cols :: {Type}

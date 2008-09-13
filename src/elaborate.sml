@@ -36,6 +36,7 @@ structure D = Disjoint
 
 open Print
 open ElabPrint
+open ElabErr
 
 structure IM = IntBinaryMap
 
@@ -58,22 +59,7 @@ fun occursKind r =
     U.Kind.exists (fn L'.KUnif (_, _, r') => r = r'
                     | _ => false)
 
-datatype kunify_error =
-         KOccursCheckFailed of L'.kind * L'.kind
-       | KIncompatible of L'.kind * L'.kind
-
 exception KUnify' of kunify_error
-
-fun kunifyError err =
-    case err of
-        KOccursCheckFailed (k1, k2) =>
-        eprefaces "Kind occurs check failed"
-        [("Kind 1", p_kind k1),
-         ("Kind 2", p_kind k2)]
-      | KIncompatible (k1, k2) =>
-        eprefaces "Incompatible kinds"
-        [("Kind 1", p_kind k1),
-         ("Kind 2", p_kind k2)]
 
 fun unifyKinds' (k1All as (k1, _)) (k2All as (k2, _)) =
     let
@@ -123,40 +109,6 @@ exception KUnify of L'.kind * L'.kind * kunify_error
 fun unifyKinds k1 k2 =
     unifyKinds' k1 k2
     handle KUnify' err => raise KUnify (k1, k2, err)
-
-datatype con_error =
-         UnboundCon of ErrorMsg.span * string
-       | UnboundDatatype of ErrorMsg.span * string
-       | UnboundStrInCon of ErrorMsg.span * string
-       | WrongKind of L'.con * L'.kind * L'.kind * kunify_error
-       | DuplicateField of ErrorMsg.span * string
-       | ProjBounds of L'.con * int
-       | ProjMismatch of L'.con * L'.kind
-
-fun conError env err =
-    case err of
-        UnboundCon (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound constructor variable " ^ s)
-      | UnboundDatatype (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound datatype " ^ s)
-      | UnboundStrInCon (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound structure " ^ s)
-      | WrongKind (c, k1, k2, kerr) =>
-        (ErrorMsg.errorAt (#2 c) "Wrong kind";
-         eprefaces' [("Constructor", p_con env c),
-                     ("Have kind", p_kind k1),
-                     ("Need kind", p_kind k2)];
-         kunifyError kerr)
-      | DuplicateField (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate record field " ^ s)
-      | ProjBounds (c, n) =>
-        (ErrorMsg.errorAt (#2 c) "Out of bounds constructor projection";
-         eprefaces' [("Constructor", p_con env c),
-                     ("Index", Print.PD.string (Int.toString n))])
-      | ProjMismatch (c, k) =>
-        (ErrorMsg.errorAt (#2 c) "Projection from non-tuple constructor";
-         eprefaces' [("Constructor", p_con env c),
-                     ("Kind", p_kind k)])
 
 fun checkKind env c k1 k2 =
     unifyKinds k1 k2
@@ -495,43 +447,7 @@ fun occursCon r =
                   con = fn L'.CUnif (_, _, _, r') => r = r'
                          | _ => false}
 
-datatype cunify_error =
-         CKind of L'.kind * L'.kind * kunify_error
-       | COccursCheckFailed of L'.con * L'.con
-       | CIncompatible of L'.con * L'.con
-       | CExplicitness of L'.con * L'.con
-       | CKindof of L'.kind * L'.con
-       | CRecordFailure of PD.pp_desc * PD.pp_desc
-
 exception CUnify' of cunify_error
-
-fun cunifyError env err =
-    case err of
-        CKind (k1, k2, kerr) =>
-        (eprefaces "Kind unification failure"
-                   [("Kind 1", p_kind k1),
-                    ("Kind 2", p_kind k2)];
-         kunifyError kerr)
-      | COccursCheckFailed (c1, c2) =>
-        eprefaces "Constructor occurs check failed"
-                  [("Con 1", p_con env c1),
-                   ("Con 2", p_con env c2)]
-      | CIncompatible (c1, c2) =>
-        eprefaces "Incompatible constructors"
-                  [("Con 1", p_con env c1),
-                   ("Con 2", p_con env c2)]
-      | CExplicitness (c1, c2) =>
-        eprefaces "Differing constructor function explicitness"
-                  [("Con 1", p_con env c1),
-                   ("Con 2", p_con env c2)]
-      | CKindof (k, c) =>
-        eprefaces "Unexpected kind for kindof calculation"
-                  [("Kind", p_kind k),
-                   ("Con", p_con env c)]
-      | CRecordFailure (s1, s2) =>
-        eprefaces "Can't unify record constructors"
-        [("Summary 1", s1),
-         ("Summary 2", s2)]
 
 exception SynUnif = E.SynUnif
 
@@ -801,18 +717,29 @@ and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
                        | _ => false
         val empty = (L'.CRecord (k, []), dummy)
 
+        fun unsummarize {fields, unifs, others} =
+            let
+                val c = (L'.CRecord (k, fields), loc)
+
+                val c = foldl (fn ((c1, _), c2) => (L'.CConcat (c1, c2), loc))
+                              c unifs
+            in
+                foldl (fn (c1, c2) => (L'.CConcat (c1, c2), loc))
+                      c others
+            end
+
         fun pairOffUnifs (unifs1, unifs2) =
             case (unifs1, unifs2) of
                 ([], _) =>
                 if clear then
                     List.app (fn (_, r) => r := SOME empty) unifs2
                 else
-                    raise CUnify' (CRecordFailure (p_summary env s1, p_summary env s2))
+                    raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
               | (_, []) =>
                 if clear then
                     List.app (fn (_, r) => r := SOME empty) unifs1
                 else
-                    raise CUnify' (CRecordFailure (p_summary env s1, p_summary env s2))
+                    raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
               | ((c1, _) :: rest1, (_, r2) :: rest2) =>
                 (r2 := SOME c1;
                  pairOffUnifs (rest1, rest2))
@@ -1027,77 +954,6 @@ and unifyCons (env, denv) c1 c2 =
     unifyCons' (env, denv) c1 c2
     handle CUnify' err => raise CUnify (c1, c2, err)
          | KUnify args => raise CUnify (c1, c2, CKind args)
-
-datatype exp_error =
-       UnboundExp of ErrorMsg.span * string
-     | UnboundStrInExp of ErrorMsg.span * string
-     | Unify of L'.exp * L'.con * L'.con * cunify_error
-     | Unif of string * L'.con
-     | WrongForm of string * L'.exp * L'.con
-     | IncompatibleCons of L'.con * L'.con
-     | DuplicatePatternVariable of ErrorMsg.span * string
-     | PatUnify of L'.pat * L'.con * L'.con * cunify_error
-     | UnboundConstructor of ErrorMsg.span * string list * string
-     | PatHasArg of ErrorMsg.span
-     | PatHasNoArg of ErrorMsg.span
-     | Inexhaustive of ErrorMsg.span
-     | DuplicatePatField of ErrorMsg.span * string
-     | Unresolvable of ErrorMsg.span * L'.con
-     | OutOfContext of ErrorMsg.span * (L'.exp * L'.con) option
-     | IllegalRec of string * L'.exp
-
-fun expError env err =
-    case err of
-        UnboundExp (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound expression variable " ^ s)
-      | UnboundStrInExp (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound structure " ^ s)
-      | Unify (e, c1, c2, uerr) =>
-        (ErrorMsg.errorAt (#2 e) "Unification failure";
-         eprefaces' [("Expression", p_exp env e),
-                     ("Have con", p_con env c1),
-                     ("Need con", p_con env c2)];
-         cunifyError env uerr)
-      | Unif (action, c) =>
-        (ErrorMsg.errorAt (#2 c) ("Unification variable blocks " ^ action);
-         eprefaces' [("Con", p_con env c)])
-      | WrongForm (variety, e, t) =>
-        (ErrorMsg.errorAt (#2 e) ("Expression is not a " ^ variety);
-         eprefaces' [("Expression", p_exp env e),
-                     ("Type", p_con env t)])
-      | IncompatibleCons (c1, c2) =>
-        (ErrorMsg.errorAt (#2 c1) "Incompatible constructors";
-         eprefaces' [("Con 1", p_con env c1),
-                     ("Con 2", p_con env c2)])
-      | DuplicatePatternVariable (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate pattern variable " ^ s)
-      | PatUnify (p, c1, c2, uerr) =>
-        (ErrorMsg.errorAt (#2 p) "Unification failure for pattern";
-         eprefaces' [("Pattern", p_pat env p),
-                     ("Have con", p_con env c1),
-                     ("Need con", p_con env c2)];
-         cunifyError env uerr)
-      | UnboundConstructor (loc, ms, s) =>
-        ErrorMsg.errorAt loc ("Unbound constructor " ^ String.concatWith "." (ms @ [s]) ^ " in pattern")
-      | PatHasArg loc =>
-        ErrorMsg.errorAt loc "Constructor expects no argument but is used with argument"
-      | PatHasNoArg loc =>
-        ErrorMsg.errorAt loc "Constructor expects argument but is used with no argument"
-      | Inexhaustive loc =>
-        ErrorMsg.errorAt loc "Inexhaustive 'case'"
-      | DuplicatePatField (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate record field " ^ s ^ " in pattern")
-      | OutOfContext (loc, co) =>
-        (ErrorMsg.errorAt loc "Type class wildcard occurs out of context";
-         Option.app (fn (e, c) => eprefaces' [("Function", p_exp env e),
-                                              ("Type", p_con env c)]) co)
-      | Unresolvable (loc, c) =>
-        (ErrorMsg.errorAt loc "Can't resolve type class instance";
-         eprefaces' [("Class constraint", p_con env c)])
-      | IllegalRec (x, e) =>
-        (ErrorMsg.errorAt (#2 e) "Illegal 'val rec' righthand side (must be a function abstraction)";
-         eprefaces' [("Variable", PD.string x),
-                     ("Expression", p_exp env e)])
          
 fun checkCon (env, denv) e c1 c2 =
     unifyCons (env, denv) c1 c2
@@ -1787,133 +1643,6 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                             ("|tcs|", PD.string (Int.toString (length tcs)))];*)
         r
     end
-            
-
-datatype decl_error =
-         KunifsRemain of L'.decl list
-       | CunifsRemain of L'.decl list
-       | Nonpositive of L'.decl
-
-fun lspan [] = ErrorMsg.dummySpan
-  | lspan ((_, loc) :: _) = loc
-
-fun declError env err =
-    case err of
-        KunifsRemain ds =>
-        (ErrorMsg.errorAt (lspan ds) "Some kind unification variables are undetermined in declaration";
-         eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
-      | CunifsRemain ds =>
-        (ErrorMsg.errorAt (lspan ds) "Some constructor unification variables are undetermined in declaration";
-         eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
-      | Nonpositive d =>
-        (ErrorMsg.errorAt (#2 d) "Non-strictly-positive datatype declaration (could allow non-termination)";
-         eprefaces' [("Decl", p_decl env d)])
-
-datatype sgn_error =
-         UnboundSgn of ErrorMsg.span * string
-       | UnmatchedSgi of L'.sgn_item
-       | SgiWrongKind of L'.sgn_item * L'.kind * L'.sgn_item * L'.kind * kunify_error
-       | SgiWrongCon of L'.sgn_item * L'.con * L'.sgn_item * L'.con * cunify_error
-       | SgiMismatchedDatatypes of L'.sgn_item * L'.sgn_item * (L'.con * L'.con * cunify_error) option
-       | SgnWrongForm of L'.sgn * L'.sgn
-       | UnWhereable of L'.sgn * string
-       | WhereWrongKind of L'.kind * L'.kind * kunify_error
-       | NotIncludable of L'.sgn
-       | DuplicateCon of ErrorMsg.span * string
-       | DuplicateVal of ErrorMsg.span * string
-       | DuplicateSgn of ErrorMsg.span * string
-       | DuplicateStr of ErrorMsg.span * string
-       | NotConstraintsable of L'.sgn
-
-fun sgnError env err =
-    case err of
-        UnboundSgn (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound signature variable " ^ s)
-      | UnmatchedSgi (sgi as (_, loc)) =>
-        (ErrorMsg.errorAt loc "Unmatched signature item";
-         eprefaces' [("Item", p_sgn_item env sgi)])
-      | SgiWrongKind (sgi1, k1, sgi2, k2, kerr) =>
-        (ErrorMsg.errorAt (#2 sgi1) "Kind unification failure in signature matching:";
-         eprefaces' [("Have", p_sgn_item env sgi1),
-                     ("Need", p_sgn_item env sgi2),
-                     ("Kind 1", p_kind k1),
-                     ("Kind 2", p_kind k2)];
-         kunifyError kerr)
-      | SgiWrongCon (sgi1, c1, sgi2, c2, cerr) =>
-        (ErrorMsg.errorAt (#2 sgi1) "Constructor unification failure in signature matching:";
-         eprefaces' [("Have", p_sgn_item env sgi1),
-                     ("Need", p_sgn_item env sgi2),
-                     ("Con 1", p_con env c1),
-                     ("Con 2", p_con env c2)];
-         cunifyError env cerr)
-      | SgiMismatchedDatatypes (sgi1, sgi2, cerro) =>
-        (ErrorMsg.errorAt (#2 sgi1) "Mismatched 'datatype' specifications:";
-         eprefaces' [("Have", p_sgn_item env sgi1),
-                     ("Need", p_sgn_item env sgi2)];
-         Option.app (fn (c1, c2, ue) =>
-                        (eprefaces "Unification error"
-                                   [("Con 1", p_con env c1),
-                                    ("Con 2", p_con env c2)];
-                         cunifyError env ue)) cerro)
-      | SgnWrongForm (sgn1, sgn2) =>
-        (ErrorMsg.errorAt (#2 sgn1) "Incompatible signatures:";
-         eprefaces' [("Sig 1", p_sgn env sgn1),
-                     ("Sig 2", p_sgn env sgn2)])
-      | UnWhereable (sgn, x) =>
-        (ErrorMsg.errorAt (#2 sgn) "Unavailable field for 'where'";
-         eprefaces' [("Signature", p_sgn env sgn),
-                     ("Field", PD.string x)])
-      | WhereWrongKind (k1, k2, kerr) =>
-        (ErrorMsg.errorAt (#2 k1) "Wrong kind for 'where'";
-         eprefaces' [("Have", p_kind k1),
-                     ("Need", p_kind k2)];
-         kunifyError kerr)
-      | NotIncludable sgn =>
-        (ErrorMsg.errorAt (#2 sgn) "Invalid signature to 'include'";
-         eprefaces' [("Signature", p_sgn env sgn)])
-      | DuplicateCon (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate constructor " ^ s ^ " in signature")
-      | DuplicateVal (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate value " ^ s ^ " in signature")
-      | DuplicateSgn (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate signature " ^ s ^ " in signature")
-      | DuplicateStr (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate structure " ^ s ^ " in signature")
-      | NotConstraintsable sgn =>
-        (ErrorMsg.errorAt (#2 sgn) "Invalid signature for 'open constraints'";
-         eprefaces' [("Signature", p_sgn env sgn)])
-
-datatype str_error =
-         UnboundStr of ErrorMsg.span * string
-       | NotFunctor of L'.sgn
-       | FunctorRebind of ErrorMsg.span
-       | UnOpenable of L'.sgn
-       | NotType of L'.kind * (L'.kind * L'.kind * kunify_error)
-       | DuplicateConstructor of string * ErrorMsg.span
-       | NotDatatype of ErrorMsg.span
-
-fun strError env err =
-    case err of
-        UnboundStr (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound structure variable " ^ s)
-      | NotFunctor sgn =>
-        (ErrorMsg.errorAt (#2 sgn) "Application of non-functor";
-         eprefaces' [("Signature", p_sgn env sgn)])
-      | FunctorRebind loc =>
-        ErrorMsg.errorAt loc "Attempt to rebind functor"
-      | UnOpenable sgn =>
-        (ErrorMsg.errorAt (#2 sgn) "Un-openable structure";
-         eprefaces' [("Signature", p_sgn env sgn)])
-      | NotType (k, (k1, k2, ue)) =>
-        (ErrorMsg.errorAt (#2 k) "'val' type kind is not 'Type'";
-         eprefaces' [("Kind", p_kind k),
-                     ("Subkind 1", p_kind k1),
-                     ("Subkind 2", p_kind k2)];
-         kunifyError ue)
-      | DuplicateConstructor (x, loc) =>
-        ErrorMsg.errorAt loc ("Duplicate datatype constructor " ^ x)
-      | NotDatatype loc =>
-        ErrorMsg.errorAt loc "Trying to import non-datatype as a datatype"
 
 val hnormSgn = E.hnormSgn
 
@@ -3527,12 +3256,16 @@ fun elabFile basis topStr topSgn env file =
         val (topStr, topSgn', gs) = elabStr (env', D.empty) (L.StrConst topStr, ErrorMsg.dummySpan)
         val () = case gs of
                      [] => ()
-                   | _ => (app (fn Disjoint (_, env, _, c1, c2) =>
-                                   prefaces "Unresolved"
-                                            [("c1", p_con env c1),
-                                             ("c2", p_con env c2)]
-                                 | TypeClass _ => TextIO.print "Type class\n") gs;
-                           raise Fail "Unresolved constraints in top.ur")
+                   | _ => app (fn Disjoint (loc, env, denv, c1, c2) =>
+                                  (case D.prove env denv (c1, c2, loc) of
+                                       [] => ()
+                                     | _ =>
+                                       (prefaces "Unresolved constraint in top.ur"
+                                                 [("loc", PD.string (ErrorMsg.spanToString loc)),
+                                                  ("c1", p_con env c1),
+                                                  ("c2", p_con env c2)];
+                                        raise Fail "Unresolve constraint in top.ur"))
+                                | TypeClass _ => raise Fail "Unresolved type class constraint in top.ur") gs
         val () = subSgn (env', D.empty) topSgn' topSgn
 
         val (env', top_n) = E.pushStrNamed env' "Top" topSgn

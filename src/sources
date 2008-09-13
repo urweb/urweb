@@ -41,6 +41,9 @@ elab_ops.sml
 disjoint.sig
 disjoint.sml
 
+elab_err.sig
+elab_err.sml
+
 elaborate.sig
 elaborate.sml
 

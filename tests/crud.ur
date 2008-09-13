@@ -1,4 +1,5 @@
-con colMeta = fn cols :: {Type} => $(Top.mapTT (fn t => {Show : t -> xbody}) cols)
+con colMeta' = fn t :: Type => {Show : t -> xbody}
+con colMeta = fn cols :: {Type} => $(Top.mapTT colMeta' cols)
 
 functor Make(M : sig
         con cols :: {Type}
@@ -15,19 +16,19 @@ val tab = M.tab
 
 fun list () =
         rows <- query (SELECT * FROM tab AS T)
-                (fn fs acc => return <body>
+                (fn (fs : {T : $([Id = int] ++ M.cols)}) acc => return <body>
                         {acc}
                         <tr>
                                 <td>{txt _ fs.T.Id}</td>
-                                {fold [fn cols :: {Type} => $cols -> colMeta cols -> xtr]
-                                        (fn (nm :: Name) (t :: Type) (rest :: {Type}) acc =>
+                                {foldTR2 [idT] [colMeta'] [fn _ => xtr]
+                                        (fn (nm :: Name) (t :: Type) (rest :: {Type}) =>
                                                 [[nm] ~ rest] =>
-                                                fn r cols =>
+                                                fn v funcs acc =>
                                                 <tr>
-                                                        <td>{cols.nm.Show r.nm}</td>
-                                                        {acc (r -- nm) (cols -- nm)}
+                                                        <td>{funcs.Show v}</td>
+                                                        {acc}
                                                 </tr>)
-                                        (fn _ _ => <tr></tr>)
+                                        <tr></tr>
                                         [M.cols] (fs.T -- #Id) M.cols}
                         </tr>
                 </body>) <body></body>;

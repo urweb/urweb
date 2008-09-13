@@ -127,7 +127,47 @@ fun hnormCon env (cAll as (c, loc)) =
                                                    (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
                                                           rest''), loc)), loc)
                                end
-                             | _ => default ())
+                             | _ =>
+                               let
+                                   fun cunif () =
+                                       let
+                                           val r = ref NONE
+                                       in
+                                           (r, (CUnif (loc, (KType, loc), "_", r), loc))
+                                       end
+
+                                   val (nmR, nm) = cunif ()
+                                   val (vR, v) = cunif ()
+                                   val (rR, r) = cunif ()
+
+                                   val c = f
+                                   val c = (CApp (c, nm), loc)
+                                   val c = (CApp (c, v), loc)
+                                   val c = (CApp (c, r), loc)
+                                   fun unconstraint c =
+                                       case hnormCon env c of
+                                           (CDisjoint (_, _, c), _) => unconstraint c
+                                         | c => c
+                                   val c = unconstraint c
+                               in
+                                   (*Print.prefaces "Consider" [("c", ElabPrint.p_con env c)];*)
+                                   case (hnormCon env i, unconstraint c) of
+                                       ((CRecord (_, []), _),
+                                        (CConcat (c1, c2'), _)) =>
+                                       (case (hnormCon env c1, hnormCon env c2') of
+                                            ((CRecord (_, [(nm', v')]), _),
+                                             (CUnif (_, _, _, rR'), _)) =>
+                                            (case (hnormCon env nm', hnormCon env v') of
+                                                 ((CUnif (_, _, _, nmR'), _),
+                                                  (CUnif (_, _, _, vR'), _)) =>
+                                                 if nmR' = nmR andalso vR' = vR andalso rR' = rR then
+                                                     hnormCon env c2
+                                                 else
+                                                     default ()
+                                               | _ => default ())
+                                          | _ => default ())
+                                     | _ => default ()
+                               end)
                         | _ => default ())
                    | _ => default ()
              end
@@ -141,7 +181,7 @@ fun hnormCon env (cAll as (c, loc)) =
            | ((CConcat (c11, c12), loc), c2') =>
              hnormCon env (CConcat (c11, (CConcat (c12, c2'), loc)), loc)
            | (c1', (CRecord (_, []), _)) => c1'
-           | _ => cAll)
+           | (c1', c2') => (CConcat (c1', c2'), loc))
 
       | CProj (c, n) =>
         (case hnormCon env c of
