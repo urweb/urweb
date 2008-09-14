@@ -301,6 +301,9 @@ fun exp e =
                 initial = (ERecord [], loc),
                 body = (optExp (EWrite e', loc), loc)}
 
+      | EWrite (ELet (x, t, e1, e2), loc) =>
+        optExp (ELet (x, t, e1, (EWrite e2, loc)), loc)
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)
