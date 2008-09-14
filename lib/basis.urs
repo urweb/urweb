@@ -206,10 +206,10 @@ val dml : dml -> transaction unit
 val insert : fields ::: {Type}
         -> sql_table fields
         -> $(fold (fn nm (t :: Type) acc => [nm] ~ acc =>
-                [nm = sql_exp [T = fields] [] [] t] ++ acc) [] fields)
+                [nm = sql_exp [] [] [] t] ++ acc) [] fields)
         -> dml
 
-val update : changed ::: {Type} -> unchanged ::: {Type} -> changed ~ unchanged
+val update : changed :: {Type} -> unchanged ::: {Type} -> changed ~ unchanged
         -> $(fold (fn nm (t :: Type) acc => [nm] ~ acc =>
                 [nm = sql_exp [T = changed ++ unchanged] [] [] t] ++ acc) [] changed)
         -> sql_table (changed ++ unchanged)
