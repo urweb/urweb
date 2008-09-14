@@ -144,7 +144,7 @@ datatype exp_error =
        UnboundExp of ErrorMsg.span * string
      | UnboundStrInExp of ErrorMsg.span * string
      | Unify of exp * con * con * cunify_error
-     | Unif of string * con
+     | Unif of string * ErrorMsg.span * con
      | WrongForm of string * exp * con
      | IncompatibleCons of con * con
      | DuplicatePatternVariable of ErrorMsg.span * string
@@ -173,8 +173,8 @@ fun expError env err =
                      ("Have con", p_con env c1),
                      ("Need con", p_con env c2)];
          cunifyError env uerr)
-      | Unif (action, c) =>
-        (ErrorMsg.errorAt (#2 c) ("Unification variable blocks " ^ action);
+      | Unif (action, loc, c) =>
+        (ErrorMsg.errorAt loc ("Unification variable blocks " ^ action);
          eprefaces' [("Con", p_con env c)])
       | WrongForm (variety, e, t) =>
         (ErrorMsg.errorAt (#2 e) ("Expression is not a " ^ variety);

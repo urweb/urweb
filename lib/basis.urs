@@ -257,13 +257,14 @@ con xhtml = xml [Html]
 con page = xhtml [] []
 con xbody = xml [Body] [] []
 con xtr = xml [Body, Tr] [] []
+con xform = xml [Body, LForm] [] []
 
 (*** HTML details *)
 
 con html = [Html]
 con head = [Head]
 con body = [Body]
-con lform = [Body, LForm]
+con form = [Body, LForm]
 con tabl = [Body, Table]
 con tr = [Body, Tr]
 
@@ -289,7 +290,7 @@ val li : bodyTag []
 val a : bodyTag [Link = transaction page]
 
 val lform : ctx ::: {Unit} -> [Body] ~ ctx -> bind ::: {Type}
-        -> xml lform [] bind
+        -> xml form [] bind
         -> xml ([Body] ++ ctx) [] []
 con lformTag = fn ty :: Type => fn inner :: {Unit} => fn attrs :: {Type} =>
         ctx ::: {Unit} -> [LForm] ~ ctx

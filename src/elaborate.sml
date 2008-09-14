@@ -1019,9 +1019,11 @@ fun elabHead (env, denv) (e as (_, loc)) t =
                     let
                         val u = cunif (loc, k)
 
-                        val (e, t, gs') = unravel (subConInCon (0, u) t',
-                                                   (L'.ECApp (e, u), loc))
+                        val t'' = subConInCon (0, u) t'
+                        val (e, t, gs') = unravel (t'', (L'.ECApp (e, u), loc))
                     in
+                        (*prefaces "Unravel" [("t'", p_con env t'),
+                                            ("t''", p_con env t'')];*)
                         (e, t, enD gs @ gs')
                     end
                   | _ => (e, t, enD gs)
@@ -1477,7 +1479,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                     let
                         val () = checkKind env c' ck k
                         val eb' = subConInCon (0, c') eb
-                            handle SynUnif => (expError env (Unif ("substitution", eb));
+                            handle SynUnif => (expError env (Unif ("substitution", loc, eb));
                                                cerror)
                     in
                         (*prefaces "Elab ECApp" [("e", SourcePrint.p_exp eAll),
@@ -1488,10 +1490,6 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                                ("eb'", p_con env eb')];*)
                         ((L'.ECApp (e', c'), loc), eb', gs1 @ gs2 @ enD gs3 @ enD gs4)
                     end
-
-                  | L'.CUnif _ =>
-                    (expError env (Unif ("application", et));
-                     (eerror, cerror, []))
 
                   | _ =>
                     (expError env (WrongForm ("constructor function", e', et));
@@ -1586,6 +1584,22 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ enD gs2 @ enD gs3 @ enD gs4)
             end
 
+          | L.EWith (e1, c, e2) =>
+            let
+                val (e1', e1t, gs1) = elabExp (env, denv) e1
+                val (c', ck, gs2) = elabCon (env, denv) c
+                val (e2', e2t, gs3) = elabExp (env, denv) e2
+
+                val rest = cunif (loc, ktype_record)
+                val first = (L'.CRecord (ktype, [(c', e2t)]), loc)
+
+                val gs4 = checkCon (env, denv) e1' e1t (L'.TRecord rest, loc)
+                val gs5 = D.prove env denv (first, rest, loc)
+            in
+                ((L'.EWith (e1', c', e2', {field = e2t, rest = rest}), loc),
+                 (L'.TRecord ((L'.CConcat (first, rest), loc)), loc),
+                 gs1 @ enD gs2 @ gs3 @ enD gs4 @ enD gs5)
+            end
           | L.ECut (e, c) =>
             let
                 val (e', et, gs1) = elabExp (env, denv) e

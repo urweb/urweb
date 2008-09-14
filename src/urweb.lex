@@ -300,6 +300,7 @@ notags = [^<{\n]+;
 <INITIAL> "table"     => (Tokens.TABLE (pos yypos, pos yypos + size yytext));
 <INITIAL> "sequence"  => (Tokens.SEQUENCE (pos yypos, pos yypos + size yytext));
 <INITIAL> "class"     => (Tokens.CLASS (pos yypos, pos yypos + size yytext));
+<INITIAL> "with"      => (Tokens.WITH (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));
 <INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));
@@ -309,6 +310,7 @@ notags = [^<{\n]+;
 <INITIAL> "FROM"      => (Tokens.FROM (pos yypos, pos yypos + size yytext));
 <INITIAL> "AS"        => (Tokens.AS (pos yypos, pos yypos + size yytext));
 <INITIAL> "WHERE"     => (Tokens.CWHERE (pos yypos, pos yypos + size yytext));
+<INITIAL> "SQL"       => (Tokens.SQL (pos yypos, pos yypos + size yytext));
 <INITIAL> "GROUP"     => (Tokens.GROUP (pos yypos, pos yypos + size yytext));
 <INITIAL> "ORDER"     => (Tokens.ORDER (pos yypos, pos yypos + size yytext));
 <INITIAL> "BY"        => (Tokens.BY (pos yypos, pos yypos + size yytext));

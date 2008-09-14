@@ -1,18 +1,40 @@
-con colMeta' = fn t :: Type => {Nam : string, Show : t -> xbody}
-con colMeta = fn cols :: {Type} => $(Top.mapTT colMeta' cols)
+con colMeta = fn t_formT :: (Type * Type) => {
+        Nam : string,
+        Show : t_formT.1 -> xbody,
+        Widget : nm :: Name -> xml form [] [nm = t_formT.2],
+        Parse : t_formT.2 -> t_formT.1,
+        Inject : sql_injectable t_formT.1
+}
+con colsMeta = fn cols :: {(Type * Type)} => $(Top.mapT2T colMeta cols)
 
 functor Make(M : sig
-        con cols :: {Type}
+        con cols :: {(Type * Type)}
         constraint [Id] ~ cols
-        val tab : sql_table ([Id = int] ++ cols)
+        val tab : sql_table ([Id = int] ++ mapT2T fstTT cols)
 
         val title : string
 
-        val cols : colMeta cols
+        val cols : colsMeta cols
 end) = struct
 
 open constraints M
 val tab = M.tab
+
+sequence seq
+
+fun create (inputs : $(mapT2T sndTT M.cols)) =
+        id <- nextval seq;
+        () <- dml (insert tab (foldT2R2 [sndTT] [colMeta]
+                [fn cols => $(mapT2T (fn t :: (Type * Type) =>
+                        sql_exp [T = [Id = int] ++ mapT2T fstTT M.cols] [] [] t.1) cols)]
+                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
+                        [[nm] ~ rest] =>
+                        fn input col acc => acc with nm = sql_inject col.Inject (col.Parse input))
+                {} [M.cols] inputs M.cols
+                with #Id = (SQL {id})));
+        return <html><body>
+                Inserted with ID {txt _ id}.
+        </body></html>
 
 fun delete (id : int) =
         () <- dml (DELETE FROM tab WHERE Id = {id});
@@ -28,11 +50,11 @@ fun confirm (id : int) = return <html><body>
 
 fun main () : transaction page =
         rows <- queryX (SELECT * FROM tab AS T)
-                (fn (fs : {T : $([Id = int] ++ M.cols)}) => <body>
+                (fn (fs : {T : $([Id = int] ++ mapT2T fstTT M.cols)}) => <body>
                         <tr>
                                 <td>{txt _ fs.T.Id}</td>
-                                {foldTRX2 [idT] [colMeta'] [tr]
-                                        (fn (nm :: Name) (t :: Type) (rest :: {Type}) =>
+                                {foldT2RX2 [fstTT] [colMeta] [tr]
+                                        (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
                                                 [[nm] ~ rest] =>
                                                 fn v col => <tr>
                                                         <td>{col.Show v}</td>
@@ -51,8 +73,8 @@ fun main () : transaction page =
                 <table border={1}>
                 <tr>
                         <th>ID</th>
-                        {foldTRX [colMeta'] [tr]
-                                (fn (nm :: Name) (t :: Type) (rest :: {Type}) =>
+                        {foldT2RX [colMeta] [tr]
+                                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
                                         [[nm] ~ rest] =>
                                         fn col => <tr>
                                                 <th>{cdata col.Nam}</th>
@@ -61,6 +83,22 @@ fun main () : transaction page =
                 </tr>
                 {rows}
                 </table>
+
+                <br/>
+
+                <lform>
+                        {foldT2R [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
+                                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
+                                        [[nm] ~ rest] =>
+                                        fn (col : colMeta t) (acc : xml form [] (mapT2T sndTT rest)) => <lform>
+                                                <li> {cdata col.Nam}: {col.Widget [nm]}</li>
+                                                {useMore acc}
+                                        </lform>)
+                                <lform></lform>
+                                [M.cols] M.cols}
+
+                        <submit action={create}/>
+                </lform>
         </body></html>
 
 end

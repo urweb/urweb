@@ -12,7 +12,7 @@
  * - The names of contributors may not be used to endorse or promote products
  *   derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * THIS SOFTARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
@@ -172,7 +172,7 @@ fun tagIn bt =
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR | SEMI
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
- | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | WITH | SQL
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
  | CASE | IF | THEN | ELSE
 
@@ -316,6 +316,7 @@ fun tagIn bt =
 %right CAND
 %nonassoc EQ NE LT LE GT GE
 %right ARROW
+%left WITH
 %right PLUSPLUS MINUSMINUS
 %right STAR
 %left NOT
@@ -660,6 +661,7 @@ eexp   : eapps                          (eapps)
                                          end)
        | eexp EQ eexp                   (native_op ("eq", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp NE eexp                   (native_op ("ne", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp WITH cterm EQ eexp        (EWith (eexp1, cterm, eexp2), s (eexp1left, eexp2right))
 
 eargs  : earg                           (earg)
        | eargl                          (eargl)
@@ -771,6 +773,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
        | LPAREN query RPAREN            (query)
        | LPAREN CWHERE sqlexp RPAREN    (sqlexp)
+       | LPAREN SQL sqlexp RPAREN       (sqlexp)
 
        | LPAREN INSERT INTO texp LPAREN fields RPAREN VALUES LPAREN sqlexps RPAREN RPAREN
                                         (let

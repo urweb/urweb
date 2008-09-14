@@ -149,6 +149,72 @@ fun hnormCon env (cAll as (c, loc)) =
                                            (CDisjoint (_, _, c), _) => unconstraint c
                                          | c => c
                                    val c = unconstraint c
+
+                                   fun tryFusion () =
+                                       let
+                                           fun fuse (dom, new_v, r') =
+                                               let
+                                                   val ran = #2 ks
+
+                                                   val f = (CApp (f, (CRel 2, loc)), loc)
+                                                   val f = (CApp (f, new_v), loc)
+                                                   val f = (CApp (f, (CRel 0, loc)), loc)
+                                                   val f = (CAbs ("acc", ran, f), loc)
+                                                   val f = (CAbs ("v", dom, f), loc)
+                                                   val f = (CAbs ("nm", (KName, loc), f), loc)
+
+                                                   val c = (CFold (dom, ran), loc)
+                                                   val c = (CApp (c, f), loc)
+                                                   val c = (CApp (c, i), loc)
+                                                   val c = (CApp (c, r'), loc)
+                                               in
+                                                   hnormCon env c
+                                               end
+                                       in
+                                           case #1 (hnormCon env c2) of
+                                               CApp (f, r') =>
+                                               (case #1 (hnormCon env f) of
+                                                    CApp (f, inner_i) =>
+                                                    (case (#1 (hnormCon env f), #1 (hnormCon env inner_i)) of
+                                                         (CApp (f, inner_f), CRecord (_, [])) =>
+                                                         (case #1 (hnormCon env f) of
+                                                              CFold (dom, _) =>
+                                                              let
+                                                                  val c = inner_f
+                                                                  val c = (CApp (c, nm), loc)
+                                                                  val c = (CApp (c, v), loc)
+                                                                  val c = (CApp (c, r), loc)
+                                                                  val c = unconstraint c
+
+                                                                  (*val () = Print.prefaces "Onto something!"
+                                                                           [("c", ElabPrint.p_con env cAll),
+                                                                            ("c'", ElabPrint.p_con env c)]*)
+
+                                                              in
+                                                                  case #1 (hnormCon env c) of
+                                                                      CConcat (first, rest) =>
+                                                                      (case (#1 (hnormCon env first),
+                                                                             #1 (hnormCon env rest)) of
+                                                                           (CRecord (_, [(nm', v')]),
+                                                                            CUnif (_, _, _, rR')) =>
+                                                                           (case #1 (hnormCon env nm') of
+                                                                                CUnif (_, _, _, nmR') =>
+                                                                                if rR' = rR andalso nmR' = nmR then
+                                                                                    (nmR := SOME (CRel 2, loc);
+                                                                                     vR := SOME (CRel 1, loc);
+                                                                                     rR := SOME (CError, loc);
+                                                                                     fuse (dom, v', r'))
+                                                                                else
+                                                                                    default ()
+                                                                              | _ => default ())
+                                                                         | _ => default ())
+                                                                    | _ => default ()
+                                                              end
+                                                            | _ => default ())
+                                                       | _ => default ())
+                                                  | _ => default ())
+                                             | _ => default ()
+                                       end
                                in
                                    (*Print.prefaces "Consider" [("c", ElabPrint.p_con env c)];*)
                                    case (hnormCon env i, unconstraint c) of
@@ -163,10 +229,10 @@ fun hnormCon env (cAll as (c, loc)) =
                                                  if nmR' = nmR andalso vR' = vR andalso rR' = rR then
                                                      hnormCon env c2
                                                  else
-                                                     default ()
-                                               | _ => default ())
-                                          | _ => default ())
-                                     | _ => default ()
+                                                     tryFusion ()
+                                               | _ => tryFusion ())
+                                          | _ => tryFusion ())
+                                     | _ => tryFusion ()
                                end)
                         | _ => default ())
                    | _ => default ()

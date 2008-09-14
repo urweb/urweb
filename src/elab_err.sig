@@ -58,7 +58,7 @@ signature ELAB_ERR = sig
              UnboundExp of ErrorMsg.span * string
            | UnboundStrInExp of ErrorMsg.span * string
            | Unify of Elab.exp * Elab.con * Elab.con * cunify_error
-           | Unif of string * Elab.con
+           | Unif of string * ErrorMsg.span * Elab.con
            | WrongForm of string * Elab.exp * Elab.con
            | IncompatibleCons of Elab.con * Elab.con
            | DuplicatePatternVariable of ErrorMsg.span * string

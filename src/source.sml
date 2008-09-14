@@ -119,6 +119,7 @@ datatype exp' =
 
        | ERecord of (con * exp) list
        | EField of exp * con
+       | EWith of exp * con * exp
        | ECut of exp * con
        | EFold
 

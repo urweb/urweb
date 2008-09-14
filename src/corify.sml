@@ -90,6 +90,7 @@ structure St : sig
     val bindStr : t -> string -> int -> t -> t
     val lookupStrById : t -> int -> t
     val lookupStrByName : string * t -> t
+    val lookupStrByNameOpt : string * t -> t option
 
     val bindFunctor : t -> string -> int -> string -> int -> L.str -> t
     val lookupFunctorById : t -> int -> string * int * L.str
@@ -363,9 +364,15 @@ fun lookupStrById ({basis, strs, ...} : t) n =
 
 fun lookupStrByName (m, {basis, current = FNormal {strs, ...}, ...} : t) =
     (case SM.find (strs, m) of
-         NONE => raise Fail "Corify.St.lookupStrByName"
+         NONE => raise Fail "Corify.St.lookupStrByName [1]"
        | SOME f => dummy (basis, f))
-  | lookupStrByName _ = raise Fail "Corify.St.lookupStrByName"
+  | lookupStrByName _ = raise Fail "Corify.St.lookupStrByName [2]"
+
+fun lookupStrByNameOpt (m, {basis, current = FNormal {strs, ...}, ...} : t) =
+    (case SM.find (strs, m) of
+         NONE => NONE
+       | SOME f => SOME (dummy (basis, f)))
+  | lookupStrByNameOpt _ = NONE
 
 fun bindFunctor ({basis, cons, constructors, vals, strs, funs,
                   current = FNormal {cons = mcons, constructors = mconstructors,
@@ -392,9 +399,9 @@ fun lookupFunctorById ({funs, ...} : t) n =
 
 fun lookupFunctorByName (m, {current = FNormal {funs, ...}, ...} : t) =
     (case SM.find (funs, m) of
-         NONE => raise Fail "Corify.St.lookupFunctorByName"
+         NONE => raise Fail "Corify.St.lookupFunctorByName [1]"
        | SOME v => v)
-  | lookupFunctorByName _ = raise Fail "Corify.St.lookupFunctorByName"
+  | lookupFunctorByName _ = raise Fail "Corify.St.lookupFunctorByName [2]"
 
 end
 
@@ -530,6 +537,8 @@ fun corifyExp st (e, loc) =
                                               (corifyCon st c, corifyExp st e, corifyCon st t)) xes), loc)
       | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp st e1, corifyCon st c,
                                                        {field = corifyCon st field, rest = corifyCon st rest}), loc)
+      | L.EWith (e1, c, e2, {field, rest}) => (L'.EWith (corifyExp st e1, corifyCon st c, corifyExp st e2,
+                                                         {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.ECut (e1, c, {field, rest}) => (L'.ECut (corifyExp st e1, corifyCon st c,
                                                    {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.EFold k => (L'.EFold (corifyKind k), loc)
@@ -667,6 +676,22 @@ fun corifyDecl ((d, loc : EM.span), st) =
 
       | L.DStr (x, n, _, (L.StrFun (xa, na, _, _, str), _)) =>
         ([], St.bindFunctor st x n xa na str)
+
+      | L.DStr (x, n, _, (L.StrProj (str, x'), _)) =>
+        let
+            val (ds, {inner, outer}) = corifyStr (str, st)
+
+            val st = case St.lookupStrByNameOpt (x', inner) of
+                SOME st' => St.bindStr st x n st'
+              | NONE =>
+                let
+                    val (x', n', str') = St.lookupFunctorByName (x', inner)
+                in
+                    St.bindFunctor st x n x' n' str'
+                end
+        in
+            ([], st)
+        end
 
       | L.DStr (x, n, _, str) =>
         let

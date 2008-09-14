@@ -264,6 +264,13 @@ fun declOk' env (d, loc) =
                         in
                             (Rabble, calls)
                         end
+                      | EWith (e1, _, e2, _) =>
+                        let
+                            val (_, calls) = exp (penv, calls) e1
+                            val (_, calls) = exp (penv, calls) e2
+                        in
+                            (Rabble, calls)
+                        end
                       | EFold _ => (Rabble, calls)
 
                       | ECase (e, pes, _) =>
