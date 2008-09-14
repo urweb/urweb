@@ -8,6 +8,16 @@ fun compose (t1 ::: Type) (t2 ::: Type) (t3 ::: Type) (f1 : t2 -> t3) (f2 : t1 -
 
 fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (sh : show t) (v : t) = cdata (show sh v)
 
+fun foldTR (tf :: Type -> Type) (tr :: {Type} -> Type)
+        (f : nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
+                -> tf t -> tr rest -> tr ([nm = t] ++ rest))
+        (i : tr []) =
+        fold [fn r :: {Type} => $(mapTT tf r) -> tr r]
+                (fn (nm :: Name) (t :: Type) (rest :: {Type}) (acc : _ -> tr rest) =>
+                        [[nm] ~ rest] =>
+                        fn r => f [nm] [t] [rest] r.nm (acc (r -- nm)))
+                (fn _ => i)
+
 fun foldTR2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (tr :: {Type} -> Type)
         (f : nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
                 -> tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
@@ -17,6 +27,15 @@ fun foldTR2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (tr :: {Type} -> Type)
                         [[nm] ~ rest] =>
                         fn r1 r2 => f [nm] [t] [rest] r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
                 (fn _ _ => i)
+
+fun foldTRX (tf :: Type -> Type) (ctx :: {Unit})
+        (f : nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
+                -> tf t -> xml ctx [] []) =
+        foldTR [tf] [fn _ => xml ctx [] []]
+                (fn (nm :: Name) (t :: Type) (rest :: {Type}) =>
+                        [[nm] ~ rest] =>
+                        fn r acc => <xml>{f [nm] [t] [rest] r}{acc}</xml>)
+                <xml></xml>
 
 fun foldTRX2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (ctx :: {Unit})
         (f : nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest

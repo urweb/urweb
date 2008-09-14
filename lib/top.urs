@@ -10,10 +10,20 @@ val compose : t1 ::: Type -> t2 ::: Type -> t3 ::: Type
 val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> show t -> t
         -> xml ctx use []
 
+val foldTR : tf :: (Type -> Type) -> tr :: ({Type} -> Type)
+        -> (nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
+                -> tf t -> tr rest -> tr ([nm = t] ++ rest))
+        -> tr [] -> r :: {Type} -> $(mapTT tf r) -> tr r
+
 val foldTR2 : tf1 :: (Type -> Type) -> tf2 :: (Type -> Type) -> tr :: ({Type} -> Type)
         -> (nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
                 -> tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
         -> tr [] -> r :: {Type} -> $(mapTT tf1 r) -> $(mapTT tf2 r) -> tr r
+
+val foldTRX : tf :: (Type -> Type) -> ctx :: {Unit}
+        -> (nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest
+                -> tf t -> xml ctx [] [])
+        -> r :: {Type} -> $(mapTT tf r) -> xml ctx [] []
 
 val foldTRX2 : tf1 :: (Type -> Type) -> tf2 :: (Type -> Type) -> ctx :: {Unit}
         -> (nm :: Name -> t :: Type -> rest :: {Type} -> [nm] ~ rest

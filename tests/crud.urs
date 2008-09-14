@@ -1,4 +1,4 @@
-con colMeta' = fn t :: Type => {Show : t -> xbody}
+con colMeta' = fn t :: Type => {Nam : string, Show : t -> xbody}
 con colMeta = fn cols :: {Type} => $(Top.mapTT colMeta' cols)
 
 functor Make(M : sig

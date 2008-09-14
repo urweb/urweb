@@ -6,9 +6,9 @@ open Crud.Make(struct
         val title = "Crud1"
 
         val cols = {
-                A = {Show = txt _},
-                B = {Show = txt _},
-                C = {Show = txt _},
-                D = {Show = txt _}
+                A = {Nam = "A", Show = txt _},
+                B = {Nam = "B", Show = txt _},
+                C = {Nam = "C", Show = txt _},
+                D = {Nam = "D", Show = txt _}
         }
 end)
