@@ -43,6 +43,7 @@ fun entable t =
 datatype select_item =
          Field of con * con
        | Exp of con * exp
+       | Fields of con * con
 
 datatype select =
          Star
@@ -66,6 +67,22 @@ fun amend_select loc (si, (tabs, exps)) =
             val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
                                                       if eqTnames (tx, tx') then
                                                           ((tx', (CConcat (c, c'), loc)), true)
+                                                      else
+                                                          ((tx', c'), found))
+                                                  false tabs
+        in
+            if found then
+                ()
+            else
+                ErrorMsg.errorAt loc "Select of field from unbound table";
+            
+            (tabs, exps)
+        end
+      | Fields (tx, fs) =>
+        let
+            val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
+                                                      if eqTnames (tx, tx') then
+                                                          ((tx', (CConcat (fs, c'), loc)), true)
                                                       else
                                                           ((tx', c'), found))
                                                   false tabs
@@ -1041,6 +1058,7 @@ fident : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLr
 
 seli   : tident DOT fident              (Field (tident, fident))
        | sqlexp AS fident               (Exp (fident, sqlexp))
+       | tident DOT LBRACE LBRACE cexp RBRACE RBRACE (Fields (tident, cexp))
 
 selis  : seli                           ([seli])
        | seli COMMA selis               (seli :: selis)

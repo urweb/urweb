@@ -111,6 +111,21 @@ val swapExpVars =
                 bind = fn (lower, U.Exp.RelE _) => lower+1
                         | (lower, _) => lower}
 
+val swapExpVarsPat =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn (lower, len) => fn e =>
+                                     case e of
+                                         ERel xn =>
+                                         if xn = lower then
+                                             ERel (lower + 1)
+                                         else if xn >= lower + 1 andalso xn < lower + 1 + len then
+                                             ERel (xn - 1)
+                                         else
+                                             e
+                                       | _ => e,
+                bind = fn ((lower, len), U.Exp.RelE _) => (lower+1, len)
+                        | (st, _) => st}
+
 datatype result = Yes of E.env | No | Maybe
 
 fun match (env, p : pat, e : exp) =
@@ -272,15 +287,29 @@ fun exp env e =
         else
             #1 (reduceExp env (subExpInExp (0, e2) e1)))
 
-      | ECase (disc, pes, _) =>
+      | ECase (e', pes, {disc, result}) =>
         let
+            fun push () =
+                case result of
+                    (TFun (dom, result), loc) =>
+                    if List.all (fn (_, (EAbs _, _)) => true | _ => false) pes then
+                        EAbs ("_", dom, result,
+                              (ECase (liftExpInExp 0 e',
+                                      map (fn (p, (EAbs (_, _, _, e), _)) =>
+                                              (p, swapExpVarsPat (0, patBinds p) e)
+                                            | _ => raise Fail "MonoReduce ECase") pes,
+                                      {disc = disc, result = result}), loc))
+                    else
+                        e
+                  | _ => e
+
             fun search pes =
                 case pes of
-                    [] => e
+                    [] => push ()
                   | (p, body) :: pes =>
-                    case match (env, p, disc) of
+                    case match (env, p, e') of
                         No => search pes
-                      | Maybe => e
+                      | Maybe => push ()
                       | Yes env => #1 (reduceExp env body)
         in
             search pes

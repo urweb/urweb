@@ -1321,7 +1321,9 @@ fun exhaustive (env, denv, t, ps) =
                               | SOME (_, cons) => dtype cons
                         end
                       | L'.CError => (true, gs)
-                      | _ => raise Fail "isTotal: Not a datatype"
+                      | c =>
+                        (prefaces "Not a datatype" [("c", p_con env (c, ErrorMsg.dummySpan))];
+                         raise Fail "isTotal: Not a datatype")
                 end
               | Record _ => (List.all (fn c2 => coverageImp (c, c2)) (enumerateCases t), [])
     in

@@ -2,6 +2,7 @@ con colMeta = fn t_formT :: (Type * Type) => {
         Nam : string,
         Show : t_formT.1 -> xbody,
         Widget : nm :: Name -> xml form [] [nm = t_formT.2],
+        WidgetPopulated : nm :: Name -> t_formT.1 -> xml form [] [nm = t_formT.2],
         Parse : t_formT.2 -> t_formT.1,
         Inject : sql_injectable t_formT.1
 }
@@ -36,6 +37,29 @@ fun create (inputs : $(mapT2T sndTT M.cols)) =
                 Inserted with ID {txt _ id}.
         </body></html>
 
+fun save (id : int) _ =
+        return <html><body>
+                Under Construction
+        </body></html>
+
+fun update (id : int) =
+        fso <- oneOrNoRows (SELECT tab.{{mapT2T fstTT M.cols}} FROM tab WHERE tab.Id = {id});
+        case fso : (Basis.option {Tab : $(mapT2T fstTT M.cols)}) of
+          None => return <html><body>Not found!</body></html>
+        | Some fs => return <html><body><lform>
+                {foldT2R2 [fstTT] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
+                        (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
+                                [[nm] ~ rest] =>
+                                fn (v : t.1) (col : colMeta t) (acc : xml form [] (mapT2T sndTT rest)) => <lform>
+                                        <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
+                                        {useMore acc}
+                                </lform>)
+                        <lform></lform>
+                        [M.cols] fs.Tab M.cols}
+
+                <submit action={save id}/>
+        </lform></body></html>
+
 fun delete (id : int) =
         () <- dml (DELETE FROM tab WHERE Id = {id});
         return <html><body>
@@ -60,7 +84,7 @@ fun main () : transaction page =
                                                         <td>{col.Show v}</td>
                                                 </tr>)
                                         [M.cols] (fs.T -- #Id) M.cols}
-                                <td><a link={confirm fs.T.Id}>[Delete]</a></td>
+                                <td><a link={update fs.T.Id}>[Update]</a> <a link={confirm fs.T.Id}>[Delete]</a></td>
                         </tr>
                 </body>);
         return <html><head>

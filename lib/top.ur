@@ -103,3 +103,9 @@ fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit}) (q : sql_que
         query q
                 (fn fs acc => return <xml>{acc}{f fs}</xml>)
                 <xml></xml>
+
+fun oneOrNoRows (tables ::: {{Type}}) (exps ::: {Type}) (q : sql_query tables exps) =
+        [tables ~ exps] =>
+        query q
+                (fn fs _ => return (Some fs))
+                None

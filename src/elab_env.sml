@@ -795,7 +795,10 @@ fun sgiBinds env (sgi, loc) =
       | SgiCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)
       | SgiDatatype (x, n, xs, xncs) =>
         let
-            val env = pushCNamedAs env x n (KType, loc) NONE
+            val k = (KType, loc)
+            val k' = foldr (fn (_, k') => (KArrow (k, k'), loc)) k xs
+
+            val env = pushCNamedAs env x n k' NONE
         in
             foldl (fn ((x', n', to), env) =>
                       let
@@ -813,7 +816,10 @@ fun sgiBinds env (sgi, loc) =
         end
       | SgiDatatypeImp (x, n, m1, ms, x', xs, xncs) =>
         let
-            val env = pushCNamedAs env x n (KType, loc) (SOME (CModProj (m1, ms, x'), loc))
+            val k = (KType, loc)
+            val k' = foldr (fn (_, k') => (KArrow (k, k'), loc)) k xs
+
+            val env = pushCNamedAs env x n k' (SOME (CModProj (m1, ms, x'), loc))
         in
             foldl (fn ((x', n', to), env) =>
                       let
@@ -880,10 +886,24 @@ fun projectCon env {sgn, str, field} =
         SgnConst sgis =>
         (case sgnSeek (fn SgiConAbs (x, _, k) => if x = field then SOME (k, NONE) else NONE
                         | SgiCon (x, _, k, c) => if x = field then SOME (k, SOME c) else NONE
-                        | SgiDatatype (x, _, _, _) => if x = field then SOME ((KType, #2 sgn), NONE) else NONE
-                        | SgiDatatypeImp (x, _, m1, ms, x', _, _) =>
+                        | SgiDatatype (x, _, xs, _) =>
                           if x = field then
-                              SOME ((KType, #2 sgn), SOME (CModProj (m1, ms, x'), #2 sgn))
+                              let
+                                  val k = (KType, #2 sgn)
+                                  val k' = foldl (fn (_, k') => (KArrow (k, k'), #2 sgn)) k xs
+                              in
+                                  SOME (k', NONE)
+                              end
+                          else
+                              NONE
+                        | SgiDatatypeImp (x, _, m1, ms, x', xs, _) =>
+                          if x = field then
+                              let
+                                  val k = (KType, #2 sgn)
+                                  val k' = foldl (fn (_, k') => (KArrow (k, k'), #2 sgn)) k xs
+                              in
+                                  SOME (k', SOME (CModProj (m1, ms, x'), #2 sgn))
+                              end
                           else
                               NONE
                         | SgiClassAbs (x, _) => if x = field then
@@ -1032,8 +1052,7 @@ fun declBinds env (d, loc) =
                                                 (KArrow (k, kb), loc)))
                                            ((CNamed n, loc), k) xs
 
-            val t' = foldr (fn (x, t) => (TCFun (Implicit, x, k, t), loc)) t xs
-            val env = pushCNamedAs env x n kb (SOME t')
+            val env = pushCNamedAs env x n kb (SOME t)
             val env = pushDatatype env n xs xncs
         in
             foldl (fn ((x', n', to), env) =>

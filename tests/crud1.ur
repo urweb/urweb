@@ -17,6 +17,7 @@ open Crud.Make(struct
                         Nam = "A",
                         Show = txt _,
                         Widget = fn nm :: Name => <lform><textbox{nm}/></lform>,
+                        WidgetPopulated = fn (nm :: Name) n => <lform><textbox{nm} value={show _ n}/></lform>,
                         Parse = readError _,
                         Inject = sql_int
                     },
@@ -24,6 +25,7 @@ open Crud.Make(struct
                         Nam = "B",
                         Show = txt _,
                         Widget = fn nm :: Name => <lform><textbox{nm}/></lform>,
+                        WidgetPopulated = fn (nm :: Name) s => <lform><textbox{nm} value={s}/></lform>,
                         Parse = readError _,
                         Inject = sql_string
                     },
@@ -31,6 +33,7 @@ open Crud.Make(struct
                         Nam = "C",
                         Show = txt _,
                         Widget = fn nm :: Name => <lform><textbox{nm}/></lform>,
+                        WidgetPopulated = fn (nm :: Name) n => <lform><textbox{nm} value={show _ n}/></lform>,
                         Parse = readError _,
                         Inject = sql_float
                     },
@@ -38,6 +41,7 @@ open Crud.Make(struct
                         Nam = "D",
                         Show = txt _,
                         Widget = fn nm :: Name => <lform><textbox{nm}/></lform>,
+                        WidgetPopulated = fn (nm :: Name) b => <lform><textbox{nm} value={show _ b}/></lform>,
                         Parse = readError _,
                         Inject = sql_bool
                     }

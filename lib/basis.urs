@@ -296,7 +296,7 @@ con lformTag = fn ty :: Type => fn inner :: {Unit} => fn attrs :: {Type} =>
         ctx ::: {Unit} -> [LForm] ~ ctx
         -> nm :: Name -> unit
         -> tag attrs ([LForm] ++ ctx) inner [] [nm = ty]
-val textbox : lformTag string [] []
+val textbox : lformTag string [] [Value = string]
 val password : lformTag string [] []
 val ltextarea : lformTag string [] []
 

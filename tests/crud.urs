@@ -2,6 +2,7 @@ con colMeta = fn t_formT :: (Type * Type) => {
         Nam : string,
         Show : t_formT.1 -> xbody,
         Widget : nm :: Name -> xml form [] [nm = t_formT.2],
+        WidgetPopulated : nm :: Name -> t_formT.1 -> xml form [] [nm = t_formT.2],
         Parse : t_formT.2 -> t_formT.1,
         Inject : sql_injectable t_formT.1
 }
