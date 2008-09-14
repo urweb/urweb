@@ -217,7 +217,13 @@ fun declBinds env (d, loc) =
       | DExport _ => env
       | DTable (x, n, c, s) =>
         let
-            val t = (CApp ((CFfi ("Basis", "table"), loc), c), loc)
+            val t = (CApp ((CFfi ("Basis", "sql_table"), loc), c), loc)
+        in
+            pushENamed env x n t NONE s
+        end
+      | DSequence (x, n, s) =>
+        let
+            val t = (CFfi ("Basis", "sql_sequence"), loc)
         in
             pushENamed env x n t NONE s
         end

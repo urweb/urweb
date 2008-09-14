@@ -380,6 +380,9 @@ fun p_sgn_item (sgi, _) =
                                 string ":",
                                 space,
                                 p_con c]
+      | SgiSequence x => box [string "sequence",
+                              space,
+                              string x]
       | SgiClassAbs x => box [string "class",
                               space,
                               string x]
@@ -542,6 +545,9 @@ fun p_decl ((d, _) : decl) =
                               string ":",
                               space,
                               p_con c]
+      | DSequence x => box [string "sequence",
+                            space,
+                            string x]
       | DClass (x, c) => box [string "class",
                               space,
                               string x,

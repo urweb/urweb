@@ -106,6 +106,8 @@ fun monoType env =
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_table"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "sql_sequence") =>
+                    (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_query"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_query1"), _), _), _), _), _), _) =>
@@ -1151,6 +1153,17 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfi ("Basis", "sql_asc") => ((L'.EPrim (Prim.String ""), loc), fm)
           | L.EFfi ("Basis", "sql_desc") => ((L'.EPrim (Prim.String " DESC"), loc), fm)
 
+          | L.EFfiApp ("Basis", "nextval", [e]) =>
+            let
+                val un = (L'.TRecord [], loc)
+                val int = (L'.TFfi ("Basis", "int"), loc)
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                ((L'.EAbs ("_", un, int,
+                           (L'.ENextval (liftExpInExp 0 e), loc)), loc),
+                 fm)
+            end
+
           | L.EApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
@@ -1618,6 +1631,18 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                        (L'.DVal (x, n, t', e, s), loc)])
             end
           | L.DTable _ => poly ()
+          | L.DSequence (x, n, s) =>
+            let
+                val t = (L.CFfi ("Basis", "string"), loc)
+                val t' = (L'.TFfi ("Basis", "string"), loc)
+                val s = "uw_" ^ s
+                val e = (L'.EPrim (Prim.String s), loc)
+            in
+                SOME (Env.pushENamed env x n t NONE s,
+                      fm,
+                      [(L'.DSequence s, loc),
+                       (L'.DVal (x, n, t', e, s), loc)])
+            end
           | L.DDatabase s => SOME (env, fm, [(L'.DDatabase s, loc)])
     end
 

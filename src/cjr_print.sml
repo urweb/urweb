@@ -976,6 +976,87 @@ fun p_exp' par env (e, loc) =
              newline,
              string "}))"]
 
+      | ENextval {seq, prepared} =>
+        let
+            val query = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
+            val query = (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), query]), loc)
+        in
+            box [string "(uw_begin_region(ctx), ",
+                 string "({",
+                 newline,
+                 string "PGconn *conn = uw_get_db(ctx);",
+                 newline,
+                 case prepared of
+                     NONE => box [string "char *query = ",
+                                  p_exp env query,
+                                  string ";",
+                                  newline]
+                   | SOME _ =>
+                     box [],
+                 newline,
+                 string "PGresult *res = ",
+                 case prepared of
+                     NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
+                   | SOME n => box [string "PQexecPrepared(conn, \"uw",
+                                    string (Int.toString n),
+                                    string "\", 0, NULL, NULL, NULL, 0);"],
+                 newline,
+                 string "uw_Basis_int n;",
+                 newline,
+                 newline,
+
+                 string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating nextval result.\");",
+                 newline,
+                 newline,
+
+                 string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+                 newline,
+                 box [string "PQclear(res);",
+                      newline,
+                      string "uw_error(ctx, FATAL, \"",
+                      string (ErrorMsg.spanToString loc),
+                      string ": Query failed:\\n%s\\n%s\", ",
+                      case prepared of
+                          NONE => string "query"
+                        | SOME _ => p_exp env query,
+                      string ", PQerrorMessage(conn));",
+                      newline],
+                 string "}",
+                 newline,
+                 newline,
+
+                 string "uw_end_region(ctx);",
+                 newline,
+                 string "n = PQntuples(res);",
+                 newline,
+                 string "if (n != 1) {",
+                 newline,
+                 box [string "PQclear(res);",
+                      newline,
+                      string "uw_error(ctx, FATAL, \"",
+                      string (ErrorMsg.spanToString loc),
+                      string ": Wrong number of result rows:\\n%s\\n%s\", ",
+                      case prepared of
+                          NONE => string "query"
+                        | SOME _ => p_exp env query,
+                      string ", PQerrorMessage(conn));",
+                      newline],
+                 string "}",
+                 newline,
+                 newline,
+
+                 string "n = ",
+                 p_unsql true env (TFfi ("Basis", "int"), loc)
+                         (string "PQgetvalue(res, 0, 0)"),
+                 string ";",
+                 newline,
+                 string "PQclear(res);",
+                 newline,
+                 string "n;",
+                 newline,
+                 string "}))"]
+        end
+
 and p_exp env = p_exp' false env
 
 fun p_fun env (fx, n, args, ran, e) =
@@ -1119,6 +1200,10 @@ fun p_decl env (dAll as (d, _) : decl) =
                               string x,
                               string " */",
                               newline]
+      | DSequence x => box [string "/* SQL sequence ",
+                            string x,
+                            string " */",
+                            newline]
       | DDatabase s => box [string "static void uw_db_validate(uw_context);",
                             newline,
                             string "static void uw_db_prepare(uw_context);",
@@ -1936,6 +2021,12 @@ fun p_sql env (ds, _) =
                                                                  space,
                                                                  string "NULL"]) xts,
                                                  string ");",
+                                                 newline,
+                                                 newline]
+                                          | DSequence s =>
+                                            box [string "CREATE SEQUENCE ",
+                                                 string s,
+                                                 string ";",
                                                  newline,
                                                  newline]
                                           | _ => box []

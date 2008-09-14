@@ -221,6 +221,11 @@ val delete : fields ::: {Type}
         -> sql_exp [T = fields] [] [] bool
         -> dml
 
+(*** Sequences *)
+
+type sql_sequence
+val nextval : sql_sequence -> transaction int
+
 
 (** XML *)
 

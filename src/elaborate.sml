@@ -1648,6 +1648,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 val hnormSgn = E.hnormSgn
 
 fun tableOf () = (L'.CModProj (!basis_r, [], "sql_table"), ErrorMsg.dummySpan)
+fun sequenceOf () = (L'.CModProj (!basis_r, [], "sql_sequence"), ErrorMsg.dummySpan)
 
 fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
     case sgi of
@@ -1828,6 +1829,13 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             ([(L'.SgiTable (!basis_r, x, n, c'), loc)], (env, denv, gs))
         end
 
+      | L.SgiSequence x =>
+        let
+            val (env, n) = E.pushENamed env x (sequenceOf ())
+        in
+            ([(L'.SgiSequence (!basis_r, x, n), loc)], (env, denv, gs))
+        end
+
       | L.SgiClassAbs x =>
         let
             val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
@@ -1910,6 +1918,12 @@ and elabSgn (env, denv) (sgn, loc) =
                                    (cons, vals, sgns, SS.add (strs, x)))
                                 | L'.SgiConstraint _ => (cons, vals, sgns, strs)
                                 | L'.SgiTable (_, x, _, _) =>
+                                  (if SS.member (vals, x) then
+                                       sgnError env (DuplicateVal (loc, x))
+                                   else
+                                       ();
+                                   (cons, SS.add (vals, x), sgns, strs))
+                                | L'.SgiSequence (_, x, _) =>
                                   (if SS.member (vals, x) then
                                        sgnError env (DuplicateVal (loc, x))
                                    else
@@ -2061,6 +2075,9 @@ fun dopen (env, denv) {str, strs, sgn} =
                                             | L'.SgiTable (_, x, n, c) =>
                                               (L'.DVal (x, n, (L'.CApp (tableOf (), c), loc),
                                                         (L'.EModProj (str, strs, x), loc)), loc)
+                                            | L'.SgiSequence (_, x, n) =>
+                                              (L'.DVal (x, n, sequenceOf (),
+                                                        (L'.EModProj (str, strs, x), loc)), loc)
                                             | L'.SgiClassAbs (x, n) =>
                                               let
                                                   val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
@@ -2128,6 +2145,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
       | L'.DExport _ => []
       | L'.DTable (tn, x, n, c) => [(L'.SgiTable (tn, x, n, c), loc)]
+      | L'.DSequence (tn, x, n) => [(L'.SgiSequence (tn, x, n), loc)]
       | L'.DClass (x, n, c) => [(L'.SgiClass (x, n, c), loc)]
       | L'.DDatabase _ => []
 
@@ -2355,6 +2373,16 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                  SOME (env, denv))
                                      else
                                          NONE
+                                   | L'.SgiSequence (_, x', n1) =>
+                                     if x = x' then
+                                         (case unifyCons (env, denv) (sequenceOf ()) c2 of
+                                              [] => SOME (env, denv)
+                                            | _ => NONE)
+                                         handle CUnify (c1, c2, err) =>
+                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                 SOME (env, denv))
+                                     else
+                                         NONE
                                    | _ => NONE)
 
                       | L'.SgiStr (x, n2, sgn2) =>
@@ -2428,6 +2456,16 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                          handle CUnify (c1, c2, err) =>
                                                 (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
                                                  SOME (env, denv))
+                                     else
+                                         NONE
+                                   | _ => NONE)
+
+                      | L'.SgiSequence (_, x, n2) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 case sgi1 of
+                                     L'.SgiSequence (_, x', n1) =>
+                                     if x = x' then
+                                         SOME (env, denv)
                                      else
                                          NONE
                                    | _ => NONE)
@@ -3024,6 +3062,12 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                     checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
                     ([(L'.DTable (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
                 end
+              | L.DSequence x =>
+                let
+                    val (env, n) = E.pushENamed env x (sequenceOf ())
+                in
+                    ([(L'.DSequence (!basis_r, x, n), loc)], (env, denv, gs))
+                end
 
               | L.DClass (x, c) =>
                 let
@@ -3146,6 +3190,16 @@ and elabStr (env, denv) (str, loc) =
                                           (SS.add (vals, x), x)
                               in
                                   ((L'.SgiTable (tn, x, n, c), loc) :: sgis, cons, vals, sgns, strs)
+                              end
+                            | L'.SgiSequence (tn, x, n) =>
+                              let
+                                  val (vals, x) =
+                                      if SS.member (vals, x) then
+                                          (vals, "?" ^ x)
+                                      else
+                                          (SS.add (vals, x), x)
+                              in
+                                  ((L'.SgiSequence (tn, x, n), loc) :: sgis, cons, vals, sgns, strs)
                               end
                             | L'.SgiClassAbs (x, n) =>
                               let

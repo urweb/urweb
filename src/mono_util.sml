@@ -290,6 +290,10 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                      fn e' =>
                         (EDml e', loc))
+              | ENextval e =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (ENextval e', loc))
     in
         mfe
     end
@@ -375,6 +379,7 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                         fn ts' =>
                            (DExport (ek, s, n, ts'), loc))
               | DTable _ => S.return2 dAll
+              | DSequence _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll
 
         and mfvi ctx (x, n, t, e, s) =
@@ -439,6 +444,7 @@ fun mapfoldB (all as {bind, ...}) =
                                                                  bind (ctx, NamedE (x, n, t, NONE, s))) ctx vis
                                       | DExport _ => ctx
                                       | DTable _ => ctx
+                                      | DSequence _ => ctx
                                       | DDatabase _ => ctx
                             in
                                 S.map2 (mff ctx' ds',

@@ -89,6 +89,7 @@ datatype exp' =
                      body : exp,
                      initial : exp }
        | EDml of exp
+       | ENextval of exp
 
 
 withtype exp = exp' located
@@ -100,6 +101,7 @@ datatype decl' =
        | DExport of Core.export_kind * string * int * typ list
 
        | DTable of string * (string * typ) list
+       | DSequence of string
        | DDatabase of string
 
 withtype decl = decl' located

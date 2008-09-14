@@ -87,6 +87,8 @@ datatype exp' =
                      prepared : int option }
        | EDml of { dml : exp,
                    prepared : int option }
+       | ENextval of { seq : exp,
+                       prepared : int option }
 
 withtype exp = exp' located
 
@@ -99,6 +101,7 @@ datatype decl' =
        | DFunRec of (string * int * (string * typ) list * typ * exp) list
 
        | DTable of string * (string * typ) list
+       | DSequence of string
        | DDatabase of string
        | DPreparedStatements of (string * int) list
 

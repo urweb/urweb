@@ -41,6 +41,7 @@ type free = {
      exp : IS.set
 }
 
+val dummyt = (TRecord (CRecord ((KType, ErrorMsg.dummySpan), []), ErrorMsg.dummySpan), ErrorMsg.dummySpan)
 val dummye = (EPrim (Prim.String ""), ErrorMsg.dummySpan)
 
 fun shake file =
@@ -60,6 +61,8 @@ fun shake file =
                                    | ((DExport _, _), acc) => acc
                                    | ((DTable (_, n, c, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, (c, dummye)))
+                                   | ((DSequence (_, n, _), _), (cdef, edef)) =>
+                                     (cdef, IM.insert (edef, n, (dummyt, dummye)))
                                    | ((DDatabase _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
@@ -116,6 +119,7 @@ fun shake file =
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => true
                       | (DTable _, _) => true
+                      | (DSequence _, _) => true
                       | (DDatabase _, _) => true) file
     end
 

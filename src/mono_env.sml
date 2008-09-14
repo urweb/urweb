@@ -108,6 +108,7 @@ fun declBinds env (d, loc) =
       | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t NONE s) env vis
       | DExport _ => env
       | DTable _ => env
+      | DSequence _ => env
       | DDatabase _ => env
 
 fun patBinds env (p, loc) =

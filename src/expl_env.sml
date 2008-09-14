@@ -284,7 +284,13 @@ fun declBinds env (d, loc) =
       | DExport _ => env
       | DTable (tn, x, n, c) =>
         let
-            val t = (CApp ((CModProj (tn, [], "table"), loc), c), loc)
+            val t = (CApp ((CModProj (tn, [], "sql_table"), loc), c), loc)
+        in
+            pushENamed env x n t
+        end
+      | DSequence (tn, x, n) =>
+        let
+            val t = (CModProj (tn, [], "sql_sequence"), loc)
         in
             pushENamed env x n t
         end
@@ -337,7 +343,13 @@ fun sgiBinds env (sgi, loc) =
 
       | SgiTable (tn, x, n, c) =>
         let
-            val t = (CApp ((CModProj (tn, [], "table"), loc), c), loc)
+            val t = (CApp ((CModProj (tn, [], "sql_table"), loc), c), loc)
+        in
+            pushENamed env x n t
+        end
+      | SgiSequence (tn, x, n) =>
+        let
+            val t = (CModProj (tn, [], "sql_sequence"), loc)
         in
             pushENamed env x n t
         end

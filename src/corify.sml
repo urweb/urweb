@@ -863,6 +863,13 @@ fun corifyDecl ((d, loc : EM.span), st) =
         in
             ([(L'.DTable (x, n, corifyCon st c, s), loc)], st)
         end
+      | L.DSequence (_, x, n) =>
+        let
+            val (st, n) = St.bindVal st x n
+            val s = x
+        in
+            ([(L'.DSequence (x, n, s), loc)], st)
+        end
 
       | L.DDatabase s => ([(L'.DDatabase s, loc)], st)
 
@@ -917,6 +924,7 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DFfiStr (_, n', _) => Int.max (n, n')
                              | L.DExport _ => n
                              | L.DTable (_, _, n', _) => Int.max (n, n')
+                             | L.DSequence (_, _, n') => Int.max (n, n')
                              | L.DDatabase _ => n)
                        0 ds
 

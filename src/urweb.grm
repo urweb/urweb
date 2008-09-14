@@ -173,7 +173,7 @@ fun tagIn bt =
  | ARROW | LARROW | DARROW | STAR | SEMI
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN
- | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE
+ | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
  | CASE | IF | THEN | ELSE
 
  | XML_BEGIN of string | XML_END
@@ -385,6 +385,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
        | CONSTRAINT cterm TWIDDLE cterm ([(DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))])
        | EXPORT spath                   ([(DExport spath, s (EXPORTleft, spathright))])
        | TABLE SYMBOL COLON cexp        ([(DTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))])
+       | SEQUENCE SYMBOL                ([(DSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))])
        | CLASS SYMBOL EQ cexp           ([(DClass (SYMBOL, cexp), s (CLASSleft, cexpright))])
        | CLASS SYMBOL SYMBOL EQ cexp    (let
                                              val loc = s (CLASSleft, cexpright)
@@ -463,6 +464,7 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
        | INCLUDE sgn                    (SgiInclude sgn, s (INCLUDEleft, sgnright))
        | CONSTRAINT cterm TWIDDLE cterm (SgiConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
        | TABLE SYMBOL COLON cexp        (SgiTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))
+       | SEQUENCE SYMBOL                (SgiSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))
        | CLASS SYMBOL                   (SgiClassAbs SYMBOL, s (CLASSleft, SYMBOLright))
        | CLASS SYMBOL EQ cexp           (SgiClass (SYMBOL, cexp), s (CLASSleft, cexpright))
        | CLASS SYMBOL SYMBOL EQ cexp    (let

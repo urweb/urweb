@@ -466,6 +466,9 @@ fun p_sgn_item env (sgi, _) =
                                       string ":",
                                       space,
                                       p_con env c]
+      | SgiSequence (_, x, n) => box [string "sequence",
+                                      space,
+                                      p_named x n]
       | SgiClassAbs (x, n) => box [string "class",
                                    space,
                                    p_named x n]
@@ -632,6 +635,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                                     string ":",
                                     space,
                                     p_con env c]
+      | DSequence (_, x, n) => box [string "sequence",
+                                    space,
+                                    p_named x n]
       | DClass (x, n, c) => box [string "class",
                                  space,
                                  p_named x n,

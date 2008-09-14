@@ -130,6 +130,7 @@ fun explifySgi (sgi, loc) =
       | L.SgiSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, explifySgn sgn), loc)
       | L.SgiConstraint _ => NONE
       | L.SgiTable (nt, x, n, c) => SOME (L'.SgiTable (nt, x, n, explifyCon c), loc)
+      | L.SgiSequence (nt, x, n) => SOME (L'.SgiSequence (nt, x, n), loc)
       | L.SgiClassAbs (x, n) => SOME (L'.SgiConAbs (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)), loc)
       | L.SgiClass (x, n, c) => SOME (L'.SgiCon (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc),
                                                  explifyCon c), loc)
@@ -162,6 +163,7 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DConstraint (c1, c2) => NONE
       | L.DExport (en, sgn, str) => SOME (L'.DExport (en, explifySgn sgn, explifyStr str), loc)
       | L.DTable (nt, x, n, c) => SOME (L'.DTable (nt, x, n, explifyCon c), loc)
+      | L.DSequence (nt, x, n) => SOME (L'.DSequence (nt, x, n), loc)
       | L.DClass (x, n, c) => SOME (L'.DCon (x, n,
                                              (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc), explifyCon c), loc)
       | L.DDatabase s => SOME (L'.DDatabase s, loc)

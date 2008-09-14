@@ -546,6 +546,7 @@ fun sgiSeek (sgi, (sgns, strs, cons)) =
       | SgiStr (x, n, _) => (sgns, IM.insert (strs, n, x), cons)
       | SgiConstraint _ => (sgns, strs, cons)
       | SgiTable _ => (sgns, strs, cons)
+      | SgiSequence _ => (sgns, strs, cons)
       | SgiClassAbs (x, n) => (sgns, strs, IM.insert (cons, n, x))
       | SgiClass (x, n, _) => (sgns, strs, IM.insert (cons, n, x))
 
@@ -835,7 +836,13 @@ fun sgiBinds env (sgi, loc) =
 
       | SgiTable (tn, x, n, c) =>
         let
-            val t = (CApp ((CModProj (tn, [], "table"), loc), c), loc)
+            val t = (CApp ((CModProj (tn, [], "sql_table"), loc), c), loc)
+        in
+            pushENamedAs env x n t
+        end
+      | SgiSequence (tn, x, n) =>
+        let
+            val t = (CModProj (tn, [], "sql_sequence"), loc)
         in
             pushENamedAs env x n t
         end
@@ -975,6 +982,7 @@ fun sgnSeekConstraints (str, sgis) =
                   | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
                   | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
                   | SgiTable _ => seek (sgis, sgns, strs, cons, acc)
+                  | SgiSequence _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiClassAbs (x, n) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiClass (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
     in
@@ -1049,7 +1057,13 @@ fun declBinds env (d, loc) =
       | DExport _ => env
       | DTable (tn, x, n, c) =>
         let
-            val t = (CApp ((CModProj (tn, [], "table"), loc), c), loc)
+            val t = (CApp ((CModProj (tn, [], "sql_table"), loc), c), loc)
+        in
+            pushENamedAs env x n t
+        end
+      | DSequence (tn, x, n) =>
+        let
+            val t = (CModProj (tn, [], "sql_sequence"), loc)
         in
             pushENamedAs env x n t
         end

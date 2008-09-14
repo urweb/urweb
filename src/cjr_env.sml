@@ -163,6 +163,7 @@ fun declBinds env (d, loc) =
                       pushENamed env fx n t
                   end) env vis
       | DTable _ => env
+      | DSequence _ => env
       | DDatabase _ => env
       | DPreparedStatements _ => env
 

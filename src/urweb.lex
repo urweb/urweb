@@ -298,6 +298,7 @@ notags = [^<{\n]+;
 <INITIAL> "constraints"=> (Tokens.CONSTRAINTS (pos yypos, pos yypos + size yytext));
 <INITIAL> "export"    => (Tokens.EXPORT (pos yypos, pos yypos + size yytext));
 <INITIAL> "table"     => (Tokens.TABLE (pos yypos, pos yypos + size yytext));
+<INITIAL> "sequence"  => (Tokens.SEQUENCE (pos yypos, pos yypos + size yytext));
 <INITIAL> "class"     => (Tokens.CLASS (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));

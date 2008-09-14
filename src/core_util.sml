@@ -631,6 +631,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                 S.map2 (mfc ctx c,
                         fn c' =>
                            (DTable (x, n, c', s), loc))
+              | DSequence _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll
 
         and mfvi ctx (x, n, t, e, s) =
@@ -716,7 +717,13 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DExport _ => ctx
                                       | DTable (x, n, c, s) =>
                                         let
-                                            val t = (CApp ((CFfi ("Basis", "table"), #2 d'), c), #2 d')
+                                            val t = (CApp ((CFfi ("Basis", "sql_table"), #2 d'), c), #2 d')
+                                        in
+                                            bind (ctx, NamedE (x, n, t, NONE, s))
+                                        end
+                                      | DSequence (x, n, s) =>
+                                        let
+                                            val t = (CFfi ("Basis", "sql_sequence"), #2 d')
                                         in
                                             bind (ctx, NamedE (x, n, t, NONE, s))
                                         end
@@ -770,6 +777,7 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
                           | DExport _ => count
                           | DTable (_, n, _, _) => Int.max (n, count)
+                          | DSequence (_, n, _) => Int.max (n, count)
                           | DDatabase _ => count) 0
               
 end

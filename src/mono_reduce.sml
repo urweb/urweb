@@ -40,6 +40,7 @@ fun impure (e, _) =
         EWrite _ => true
       | EQuery _ => true
       | EDml _ => true
+      | ENextval _ => true
       | EAbs _ => false
 
       | EPrim _ => false
@@ -250,6 +251,7 @@ fun summarize d (e, _) =
                      [ReadDb]]
 
       | EDml e => summarize d e @ [WriteDb]
+      | ENextval e => summarize d e @ [WriteDb]
 
 fun exp env e =
     case e of

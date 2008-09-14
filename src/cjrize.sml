@@ -388,6 +388,13 @@ fun cifyExp (eAll as (e, loc), sm) =
             ((L'.EDml {dml = e, prepared = NONE}, loc), sm)
         end
 
+      | L.ENextval e =>
+        let
+            val (e, sm) = cifyExp (e, sm)
+        in
+            ((L'.ENextval {seq = e, prepared = NONE}, loc), sm)
+        end
+
 
 fun cifyDecl ((d, loc), sm) =
     case d of
@@ -490,6 +497,8 @@ fun cifyDecl ((d, loc), sm) =
         in
             (SOME (L'.DTable (s, xts), loc), NONE, sm)
         end
+      | L.DSequence s =>
+        (SOME (L'.DSequence s, loc), NONE, sm)
       | L.DDatabase s => (SOME (L'.DDatabase s, loc), NONE, sm)
 
 fun cjrize ds =

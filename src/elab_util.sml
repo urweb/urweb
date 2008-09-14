@@ -465,6 +465,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                 S.map2 (con ctx c,
                         fn c' =>
                            (SgiTable (tn, x, n, c'), loc))
+              | SgiSequence _ => S.return2 siAll
               | SgiClassAbs _ => S.return2 siAll
               | SgiClass (x, n, c) =>
                 S.map2 (con ctx c,
@@ -494,6 +495,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                    bind (ctx, Sgn (x, sgn))
                                                  | SgiConstraint _ => ctx
                                                  | SgiTable _ => ctx
+                                                 | SgiSequence _ => ctx
                                                  | SgiClassAbs (x, n) =>
                                                    bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
                                                  | SgiClass (x, n, _) =>
@@ -635,8 +637,10 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                  | DConstraint _ => ctx
                                                  | DExport _ => ctx
                                                  | DTable (tn, x, n, c) =>
-                                                   bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "table"), loc),
+                                                   bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "sql_table"), loc),
                                                                                 c), loc)))
+                                                 | DSequence (tn, x, n) =>
+                                                   bind (ctx, NamedE (x, (CModProj (n, [], "sql_sequence"), loc)))
                                                  | DClass (x, n, _) =>
                                                    bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
                                                  | DDatabase _ => ctx,
@@ -731,13 +735,14 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                 S.map2 (mfc ctx c,
                         fn c' =>
                            (DTable (tn, x, n, c'), loc))
+              | DSequence _ => S.return2 dAll
 
-             | DClass (x, n, c) =>
+              | DClass (x, n, c) =>
                 S.map2 (mfc ctx c,
-                        fn c' =>
-                           (DClass (x, n, c'), loc))
+                     fn c' =>
+                        (DClass (x, n, c'), loc))
 
-             | DDatabase _ => S.return2 dAll
+              | DDatabase _ => S.return2 dAll
 
         and mfvi ctx (x, n, c, e) =
             S.bind2 (mfc ctx c,

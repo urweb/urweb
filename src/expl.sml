@@ -108,6 +108,7 @@ datatype sgn_item' =
        | SgiSgn of string * int * sgn
        | SgiStr of string * int * sgn
        | SgiTable of int * string * int * con
+       | SgiSequence of int * string * int
 
 and sgn' =
     SgnConst of sgn_item list
@@ -130,6 +131,7 @@ datatype decl' =
        | DFfiStr of string * int * sgn
        | DExport of int * sgn * str
        | DTable of int * string * int * con
+       | DSequence of int * string * int
        | DDatabase of string
 
      and str' =

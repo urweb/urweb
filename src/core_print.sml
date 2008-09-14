@@ -458,6 +458,13 @@ fun p_decl env (dAll as (d, _) : decl) =
                                     string ":",
                                     space,
                                     p_con env c]
+      | DSequence (x, n, s) => box [string "sequence",
+                                    space,
+                                    p_named x n,
+                                    space,
+                                    string "as",
+                                    space,
+                                    string s]
       | DDatabase s => box [string "database",
                             space,
                             string s]

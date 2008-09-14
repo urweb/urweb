@@ -260,6 +260,9 @@ fun p_exp' par env (e, _) =
       | EDml e => box [string "dml(",
                        p_exp env e,
                        string ")"]
+      | ENextval e => box [string "nextval(",
+                           p_exp env e,
+                           string ")"]
 
 and p_exp env = p_exp' false env
 
@@ -348,6 +351,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                           p_typ env t]) xts,
                                 space,
                                 string "*)"]
+      | DSequence s => box [string "(* SQL sequence ",
+                            string s,
+                            string "*)"]
       | DDatabase s => box [string "database",
                             space,
                             string s]

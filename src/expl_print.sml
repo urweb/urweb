@@ -436,6 +436,9 @@ fun p_sgn_item env (sgi, _) =
                                       string ":",
                                       space,
                                       p_con env c]
+      | SgiSequence (_, x, n) => box [string "sequence",
+                                      space,
+                                      p_named x n]
 
 and p_sgn env (sgn, loc) =
     case sgn of
@@ -584,6 +587,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                                     string ":",
                                     space,
                                     p_con env c]
+      | DSequence (_, x, n) => box [string "sequence",
+                                    space,
+                                    p_named x n]
       | DDatabase s => box [string "database",
                             space,
                             string s]

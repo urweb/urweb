@@ -163,6 +163,18 @@ fun prepExp (e as (_, loc), sns) =
              ((EDml {dml = dml, prepared = SOME (#2 sns)}, loc),
               ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1)))
 
+      | ENextval {seq, ...} =>
+        let
+            val s = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
+            val s = (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), s]), loc)
+        in
+            case prepString (s, [], 0) of
+                NONE => (e, sns)
+              | SOME (ss, n) =>
+                ((ENextval {seq = seq, prepared = SOME (#2 sns)}, loc),
+                 ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1))
+        end
+
 fun prepDecl (d as (_, loc), sns) =
     case #1 d of
         DStruct _ => (d, sns)
@@ -193,6 +205,7 @@ fun prepDecl (d as (_, loc), sns) =
         end
 
       | DTable _ => (d, sns)
+      | DSequence _ => (d, sns)
       | DDatabase _ => (d, sns)
       | DPreparedStatements _ => (d, sns)
 
