@@ -898,7 +898,7 @@ fun p_exp' par env (e, loc) =
         end
 
       | EDml {dml, prepared} =>
-        box [string "({",
+        box [string "(uw_begin_region(ctx), ({",
              newline,
              string "PGconn *conn = uw_get_db(ctx);",
              newline,
@@ -970,9 +970,11 @@ fun p_exp' par env (e, loc) =
 
              string "PQclear(res);",
              newline,
+             string "uw_end_region(ctx);",
+             newline,
              string "uw_unit_v;",
              newline,
-             string "})"]
+             string "}))"]
 
 and p_exp env = p_exp' false env
 

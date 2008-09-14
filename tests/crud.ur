@@ -14,6 +14,18 @@ end) = struct
 open constraints M
 val tab = M.tab
 
+fun delete (id : int) =
+        () <- dml (DELETE FROM tab WHERE Id = {id});
+        return <html><body>
+                The deed is done.
+        </body></html>
+
+fun confirm (id : int) = return <html><body>
+        <p>Are you sure you want to delete ID #{txt _ id}?</p>
+ 
+        <p><a link={delete id}>I was born sure!</a></p>
+</body></html>
+
 fun main () : transaction page =
         rows <- queryX (SELECT * FROM tab AS T)
                 (fn (fs : {T : $([Id = int] ++ M.cols)}) => <body>
@@ -26,6 +38,7 @@ fun main () : transaction page =
                                                         <td>{col.Show v}</td>
                                                 </tr>)
                                         [M.cols] (fs.T -- #Id) M.cols}
+                                <td><a link={confirm fs.T.Id}>[Delete]</a></td>
                         </tr>
                 </body>);
         return <html><head>
