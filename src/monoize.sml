@@ -1524,6 +1524,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EField (e, monoName env x), loc), fm)
             end
+          | L.EWith _ => poly ()
           | L.ECut _ => poly ()
           | L.EFold _ => poly ()
 
