@@ -49,7 +49,7 @@ fun explifyCon (c, loc) =
     case c of
         L.TFun (t1, t2) => (L'.TFun (explifyCon t1, explifyCon t2), loc)
       | L.TCFun (_, x, k, t) => (L'.TCFun (x, explifyKind k, explifyCon t), loc)
-      | L.TDisjoint (_, _, _, c) => explifyCon c
+      | L.CDisjoint (_, _, _, c) => explifyCon c
       | L.TRecord c => (L'.TRecord (explifyCon c), loc)
 
       | L.CRel n => (L'.CRel n, loc)
@@ -58,7 +58,6 @@ fun explifyCon (c, loc) =
 
       | L.CApp (c1, c2) => (L'.CApp (explifyCon c1, explifyCon c2), loc)
       | L.CAbs (x, k, c) => (L'.CAbs (x, explifyKind k, explifyCon c), loc)
-      | L.CDisjoint (_, _, c) => explifyCon c
 
       | L.CName s => (L'.CName s, loc)
 

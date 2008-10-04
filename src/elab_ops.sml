@@ -146,7 +146,7 @@ fun hnormCon env (cAll as (c, loc)) =
                                    val c = (CApp (c, r), loc)
                                    fun unconstraint c =
                                        case hnormCon env c of
-                                           (CDisjoint (_, _, c), _) => unconstraint c
+                                           (CDisjoint (_, _, _, c), _) => unconstraint c
                                          | c => c
                                    val c = unconstraint c
 

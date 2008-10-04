@@ -189,7 +189,7 @@ val bind : t1 ::: Type -> t2 ::: Type
         -> transaction t2
 
 val query : tables ::: {{Type}} -> exps ::: {Type} -> tables ~ exps
-        -> state ::: Type
+        => state ::: Type
         -> sql_query tables exps
         -> ($(exps ++ fold (fn nm (fields :: {Type}) acc => [nm] ~ acc => [nm = $fields] ++ acc) [] tables)
                 -> state
@@ -210,7 +210,7 @@ val insert : fields ::: {Type}
         -> dml
 
 val update : changed :: {Type} -> unchanged ::: {Type} -> changed ~ unchanged
-        -> $(fold (fn nm (t :: Type) acc => [nm] ~ acc =>
+        => $(fold (fn nm (t :: Type) acc => [nm] ~ acc =>
                 [nm = sql_exp [T = changed ++ unchanged] [] [] t] ++ acc) [] changed)
         -> sql_table (changed ++ unchanged)
         -> sql_exp [T = changed ++ unchanged] [] [] bool
@@ -235,22 +235,22 @@ con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 con xml :: {Unit} -> {Type} -> {Type} -> Type
 val cdata : ctx ::: {Unit} -> use ::: {Type} -> string -> xml ctx use []
 val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type} -> attrsGiven ~ attrsAbsent
-        -> ctxOuter ::: {Unit} -> ctxInner ::: {Unit}
+        => ctxOuter ::: {Unit} -> ctxInner ::: {Unit}
         -> useOuter ::: {Type} -> useInner ::: {Type} -> useOuter ~ useInner
-        -> bindOuter ::: {Type} -> bindInner ::: {Type} -> bindOuter ~ bindInner
-        -> $attrsGiven
+        => bindOuter ::: {Type} -> bindInner ::: {Type} -> bindOuter ~ bindInner
+        => $attrsGiven
         -> tag (attrsGiven ++ attrsAbsent) ctxOuter ctxInner useOuter bindOuter
         -> xml ctxInner useInner bindInner
         -> xml ctxOuter (useOuter ++ useInner) (bindOuter ++ bindInner)
 val join : ctx ::: {Unit} 
         -> use1 ::: {Type} -> bind1 ::: {Type} -> bind2 ::: {Type}
-        -> use1 ~ bind1 -> bind1 ~ bind2
-        -> xml ctx use1 bind1
+        -> use1 ~ bind1 => bind1 ~ bind2
+        => xml ctx use1 bind1
         -> xml ctx (use1 ++ bind1) bind2
         -> xml ctx use1 (bind1 ++ bind2)
 val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type} -> bind ::: {Type}
         -> use1 ~ use2
-        -> xml ctx use1 bind
+        => xml ctx use1 bind
         -> xml ctx (use1 ++ use2) bind
 
 con xhtml = xml [Html]
@@ -272,9 +272,9 @@ val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
 
 val body : unit -> tag [] html body [] []
-con bodyTag = fn attrs :: {Type} => ctx ::: {Unit} -> [Body] ~ ctx -> unit
+con bodyTag = fn attrs :: {Type} => ctx ::: {Unit} -> [Body] ~ ctx => unit
         -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
-con bodyTagStandalone = fn attrs :: {Type} => ctx ::: {Unit} -> [Body] ~ ctx -> unit
+con bodyTagStandalone = fn attrs :: {Type} => ctx ::: {Unit} -> [Body] ~ ctx => unit
         -> tag attrs ([Body] ++ ctx) [] [] []
 
 val br : bodyTagStandalone []
@@ -289,12 +289,12 @@ val li : bodyTag []
 
 val a : bodyTag [Link = transaction page]
 
-val lform : ctx ::: {Unit} -> [Body] ~ ctx -> bind ::: {Type}
+val lform : ctx ::: {Unit} -> [Body] ~ ctx => bind ::: {Type}
         -> xml form [] bind
         -> xml ([Body] ++ ctx) [] []
 con lformTag = fn ty :: Type => fn inner :: {Unit} => fn attrs :: {Type} =>
         ctx ::: {Unit} -> [LForm] ~ ctx
-        -> nm :: Name -> unit
+        => nm :: Name -> unit
         -> tag attrs ([LForm] ++ ctx) inner [] [nm = ty]
 val textbox : lformTag string [] [Value = string]
 val password : lformTag string [] []
@@ -311,7 +311,7 @@ val lselect : lformTag string select []
 val loption : unit -> tag [Value = string] select [] [] []
 
 val submit : ctx ::: {Unit} -> [LForm] ~ ctx
-        -> use ::: {Type} -> unit
+        => use ::: {Type} -> unit
         -> tag [Action = $use -> transaction page] ([LForm] ++ ctx) ([LForm] ++ ctx) use []
 
 (*** Tables *)

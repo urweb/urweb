@@ -81,15 +81,6 @@ fun p_con' par (c, _) =
                                                 string "->",
                                                 space,
                                                 p_con c])
-      | TDisjoint (c1, c2, c3) => parenIf par (box [p_con c1,
-                                                    space,
-                                                    string "~",
-                                                    space,
-                                                    p_con c2,
-                                                    space,
-                                                    string "->",
-                                                    space,
-                                                    p_con c3])
       | TRecord (CRecord xcs, _) => box [string "{",
                                          p_list (fn (x, c) =>
                                                     box [p_name x,

@@ -53,7 +53,6 @@ datatype auto_instantiate =
 datatype con' =
          TFun of con * con
        | TCFun of explicitness * string * kind * con
-       | TDisjoint of auto_instantiate * con * con * con
        | TRecord of con
 
        | CRel of int
@@ -61,7 +60,7 @@ datatype con' =
        | CModProj of int * string list * string
        | CApp of con * con
        | CAbs of string * kind * con
-       | CDisjoint of con * con * con
+       | CDisjoint of auto_instantiate * con * con * con
 
        | CName of string
 

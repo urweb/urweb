@@ -49,7 +49,6 @@ datatype con' =
 
        | TFun of con * con
        | TCFun of explicitness * string * kind * con
-       | TDisjoint of con * con * con
        | TRecord of con
 
        | CVar of string list * string

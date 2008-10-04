@@ -530,7 +530,6 @@ cexp   : capps                          (capps)
 
        | FN cargs DARROW cexp           (#1 (cargs (cexp, (KWild, s (FNleft, cexpright)))))
        | cterm TWIDDLE cterm DARROW cexp(CDisjoint (cterm1, cterm2, cexp), s (cterm1left, cexpright))
-       | cterm TWIDDLE cterm ARROW cexp (TDisjoint (cterm1, cterm2, cexp), s (cterm1left, cexpright))
 
        | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, kindright))
 

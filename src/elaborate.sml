@@ -225,7 +225,7 @@ fun elabCon (env, denv) (c, loc) =
             checkKind env t' tk ktype;
             ((L'.TCFun (e', x, k', t'), loc), ktype, gs)
         end
-      | L.TDisjoint (c1, c2, c) =>
+      | L.CDisjoint (c1, c2, c) =>
         let
             val (c1', k1, gs1) = elabCon (env, denv) c1
             val (c2', k2, gs2) = elabCon (env, denv) c2
@@ -239,7 +239,7 @@ fun elabCon (env, denv) (c, loc) =
             checkKind env c1' k1 (L'.KRecord ku1, loc);
             checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-            ((L'.TDisjoint (L'.Instantiate, c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
+            ((L'.CDisjoint (L'.Instantiate, c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
         end
       | L.TRecord c =>
         let
@@ -302,23 +302,6 @@ fun elabCon (env, denv) (c, loc) =
             ((L'.CAbs (x, k', t'), loc),
              (L'.KArrow (k', tk), loc),
              gs)
-        end
-
-      | L.CDisjoint (c1, c2, c) =>
-        let
-            val (c1', k1, gs1) = elabCon (env, denv) c1
-            val (c2', k2, gs2) = elabCon (env, denv) c2
-
-            val ku1 = kunif loc
-            val ku2 = kunif loc
-
-            val (denv', gs3) = D.assert env denv (c1', c2')
-            val (c', k, gs4) = elabCon (env, denv') c
-        in
-            checkKind env c1' k1 (L'.KRecord ku1, loc);
-            checkKind env c2' k2 (L'.KRecord ku2, loc);
-
-            ((L'.CDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
         end
 
       | L.CName s =>
@@ -476,7 +459,6 @@ fun kindof env (c, loc) =
     case c of
         L'.TFun _ => ktype
       | L'.TCFun _ => ktype
-      | L'.TDisjoint _ => ktype
       | L'.TRecord _ => ktype
 
       | L'.CRel xn => #2 (E.lookupCRel env xn)
@@ -501,7 +483,7 @@ fun kindof env (c, loc) =
            | (L'.KError, _) => kerror
            | k => raise CUnify' (CKindof (k, c)))
       | L'.CAbs (x, k, c) => (L'.KArrow (k, kindof (E.pushCRel env x k) c), loc)
-      | L'.CDisjoint (_, _, c) => kindof env c
+      | L'.CDisjoint (_, _, _, c) => kindof env c
 
       | L'.CName _ => kname
 
@@ -541,7 +523,7 @@ fun summarizeCon (env, denv) c =
             L'.CRecord (_, []) => (Nil, gs)
           | L'.CRecord (_, _ :: _) => (Cons, gs)
           | L'.CConcat ((L'.CRecord (_, _ :: _), _), _) => (Cons, gs)
-          | L'.CDisjoint (_, _, c) =>
+          | L'.CDisjoint (_, _, _, c) =>
             let
                 val (s, gs') = summarizeCon (env, denv) c
             in
@@ -824,7 +806,7 @@ and guessFold (env, denv) (c1, c2, gs, ex) =
 
 and unifyCons' (env, denv) c1 c2 =
     case (#1 c1, #1 c2) of
-        (L'.TDisjoint (_, x1, y1, t1), L'.TDisjoint (_, x2, y2, t2)) =>
+        (L'.CDisjoint (_, x1, y1, t1), L'.CDisjoint (_, x2, y2, t2)) =>
         let
             val gs1 = unifyCons' (env, denv) x1 x2
             val gs2 = unifyCons' (env, denv) y1 y2
@@ -983,7 +965,7 @@ fun foldType (dom, loc) =
                                     (L'.TCFun (L'.Explicit, "v", dom,
                                                (L'.TCFun (L'.Explicit, "rest", (L'.KRecord dom, loc),
                                                           (L'.TFun ((L'.CApp ((L'.CRel 3, loc), (L'.CRel 0, loc)), loc),
-                                                                    (L'.TDisjoint (L'.Instantiate,
+                                                                    (L'.CDisjoint (L'.Instantiate,
                                                                                    (L'.CRecord
                                                                                         ((L'.KUnit, loc),
                                                                                          [((L'.CRel 2, loc),
@@ -1524,7 +1506,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 checkKind env c1' k1 (L'.KRecord ku1, loc);
                 checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-                (e', (L'.TDisjoint (L'.LeaveAlone, c1', c2', t), loc), enD gs1 @ enD gs2 @ enD gs3 @ gs4)
+                (e', (L'.CDisjoint (L'.LeaveAlone, c1', c2', t), loc), enD gs1 @ enD gs2 @ enD gs3 @ gs4)
             end
 
           | L.ERecord xes =>
@@ -2572,7 +2554,6 @@ fun positive self =
 
               | TFun (c1, c2) => none c1 andalso none c2
               | TCFun (_, _, _, c) => none c
-              | TDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
               | TRecord c => none c
 
               | CVar ([], x) => x <> self
@@ -2600,7 +2581,6 @@ fun positive self =
 
               | TFun (c1, c2) => none c1 andalso pos c2
               | TCFun (_, _, _, c) => pos c
-              | TDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
               | TRecord c => pos c
 
               | CVar _ => true
@@ -2721,7 +2701,7 @@ val makeInstantiable =
         fun kind k = k
         fun con c =
             case c of
-                L'.TDisjoint (L'.LeaveAlone, c1, c2, c) => L'.TDisjoint (L'.Instantiate, c1, c2, c)
+                L'.CDisjoint (L'.LeaveAlone, c1, c2, c) => L'.CDisjoint (L'.Instantiate, c1, c2, c)
               | _ => c
     in
         U.Con.map {kind = kind, con = con}
