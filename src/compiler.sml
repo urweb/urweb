@@ -93,6 +93,9 @@ fun op o (tr2 : ('b, 'c) transform, tr1 : ('a, 'b) transform) = {
               end
 }
 
+fun check (tr : ('src, 'dst) transform) x = (ErrorMsg.resetErrors ();
+                                             ignore (#func tr x))
+
 fun run (tr : ('src, 'dst) transform) x = (ErrorMsg.resetErrors ();
                                            #func tr x)
 

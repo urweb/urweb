@@ -6,7 +6,7 @@ con colMeta = fn t_formT :: (Type * Type) => {
         Parse : t_formT.2 -> t_formT.1,
         Inject : sql_injectable t_formT.1
 }
-con colsMeta = fn cols :: {(Type * Type)} => $(Top.mapT2T colMeta cols)
+con colsMeta = fn cols :: {(Type * Type)} => $(mapT2T colMeta cols)
 
 functor Make(M : sig
         con cols :: {(Type * Type)}

@@ -80,7 +80,7 @@ fun confirm (id : int) = return <html><body>
         <p><a link={delete id}>I was born sure!</a></p>
 </body></html>
 
-fun main () : transaction page =
+fun main () =
         rows <- queryX (SELECT * FROM tab AS T)
                 (fn (fs : {T : $([Id = int] ++ mapT2T fstTT M.cols)}) => <body>
                         <tr>

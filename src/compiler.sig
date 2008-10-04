@@ -45,6 +45,7 @@ signature COMPILER = sig
     val transform : ('src, 'dst) phase -> string -> ('src, 'dst) transform
     val o : ('b, 'c) transform * ('a, 'b) transform -> ('a, 'c) transform
 
+    val check : ('src, 'dst) transform -> 'src -> unit
     val run : ('src, 'dst) transform -> 'src -> 'dst option
     val runPrint : ('src, 'dst) transform -> 'src -> unit
     val time : ('src, 'dst) transform -> 'src -> unit
