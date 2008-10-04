@@ -1,13 +1,6 @@
 table t1 : {Id : int, A : int, B : string, C : float, D : bool}
 
 open Crud.Make(struct
-        con cols :: {(Type * Type)} = [
-                A = (int, string),
-                B = (string, string),
-                C = (float, string),
-                D = (bool, bool)
-        ]
-
         val tab = t1
 
         val title = "Crud1"

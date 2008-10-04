@@ -689,10 +689,15 @@ and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
                     ([], [], [], [])
                 else
                     (fs1, fs2, others1, others2)
+              | (_, [], [], [other2]) =>
+                if isGuessable (other2, fs1) then
+                    ([], [], [], [])
+                else
+                    (fs1, fs2, others1, others2)
               | _ => (fs1, fs2, others1, others2)
 
         (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
-                                         ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
         val clear = case (fs1, others1, fs2, others2) of
                          ([], [], [], []) => true
@@ -889,6 +894,25 @@ and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
                                        gs' @ gs
                                    end) [] (cs1, cs2))
              handle ListPair.UnequalLengths => err CIncompatible)
+
+          | (L'.CProj ((L'.CUnif (_, _, _, ref (SOME c1)), loc), n1), _) =>
+            unifyCons' (env, denv) (L'.CProj (c1, n1), loc) c2All
+          | (_, L'.CProj ((L'.CUnif (_, _, _, ref (SOME c2)), loc), n2)) =>
+            unifyCons' (env, denv) c1All (L'.CProj (c2, n2), loc)
+          | (L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n), _) =>
+            let
+                val us = map (fn k => cunif (loc, k)) ks
+            in
+                r := SOME (L'.CTuple us, loc);
+                unifyCons' (env, denv) (List.nth (us, n - 1)) c2All
+            end
+          | (_, L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n)) =>
+            let
+                val us = map (fn k => cunif (loc, k)) ks
+            in
+                r := SOME (L'.CTuple us, loc);
+                unifyCons' (env, denv) c1All (List.nth (us, n - 1))
+            end
           | (L'.CProj (c1, n1), L'.CProj (c2, n2)) =>
             if n1 = n2 then
                 unifyCons' (env, denv) c1 c2
