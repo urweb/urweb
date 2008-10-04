@@ -300,7 +300,7 @@ val textbox : lformTag string [] [Value = string]
 val password : lformTag string [] []
 val ltextarea : lformTag string [] []
 
-val checkbox : lformTag bool [] []
+val checkbox : lformTag bool [] [Checked = bool]
 
 con radio = [Body, Radio]
 val radio : lformTag string radio []

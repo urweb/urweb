@@ -1247,27 +1247,55 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
                         in
                             foldl (fn ((x, e, t), (s, fm)) =>
-                                      let
-                                          val xp = " " ^ lowercaseFirst x ^ "=\""
+                                      case t of
+                                          (L'.TFfi ("Basis", "bool"), _) =>
+                                          let
+                                              val s' = " " ^ lowercaseFirst x
+                                          in
+                                              ((L'.ECase (e,
+                                                          [((L'.PCon (L'.Enum,
+                                                                      L'.PConFfi {mod = "Basis",
+                                                                                  datatyp = "bool",
+                                                                                  con = "True",
+                                                                                  arg = NONE},
+                                                                      NONE), loc),
+                                                            (L'.EStrcat (s,
+                                                                         (L'.EPrim (Prim.String s'), loc)), loc)),
+                                                           ((L'.PCon (L'.Enum,
+                                                                      L'.PConFfi {mod = "Basis",
+                                                                                  datatyp = "bool",
+                                                                                  con = "False",
+                                                                                  arg = NONE},
+                                                                      NONE), loc),
+                                                            s)],
+                                                          {disc = (L'.TFfi ("Basis", "bool"), loc),
+                                                           result = (L'.TFfi ("Basis", "string"), loc)}), loc),
+                                               fm)
+                                          end
+                                        | _ =>
+                                          let
+                                              val fooify =
+                                                  case x of
+                                                      "Href" => urlifyExp
+                                                    | "Link" => urlifyExp
+                                                    | "Action" => urlifyExp
+                                                    | _ => attrifyExp
 
-                                          val fooify =
-                                              case x of
-                                                  "Href" => urlifyExp
-                                                | "Link" => urlifyExp
-                                                | "Action" => urlifyExp
-                                                | _ => attrifyExp
+                                              val xp = " " ^ lowercaseFirst x ^ "=\""
 
-                                          val (e, fm) = fooify env fm (e, t)
-                                      in
-                                          ((L'.EStrcat (s,
-                                                        (L'.EStrcat ((L'.EPrim (Prim.String xp), loc),
-                                                                     (L'.EStrcat (e,
-                                                                                  (L'.EPrim (Prim.String "\""),
-                                                                                   loc)),
-                                                                      loc)),
-                                                         loc)), loc),
-                                           fm)
-                                      end)
+
+
+                                              val (e, fm) = fooify env fm (e, t)
+                                          in
+                                              ((L'.EStrcat (s,
+                                                            (L'.EStrcat ((L'.EPrim (Prim.String xp), loc),
+                                                                         (L'.EStrcat (e,
+                                                                                      (L'.EPrim (Prim.String "\""),
+                                                                                       loc)),
+                                                                          loc)),
+                                                             loc)), loc),
+                                               fm)
+                                          end)
                                   (s, fm) xes
                         end
                       | _ => raise Fail "Non-record attributes!"

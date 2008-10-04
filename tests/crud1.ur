@@ -5,7 +5,7 @@ open Crud.Make(struct
                 A = (int, string),
                 B = (string, string),
                 C = (float, string),
-                D = (bool, string)
+                D = (bool, bool)
         ]
 
         val tab = t1
@@ -40,9 +40,9 @@ open Crud.Make(struct
                 D = {
                         Nam = "D",
                         Show = txt _,
-                        Widget = fn nm :: Name => <lform><textbox{nm}/></lform>,
-                        WidgetPopulated = fn (nm :: Name) b => <lform><textbox{nm} value={show _ b}/></lform>,
-                        Parse = readError _,
+                        Widget = fn nm :: Name => <lform><checkbox{nm}/></lform>,
+                        WidgetPopulated = fn (nm :: Name) b => <lform><checkbox{nm} checked={b}/></lform>,
+                        Parse = fn x => x,
                         Inject = sql_bool
                     }
         }
