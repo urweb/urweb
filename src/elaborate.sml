@@ -1411,32 +1411,13 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                      ((L'.EModProj (n, ms, s), loc), t, [])
                  end)
 
-          | L.EApp (e1, (L.EWild, _)) =>
+          | L.EWild =>
             let
-                val (e1', t1, gs1) = elabExp (env, denv) e1
-                val (e1', t1, gs2) = elabHead (env, denv) e1' t1
-                val (t1, gs3) = hnormCon (env, denv) t1
+                val r = ref NONE
+                val c = cunif (loc, (L'.KType, loc))
             in
-                case t1 of
-                    (L'.TFun (dom, ran), _) =>
-                    let
-                        val (dom, gs4) = normClassConstraint (env, denv) dom
-                    in
-                        case E.resolveClass env dom of
-                            NONE =>
-                            let
-                                val r = ref NONE
-                            in
-                                ((L'.EApp (e1', (L'.EUnif r, loc)), loc),
-                                 ran, [TypeClass (env, dom, r, loc)])
-                            end
-                          | SOME pf => ((L'.EApp (e1', pf), loc), ran, gs1 @ gs2 @ enD gs3 @ enD gs4)
-                    end
-                  | _ => (expError env (OutOfContext (loc, SOME (e1', t1)));
-                          (eerror, cerror, []))
+                ((L'.EUnif r, loc), c, [TypeClass (env, c, r, loc)])
             end
-          | L.EWild => (expError env (OutOfContext (loc, NONE));
-                        (eerror, cerror, []))
 
           | L.EApp (e1, e2) =>
             let
@@ -3399,9 +3380,13 @@ fun elabFile basis topStr topSgn env file =
                                       ("Hnormed 1", p_con env (ElabOps.hnormCon env c1)),
                                       ("Hnormed 2", p_con env (ElabOps.hnormCon env c2))]))
                   | TypeClass (env, c, r, loc) =>
-                    case E.resolveClass env c of
-                        SOME e => r := SOME e
-                      | NONE => expError env (Unresolvable (loc, c))) gs;
+                    let
+                        val c = ElabOps.hnormCon env c
+                    in
+                        case E.resolveClass env c of
+                            SOME e => r := SOME e
+                          | NONE => expError env (Unresolvable (loc, c))
+                    end) gs;
 
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
         :: ds
