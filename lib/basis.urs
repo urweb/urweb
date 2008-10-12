@@ -207,7 +207,7 @@ val query : tables ::: {{Type}} -> exps ::: {Type}
             -> fn [tables ~ exps] =>
                   state ::: Type
                   -> sql_query tables exps
-                  -> ($(exps ++ fold (fn nm (fields :: {Type}) [[nm] ~ acc] =>
+                  -> ($(exps ++ fold (fn nm (fields :: {Type}) acc [[nm] ~ acc] =>
                                          [nm = $fields] ++ acc) [] tables)
                       -> state
                       -> transaction state)
