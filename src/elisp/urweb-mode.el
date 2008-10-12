@@ -150,6 +150,12 @@ See doc for the variable `urweb-mode-info'."
                  "ASC" "DESC" "INSERT" "INTO" "VALUES" "UPDATE" "SET" "DELETE")
   "A regexp that matches SQL keywords.")
 
+(defconst urweb-lident-regexp "\\<[a-z_][A-Za-z0-9_']*\\>"
+  "A regexp that matches lowercase Ur/Web identifiers.")
+
+(defconst urweb-cident-regexp "\\<[A-Z][A-Za-z0-9_']*\\>"
+  "A regexp that matches uppercase Ur/Web identifiers.")
+
 ;;; Font-lock settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; The font lock regular expressions.
@@ -173,7 +179,9 @@ See doc for the variable `urweb-mode-info'."
      (2 font-lock-interface-def-face))
     
     (,urweb-keywords-regexp . font-lock-keyword-face)
-    (,urweb-sql-keywords-regexp . font-lock-sql-face))
+    (,urweb-sql-keywords-regexp . font-lock-sql-face)
+;   (,urweb-lident-regexp . font-lock-variable-face)
+    (,urweb-cident-regexp . font-lock-cvariable-face))
   "Regexps matching standard Ur/Web keywords.")
 
 (defface font-lock-type-def-face
@@ -203,6 +211,20 @@ See doc for the variable `urweb-mode-info'."
   :group 'font-lock-highlighting-faces)
 (defvar font-lock-sql-face 'font-lock-sql-face
   "Face name to use for SQL keywords.")
+
+;(defface font-lock-variable-face
+;  '((t (:foreground "green")))
+;  "Font Lock mode face used to highlight lowercase identifiers."
+;  :group 'font-lock-highlighting-faces)
+;(defvar font-lock-variable-face 'font-lock-variable-face
+;  "Face name to use for lowercase identifiers.")
+
+(defface font-lock-cvariable-face
+  '((t (:foreground "dark blue")))
+  "Font Lock mode face used to highlight capitalized identifiers."
+  :group 'font-lock-highlighting-faces)
+(defvar font-lock-cvariable-face 'font-lock-cvariable-face
+  "Face name to use for capitalized identifiers.")
 
 ;;
 ;; Code to handle nested comments and unusual string escape sequences

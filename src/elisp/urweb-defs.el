@@ -64,9 +64,9 @@ notion of \"the end of an outline\".")
 
 
 (easy-menu-define urweb-mode-menu urweb-mode-map "Menu used in `urweb-mode'."
-  '("URWEB"
-    ["URWEB mode help (brief)"       describe-mode t]
-    ["URWEB mode *info*"             urweb-mode-info t]
+  '("Ur/Web"
+    ["Ur/Web mode help (brief)"       describe-mode t]
+    ["Ur/Web mode *info*"             urweb-mode-info t]
     ))
 
 ;; Make's sure they appear in the menu bar when urweb-mode-map is active.
