@@ -162,10 +162,10 @@ See doc for the variable `urweb-mode-info'."
 
 (defconst urweb-font-lock-keywords
   `(;;(urweb-font-comments-and-strings)
-    (,(concat "\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)\\s-+[^ \t\n=]")
+    ("\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)\\s-+[^ \t\n=]"
      (1 font-lock-keyword-face)
      (2 font-lock-function-name-face))
-    (,(concat "\\<\\(\\(data\\)?type\\|con\\|class\\)\\s-+\\(\\sw+\\)")
+    ("\\<\\(\\(data\\)?type\\|con\\|class\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (3 font-lock-type-def-face))
     ("\\<\\(val\\|table\\|sequence\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
@@ -177,6 +177,11 @@ See doc for the variable `urweb-mode-info'."
     ("\\<\\(signature\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (2 font-lock-interface-def-face))
+
+    ("<\\(\\sw+\\)[^>]*>"
+     (1 font-lock-tag-face))
+    ("</\\(\\sw+\\)[^>]*>"
+     (1 font-lock-tag-face))
     
     (,urweb-keywords-regexp . font-lock-keyword-face)
     (,urweb-sql-keywords-regexp . font-lock-sql-face)
@@ -212,19 +217,19 @@ See doc for the variable `urweb-mode-info'."
 (defvar font-lock-sql-face 'font-lock-sql-face
   "Face name to use for SQL keywords.")
 
-;(defface font-lock-variable-face
-;  '((t (:foreground "green")))
-;  "Font Lock mode face used to highlight lowercase identifiers."
-;  :group 'font-lock-highlighting-faces)
-;(defvar font-lock-variable-face 'font-lock-variable-face
-;  "Face name to use for lowercase identifiers.")
-
 (defface font-lock-cvariable-face
   '((t (:foreground "dark blue")))
   "Font Lock mode face used to highlight capitalized identifiers."
   :group 'font-lock-highlighting-faces)
 (defvar font-lock-cvariable-face 'font-lock-cvariable-face
   "Face name to use for capitalized identifiers.")
+
+(defface font-lock-tag-face
+  '((t (:bold t)))
+  "Font Lock mode face used to highlight XML tags."
+  :group 'font-lock-highlighting-faces)
+(defvar font-lock-tag-face 'font-lock-tag-face
+  "Face name to use for XML tags.")
 
 ;;
 ;; Code to handle nested comments and unusual string escape sequences
