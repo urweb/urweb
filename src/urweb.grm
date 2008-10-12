@@ -529,7 +529,6 @@ cexp   : capps                          (capps)
        | cexp PLUSPLUS cexp             (CConcat (cexp1, cexp2), s (cexp1left, cexp1right))
 
        | FN cargs DARROW cexp           (#1 (cargs (cexp, (KWild, s (FNleft, cexpright)))))
-       | cterm TWIDDLE cterm DARROW cexp(CDisjoint (cterm1, cterm2, cexp), s (cterm1left, cexpright))
 
        | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, kindright))
 
@@ -592,6 +591,13 @@ cargp  : SYMBOL                         (fn (c, k) =>
                                                   ((CAbs (SYMBOL, SOME kind, c), loc),
                                                    (KArrow (kind, k), loc))
                                               end)
+       | LBRACK cterm TWIDDLE cterm RBRACK (fn (c, k) =>
+                                            let
+                                                val loc = s (LBRACKleft, RBRACKright)
+                                            in
+                                                ((CDisjoint (cterm1, cterm2, c), loc),
+                                                 k)
+                                            end)
 
 path   : SYMBOL                         ([], SYMBOL)
        | CSYMBOL DOT path               (let val (ms, x) = path in (CSYMBOL :: ms, x) end)
@@ -650,7 +656,6 @@ eexp   : eapps                          (eapps)
                                          in
                                              #1 (eargs (eexp, (CWild (KType, loc), loc)))
                                          end)
-       | LBRACK cterm TWIDDLE cterm RBRACK DARROW eexp(EDisjoint (cterm1, cterm2, eexp), s (LBRACKleft, RBRACKright))
        | eexp COLON cexp                (EAnnot (eexp, cexp), s (eexpleft, cexpright))
        | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
        | CASE eexp OF barOpt branch branchs (ECase (eexp, branch :: branchs), s (CASEleft, branchsright))
@@ -709,6 +714,13 @@ earg   : SYMBOL kcolon kind             (fn (e, t) =>
                                                 ((EAbs ("_", SOME cexp, e), loc),
                                                  (TFun (cexp, t), loc))
                                             end)
+       | cterm TWIDDLE cterm            (fn (e, t) =>
+                                            let
+                                                val loc = s (cterm1left, cterm2right)
+                                            in
+                                                ((EDisjoint (cterm1, cterm2, e), loc),
+                                                 (CDisjoint (cterm1, cterm2, t), loc))
+                                            end)
        | eargp                          (eargp)
 
 eargp  : SYMBOL                         (fn (e, t) =>
@@ -753,6 +765,13 @@ eargp  : SYMBOL                         (fn (e, t) =>
                                             in
                                                 ((EAbs ("_", SOME cexp, e), loc),
                                                  (TFun (cexp, t), loc))
+                                            end)
+       | LPAREN cterm TWIDDLE cterm RPAREN(fn (e, t) =>
+                                            let
+                                                val loc = s (LPARENleft, RPARENright)
+                                            in
+                                                ((EDisjoint (cterm1, cterm2, e), loc),
+                                                 (CDisjoint (cterm1, cterm2, t), loc))
                                             end)
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
