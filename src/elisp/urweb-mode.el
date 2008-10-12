@@ -164,11 +164,11 @@ See doc for the variable `urweb-mode-info'."
   `(;;(urweb-font-comments-and-strings)
     (,(concat "\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)\\s-+[^ \t\n=]")
      (1 font-lock-keyword-face)
-     (5 font-lock-function-name-face))
-    (,(concat "\\<\\(\\(data\\)?type\\|con\\)\\s-+\\(\\sw+\\)")
+     (2 font-lock-function-name-face))
+    (,(concat "\\<\\(\\(data\\)?type\\|con\\|class\\)\\s-+\\(\\sw+\\)")
      (1 font-lock-keyword-face)
      (3 font-lock-type-def-face))
-    ("\\<\\(val\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
+    ("\\<\\(val\\|table\\|sequence\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
      (1 font-lock-keyword-face)
      (3 font-lock-variable-name-face))
     ("\\<\\(structure\\|functor\\)\\s-+\\(\\sw+\\)"

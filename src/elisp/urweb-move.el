@@ -78,7 +78,7 @@
      (("/" "*" "%") . 7)
      (("++" "--") 8)
      (("NOT") 9)
-     (("~" "$") 10)))
+     (("~") 10)))
   "Alist of Ur/Web infix operators and their precedence.")
 
 (defconst urweb-syntax-prec
