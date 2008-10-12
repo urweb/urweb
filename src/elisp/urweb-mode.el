@@ -164,10 +164,10 @@ See doc for the variable `urweb-mode-info'."
   `(;;(urweb-font-comments-and-strings)
     (,(concat "\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)\\s-+[^ \t\n=]")
      (1 font-lock-keyword-face)
-     (6 font-lock-function-name-face))
+     (5 font-lock-function-name-face))
     (,(concat "\\<\\(\\(data\\)?type\\|con\\)\\s-+\\(\\sw+\\)")
      (1 font-lock-keyword-face)
-     (7 font-lock-type-def-face))
+     (3 font-lock-type-def-face))
     ("\\<\\(val\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
      (1 font-lock-keyword-face)
      (3 font-lock-variable-name-face))
