@@ -41,7 +41,7 @@
 ;; Still under construction: History obscure, needs a biographer as
 ;; well as a M-x doctor. Change Log on request.
 
-;; Hacked by Olin Shivers for comint from Lars Bo Nielsen's urweb.el.
+;; Hacked by Olin Shivers for comint from Lars Bo Nielsen's sml.el.
 
 ;; Hacked by Matthew Morley to incorporate Fritz Knabe's hilite and
 ;; font-lock patterns, some of Steven Gilmore's (reduced) easy-menus,
@@ -160,6 +160,25 @@ See doc for the variable `urweb-mode-info'."
 
 ;; The font lock regular expressions.
 
+(defun inXml (depth)
+  (and
+   (re-search-backward "[<>{}]" nil t)
+   (cond
+    ((looking-at "{")
+     (and (> depth 0)
+          (inXml (- depth 1))))
+    ((looking-at "}")
+     (inXml (+ depth 1)))
+    ((save-excursion (backward-char 1) (or (looking-at "=>") (looking-at "->")))
+     (inXml depth))
+    ((looking-at "<")
+     nil)
+    ((looking-at ">")
+     (if (> depth 0)
+         (and (re-search-backward "<" nil t)
+              (inXml depth))
+       (progn (backward-char 5) (not (looking-at "/html"))))))))
+
 (defconst urweb-font-lock-keywords
   `(;;(urweb-font-comments-and-strings)
     ("\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)\\s-+[^ \t\n=]"
@@ -178,14 +197,18 @@ See doc for the variable `urweb-mode-info'."
      (1 font-lock-keyword-face)
      (2 font-lock-interface-def-face))
 
-    ("<\\(\\sw+\\)[^>]*>"
+    ("\\(<\\sw+\\)\\(\\s-\\|\\sw\\|=\\|\"[^\"]*\"\\|{[^}]*}\\)*/?\\(>\\)"
+     (1 font-lock-tag-face)
+     (3 font-lock-tag-face))
+    ("\\(</\\sw+>\\)"
      (1 font-lock-tag-face))
-    ("</\\(\\sw+\\)[^>]*>"
-     (1 font-lock-tag-face))
+    ("\\([^<>{}]+\\)"
+     (1 (if (save-excursion (inXml 0))
+            font-lock-string-face
+          nil)))
     
     (,urweb-keywords-regexp . font-lock-keyword-face)
     (,urweb-sql-keywords-regexp . font-lock-sql-face)
-;   (,urweb-lident-regexp . font-lock-variable-face)
     (,urweb-cident-regexp . font-lock-cvariable-face))
   "Regexps matching standard Ur/Web keywords.")
 
@@ -230,6 +253,13 @@ See doc for the variable `urweb-mode-info'."
   :group 'font-lock-highlighting-faces)
 (defvar font-lock-tag-face 'font-lock-tag-face
   "Face name to use for XML tags.")
+
+(defface font-lock-attr-face
+  '((t (:bold t)))
+  "Font Lock mode face used to highlight XML attributes."
+  :group 'font-lock-highlighting-faces)
+(defvar font-lock-attr-face 'font-lock-attr-face
+  "Face name to use for XML attributes.")
 
 ;;
 ;; Code to handle nested comments and unusual string escape sequences
@@ -306,12 +336,19 @@ See doc for the variable `urweb-mode-info'."
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.s\\(ml\\|ig\\)\\'" . urweb-mode))
 
+;(mmm-add-classes
+; '((urweb-html
+;    :submode html-mode
+;    :front "<html>"
+;    :back "</html>")))
+
 ;;;###autoload
 (define-derived-mode urweb-mode fundamental-mode "Ur/Web"
   "\\<urweb-mode-map>Major mode for editing Ur/Web code.
 This mode runs `urweb-mode-hook' just before exiting.
 \\{urweb-mode-map}"
   (set (make-local-variable 'font-lock-defaults) urweb-font-lock-defaults)
+  (set (make-local-variable 'font-lock-multiline) 'undecided)
   (set (make-local-variable 'outline-regexp) urweb-outline-regexp)
   (set (make-local-variable 'imenu-create-index-function)
        'urweb-imenu-create-index)
@@ -325,9 +362,15 @@ This mode runs `urweb-mode-hook' just before exiting.
   (set (make-local-variable 'forward-sexp-function) 'urweb-user-forward-sexp)
   ;; For XEmacs
   (easy-menu-add urweb-mode-menu)
+
+;  (setq mmm-classes '(urweb-html)) 
+
   ;; Compatibility.  FIXME: we should use `-' in Emacs-CVS.
   (unless (boundp 'skeleton-positions) (set (make-local-variable '@) nil))
-  (urweb-mode-variables))
+
+  (urweb-mode-variables)
+;  (mmm-mode-on)
+  )
 
 (defun urweb-mode-variables ()
   (set-syntax-table urweb-mode-syntax-table)
@@ -686,6 +729,8 @@ Optional argument STYLE is currently ignored."
 	;; Skip all other declarations that we find at the same level.
 	(urweb-skip-siblings))
       fullname)))
+
+
 
 (provide 'urweb-mode)
 
