@@ -181,6 +181,16 @@ See doc for the variable `urweb-mode-info'."
 
 (defconst urweb-font-lock-keywords
   `(;;(urweb-font-comments-and-strings)
+    ("\\(<\\sw+\\)\\(\\s-\\|\\sw\\|=\\|\"[^\"]*\"\\|{[^}]*}\\)*/?\\(>\\)"
+     (1 font-lock-tag-face)
+     (3 font-lock-tag-face))
+    ("\\(</\\sw+>\\)"
+     (1 font-lock-tag-face))
+    ("\\([^<>{}]+\\)"
+     (1 (if (save-excursion (inXml 0))
+            font-lock-string-face
+          nil)))
+
     ("\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)\\s-+[^ \t\n=]"
      (1 font-lock-keyword-face)
      (2 font-lock-function-name-face))
@@ -196,16 +206,6 @@ See doc for the variable `urweb-mode-info'."
     ("\\<\\(signature\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (2 font-lock-interface-def-face))
-
-    ("\\(<\\sw+\\)\\(\\s-\\|\\sw\\|=\\|\"[^\"]*\"\\|{[^}]*}\\)*/?\\(>\\)"
-     (1 font-lock-tag-face)
-     (3 font-lock-tag-face))
-    ("\\(</\\sw+>\\)"
-     (1 font-lock-tag-face))
-    ("\\([^<>{}]+\\)"
-     (1 (if (save-excursion (inXml 0))
-            font-lock-string-face
-          nil)))
     
     (,urweb-keywords-regexp . font-lock-keyword-face)
     (,urweb-sql-keywords-regexp . font-lock-sql-face)
