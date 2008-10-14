@@ -2,33 +2,33 @@ table t1 : {Id : int, A : int, B : string, C : float, D : bool}
 
 val a = {Nam = "A",
          Show = txt _,
-         Widget = fn nm :: Name => <lform><textbox{nm}/></lform>,
+         Widget = fn nm :: Name => <xml><textbox{nm}/></xml>,
          WidgetPopulated = fn (nm :: Name) n =>
-                              <lform><textbox{nm} value={show _ n}/></lform>,
+                              <xml><textbox{nm} value={show _ n}/></xml>,
          Parse = readError _,
          Inject = _}
 
 val b = {Nam = "B",
          Show = txt _,
-         Widget = fn nm :: Name => <lform><textbox{nm}/></lform>,
+         Widget = fn nm :: Name => <xml><textbox{nm}/></xml>,
          WidgetPopulated = fn (nm :: Name) s =>
-                              <lform><textbox{nm} value={s}/></lform>,
+                              <xml><textbox{nm} value={s}/></xml>,
          Parse = readError _,
          Inject = _}
 
 val c = {Nam = "C",
          Show = txt _,
-         Widget = fn nm :: Name => <lform><textbox{nm}/></lform>,
+         Widget = fn nm :: Name => <xml><textbox{nm}/></xml>,
          WidgetPopulated = fn (nm :: Name) n =>
-                              <lform><textbox{nm} value={show _ n}/></lform>,
+                              <xml><textbox{nm} value={show _ n}/></xml>,
          Parse = readError _,
          Inject = _}
 
 val d = {Nam = "D",
          Show = txt _,
-         Widget = fn nm :: Name => <lform><checkbox{nm}/></lform>,
+         Widget = fn nm :: Name => <xml><checkbox{nm}/></xml>,
          WidgetPopulated = fn (nm :: Name) b =>
-                              <lform><checkbox{nm} checked={b}/></lform>,
+                              <xml><checkbox{nm} checked={b}/></xml>,
          Parse = fn x => x,
          Inject = _}
 

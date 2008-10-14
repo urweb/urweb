@@ -160,24 +160,40 @@ See doc for the variable `urweb-mode-info'."
 
 ;; The font lock regular expressions.
 
-(defun inXml (depth)
-  (and
-   (re-search-backward "[<>{}]" nil t)
-   (cond
-    ((looking-at "{")
-     (and (> depth 0)
-          (inXml (- depth 1))))
-    ((looking-at "}")
-     (inXml (+ depth 1)))
-    ((save-excursion (backward-char 1) (or (looking-at "=>") (looking-at "->")))
-     (inXml depth))
-    ((looking-at "<")
-     nil)
-    ((looking-at ">")
-     (if (> depth 0)
-         (and (re-search-backward "<" nil t)
-              (inXml depth))
-       (progn (backward-char 5) (not (looking-at "/html"))))))))
+(defun inXml ()
+  (save-excursion
+    (let (
+          (depth 0)
+          (finished nil)
+          (answer nil)
+          )
+      (while (and (not finished) (re-search-backward "[<>{}]" nil t))
+        (cond
+         ((looking-at "{")
+          (if (> depth 0)
+              (setq depth (- depth 1))
+            (setq finished t)))
+         ((looking-at "}")
+          (setq depth (+ depth 1)))
+         ((save-excursion (backward-char 1) (or (looking-at "=>") (looking-at "->")))
+          nil)
+         ((looking-at "<")
+          (setq finished t))
+         ((looking-at ">")
+          (if (> depth 0)
+              (if (not (re-search-backward "<" nil t))
+                  (setq finished t))
+            (progn (backward-char 4)
+                   (setq answer (not (or
+                                      (looking-at "/xml")
+                                      (looking-at "xml/"))))
+                   (setq finished t))))))
+      answer)))
+
+(defun amAttribute (face)
+  (if (ignore-errors (save-excursion (backward-word 2) (backward-char 1) (looking-at "<")))
+      nil
+    face))
 
 (defconst urweb-font-lock-keywords
   `(;;(urweb-font-comments-and-strings)
@@ -187,25 +203,25 @@ See doc for the variable `urweb-mode-info'."
     ("\\(</\\sw+>\\)"
      (1 font-lock-tag-face))
     ("\\([^<>{}]+\\)"
-     (1 (if (save-excursion (inXml 0))
+     (1 (if (inXml)
             font-lock-string-face
           nil)))
 
     ("\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)\\s-+[^ \t\n=]"
      (1 font-lock-keyword-face)
-     (2 font-lock-function-name-face))
+     (2 (amAttribute font-lock-function-name-face)))
     ("\\<\\(\\(data\\)?type\\|con\\|class\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
-     (3 font-lock-type-def-face))
+     (3 (amAttribute font-lock-type-def-face)))
     ("\\<\\(val\\|table\\|sequence\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
      (1 font-lock-keyword-face)
-     (3 font-lock-variable-name-face))
+     (3 (amAttribute font-lock-variable-name-face)))
     ("\\<\\(structure\\|functor\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
-     (2 font-lock-module-def-face))
+     (2 (amAttribute font-lock-module-def-face)))
     ("\\<\\(signature\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
-     (2 font-lock-interface-def-face))
+     (2 (amAttribute font-lock-interface-def-face)))
     
     (,urweb-keywords-regexp . font-lock-keyword-face)
     (,urweb-sql-keywords-regexp . font-lock-sql-face)
@@ -336,12 +352,6 @@ See doc for the variable `urweb-mode-info'."
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.s\\(ml\\|ig\\)\\'" . urweb-mode))
 
-;(mmm-add-classes
-; '((urweb-html
-;    :submode html-mode
-;    :front "<html>"
-;    :back "</html>")))
-
 ;;;###autoload
 (define-derived-mode urweb-mode fundamental-mode "Ur/Web"
   "\\<urweb-mode-map>Major mode for editing Ur/Web code.
@@ -363,14 +373,10 @@ This mode runs `urweb-mode-hook' just before exiting.
   ;; For XEmacs
   (easy-menu-add urweb-mode-menu)
 
-;  (setq mmm-classes '(urweb-html)) 
-
   ;; Compatibility.  FIXME: we should use `-' in Emacs-CVS.
   (unless (boundp 'skeleton-positions) (set (make-local-variable '@) nil))
 
-  (urweb-mode-variables)
-;  (mmm-mode-on)
-  )
+  (urweb-mode-variables))
 
 (defun urweb-mode-variables ()
   (set-syntax-table urweb-mode-syntax-table)

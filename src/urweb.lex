@@ -162,6 +162,11 @@ notags = [^<{\n]+;
                                    continue ())
                           end);
 
+<INITIAL> "<" {id} "/>"=>(let
+			      val tag = String.substring (yytext, 1, size yytext - 3)
+			  in
+			      Tokens.XML_BEGIN_END (tag, yypos, yypos + size yytext)
+			  end);
 <INITIAL> "<" {id} ">"=> (let
 			      val tag = String.substring (yytext, 1, size yytext - 2)
 			  in

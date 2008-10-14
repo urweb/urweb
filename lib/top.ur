@@ -74,7 +74,7 @@ fun foldTRX (tf :: Type -> Type) (ctx :: {Unit})
     foldTR [tf] [fn _ => xml ctx [] []]
            (fn (nm :: Name) (t :: Type) (rest :: {Type}) [[nm] ~ rest] r acc =>
                <xml>{f [nm] [t] [rest] r}{acc}</xml>)
-           <xml></xml>
+           <xml/>
 
 fun foldT2RX (tf :: (Type * Type) -> Type) (ctx :: {Unit})
              (f : nm :: Name -> t :: (Type * Type) -> rest :: {(Type * Type)}
@@ -84,7 +84,7 @@ fun foldT2RX (tf :: (Type * Type) -> Type) (ctx :: {Unit})
             (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                              [[nm] ~ rest] r acc =>
                 <xml>{f [nm] [t] [rest] r}{acc}</xml>)
-            <xml></xml>
+            <xml/>
 
 fun foldTRX2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (ctx :: {Unit})
              (f : nm :: Name -> t :: Type -> rest :: {Type}
@@ -94,7 +94,7 @@ fun foldTRX2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (ctx :: {Unit})
             (fn (nm :: Name) (t :: Type) (rest :: {Type}) [[nm] ~ rest]
                              r1 r2 acc =>
                 <xml>{f [nm] [t] [rest] r1 r2}{acc}</xml>)
-            <xml></xml>
+            <xml/>
 
 fun foldT2RX2 (tf1 :: (Type * Type) -> Type) (tf2 :: (Type * Type) -> Type)
               (ctx :: {Unit})
@@ -105,7 +105,7 @@ fun foldT2RX2 (tf1 :: (Type * Type) -> Type) (tf2 :: (Type * Type) -> Type)
              (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                               [[nm] ~ rest] r1 r2 acc =>
                  <xml>{f [nm] [t] [rest] r1 r2}{acc}</xml>)
-             <xml></xml>
+             <xml/>
 
 fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
            (q : sql_query tables exps) [tables ~ exps]
@@ -114,7 +114,7 @@ fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
                 -> xml ctx [] []) =
     query q
           (fn fs acc => return <xml>{acc}{f fs}</xml>)
-          <xml></xml>
+          <xml/>
 
 fun oneOrNoRows (tables ::: {{Type}}) (exps ::: {Type})
                 (q : sql_query tables exps) [tables ~ exps] =

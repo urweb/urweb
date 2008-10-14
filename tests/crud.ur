@@ -28,74 +28,74 @@ fun create (inputs : $(mapT2T sndTT M.cols)) =
         () <- dml (insert tab (foldT2R2 [sndTT] [colMeta]
                 [fn cols => $(mapT2T (fn t :: (Type * Type) =>
                         sql_exp [] [] [] t.1) cols)]
-                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
-                        [[nm] ~ rest] =>
-                        fn input col acc => acc with nm = sql_inject col.Inject (col.Parse input))
+                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                 [[nm] ~ rest] =>
+                 fn input col acc => acc with nm = sql_inject col.Inject (col.Parse input))
                 {} [M.cols] inputs M.cols
                 with #Id = (SQL {id})));
-        return <html><body>
+        return <xml><body>
                 Inserted with ID {txt _ id}.
-        </body></html>
+        </body></xml>
 
 fun save (id : int) (inputs : $(mapT2T sndTT M.cols)) =
         () <- dml (update [mapT2T fstTT M.cols] (foldT2R2 [sndTT] [colMeta]
                 [fn cols => $(mapT2T (fn t :: (Type * Type) =>
                         sql_exp [T = [Id = int] ++ mapT2T fstTT M.cols] [] [] t.1) cols)]
-                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
-                        [[nm] ~ rest] =>
-                        fn input col acc => acc with nm = sql_inject col.Inject (col.Parse input))
+                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                 [[nm] ~ rest] =>
+                 fn input col acc => acc with nm = sql_inject col.Inject (col.Parse input))
                 {} [M.cols] inputs M.cols)
                 tab (WHERE T.Id = {id}));
-        return <html><body>
+        return <xml><body>
                 Saved!
-        </body></html>
+        </body></xml>
 
 fun update (id : int) =
         fso <- oneOrNoRows (SELECT tab.{{mapT2T fstTT M.cols}} FROM tab WHERE tab.Id = {id});
         case fso : (Basis.option {Tab : $(mapT2T fstTT M.cols)}) of
-          None => return <html><body>Not found!</body></html>
-        | Some fs => return <html><body><lform>
+          None => return <xml><body>Not found!</body></xml>
+        | Some fs => return <xml><body><lform>
                 {foldT2R2 [fstTT] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
-                        (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
-                                [[nm] ~ rest] =>
-                                fn (v : t.1) (col : colMeta t) (acc : xml form [] (mapT2T sndTT rest)) => <lform>
-                                        <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
-                                        {useMore acc}
-                                </lform>)
-                        <lform></lform>
+                        (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                         [[nm] ~ rest] (v : t.1) (col : colMeta t)
+                                         (acc : xml form [] (mapT2T sndTT rest)) =>
+                            <xml>
+                              <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
+                              {useMore acc}
+                            </xml>)
+                        <xml/>
                         [M.cols] fs.Tab M.cols}
 
                 <submit action={save id}/>
-        </lform></body></html>
+        </lform></body></xml>
 
 fun delete (id : int) =
         () <- dml (DELETE FROM tab WHERE Id = {id});
-        return <html><body>
+        return <xml><body>
                 The deed is done.
-        </body></html>
+        </body></xml>
 
-fun confirm (id : int) = return <html><body>
+fun confirm (id : int) = return <xml><body>
         <p>Are you sure you want to delete ID #{txt _ id}?</p>
  
         <p><a link={delete id}>I was born sure!</a></p>
-</body></html>
+</body></xml>
 
 fun main () =
         rows <- queryX (SELECT * FROM tab AS T)
-                (fn (fs : {T : $([Id = int] ++ mapT2T fstTT M.cols)}) => <body>
+                (fn (fs : {T : $([Id = int] ++ mapT2T fstTT M.cols)}) => <xml>
                         <tr>
                                 <td>{txt _ fs.T.Id}</td>
                                 {foldT2RX2 [fstTT] [colMeta] [tr]
-                                        (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
-                                                [[nm] ~ rest] =>
-                                                fn v col => <tr>
+                                        (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                                [[nm] ~ rest] v col => <xml>
                                                         <td>{col.Show v}</td>
-                                                </tr>)
+                                                </xml>)
                                         [M.cols] (fs.T -- #Id) M.cols}
                                 <td><a link={update fs.T.Id}>[Update]</a> <a link={confirm fs.T.Id}>[Delete]</a></td>
                         </tr>
-                </body>);
-        return <html><head>
+                </xml>);
+        return <xml><head>
                 <title>{cdata M.title}</title>
 
                 </head><body>
@@ -106,11 +106,10 @@ fun main () =
                 <tr>
                         <th>ID</th>
                         {foldT2RX [colMeta] [tr]
-                                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
-                                        [[nm] ~ rest] =>
-                                        fn col => <tr>
+                                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                        [[nm] ~ rest] col => <xml>
                                                 <th>{cdata col.Nam}</th>
-                                        </tr>)
+                                        </xml>)
                                 [M.cols] M.cols}
                 </tr>
                 {rows}
@@ -120,17 +119,16 @@ fun main () =
 
                 <lform>
                         {foldT2R [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
-                                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)}) =>
-                                        [[nm] ~ rest] =>
-                                        fn (col : colMeta t) (acc : xml form [] (mapT2T sndTT rest)) => <lform>
+                                (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                        [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (mapT2T sndTT rest)) => <xml>
                                                 <li> {cdata col.Nam}: {col.Widget [nm]}</li>
                                                 {useMore acc}
-                                        </lform>)
-                                <lform></lform>
+                                        </xml>)
+                                <xml/>
                                 [M.cols] M.cols}
 
                         <submit action={create}/>
                 </lform>
-        </body></html>
+        </body></xml>
 
 end

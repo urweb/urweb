@@ -193,7 +193,7 @@ fun tagIn bt =
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
  | CASE | IF | THEN | ELSE
 
- | XML_BEGIN of string | XML_END
+ | XML_BEGIN of string | XML_END | XML_BEGIN_END of string
  | NOTAGS of string 
  | BEGIN_TAG of string | END_TAG of string
 
@@ -801,10 +801,37 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                          end)
        | FOLD                           (EFold, s (FOLDleft, FOLDright))
 
-       | XML_BEGIN xml XML_END          (xml)
-       | XML_BEGIN XML_END              (EApp ((EVar (["Basis"], "cdata"), s (XML_BEGINleft, XML_ENDright)),
-                                               (EPrim (Prim.String ""), s (XML_BEGINleft, XML_ENDright))),
-                                         s (XML_BEGINleft, XML_ENDright))
+       | XML_BEGIN xml XML_END          (let
+                                             val loc = s (XML_BEGINleft, XML_ENDright)
+                                         in
+                                             if XML_BEGIN = "xml" then
+                                                 ()
+                                             else
+                                                 ErrorMsg.errorAt loc "Initial XML tag pair aren't both tagged \"xml\".";
+                                             xml
+                                         end)
+       | XML_BEGIN XML_END              (let
+                                             val loc = s (XML_BEGINleft, XML_ENDright)
+                                         in
+                                             if XML_BEGIN = "xml" then
+                                                 ()
+                                             else
+                                                 ErrorMsg.errorAt loc "Initial XML tag pair aren't both tagged \"xml\".";
+                                             (EApp ((EVar (["Basis"], "cdata"), loc),
+                                                    (EPrim (Prim.String ""), loc)),
+                                              loc)
+                                         end)
+       | XML_BEGIN_END                  (let
+                                             val loc = s (XML_BEGIN_ENDleft, XML_BEGIN_ENDright)
+                                         in
+                                             if XML_BEGIN_END = "xml" then
+                                                 ()
+                                             else
+                                                 ErrorMsg.errorAt loc "Initial XML tag pair aren't both tagged \"xml\".";
+                                             (EApp ((EVar (["Basis"], "cdata"), loc),
+                                                    (EPrim (Prim.String ""), loc)),
+                                              loc)
+                                         end)
 
        | LPAREN query RPAREN            (query)
        | LPAREN CWHERE sqlexp RPAREN    (sqlexp)
