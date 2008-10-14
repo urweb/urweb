@@ -197,7 +197,7 @@ See doc for the variable `urweb-mode-info'."
 
 (defconst urweb-font-lock-keywords
   `(;;(urweb-font-comments-and-strings)
-    ("\\(<\\sw+\\)\\(\\s-\\|\\sw\\|=\\|\"[^\"]*\"\\|{[^}]*}\\)*/?\\(>\\)"
+    ("\\(<\\sw+\\)\\(\\s-\\|\\sw\\|=\\|\"[^\"]*\"\\|{[^}]*}\\)*\\(/?>\\)"
      (1 font-lock-tag-face)
      (3 font-lock-tag-face))
     ("\\(</\\sw+>\\)"
@@ -350,7 +350,7 @@ See doc for the variable `urweb-mode-info'."
 
 ;;;###autoload (add-to-list 'load-path (file-name-directory load-file-name))
 ;;;###autoload
-(add-to-list 'auto-mode-alist '("\\.s\\(ml\\|ig\\)\\'" . urweb-mode))
+(add-to-list 'auto-mode-alist '("\\.urs?\\'" . urweb-mode))
 
 ;;;###autoload
 (define-derived-mode urweb-mode fundamental-mode "Ur/Web"

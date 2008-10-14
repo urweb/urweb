@@ -2167,8 +2167,15 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
 
       | (L'.SgnConst sgis1, L'.SgnConst sgis2) =>
         let
+            (*val () = prefaces "subSgn" [("sgn1", p_sgn env sgn1),
+                                        ("sgn2", p_sgn env sgn2),
+                                        ("sgis1", p_sgn env (L'.SgnConst sgis1, loc2)),
+                                        ("sgis2", p_sgn env (L'.SgnConst sgis2, loc2))]*)
+
             fun folder (sgi2All as (sgi, loc), (env, denv)) =
                 let
+                    (*val () = prefaces "folder" [("sgis1", p_sgn env (L'.SgnConst sgis1, loc2))]*)
+
                     fun seek p =
                         let
                             fun seek (env, denv) ls =
@@ -2358,7 +2365,9 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                  case sgi1 of
                                      L'.SgiVal (x', n1, c1) =>
                                      if x = x' then
-                                         (case unifyCons (env, denv) c1 c2 of
+                                         ((*prefaces "Pre" [("c1", p_con env c1),
+                                                          ("c2", p_con env c2)];*)
+                                          case unifyCons (env, denv) c1 c2 of
                                               [] => SOME (env, denv)
                                             | _ => NONE)
                                          handle CUnify (c1, c2, err) =>
@@ -2846,7 +2855,7 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                     val c' = makeInstantiable c'
                 in
                     (*prefaces "DVal" [("x", Print.PD.string x),
-                                       ("c'", p_con env c')];*)
+                                     ("c'", p_con env c')];*)
                     ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ enD gs3 @ enD gs4 @ gs))
                 end
               | L.DValRec vis =>
