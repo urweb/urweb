@@ -54,7 +54,7 @@ fun update (id : int) =
         fso <- oneOrNoRows (SELECT tab.{{mapT2T fstTT M.cols}} FROM tab WHERE tab.Id = {id});
         case fso : (Basis.option {Tab : $(mapT2T fstTT M.cols)}) of
           None => return <xml><body>Not found!</body></xml>
-        | Some fs => return <xml><body><lform>
+        | Some fs => return <xml><body><form>
                 {foldT2R2 [fstTT] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
                         (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                          [[nm] ~ rest] (v : t.1) (col : colMeta t)
@@ -67,7 +67,7 @@ fun update (id : int) =
                         [M.cols] fs.Tab M.cols}
 
                 <submit action={save id}/>
-        </lform></body></xml>
+        </form></body></xml>
 
 fun delete (id : int) =
         () <- dml (DELETE FROM tab WHERE Id = {id});
@@ -117,7 +117,7 @@ fun main () =
 
                 <br/>
 
-                <lform>
+                <form>
                         {foldT2R [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
                                 (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                         [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (mapT2T sndTT rest)) => <xml>
@@ -128,7 +128,7 @@ fun main () =
                                 [M.cols] M.cols}
 
                         <submit action={create}/>
-                </lform>
+                </form>
         </body></xml>
 
 end

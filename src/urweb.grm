@@ -955,8 +955,8 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata"), s (NO
                                              val et = tagIn END_TAG
                                          in
                                              if #1 tag = et then
-                                                 if et = "lform" then
-                                                     (EApp ((EVar (["Basis"], "lform"), pos),
+                                                 if et = "form" then
+                                                     (EApp ((EVar (["Basis"], "form"), pos),
                                                             xml), pos)
                                                  else
                                                      (EApp (#2 tag, xml), pos)

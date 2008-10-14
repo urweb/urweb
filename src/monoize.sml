@@ -1361,7 +1361,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to textarea tag"))
                   | "password" => input "password"
-                  | "ltextarea" =>
+                  | "textarea" =>
                     (case targs of
                          [_, (L.CName name, _)] =>
                          let
@@ -1393,7 +1393,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          normal ("input",
                                  SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc)))
 
-                  | "lselect" =>
+                  | "select" =>
                     (case targs of
                          [_, (L.CName name, _)] =>
                          let
@@ -1411,14 +1411,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to lselect tag"))
 
-                  | "loption" => normal ("option", NONE)
+                  | "option" => normal ("option", NONE)
 
                   | "tabl" => normal ("table", NONE)
                   | _ => normal (tag, NONE)
             end
 
           | L.EApp ((L.ECApp (
-                     (L.ECApp ((L.EFfi ("Basis", "lform"), _), _), _),
+                     (L.ECApp ((L.EFfi ("Basis", "form"), _), _), _),
                      _), _),
                     xml) =>
             let

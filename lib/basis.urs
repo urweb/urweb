@@ -283,14 +283,14 @@ con xhtml = xml [Html]
 con page = xhtml [] []
 con xbody = xml [Body] [] []
 con xtr = xml [Body, Tr] [] []
-con xform = xml [Body, LForm] [] []
+con xform = xml [Body, Form] [] []
 
 (*** HTML details *)
 
 con html = [Html]
 con head = [Head]
 con body = [Body]
-con form = [Body, LForm]
+con form = [Body, Form]
 con tabl = [Body, Table]
 con tr = [Body, Tr]
 
@@ -319,34 +319,34 @@ val li : bodyTag []
 
 val a : bodyTag [Link = transaction page]
 
-val lform : ctx ::: {Unit} -> bind ::: {Type}
+val form : ctx ::: {Unit} -> bind ::: {Type}
             -> fn [[Body] ~ ctx] =>
                   xml form [] bind
                   -> xml ([Body] ++ ctx) [] []
-con lformTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
+con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   ctx ::: {Unit}
-                  -> fn [[LForm] ~ ctx] =>
+                  -> fn [[Form] ~ ctx] =>
                         nm :: Name -> unit
-                        -> tag attrs ([LForm] ++ ctx) inner [] [nm = ty]
-val textbox : lformTag string [] [Value = string]
-val password : lformTag string [] []
-val ltextarea : lformTag string [] []
+                        -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
+val textbox : formTag string [] [Value = string]
+val password : formTag string [] []
+val textarea : formTag string [] []
 
-val checkbox : lformTag bool [] [Checked = bool]
+val checkbox : formTag bool [] [Checked = bool]
 
 con radio = [Body, Radio]
-val radio : lformTag string radio []
+val radio : formTag string radio []
 val radioOption : unit -> tag [Value = string] radio [] [] []
 
 con select = [Select]
-val lselect : lformTag string select []
-val loption : unit -> tag [Value = string] select [] [] []
+val select : formTag string select []
+val option : unit -> tag [Value = string] select [] [] []
 
 val submit : ctx ::: {Unit} ->  use ::: {Type}
-             -> fn [[LForm] ~ ctx] =>
+             -> fn [[Form] ~ ctx] =>
                    unit
                    -> tag [Action = $use -> transaction page]
-                          ([LForm] ++ ctx) ([LForm] ++ ctx) use []
+                          ([Form] ++ ctx) ([Form] ++ ctx) use []
 
 (*** Tables *)
 
