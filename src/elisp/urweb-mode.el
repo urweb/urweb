@@ -573,6 +573,8 @@ Point should be just before the symbol ORIG-SYM and is not preserved."
   (let ((sym (unless (save-excursion (urweb-backward-arg))
 	       (urweb-backward-spaces)
 	       (urweb-backward-sym))))
+    (if (and (= sym ">") (save-excursion (backward-char 5) (looking-at "</xml")))
+        (setq sym "</xml>"))
     (if (member sym '(";" "d=")) (setq sym nil))
     (if sym (urweb-get-sym-indent sym)
       ;; FIXME: this can take a *long* time !!

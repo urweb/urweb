@@ -172,6 +172,7 @@ for all symbols and in all lines starting with the given symbol."
     ("then" "\\<if\\>")
     ("else" "\\<if\\>" (urweb-bolp))
     ("of" "\\<case\\>")
+    ("</xml>" "<xml>")
     ("d=" nil))
   "Symbols that should behave somewhat like close parens.")
 
