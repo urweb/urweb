@@ -511,6 +511,7 @@ If anyone has a good algorithm for this..."
         (and (urweb-in-xml)
              (let ((prev-indent (save-excursion
                                   (previous-line 1)
+                                  (end-of-line 1)
                                   (re-search-backward "^[^\n]" nil t)
                                   (current-indentation))))
                (cond
