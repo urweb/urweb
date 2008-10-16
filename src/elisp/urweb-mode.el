@@ -512,9 +512,16 @@ If anyone has a good algorithm for this..."
     (beginning-of-line)
     (current-indentation)))
 
-(defconst urweb-sql-starters
-  '("FROM" "WHERE" "GROUP" "ORDER" "HAVING" "LIMIT" "OFFSET"))
+(defconst urweb-sql-main-starters
+  '("SELECT" "INSERT" "UPDATE" "DELETE"))
 
+(defconst urweb-sql-starters
+  (append urweb-sql-main-starters
+          '("^\\s-+FROM" "WHERE" "GROUP" "ORDER" "HAVING" "LIMIT" "OFFSET"
+            "VALUES" "SET")))
+
+(defconst urweb-sql-main-starters-re
+  (urweb-syms-re urweb-sql-main-starters))
 (defconst urweb-sql-starters-re
   (urweb-syms-re urweb-sql-starters))
 
@@ -575,7 +582,9 @@ If anyone has a good algorithm for this..."
         (and (looking-at urweb-sql-starters-re)
              (save-excursion
                (and (re-search-backward urweb-sql-starters-re nil t)
-                    (current-indentation))))
+                    (if (looking-at urweb-sql-main-starters-re)
+                        (current-column)
+                      (current-indentation)))))
 
 	(and (setq data (assoc sym urweb-close-paren))
 	     (urweb-indent-relative sym data))
