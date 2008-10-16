@@ -160,7 +160,7 @@ See doc for the variable `urweb-mode-info'."
 
 ;; The font lock regular expressions.
 
-(defun inXml ()
+(defun urweb-in-xml ()
   (save-excursion
     (let (
           (depth 0)
@@ -171,10 +171,10 @@ See doc for the variable `urweb-mode-info'."
         (cond
          ((looking-at "{")
           (if (> depth 0)
-              (setq depth (- depth 1))
+              (decf depth)
             (setq finished t)))
          ((looking-at "}")
-          (setq depth (+ depth 1)))
+          (incf depth))
          ((save-excursion (backward-char 1) (or (looking-at "=>") (looking-at "->")))
           nil)
          ((looking-at "<")
@@ -203,7 +203,7 @@ See doc for the variable `urweb-mode-info'."
     ("\\(</\\sw+>\\)"
      (1 font-lock-tag-face))
     ("\\([^<>{}]+\\)"
-     (1 (if (inXml)
+     (1 (if (urweb-in-xml)
             font-lock-string-face
           nil)))
 
@@ -452,6 +452,43 @@ If anyone has a good algorithm for this..."
 	  (1+ (current-column))
 	nil))))
 
+(defun urweb-new-tags ()
+  "Decide if the previous line of XML introduced unclosed tags"
+  (save-excursion
+    (let ((start-pos (point))
+          (depth 0)
+          (done nil))
+      (previous-line 1)
+      (beginning-of-line)
+      (while (and (not done) (search-forward "<" start-pos t))
+        (if (looking-at "/")
+          (if (search-forward ">" start-pos t)
+              (when (> depth 0) (decf depth))
+            (setq done t))
+          (if (search-forward ">" start-pos t)
+              (if (not (save-excursion (backward-char 2) (looking-at "/")))
+                  (incf depth))
+            (setq done t))))
+      (and (not done) (> depth 0)))))
+
+(defun urweb-tag-matching-indent ()
+  "Seek back to a matching opener tag and get its line's indent"
+  (save-excursion
+    (let ((depth 0)
+          (done nil))
+      (while (and (not done) (search-backward ">" nil t))
+        (if (save-excursion (backward-char 1) (looking-at "/"))
+            (when (not (search-backward "<" nil t))
+              (setq done t))
+          (if (search-backward "<" nil t)
+              (if (looking-at "</")
+                  (incf depth)
+                (if (= depth 0)
+                    (setq done t)
+                  (decf depth)))
+            (setq done t))))
+      (current-indentation))))
+
 (defun urweb-calculate-indentation ()
   (save-excursion
     (beginning-of-line) (skip-chars-forward "\t ")
@@ -470,6 +507,19 @@ If anyone has a good algorithm for this..."
 
 	;; Continued comment.
 	(and (looking-at "\\*") (urweb-find-comment-indent))
+
+        (and (urweb-in-xml)
+             (let ((prev-indent (save-excursion
+                                  (previous-line 1)
+                                  (re-search-backward "^[^\n]" nil t)
+                                  (current-indentation))))
+               (cond
+                ((looking-at "</")
+                 (urweb-tag-matching-indent))
+                ((urweb-new-tags)
+                 (+ prev-indent 2))
+                (t
+                 prev-indent))))
 
 	;; Continued string ? (Added 890113 lbn)
 	(and (looking-at "\\\\")
