@@ -535,19 +535,23 @@ If anyone has a good algorithm for this..."
 (defun urweb-in-sql ()
   "Check if the point is in a block of SQL syntax."
   (save-excursion
-    (let ((depth 0)
-          done)
-      (while (and (not done)
-                  (re-search-backward "[()]" nil t))
-        (cond
-         ((looking-at ")")
-          (decf depth))
-         ((looking-at "(")
-          (if (looking-at urweb-sql-main-starters-paren-re)
-              (setq done t)
-            (incf depth)))))
-      (and (>= depth 0)
-           (looking-at urweb-sql-main-starters-paren-re)))))
+    (let ((start-pos (point))
+          (depth 0)
+          done
+          (good t))
+      (when (re-search-backward urweb-sql-main-starters-paren-re nil t)
+        (forward-char)
+        (while (and (not done) (re-search-forward "[()]" start-pos t))
+          (save-excursion
+            (backward-char)
+            (cond
+             ((looking-at ")")
+              (cond
+               ((= depth 0) (setq done t) (setq good nil))
+               (t (decf depth))))
+             ((looking-at "(")
+              (incf depth)))))
+        good))))
 
 (defun urweb-sql-depth ()
   "Check if the point is in a block of SQL syntax.
