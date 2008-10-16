@@ -34,10 +34,10 @@ fun foldTR (tf :: Type -> Type) (tr :: {Type} -> Type)
              (fn _ => i)
 
 fun foldT2R (tf :: (Type * Type) -> Type) (tr :: {(Type * Type)} -> Type)
-        (f : nm :: Name -> t :: (Type * Type) -> rest :: {(Type * Type)}
-             -> fn [[nm] ~ rest] =>
-                   tf t -> tr rest -> tr ([nm = t] ++ rest))
-        (i : tr []) =
+            (f : nm :: Name -> t :: (Type * Type) -> rest :: {(Type * Type)}
+                 -> fn [[nm] ~ rest] =>
+                       tf t -> tr rest -> tr ([nm = t] ++ rest))
+            (i : tr []) =
     fold [fn r :: {(Type * Type)} => $(mapT2T tf r) -> tr r]
              (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                               (acc : _ -> tr rest) [[nm] ~ rest] r =>
@@ -45,10 +45,10 @@ fun foldT2R (tf :: (Type * Type) -> Type) (tr :: {(Type * Type)} -> Type)
              (fn _ => i)
 
 fun foldTR2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (tr :: {Type} -> Type)
-        (f : nm :: Name -> t :: Type -> rest :: {Type}
-             -> fn [[nm] ~ rest] =>
-                   tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
-        (i : tr []) =
+            (f : nm :: Name -> t :: Type -> rest :: {Type}
+                 -> fn [[nm] ~ rest] =>
+                       tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
+            (i : tr []) =
     fold [fn r :: {Type} => $(mapTT tf1 r) -> $(mapTT tf2 r) -> tr r]
              (fn (nm :: Name) (t :: Type) (rest :: {Type})
                               (acc : _ -> _ -> tr rest) [[nm] ~ rest] r1 r2 =>

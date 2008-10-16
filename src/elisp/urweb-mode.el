@@ -478,6 +478,25 @@ If anyone has a good algorithm for this..."
             (setq done t))))
       (and (not done) (> depth 0)))))
 
+(defun skip-matching-braces ()
+  "Skip backwards past matching brace pairs, to calculate XML indentation after quoted Ur code"
+  (beginning-of-line)
+  (let ((start-pos (point))
+        (depth 0))
+    (end-of-line)
+    (while (re-search-backward "[{}]" start-pos t)
+      (cond
+       ((looking-at "}")
+        (incf depth))
+       ((looking-at "{")
+        (decf depth))))
+    (while (and (> depth 0) (re-search-backward "[{}]" nil t)
+      (cond
+       ((looking-at "}")
+        (incf depth))
+       ((looking-at "{")
+        (decf depth)))))))
+
 (defun urweb-tag-matching-indent ()
   "Seek back to a matching opener tag and get its line's indent"
   (save-excursion
@@ -520,7 +539,7 @@ If anyone has a good algorithm for this..."
         (and (urweb-in-xml)
              (let ((prev-indent (save-excursion
                                   (previous-line 1)
-                                  (end-of-line 1)
+                                  (skip-matching-braces)
                                   (re-search-backward "^[^\n]" nil t)
                                   (current-indentation))))
                (cond
