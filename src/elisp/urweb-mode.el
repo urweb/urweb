@@ -452,33 +452,17 @@ If anyone has a good algorithm for this..."
 	  (1+ (current-column))
 	nil))))
 
-(defun urweb-begun-xml ()
-  "Check if this is the first new line in a new <xml>...</xml> section"
+(defun urweb-empty-line ()
   (save-excursion
+    (beginning-of-line)
     (let ((start-pos (point)))
-      (previous-line 1)
-      (search-forward "<xml>" start-pos t))))
+      (end-of-line)
+      (not (re-search-backward "[^\n \t]" start-pos t)))))
 
-(defun urweb-new-tags ()
-  "Decide if the previous line of XML introduced unclosed tags"
-  (save-excursion
-    (let ((start-pos (point))
-          (depth 0)
-          (done nil))
-      (previous-line 1)
-      (beginning-of-line)
-      (while (and (not done) (search-forward "<" start-pos t))
-        (if (looking-at "/")
-          (if (search-forward ">" start-pos t)
-              (when (> depth 0) (decf depth))
-            (setq done t))
-          (if (search-forward ">" start-pos t)
-              (if (not (save-excursion (backward-char 2) (looking-at "/")))
-                  (incf depth))
-            (setq done t))))
-      (and (not done) (> depth 0)))))
+(defun urweb-seek-back ()
+  (while (urweb-empty-line) (previous-line 1)))
 
-(defun skip-matching-braces ()
+(defun urweb-skip-matching-braces ()
   "Skip backwards past matching brace pairs, to calculate XML indentation after quoted Ur code"
   (beginning-of-line)
   (let ((start-pos (point))
@@ -497,13 +481,36 @@ If anyone has a good algorithm for this..."
        ((looking-at "{")
         (decf depth)))))))
 
+(defun urweb-new-tags ()
+  "Decide if the previous line of XML introduced unclosed tags"
+  (save-excursion
+    (let ((start-pos (point))
+          (depth 0)
+          (done nil))
+      (previous-line 1)
+      (urweb-seek-back)
+      (urweb-skip-matching-braces)
+      (urweb-seek-back)
+      (beginning-of-line)
+      (while (and (not done) (search-forward "<" start-pos t))
+        (if (looking-at "/")
+          (if (search-forward ">" start-pos t)
+              (when (> depth 0) (decf depth))
+            (setq done t))
+          (if (search-forward ">" start-pos t)
+              (if (not (save-excursion (backward-char 2) (looking-at "/")))
+                  (incf depth))
+            (setq done t))))
+      (and (not done) (> depth 0)))))
+
 (defun urweb-tag-matching-indent ()
   "Seek back to a matching opener tag and get its line's indent"
   (save-excursion
+    (end-of-line)
+    (search-backward "</" nil t)
     (urweb-tag-matcher)
-    (if (looking-at "<xml")
-        (+ (current-indentation) 2)
-      (current-indentation))))
+    (beginning-of-line)
+    (current-indentation)))
 
 (defun urweb-calculate-indentation ()
   (save-excursion
@@ -527,14 +534,13 @@ If anyone has a good algorithm for this..."
         (and (urweb-in-xml)
              (let ((prev-indent (save-excursion
                                   (previous-line 1)
-                                  (skip-matching-braces)
-                                  (re-search-backward "^[^\n]" nil t)
+                                  (urweb-seek-back)
+                                  (urweb-skip-matching-braces)
+                                  (urweb-seek-back)
                                   (current-indentation))))
                (cond
                 ((looking-at "</")
                  (urweb-tag-matching-indent))
-                ((urweb-begun-xml)
-                 (+ prev-indent 4))
                 ((urweb-new-tags)
                  (+ prev-indent 2))
                 (t

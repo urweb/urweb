@@ -75,7 +75,7 @@
      (("AND" "OR") . 1)
      ((">=" "<>" "<=" "=") . 4)
      (("+" "-" "^") . 6)
-     (("/" "*" "%") . 7)
+     (("*" "%") . 7)
      (("NOT") 9)))
   "Alist of Ur/Web infix operators and their precedence.")
 
@@ -250,12 +250,6 @@ PREC is the precedence currently looked for."
 	   (op-prec (urweb-op-prec op 'back))
 	   match)
       (cond
-        ((save-excursion (backward-char 5)
-                         (looking-at "</xml>"))
-         (backward-char 6)
-         (urweb-tag-matcher)
-         (backward-char 1)
-         (urweb-backward-sexp prec))
        ((not op)
 	(let ((point (point)))
 	  (ignore-errors (let ((forward-sexp-function nil)) (backward-sexp 1)))
@@ -278,11 +272,6 @@ PREC is the precedence currently looked for."
        ;; this reproduces the usual backward-sexp, but it might be bogus
        ;; in this case since !@$% is a perfectly fine symbol
        (t t))))) ;(or (string-match "\\sw" op) (urweb-backward-sexp prec))
-;;   (when (save-excursion (backward-char 5) (looking-at "</xml>"))
-;;     (backward-char 5)
-;;     (urweb-tag-matcher)
-;;     (backward-char)
-;;     (urweb-backward-sexp prec)))
 
 (defun urweb-forward-sexp (prec)
   "Moves one sexp forward if possible, or one char else.
