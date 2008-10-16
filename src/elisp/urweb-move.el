@@ -182,6 +182,7 @@ This assumes that we are `looking-at' the OP."
   (or (/= 0 (skip-syntax-forward "'w_"))
       (/= 0 (skip-syntax-forward ".'"))))
 (defun urweb-forward-sym ()
+  (interactive)
   (let ((sym (urweb-move-read (urweb-forward-sym-1))))
     (cond
      ((equal "op" sym)
@@ -206,22 +207,33 @@ This assumes that we are `looking-at' the OP."
   (or (/= 0 (skip-syntax-backward ".'"))
       (/= 0 (skip-syntax-backward "'w_"))))
 (defun urweb-backward-sym ()
+  (interactive)
   (let ((sym (urweb-move-read (urweb-backward-sym-1))))
-    (when sym
-      ;; FIXME: what should we do if `sym' = "op" ?
-      (let ((point (point)))
-	(urweb-backward-spaces)
-	(if (equal "op" (urweb-move-read (urweb-backward-sym-1)))
-	    (concat "op " sym)
-	  (goto-char point)
-	  (cond
-	   ((string= sym "=") (if (urweb-poly-equal-p) "=" "d="))
-	   ((string= sym "of") (if (urweb-nested-of-p) "of" "=of"))
-	   ;; ((string= sym "datatype")
-	   ;;  (save-excursion (urweb-backward-spaces)
-	   ;; 		    (if (eq (preceding-char) ?=) "=datatype" sym)))
-	   (t sym)))))))
-    
+    (let ((result
+           (when sym
+             ;; FIXME: what should we do if `sym' = "op" ?
+             (let ((point (point)))
+               (urweb-backward-spaces)
+               (if (equal "op" (urweb-move-read (urweb-backward-sym-1)))
+                   (concat "op " sym)
+                 (goto-char point)
+                 (cond
+                  ((string= sym "=") (if (urweb-poly-equal-p) "=" "d="))
+                  ((string= sym "of") (if (urweb-nested-of-p) "of" "=of"))
+                  ;; ((string= sym "datatype")
+                  ;;  (save-excursion (urweb-backward-spaces)
+                  ;; 		    (if (eq (preceding-char) ?=) "=datatype" sym)))
+                  (t sym)))))))
+      (if (looking-at ">")
+          (substring result 1 nil)
+        result))))
+;;       (if (save-excursion (backward-char 5) (looking-at "</xml>"))
+;;           (progn
+;;             (backward-char 5)
+;;             (urweb-tag-matcher)
+;;             (backward-char)
+;;             (urweb-backward-sym))
+;;         result))))
 
 (defun urweb-tag-matcher ()
   "Seek back to a matching opener tag"
@@ -243,35 +255,42 @@ This assumes that we are `looking-at' the OP."
   "Move one sexp backward if possible, or one char else.
 Returns t if the move indeed moved through one sexp and nil if not.
 PREC is the precedence currently looked for."
-  (let ((parse-sexp-lookup-properties t)
-	(parse-sexp-ignore-comments t))
-    (urweb-backward-spaces)
-    (let* ((op (urweb-backward-sym))
-	   (op-prec (urweb-op-prec op 'back))
-	   match)
-      (cond
-       ((not op)
-	(let ((point (point)))
-	  (ignore-errors (let ((forward-sexp-function nil)) (backward-sexp 1)))
-	  (if (/= point (point)) t (ignore-errors (backward-char 1)) nil)))
-       ;; stop as soon as precedence is smaller than `prec'
-       ((and prec op-prec (>= prec op-prec)) nil)
-       ;; special rules for nested constructs like if..then..else
-       ((and (or (not prec) (and prec op-prec))
-	     (setq match (second (assoc op urweb-close-paren))))
-	(urweb-find-match-backward (concat "\\<" op "\\>") match))
-       ;; don't back over open-parens
-       ((assoc op urweb-open-paren) nil)
-       ;; infix ops precedence
-       ((and prec op-prec) (< prec op-prec))
-       ;; [ prec = nil ]  a new operator, let's skip the sexps until the next
-       (op-prec (while (urweb-move-if (urweb-backward-sexp op-prec))) t)
-       ;; special symbols indicating we're getting out of a nesting level
-       ((string-match urweb-sexp-head-symbols-re op) nil)
-       ;; if the op was not alphanum, then we still have to do the backward-sexp
-       ;; this reproduces the usual backward-sexp, but it might be bogus
-       ;; in this case since !@$% is a perfectly fine symbol
-       (t t))))) ;(or (string-match "\\sw" op) (urweb-backward-sexp prec))
+  (let ((result (let ((parse-sexp-lookup-properties t)
+                      (parse-sexp-ignore-comments t))
+                  (urweb-backward-spaces)
+                  (let* ((op (urweb-backward-sym))
+                         (op-prec (urweb-op-prec op 'back))
+                         match)
+                  (cond
+                   ((not op)
+                    (let ((point (point)))
+                      (ignore-errors (let ((forward-sexp-function nil)) (backward-sexp 1)))
+                      (if (/= point (point)) t (ignore-errors (backward-char 1)) nil)))
+                   ;; stop as soon as precedence is smaller than `prec'
+                   ((and prec op-prec (>= prec op-prec)) nil)
+                   ;; special rules for nested constructs like if..then..else
+                   ((and (or (not prec) (and prec op-prec))
+                         (setq match (second (assoc op urweb-close-paren))))
+                    (urweb-find-match-backward (concat "\\<" op "\\>") match))
+                   ;; don't back over open-parens
+                   ((assoc op urweb-open-paren) nil)
+                   ;; infix ops precedence
+                   ((and prec op-prec) (< prec op-prec))
+                   ;; [ prec = nil ]  a new operator, let's skip the sexps until the next
+                   (op-prec (while (urweb-move-if (urweb-backward-sexp op-prec))) t)
+                   ;; special symbols indicating we're getting out of a nesting level
+                   ((string-match urweb-sexp-head-symbols-re op) nil)
+                   ;; if the op was not alphanum, then we still have to do the backward-sexp
+                   ;; this reproduces the usual backward-sexp, but it might be bogus
+                   ;; in this case since !@$% is a perfectly fine symbol
+                   (t t))))))
+    (if (save-excursion (backward-char 5) (looking-at "</xml>"))
+      (progn
+        (backward-char 5)
+        (urweb-tag-matcher)
+        (backward-char)
+        (urweb-backward-sexp prec))
+      result)))
 
 (defun urweb-forward-sexp (prec)
   "Moves one sexp forward if possible, or one char else.
@@ -340,8 +359,8 @@ Returns T if the move indeed moved through one sexp and NIL if not."
 ;;(defun urweb-forward-thing ()
 ;;  (if (= ?w (char-syntax (char-after))) (forward-word 1) (forward-char 1)))
 
-(defun urweb-backward-arg () (urweb-backward-sexp 1000))
-(defun urweb-forward-arg () (urweb-forward-sexp 1000))
+(defun urweb-backward-arg () (interactive) (urweb-backward-sexp 1000))
+(defun urweb-forward-arg () (interactive) (urweb-forward-sexp 1000))
 
 
 (provide 'urweb-move)

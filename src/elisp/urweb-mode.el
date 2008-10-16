@@ -676,7 +676,7 @@ it is not on its own line but is the last element on that line."
   "Find the indentation for the SYM we're `looking-at'.
 If indentation is delegated, point will move to the start of the parent.
 Optional argument STYLE is currently ignored."
-  (assert (equal sym (save-excursion (urweb-forward-sym))))
+;;(assert (equal sym (save-excursion (urweb-forward-sym))))
   (save-excursion
     (let ((delegate (and (not (equal sym "end")) (assoc sym urweb-close-paren)))
 	  (head-sym sym))
