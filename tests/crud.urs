@@ -8,7 +8,6 @@ con colMeta = fn t_formT :: (Type * Type) =>
                   Inject : sql_injectable t_formT.1}
 con colsMeta = fn cols :: {(Type * Type)} => $(mapT2T colMeta cols)
 
-val default : t ::: Type -> show t -> read t -> sql_injectable t -> string -> colMeta (t, string)
 val int : string -> colMeta (int, string)
 val float : string -> colMeta (float, string)
 val string : string -> colMeta (string, string)

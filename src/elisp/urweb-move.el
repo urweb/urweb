@@ -340,7 +340,7 @@ Returns T if the move indeed moved through one sexp and NIL if not."
 ;;(defun urweb-forward-thing ()
 ;;  (if (= ?w (char-syntax (char-after))) (forward-word 1) (forward-char 1)))
 
-(defun urweb-backward-arg () (interactive) (urweb-backward-sexp 1000))
+(defun urweb-backward-arg () (urweb-backward-sexp 1000))
 (defun urweb-forward-arg () (urweb-forward-sexp 1000))
 
 
