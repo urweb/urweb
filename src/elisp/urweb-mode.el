@@ -512,6 +512,12 @@ If anyone has a good algorithm for this..."
     (beginning-of-line)
     (current-indentation)))
 
+(defconst urweb-sql-starters
+  '("FROM" "WHERE" "GROUP" "ORDER" "HAVING" "LIMIT" "OFFSET"))
+
+(defconst urweb-sql-starters-re
+  (urweb-syms-re urweb-sql-starters))
+
 (defun urweb-calculate-indentation ()
   (save-excursion
     (beginning-of-line) (skip-chars-forward "\t ")
@@ -565,6 +571,11 @@ If anyone has a good algorithm for this..."
 	       (if (urweb-dangling-sym)
 		   (urweb-indent-default 'noindent)
 		 (current-column))))
+
+        (and (looking-at urweb-sql-starters-re)
+             (save-excursion
+               (and (re-search-backward urweb-sql-starters-re nil t)
+                    (current-indentation))))
 
 	(and (setq data (assoc sym urweb-close-paren))
 	     (urweb-indent-relative sym data))

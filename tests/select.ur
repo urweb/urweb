@@ -1,13 +1,13 @@
-val handler = fn x => <html><body>
+val handler = fn x => <xml><body>
         You entered: {cdata x.A}
-</body></html>
+</body></xml>
 
-val main = fn () => <html><body>
-        <lform>
-                <lselect{#A}>
-                        <loption value="A">A</loption>
-                        <loption value="B">B</loption>
-                </lselect>
+val main = fn () => <xml><body>
+        <form>
+                <select{#A}>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                </select>
                 <submit action={handler}/>
-        </lform>
-</body></html>
+        </form>
+</body></xml>
