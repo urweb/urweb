@@ -73,7 +73,7 @@
   (urweb-preproc-alist
    '((("UNION" "INTERSECT" "EXCEPT") . 0)
      (("AND" "OR") . 1)
-     ((">" ">=" "<>" "<" "<=" "=") . 4)
+     ((">=" "<>" "<=" "=") . 4)
      (("+" "-" "^") . 6)
      (("/" "*" "%") . 7)
      (("NOT") 9)))
@@ -223,6 +223,22 @@ This assumes that we are `looking-at' the OP."
 	   (t sym)))))))
     
 
+(defun urweb-tag-matcher ()
+  "Seek back to a matching opener tag"
+  (let ((depth 0)
+        (done nil))
+    (while (and (not done) (search-backward ">" nil t))
+      (if (save-excursion (backward-char 1) (looking-at "/"))
+          (when (not (search-backward "<" nil t))
+            (setq done t))
+        (if (search-backward "<" nil t)
+            (if (looking-at "</")
+                (incf depth)
+              (if (= depth 0)
+                  (setq done t)
+                (decf depth)))
+          (setq done t))))))
+
 (defun urweb-backward-sexp (prec)
   "Move one sexp backward if possible, or one char else.
 Returns t if the move indeed moved through one sexp and nil if not.
@@ -234,6 +250,12 @@ PREC is the precedence currently looked for."
 	   (op-prec (urweb-op-prec op 'back))
 	   match)
       (cond
+        ((save-excursion (backward-char 5)
+                         (looking-at "</xml>"))
+         (backward-char 6)
+         (urweb-tag-matcher)
+         (backward-char 1)
+         (urweb-backward-sexp prec))
        ((not op)
 	(let ((point (point)))
 	  (ignore-errors (let ((forward-sexp-function nil)) (backward-sexp 1)))
@@ -256,6 +278,11 @@ PREC is the precedence currently looked for."
        ;; this reproduces the usual backward-sexp, but it might be bogus
        ;; in this case since !@$% is a perfectly fine symbol
        (t t))))) ;(or (string-match "\\sw" op) (urweb-backward-sexp prec))
+;;   (when (save-excursion (backward-char 5) (looking-at "</xml>"))
+;;     (backward-char 5)
+;;     (urweb-tag-matcher)
+;;     (backward-char)
+;;     (urweb-backward-sexp prec)))
 
 (defun urweb-forward-sexp (prec)
   "Moves one sexp forward if possible, or one char else.
@@ -307,6 +334,7 @@ Returns T if the move indeed moved through one sexp and NIL if not."
 	   (goto-char point)
 	   (error "Containing expression ends prematurely")))))))
 
+
 (defun urweb-user-forward-sexp (&optional count)
   "Like `forward-sexp' but tailored to the Ur/Web syntax."
   (interactive "p")
@@ -323,7 +351,7 @@ Returns T if the move indeed moved through one sexp and NIL if not."
 ;;(defun urweb-forward-thing ()
 ;;  (if (= ?w (char-syntax (char-after))) (forward-word 1) (forward-char 1)))
 
-(defun urweb-backward-arg () (urweb-backward-sexp 1000))
+(defun urweb-backward-arg () (interactive) (urweb-backward-sexp 1000))
 (defun urweb-forward-arg () (urweb-forward-sexp 1000))
 
 

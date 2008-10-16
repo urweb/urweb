@@ -500,22 +500,10 @@ If anyone has a good algorithm for this..."
 (defun urweb-tag-matching-indent ()
   "Seek back to a matching opener tag and get its line's indent"
   (save-excursion
-    (let ((depth 0)
-          (done nil))
-      (while (and (not done) (search-backward ">" nil t))
-        (if (save-excursion (backward-char 1) (looking-at "/"))
-            (when (not (search-backward "<" nil t))
-              (setq done t))
-          (if (search-backward "<" nil t)
-              (if (looking-at "</")
-                  (incf depth)
-                (if (= depth 0)
-                    (setq done t)
-                  (decf depth)))
-            (setq done t))))
-      (if (looking-at "<xml")
-          (+ (current-indentation) 2)
-        (current-indentation)))))
+    (urweb-tag-matcher)
+    (if (looking-at "<xml")
+        (+ (current-indentation) 2)
+      (current-indentation))))
 
 (defun urweb-calculate-indentation ()
   (save-excursion

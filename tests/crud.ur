@@ -12,10 +12,10 @@ fun default (t ::: Type) (sh : show t) (rd : read t) (inj : sql_injectable t)
             name : colMeta (t, string) =
     {Nam = name,
      Show = txt _,
-     Widget = fn nm :: Name => <xml><textbox{nm}/></xml>,
+     Widget = fn nm :: Name => (<xml><textbox{nm}/></xml>),
      WidgetPopulated = fn (nm :: Name) n =>
-       <xml><textbox{nm} value={show _ n}/></xml>,
-     Parse = readError _,
+                          (<xml><textbox{nm} value={show _ n}/></xml>),
+     Parse = readError _,e
      Inject = _}
 
 val int = default _ _ _
@@ -24,9 +24,9 @@ val string = default _ _ _
 
 fun bool name = {Nam = name,
                  Show = txt _,
-                 Widget = fn nm :: Name => <xml><checkbox{nm}/></xml>,
+                 Widget = fn nm :: Name => (<xml><checkbox{nm}/></xml>),
                  WidgetPopulated = fn (nm :: Name) b =>
-                   <xml><checkbox{nm} checked={b}/></xml>,
+                                      (<xml><checkbox{nm} checked={b}/></xml>),
                  Parse = fn x => x,
                  Inject = _}
 
@@ -96,7 +96,7 @@ fun update (id : int) =
 fun delete (id : int) =
     () <- dml (DELETE FROM tab WHERE Id = {id});
     return <xml><body>
-        The deed is done.
+      The deed is done.
     </body></xml>
 
 fun confirm (id : int) = return <xml><body>
