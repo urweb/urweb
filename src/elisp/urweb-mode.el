@@ -452,6 +452,13 @@ If anyone has a good algorithm for this..."
 	  (1+ (current-column))
 	nil))))
 
+(defun urweb-begun-xml ()
+  "Check if this is the first new line in a new <xml>...</xml> section"
+  (save-excursion
+    (let ((start-pos (point)))
+      (previous-line 1)
+      (search-forward "<xml>" start-pos t))))
+
 (defun urweb-new-tags ()
   "Decide if the previous line of XML introduced unclosed tags"
   (save-excursion
@@ -487,7 +494,9 @@ If anyone has a good algorithm for this..."
                     (setq done t)
                   (decf depth)))
             (setq done t))))
-      (current-indentation))))
+      (if (looking-at "<xml")
+          (+ (current-indentation) 2)
+        (current-indentation)))))
 
 (defun urweb-calculate-indentation ()
   (save-excursion
@@ -517,6 +526,8 @@ If anyone has a good algorithm for this..."
                (cond
                 ((looking-at "</")
                  (urweb-tag-matching-indent))
+                ((urweb-begun-xml)
+                 (+ prev-indent 4))
                 ((urweb-new-tags)
                  (+ prev-indent 2))
                 (t
