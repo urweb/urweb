@@ -175,19 +175,23 @@ See doc for the variable `urweb-mode-info'."
             (setq finished t)))
          ((looking-at "}")
           (incf depth))
-         ((save-excursion (backward-char 1) (or (looking-at "=>") (looking-at "->")))
+         ((save-excursion (backward-char 1) (or (looking-at "=>")
+                                                (looking-at "->")
+                                                (looking-at "<>")))
           nil)
          ((looking-at "<")
           (setq finished t))
          ((looking-at ">")
-          (if (> depth 0)
-              (if (not (re-search-backward "<" nil t))
-                  (setq finished t))
+          (cond
+           ((> depth 0)
+            (if (not (re-search-backward "<" nil t))
+                (setq finished t)))
+           (t
             (progn (backward-char 4)
                    (setq answer (not (or
                                       (looking-at "/xml")
                                       (looking-at "xml/"))))
-                   (setq finished t))))))
+                   (setq finished t)))))))
       answer)))
 
 (defun amAttribute (face)
@@ -513,7 +517,7 @@ If anyone has a good algorithm for this..."
     (current-indentation)))
 
 (defconst urweb-sql-main-starters
-  '("SELECT" "INSERT" "UPDATE" "DELETE"))
+  '("SQL" "SELECT" "INSERT" "UPDATE" "DELETE"))
 
 (defconst urweb-sql-starters
   (append urweb-sql-main-starters
@@ -524,6 +528,43 @@ If anyone has a good algorithm for this..."
   (urweb-syms-re urweb-sql-main-starters))
 (defconst urweb-sql-starters-re
   (urweb-syms-re urweb-sql-starters))
+
+(defconst urweb-sql-main-starters-paren-re
+  (concat "(" urweb-sql-main-starters-re))
+
+(defun urweb-in-sql ()
+  "Check if the point is in a block of SQL syntax."
+  (save-excursion
+    (let ((depth 0)
+          done)
+      (while (and (not done)
+                  (re-search-backward "[()]" nil t))
+        (cond
+         ((looking-at ")")
+          (decf depth))
+         ((looking-at "(")
+          (if (looking-at urweb-sql-main-starters-paren-re)
+              (setq done t)
+            (incf depth)))))
+      (and (>= depth 0)
+           (looking-at urweb-sql-main-starters-paren-re)))))
+
+(defun urweb-sql-depth ()
+  "Check if the point is in a block of SQL syntax.
+   Returns the paren nesting depth if so, and nil otherwise."
+  (save-excursion
+    (let ((depth 0)
+          done)
+      (while (and (not done)
+                  (re-search-backward "[()]" nil t))
+        (cond
+         ((looking-at ")")
+          (decf depth))
+         ((looking-at "(")
+          (if (looking-at urweb-sql-main-starters-paren-re)
+              (setq done t)
+            (incf depth)))))
+      (max 0 depth))))
 
 (defun urweb-calculate-indentation ()
   (save-excursion
@@ -579,12 +620,18 @@ If anyone has a good algorithm for this..."
 		   (urweb-indent-default 'noindent)
 		 (current-column))))
 
-        (and (looking-at urweb-sql-starters-re)
+        (and (or (looking-at "FROM") (looking-at urweb-sql-starters-re))
              (save-excursion
                (and (re-search-backward urweb-sql-starters-re nil t)
                     (if (looking-at urweb-sql-main-starters-re)
                         (current-column)
                       (current-indentation)))))
+
+        (and (urweb-in-sql)
+             (setq data (urweb-sql-depth))
+             (save-excursion
+               (re-search-backward urweb-sql-starters-re nil t)
+               (+ (current-column) 2 (* 2 data))))
 
 	(and (setq data (assoc sym urweb-close-paren))
 	     (urweb-indent-relative sym data))
