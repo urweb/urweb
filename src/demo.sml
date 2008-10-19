@@ -33,9 +33,6 @@ fun make {prefix, dirname} =
                                          file = "prose"}
         val inf = TextIO.openIn prose
 
-        val demo_urp = OS.Path.joinDirFile {dir = dirname,
-                                            file = "demo.urp"}
-
         val outDir = OS.Path.concat (dirname, "out")
 
         val () = if OS.FileSys.access (outDir, []) then
@@ -59,6 +56,17 @@ fun make {prefix, dirname} =
         val demosOut = TextIO.openOut fname
         val () = (TextIO.output (demosOut, "<html><body>\n\n");
                   TextIO.output (demosOut, "<li> <a target=\"staging\" href=\"intro.html\">Intro</a></li>\n\n"))
+
+        val fname = OS.Path.joinDirFile {dir = dirname,
+                                         file = "demo.urs"}
+        val ursOut = TextIO.openOut fname
+        val () = (TextIO.output (ursOut, "val main : unit -> transaction page\n");
+                  TextIO.closeOut ursOut)
+
+        val fname = OS.Path.joinDirFile {dir = dirname,
+                                         file = "demo.ur"}
+        val urOut = TextIO.openOut fname
+        val () = TextIO.output (urOut, "fun main () = return <xml><body>\n")
 
         fun mergeWith f (o1, o2) =
             case (o1, o2) of
@@ -102,6 +110,12 @@ fun make {prefix, dirname} =
                           TextIO.output (demosOut, ".html\">");
                           TextIO.output (demosOut, name);
                           TextIO.output (demosOut, "</a></li>\n"))
+
+                val () = (TextIO.output (urOut, "  <li> <a link={");
+                          TextIO.output (urOut, name);
+                          TextIO.output (urOut, ".main ()}>");
+                          TextIO.output (urOut, name);
+                          TextIO.output (urOut, "</a></li>\n"))
 
                 val urp_file = OS.Path.joinDirFile {dir = dirname,
                                                     file = urp}
@@ -185,7 +199,8 @@ fun make {prefix, dirname} =
 
                 fun readUrp' () =
                     case TextIO.inputLine inf of
-                        NONE => finished ()
+                        NONE => (finished ();
+                                 combined)
                       | SOME line =>
                         if String.isSuffix ".urp\n" line then
                             let
@@ -216,7 +231,8 @@ fun make {prefix, dirname} =
                                    TextIO.closeOut out)
             in
                 case TextIO.inputLine inf of
-                    NONE => finished ()
+                    NONE => (finished ();
+                             NONE)
                   | SOME line =>
                     if String.isSuffix ".urp\n" line then
                         let
@@ -225,8 +241,8 @@ fun make {prefix, dirname} =
                         in
                             finished ();
                             
-                            readUrp (urpData,
-                                     out)
+                            SOME (readUrp (urpData,
+                                           out))
                         end
                     else
                         (TextIO.output (out, line);
@@ -274,36 +290,71 @@ fun make {prefix, dirname} =
                                              ignore (OS.Process.system cmd)
                                          end)
                         in
-                            case OS.Path.ext file of
-                                SOME "urp" =>
-                                doit (fn (src, html) =>
-                                         let
-                                             val inf = TextIO.openIn src
-                                             val out = TextIO.openOut html
+                            if OS.Path.base file = "demo" then
+                                ()
+                            else case OS.Path.ext file of
+                                     SOME "urp" =>
+                                     doit (fn (src, html) =>
+                                              let
+                                                  val inf = TextIO.openIn src
+                                                  val out = TextIO.openOut html
 
-                                             fun loop () =
-                                                 case TextIO.inputLine inf of
-                                                     NONE => ()
-                                                   | SOME line => (TextIO.output (out, line);
-                                                                   loop ())
-                                         in
-                                             TextIO.output (out, "<html><body>\n\n<pre>");
-                                             loop ();
-                                             TextIO.output (out, "</pre>\n\n</body></html>");
+                                                  fun loop () =
+                                                      case TextIO.inputLine inf of
+                                                          NONE => ()
+                                                        | SOME line => (TextIO.output (out, line);
+                                                                        loop ())
+                                              in
+                                                  TextIO.output (out, "<html><body>\n\n<pre>");
+                                                  loop ();
+                                                  TextIO.output (out, "</pre>\n\n</body></html>");
 
-                                             TextIO.closeIn inf;
-                                             TextIO.closeOut out
-                                         end)
-                              | SOME "urs" => highlight ()
-                              | SOME "ur" => highlight ()
-                              | _ => ();
+                                                  TextIO.closeIn inf;
+                                                  TextIO.closeOut out
+                                              end)
+                                   | SOME "urs" => highlight ()
+                                   | SOME "ur" => highlight ()
+                                   | _ => ();
                             loop ()
                         end
             in
                 loop ()
             end
     in
-        readIndex ();
+        case readIndex () of
+            NONE => raise Fail "No demo applications!"
+          | SOME combined =>
+            let
+                val () = (TextIO.output (urOut, "</body></xml>\n");
+                          TextIO.closeOut urOut)
+
+                val fname = OS.Path.joinDirFile {dir = dirname,
+                                                 file = "demo.urp"}
+                val outf = TextIO.openOut fname
+            in
+                Option.app (fn db => (TextIO.output (outf, "database ");
+                                      TextIO.output (outf, db);
+                                      TextIO.output (outf, "\n")))
+                           (#database combined);
+                TextIO.output (outf, "sql demo.sql\n");
+                TextIO.output (outf, "\n");
+
+                app (fn s =>
+                        let
+                            val s = OS.Path.mkAbsolute {relativeTo = OS.FileSys.getDir (),
+                                                        path = s}
+                        in
+                            TextIO.output (outf, s);
+                            TextIO.output (outf, "\n")
+                        end)
+                    (#sources combined);
+                TextIO.output (outf, "\n");
+                TextIO.output (outf, "demo\n");
+
+                TextIO.closeOut outf;
+
+                Compiler.compile (OS.Path.base fname)
+            end;
 
         TextIO.output (demosOut, "\n</body></html>\n");
         TextIO.closeOut demosOut;

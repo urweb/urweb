@@ -25,23 +25,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-fun doArgs (args, (timing, sources)) =
+fun doArgs (args, (timing, demo, sources)) =
     case args of
-        [] => (timing, rev sources)
+        [] => (timing, demo, rev sources)
+      | "-demo" :: prefix :: rest =>
+        doArgs (rest, (timing, SOME prefix, sources))
       | arg :: rest =>
         let
             val acc =
                 if size arg > 0 andalso String.sub (arg, 0) = #"-" then
                     case arg of
-                        "-timing" => (true, sources)
+                        "-timing" => (true, demo, sources)
                       | _ => raise Fail ("Unknown option " ^ arg)
                 else
-                    (timing, arg :: sources)
+                    (timing, demo, arg :: sources)
         in
             doArgs (rest, acc)
         end
 
-val (timing, sources) = doArgs (CommandLine.arguments (), (false, []))
+val (timing, demo, sources) = doArgs (CommandLine.arguments (), (false, NONE, []))
 
 val job =
     case sources of
@@ -49,7 +51,11 @@ val job =
       | _ => raise Fail "Zero or multiple job files specified"
 
 val () =
-    if timing then
-        Compiler.time Compiler.toCjrize job
-    else
-        Compiler.compile job
+    case demo of
+        SOME prefix =>
+        Demo.make {prefix = prefix, dirname = job}
+      | NONE =>
+        if timing then
+            Compiler.time Compiler.toCjrize job
+        else
+            Compiler.compile job
