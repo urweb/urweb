@@ -75,6 +75,7 @@ fun make {prefix, dirname} =
               | (SOME v1, SOME v2) => SOME (f (v1, v2))
 
         fun combiner (combined : Compiler.job, urp : Compiler.job) = {
+            prefix = prefix,
             database = mergeWith (fn (v1, v2) =>
                                      if v1 = v2 then
                                          v1
@@ -337,6 +338,9 @@ fun make {prefix, dirname} =
                                       TextIO.output (outf, "\n")))
                            (#database combined);
                 TextIO.output (outf, "sql demo.sql\n");
+                TextIO.output (outf, "prefix ");
+                TextIO.output (outf, prefix);
+                TextIO.output (outf, "\n");
                 TextIO.output (outf, "\n");
 
                 app (fn s =>

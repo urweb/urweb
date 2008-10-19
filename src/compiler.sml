@@ -36,6 +36,7 @@ structure UrwebP = Join(structure ParserData = UrwebLrVals.ParserData
                          structure LrParser = LrParser)
 
 type job = {
+     prefix : string,
      database : string option,
      sources : string list,
      exe : string,
@@ -198,7 +199,7 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}    
 
-fun p_job {database, exe, sql, sources, debug} =
+fun p_job {prefix, database, exe, sql, sources, debug} =
     let
         open Print.PD
         open Print
@@ -259,18 +260,19 @@ val parseUrp = {
                               readSources acc
                           end
 
-                  fun finish (database, exe, sql, debug, sources) =
-                      {database = database,
+                  fun finish (prefix, database, exe, sql, debug, sources) =
+                      {prefix = Option.getOpt (prefix, "/"),
+                       database = database,
                        exe = Option.getOpt (exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
                                                                       ext = SOME "exe"}),
                        sql = sql,
                        debug = debug,
                        sources = sources}
 
-                  fun read (database, exe, sql, debug) =
+                  fun read (prefix, database, exe, sql, debug) =
                       case TextIO.inputLine inf of
-                          NONE => finish (database, exe, sql, debug, [])
-                        | SOME "\n" => finish (database, exe, sql, debug, readSources [])
+                          NONE => finish (prefix, database, exe, sql, debug, [])
+                        | SOME "\n" => finish (prefix, database, exe, sql, debug, readSources [])
                         | SOME line =>
                           let
                               val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
@@ -278,28 +280,36 @@ val parseUrp = {
                               val arg = Substring.string (trim arg)
                           in
                               case cmd of
-                                  "database" =>
+                                  "prefix" =>
+                                  (case prefix of
+                                       NONE => ()
+                                     | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
+                                   read (SOME arg, database, exe, sql, debug))
+                                | "database" =>
                                   (case database of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
-                                   read (SOME arg, exe, sql, debug))
+                                   read (prefix, SOME arg, exe, sql, debug))
                                 | "exe" =>
                                   (case exe of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'exe' directive";
-                                   read (database, SOME (relify arg), sql, debug))
+                                   read (prefix, database, SOME (relify arg), sql, debug))
                                 | "sql" =>
                                   (case sql of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'sql' directive";
-                                   read (database, exe, SOME (relify arg), debug))
-                                | "debug" => read (database, exe, sql, true)
+                                   read (prefix, database, exe, SOME (relify arg), debug))
+                                | "debug" => read (prefix, database, exe, sql, true)
                                 | _ => (ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
-                                        read (database, exe, sql, debug))
+                                        read (prefix, database, exe, sql, debug))
                           end
+
+                  val job = read (NONE, NONE, NONE, NONE, false)
               in
-                  read (NONE, NONE, NONE, false)
-                  before TextIO.closeIn inf
+                  TextIO.closeIn inf;
+                  Monoize.urlPrefix := #prefix job;
+                  job
               end,
     print = p_job
 }

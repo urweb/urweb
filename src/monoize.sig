@@ -27,6 +27,8 @@
 
 signature MONOIZE = sig
 
+    val urlPrefix : string ref
+
     val monoize : CoreEnv.env -> Core.file -> Mono.file
 
     val liftExpInExp : int -> Mono.exp -> Mono.exp

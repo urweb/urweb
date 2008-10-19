@@ -35,6 +35,8 @@ structure L' = Mono
 
 structure IM = IntBinaryMap
 
+val urlPrefix = ref "/"
+
 val dummyTyp = (L'.TDatatype (0, ref (L'.Enum, [])), E.dummySpan)
 
 structure U = MonoUtil
@@ -264,7 +266,7 @@ fun fooifyExp fk env =
                 let
                     val (_, _, _, s) = Env.lookupENamed env fnam
                 in
-                    ((L'.EPrim (Prim.String ("/" ^ s)), loc), fm)
+                    ((L'.EPrim (Prim.String (!urlPrefix ^ s)), loc), fm)
                 end
               | L'.EClosure (fnam, args) =>
                 let
@@ -287,7 +289,7 @@ fun fooifyExp fk env =
                           | _ => (E.errorAt loc "Type mismatch encoding attribute";
                                   (e, fm))
                 in
-                    attrify (args, ft, (L'.EPrim (Prim.String ("/" ^ s)), loc), fm)
+                    attrify (args, ft, (L'.EPrim (Prim.String (!urlPrefix ^ s)), loc), fm)
                 end
               | _ =>
                 case t of
@@ -1283,8 +1285,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                                               val xp = " " ^ lowercaseFirst x ^ "=\""
 
-
-
                                               val (e, fm) = fooify env fm (e, t)
                                           in
                                               ((L'.EStrcat (s,
@@ -1677,6 +1677,15 @@ fun monoDecl (env, fm) (all as (d, loc)) =
 
 fun monoize env ds =
     let
+        val p = !urlPrefix
+        val () =
+            if p = "" then
+                urlPrefix := "/"
+            else if String.sub (p, size p - 1) <> #"/" then
+                urlPrefix := p ^ "/"
+            else
+                ()
+
         val (_, _, ds) = List.foldl (fn (d, (env, fm, ds)) =>
                                      case monoDecl (env, fm) d of
                                          NONE => (env, fm, ds)

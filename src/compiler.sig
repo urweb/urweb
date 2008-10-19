@@ -30,6 +30,7 @@
 signature COMPILER = sig
 
     type job = {
+         prefix : string,
          database : string option,
          sources : string list,
          exe : string,
