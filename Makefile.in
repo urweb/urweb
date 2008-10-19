@@ -1,7 +1,7 @@
-BIN      := /usr/local/bin
-LIB      := /usr/local/lib/urweb
-INCLUDE  := /usr/local/include/urweb
-SITELISP := /usr/local/share/emacs/site-lisp/urweb-mode
+BIN      := @BIN@
+LIB      := @LIB@
+INCLUDE  := @INCLUDE@
+SITELISP := @SITELISP@
 
 LIB_UR   := $(LIB)/ur
 LIB_C    := $(LIB)/c

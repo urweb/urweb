@@ -12,3 +12,12 @@ src/urweb.mlb
 *.lex.*
 *.grm.*
 *.o
+
+Makefile
+src/config.sml
+
+*.exe
+
+*.cache
+*.log
+*.status

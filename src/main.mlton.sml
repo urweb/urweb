@@ -46,7 +46,7 @@ val (timing, sources) = doArgs (CommandLine.arguments (), (false, []))
 val job =
     case sources of
         [file] => file
-      | _ => raise Fail "Multiple job files specified"
+      | _ => raise Fail "Zero or multiple job files specified"
 
 val () =
     if timing then

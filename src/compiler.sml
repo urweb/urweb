@@ -355,11 +355,16 @@ val parse = {
 
 val toParse = transform parse "parse" o toParseJob
 
+fun libFile s = OS.Path.joinDirFile {dir = Config.libUr,
+                                     file = s}
+fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
+                                      file = s}
+
 val elaborate = {
     func = fn file => let
-                  val basis = #func parseUrs "lib/basis.urs"
-                  val topSgn = #func parseUrs "lib/top.urs"
-                  val topStr = #func parseUr "lib/top.ur"
+                  val basis = #func parseUrs (libFile "basis.urs")
+                  val topSgn = #func parseUrs (libFile "top.urs")
+                  val topStr = #func parseUr (libFile "top.ur")
               in
                   Elaborate.elabFile basis topStr topSgn ElabEnv.empty file
               end,
@@ -493,8 +498,11 @@ val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
 fun compileC {cname, oname, ename} =
     let
+        val urweb_o = clibFile "urweb.o"
+        val driver_o = clibFile "driver.o"
+
         val compile = "gcc -Wstrict-prototypes -Werror -O3 -I include -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -Werror -O3 -pthread -lpq clib/urweb.o " ^ oname ^ " clib/driver.o -o " ^ ename
+        val link = "gcc -Werror -O3 -pthread -lpq " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"
@@ -517,6 +525,7 @@ fun compile job =
                 else
                     let
                         val dir = OS.FileSys.tmpName ()
+                        val () = OS.FileSys.remove dir
                         val cname = OS.Path.joinDirFile {dir = dir, file = "urweb.c"}
                         val oname = OS.Path.joinDirFile {dir = dir, file = "urweb.o"}
                     in
