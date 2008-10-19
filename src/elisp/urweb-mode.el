@@ -625,6 +625,7 @@ If anyone has a good algorithm for this..."
 		 (current-column))))
 
         (and (or (looking-at "FROM") (looking-at urweb-sql-starters-re))
+
              (save-excursion
                (and (re-search-backward urweb-sql-starters-re nil t)
                     (if (looking-at urweb-sql-main-starters-re)
@@ -758,7 +759,6 @@ Optional argument STYLE is currently ignored."
 	      (if (second delegate)
 		  (save-excursion (urweb-forward-sym))
 		(urweb-backward-spaces) (urweb-backward-sym))))
-
       (let ((idata (assoc head-sym urweb-indent-rule)))
 	(when idata
 	  ;;(if (or style (not delegate))
@@ -778,57 +778,60 @@ Optional argument STYLE is currently ignored."
 	  )))))
 
 (defun urweb-indent-default (&optional noindent)
-  (let* ((sym-after (save-excursion (urweb-forward-sym)))
-	 (_ (urweb-backward-spaces))
-	 (sym-before (urweb-backward-sym))
-	 (sym-indent (and sym-before (urweb-get-sym-indent sym-before)))
-	 (indent-after (or (cdr (assoc sym-after urweb-symbol-indent)) 0)))
-    (when (equal sym-before "end")
-      ;; I don't understand what's really happening here, but when
-      ;; it's `end' clearly, we need to do something special.
-      (forward-word 1)
-      (setq sym-before nil sym-indent nil))
-    (cond
-     (sym-indent
-      ;; the previous sym is an indentation introducer: follow the rule
-      (if noindent
-	  ;;(current-column)
-	  sym-indent
-	(+ sym-indent indent-after)))
-     ;; If we're just after a hanging open paren.
-     ((and (eq (char-syntax (preceding-char)) ?\()
-	   (save-excursion (backward-char) (urweb-dangling-sym)))
-      (backward-char)
-      (urweb-indent-default))
-     (t
-      ;; default-default
-      (let* ((prec-after (urweb-op-prec sym-after 'back))
-	     (prec (or (urweb-op-prec sym-before 'back) prec-after 100)))
-	;; go back until you hit a symbol that has a lower prec than the
-	;; "current one", or until you backed over a sym that has the same prec
-	;; but is at the beginning of a line.
-	(while (and (not (urweb-bolp))
-		    (while (urweb-move-if (urweb-backward-sexp (1- prec))))
-		    (not (urweb-bolp)))
-	  (while (urweb-move-if (urweb-backward-sexp prec))))
-	(if noindent
-	    ;; the `noindent' case does back over an introductory symbol
-	    ;; such as `fun', ...
-	    (progn
-	      (urweb-move-if
-	       (urweb-backward-spaces)
-	       (member (urweb-backward-sym) urweb-starters-syms))
-	      (current-column))
-	  ;; Use `indent-after' for cases such as when , or ; should be
-	  ;; outdented so that their following terms are aligned.
-	  (+ (if (progn
-		   (if (equal sym-after ";")
-		       (urweb-move-if
-			(urweb-backward-spaces)
-			(member (urweb-backward-sym) urweb-starters-syms)))
-		   (and sym-after (not (looking-at sym-after))))
-		 indent-after 0)
-	     (current-column))))))))
+  (condition-case nil
+      (progn
+        (let* ((sym-after (save-excursion (urweb-forward-sym)))
+               (_ (urweb-backward-spaces))
+               (sym-before (urweb-backward-sym))
+               (sym-indent (and sym-before (urweb-get-sym-indent sym-before)))
+               (indent-after (or (cdr (assoc sym-after urweb-symbol-indent)) 0)))
+          (when (equal sym-before "end")
+            ;; I don't understand what's really happening here, but when
+            ;; it's `end' clearly, we need to do something special.
+            (forward-word 1)
+            (setq sym-before nil sym-indent nil))
+          (cond
+           (sym-indent
+            ;; the previous sym is an indentation introducer: follow the rule
+            (if noindent
+                ;;(current-column)
+                sym-indent
+              (+ sym-indent indent-after)))
+           ;; If we're just after a hanging open paren.
+           ((and (eq (char-syntax (preceding-char)) ?\()
+                 (save-excursion (backward-char) (urweb-dangling-sym)))
+            (backward-char)
+            (urweb-indent-default))
+           (t
+            ;; default-default
+            (let* ((prec-after (urweb-op-prec sym-after 'back))
+                   (prec (or (urweb-op-prec sym-before 'back) prec-after 100)))
+              ;; go back until you hit a symbol that has a lower prec than the
+              ;; "current one", or until you backed over a sym that has the same prec
+              ;; but is at the beginning of a line.
+              (while (and (not (urweb-bolp))
+                          (while (urweb-move-if (urweb-backward-sexp (1- prec))))
+                          (not (urweb-bolp)))
+                (while (urweb-move-if (urweb-backward-sexp prec))))
+              (if noindent
+                  ;; the `noindent' case does back over an introductory symbol
+                  ;; such as `fun', ...
+                  (progn
+                    (urweb-move-if
+                     (urweb-backward-spaces)
+                     (member (urweb-backward-sym) urweb-starters-syms))
+                    (current-column))
+                ;; Use `indent-after' for cases such as when , or ; should be
+                ;; outdented so that their following terms are aligned.
+                (+ (if (progn
+                         (if (equal sym-after ";")
+                             (urweb-move-if
+                              (urweb-backward-spaces)
+                              (member (urweb-backward-sym) urweb-starters-syms)))
+                         (and sym-after (not (looking-at sym-after))))
+                       indent-after 0)
+                   (current-column))))))))
+    (error 0)))
 
 
 ;; maybe `|' should be set to word-syntax in our temp syntax table ?
