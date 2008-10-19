@@ -119,6 +119,9 @@ mono_reduce.sml
 mono_shake.sig
 mono_shake.sml
 
+pathcheck.sigx
+pathcheck.sml
+
 cjr.sml
 
 cjr_env.sig

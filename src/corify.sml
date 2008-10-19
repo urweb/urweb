@@ -49,6 +49,9 @@ fun doRestify (mods, s) =
         !restify (String.concatWith "/" (rev (s :: mods)))
     end
 
+val relify = CharVector.map (fn #"/" => #"_"
+                              | ch => ch)
+
 local
     val count = ref 0
 in
@@ -106,9 +109,9 @@ structure St : sig
     val lookupStrByName : string * t -> t
     val lookupStrByNameOpt : string * t -> t option
 
-    val bindFunctor : t -> string -> int -> string -> int -> L.str -> t
-    val lookupFunctorById : t -> int -> string * int * L.str
-    val lookupFunctorByName : string * t -> string * int * L.str
+    val bindFunctor : t -> string list -> string -> int -> string -> int -> L.str -> t
+    val lookupFunctorById : t -> int -> string list * string * int * L.str
+    val lookupFunctorByName : string * t -> string list * string * int * L.str
 end = struct
 
 datatype flattening =
@@ -117,7 +120,7 @@ datatype flattening =
                      constructors : L'.patCon SM.map,
                      vals : int SM.map,
                      strs : flattening SM.map,
-                     funs : (string * int * L.str) SM.map}
+                     funs : (string list * string * int * L.str) SM.map}
        | FFfi of {mod : string,
                   vals : L'.con SM.map,
                   constructors : (string * string list * L'.con option * L'.datatype_kind) SM.map}
@@ -128,7 +131,7 @@ type t = {
      constructors : L'.patCon IM.map,
      vals : int IM.map,
      strs : flattening IM.map,
-     funs : (string * int * L.str) IM.map,
+     funs : (string list * string * int * L.str) IM.map,
      current : flattening,
      nested : flattening list
 }
@@ -402,21 +405,21 @@ fun lookupStrByNameOpt (m, {basis, current = FNormal {strs, ...}, ...} : t) =
 fun bindFunctor ({basis, cons, constructors, vals, strs, funs,
                   current = FNormal {name, cons = mcons, constructors = mconstructors,
                                      vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
-                x n xa na str =
+                mods x n xa na str =
     {basis = basis,
      cons = cons,
      constructors = constructors,
      vals = vals,
      strs = strs,
-     funs = IM.insert (funs, n, (xa, na, str)),
+     funs = IM.insert (funs, n, (mods, xa, na, str)),
      current = FNormal {name = name,
                         cons = mcons,
                         constructors = mconstructors,
                         vals = mvals,
                         strs = mstrs,
-                        funs = SM.insert (mfuns, x, (xa, na, str))},
+                        funs = SM.insert (mfuns, x, (mods, xa, na, str))},
      nested = nested}
-  | bindFunctor _ _ _ _ _ _ = raise Fail "Corify.St.bindFunctor"
+  | bindFunctor _ _ _ _ _ _ _ = raise Fail "Corify.St.bindFunctor"
 
 fun lookupFunctorById ({funs, ...} : t) n =
     case IM.find (funs, n) of
@@ -693,7 +696,7 @@ fun corifyDecl mods ((d, loc : EM.span), st) =
       | L.DSgn _ => ([], st)
 
       | L.DStr (x, n, _, (L.StrFun (xa, na, _, _, str), _)) =>
-        ([], St.bindFunctor st x n xa na str)
+        ([], St.bindFunctor st mods x n xa na str)
 
       | L.DStr (x, n, _, (L.StrProj (str, x'), _)) =>
         let
@@ -703,9 +706,9 @@ fun corifyDecl mods ((d, loc : EM.span), st) =
                 SOME st' => St.bindStr st x n st'
               | NONE =>
                 let
-                    val (x', n', str') = St.lookupFunctorByName (x', inner)
+                    val (mods', x', n', str') = St.lookupFunctorByName (x', inner)
                 in
-                    St.bindFunctor st x n x' n' str'
+                    St.bindFunctor st mods' x n x' n' str'
                 end
         in
             ([], st)
@@ -713,7 +716,13 @@ fun corifyDecl mods ((d, loc : EM.span), st) =
 
       | L.DStr (x, n, _, str) =>
         let
-            val (ds, {inner, outer}) = corifyStr (x :: mods) (str, st)
+            val mods' =
+                if x = "anon" then
+                    mods
+                else
+                    x :: mods
+
+            val (ds, {inner, outer}) = corifyStr mods' (str, st)
             val st = St.bindStr outer x n inner
         in
             (ds, st)
@@ -903,14 +912,14 @@ fun corifyDecl mods ((d, loc : EM.span), st) =
       | L.DTable (_, x, n, c) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = doRestify (mods, x)
+            val s = relify (doRestify (mods, x))
         in
             ([(L'.DTable (x, n, corifyCon st c, s), loc)], st)
         end
       | L.DSequence (_, x, n) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = doRestify (mods, x)
+            val s = relify (doRestify (mods, x))
         in
             ([(L'.DSequence (x, n, s), loc)], st)
         end
@@ -948,11 +957,18 @@ and corifyStr mods ((str, _), st) =
                   | L.StrProj (str, x) => St.lookupFunctorByName (x, unwind' str)
                   | _ => raise Fail "Corify of fancy functor application [2]"
 
-            val (xa, na, body) = unwind str1
+            val (fmods, xa, na, body) = unwind str1
 
             val (ds1, {inner = inner', outer}) = corifyStr mods (str2, st)
 
-            val mods' = mods
+            val mods' = case #1 str2 of
+                            L.StrConst _ => fmods @ mods
+                          | _ =>
+                            let
+                                val ast = unwind' str2
+                            in
+                                fmods @ St.name ast
+                            end
 
             val (ds2, {inner, outer}) = corifyStr mods' (body, St.bindStr outer xa na inner')
         in

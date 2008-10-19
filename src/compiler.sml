@@ -463,12 +463,19 @@ val toMono_shake = transform mono_shake "mono_shake1" o toMono_reduce
 
 val toMono_opt2 = transform mono_opt "mono_opt2" o toMono_shake
 
+val pathcheck = {
+    func = (fn file => (PathCheck.check file; file)),
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toPathcheck = transform pathcheck "pathcheck" o toMono_opt2
+
 val cjrize = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toCjrize = transform cjrize "cjrize" o toMono_opt2
+val toCjrize = transform cjrize "cjrize" o toPathcheck
 
 val prepare = {
     func = Prepare.prepare,

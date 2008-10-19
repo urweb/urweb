@@ -1778,6 +1778,8 @@ fun p_file env (ds, ps) =
 
         val tables = List.mapPartial (fn (DTable (s, xts), _) => SOME (s, xts)
                                        | _ => NONE) ds
+        val sequences = List.mapPartial (fn (DSequence s, _) => SOME s
+                                          | _ => NONE) ds
 
         val validate =
             box [string "static void uw_db_validate(uw_context ctx) {",
@@ -1790,11 +1792,13 @@ fun p_file env (ds, ps) =
                  p_list_sep newline
                             (fn (s, xts) =>
                                 let
+                                    val sl = CharVector.map Char.toLower s
+
                                     val q = "SELECT COUNT(*) FROM pg_class WHERE relname = '"
-                                            ^ s ^ "'"
+                                            ^ sl ^ "'"
 
                                     val q' = String.concat ["SELECT COUNT(*) FROM pg_attribute WHERE attrelid = (SELECT oid FROM pg_class WHERE relname = '",
-                                                            s,
+                                                            sl,
                                                             "') AND (",
                                                             String.concatWith " OR "
                                                               (map (fn (x, t) =>
@@ -1808,7 +1812,7 @@ fun p_file env (ds, ps) =
                                                             ")"]
 
                                     val q'' = String.concat ["SELECT COUNT(*) FROM pg_attribute WHERE attrelid = (SELECT oid FROM pg_class WHERE relname = '",
-                                                             s,
+                                                             sl,
                                                              "') AND attname LIKE 'uw_%'"]
                                 in
                                     box [string "res = PQexec(conn, \"",
@@ -1963,6 +1967,65 @@ fun p_file env (ds, ps) =
                                          string "PQclear(res);",
                                          newline]
                                 end) tables,
+
+                 p_list_sep newline
+                            (fn s =>
+                                let
+                                    val sl = CharVector.map Char.toLower s
+
+                                    val q = "SELECT COUNT(*) FROM pg_class WHERE relname = '"
+                                            ^ sl ^ "' AND relkind = 'S'"
+                                in
+                                    box [string "res = PQexec(conn, \"",
+                                         string q,
+                                         string "\");",
+                                         newline,
+                                         newline,
+                                         string "if (res == NULL) {",
+                                         newline,
+                                         box [string "PQfinish(conn);",
+                                              newline,
+                                              string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+                                         newline,
+                                         box [string "char msg[1024];",
+                                              newline,
+                                              string "strncpy(msg, PQerrorMessage(conn), 1024);",
+                                              newline,
+                                              string "msg[1023] = 0;",
+                                              newline,
+                                              string "PQclear(res);",
+                                              newline,
+                                              string "PQfinish(conn);",
+                                              newline,
+                                              string "uw_error(ctx, FATAL, \"Query failed:\\n",
+                                              string q,
+                                              string "\\n%s\", msg);",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "if (strcmp(PQgetvalue(res, 0, 0), \"1\")) {",
+                                         newline,
+                                         box [string "PQclear(res);",
+                                              newline,
+                                              string "PQfinish(conn);",
+                                              newline,
+                                              string "uw_error(ctx, FATAL, \"Sequence '",
+                                              string s,
+                                              string "' does not exist.\");",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline,
+                                         string "PQclear(res);",
+                                         newline]
+                                end) sequences,
+
                  string "}"]
     in
         box [string "#include <stdio.h>",
