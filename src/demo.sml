@@ -140,6 +140,11 @@ fun make {prefix, dirname} =
                      TextIO.output (out, "</title>\n</head><body>\n\n<h1>");
                      TextIO.output (out, name);
                      TextIO.output (out, "</h1>\n\n<center>[ <a target=\"showcase\" href=\"");
+                     TextIO.output (out, prefix);
+                     TextIO.output (out, "/");
+                     TextIO.output (out, name);
+                     TextIO.output (out, "/main\">Application</a>");
+                     TextIO.output (out, " | <a target=\"showcase\" href=\"");
                      TextIO.output (out, urp);
                      TextIO.output (out, ".html\"><tt>");
                      TextIO.output (out, urp);
@@ -240,9 +245,34 @@ fun make {prefix, dirname} =
                             fun doit f =
                                 f (OS.Path.joinDirFile {dir = dirname,
                                                         file = file},
-                                   OS.Path.joinDirFile {dir = outDir,
-                                                        file = OS.Path.joinBaseExt {base = file,
-                                                                                    ext = SOME "html"}})
+                                   OS.Path.mkAbsolute
+                                       {relativeTo = OS.FileSys.getDir (),
+                                        path = OS.Path.joinDirFile {dir = outDir,
+                                                                    file = OS.Path.joinBaseExt {base = file,
+                                                                                                ext = SOME "html"}}})
+
+                            fun highlight () =
+                                doit (fn (src, html) =>
+                                         let
+                                             val cmd = "emacs --eval \"(progn "
+                                                       ^ "(global-font-lock-mode t) "
+                                                       ^ "(add-to-list 'load-path \\\""
+                                                       ^ Config.sitelisp
+                                                       ^ "/\\\") "
+                                                       ^ "(load \\\"urweb-mode-startup\\\") "
+                                                       ^ "(urweb-mode) "
+                                                       ^ "(find-file \\\""
+                                                       ^ src
+                                                       ^ "\\\") "
+                                                       ^ "(switch-to-buffer (htmlize-buffer)) "
+                                                       ^ "(write-file \\\""
+                                                       ^ html
+                                                       ^ "\\\") "
+                                                       ^ "(kill-emacs))\""
+                                         in
+                                             print (">>> " ^ cmd ^ "\n");
+                                             ignore (OS.Process.system cmd)
+                                         end)
                         in
                             case OS.Path.ext file of
                                 SOME "urp" =>
@@ -268,6 +298,8 @@ fun make {prefix, dirname} =
                                              TextIO.closeIn inf;
                                              TextIO.closeOut out
                                          end)
+                              | SOME "urs" => highlight ()
+                              | SOME "ur" => highlight ()
                               | _ => ();
                             loop ()
                         end
