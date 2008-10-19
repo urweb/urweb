@@ -47,7 +47,7 @@ fun make {prefix, dirname} =
                                          file = "index.html"}
 
         val out = TextIO.openOut fname
-        val () = (TextIO.output (out, "<frameset cols=\"15%,90%\">\n");
+        val () = (TextIO.output (out, "<frameset cols=\"10%,90%\">\n");
                   TextIO.output (out, "<frame src=\"demos.html\">\n");
                   TextIO.output (out, "<frame src=\"intro.html\" name=\"staging\">\n");
                   TextIO.output (out, "</frameset>\n");
@@ -57,7 +57,7 @@ fun make {prefix, dirname} =
                                          file = "demos.html"}
 
         val demosOut = TextIO.openOut fname
-        val () = (TextIO.output (demosOut, "<html><body><ul>\n\n");
+        val () = (TextIO.output (demosOut, "<html><body>\n\n");
                   TextIO.output (demosOut, "<li> <a target=\"staging\" href=\"intro.html\">Intro</a></li>\n\n"))
 
         fun mergeWith f (o1, o2) =
@@ -227,11 +227,60 @@ fun make {prefix, dirname} =
                         (TextIO.output (out, line);
                          readIndex ())
             end
+
+        fun prettyPrint () =
+            let
+                val dir = Posix.FileSys.opendir dirname
+
+                fun loop () =
+                    case Posix.FileSys.readdir dir of
+                        NONE => Posix.FileSys.closedir dir
+                      | SOME file =>
+                        let
+                            fun doit f =
+                                f (OS.Path.joinDirFile {dir = dirname,
+                                                        file = file},
+                                   OS.Path.joinDirFile {dir = outDir,
+                                                        file = OS.Path.joinBaseExt {base = file,
+                                                                                    ext = SOME "html"}})
+                        in
+                            case OS.Path.ext file of
+                                SOME "urp" =>
+                                doit (fn (src, html) =>
+                                         let
+                                             val inf = TextIO.openIn src
+                                             val out = TextIO.openOut html
+
+                                             fun loop () =
+                                                 case TextIO.inputLine inf of
+                                                     NONE => ()
+                                                   | SOME line => (TextIO.output (out, line);
+                                                                   loop ())
+                                         in
+                                             TextIO.output (out, "<html><head>\n<title>");
+                                             TextIO.output (out, file);
+                                             TextIO.output (out, "</title>\n</head><body>\n<h1>");
+                                             TextIO.output (out, file);
+                                             TextIO.output (out, "</h1>\n\n<pre>");
+                                             loop ();
+                                             TextIO.output (out, "</pre>\n\n</body></html>");
+
+                                             TextIO.closeIn inf;
+                                             TextIO.closeOut out
+                                         end)
+                              | _ => ();
+                            loop ()
+                        end
+            in
+                loop ()
+            end
     in
         readIndex ();
 
-        TextIO.output (demosOut, "\n</ul></body></html>\n");
-        TextIO.closeOut demosOut
+        TextIO.output (demosOut, "\n</body></html>\n");
+        TextIO.closeOut demosOut;
+
+        prettyPrint ()
     end
 
 end
