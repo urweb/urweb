@@ -112,7 +112,7 @@ fun make {prefix, dirname} =
                                                file = out}
                 val out = TextIO.openOut out
 
-                val () = (TextIO.output (out, "<frameset rows=\"75%,25%\">\n");
+                val () = (TextIO.output (out, "<frameset rows=\"50%,*\">\n");
                           TextIO.output (out, "<frame src=\"");
                           TextIO.output (out, prefix);
                           TextIO.output (out, "/");
@@ -287,11 +287,7 @@ fun make {prefix, dirname} =
                                                    | SOME line => (TextIO.output (out, line);
                                                                    loop ())
                                          in
-                                             TextIO.output (out, "<html><head>\n<title>");
-                                             TextIO.output (out, file);
-                                             TextIO.output (out, "</title>\n</head><body>\n<h1>");
-                                             TextIO.output (out, file);
-                                             TextIO.output (out, "</h1>\n\n<pre>");
+                                             TextIO.output (out, "<html><body>\n\n<pre>");
                                              loop ();
                                              TextIO.output (out, "</pre>\n\n</body></html>");
 
