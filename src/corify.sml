@@ -37,6 +37,18 @@ structure SM = BinaryMapFn(struct
                            val compare = String.compare
                            end)
 
+val restify = ref (fn s : string => s)
+
+fun doRestify (mods, s) =
+    let
+        val s = if String.isPrefix "wrap_" s then
+                    String.extract (s, 5, NONE)
+                else
+                    s
+    in
+        !restify (String.concatWith "/" (rev (s :: mods)))
+    end
+
 local
     val count = ref 0
 in
@@ -60,7 +72,9 @@ structure St : sig
 
     val debug : t -> unit
 
-    val enter : t -> t
+    val name : t -> string list
+
+    val enter : t * string list -> t
     val leave : t -> {outer : t, inner : t}
     val ffi : string -> L'.con SM.map -> (string * string list * L'.con option * L'.datatype_kind) SM.map -> t
 
@@ -98,7 +112,8 @@ structure St : sig
 end = struct
 
 datatype flattening =
-         FNormal of {cons : int SM.map,
+         FNormal of {name : string list,
+                     cons : int SM.map,
                      constructors : L'.patCon SM.map,
                      vals : int SM.map,
                      strs : flattening SM.map,
@@ -125,17 +140,21 @@ val empty = {
     vals = IM.empty,
     strs = IM.empty,
     funs = IM.empty,
-    current = FNormal { cons = SM.empty, constructors = SM.empty, vals = SM.empty, strs = SM.empty, funs = SM.empty },
+    current = FNormal { name = [], cons = SM.empty, constructors = SM.empty,
+                        vals = SM.empty, strs = SM.empty, funs = SM.empty },
     nested = []
 }
 
-fun debug ({current = FNormal {cons, constructors, vals, strs, funs}, ...} : t) =
+fun debug ({current = FNormal {cons, constructors, vals, strs, funs, ...}, ...} : t) =
     print ("cons: " ^ Int.toString (SM.numItems cons) ^ "; "
            ^ "constructors: " ^ Int.toString (SM.numItems constructors) ^ "; "
            ^ "vals: " ^ Int.toString (SM.numItems vals) ^ "; "
            ^ "strs: " ^ Int.toString (SM.numItems strs) ^ "; "
            ^ "funs: " ^ Int.toString (SM.numItems funs) ^ "\n")
   | debug _ = print "Not normal!\n"
+
+fun name ({current = FNormal {name, ...}, ...} : t) = name
+  | name {current = FFfi {mod = name, ...}, ...} = [name]
 
 fun basisIs ({cons, constructors, vals, strs, funs, current, nested, ...} : t, basis) =
     {basis = SOME basis,
@@ -164,8 +183,9 @@ fun bindCon {basis, cons, constructors, vals, strs, funs, current, nested} s n =
         val current =
             case current of
                 FFfi _ => raise Fail "Binding inside FFfi"
-              | FNormal {cons, constructors, vals, strs, funs} =>
-                FNormal {cons = SM.insert (cons, s, n'),
+              | FNormal {name, cons, constructors, vals, strs, funs} =>
+                FNormal {name = name,
+                         cons = SM.insert (cons, s, n'),
                          constructors = constructors,
                          vals = vals,
                          strs = strs,
@@ -199,8 +219,9 @@ fun bindVal {basis, cons, constructors, vals, strs, funs, current, nested} s n =
         val current =
             case current of
                 FFfi _ => raise Fail "Binding inside FFfi"
-              | FNormal {cons, constructors, vals, strs, funs} =>
-                FNormal {cons = cons,
+              | FNormal {name, cons, constructors, vals, strs, funs} =>
+                FNormal {name = name,
+                         cons = cons,
                          constructors = constructors,
                          vals = SM.insert (vals, s, n'),
                          strs = strs,
@@ -222,8 +243,9 @@ fun bindConstructorVal {basis, cons, constructors, vals, strs, funs, current, ne
         val current =
             case current of
                 FFfi _ => raise Fail "Binding inside FFfi"
-              | FNormal {cons, constructors, vals, strs, funs} =>
-                FNormal {cons = cons,
+              | FNormal {name, cons, constructors, vals, strs, funs} =>
+                FNormal {name = name,
+                         cons = cons,
                          constructors = constructors,
                          vals = SM.insert (vals, s, n),
                          strs = strs,
@@ -258,8 +280,9 @@ fun bindConstructor {basis, cons, constructors, vals, strs, funs, current, neste
         val current =
             case current of
                 FFfi _ => raise Fail "Binding inside FFfi"
-              | FNormal {cons, constructors, vals, strs, funs} =>
-                FNormal {cons = cons,
+              | FNormal {name, cons, constructors, vals, strs, funs} =>
+                FNormal {name = name,
+                         cons = cons,
                          constructors = SM.insert (constructors, s, n'),
                          vals = vals,
                          strs = strs,
@@ -302,14 +325,15 @@ fun lookupConstructorByName ({current, ...} : t) x =
             NONE => raise Fail "Corify.St.lookupConstructorByName [2]"
           | SOME n => n
 
-fun enter {basis, cons, constructors, vals, strs, funs, current, nested} =
+fun enter ({basis, cons, constructors, vals, strs, funs, current, nested}, name) =
     {basis = basis,
      cons = cons,
      constructors = constructors,
      vals = vals,
      strs = strs,
      funs = funs,
-     current = FNormal {cons = SM.empty,
+     current = FNormal {name = name,
+                        cons = SM.empty,
                         constructors = SM.empty,
                         vals = SM.empty,
                         strs = SM.empty,
@@ -340,7 +364,7 @@ fun leave {basis, cons, constructors, vals, strs, funs, current, nested = m1 :: 
 fun ffi m vals constructors = dummy (NONE, FFfi {mod = m, vals = vals, constructors = constructors})
 
 fun bindStr ({basis, cons, constructors, vals, strs, funs,
-              current = FNormal {cons = mcons, constructors = mconstructors,
+              current = FNormal {name, cons = mcons, constructors = mconstructors,
                                  vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
             x n ({current = f, ...} : t) =
     {basis = basis,
@@ -349,7 +373,8 @@ fun bindStr ({basis, cons, constructors, vals, strs, funs,
      vals = vals,
      strs = IM.insert (strs, n, f),
      funs = funs,
-     current = FNormal {cons = mcons,
+     current = FNormal {name = name,
+                        cons = mcons,
                         constructors = mconstructors,
                         vals = mvals,
                         strs = SM.insert (mstrs, x, f),
@@ -375,7 +400,7 @@ fun lookupStrByNameOpt (m, {basis, current = FNormal {strs, ...}, ...} : t) =
   | lookupStrByNameOpt _ = NONE
 
 fun bindFunctor ({basis, cons, constructors, vals, strs, funs,
-                  current = FNormal {cons = mcons, constructors = mconstructors,
+                  current = FNormal {name, cons = mcons, constructors = mconstructors,
                                      vals = mvals, strs = mstrs, funs = mfuns}, nested} : t)
                 x n xa na str =
     {basis = basis,
@@ -384,7 +409,8 @@ fun bindFunctor ({basis, cons, constructors, vals, strs, funs,
      vals = vals,
      strs = strs,
      funs = IM.insert (funs, n, (xa, na, str)),
-     current = FNormal {cons = mcons,
+     current = FNormal {name = name,
+                        cons = mcons,
                         constructors = mconstructors,
                         vals = mvals,
                         strs = mstrs,
@@ -551,7 +577,7 @@ fun corifyExp st (e, loc) =
 
       | L.EWrite e => (L'.EWrite (corifyExp st e), loc)
 
-fun corifyDecl ((d, loc : EM.span), st) =
+fun corifyDecl mods ((d, loc : EM.span), st) =
     case d of
         L.DCon (x, n, k, c) =>
         let
@@ -603,7 +629,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
             val c = corifyCon st (L.CModProj (m1, ms, s), loc)
 
             val m = foldl (fn (x, m) => (L.StrProj (m, x), loc)) (L.StrVar m1, loc) ms
-            val (_, {inner, ...}) = corifyStr (m, st)
+            val (_, {inner, ...}) = corifyStr mods (m, st)
 
             val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
                                                    let
@@ -638,11 +664,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
       | L.DVal (x, n, t, e) =>
         let
             val (st, n) = St.bindVal st x n
-            val s =
-                if String.isPrefix "wrap_" x then
-                    String.extract (x, 5, NONE)
-                else
-                    x
+            val s = doRestify (mods, x)
         in
             ([(L'.DVal (x, n, corifyCon st t, corifyExp st e, s), loc)], st)
         end
@@ -660,11 +682,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
             val vis = map
                           (fn (x, n, t, e) =>
                               let
-                                  val s =
-                                      if String.isPrefix "wrap_" x then
-                                          String.extract (x, 5, NONE)
-                                      else
-                                          x
+                                  val s = doRestify (mods, x)
                               in
                                   (x, n, corifyCon st t, corifyExp st e, s)
                               end)
@@ -679,7 +697,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
 
       | L.DStr (x, n, _, (L.StrProj (str, x'), _)) =>
         let
-            val (ds, {inner, outer}) = corifyStr (str, st)
+            val (ds, {inner, outer}) = corifyStr mods (str, st)
 
             val st = case St.lookupStrByNameOpt (x', inner) of
                 SOME st' => St.bindStr st x n st'
@@ -695,7 +713,7 @@ fun corifyDecl ((d, loc : EM.span), st) =
 
       | L.DStr (x, n, _, str) =>
         let
-            val (ds, {inner, outer}) = corifyStr (str, st)
+            val (ds, {inner, outer}) = corifyStr (x :: mods) (str, st)
             val st = St.bindStr outer x n inner
         in
             (ds, st)
@@ -871,7 +889,8 @@ fun corifyDecl ((d, loc : EM.span), st) =
 
                          val (wds, eds) = foldl wrapSgi ([], []) sgis
                          val wrapper = (L.StrConst wds, loc)
-                         val (ds, {inner, outer}) = corifyStr (wrapper, st)
+                         val mst = St.lookupStrById st m
+                         val (ds, {inner, outer}) = corifyStr (St.name mst) (wrapper, st)
                          val st = St.bindStr outer "wrapper" en inner
                                   
                          val ds = ds @ map (fn f => f st) eds
@@ -884,33 +903,33 @@ fun corifyDecl ((d, loc : EM.span), st) =
       | L.DTable (_, x, n, c) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = x
+            val s = doRestify (mods, x)
         in
             ([(L'.DTable (x, n, corifyCon st c, s), loc)], st)
         end
       | L.DSequence (_, x, n) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = x
+            val s = doRestify (mods, x)
         in
             ([(L'.DSequence (x, n, s), loc)], st)
         end
 
       | L.DDatabase s => ([(L'.DDatabase s, loc)], st)
 
-and corifyStr ((str, _), st) =
+and corifyStr mods ((str, _), st) =
     case str of
         L.StrConst ds =>
         let
-            val st = St.enter st
-            val (ds, st) = ListUtil.foldlMapConcat corifyDecl st ds
+            val st = St.enter (st, mods)
+            val (ds, st) = ListUtil.foldlMapConcat (corifyDecl mods) st ds
         in
             (ds, St.leave st)
         end
       | L.StrVar n => ([], {inner = St.lookupStrById st n, outer = st})
       | L.StrProj (str, x) =>
         let
-            val (ds, {inner, outer}) = corifyStr (str, st)
+            val (ds, {inner, outer}) = corifyStr mods (str, st)
         in
             (ds, {inner = St.lookupStrByName (x, inner), outer = outer})
         end
@@ -931,8 +950,11 @@ and corifyStr ((str, _), st) =
 
             val (xa, na, body) = unwind str1
 
-            val (ds1, {inner = inner', outer}) = corifyStr (str2, st)
-            val (ds2, {inner, outer}) = corifyStr (body, St.bindStr outer xa na inner')
+            val (ds1, {inner = inner', outer}) = corifyStr mods (str2, st)
+
+            val mods' = mods
+
+            val (ds2, {inner, outer}) = corifyStr mods' (body, St.bindStr outer xa na inner')
         in
             (ds1 @ ds2, {inner = St.bindStr inner xa na inner', outer = outer})
         end
@@ -965,7 +987,7 @@ fun corify ds =
     let
         val () = reset (maxName ds + 1)
 
-        val (ds, _) = ListUtil.foldlMapConcat corifyDecl St.empty ds
+        val (ds, _) = ListUtil.foldlMapConcat (corifyDecl []) St.empty ds
     in
         ds
     end

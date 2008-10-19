@@ -1,7 +1,7 @@
-val ancillary = fn () => <html>
+fun ancillary () = return <xml>
         Welcome to the ancillary page!
-</html>
+</xml>
 
-val main : unit -> page = fn () => <html><body>
+fun main () : transaction page = return <xml><body>
         <a link={ancillary ()}>Enter the unknown!</a>
-</body></html>
+</body></xml>

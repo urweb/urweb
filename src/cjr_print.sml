@@ -1998,7 +1998,13 @@ fun p_file env (ds, ps) =
              newline,
              newline,
              validate,
-             newline]
+             newline,
+             if List.exists (fn (DDatabase _, _) => true | _ => false) ds then
+                 box []
+             else
+                 box [newline,
+                      string "void uw_db_init(uw_context ctx) { };",
+                      newline]]
     end
 
 fun p_sql env (ds, _) =
