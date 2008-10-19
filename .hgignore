@@ -21,3 +21,5 @@ src/config.sml
 *.cache
 *.log
 *.status
+
+demo/out/*.html
