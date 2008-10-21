@@ -50,4 +50,10 @@ form.urp
 
 listShop.urp
 
-<p>This is my other favorite.</p>
+<p>This example shows off algebraic datatypes, parametric polymorphism, and functors.</p>
+
+<p>The <tt>List</tt> module defines a list datatype, much in the style of SML, but with type parameters written more in Haskell style.  The types of <tt>List.length</tt> and <tt>List.rev</tt> indicate that they are polymorphic.  Types like <tt>t ::: Type -> ...</tt> indicate polymorphism, with the triple colon denoting that the value of this type parameter should be <i>inferred</i> at uses.  A double colon would mean that the type argument must be provided explicitly at uses.  In contrast to ML and Haskell, all polymorphism must be <i>declared</i> explicitly in Ur, while instantiations may be inferred at uses.</p>
+
+<p>The <tt>ListFun</tt> module defines a functor for building list editing sub-applications.  An argument to the functor <tt>Make</tt> must give the type to be stored in the lists, along with marshaling and unmarshaling functions.  In return, the functor returns an entry point function.</p>
+
+<p>The <tt>ListShop</tt> modules ties everything together by instantiating <tt>ListFun.Make</tt> with structures for integers and strings.  <tt>show</tt> and <tt>read</tt> can be used for marshaling and unmarshaling in both cases because they are type-class-generic.</p>
