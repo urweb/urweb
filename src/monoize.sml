@@ -761,6 +761,23 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        boolBin "<",
                        boolBin "<=")
             end
+          | L.EFfi ("Basis", "ord_string") =>
+            let
+                fun boolBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "string"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EBinop (s,
+                                                    (L'.EBinop ("strcmp",
+                                                                (L'.ERel 1, loc),
+                                                                (L'.ERel 0, loc)), loc),
+                                                    (L'.EPrim (Prim.Int (Int64.fromInt 0)), loc)), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "string"), loc),
+                       boolBin "<",
+                       boolBin "<=")
+            end
                        
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>
             let
