@@ -20,7 +20,7 @@ fun compose (t1 ::: Type) (t2 ::: Type) (t3 ::: Type)
             (f1 : t2 -> t3) (f2 : t1 -> t2) (x : t1) = f1 (f2 x)
 
 fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (sh : show t) (v : t) =
-    cdata (show sh v)
+    cdata (@show sh v)
 
 fun foldTR (tf :: Type -> Type) (tr :: {Type} -> Type)
            (f : nm :: Name -> t :: Type -> rest :: {Type}

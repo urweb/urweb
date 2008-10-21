@@ -105,11 +105,16 @@ datatype pat' =
 
 withtype pat = pat' located
 
+datatype inference =
+         Infer
+       | DontInfer
+       | TypesOnly
+
 datatype exp' =
          EAnnot of exp * con
 
        | EPrim of Prim.t
-       | EVar of string list * string
+       | EVar of string list * string * inference
        | EApp of exp * exp
        | EAbs of string * con option * exp
        | ECApp of exp * con

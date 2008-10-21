@@ -248,7 +248,7 @@ val insert : fields ::: {Type}
                            [] fields)
              -> dml
 
-val update : changed :: {Type} -> unchanged ::: {Type} ->
+val update : unchanged ::: {Type} -> changed :: {Type} ->
              fn [changed ~ unchanged] =>
                 $(fold (fn nm (t :: Type) acc [[nm] ~ acc] =>
                            [nm = sql_exp [T = changed ++ unchanged] [] [] t]

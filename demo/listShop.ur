@@ -1,13 +1,13 @@
 structure I = struct
     type t = int
-    val toString = show _
-    val fromString = read _
+    val toString = show
+    val fromString = read
 end
 
 structure S = struct
     type t = string
-    val toString = show _
-    val fromString = read _
+    val toString = show
+    val fromString = read
 end
 
 structure IL = ListFun.Make(I)

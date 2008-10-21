@@ -1,1041 +1,1057 @@
-(* Copyright (c) 2008, Adam Chlipala
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * - Redistributions of source code must retain the above copyright notice,
- *   this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright notice,
- *   this list of conditions and the following disclaimer in the documentation
- *   and/or other materials provided with the distribution.
- * - The names of contributors may not be used to endorse or promote products
- *   derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *)
+ (* Copyright (c) 2008, Adam Chlipala
+  * All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions are met:
+  *
+  * - Redistributions of source code must retain the above copyright notice,
+  *   this list of conditions and the following disclaimer.
+  * - Redistributions in binary form must reproduce the above copyright notice,
+  *   this list of conditions and the following disclaimer in the documentation
+  *   and/or other materials provided with the distribution.
+  * - The names of contributors may not be used to endorse or promote products
+  *   derived from this software without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  * POSSIBILITY OF SUCH DAMAGE.
+  *)
 
-structure Elaborate :> ELABORATE = struct
+ structure Elaborate :> ELABORATE = struct
 
-structure P = Prim
-structure L = Source
-structure L' = Elab
-structure E = ElabEnv
-structure U = ElabUtil
-structure D = Disjoint
+ structure P = Prim
+ structure L = Source
+ structure L' = Elab
+ structure E = ElabEnv
+ structure U = ElabUtil
+ structure D = Disjoint
 
-open Print
-open ElabPrint
-open ElabErr
+ open Print
+ open ElabPrint
+ open ElabErr
 
-structure IM = IntBinaryMap
+ structure IM = IntBinaryMap
 
-structure SK = struct
-type ord_key = string
-val compare = String.compare
-end
+ structure SK = struct
+ type ord_key = string
+ val compare = String.compare
+ end
 
-structure SS = BinarySetFn(SK)
-structure SM = BinaryMapFn(SK)
+ structure SS = BinarySetFn(SK)
+ structure SM = BinaryMapFn(SK)
 
-val basis_r = ref 0
+ val basis_r = ref 0
 
-fun elabExplicitness e =
-    case e of
-        L.Explicit => L'.Explicit
-      | L.Implicit => L'.Implicit
+ fun elabExplicitness e =
+     case e of
+         L.Explicit => L'.Explicit
+       | L.Implicit => L'.Implicit
 
-fun occursKind r =
-    U.Kind.exists (fn L'.KUnif (_, _, r') => r = r'
-                    | _ => false)
+ fun occursKind r =
+     U.Kind.exists (fn L'.KUnif (_, _, r') => r = r'
+                     | _ => false)
 
-exception KUnify' of kunify_error
+ exception KUnify' of kunify_error
 
-fun unifyKinds' (k1All as (k1, _)) (k2All as (k2, _)) =
-    let
-        fun err f = raise KUnify' (f (k1All, k2All))
-    in
-        case (k1, k2) of
-            (L'.KType, L'.KType) => ()
-          | (L'.KUnit, L'.KUnit) => ()
+ fun unifyKinds' (k1All as (k1, _)) (k2All as (k2, _)) =
+     let
+         fun err f = raise KUnify' (f (k1All, k2All))
+     in
+         case (k1, k2) of
+             (L'.KType, L'.KType) => ()
+           | (L'.KUnit, L'.KUnit) => ()
 
-          | (L'.KArrow (d1, r1), L'.KArrow (d2, r2)) =>
-            (unifyKinds' d1 d2;
-             unifyKinds' r1 r2)
-          | (L'.KName, L'.KName) => ()
-          | (L'.KRecord k1, L'.KRecord k2) => unifyKinds' k1 k2
-          | (L'.KTuple ks1, L'.KTuple ks2) =>
-            ((ListPair.appEq (fn (k1, k2) => unifyKinds' k1 k2) (ks1, ks2))
-             handle ListPair.UnequalLengths => err KIncompatible)
+           | (L'.KArrow (d1, r1), L'.KArrow (d2, r2)) =>
+             (unifyKinds' d1 d2;
+              unifyKinds' r1 r2)
+           | (L'.KName, L'.KName) => ()
+           | (L'.KRecord k1, L'.KRecord k2) => unifyKinds' k1 k2
+           | (L'.KTuple ks1, L'.KTuple ks2) =>
+             ((ListPair.appEq (fn (k1, k2) => unifyKinds' k1 k2) (ks1, ks2))
+              handle ListPair.UnequalLengths => err KIncompatible)
 
-          | (L'.KError, _) => ()
-          | (_, L'.KError) => ()
+           | (L'.KError, _) => ()
+           | (_, L'.KError) => ()
 
-          | (L'.KUnif (_, _, ref (SOME k1All)), _) => unifyKinds' k1All k2All
-          | (_, L'.KUnif (_, _, ref (SOME k2All))) => unifyKinds' k1All k2All
+           | (L'.KUnif (_, _, ref (SOME k1All)), _) => unifyKinds' k1All k2All
+           | (_, L'.KUnif (_, _, ref (SOME k2All))) => unifyKinds' k1All k2All
 
-          | (L'.KUnif (_, _, r1), L'.KUnif (_, _, r2)) =>
-            if r1 = r2 then
-                ()
-            else
-                r1 := SOME k2All
+           | (L'.KUnif (_, _, r1), L'.KUnif (_, _, r2)) =>
+             if r1 = r2 then
+                 ()
+             else
+                 r1 := SOME k2All
 
-          | (L'.KUnif (_, _, r), _) =>
-            if occursKind r k2All then
-                err KOccursCheckFailed
-            else
-                r := SOME k2All
-          | (_, L'.KUnif (_, _, r)) =>
-            if occursKind r k1All then
-                err KOccursCheckFailed
-            else
-                r := SOME k1All
+           | (L'.KUnif (_, _, r), _) =>
+             if occursKind r k2All then
+                 err KOccursCheckFailed
+             else
+                 r := SOME k2All
+           | (_, L'.KUnif (_, _, r)) =>
+             if occursKind r k1All then
+                 err KOccursCheckFailed
+             else
+                 r := SOME k1All
 
-          | _ => err KIncompatible
-    end
+           | _ => err KIncompatible
+     end
 
-exception KUnify of L'.kind * L'.kind * kunify_error
+ exception KUnify of L'.kind * L'.kind * kunify_error
 
-fun unifyKinds k1 k2 =
-    unifyKinds' k1 k2
-    handle KUnify' err => raise KUnify (k1, k2, err)
+ fun unifyKinds k1 k2 =
+     unifyKinds' k1 k2
+     handle KUnify' err => raise KUnify (k1, k2, err)
 
-fun checkKind env c k1 k2 =
-    unifyKinds k1 k2
-    handle KUnify (k1, k2, err) =>
-           conError env (WrongKind (c, k1, k2, err))
+ fun checkKind env c k1 k2 =
+     unifyKinds k1 k2
+     handle KUnify (k1, k2, err) =>
+            conError env (WrongKind (c, k1, k2, err))
 
-val dummy = ErrorMsg.dummySpan
+ val dummy = ErrorMsg.dummySpan
 
-val ktype = (L'.KType, dummy)
-val kname = (L'.KName, dummy)
-val ktype_record = (L'.KRecord ktype, dummy)
+ val ktype = (L'.KType, dummy)
+ val kname = (L'.KName, dummy)
+ val ktype_record = (L'.KRecord ktype, dummy)
 
-val cerror = (L'.CError, dummy)
-val kerror = (L'.KError, dummy)
-val eerror = (L'.EError, dummy)
-val sgnerror = (L'.SgnError, dummy)
-val strerror = (L'.StrError, dummy)
+ val cerror = (L'.CError, dummy)
+ val kerror = (L'.KError, dummy)
+ val eerror = (L'.EError, dummy)
+ val sgnerror = (L'.SgnError, dummy)
+ val strerror = (L'.StrError, dummy)
 
-val int = ref cerror
-val float = ref cerror
-val string = ref cerror
-val table = ref cerror
+ val int = ref cerror
+ val float = ref cerror
+ val string = ref cerror
+ val table = ref cerror
 
-local
-    val count = ref 0
-in
+ local
+     val count = ref 0
+ in
 
-fun resetKunif () = count := 0
+ fun resetKunif () = count := 0
 
-fun kunif loc =
-    let
-        val n = !count
-        val s = if n <= 26 then
-                    str (chr (ord #"A" + n))
-                else
-                    "U" ^ Int.toString (n - 26)
-    in
-        count := n + 1;
-        (L'.KUnif (loc, s, ref NONE), dummy)
-    end
+ fun kunif loc =
+     let
+         val n = !count
+         val s = if n <= 26 then
+                     str (chr (ord #"A" + n))
+                 else
+                     "U" ^ Int.toString (n - 26)
+     in
+         count := n + 1;
+         (L'.KUnif (loc, s, ref NONE), dummy)
+     end
 
-end
+ end
 
-local
-    val count = ref 0
-in
+ local
+     val count = ref 0
+ in
 
-fun resetCunif () = count := 0
+ fun resetCunif () = count := 0
 
-fun cunif (loc, k) =
-    let
-        val n = !count
-        val s = if n <= 26 then
-                    str (chr (ord #"A" + n))
-                else
-                    "U" ^ Int.toString (n - 26)
-    in
-        count := n + 1;
-        (L'.CUnif (loc, k, s, ref NONE), dummy)
-    end
+ fun cunif (loc, k) =
+     let
+         val n = !count
+         val s = if n <= 26 then
+                     str (chr (ord #"A" + n))
+                 else
+                     "U" ^ Int.toString (n - 26)
+     in
+         count := n + 1;
+         (L'.CUnif (loc, k, s, ref NONE), dummy)
+     end
 
-end
+ end
 
-fun elabKind (k, loc) =
-    case k of
-        L.KType => (L'.KType, loc)
-      | L.KArrow (k1, k2) => (L'.KArrow (elabKind k1, elabKind k2), loc)
-      | L.KName => (L'.KName, loc)
-      | L.KRecord k => (L'.KRecord (elabKind k), loc)
-      | L.KUnit => (L'.KUnit, loc)
-      | L.KTuple ks => (L'.KTuple (map elabKind ks), loc)
-      | L.KWild => kunif loc
+ fun elabKind (k, loc) =
+     case k of
+         L.KType => (L'.KType, loc)
+       | L.KArrow (k1, k2) => (L'.KArrow (elabKind k1, elabKind k2), loc)
+       | L.KName => (L'.KName, loc)
+       | L.KRecord k => (L'.KRecord (elabKind k), loc)
+       | L.KUnit => (L'.KUnit, loc)
+       | L.KTuple ks => (L'.KTuple (map elabKind ks), loc)
+       | L.KWild => kunif loc
 
-fun foldKind (dom, ran, loc)=
-    (L'.KArrow ((L'.KArrow ((L'.KName, loc),
-                            (L'.KArrow (dom,
-                                        (L'.KArrow (ran, ran), loc)), loc)), loc),
-                (L'.KArrow (ran,
-                            (L'.KArrow ((L'.KRecord dom, loc),
-                                        ran), loc)), loc)), loc)
+ fun foldKind (dom, ran, loc)=
+     (L'.KArrow ((L'.KArrow ((L'.KName, loc),
+                             (L'.KArrow (dom,
+                                         (L'.KArrow (ran, ran), loc)), loc)), loc),
+                 (L'.KArrow (ran,
+                             (L'.KArrow ((L'.KRecord dom, loc),
+                                         ran), loc)), loc)), loc)
 
-fun hnormKind (kAll as (k, _)) =
-    case k of
-        L'.KUnif (_, _, ref (SOME k)) => hnormKind k
-      | _ => kAll
+ fun hnormKind (kAll as (k, _)) =
+     case k of
+         L'.KUnif (_, _, ref (SOME k)) => hnormKind k
+       | _ => kAll
 
-fun elabCon (env, denv) (c, loc) =
-    case c of
-        L.CAnnot (c, k) =>
-        let
-            val k' = elabKind k
-            val (c', ck, gs) = elabCon (env, denv) c
-        in
-            checkKind env c' ck k';
-            (c', k', gs)
-        end
+ fun elabCon (env, denv) (c, loc) =
+     case c of
+         L.CAnnot (c, k) =>
+         let
+             val k' = elabKind k
+             val (c', ck, gs) = elabCon (env, denv) c
+         in
+             checkKind env c' ck k';
+             (c', k', gs)
+         end
 
-      | L.TFun (t1, t2) =>
-        let
-            val (t1', k1, gs1) = elabCon (env, denv) t1
-            val (t2', k2, gs2) = elabCon (env, denv) t2
-        in
-            checkKind env t1' k1 ktype;
-            checkKind env t2' k2 ktype;
-            ((L'.TFun (t1', t2'), loc), ktype, gs1 @ gs2)
-        end
-      | L.TCFun (e, x, k, t) =>
-        let
-            val e' = elabExplicitness e
-            val k' = elabKind k
-            val env' = E.pushCRel env x k'
-            val (t', tk, gs) = elabCon (env', D.enter denv) t
-        in
-            checkKind env t' tk ktype;
-            ((L'.TCFun (e', x, k', t'), loc), ktype, gs)
-        end
-      | L.CDisjoint (c1, c2, c) =>
-        let
-            val (c1', k1, gs1) = elabCon (env, denv) c1
-            val (c2', k2, gs2) = elabCon (env, denv) c2
+       | L.TFun (t1, t2) =>
+         let
+             val (t1', k1, gs1) = elabCon (env, denv) t1
+             val (t2', k2, gs2) = elabCon (env, denv) t2
+         in
+             checkKind env t1' k1 ktype;
+             checkKind env t2' k2 ktype;
+             ((L'.TFun (t1', t2'), loc), ktype, gs1 @ gs2)
+         end
+       | L.TCFun (e, x, k, t) =>
+         let
+             val e' = elabExplicitness e
+             val k' = elabKind k
+             val env' = E.pushCRel env x k'
+             val (t', tk, gs) = elabCon (env', D.enter denv) t
+         in
+             checkKind env t' tk ktype;
+             ((L'.TCFun (e', x, k', t'), loc), ktype, gs)
+         end
+       | L.CDisjoint (c1, c2, c) =>
+         let
+             val (c1', k1, gs1) = elabCon (env, denv) c1
+             val (c2', k2, gs2) = elabCon (env, denv) c2
 
-            val ku1 = kunif loc
-            val ku2 = kunif loc
+             val ku1 = kunif loc
+             val ku2 = kunif loc
 
-            val (denv', gs3) = D.assert env denv (c1', c2')
-            val (c', k, gs4) = elabCon (env, denv') c
-        in
-            checkKind env c1' k1 (L'.KRecord ku1, loc);
-            checkKind env c2' k2 (L'.KRecord ku2, loc);
+             val (denv', gs3) = D.assert env denv (c1', c2')
+             val (c', k, gs4) = elabCon (env, denv') c
+         in
+             checkKind env c1' k1 (L'.KRecord ku1, loc);
+             checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-            ((L'.CDisjoint (L'.Instantiate, c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
-        end
-      | L.TRecord c =>
-        let
-            val (c', ck, gs) = elabCon (env, denv) c
-            val k = (L'.KRecord ktype, loc)
-        in
-            checkKind env c' ck k;
-            ((L'.TRecord c', loc), ktype, gs)
-        end
+             ((L'.CDisjoint (L'.Instantiate, c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
+         end
+       | L.TRecord c =>
+         let
+             val (c', ck, gs) = elabCon (env, denv) c
+             val k = (L'.KRecord ktype, loc)
+         in
+             checkKind env c' ck k;
+             ((L'.TRecord c', loc), ktype, gs)
+         end
 
-      | L.CVar ([], s) =>
-        (case E.lookupC env s of
-             E.NotBound =>
-             (conError env (UnboundCon (loc, s));
-              (cerror, kerror, []))
-           | E.Rel (n, k) =>
-             ((L'.CRel n, loc), k, [])
-           | E.Named (n, k) =>
-             ((L'.CNamed n, loc), k, []))
-      | L.CVar (m1 :: ms, s) =>
-        (case E.lookupStr env m1 of
-             NONE => (conError env (UnboundStrInCon (loc, m1));
-                      (cerror, kerror, []))
-           | SOME (n, sgn) =>
-             let
-                 val (str, sgn) = foldl (fn (m, (str, sgn)) =>
-                                     case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                         NONE => (conError env (UnboundStrInCon (loc, m));
-                                                  (strerror, sgnerror))
-                                       | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                                  ((L'.StrVar n, loc), sgn) ms
+       | L.CVar ([], s) =>
+         (case E.lookupC env s of
+              E.NotBound =>
+              (conError env (UnboundCon (loc, s));
+               (cerror, kerror, []))
+            | E.Rel (n, k) =>
+              ((L'.CRel n, loc), k, [])
+            | E.Named (n, k) =>
+              ((L'.CNamed n, loc), k, []))
+       | L.CVar (m1 :: ms, s) =>
+         (case E.lookupStr env m1 of
+              NONE => (conError env (UnboundStrInCon (loc, m1));
+                       (cerror, kerror, []))
+            | SOME (n, sgn) =>
+              let
+                  val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                      case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                          NONE => (conError env (UnboundStrInCon (loc, m));
+                                                   (strerror, sgnerror))
+                                        | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                   ((L'.StrVar n, loc), sgn) ms
 
-                 val k = case E.projectCon env {sgn = sgn, str = str, field = s} of
-                             NONE => (conError env (UnboundCon (loc, s));
-                                      kerror)
-                           | SOME (k, _) => k
-             in
-                 ((L'.CModProj (n, ms, s), loc), k, [])
-             end)
-                                                                       
-      | L.CApp (c1, c2) =>
-        let
-            val (c1', k1, gs1) = elabCon (env, denv) c1
-            val (c2', k2, gs2) = elabCon (env, denv) c2
-            val dom = kunif loc
-            val ran = kunif loc
-        in
-            checkKind env c1' k1 (L'.KArrow (dom, ran), loc);
-            checkKind env c2' k2 dom;
-            ((L'.CApp (c1', c2'), loc), ran, gs1 @ gs2)
-        end
-      | L.CAbs (x, ko, t) =>
-        let
-            val k' = case ko of
-                         NONE => kunif loc
-                       | SOME k => elabKind k
-            val env' = E.pushCRel env x k'
-            val (t', tk, gs) = elabCon (env', D.enter denv) t
-        in
-            ((L'.CAbs (x, k', t'), loc),
-             (L'.KArrow (k', tk), loc),
-             gs)
-        end
+                  val k = case E.projectCon env {sgn = sgn, str = str, field = s} of
+                              NONE => (conError env (UnboundCon (loc, s));
+                                       kerror)
+                            | SOME (k, _) => k
+              in
+                  ((L'.CModProj (n, ms, s), loc), k, [])
+              end)
 
-      | L.CName s =>
-        ((L'.CName s, loc), kname, [])
+       | L.CApp (c1, c2) =>
+         let
+             val (c1', k1, gs1) = elabCon (env, denv) c1
+             val (c2', k2, gs2) = elabCon (env, denv) c2
+             val dom = kunif loc
+             val ran = kunif loc
+         in
+             checkKind env c1' k1 (L'.KArrow (dom, ran), loc);
+             checkKind env c2' k2 dom;
+             ((L'.CApp (c1', c2'), loc), ran, gs1 @ gs2)
+         end
+       | L.CAbs (x, ko, t) =>
+         let
+             val k' = case ko of
+                          NONE => kunif loc
+                        | SOME k => elabKind k
+             val env' = E.pushCRel env x k'
+             val (t', tk, gs) = elabCon (env', D.enter denv) t
+         in
+             ((L'.CAbs (x, k', t'), loc),
+              (L'.KArrow (k', tk), loc),
+              gs)
+         end
 
-      | L.CRecord xcs =>
-        let
-            val k = kunif loc
+       | L.CName s =>
+         ((L'.CName s, loc), kname, [])
 
-            val (xcs', gs) = ListUtil.foldlMap (fn ((x, c), gs) =>
-                                                   let
-                                                       val (x', xk, gs1) = elabCon (env, denv) x
-                                                       val (c', ck, gs2) = elabCon (env, denv) c
-                                                   in
-                                                       checkKind env x' xk kname;
-                                                       checkKind env c' ck k;
-                                                       ((x', c'), gs1 @ gs2 @ gs)
-                                                   end) [] xcs
+       | L.CRecord xcs =>
+         let
+             val k = kunif loc
 
-            val rc = (L'.CRecord (k, xcs'), loc)
-            (* Add duplicate field checking later. *)
+             val (xcs', gs) = ListUtil.foldlMap (fn ((x, c), gs) =>
+                                                    let
+                                                        val (x', xk, gs1) = elabCon (env, denv) x
+                                                        val (c', ck, gs2) = elabCon (env, denv) c
+                                                    in
+                                                        checkKind env x' xk kname;
+                                                        checkKind env c' ck k;
+                                                        ((x', c'), gs1 @ gs2 @ gs)
+                                                    end) [] xcs
 
-            fun prove (xcs, ds) =
-                case xcs of
-                    [] => ds
-                  | xc :: rest =>
-                    let
-                        val r1 = (L'.CRecord (k, [xc]), loc)
-                        val ds = foldl (fn (xc', ds) =>
+             val rc = (L'.CRecord (k, xcs'), loc)
+             (* Add duplicate field checking later. *)
+
+             fun prove (xcs, ds) =
+                 case xcs of
+                     [] => ds
+                   | xc :: rest =>
+                     let
+                         val r1 = (L'.CRecord (k, [xc]), loc)
+                         val ds = foldl (fn (xc', ds) =>
+                                            let
+                                                val r2 = (L'.CRecord (k, [xc']), loc)
+                                            in
+                                                D.prove env denv (r1, r2, loc) @ ds
+                                            end)
+                                  ds rest
+                     in
+                         prove (rest, ds)
+                     end
+         in
+             (rc, (L'.KRecord k, loc), prove (xcs', gs))
+         end
+       | L.CConcat (c1, c2) =>
+         let
+             val (c1', k1, gs1) = elabCon (env, denv) c1
+             val (c2', k2, gs2) = elabCon (env, denv) c2
+             val ku = kunif loc
+             val k = (L'.KRecord ku, loc)
+         in
+             checkKind env c1' k1 k;
+             checkKind env c2' k2 k;
+             ((L'.CConcat (c1', c2'), loc), k,
+              D.prove env denv (c1', c2', loc) @ gs1 @ gs2)
+         end
+       | L.CFold =>
+         let
+             val dom = kunif loc
+             val ran = kunif loc
+         in
+             ((L'.CFold (dom, ran), loc),
+              foldKind (dom, ran, loc),
+              [])
+         end
+
+       | L.CUnit => ((L'.CUnit, loc), (L'.KUnit, loc), [])
+
+       | L.CTuple cs =>
+         let
+             val (cs', ks, gs) = foldl (fn (c, (cs', ks, gs)) =>
                                            let
-                                               val r2 = (L'.CRecord (k, [xc']), loc)
+                                               val (c', k, gs') = elabCon (env, denv) c
                                            in
-                                               D.prove env denv (r1, r2, loc) @ ds
-                                           end)
-                                 ds rest
-                    in
-                        prove (rest, ds)
-                    end
-        in
-            (rc, (L'.KRecord k, loc), prove (xcs', gs))
-        end
-      | L.CConcat (c1, c2) =>
-        let
-            val (c1', k1, gs1) = elabCon (env, denv) c1
-            val (c2', k2, gs2) = elabCon (env, denv) c2
-            val ku = kunif loc
-            val k = (L'.KRecord ku, loc)
-        in
-            checkKind env c1' k1 k;
-            checkKind env c2' k2 k;
-            ((L'.CConcat (c1', c2'), loc), k,
-             D.prove env denv (c1', c2', loc) @ gs1 @ gs2)
-        end
-      | L.CFold =>
-        let
-            val dom = kunif loc
-            val ran = kunif loc
-        in
-            ((L'.CFold (dom, ran), loc),
-             foldKind (dom, ran, loc),
-             [])
-        end
-
-      | L.CUnit => ((L'.CUnit, loc), (L'.KUnit, loc), [])
-
-      | L.CTuple cs =>
-        let
-            val (cs', ks, gs) = foldl (fn (c, (cs', ks, gs)) =>
-                                          let
-                                              val (c', k, gs') = elabCon (env, denv) c
-                                          in
-                                              (c' :: cs', k :: ks, gs' @ gs)
-                                          end) ([], [], []) cs
-        in
-            ((L'.CTuple (rev cs'), loc), (L'.KTuple (rev ks), loc), gs)
-        end
-      | L.CProj (c, n) =>
-        let
-            val (c', k, gs) = elabCon (env, denv) c
-        in
-            case hnormKind k of
-                (L'.KTuple ks, _) =>
-                if n <= 0 orelse n > length ks then
-                    (conError env (ProjBounds (c', n));
-                     (cerror, kerror, []))
-                else
-                    ((L'.CProj (c', n), loc), List.nth (ks, n - 1), gs)
-              | k => (conError env (ProjMismatch (c', k));
+                                               (c' :: cs', k :: ks, gs' @ gs)
+                                           end) ([], [], []) cs
+         in
+             ((L'.CTuple (rev cs'), loc), (L'.KTuple (rev ks), loc), gs)
+         end
+       | L.CProj (c, n) =>
+         let
+             val (c', k, gs) = elabCon (env, denv) c
+         in
+             case hnormKind k of
+                 (L'.KTuple ks, _) =>
+                 if n <= 0 orelse n > length ks then
+                     (conError env (ProjBounds (c', n));
                       (cerror, kerror, []))
-        end
-
-      | L.CWild k =>
-        let
-            val k' = elabKind k
-        in
-            (cunif (loc, k'), k', [])
-        end
-
-fun kunifsRemain k =
-    case k of
-        L'.KUnif (_, _, ref NONE) => true
-      | _ => false
-fun cunifsRemain c =
-    case c of
-        L'.CUnif (loc, _, _, ref NONE) => SOME loc
-      | _ => NONE
-
-val kunifsInDecl = U.Decl.exists {kind = kunifsRemain,
-                                  con = fn _ => false,
-                                  exp = fn _ => false,
-                                  sgn_item = fn _ => false,
-                                  sgn = fn _ => false,
-                                  str = fn _ => false,
-                                  decl = fn _ => false}
-
-val cunifsInDecl = U.Decl.search {kind = fn _ => NONE,
-                                  con = cunifsRemain,
-                                  exp = fn _ => NONE,
-                                  sgn_item = fn _ => NONE,
-                                  sgn = fn _ => NONE,
-                                  str = fn _ => NONE,
-                                  decl = fn _ => NONE}
-
-fun occursCon r =
-    U.Con.exists {kind = fn _ => false,
-                  con = fn L'.CUnif (_, _, _, r') => r = r'
-                         | _ => false}
-
-exception CUnify' of cunify_error
-
-exception SynUnif = E.SynUnif
-
-open ElabOps
-
-type record_summary = {
-     fields : (L'.con * L'.con) list,
-     unifs : (L'.con * L'.con option ref) list,
-     others : L'.con list
-}
-
-fun summaryToCon {fields, unifs, others} =
-    let
-        val c = (L'.CRecord (ktype, []), dummy)
-        val c = List.foldr (fn (c', c) => (L'.CConcat (c', c), dummy)) c others
-        val c = List.foldr (fn ((c', _), c) => (L'.CConcat (c', c), dummy)) c unifs
-    in
-        (L'.CConcat ((L'.CRecord (ktype, fields), dummy), c), dummy)
-    end
-
-fun p_summary env s = p_con env (summaryToCon s)
-
-exception CUnify of L'.con * L'.con * cunify_error
-
-fun kindof env (c, loc) =
-    case c of
-        L'.TFun _ => ktype
-      | L'.TCFun _ => ktype
-      | L'.TRecord _ => ktype
-
-      | L'.CRel xn => #2 (E.lookupCRel env xn)
-      | L'.CNamed xn => #2 (E.lookupCNamed env xn)
-      | L'.CModProj (n, ms, x) =>
-        let
-            val (_, sgn) = E.lookupStrNamed env n
-            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
-                                       case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                           NONE => raise Fail "kindof: Unknown substructure"
-                                         | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                             ((L'.StrVar n, loc), sgn) ms
-        in
-            case E.projectCon env {sgn = sgn, str = str, field = x} of
-                NONE => raise Fail "kindof: Unknown con in structure"
-              | SOME (k, _) => k
-        end
-
-      | L'.CApp (c, _) =>
-        (case hnormKind (kindof env c) of
-             (L'.KArrow (_, k), _) => k
-           | (L'.KError, _) => kerror
-           | k => raise CUnify' (CKindof (k, c)))
-      | L'.CAbs (x, k, c) => (L'.KArrow (k, kindof (E.pushCRel env x k) c), loc)
-      | L'.CDisjoint (_, _, _, c) => kindof env c
-
-      | L'.CName _ => kname
-
-      | L'.CRecord (k, _) => (L'.KRecord k, loc)
-      | L'.CConcat (c, _) => kindof env c
-      | L'.CFold (dom, ran) => foldKind (dom, ran, loc)
-
-      | L'.CUnit => (L'.KUnit, loc)
-
-      | L'.CTuple cs => (L'.KTuple (map (kindof env) cs), loc)
-      | L'.CProj (c, n) =>
-        (case hnormKind (kindof env c) of
-             (L'.KTuple ks, _) => List.nth (ks, n - 1)
-           | k => raise CUnify' (CKindof (k, c)))
-
-      | L'.CError => kerror
-      | L'.CUnif (_, k, _, _) => k
-
-val hnormCon = D.hnormCon
-
-datatype con_summary =
-         Nil
-       | Cons
-       | Unknown
-
-fun compatible cs =
-    case cs of
-        (Unknown, _) => false
-      | (_, Unknown) => false
-      | (s1, s2) => s1 = s2
-
-fun summarizeCon (env, denv) c =
-    let
-        val (c, gs) = hnormCon (env, denv) c
-    in
-        case #1 c of
-            L'.CRecord (_, []) => (Nil, gs)
-          | L'.CRecord (_, _ :: _) => (Cons, gs)
-          | L'.CConcat ((L'.CRecord (_, _ :: _), _), _) => (Cons, gs)
-          | L'.CDisjoint (_, _, _, c) =>
-            let
-                val (s, gs') = summarizeCon (env, denv) c
-            in
-                (s, gs @ gs')
-            end
-          | _ => (Unknown, gs)
-    end
-
-fun p_con_summary s =
-    Print.PD.string (case s of
-                         Nil => "Nil"
-                       | Cons => "Cons"
-                       | Unknown => "Unknown")
-
-exception SummaryFailure
-
-fun unifyRecordCons (env, denv) (c1, c2) =
-    let
-        fun rkindof c =
-            case hnormKind (kindof env c) of
-                (L'.KRecord k, _) => k
-              | (L'.KError, _) => kerror
-              | k => raise CUnify' (CKindof (k, c))
-
-        val k1 = rkindof c1
-        val k2 = rkindof c2
-
-        val (r1, gs1) = recordSummary (env, denv) c1
-        val (r2, gs2) = recordSummary (env, denv) c2
-    in
-        unifyKinds k1 k2;
-        unifySummaries (env, denv) (k1, r1, r2);
-        gs1 @ gs2
-    end
-
-and recordSummary (env, denv) c =
-    let
-        val (c, gs) = hnormCon (env, denv) c
-
-        val (sum, gs') =
-            case c of
-                (L'.CRecord (_, xcs), _) => ({fields = xcs, unifs = [], others = []}, [])
-              | (L'.CConcat (c1, c2), _) =>
-                let
-                    val (s1, gs1) = recordSummary (env, denv) c1
-                    val (s2, gs2) = recordSummary (env, denv) c2
-                in
-                    ({fields = #fields s1 @ #fields s2,
-                      unifs = #unifs s1 @ #unifs s2,
-                      others = #others s1 @ #others s2},
-                     gs1 @ gs2)
-                end
-              | (L'.CUnif (_, _, _, ref (SOME c)), _) => recordSummary (env, denv) c
-              | c' as (L'.CUnif (_, _, _, r), _) => ({fields = [], unifs = [(c', r)], others = []}, [])
-              | c' => ({fields = [], unifs = [], others = [c']}, [])
-    in
-        (sum, gs @ gs')
-    end
-
-and consEq (env, denv) (c1, c2) =
-    let
-        val gs = unifyCons (env, denv) c1 c2
-    in
-        List.all (fn (loc, env, denv, c1, c2) =>
-                     case D.prove env denv (c1, c2, loc) of
-                         [] => true
-                       | _ => false) gs
-    end
-    handle CUnify _ => false
-
-and consNeq env (c1, c2) =
-    case (#1 (ElabOps.hnormCon env c1), #1 (ElabOps.hnormCon env c2)) of
-        (L'.CName x1, L'.CName x2) => x1 <> x2
-      | _ => false
-
-and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
-    let
-        val loc = #2 k
-        (*val () = eprefaces "Summaries" [("#1", p_summary env s1),
-                                        ("#2", p_summary env s2)]*)
-
-        fun eatMatching p (ls1, ls2) =
-            let
-                fun em (ls1, ls2, passed1) =
-                    case ls1 of
-                        [] => (rev passed1, ls2)
-                      | h1 :: t1 =>
-                        let
-                            fun search (ls2', passed2) =
-                                case ls2' of
-                                    [] => em (t1, ls2, h1 :: passed1)
-                                  | h2 :: t2 =>
-                                    if p (h1, h2) then
-                                        em (t1, List.revAppend (passed2, t2), passed1)
-                                    else
-                                        search (t2, h2 :: passed2)
-                        in
-                            search (ls2, [])
-                        end
-            in
-                em (ls1, ls2, [])
-            end
-
-        val (fs1, fs2) = eatMatching (fn ((x1, c1), (x2, c2)) =>
-                                         not (consNeq env (x1, x2))
-                                         andalso consEq (env, denv) (c1, c2)
-                                         andalso consEq (env, denv) (x1, x2))
-                                     (#fields s1, #fields s2)
-        (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
-                                         ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
-        val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
-        val (others1, others2) = eatMatching (consEq (env, denv)) (#others s1, #others s2)
-        (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
-                                         ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
-
-        fun unifFields (fs, others, unifs) =
-            case (fs, others, unifs) of
-                ([], [], _) => ([], [], unifs)
-              | (_, _, []) => (fs, others, [])
-              | (_, _, (_, r) :: rest) =>
-                let
-                    val r' = ref NONE
-                    val kr = (L'.KRecord k, dummy)
-                    val cr' = (L'.CUnif (dummy, kr, "recd", r'), dummy)
-
-                    val prefix = case (fs, others) of
-                                     ([], other :: others) =>
-                                     List.foldl (fn (other, c) =>
-                                                    (L'.CConcat (c, other), dummy))
-                                                other others
-                                   | (fs, []) =>
-                                     (L'.CRecord (k, fs), dummy)
-                                   | (fs, others) =>
-                                     List.foldl (fn (other, c) =>
-                                                    (L'.CConcat (c, other), dummy))
-                                                (L'.CRecord (k, fs), dummy) others
-                in
-                    r := SOME (L'.CConcat (prefix, cr'), dummy);
-                    ([], [], (cr', r') :: rest)
-                end
-
-        val (fs1, others1, unifs2) = unifFields (fs1, others1, unifs2)
-        val (fs2, others2, unifs1) = unifFields (fs2, others2, unifs1)
-
-        (*val () = eprefaces "Summaries4" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
-                                         ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
-
-        fun isGuessable (other, fs) =
-            let
-                val gs = guessFold (env, denv) (other, (L'.CRecord (k, fs), loc), [], SummaryFailure)
-            in
-                List.all (fn (loc, env, denv, c1, c2) =>
-                             case D.prove env denv (c1, c2, loc) of
-                                 [] => true
-                               | _ => false) gs
-            end
-            handle SummaryFailure => false
-
-        val (fs1, fs2, others1, others2) =
-            case (fs1, fs2, others1, others2) of
-                ([], _, [other1], []) =>
-                if isGuessable (other1, fs2) then
-                    ([], [], [], [])
-                else
-                    (fs1, fs2, others1, others2)
-              | (_, [], [], [other2]) =>
-                if isGuessable (other2, fs1) then
-                    ([], [], [], [])
-                else
-                    (fs1, fs2, others1, others2)
-              | _ => (fs1, fs2, others1, others2)
-
-        (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
-                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
-
-        val clear = case (fs1, others1, fs2, others2) of
-                         ([], [], [], []) => true
-                       | _ => false
-        val empty = (L'.CRecord (k, []), dummy)
-
-        fun unsummarize {fields, unifs, others} =
-            let
-                val c = (L'.CRecord (k, fields), loc)
-
-                val c = foldl (fn ((c1, _), c2) => (L'.CConcat (c1, c2), loc))
-                              c unifs
-            in
-                foldl (fn (c1, c2) => (L'.CConcat (c1, c2), loc))
-                      c others
-            end
-
-        fun pairOffUnifs (unifs1, unifs2) =
-            case (unifs1, unifs2) of
-                ([], _) =>
-                if clear then
-                    List.app (fn (_, r) => r := SOME empty) unifs2
-                else
-                    raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
-              | (_, []) =>
-                if clear then
-                    List.app (fn (_, r) => r := SOME empty) unifs1
-                else
-                    raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
-              | ((c1, _) :: rest1, (_, r2) :: rest2) =>
-                (r2 := SOME c1;
-                 pairOffUnifs (rest1, rest2))
-    in
-        pairOffUnifs (unifs1, unifs2)
-        (*before eprefaces "Summaries'" [("#1", p_summary env s1),
-                                      ("#2", p_summary env s2)]*)
-    end
-
-and guessFold (env, denv) (c1, c2, gs, ex) =
-    let
-        val loc = #2 c1
-
-        fun unfold (dom, ran, f, i, r, c) =
-            let
-                val nm = cunif (loc, (L'.KName, loc))
-                val v = cunif (loc, dom)
-                val rest = cunif (loc, (L'.KRecord dom, loc))
-                val acc = (L'.CFold (dom, ran), loc)
-                val acc = (L'.CApp (acc, f), loc)
-                val acc = (L'.CApp (acc, i), loc)
-                val acc = (L'.CApp (acc, rest), loc)
-
-                val (iS, gs3) = summarizeCon (env, denv) i
-
-                val app = (L'.CApp (f, nm), loc)
-                val app = (L'.CApp (app, v), loc)
-                val app = (L'.CApp (app, acc), loc)
-                val (appS, gs4) = summarizeCon (env, denv) app
-
-                val (cS, gs5) = summarizeCon (env, denv) c
-            in
-                (*prefaces "Summaries" [("iS", p_con_summary iS),
-                                        ("appS", p_con_summary appS),
-                                        ("cS", p_con_summary cS)];*)
-
-                if compatible (iS, appS) then
-                    raise ex
-                else if compatible (cS, iS) then
-                    let
-                        (*val () = prefaces "Same?" [("i", p_con env i),
-                                                   ("c", p_con env c)]*)
-                        val gs6 = unifyCons (env, denv) i c
-                        (*val () = TextIO.print "Yes!\n"*)
-
-                        val gs7 = unifyCons (env, denv) r (L'.CRecord (dom, []), loc)
-                    in
-                        gs @ gs3 @ gs5 @ gs6 @ gs7
-                    end
-                else if compatible (cS, appS) then
-                    let
-                        (*val () = prefaces "Same?" [("app", p_con env app),
-                                                     ("c", p_con env c),
-                                                     ("app'", p_con env (#1 (hnormCon (env, denv) app)))]*)
-                        val gs6 = unifyCons (env, denv) app c
-                        (*val () = TextIO.print "Yes!\n"*)
-
-                        val singleton = (L'.CRecord (dom, [(nm, v)]), loc)
-                        val concat = (L'.CConcat (singleton, rest), loc)
-                        (*val () = prefaces "Pre-crew" [("r", p_con env r),
-                                                        ("concat", p_con env concat)]*)
-                        val gs7 = unifyCons (env, denv) r concat
-                    in
-                        (*prefaces "The crew" [("nm", p_con env nm),
-                                               ("v", p_con env v),
-                                               ("rest", p_con env rest)];*)
-
-                        gs @ gs3 @ gs4 @ gs5 @ gs6 @ gs7
-                    end
-                else
-                    raise ex
-            end
-            handle _ => raise ex
-    in
-        case (#1 c1, #1 c2) of
-            (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold (dom, ran), _), f), _), i), _), r), _) =>
-            unfold (dom, ran, f, i, r, c2)
-          | (_, L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold (dom, ran), _), f), _), i), _), r)) =>
-            unfold (dom, ran, f, i, r, c1)
-          | _ => raise ex
-    end
-
-and unifyCons' (env, denv) c1 c2 =
-    case (#1 c1, #1 c2) of
-        (L'.CDisjoint (_, x1, y1, t1), L'.CDisjoint (_, x2, y2, t2)) =>
-        let
-            val gs1 = unifyCons' (env, denv) x1 x2
-            val gs2 = unifyCons' (env, denv) y1 y2
-            val (denv', gs3) = D.assert env denv (x1, y1)
-            val gs4 = unifyCons' (env, denv') t1 t2
-        in
-            gs1 @ gs2 @ gs3 @ gs4
-        end
-      | _ =>
-        let
-            val (c1, gs1) = hnormCon (env, denv) c1
-            val (c2, gs2) = hnormCon (env, denv) c2
-        in
-            let
-                val gs3 = unifyCons'' (env, denv) c1 c2
-            in
-                gs1 @ gs2 @ gs3
-            end
-            handle ex => guessFold (env, denv) (c1, c2, gs1 @ gs2, ex)
-        end
-    
-and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
-    let
-        fun err f = raise CUnify' (f (c1All, c2All))
-
-        fun isRecord () = unifyRecordCons (env, denv) (c1All, c2All)
-    in
-        (*eprefaces "unifyCons''" [("c1All", p_con env c1All),
-                                 ("c2All", p_con env c2All)];*)
-
-        case (c1, c2) of
-            (L'.CUnit, L'.CUnit) => []
-
-          | (L'.TFun (d1, r1), L'.TFun (d2, r2)) =>
-            unifyCons' (env, denv) d1 d2
-            @ unifyCons' (env, denv) r1 r2
-          | (L'.TCFun (expl1, x1, d1, r1), L'.TCFun (expl2, _, d2, r2)) =>
-            if expl1 <> expl2 then
-                err CExplicitness
-            else
-                (unifyKinds d1 d2;
-                 unifyCons' (E.pushCRel env x1 d1, D.enter denv) r1 r2)
-          | (L'.TRecord r1, L'.TRecord r2) => unifyCons' (env, denv) r1 r2
-
-          | (L'.CRel n1, L'.CRel n2) =>
-            if n1 = n2 then
-                []
-            else
-                err CIncompatible
-          | (L'.CNamed n1, L'.CNamed n2) =>
-            if n1 = n2 then
-                []
-            else
-                err CIncompatible
-
-          | (L'.CApp (d1, r1), L'.CApp (d2, r2)) =>
-            (unifyCons' (env, denv) d1 d2;
-             unifyCons' (env, denv) r1 r2)
-          | (L'.CAbs (x1, k1, c1), L'.CAbs (_, k2, c2)) =>
-            (unifyKinds k1 k2;
-             unifyCons' (E.pushCRel env x1 k1, D.enter denv) c1 c2)
-
-          | (L'.CName n1, L'.CName n2) =>
-            if n1 = n2 then
-                []
-            else
-                err CIncompatible
-
-          | (L'.CModProj (n1, ms1, x1), L'.CModProj (n2, ms2, x2)) =>
-            if n1 = n2 andalso ms1 = ms2 andalso x1 = x2 then
-                []
-            else
-                err CIncompatible
-
-          | (L'.CTuple cs1, L'.CTuple cs2) =>
-            ((ListPair.foldlEq (fn (c1, c2, gs) =>
-                                   let
-                                       val gs' = unifyCons' (env, denv) c1 c2
-                                   in
-                                       gs' @ gs
-                                   end) [] (cs1, cs2))
-             handle ListPair.UnequalLengths => err CIncompatible)
-
-          | (L'.CProj ((L'.CUnif (_, _, _, ref (SOME c1)), loc), n1), _) =>
-            unifyCons' (env, denv) (L'.CProj (c1, n1), loc) c2All
-          | (_, L'.CProj ((L'.CUnif (_, _, _, ref (SOME c2)), loc), n2)) =>
-            unifyCons' (env, denv) c1All (L'.CProj (c2, n2), loc)
-          | (L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n), _) =>
-            let
-                val us = map (fn k => cunif (loc, k)) ks
-            in
-                r := SOME (L'.CTuple us, loc);
-                unifyCons' (env, denv) (List.nth (us, n - 1)) c2All
-            end
-          | (_, L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n)) =>
-            let
-                val us = map (fn k => cunif (loc, k)) ks
-            in
-                r := SOME (L'.CTuple us, loc);
-                unifyCons' (env, denv) c1All (List.nth (us, n - 1))
-            end
-          | (L'.CProj (c1, n1), L'.CProj (c2, n2)) =>
-            if n1 = n2 then
-                unifyCons' (env, denv) c1 c2
-            else
-                err CIncompatible
-
-          | (L'.CError, _) => []
-          | (_, L'.CError) => []
-
-          | (L'.CRecord _, _) => isRecord ()
-          | (_, L'.CRecord _) => isRecord ()
-          | (L'.CConcat _, _) => isRecord ()
-          | (_, L'.CConcat _) => isRecord ()
-
-          | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
-            if r1 = r2 then
-                []
-            else
-                (unifyKinds k1 k2;
-                 r1 := SOME c2All;
-                 [])
-
-          | (L'.CUnif (_, _, _, r), _) =>
-            if occursCon r c2All then
-                err COccursCheckFailed
-            else
-                (r := SOME c2All;
-                 [])
-          | (_, L'.CUnif (_, _, _, r)) =>
-            if occursCon r c1All then
-                err COccursCheckFailed
-            else
-                (r := SOME c1All;
-                 [])
-
-          | (L'.CFold (dom1, ran1), L'.CFold (dom2, ran2)) =>
-            (unifyKinds dom1 dom2;
-             unifyKinds ran1 ran2;
+                 else
+                     ((L'.CProj (c', n), loc), List.nth (ks, n - 1), gs)
+               | k => (conError env (ProjMismatch (c', k));
+                       (cerror, kerror, []))
+         end
+
+       | L.CWild k =>
+         let
+             val k' = elabKind k
+         in
+             (cunif (loc, k'), k', [])
+         end
+
+ fun kunifsRemain k =
+     case k of
+         L'.KUnif (_, _, ref NONE) => true
+       | _ => false
+ fun cunifsRemain c =
+     case c of
+         L'.CUnif (loc, _, _, ref NONE) => SOME loc
+       | _ => NONE
+
+ val kunifsInDecl = U.Decl.exists {kind = kunifsRemain,
+                                   con = fn _ => false,
+                                   exp = fn _ => false,
+                                   sgn_item = fn _ => false,
+                                   sgn = fn _ => false,
+                                   str = fn _ => false,
+                                   decl = fn _ => false}
+
+ val cunifsInDecl = U.Decl.search {kind = fn _ => NONE,
+                                   con = cunifsRemain,
+                                   exp = fn _ => NONE,
+                                   sgn_item = fn _ => NONE,
+                                   sgn = fn _ => NONE,
+                                   str = fn _ => NONE,
+                                   decl = fn _ => NONE}
+
+ fun occursCon r =
+     U.Con.exists {kind = fn _ => false,
+                   con = fn L'.CUnif (_, _, _, r') => r = r'
+                          | _ => false}
+
+ exception CUnify' of cunify_error
+
+ exception SynUnif = E.SynUnif
+
+ open ElabOps
+
+ type record_summary = {
+      fields : (L'.con * L'.con) list,
+      unifs : (L'.con * L'.con option ref) list,
+      others : L'.con list
+ }
+
+ fun summaryToCon {fields, unifs, others} =
+     let
+         val c = (L'.CRecord (ktype, []), dummy)
+         val c = List.foldr (fn (c', c) => (L'.CConcat (c', c), dummy)) c others
+         val c = List.foldr (fn ((c', _), c) => (L'.CConcat (c', c), dummy)) c unifs
+     in
+         (L'.CConcat ((L'.CRecord (ktype, fields), dummy), c), dummy)
+     end
+
+ fun p_summary env s = p_con env (summaryToCon s)
+
+ exception CUnify of L'.con * L'.con * cunify_error
+
+ fun kindof env (c, loc) =
+     case c of
+         L'.TFun _ => ktype
+       | L'.TCFun _ => ktype
+       | L'.TRecord _ => ktype
+
+       | L'.CRel xn => #2 (E.lookupCRel env xn)
+       | L'.CNamed xn => #2 (E.lookupCNamed env xn)
+       | L'.CModProj (n, ms, x) =>
+         let
+             val (_, sgn) = E.lookupStrNamed env n
+             val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                        case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                            NONE => raise Fail "kindof: Unknown substructure"
+                                          | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                              ((L'.StrVar n, loc), sgn) ms
+         in
+             case E.projectCon env {sgn = sgn, str = str, field = x} of
+                 NONE => raise Fail "kindof: Unknown con in structure"
+               | SOME (k, _) => k
+         end
+
+       | L'.CApp (c, _) =>
+         (case hnormKind (kindof env c) of
+              (L'.KArrow (_, k), _) => k
+            | (L'.KError, _) => kerror
+            | k => raise CUnify' (CKindof (k, c)))
+       | L'.CAbs (x, k, c) => (L'.KArrow (k, kindof (E.pushCRel env x k) c), loc)
+       | L'.CDisjoint (_, _, _, c) => kindof env c
+
+       | L'.CName _ => kname
+
+       | L'.CRecord (k, _) => (L'.KRecord k, loc)
+       | L'.CConcat (c, _) => kindof env c
+       | L'.CFold (dom, ran) => foldKind (dom, ran, loc)
+
+       | L'.CUnit => (L'.KUnit, loc)
+
+       | L'.CTuple cs => (L'.KTuple (map (kindof env) cs), loc)
+       | L'.CProj (c, n) =>
+         (case hnormKind (kindof env c) of
+              (L'.KTuple ks, _) => List.nth (ks, n - 1)
+            | k => raise CUnify' (CKindof (k, c)))
+
+       | L'.CError => kerror
+       | L'.CUnif (_, k, _, _) => k
+
+ val hnormCon = D.hnormCon
+
+ datatype con_summary =
+          Nil
+        | Cons
+        | Unknown
+
+ fun compatible cs =
+     case cs of
+         (Unknown, _) => false
+       | (_, Unknown) => false
+       | (s1, s2) => s1 = s2
+
+ fun summarizeCon (env, denv) c =
+     let
+         val (c, gs) = hnormCon (env, denv) c
+     in
+         case #1 c of
+             L'.CRecord (_, []) => (Nil, gs)
+           | L'.CRecord (_, _ :: _) => (Cons, gs)
+           | L'.CConcat ((L'.CRecord (_, _ :: _), _), _) => (Cons, gs)
+           | L'.CDisjoint (_, _, _, c) =>
+             let
+                 val (s, gs') = summarizeCon (env, denv) c
+             in
+                 (s, gs @ gs')
+             end
+           | _ => (Unknown, gs)
+     end
+
+ fun p_con_summary s =
+     Print.PD.string (case s of
+                          Nil => "Nil"
+                        | Cons => "Cons"
+                        | Unknown => "Unknown")
+
+ exception SummaryFailure
+
+ fun unifyRecordCons (env, denv) (c1, c2) =
+     let
+         fun rkindof c =
+             case hnormKind (kindof env c) of
+                 (L'.KRecord k, _) => k
+               | (L'.KError, _) => kerror
+               | k => raise CUnify' (CKindof (k, c))
+
+         val k1 = rkindof c1
+         val k2 = rkindof c2
+
+         val (r1, gs1) = recordSummary (env, denv) c1
+         val (r2, gs2) = recordSummary (env, denv) c2
+     in
+         unifyKinds k1 k2;
+         unifySummaries (env, denv) (k1, r1, r2);
+         gs1 @ gs2
+     end
+
+ and recordSummary (env, denv) c =
+     let
+         val (c, gs) = hnormCon (env, denv) c
+
+         val (sum, gs') =
+             case c of
+                 (L'.CRecord (_, xcs), _) => ({fields = xcs, unifs = [], others = []}, [])
+               | (L'.CConcat (c1, c2), _) =>
+                 let
+                     val (s1, gs1) = recordSummary (env, denv) c1
+                     val (s2, gs2) = recordSummary (env, denv) c2
+                 in
+                     ({fields = #fields s1 @ #fields s2,
+                       unifs = #unifs s1 @ #unifs s2,
+                       others = #others s1 @ #others s2},
+                      gs1 @ gs2)
+                 end
+               | (L'.CUnif (_, _, _, ref (SOME c)), _) => recordSummary (env, denv) c
+               | c' as (L'.CUnif (_, _, _, r), _) => ({fields = [], unifs = [(c', r)], others = []}, [])
+               | c' => ({fields = [], unifs = [], others = [c']}, [])
+     in
+         (sum, gs @ gs')
+     end
+
+ and consEq (env, denv) (c1, c2) =
+     let
+         val gs = unifyCons (env, denv) c1 c2
+     in
+         List.all (fn (loc, env, denv, c1, c2) =>
+                      case D.prove env denv (c1, c2, loc) of
+                          [] => true
+                        | _ => false) gs
+     end
+     handle CUnify _ => false
+
+ and consNeq env (c1, c2) =
+     case (#1 (ElabOps.hnormCon env c1), #1 (ElabOps.hnormCon env c2)) of
+         (L'.CName x1, L'.CName x2) => x1 <> x2
+       | _ => false
+
+ and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
+     let
+         val loc = #2 k
+         (*val () = eprefaces "Summaries" [("#1", p_summary env s1),
+                                         ("#2", p_summary env s2)]*)
+
+         fun eatMatching p (ls1, ls2) =
+             let
+                 fun em (ls1, ls2, passed1) =
+                     case ls1 of
+                         [] => (rev passed1, ls2)
+                       | h1 :: t1 =>
+                         let
+                             fun search (ls2', passed2) =
+                                 case ls2' of
+                                     [] => em (t1, ls2, h1 :: passed1)
+                                   | h2 :: t2 =>
+                                     if p (h1, h2) then
+                                         em (t1, List.revAppend (passed2, t2), passed1)
+                                     else
+                                         search (t2, h2 :: passed2)
+                         in
+                             search (ls2, [])
+                         end
+             in
+                 em (ls1, ls2, [])
+             end
+
+         val (fs1, fs2) = eatMatching (fn ((x1, c1), (x2, c2)) =>
+                                          not (consNeq env (x1, x2))
+                                          andalso consEq (env, denv) (c1, c2)
+                                          andalso consEq (env, denv) (x1, x2))
+                                      (#fields s1, #fields s2)
+         (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
+                                          ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
+         val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
+         val (others1, others2) = eatMatching (consEq (env, denv)) (#others s1, #others s2)
+         (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
+                                          ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+
+         fun unifFields (fs, others, unifs) =
+             case (fs, others, unifs) of
+                 ([], [], _) => ([], [], unifs)
+               | (_, _, []) => (fs, others, [])
+               | (_, _, (_, r) :: rest) =>
+                 let
+                     val r' = ref NONE
+                     val kr = (L'.KRecord k, dummy)
+                     val cr' = (L'.CUnif (dummy, kr, "recd", r'), dummy)
+
+                     val prefix = case (fs, others) of
+                                      ([], other :: others) =>
+                                      List.foldl (fn (other, c) =>
+                                                     (L'.CConcat (c, other), dummy))
+                                                 other others
+                                    | (fs, []) =>
+                                      (L'.CRecord (k, fs), dummy)
+                                    | (fs, others) =>
+                                      List.foldl (fn (other, c) =>
+                                                     (L'.CConcat (c, other), dummy))
+                                                 (L'.CRecord (k, fs), dummy) others
+                 in
+                     r := SOME (L'.CConcat (prefix, cr'), dummy);
+                     ([], [], (cr', r') :: rest)
+                 end
+
+         val (fs1, others1, unifs2) = unifFields (fs1, others1, unifs2)
+         val (fs2, others2, unifs1) = unifFields (fs2, others2, unifs1)
+
+         (*val () = eprefaces "Summaries4" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
+                                          ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+
+         fun isGuessable (other, fs) =
+             let
+                 val gs = guessFold (env, denv) (other, (L'.CRecord (k, fs), loc), [], SummaryFailure)
+             in
+                 List.all (fn (loc, env, denv, c1, c2) =>
+                              case D.prove env denv (c1, c2, loc) of
+                                  [] => true
+                                | _ => false) gs
+             end
+             handle SummaryFailure => false
+
+         val (fs1, fs2, others1, others2) =
+             case (fs1, fs2, others1, others2) of
+                 ([], _, [other1], []) =>
+                 if isGuessable (other1, fs2) then
+                     ([], [], [], [])
+                 else
+                     (fs1, fs2, others1, others2)
+               | (_, [], [], [other2]) =>
+                 if isGuessable (other2, fs1) then
+                     ([], [], [], [])
+                 else
+                     (fs1, fs2, others1, others2)
+               | _ => (fs1, fs2, others1, others2)
+
+         (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
+                                            ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+
+         val clear = case (fs1, others1, fs2, others2) of
+                          ([], [], [], []) => true
+                        | _ => false
+         val empty = (L'.CRecord (k, []), dummy)
+
+         fun unsummarize {fields, unifs, others} =
+             let
+                 val c = (L'.CRecord (k, fields), loc)
+
+                 val c = foldl (fn ((c1, _), c2) => (L'.CConcat (c1, c2), loc))
+                               c unifs
+             in
+                 foldl (fn (c1, c2) => (L'.CConcat (c1, c2), loc))
+                       c others
+             end
+
+         fun pairOffUnifs (unifs1, unifs2) =
+             case (unifs1, unifs2) of
+                 ([], _) =>
+                 if clear then
+                     List.app (fn (_, r) => r := SOME empty) unifs2
+                 else
+                     raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
+               | (_, []) =>
+                 if clear then
+                     List.app (fn (_, r) => r := SOME empty) unifs1
+                 else
+                     raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
+               | ((c1, _) :: rest1, (_, r2) :: rest2) =>
+                 (r2 := SOME c1;
+                  pairOffUnifs (rest1, rest2))
+     in
+         pairOffUnifs (unifs1, unifs2)
+         (*before eprefaces "Summaries'" [("#1", p_summary env s1),
+                                       ("#2", p_summary env s2)]*)
+     end
+
+ and guessFold (env, denv) (c1, c2, gs, ex) =
+     let
+         val loc = #2 c1
+
+         fun unfold (dom, ran, f, i, r, c) =
+             let
+                 val nm = cunif (loc, (L'.KName, loc))
+                 val v = cunif (loc, dom)
+                 val rest = cunif (loc, (L'.KRecord dom, loc))
+                 val acc = (L'.CFold (dom, ran), loc)
+                 val acc = (L'.CApp (acc, f), loc)
+                 val acc = (L'.CApp (acc, i), loc)
+                 val acc = (L'.CApp (acc, rest), loc)
+
+                 val (iS, gs3) = summarizeCon (env, denv) i
+
+                 val app = (L'.CApp (f, nm), loc)
+                 val app = (L'.CApp (app, v), loc)
+                 val app = (L'.CApp (app, acc), loc)
+                 val (appS, gs4) = summarizeCon (env, denv) app
+
+                 val (cS, gs5) = summarizeCon (env, denv) c
+             in
+                 (*prefaces "Summaries" [("iS", p_con_summary iS),
+                                         ("appS", p_con_summary appS),
+                                         ("cS", p_con_summary cS)];*)
+
+                 if compatible (iS, appS) then
+                     raise ex
+                 else if compatible (cS, iS) then
+                     let
+                         (*val () = prefaces "Same?" [("i", p_con env i),
+                                                    ("c", p_con env c)]*)
+                         val gs6 = unifyCons (env, denv) i c
+                         (*val () = TextIO.print "Yes!\n"*)
+
+                         val gs7 = unifyCons (env, denv) r (L'.CRecord (dom, []), loc)
+                     in
+                         gs @ gs3 @ gs5 @ gs6 @ gs7
+                     end
+                 else if compatible (cS, appS) then
+                     let
+                         (*val () = prefaces "Same?" [("app", p_con env app),
+                                                      ("c", p_con env c),
+                                                      ("app'", p_con env (#1 (hnormCon (env, denv) app)))]*)
+                         val gs6 = unifyCons (env, denv) app c
+                         (*val () = TextIO.print "Yes!\n"*)
+
+                         val singleton = (L'.CRecord (dom, [(nm, v)]), loc)
+                         val concat = (L'.CConcat (singleton, rest), loc)
+                         (*val () = prefaces "Pre-crew" [("r", p_con env r),
+                                                         ("concat", p_con env concat)]*)
+                         val gs7 = unifyCons (env, denv) r concat
+                     in
+                         (*prefaces "The crew" [("nm", p_con env nm),
+                                                ("v", p_con env v),
+                                                ("rest", p_con env rest)];*)
+
+                         gs @ gs3 @ gs4 @ gs5 @ gs6 @ gs7
+                     end
+                 else
+                     raise ex
+             end
+             handle _ => raise ex
+     in
+         case (#1 c1, #1 c2) of
+             (L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold (dom, ran), _), f), _), i), _), r), _) =>
+             unfold (dom, ran, f, i, r, c2)
+           | (_, L'.CApp ((L'.CApp ((L'.CApp ((L'.CFold (dom, ran), _), f), _), i), _), r)) =>
+             unfold (dom, ran, f, i, r, c1)
+           | _ => raise ex
+     end
+
+ and unifyCons' (env, denv) c1 c2 =
+     case (#1 c1, #1 c2) of
+         (L'.CDisjoint (_, x1, y1, t1), L'.CDisjoint (_, x2, y2, t2)) =>
+         let
+             val gs1 = unifyCons' (env, denv) x1 x2
+             val gs2 = unifyCons' (env, denv) y1 y2
+             val (denv', gs3) = D.assert env denv (x1, y1)
+             val gs4 = unifyCons' (env, denv') t1 t2
+         in
+             gs1 @ gs2 @ gs3 @ gs4
+         end
+       | _ =>
+         let
+             val (c1, gs1) = hnormCon (env, denv) c1
+             val (c2, gs2) = hnormCon (env, denv) c2
+         in
+             let
+                 val gs3 = unifyCons'' (env, denv) c1 c2
+             in
+                 gs1 @ gs2 @ gs3
+             end
+             handle ex => guessFold (env, denv) (c1, c2, gs1 @ gs2, ex)
+         end
+
+ and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
+     let
+         fun err f = raise CUnify' (f (c1All, c2All))
+
+         fun isRecord () = unifyRecordCons (env, denv) (c1All, c2All)
+     in
+         (*eprefaces "unifyCons''" [("c1All", p_con env c1All),
+                                  ("c2All", p_con env c2All)];*)
+
+         case (c1, c2) of
+             (L'.CUnit, L'.CUnit) => []
+
+           | (L'.TFun (d1, r1), L'.TFun (d2, r2)) =>
+             unifyCons' (env, denv) d1 d2
+             @ unifyCons' (env, denv) r1 r2
+           | (L'.TCFun (expl1, x1, d1, r1), L'.TCFun (expl2, _, d2, r2)) =>
+             if expl1 <> expl2 then
+                 err CExplicitness
+             else
+                 (unifyKinds d1 d2;
+                  unifyCons' (E.pushCRel env x1 d1, D.enter denv) r1 r2)
+           | (L'.TRecord r1, L'.TRecord r2) => unifyCons' (env, denv) r1 r2
+
+           | (L'.CRel n1, L'.CRel n2) =>
+             if n1 = n2 then
+                 []
+             else
+                 err CIncompatible
+           | (L'.CNamed n1, L'.CNamed n2) =>
+             if n1 = n2 then
+                 []
+             else
+                 err CIncompatible
+
+           | (L'.CApp (d1, r1), L'.CApp (d2, r2)) =>
+             (unifyCons' (env, denv) d1 d2;
+              unifyCons' (env, denv) r1 r2)
+           | (L'.CAbs (x1, k1, c1), L'.CAbs (_, k2, c2)) =>
+             (unifyKinds k1 k2;
+              unifyCons' (E.pushCRel env x1 k1, D.enter denv) c1 c2)
+
+           | (L'.CName n1, L'.CName n2) =>
+             if n1 = n2 then
+                 []
+             else
+                 err CIncompatible
+
+           | (L'.CModProj (n1, ms1, x1), L'.CModProj (n2, ms2, x2)) =>
+             if n1 = n2 andalso ms1 = ms2 andalso x1 = x2 then
+                 []
+             else
+                 err CIncompatible
+
+           | (L'.CTuple cs1, L'.CTuple cs2) =>
+             ((ListPair.foldlEq (fn (c1, c2, gs) =>
+                                    let
+                                        val gs' = unifyCons' (env, denv) c1 c2
+                                    in
+                                        gs' @ gs
+                                    end) [] (cs1, cs2))
+              handle ListPair.UnequalLengths => err CIncompatible)
+
+           | (L'.CProj ((L'.CUnif (_, _, _, ref (SOME c1)), loc), n1), _) =>
+             unifyCons' (env, denv) (L'.CProj (c1, n1), loc) c2All
+           | (_, L'.CProj ((L'.CUnif (_, _, _, ref (SOME c2)), loc), n2)) =>
+             unifyCons' (env, denv) c1All (L'.CProj (c2, n2), loc)
+           | (L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n), _) =>
+             let
+                 val us = map (fn k => cunif (loc, k)) ks
+             in
+                 r := SOME (L'.CTuple us, loc);
+                 unifyCons' (env, denv) (List.nth (us, n - 1)) c2All
+             end
+           | (_, L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n)) =>
+             let
+                 val us = map (fn k => cunif (loc, k)) ks
+             in
+                 r := SOME (L'.CTuple us, loc);
+                 unifyCons' (env, denv) c1All (List.nth (us, n - 1))
+             end
+           | (L'.CProj (c1, n1), L'.CProj (c2, n2)) =>
+             if n1 = n2 then
+                 unifyCons' (env, denv) c1 c2
+             else
+                 err CIncompatible
+
+           | (L'.CError, _) => []
+           | (_, L'.CError) => []
+
+           | (L'.CRecord _, _) => isRecord ()
+           | (_, L'.CRecord _) => isRecord ()
+           | (L'.CConcat _, _) => isRecord ()
+           | (_, L'.CConcat _) => isRecord ()
+
+           | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
+             if r1 = r2 then
+                 []
+             else
+                 (unifyKinds k1 k2;
+                  r1 := SOME c2All;
+                  [])
+
+           | (L'.CUnif (_, _, _, r), _) =>
+             if occursCon r c2All then
+                 err COccursCheckFailed
+             else
+                 (r := SOME c2All;
+                  [])
+           | (_, L'.CUnif (_, _, _, r)) =>
+             if occursCon r c1All then
+                 err COccursCheckFailed
+             else
+                 (r := SOME c1All;
+                  [])
+
+           | (L'.CFold (dom1, ran1), L'.CFold (dom2, ran2)) =>
+             (unifyKinds dom1 dom2;
+              unifyKinds ran1 ran2;
+              [])
+
+           | _ => err CIncompatible
+     end
+
+ and unifyCons (env, denv) c1 c2 =
+     unifyCons' (env, denv) c1 c2
+     handle CUnify' err => raise CUnify (c1, c2, err)
+          | KUnify args => raise CUnify (c1, c2, CKind args)
+
+ fun checkCon (env, denv) e c1 c2 =
+     unifyCons (env, denv) c1 c2
+     handle CUnify (c1, c2, err) =>
+            (expError env (Unify (e, c1, c2, err));
              [])
 
-          | _ => err CIncompatible
-    end
+ fun checkPatCon (env, denv) p c1 c2 =
+     unifyCons (env, denv) c1 c2
+     handle CUnify (c1, c2, err) =>
+            (expError env (PatUnify (p, c1, c2, err));
+             [])
 
-and unifyCons (env, denv) c1 c2 =
-    unifyCons' (env, denv) c1 c2
-    handle CUnify' err => raise CUnify (c1, c2, err)
-         | KUnify args => raise CUnify (c1, c2, CKind args)
-         
-fun checkCon (env, denv) e c1 c2 =
-    unifyCons (env, denv) c1 c2
-    handle CUnify (c1, c2, err) =>
-           (expError env (Unify (e, c1, c2, err));
-            [])
+ fun primType env p =
+     case p of
+         P.Int _ => !int
+       | P.Float _ => !float
+       | P.String _ => !string
 
-fun checkPatCon (env, denv) p c1 c2 =
-    unifyCons (env, denv) c1 c2
-    handle CUnify (c1, c2, err) =>
-           (expError env (PatUnify (p, c1, c2, err));
-            [])
+ fun recCons (k, nm, v, rest, loc) =
+     (L'.CConcat ((L'.CRecord (k, [(nm, v)]), loc),
+                  rest), loc)
 
-fun primType env p =
-    case p of
-        P.Int _ => !int
-      | P.Float _ => !float
-      | P.String _ => !string
+ fun foldType (dom, loc) =
+     (L'.TCFun (L'.Explicit, "ran", (L'.KArrow ((L'.KRecord dom, loc), (L'.KType, loc)), loc),
+                (L'.TFun ((L'.TCFun (L'.Explicit, "nm", (L'.KName, loc),
+                                     (L'.TCFun (L'.Explicit, "v", dom,
+                                                (L'.TCFun (L'.Explicit, "rest", (L'.KRecord dom, loc),
+                                                           (L'.TFun ((L'.CApp ((L'.CRel 3, loc), (L'.CRel 0, loc)), loc),
+                                                                     (L'.CDisjoint (L'.Instantiate,
+                                                                                    (L'.CRecord
+                                                                                         ((L'.KUnit, loc),
+                                                                                          [((L'.CRel 2, loc),
+                                                                                            (L'.CUnit, loc))]), loc),
+                                                                                    (L'.CRel 0, loc),
+                                                                                    (L'.CApp ((L'.CRel 3, loc),
+                                                                                              recCons (dom,
+                                                                                                       (L'.CRel 2, loc),
+                                                                                                       (L'.CRel 1, loc),
+                                                                                                       (L'.CRel 0, loc),
+                                                                                                       loc)), loc)),
+                                                                      loc)), loc)),
+                                                 loc)), loc)), loc),
+                          (L'.TFun ((L'.CApp ((L'.CRel 0, loc), (L'.CRecord (dom, []), loc)), loc),
+                                    (L'.TCFun (L'.Explicit, "r", (L'.KRecord dom, loc),
+                                               (L'.CApp ((L'.CRel 1, loc), (L'.CRel 0, loc)), loc)), loc)),
+                           loc)), loc)), loc)
 
-fun recCons (k, nm, v, rest, loc) =
-    (L'.CConcat ((L'.CRecord (k, [(nm, v)]), loc),
-                 rest), loc)
+ datatype constraint =
+          Disjoint of D.goal
+        | TypeClass of E.env * L'.con * L'.exp option ref * ErrorMsg.span
 
-fun foldType (dom, loc) =
-    (L'.TCFun (L'.Explicit, "ran", (L'.KArrow ((L'.KRecord dom, loc), (L'.KType, loc)), loc),
-               (L'.TFun ((L'.TCFun (L'.Explicit, "nm", (L'.KName, loc),
-                                    (L'.TCFun (L'.Explicit, "v", dom,
-                                               (L'.TCFun (L'.Explicit, "rest", (L'.KRecord dom, loc),
-                                                          (L'.TFun ((L'.CApp ((L'.CRel 3, loc), (L'.CRel 0, loc)), loc),
-                                                                    (L'.CDisjoint (L'.Instantiate,
-                                                                                   (L'.CRecord
-                                                                                        ((L'.KUnit, loc),
-                                                                                         [((L'.CRel 2, loc),
-                                                                                           (L'.CUnit, loc))]), loc),
-                                                                                   (L'.CRel 0, loc),
-                                                                                   (L'.CApp ((L'.CRel 3, loc),
-                                                                                             recCons (dom,
-                                                                                                      (L'.CRel 2, loc),
-                                                                                                      (L'.CRel 1, loc),
-                                                                                                      (L'.CRel 0, loc),
-                                                                                                      loc)), loc)),
-                                                                     loc)), loc)),
-                                                loc)), loc)), loc),
-                         (L'.TFun ((L'.CApp ((L'.CRel 0, loc), (L'.CRecord (dom, []), loc)), loc),
-                                   (L'.TCFun (L'.Explicit, "r", (L'.KRecord dom, loc),
-                                              (L'.CApp ((L'.CRel 1, loc), (L'.CRel 0, loc)), loc)), loc)),
-                          loc)), loc)), loc)
+ val enD = map Disjoint
 
-datatype constraint =
-         Disjoint of D.goal
-       | TypeClass of E.env * L'.con * L'.exp option ref * ErrorMsg.span
+ fun elabHead (env, denv) infer (e as (_, loc)) t =
+     let
+         fun unravel (t, e) =
+             let
+                 val (t, gs) = hnormCon (env, denv) t
+             in
+                 case t of
+                     (L'.TCFun (L'.Implicit, x, k, t'), _) =>
+                     let
+                         val u = cunif (loc, k)
 
-val enD = map Disjoint
-
-fun elabHead (env, denv) (e as (_, loc)) t =
-    let
-        fun unravel (t, e) =
-            let
-                val (t, gs) = hnormCon (env, denv) t
-            in
-                case t of
-                    (L'.TCFun (L'.Implicit, x, k, t'), _) =>
-                    let
-                        val u = cunif (loc, k)
-
-                        val t'' = subConInCon (0, u) t'
-                        val (e, t, gs') = unravel (t'', (L'.ECApp (e, u), loc))
-                    in
-                        (*prefaces "Unravel" [("t'", p_con env t'),
-                                            ("t''", p_con env t'')];*)
-                        (e, t, enD gs @ gs')
-                    end
+                         val t'' = subConInCon (0, u) t'
+                         val (e, t, gs') = unravel (t'', (L'.ECApp (e, u), loc))
+                     in
+                         (*prefaces "Unravel" [("t'", p_con env t'),
+                                             ("t''", p_con env t'')];*)
+                         (e, t, enD gs @ gs')
+                     end
+                   | (L'.TFun (dom as (L'.CApp (cl, _), _), ran), _) =>
+                     let
+                         val cl = #1 (hnormCon (env, denv) cl)
+                     in
+                         if infer <> L.TypesOnly andalso E.isClass env cl then
+                             let
+                                 val r = ref NONE
+                                 val (e, t, gs') = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
+                             in
+                                 (e, t, TypeClass (env, dom, r, loc) :: enD gs @ gs')
+                             end
+                         else
+                             (e, t, enD gs)
+                     end
                   | _ => (e, t, enD gs)
             end
     in
-        unravel (t, e)
+        case infer of
+            L.DontInfer => (e, t, [])
+          | _ => unravel (t, e)
     end
 
 fun elabPat (pAll as (p, loc), (env, denv, bound)) =
@@ -1393,18 +1409,14 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
             end
 
           | L.EPrim p => ((L'.EPrim p, loc), primType env p, [])
-          | L.EVar ([], s) =>
+          | L.EVar ([], s, infer) =>
             (case E.lookupE env s of
                  E.NotBound =>
                  (expError env (UnboundExp (loc, s));
                   (eerror, cerror, []))
-               | E.Rel (n, t) => ((L'.ERel n, loc), t, [])
-               | E.Named (n, t) =>
-                 if Char.isUpper (String.sub (s, 0)) then
-                     elabHead (env, denv) (L'.ENamed n, loc) t
-                 else
-                     ((L'.ENamed n, loc), t, []))
-          | L.EVar (m1 :: ms, s) =>
+               | E.Rel (n, t) => elabHead (env, denv) infer (L'.ERel n, loc) t
+               | E.Named (n, t) => elabHead (env, denv) infer (L'.ENamed n, loc) t)
+          | L.EVar (m1 :: ms, s, infer) =>
             (case E.lookupStr env m1 of
                  NONE => (expError env (UnboundStrInExp (loc, m1));
                           (eerror, cerror, []))
@@ -1422,7 +1434,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                           cerror)
                                | SOME t => t
                  in
-                     ((L'.EModProj (n, ms, s), loc), t, [])
+                     elabHead (env, denv) infer (L'.EModProj (n, ms, s), loc) t
                  end)
 
           | L.EWild =>
@@ -1436,17 +1448,16 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
           | L.EApp (e1, e2) =>
             let
                 val (e1', t1, gs1) = elabExp (env, denv) e1
-                val (e1', t1, gs2) = elabHead (env, denv) e1' t1
-                val (e2', t2, gs3) = elabExp (env, denv) e2
+                val (e2', t2, gs2) = elabExp (env, denv) e2
 
                 val dom = cunif (loc, ktype)
                 val ran = cunif (loc, ktype)
                 val t = (L'.TFun (dom, ran), dummy)
 
-                val gs4 = checkCon (env, denv) e1' t1 t
-                val gs5 = checkCon (env, denv) e2' t2 dom
+                val gs3 = checkCon (env, denv) e1' t1 t
+                val gs4 = checkCon (env, denv) e2' t2 dom
 
-                val gs = gs1 @ gs2 @ gs3 @ enD gs4 @ enD gs5
+                val gs = gs1 @ gs2 @ enD gs3 @ enD gs4
             in
                 ((L'.EApp (e1', e2'), loc), ran, gs)
             end
@@ -1472,9 +1483,8 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
             let
                 val (e', et, gs1) = elabExp (env, denv) e
                 val oldEt = et
-                val (e', et, gs2) = elabHead (env, denv) e' et
-                val (c', ck, gs3) = elabCon (env, denv) c
-                val ((et', _), gs4) = hnormCon (env, denv) et
+                val (c', ck, gs2) = elabCon (env, denv) c
+                val ((et', _), gs3) = hnormCon (env, denv) et
             in
                 case et' of
                     L'.CError => (eerror, cerror, [])
@@ -1491,7 +1501,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                                ("eb", p_con (E.pushCRel env x k) eb),
                                                ("c", p_con env c'),
                                                ("eb'", p_con env eb')];*)
-                        ((L'.ECApp (e', c'), loc), eb', gs1 @ gs2 @ enD gs3 @ enD gs4)
+                        ((L'.ECApp (e', c'), loc), eb', gs1 @ enD gs2 @ enD gs3)
                     end
 
                   | _ =>

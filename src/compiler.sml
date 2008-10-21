@@ -535,6 +535,10 @@ fun compile job =
                 else
                     let
                         val dir = OS.FileSys.tmpName ()
+                        val () = if OS.FileSys.access (dir, []) then
+                                     OS.FileSys.remove dir
+                                 else
+                                     ()
                         val cname = OS.Path.joinDirFile {dir = dir, file = "urweb.c"}
                         val oname = OS.Path.joinDirFile {dir = dir, file = "urweb.o"}
                     in

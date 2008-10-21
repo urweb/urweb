@@ -916,7 +916,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  end
                | _ => poly ())
 
-          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "update"), _), changed), _), _) =>
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "update"), _), _), _), changed) =>
             (case monoType env (L.TRecord changed, loc) of
                  (L'.TRecord changed, _) =>
                  let

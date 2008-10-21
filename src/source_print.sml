@@ -199,7 +199,7 @@ fun p_exp' par (e, _) =
                               string ")"]        
 
       | EPrim p => Prim.p_t p
-      | EVar (ss, s) => p_list_sep (string ".") string (ss @ [s])
+      | EVar (ss, s, _) => p_list_sep (string ".") string (ss @ [s])
       | EApp (e1, e2) => parenIf par (box [p_exp e1,
                                            space,
                                            p_exp' true e2])

@@ -358,7 +358,7 @@ fun pushClass (env : env) n =
      sgn = #sgn env,
 
      renameStr = #renameStr env,
-     str = #str env}    
+     str = #str env}
 
 fun class_name_in (c, _) =
     case c of
@@ -366,6 +366,14 @@ fun class_name_in (c, _) =
       | CModProj x => SOME (ClProj x)
       | CUnif (_, _, _, ref (SOME c)) => class_name_in c
       | _ => NONE
+
+fun isClass (env : env) c =
+    let
+        fun find NONE = false
+          | find (SOME c) = Option.isSome (CM.find (#classes env, c))
+    in
+        find (class_name_in c)
+    end
 
 fun class_key_in (c, _) =
     case c of
@@ -405,14 +413,16 @@ fun pushERel (env : env) x t =
         val classes = case class_pair_in t of
                           NONE => classes
                         | SOME (f, x) =>
-                          let
-                              val class = Option.getOpt (CM.find (classes, f), empty_class)
-                              val class = {
-                                  ground = KM.insert (#ground class, x, (ERel 0, #2 t))
-                              }
-                          in
-                              CM.insert (classes, f, class)
-                          end
+                          case CM.find (classes, f) of
+                              NONE => classes
+                            | SOME class =>
+                              let
+                                  val class = {
+                                      ground = KM.insert (#ground class, x, (ERel 0, #2 t))
+                                  }
+                              in
+                                  CM.insert (classes, f, class)
+                              end
     in
         {renameC = #renameC env,
          relC = #relC env,
@@ -444,14 +454,16 @@ fun pushENamedAs (env : env) x n t =
         val classes = case class_pair_in t of
                           NONE => classes
                         | SOME (f, x) =>
-                          let
-                              val class = Option.getOpt (CM.find (classes, f), empty_class)
-                              val class = {
-                                  ground = KM.insert (#ground class, x, (ENamed n, #2 t))
-                              }
-                          in
-                              CM.insert (classes, f, class)
-                          end
+                          case CM.find (classes, f) of
+                              NONE => classes
+                            | SOME class =>
+                              let
+                                  val class = {
+                                      ground = KM.insert (#ground class, x, (ENamed n, #2 t))
+                                  }
+                              in
+                                  CM.insert (classes, f, class)
+                              end
     in
         {renameC = #renameC env,
          relC = #relC env,
@@ -740,14 +752,21 @@ fun enrichClasses env classes (m1, ms) sgn =
                                          | SOME ck =>
                                            let
                                                val cn = ClProj (m1, ms, fx)
-                                               val class = Option.getOpt (CM.find (classes, cn), empty_class)
-                                               val class = {
-                                                   ground = KM.insert (#ground class, ck,
-                                                                       (EModProj (m1, ms, x), #2 sgn))
-                                               }
 
+                                               val classes =
+                                                   case CM.find (classes, cn) of
+                                                       NONE => classes
+                                                     | SOME class =>
+                                                       let
+                                                           val class = {
+                                                               ground = KM.insert (#ground class, ck,
+                                                                                   (EModProj (m1, ms, x), #2 sgn))
+                                                           }
+                                                       in
+                                                           CM.insert (classes, cn, class)
+                                                       end
                                            in
-                                               (CM.insert (classes, cn, class),
+                                               (classes,
                                                 newClasses,
                                                 fmap,
                                                 env)

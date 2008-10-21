@@ -11,19 +11,19 @@ con colsMeta = fn cols :: {(Type * Type)} => $(Top.mapT2T colMeta cols)
 fun default (t ::: Type) (sh : show t) (rd : read t) (inj : sql_injectable t)
             name : colMeta (t, string) =
     {Nam = name,
-     Show = txt _,
+     Show = txt,
      Widget = fn nm :: Name => <xml><textbox{nm}/></xml>,
      WidgetPopulated = fn (nm :: Name) n =>
-                          <xml><textbox{nm} value={show _ n}/></xml>,
-     Parse = readError _,
+                          <xml><textbox{nm} value={show n}/></xml>,
+     Parse = readError,
      Inject = _}
 
-val int = default _ _ _
-val float = default _ _ _
-val string = default _ _ _
+val int = default
+val float = default
+val string = default
 
 fun bool name = {Nam = name,
-                 Show = txt _,
+                 Show = txt,
                  Widget = fn nm :: Name => <xml><checkbox{nm}/></xml>,
                  WidgetPopulated = fn (nm :: Name) b =>
                                       <xml><checkbox{nm} checked={b}/></xml>,
@@ -53,11 +53,11 @@ functor Make(M : sig
                                                              sql_exp [] [] [] t.1) cols)]
                                     (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                      [[nm] ~ rest] =>
-                                     fn input col acc => acc with nm = sql_inject col.Inject (col.Parse input))
+                                     fn input col acc => acc with nm = @sql_inject col.Inject (col.Parse input))
                                     {} [M.cols] inputs M.cols
                            with #Id = (SQL {id})));
         return <xml><body>
-          Inserted with ID {txt _ id}.
+          Inserted with ID {[id]}.
         </body></xml>
 
     fun save (id : int) (inputs : $(mapT2T sndTT M.cols)) =
@@ -70,7 +70,7 @@ functor Make(M : sig
                                     (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                      [[nm] ~ rest] =>
                                      fn input col acc => acc with nm =
-                                                                  sql_inject col.Inject (col.Parse input))
+                                                                  @sql_inject col.Inject (col.Parse input))
                                     {} [M.cols] inputs M.cols)
                           tab (WHERE T.Id = {id}));
         return <xml><body>
@@ -103,7 +103,7 @@ functor Make(M : sig
         </body></xml>
 
     fun confirm (id : int) = return <xml><body>
-      <p>Are you sure you want to delete ID #{txt _ id}?</p>
+      <p>Are you sure you want to delete ID #{[id]}?</p>
 
       <p><a link={delete id}>I was born sure!</a></p>
     </body></xml>
@@ -112,7 +112,7 @@ functor Make(M : sig
         rows <- queryX (SELECT * FROM tab AS T)
                        (fn (fs : {T : $([Id = int] ++ mapT2T fstTT M.cols)}) => <xml>
                          <tr>
-                           <td>{txt _ fs.T.Id}</td>
+                           <td>{[fs.T.Id]}</td>
                            {foldT2RX2 [fstTT] [colMeta] [tr]
                                       (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                        [[nm] ~ rest] v col => <xml>

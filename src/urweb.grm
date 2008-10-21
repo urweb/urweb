@@ -116,17 +116,13 @@ fun amend_group loc (gi, tabs) =
         tabs
     end
 
-fun sql_inject (v, t, loc) =
-    let
-        val e = (EApp ((EVar (["Basis"], "sql_inject"), loc), (t, loc)), loc)
-    in
-        (EApp (e, (v, loc)), loc)
-    end
+fun sql_inject (v, loc) =
+    (EApp ((EVar (["Basis"], "sql_inject", Infer), loc), (v, loc)), loc)
 
 fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
     let
-        val e = (EVar (["Basis"], "sql_comparison"), loc)
-        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+        val e = (EVar (["Basis"], "sql_comparison", Infer), loc)
+        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper, Infer), loc)), loc)
         val e = (EApp (e, sqlexp1), loc)
     in
         (EApp (e, sqlexp2), loc)
@@ -134,8 +130,8 @@ fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
 
 fun sql_binary (oper, sqlexp1, sqlexp2, loc) =
     let
-        val e = (EVar (["Basis"], "sql_binary"), loc)
-        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+        val e = (EVar (["Basis"], "sql_binary", Infer), loc)
+        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper, Infer), loc)), loc)
         val e = (EApp (e, sqlexp1), loc)
     in
         (EApp (e, sqlexp2), loc)
@@ -143,16 +139,16 @@ fun sql_binary (oper, sqlexp1, sqlexp2, loc) =
 
 fun sql_unary (oper, sqlexp, loc) =
     let
-        val e = (EVar (["Basis"], "sql_unary"), loc)
-        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+        val e = (EVar (["Basis"], "sql_unary", Infer), loc)
+        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper, Infer), loc)), loc)
     in
         (EApp (e, sqlexp), loc)
     end
 
 fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
     let
-        val e = (EVar (["Basis"], "sql_relop"), loc)
-        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper), loc)), loc)
+        val e = (EVar (["Basis"], "sql_relop", Infer), loc)
+        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper, Infer), loc)), loc)
         val e = (EApp (e, sqlexp1), loc)
     in
         (EApp (e, sqlexp2), loc)
@@ -160,16 +156,14 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
 
 fun native_unop (oper, e1, loc) =
     let
-        val e = (EVar (["Basis"], oper), loc)
-        val e = (EApp (e, (EWild, loc)), loc)
+        val e = (EVar (["Basis"], oper, Infer), loc)
     in
         (EApp (e, e1), loc)
     end
 
 fun native_op (oper, e1, e2, loc) =
     let
-        val e = (EVar (["Basis"], oper), loc)
-        val e = (EApp (e, (EWild, loc)), loc)
+        val e = (EVar (["Basis"], oper, Infer), loc)
         val e = (EApp (e, e1), loc)
     in
         (EApp (e, e2), loc)
@@ -191,7 +185,7 @@ fun tagIn bt =
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
- | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD
+ | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD | AT
  | CON | LTYPE | VAL | REC | AND | FUN | FOLD | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
@@ -676,14 +670,14 @@ eexp   : eapps                          (eapps)
                                          end)
        | SYMBOL LARROW eexp SEMI eexp   (let
                                              val loc = s (SYMBOLleft, eexp2right)
-                                             val e = (EVar (["Basis"], "bind"), loc)
+                                             val e = (EVar (["Basis"], "bind", Infer), loc)
                                              val e = (EApp (e, eexp1), loc)
                                          in
                                              (EApp (e, (EAbs (SYMBOL, NONE, eexp2), loc)), loc)
                                          end)
        | UNIT LARROW eexp SEMI eexp     (let
                                              val loc = s (UNITleft, eexp2right)
-                                             val e = (EVar (["Basis"], "bind"), loc)
+                                             val e = (EVar (["Basis"], "bind", Infer), loc)
                                              val e = (EApp (e, eexp1), loc)
                                              val t = (TRecord (CRecord [], loc), loc)
                                          in
@@ -804,8 +798,12 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                                           e)) etuple), loc)
                                          end)
 
-       | path                           (EVar path, s (pathleft, pathright))
-       | cpath                          (EVar cpath, s (cpathleft, cpathright))
+       | path                           (EVar (#1 path, #2 path, Infer), s (pathleft, pathright))
+       | cpath                          (EVar (#1 cpath, #2 cpath, Infer), s (cpathleft, cpathright))
+       | AT path                        (EVar (#1 path, #2 path, TypesOnly), s (ATleft, pathright))
+       | AT AT path                     (EVar (#1 path, #2 path, DontInfer), s (AT1left, pathright))
+       | AT cpath                       (EVar (#1 cpath, #2 cpath, TypesOnly), s (ATleft, cpathright))
+       | AT AT cpath                    (EVar (#1 cpath, #2 cpath, DontInfer), s (AT1left, cpathright))
        | LBRACE rexp RBRACE             (ERecord rexp, s (LBRACEleft, RBRACEright))
        | UNIT                           (ERecord [], s (UNITleft, UNITright))
 
@@ -818,7 +816,21 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                          in
                                              foldl (fn (ident, e) =>
                                                        (EField (e, ident), loc))
-                                                   (EVar path, s (pathleft, pathright)) idents
+                                                   (EVar (#1 path, #2 path, Infer), s (pathleft, pathright)) idents
+                                         end)
+       | AT path DOT idents             (let
+                                             val loc = s (ATleft, identsright)
+                                         in
+                                             foldl (fn (ident, e) =>
+                                                       (EField (e, ident), loc))
+                                                   (EVar (#1 path, #2 path, TypesOnly), s (pathleft, pathright)) idents
+                                         end)
+       | AT AT path DOT idents          (let
+                                             val loc = s (AT1left, identsright)
+                                         in
+                                             foldl (fn (ident, e) =>
+                                                       (EField (e, ident), loc))
+                                                   (EVar (#1 path, #2 path, DontInfer), s (pathleft, pathright)) idents
                                          end)
        | FOLD                           (EFold, s (FOLDleft, FOLDright))
 
@@ -838,7 +850,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                  ()
                                              else
                                                  ErrorMsg.errorAt loc "Initial XML tag pair aren't both tagged \"xml\".";
-                                             (EApp ((EVar (["Basis"], "cdata"), loc),
+                                             (EApp ((EVar (["Basis"], "cdata", Infer), loc),
                                                     (EPrim (Prim.String ""), loc)),
                                               loc)
                                          end)
@@ -849,7 +861,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                  ()
                                              else
                                                  ErrorMsg.errorAt loc "Initial XML tag pair aren't both tagged \"xml\".";
-                                             (EApp ((EVar (["Basis"], "cdata"), loc),
+                                             (EApp ((EVar (["Basis"], "cdata", Infer), loc),
                                                     (EPrim (Prim.String ""), loc)),
                                               loc)
                                          end)
@@ -862,7 +874,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                         (let
                                              val loc = s (LPAREN1left, RPAREN3right)
 
-                                             val e = (EVar (["Basis"], "insert"), loc)
+                                             val e = (EVar (["Basis"], "insert", Infer), loc)
                                              val e = (EApp (e, texp), loc)
                                          in
                                              if length fields <> length sqlexps then
@@ -875,7 +887,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                         (let
                                              val loc = s (LPARENleft, RPARENright)
 
-                                             val e = (EVar (["Basis"], "update"), loc)
+                                             val e = (EVar (["Basis"], "update", Infer), loc)
                                              val e = (ECApp (e, (CWild (KRecord (KType, loc), loc), loc)), loc)
                                              val e = (EApp (e, (ERecord fsets, loc)), loc)
                                              val e = (EApp (e, texp), loc)
@@ -886,7 +898,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                         (let
                                              val loc = s (LPARENleft, RPARENright)
 
-                                             val e = (EVar (["Basis"], "delete"), loc)
+                                             val e = (EVar (["Basis"], "delete", Infer), loc)
                                              val e = (EApp (e, texp), loc)
                                          in
                                              (EApp (e, sqlexp), loc)
@@ -897,7 +909,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 enterDml :                              (inDml := true)
 leaveDml :                              (inDml := false)
 
-texp   : SYMBOL                         (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright))
+texp   : SYMBOL                         (EVar ([], SYMBOL, Infer), s (SYMBOLleft, SYMBOLright))
        | LBRACE LBRACE eexp RBRACE RBRACE (eexp)
 
 fields : fident                         ([fident])
@@ -953,20 +965,20 @@ xml    : xmlOne xml                     (let
                                              val pos = s (xmlOneleft, xmlright)
                                          in
                                              (EApp ((EApp (
-                                                     (EVar (["Basis"], "join"), pos),
+                                                     (EVar (["Basis"], "join", Infer), pos),
                                                   xmlOne), pos),
                                                     xml), pos)
                                          end)
        | xmlOne                         (xmlOne)
 
-xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata"), s (NOTAGSleft, NOTAGSright)),
+xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer), s (NOTAGSleft, NOTAGSright)),
                                                (EPrim (Prim.String NOTAGS), s (NOTAGSleft, NOTAGSright))),
                                          s (NOTAGSleft, NOTAGSright))
        | tag DIVIDE GT                  (let
                                              val pos = s (tagleft, GTright)
                                          in
                                              (EApp (#2 tag,
-                                                    (EApp ((EVar (["Basis"], "cdata"), pos),
+                                                    (EApp ((EVar (["Basis"], "cdata", Infer), pos),
                                                            (EPrim (Prim.String ""), pos)),
                                                      pos)), pos)
                                          end)
@@ -977,7 +989,7 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata"), s (NO
                                          in
                                              if #1 tag = et then
                                                  if et = "form" then
-                                                     (EApp ((EVar (["Basis"], "form"), pos),
+                                                     (EApp ((EVar (["Basis"], "form", Infer), pos),
                                                             xml), pos)
                                                  else
                                                      (EApp (#2 tag, xml), pos)
@@ -991,8 +1003,7 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata"), s (NO
        | LBRACE eexp RBRACE             (eexp)
        | LBRACE LBRACK eexp RBRACK RBRACE (let
                                              val loc = s (LBRACEleft, RBRACEright)
-                                             val e = (EVar (["Top"], "txt"), loc)
-                                             val e = (EApp (e, (EWild, loc)), loc)
+                                             val e = (EVar (["Top"], "txt", Infer), loc)
                                          in
                                              (EApp (e, eexp), loc)
                                          end)
@@ -1001,7 +1012,7 @@ tag    : tagHead attrs                  (let
                                              val pos = s (tagHeadleft, attrsright)
                                          in
                                              (#1 tagHead,
-                                              (EApp ((EApp ((EVar (["Basis"], "tag"), pos),
+                                              (EApp ((EApp ((EVar (["Basis"], "tag", Infer), pos),
                                                             (ERecord attrs, pos)), pos),
                                                      (EApp (#2 tagHead,
                                                             (ERecord [], pos)), pos)),
@@ -1013,7 +1024,7 @@ tagHead: BEGIN_TAG                      (let
                                              val pos = s (BEGIN_TAGleft, BEGIN_TAGright)
                                          in
                                              (bt,
-                                              (EVar ([], bt), pos))
+                                              (EVar ([], bt, Infer), pos))
                                          end)
        | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
@@ -1039,7 +1050,7 @@ query  : query1 obopt lopt ofopt        (let
                                                                 ((CName "Offset", loc),
                                                                  ofopt)], loc)
                                          in
-                                             (EApp ((EVar (["Basis"], "sql_query"), loc), re), loc)
+                                             (EApp ((EVar (["Basis"], "sql_query", Infer), loc), re), loc)
                                          end)
                 
 query1 : SELECT select FROM tables wopt gopt hopt
@@ -1069,7 +1080,8 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                              val sel = (CRecord sel, loc)
 
                                              val grp = case gopt of
-                                                           NONE => (ECApp ((EVar (["Basis"], "sql_subset_all"), loc),
+                                                           NONE => (ECApp ((EVar (["Basis"], "sql_subset_all",
+                                                                                  Infer), loc),
                                                                            (CWild (KRecord (KRecord (KType, loc), loc),
                                                                                    loc), loc)), loc)
                                                          | SOME gis =>
@@ -1085,11 +1097,11 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                                                                                     loc),
                                                                                              loc)], loc))) tabs
                                                            in
-                                                               (ECApp ((EVar (["Basis"], "sql_subset"), loc),
+                                                               (ECApp ((EVar (["Basis"], "sql_subset", Infer), loc),
                                                                        (CRecord tabs, loc)), loc)
                                                            end
 
-                                             val e = (EVar (["Basis"], "sql_query1"), loc)
+                                             val e = (EVar (["Basis"], "sql_query1", Infer), loc)
                                              val re = (ERecord [((CName "From", loc),
                                                                  (ERecord tables, loc)),
                                                                 ((CName "Where", loc),
@@ -1099,7 +1111,7 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                                                 ((CName "Having", loc),
                                                                  hopt),
                                                                 ((CName "SelectFields", loc),
-                                                                 (ECApp ((EVar (["Basis"], "sql_subset"), loc),
+                                                                 (ECApp ((EVar (["Basis"], "sql_subset", Infer), loc),
                                                                          sel), loc)),
                                                                 ((CName "SelectExps", loc),
                                                                  (ERecord exps, loc))], loc)
@@ -1119,8 +1131,8 @@ tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLr
        | LBRACE cexp RBRACE             (cexp)
 
 table  : SYMBOL                         ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)),
-                                         (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
-       | SYMBOL AS tname                (tname, (EVar ([], SYMBOL), s (SYMBOLleft, SYMBOLright)))
+                                         (EVar ([], SYMBOL, Infer), s (SYMBOLleft, SYMBOLright)))
+       | SYMBOL AS tname                (tname, (EVar ([], SYMBOL, Infer), s (SYMBOLleft, SYMBOLright)))
        | LBRACE LBRACE eexp RBRACE RBRACE AS tname    (tname, eexp)
 
 tident : SYMBOL                         (CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright))
@@ -1140,26 +1152,21 @@ selis  : seli                           ([seli])
 select : STAR                           (Star)
        | selis                          (Items selis)
 
-sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
-                                                     EVar (["Basis"], "sql_bool"),
+sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", Infer),
                                                      s (TRUEleft, TRUEright)))
-       | FALSE                          (sql_inject (EVar (["Basis"], "False"),
-                                                     EVar (["Basis"], "sql_bool"),
+       | FALSE                          (sql_inject (EVar (["Basis"], "False", Infer),
                                                      s (FALSEleft, FALSEright)))
 
        | INT                            (sql_inject (EPrim (Prim.Int INT),
-                                                     EVar (["Basis"], "sql_int"),
                                                      s (INTleft, INTright)))
        | FLOAT                          (sql_inject (EPrim (Prim.Float FLOAT),
-                                                     EVar (["Basis"], "sql_float"),
                                                      s (FLOATleft, FLOATright)))
        | STRING                         (sql_inject (EPrim (Prim.String STRING),
-                                                     EVar (["Basis"], "sql_string"),
                                                      s (STRINGleft, STRINGright)))
 
        | tident DOT fident              (let
                                              val loc = s (tidentleft, fidentright)
-                                             val e = (EVar (["Basis"], "sql_field"), loc)
+                                             val e = (EVar (["Basis"], "sql_field", Infer), loc)
                                              val e = (ECApp (e, tident), loc)
                                          in
                                              (ECApp (e, fident), loc)
@@ -1169,14 +1176,14 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
                                           in
                                               if !inDml then
                                                   let
-                                                      val e = (EVar (["Basis"], "sql_field"), loc)
+                                                      val e = (EVar (["Basis"], "sql_field", Infer), loc)
                                                       val e = (ECApp (e, (CName "T", loc)), loc)
                                                   in
                                                       (ECApp (e, (CName CSYMBOL, loc)), loc)
                                                   end
                                               else
                                                   let
-                                                      val e = (EVar (["Basis"], "sql_exp"), loc)
+                                                      val e = (EVar (["Basis"], "sql_exp", Infer), loc)
                                                   in
                                                       (ECApp (e, (CName CSYMBOL, loc)), loc)
                                                   end
@@ -1194,29 +1201,26 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True"),
        | NOT sqlexp                     (sql_unary ("not", sqlexp, s (NOTleft, sqlexpright)))
 
        | LBRACE eexp RBRACE             (sql_inject (#1 eexp,
-                                                     EWild,
                                                      s (LBRACEleft, RBRACEright)))
        | LPAREN sqlexp RPAREN           (sqlexp)
 
        | COUNT LPAREN STAR RPAREN       (let
                                              val loc = s (COUNTleft, RPARENright)
                                          in
-                                             (EApp ((EVar (["Basis"], "sql_count"), loc),
+                                             (EApp ((EVar (["Basis"], "sql_count", Infer), loc),
                                                     (ERecord [], loc)), loc)
                                          end)
        | sqlagg LPAREN sqlexp RPAREN    (let
                                              val loc = s (sqlaggleft, RPARENright)
 
-                                             val e = (EApp ((EVar (["Basis"], "sql_" ^ sqlagg), loc),
-                                                            (EWild, loc)), loc)
-                                             val e = (EApp ((EVar (["Basis"], "sql_aggregate"), loc),
+                                             val e = (EVar (["Basis"], "sql_" ^ sqlagg, Infer), loc)
+                                             val e = (EApp ((EVar (["Basis"], "sql_aggregate", Infer), loc),
                                                             e), loc)
                                          in
                                              (EApp (e, sqlexp), loc)
                                          end)
 
-wopt   :                                (sql_inject (EVar (["Basis"], "True"),
-                                                     EVar (["Basis"], "sql_bool"),
+wopt   :                                (sql_inject (EVar (["Basis"], "True", Infer),
                                                      dummy))
        | CWHERE sqlexp                  (sqlexp)
 
@@ -1228,12 +1232,11 @@ groupis: groupi                         ([groupi])
 gopt   :                                (NONE)
        | GROUP BY groupis               (SOME groupis)
 
-hopt   :                                (sql_inject (EVar (["Basis"], "True"),
-                                                     EVar (["Basis"], "sql_bool"),
+hopt   :                                (sql_inject (EVar (["Basis"], "True", Infer),
                                                      dummy))
        | HAVING sqlexp                  (sqlexp)
 
-obopt  :                                (ECApp ((EVar (["Basis"], "sql_order_by_Nil"), dummy),
+obopt  :                                (ECApp ((EVar (["Basis"], "sql_order_by_Nil", Infer), dummy),
                                                 (CWild (KRecord (KType, dummy), dummy), dummy)),
                                          dummy)
        | ORDER BY obexps                (obexps)
@@ -1243,10 +1246,10 @@ obitem : sqlexp diropt                  (sqlexp, diropt)
 obexps : obitem                         (let
                                              val loc = s (obitemleft, obitemright)
 
-                                             val e' = (ECApp ((EVar (["Basis"], "sql_order_by_Nil"), loc),
+                                             val e' = (ECApp ((EVar (["Basis"], "sql_order_by_Nil", Infer), loc),
                                                               (CWild (KRecord (KType, loc), loc), loc)),
                                                        loc)
-                                             val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons"), loc),
+                                             val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons", Infer), loc),
                                                             #1 obitem), loc)
                                              val e = (EApp (e, #2 obitem), loc)
                                          in
@@ -1255,30 +1258,30 @@ obexps : obitem                         (let
        | obitem COMMA obexps            (let
                                              val loc = s (obitemleft, obexpsright)
 
-                                             val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons"), loc),
+                                             val e = (EApp ((EVar (["Basis"], "sql_order_by_Cons", Infer), loc),
                                                             #1 obitem), loc)
                                              val e = (EApp (e, #2 obitem), loc)
                                          in
                                              (EApp (e, obexps), loc)
                                          end)
 
-diropt :                                (EVar (["Basis"], "sql_asc"), dummy)
-       | ASC                            (EVar (["Basis"], "sql_asc"), s (ASCleft, ASCright))
-       | DESC                           (EVar (["Basis"], "sql_desc"), s (DESCleft, DESCright))
+diropt :                                (EVar (["Basis"], "sql_asc", Infer), dummy)
+       | ASC                            (EVar (["Basis"], "sql_asc", Infer), s (ASCleft, ASCright))
+       | DESC                           (EVar (["Basis"], "sql_desc", Infer), s (DESCleft, DESCright))
 
-lopt   :                                 (EVar (["Basis"], "sql_no_limit"), dummy)
-       | LIMIT ALL                       (EVar (["Basis"], "sql_no_limit"), dummy)
+lopt   :                                 (EVar (["Basis"], "sql_no_limit", Infer), dummy)
+       | LIMIT ALL                       (EVar (["Basis"], "sql_no_limit", Infer), dummy)
        | LIMIT sqlint                    (let
                                               val loc = s (LIMITleft, sqlintright)
                                           in
-                                              (EApp ((EVar (["Basis"], "sql_limit"), loc), sqlint), loc)
+                                              (EApp ((EVar (["Basis"], "sql_limit", Infer), loc), sqlint), loc)
                                           end)
 
-ofopt  :                                 (EVar (["Basis"], "sql_no_offset"), dummy)
+ofopt  :                                 (EVar (["Basis"], "sql_no_offset", Infer), dummy)
        | OFFSET sqlint                   (let
                                               val loc = s (OFFSETleft, sqlintright)
                                           in
-                                              (EApp ((EVar (["Basis"], "sql_offset"), loc), sqlint), loc)
+                                              (EApp ((EVar (["Basis"], "sql_offset", Infer), loc), sqlint), loc)
                                           end)
 
 sqlint : INT                             (EPrim (Prim.Int INT), s (INTleft, INTright))
