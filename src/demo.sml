@@ -271,6 +271,15 @@ fun make {prefix, dirname} =
                             fun highlight () =
                                 doit (fn (src, html) =>
                                          let
+                                             val dirty =
+                                                 let
+                                                     val srcSt = Posix.FileSys.stat src
+                                                     val htmlSt = Posix.FileSys.stat html
+                                                 in
+                                                     Time.> (Posix.FileSys.ST.mtime srcSt,
+                                                             Posix.FileSys.ST.mtime htmlSt)
+                                                 end handle OS.SysErr _ => true
+
                                              val cmd = "emacs --eval \"(progn "
                                                        ^ "(global-font-lock-mode t) "
                                                        ^ "(add-to-list 'load-path \\\""
@@ -287,8 +296,11 @@ fun make {prefix, dirname} =
                                                        ^ "\\\") "
                                                        ^ "(kill-emacs))\""
                                          in
-                                             print (">>> " ^ cmd ^ "\n");
-                                             ignore (OS.Process.system cmd)
+                                             if dirty then
+                                                 (print (">>> " ^ cmd ^ "\n");
+                                                  ignore (OS.Process.system cmd))
+                                             else
+                                                 ()
                                          end)
                         in
                             if OS.Path.base file = "demo" then

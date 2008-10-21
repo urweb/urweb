@@ -339,6 +339,8 @@ val font : bodyTag [Size = int, Face = string]
 val h1 : bodyTag []
 val li : bodyTag []
 
+val hr : bodyTag []
+
 val a : bodyTag [Link = transaction page]
 
 val form : ctx ::: {Unit} -> bind ::: {Type}

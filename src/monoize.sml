@@ -1535,7 +1535,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                             val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
                         in
-                            foldl (fn ((x, e, t), (s, fm)) =>
+                            foldl (fn (("Action", _, _), acc) => acc
+                                    | ((x, e, t), (s, fm)) =>
                                       case t of
                                           (L'.TFfi ("Basis", "bool"), _) =>
                                           let
@@ -1567,7 +1568,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                   case x of
                                                       "Href" => urlifyExp
                                                     | "Link" => urlifyExp
-                                                    | "Action" => urlifyExp
                                                     | _ => attrifyExp
 
                                               val xp = " " ^ lowercaseFirst x ^ "=\""
@@ -1633,7 +1633,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     end
             in
                 case tag of
-                    "submit" => ((L'.EPrim (Prim.String "<input type=\"submit\"/>"), loc), fm)
+                    "submit" => normal ("input type=\"submit\"", NONE)
 
                   | "textbox" =>
                     (case targs of

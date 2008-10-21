@@ -59,3 +59,15 @@ listShop.urp
 <p>The <tt>ListFun</tt> module defines a functor for building list editing sub-applications.  An argument to the functor <tt>Make</tt> must give the type to be stored in the lists, along with marshaling and unmarshaling functions.  In return, the functor returns an entry point function.</p>
 
 <p>The <tt>ListShop</tt> modules ties everything together by instantiating <tt>ListFun.Make</tt> with structures for integers and strings.  <tt>show</tt> and <tt>read</tt> can be used for marshaling and unmarshaling in both cases because they are type-class-generic.</p>
+
+sql.urp
+
+<p>We see a simple example of accessing a SQL database.  The project file specifies the database to connect to.</p>
+
+<p>A <tt>table</tt> declaration declares a SQL table with rows of a particular record type.  We can use embedded SQL syntax in a way that leads to all of our queries and updates being type-checked.  Indeed, Ur/Web makes strong guarantees that it is impossible to execute invalid SQL queries or make bad assumptions about the types of tables for marshaling and unmarshaling (which happen implicitly).</p>
+
+<p>The <tt>list</tt> function implements an HTML table view of all rows in the SQL table.  The <tt>queryX</tt> function takes two arguments: a SQL query and a function for generating XML fragments from query result rows.  The query is run, and the fragments for the rows are concatenated together.</p>
+
+<p>Other functions demonstrate use of the <tt>dml</tt> function, for building a transaction from a SQL DML command.  It is easy to insert antiquoted Ur code into queries and DML commands, and the type-checker catches mistakes in the types of the expressions that we insert.</p>
+
+<p>

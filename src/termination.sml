@@ -31,6 +31,7 @@ open Elab
 
 structure E = ElabEnv
 structure IM = IntBinaryMap
+structure IS = IntBinarySet
 
 datatype pedigree =
          Func of int
@@ -118,7 +119,7 @@ fun declOk' env (d, loc) =
                       | (_, PRecord xps) => foldl (fn ((_, pt', _), penv) => pat penv (Rabble, pt')) penv xps
                 end
 
-            fun exp (penv, calls) e =
+            fun exp parent (penv, calls) e =
                 let
                     val default = (Rabble, calls)
 
@@ -157,7 +158,7 @@ fun declOk' env (d, loc) =
                                                               if checkName x then
                                                                   calls
                                                               else
-                                                                  #2 (exp (penv, calls) e)) calls xets
+                                                                  #2 (exp parent (penv, calls) e)) calls xets
                                     in
                                         (Rabble, [Rabble], calls)
                                     end
@@ -165,7 +166,7 @@ fun declOk' env (d, loc) =
                                   | EApp (e1, e2) =>
                                     let
                                         val (p1, ps, calls) = combiner calls e1
-                                        val (p2, calls) = exp (penv, calls) e2
+                                        val (p2, calls) = exp parent (penv, calls) e2
 
                                         val p = case p1 of
                                                     Rabble => Rabble
@@ -191,7 +192,7 @@ fun declOk' env (d, loc) =
                                     end
                                   | _ =>
                                     let
-                                        val (p, calls) = exp (penv, calls) e
+                                        val (p, calls) = exp parent (penv, calls) e
                                     in
                                         (*Print.prefaces "Head" [("e", ElabPrint.p_exp env e)];
                                         print (p2s p ^ "\n");*)
@@ -205,7 +206,7 @@ fun declOk' env (d, loc) =
                                     [] => raise Fail "Termination: Empty ps"
                                   | f :: ps =>
                                     case f of
-                                        Func i => (i, ps) :: calls
+                                        Func i => (parent, i, ps) :: calls
                                       | _ => calls
                         in
                             (p, calls)
@@ -227,27 +228,27 @@ fun declOk' env (d, loc) =
                       | EApp _ => apps ()
                       | EAbs (_, _, _, e) => 
                         let
-                            val (_, calls) = exp (Rabble :: penv, calls) e
+                            val (_, calls) = exp parent (Rabble :: penv, calls) e
                         in
                             (Rabble, calls)
                         end
                       | ECApp _ => apps ()
                       | ECAbs (_, _, _, e) =>
                         let
-                            val (_, calls) = exp (penv, calls) e
+                            val (_, calls) = exp parent (penv, calls) e
                         in
                             (Rabble, calls)
                         end
 
                       | ERecord xets =>
                         let
-                            val calls = foldl (fn ((_, e, _), calls) => #2 (exp (penv, calls) e)) calls xets
+                            val calls = foldl (fn ((_, e, _), calls) => #2 (exp parent (penv, calls) e)) calls xets
                         in
                             (Rabble, calls)
                         end
                       | EField (e, x, _) =>
                         let
-                            val (p, calls) = exp (penv, calls) e
+                            val (p, calls) = exp parent (penv, calls) e
                             val p =
                                 case p of
                                     Subarg (i, j, (TRecord (CRecord (_, xts), _), _)) =>
@@ -260,14 +261,14 @@ fun declOk' env (d, loc) =
                         end
                       | ECut (e, _, _) =>
                         let
-                            val (_, calls) = exp (penv, calls) e
+                            val (_, calls) = exp parent (penv, calls) e
                         in
                             (Rabble, calls)
                         end
                       | EWith (e1, _, e2, _) =>
                         let
-                            val (_, calls) = exp (penv, calls) e1
-                            val (_, calls) = exp (penv, calls) e2
+                            val (_, calls) = exp parent (penv, calls) e1
+                            val (_, calls) = exp parent (penv, calls) e2
                         in
                             (Rabble, calls)
                         end
@@ -275,12 +276,12 @@ fun declOk' env (d, loc) =
 
                       | ECase (e, pes, _) =>
                         let
-                            val (p, calls) = exp (penv, calls) e
+                            val (p, calls) = exp parent (penv, calls) e
 
                             val calls = foldl (fn ((pt, e), calls) =>
                                                   let
                                                       val penv = pat penv (p, pt)
-                                                      val (_, calls) = exp (penv, calls) e
+                                                      val (_, calls) = exp parent (penv, calls) e
                                                   in
                                                       calls
                                                   end) calls pes
@@ -289,7 +290,7 @@ fun declOk' env (d, loc) =
                         end
 
                       | EError => (Rabble, calls)
-                      | EUnif (ref (SOME e)) => exp (penv, calls) e
+                      | EUnif (ref (SOME e)) => exp parent (penv, calls) e
                       | EUnif (ref NONE) => (Rabble, calls)
                 end
 
@@ -301,12 +302,27 @@ fun declOk' env (d, loc) =
                             unravel (e, j + 1, Arg (i, j, t) :: penv)
                           | ECAbs (_, _, _, e) =>
                             unravel (e, j, penv)
-                          | _ => (j, #2 (exp (penv, calls) e))
+                          | _ => (j, #2 (exp f (penv, calls) e))
                 in
                     unravel (e, 0, [])
                 end
 
             val (ns, calls) = ListUtil.foldliMap doVali [] vis
+
+            fun isRecursive (from, to, _) =
+                let
+                    fun search (at, soFar) =
+                        at = from
+                        orelse List.exists (fn (from', to', _) =>
+                                               from' = at
+                                               andalso not (IS.member (soFar, to'))
+                                               andalso search (to', IS.add (soFar, to')))
+                                           calls
+                in
+                    search (to, IS.empty)
+                end
+
+            val calls = List.filter isRecursive calls
 
             fun search (ns, choices) =
                 case ns of
@@ -314,7 +330,7 @@ fun declOk' env (d, loc) =
                     let
                         val choices = rev choices
                     in
-                        List.all (fn (f, args) =>
+                        List.all (fn (_, f, args) =>
                                      let
                                          val recArg = List.nth (choices, f)
                                                       
