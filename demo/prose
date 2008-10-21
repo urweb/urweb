@@ -38,6 +38,10 @@ link.urp
 
 <p>In <tt>link.ur</tt>, we see how easy it is to link to another page.  The Ur/Web compiler guarantees that all links are valid.  We just write some Ur/Web code inside an "antiquote" in our XML, denoting a transaction that will produce the new page if the link is clicked.</p>
 
+rec.urp
+
+<p>Crafting webs of interlinked pages is easy, using recursion.</p>
+
 form.urp
 
 <p>Here we see a basic form.  The type system tracks which form inputs we include, and it enforces that the form handler function expects a record containing exactly those fields, with exactly the proper types.</p>

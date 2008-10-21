@@ -333,6 +333,7 @@ val br : bodyTagStandalone []
 val p : bodyTag []
 val b : bodyTag []
 val i : bodyTag []
+val tt : bodyTag []
 val font : bodyTag [Size = int, Face = string]
 
 val h1 : bodyTag []
