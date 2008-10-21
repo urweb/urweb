@@ -1,4 +1,4 @@
- (* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, Adam Chlipala
   * All rights reserved.
   *
   * Redistribution and use in source and binary forms, with or without
@@ -743,7 +743,10 @@
          fun unfold (dom, ran, f, i, r, c) =
              let
                  val nm = cunif (loc, (L'.KName, loc))
-                 val v = cunif (loc, dom)
+                 val v =
+                     case dom of
+                         (L'.KUnit, _) => (L'.CUnit, loc)
+                       | _ => cunif (loc, dom)
                  val rest = cunif (loc, (L'.KRecord dom, loc))
                  val acc = (L'.CFold (dom, ran), loc)
                  val acc = (L'.CApp (acc, f), loc)

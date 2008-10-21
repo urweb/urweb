@@ -31,8 +31,8 @@ fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
                       tf -> tr rest -> tr ([nm] ++ rest))
            (i : tr []) =
     fold [fn r :: {Unit} => $(mapUT tf r) -> tr r]
-             (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) (acc : $(mapUT tf rest) -> tr rest)
-                              [[nm] ~ rest] (r : $([nm = tf] ++ mapUT tf rest)) =>
+             (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
+                              [[nm] ~ rest] r =>
                  f [nm] [rest] r.nm (acc (r -- nm)))
              (fn _ => i)
 
