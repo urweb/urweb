@@ -1513,7 +1513,8 @@ fun p_file env (ds, ps) =
 
                             fun doEm xncs =
                                 case xncs of
-                                    [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), (enum __uwe_"
+                                    [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype "
+                                                  ^ x ^ "\"), (enum __uwe_"
                                                   ^ x ^ "_" ^ Int.toString i ^ ")0)")
                                   | (x', n, to) :: rest =>
                                     box [string "((!strncmp(request, \"",
@@ -1636,70 +1637,99 @@ fun p_file env (ds, ps) =
                             end
 
                       | TDatatype (Default, i, _) =>
-                        let
-                            val (x, xncs) = E.lookupDatatype env i
+                        if IS.member (rf, i) then
+                            box [string "unurlify_",
+                                 string (Int.toString i),
+                                 string "()"]
+                        else
+                            let
+                                val (x, xncs) = E.lookupDatatype env i
 
-                            fun doEm xncs =
-                                case xncs of
-                                    [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL)")
-                                  | (x', n, to) :: rest =>
-                                    box [string "((!strncmp(request, \"",
-                                         string x',
-                                         string "\", ",
-                                         string (Int.toString (size x')),
-                                         string ") && (request[",
-                                         string (Int.toString (size x')),
-                                         string "] == 0 || request[",
-                                         string (Int.toString (size x')),
-                                         string "] == '/')) ? ({",
-                                         newline,
-                                         string "struct",
-                                         space,
-                                         string ("__uwd_" ^ ident x ^ "_" ^ Int.toString i),
-                                         space,
-                                         string "*tmp = uw_malloc(ctx, sizeof(struct __uwd_",
-                                         string x,
-                                         string "_",
-                                         string (Int.toString i),
-                                         string "));",
-                                         newline,
-                                         string "tmp->tag",
-                                         space,
-                                         string "=",
-                                         space,
-                                         string ("__uwc_" ^ ident x' ^ "_" ^ Int.toString n),
-                                         string ";",
-                                         newline,
-                                         string "request",
-                                         space,
-                                         string "+=",
-                                         space,
-                                         string (Int.toString (size x')),
-                                         string ";",
-                                         newline,
-                                         string "if (request[0] == '/') ++request;",
-                                         newline,
-                                         case to of
-                                             NONE => box []
-                                           | SOME (t, _) => box [string "tmp->data.uw_",
-                                                                 p_ident x',
-                                                                 space,
-                                                                 string "=",
-                                                                 space,
-                                                                 unurlify' rf t,
-                                                                 string ";",
-                                                                 newline],
-                                         string "tmp;",
-                                         newline,
-                                         string "})",
-                                         space,
-                                         string ":",
-                                         space,
-                                         doEm rest,
-                                         string ")"]
-                        in
-                            doEm xncs
-                        end
+                                val rf = IS.add (rf, i)
+
+                                fun doEm xncs =
+                                    case xncs of
+                                        [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype "
+                                                      ^ x ^ "\"), NULL)")
+                                      | (x', n, to) :: rest =>
+                                        box [string "((!strncmp(request, \"",
+                                             string x',
+                                             string "\", ",
+                                             string (Int.toString (size x')),
+                                             string ") && (request[",
+                                             string (Int.toString (size x')),
+                                             string "] == 0 || request[",
+                                             string (Int.toString (size x')),
+                                             string "] == '/')) ? ({",
+                                             newline,
+                                             string "struct",
+                                             space,
+                                             string ("__uwd_" ^ ident x ^ "_" ^ Int.toString i),
+                                             space,
+                                             string "*tmp = uw_malloc(ctx, sizeof(struct __uwd_",
+                                             string x,
+                                             string "_",
+                                             string (Int.toString i),
+                                             string "));",
+                                             newline,
+                                             string "tmp->tag",
+                                             space,
+                                             string "=",
+                                             space,
+                                             string ("__uwc_" ^ ident x' ^ "_" ^ Int.toString n),
+                                             string ";",
+                                             newline,
+                                             string "request",
+                                             space,
+                                             string "+=",
+                                             space,
+                                             string (Int.toString (size x')),
+                                             string ";",
+                                             newline,
+                                             string "if (request[0] == '/') ++request;",
+                                             newline,
+                                             case to of
+                                                 NONE => box []
+                                               | SOME (t, _) => box [string "tmp->data.uw_",
+                                                                     p_ident x',
+                                                                     space,
+                                                                     string "=",
+                                                                     space,
+                                                                     unurlify' rf t,
+                                                                     string ";",
+                                                                     newline],
+                                             string "tmp;",
+                                             newline,
+                                             string "})",
+                                             space,
+                                             string ":",
+                                             space,
+                                             doEm rest,
+                                             string ")"]
+                            in
+                                box [string "({",
+                                     space,
+                                     p_typ env (t, ErrorMsg.dummySpan),
+                                     space,
+                                     string "unurlify_",
+                                     string (Int.toString i),
+                                     string "(void) {",
+                                     newline,
+                                     box [string "return",
+                                          space,
+                                          doEm xncs,
+                                          string ";",
+                                          newline],
+                                     string "}",
+                                     newline,
+                                     newline,
+
+                                     string "unurlify_",
+                                     string (Int.toString i),
+                                     string "();",
+                                     newline,
+                                     string "})"]
+                            end
 
                       | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
                               space)

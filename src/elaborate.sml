@@ -1159,6 +1159,17 @@ fun c2s c =
 
 fun exhaustive (env, denv, t, ps) =
     let
+        fun depth (p, _) =
+            case p of
+                L'.PWild => 0
+              | L'.PVar _ => 0
+              | L'.PPrim _ => 0
+              | L'.PCon (_, _, _, NONE) => 1
+              | L'.PCon (_, _, _, SOME p) => 1 + depth p
+              | L'.PRecord xps => foldl (fn ((_, p, _), n) => Int.max (depth p, n)) 0 xps
+
+        val depth = 1 + foldl (fn (p, n) => Int.max (depth p, n)) 0 ps
+
         fun pcCoverage pc =
             case pc of
                 L'.PConVar n => n
@@ -1201,51 +1212,54 @@ fun exhaustive (env, denv, t, ps) =
               | [p] => coverage p
               | p :: ps => merge (coverage p, combinedCoverage ps)
 
-        fun enumerateCases t =
-            let
-                fun dtype cons =
-                    ListUtil.mapConcat (fn (_, n, to) =>
-                                           case to of
-                                               NONE => [Datatype (IM.insert (IM.empty, n, Wild))]
-                                             | SOME t => map (fn c => Datatype (IM.insert (IM.empty, n, c)))
-                                                         (enumerateCases t)) cons
-            in
-                case #1 (#1 (hnormCon (env, denv) t)) of
-                    L'.CNamed n =>
-                    (let
-                         val dt = E.lookupDatatype env n
-                         val cons = E.constructors dt
-                     in
-                         dtype cons
-                     end handle E.UnboundNamed _ => [Wild])
-                  | L'.TRecord c =>
-                    (case #1 (#1 (hnormCon (env, denv) c)) of
-                         L'.CRecord (_, xts) =>
-                         let
-                             val xts = map (fn (x, t) => (#1 (hnormCon (env, denv) x), t)) xts
-
-                             fun exponentiate fs =
-                                 case fs of
-                                     [] => [SM.empty]
-                                   | ((L'.CName x, _), t) :: rest =>
-                                     let
-                                         val this = enumerateCases t
-                                         val rest = exponentiate rest
-                                     in
-                                         ListUtil.mapConcat (fn fmap =>
-                                                                map (fn c => SM.insert (fmap, x, c)) this) rest
-                                     end
-                                   | _ => raise Fail "exponentiate: Not CName"
+        fun enumerateCases depth t =
+            if depth = 0 then
+                [Wild]
+            else
+                let
+                    fun dtype cons =
+                        ListUtil.mapConcat (fn (_, n, to) =>
+                                               case to of
+                                                   NONE => [Datatype (IM.insert (IM.empty, n, Wild))]
+                                                 | SOME t => map (fn c => Datatype (IM.insert (IM.empty, n, c)))
+                                                                 (enumerateCases (depth-1) t)) cons
+                in
+                    case #1 (#1 (hnormCon (env, denv) t)) of
+                        L'.CNamed n =>
+                        (let
+                             val dt = E.lookupDatatype env n
+                             val cons = E.constructors dt
                          in
-                             if List.exists (fn ((L'.CName _, _), _) => false
-                                              | (c, _) => true) xts then
-                                 [Wild]
-                             else
-                                 map (fn ls => Record [ls]) (exponentiate xts)
-                         end
-                       | _ => [Wild])
-                  | _ => [Wild]
-            end
+                             dtype cons
+                         end handle E.UnboundNamed _ => [Wild])
+                      | L'.TRecord c =>
+                        (case #1 (#1 (hnormCon (env, denv) c)) of
+                             L'.CRecord (_, xts) =>
+                             let
+                                 val xts = map (fn (x, t) => (#1 (hnormCon (env, denv) x), t)) xts
+
+                                 fun exponentiate fs =
+                                     case fs of
+                                         [] => [SM.empty]
+                                       | ((L'.CName x, _), t) :: rest =>
+                                         let
+                                             val this = enumerateCases depth t
+                                             val rest = exponentiate rest
+                                         in
+                                             ListUtil.mapConcat (fn fmap =>
+                                                                    map (fn c => SM.insert (fmap, x, c)) this) rest
+                                         end
+                                       | _ => raise Fail "exponentiate: Not CName"
+                             in
+                                 if List.exists (fn ((L'.CName _, _), _) => false
+                                                  | (c, _) => true) xts then
+                                     [Wild]
+                                 else
+                                     map (fn ls => Record [ls]) (exponentiate xts)
+                             end
+                           | _ => [Wild])
+                      | _ => [Wild]
+                end
 
         fun coverageImp (c1, c2) =
             let
@@ -1331,7 +1345,7 @@ fun exhaustive (env, denv, t, ps) =
                         (prefaces "Not a datatype" [("c", p_con env (c, ErrorMsg.dummySpan))];
                          raise Fail "isTotal: Not a datatype")
                 end
-              | Record _ => (List.all (fn c2 => coverageImp (c, c2)) (enumerateCases t), [])
+              | Record _ => (List.all (fn c2 => coverageImp (c, c2)) (enumerateCases depth t), [])
     in
         isTotal (combinedCoverage ps, t)
     end
@@ -1640,11 +1654,8 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 
                 ((L'.ECase (e', pes', {disc = et, result = result}), loc), result, enD gs' @ gs)
             end
-
-        (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 r)*)
     in
-        (*prefaces "elabExp" [("e", SourcePrint.p_exp eAll),
-                            ("|tcs|", PD.string (Int.toString (length tcs)))];*)
+        (*prefaces "/elabExp" [("e", SourcePrint.p_exp eAll)];*)
         r
     end
 
