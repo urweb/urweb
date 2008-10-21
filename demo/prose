@@ -36,7 +36,13 @@ hello.urp
 
 link.urp
 
-<p>This is my second favorite.</p>
+<p>In <tt>link.ur</tt>, we see how easy it is to link to another page.  The Ur/Web compiler guarantees that all links are valid.  We just write some Ur/Web code inside an "antiquote" in our XML, denoting a transaction that will produce the new page if the link is clicked.</p>
+
+form.urp
+
+<p>Here we see a basic form.  The type system tracks which form inputs we include, and it enforces that the form handler function expects a record containing exactly those fields, with exactly the proper types.</p>
+
+<p>In the implementation of <tt>handler</tt>, we see the notation <tt>{[...]}</tt>, which uses type classes to inject values of different types (<tt>string</tt> and <tt>bool</tt> in this case) into XML.  It's probably worth stating explicitly that XML fragments <i>are not strings</i>, so that the type-checker will enforce that our final piece of XML is valid.</p>
 
 listShop.urp
 

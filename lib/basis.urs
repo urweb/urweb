@@ -366,15 +366,19 @@ val option : unit -> tag [Value = string] select [] [] []
 val submit : ctx ::: {Unit} ->  use ::: {Type}
              -> fn [[Form] ~ ctx] =>
                    unit
-                   -> tag [Action = $use -> transaction page]
+                   -> tag [Value = string, Action = $use -> transaction page]
                           ([Form] ++ ctx) ([Form] ++ ctx) use []
 
 (*** Tables *)
 
-val tabl : unit -> tag [Border = int] [Body] [Body, Table] [] []
-val tr : unit -> tag [] [Body, Table] [Body, Tr] [] []
-val th : unit -> tag [] [Body, Tr] [Body] [] []
-val td : unit -> tag [] [Body, Tr] [Body] [] []
+val tabl : other ::: {Unit} -> fn [other ~ [Body, Table]] =>
+                                  unit -> tag [Border = int] ([Body] ++ other) ([Body, Table] ++ other) [] []
+val tr : other ::: {Unit} -> fn [other ~ [Body, Table, Tr]] =>
+                                unit -> tag [] ([Body, Table] ++ other) ([Body, Tr] ++ other) [] []
+val th : other ::: {Unit} -> fn [other ~ [Body, Tr]] =>
+                                unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] []
+val td : other ::: {Unit} -> fn [other ~ [Body, Tr]] =>
+                                unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] []
 
 
 (** Aborting *)
