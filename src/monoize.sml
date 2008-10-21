@@ -112,6 +112,14 @@ fun monoType env =
                                      ("Mod", (L'.TFun (t, (L'.TFun (t, t), loc)), loc))],
                          loc)
                     end
+                  | L.CApp ((L.CFfi ("Basis", "ord"), _), t) =>
+                    let
+                        val t = mt env dtmap t
+                    in
+                        (L'.TRecord [("Lt", (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc)),
+                                     ("Le", (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc))],
+                         loc)
+                    end
                   | L.CApp ((L.CFfi ("Basis", "show"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CFfi ("Basis", "read"), _), t) =>
@@ -496,6 +504,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                           ("Times", times, (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
                           ("Div", dv, (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
                           ("Mod", md, (L'.TFun (t, (L'.TFun (t, t), loc)), loc))], loc), fm)
+
+        fun ordTy t =
+            (L'.TRecord [("Lt", (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc)),
+                         ("Le", (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc))], loc)
+        fun ordEx (t, lt, le) =
+            ((L'.ERecord [("Lt", lt, (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc)),
+                          ("Le", le, (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc))],
+              loc), fm)
     in
         case e of
             L.EPrim p => ((L'.EPrim p, loc), fm)
@@ -651,6 +667,34 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        floatBin "*",
                        floatBin "/",
                        floatBin "fmod")
+            end
+
+          | L.ECApp ((L.EFfi ("Basis", "lt"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("r", ordTy t, (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc),
+                           (L'.EField ((L'.ERel 0, loc), "Lt"), loc)), loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "le"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("r", ordTy t, (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc),
+                           (L'.EField ((L'.ERel 0, loc), "Le"), loc)), loc), fm)
+            end
+          | L.EFfi ("Basis", "ord_int") =>
+            let
+                fun intBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "int"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "int"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "int"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "int"), loc),
+                       intBin "<",
+                       intBin "<=")
             end
                        
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>

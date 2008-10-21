@@ -28,6 +28,13 @@ val mod : t ::: Type -> num t -> t -> t -> t
 val num_int : num int
 val num_float : num float
 
+class ord
+val lt : t ::: Type -> ord t -> t -> t -> bool
+val le : t ::: Type -> ord t -> t -> t -> bool
+val gt : t ::: Type -> ord t -> t -> t -> bool
+val ge : t ::: Type -> ord t -> t -> t -> bool
+val ord_int : ord int
+
 
 (** String operations *)
 

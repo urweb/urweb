@@ -697,6 +697,12 @@ eexp   : eapps                          (eapps)
        | eterm STAR eexp                (native_op ("times", eterm, eexp, s (etermleft, eexpright)))
        | eexp DIVIDE eexp               (native_op ("div", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp MOD eexp                  (native_op ("mod", eexp1, eexp2, s (eexp1left, eexp2right)))
+
+       | eexp LT eexp                   (native_op ("lt", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp LE eexp                   (native_op ("le", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp GT eexp                   (native_op ("gt", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp GE eexp                   (native_op ("ge", eexp1, eexp2, s (eexp1left, eexp2right)))
+
        | eexp WITH cterm EQ eexp        (EWith (eexp1, cterm, eexp2), s (eexp1left, eexp2right))
 
 eargs  : earg                           (earg)
@@ -983,6 +989,13 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata"), s (NO
                                                   (EFold, pos))
                                          end)
        | LBRACE eexp RBRACE             (eexp)
+       | LBRACE LBRACK eexp RBRACK RBRACE (let
+                                             val loc = s (LBRACEleft, RBRACEright)
+                                             val e = (EVar (["Top"], "txt"), loc)
+                                             val e = (EApp (e, (EWild, loc)), loc)
+                                         in
+                                             (EApp (e, eexp), loc)
+                                         end)
 
 tag    : tagHead attrs                  (let
                                              val pos = s (tagHeadleft, attrsright)
