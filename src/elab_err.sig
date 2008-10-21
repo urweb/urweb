@@ -49,7 +49,7 @@ signature ELAB_ERR = sig
            | COccursCheckFailed of Elab.con * Elab.con
            | CIncompatible of Elab.con * Elab.con
            | CExplicitness of Elab.con * Elab.con
-           | CKindof of Elab.kind * Elab.con
+           | CKindof of Elab.kind * Elab.con * string
            | CRecordFailure of Elab.con * Elab.con
 
     val cunifyError : ElabEnv.env -> cunify_error -> unit

@@ -481,7 +481,7 @@
          (case hnormKind (kindof env c) of
               (L'.KArrow (_, k), _) => k
             | (L'.KError, _) => kerror
-            | k => raise CUnify' (CKindof (k, c)))
+            | k => raise CUnify' (CKindof (k, c, "arrow")))
        | L'.CAbs (x, k, c) => (L'.KArrow (k, kindof (E.pushCRel env x k) c), loc)
        | L'.CDisjoint (_, _, _, c) => kindof env c
 
@@ -497,7 +497,7 @@
        | L'.CProj (c, n) =>
          (case hnormKind (kindof env c) of
               (L'.KTuple ks, _) => List.nth (ks, n - 1)
-            | k => raise CUnify' (CKindof (k, c)))
+            | k => raise CUnify' (CKindof (k, c, "tuple")))
 
        | L'.CError => kerror
        | L'.CUnif (_, k, _, _) => k
@@ -546,7 +546,7 @@
              case hnormKind (kindof env c) of
                  (L'.KRecord k, _) => k
                | (L'.KError, _) => kerror
-               | k => raise CUnify' (CKindof (k, c))
+               | k => raise CUnify' (CKindof (k, c, "record"))
 
          val k1 = rkindof c1
          val k2 = rkindof c2
@@ -2318,7 +2318,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                      val env = if n1 = n2 then
                                                                    env
                                                                else
-                                                                   E.pushCNamedAs env x n1 (L'.KType, loc)
+                                                                   E.pushCNamedAs env x n1 k'
                                                                                   (SOME (L'.CNamed n2, loc))
                                                  in
                                                      SOME (env, denv)

@@ -109,7 +109,7 @@ datatype cunify_error =
        | COccursCheckFailed of con * con
        | CIncompatible of con * con
        | CExplicitness of con * con
-       | CKindof of kind * con
+       | CKindof of kind * con * string
        | CRecordFailure of con * con
 
 fun cunifyError env err =
@@ -131,8 +131,8 @@ fun cunifyError env err =
         eprefaces "Differing constructor function explicitness"
                   [("Con 1", p_con env c1),
                    ("Con 2", p_con env c2)]
-      | CKindof (k, c) =>
-        eprefaces "Unexpected kind for kindof calculation"
+      | CKindof (k, c, expected) =>
+        eprefaces ("Unexpected kind for kindof calculation (expecting " ^ expected ^ ")")
                   [("Kind", p_kind k),
                    ("Con", p_con env c)]
       | CRecordFailure (c1, c2) =>
