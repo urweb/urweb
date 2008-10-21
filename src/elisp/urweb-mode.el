@@ -179,13 +179,19 @@ See doc for the variable `urweb-mode-info'."
                                                 (looking-at "->")
                                                 (looking-at "<>")))
           nil)
+         ((or (looking-at "< ") (looking-at "<="))
+          nil)
          ((looking-at "<")
           (setq finished t))
+         ((save-excursion (backward-char 1) (looking-at " >"))
+          nil)
          ((looking-at ">")
           (cond
            ((> depth 0)
             (if (not (re-search-backward "<" nil t))
                 (setq finished t)))
+           ((save-excursion (backward-char 1) (looking-at " "))
+            (setq finished t))
            (t
             (progn (backward-char 4)
                    (setq answer (not (or
