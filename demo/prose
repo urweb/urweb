@@ -22,6 +22,8 @@ to build the "Hello World" demo application.  Whether building the pieces separa
 ProxyPass /Demo/ http://localhost:8080/
 ProxyPassReverse /Demo/ http://localhost:8080/</pre></blockquote></p>
 
+<p>Building the demo also generates a <tt>demo.sql</tt> file, giving the SQL commands to run to define all of the tables and sequences that the applications expect to see.  The file <tt>demo.urp</tt> contains a <tt>database</tt> line with the PostgreSQL database that the demo web server will try to connect to.</p>
+
 <p>The rest of the demo focuses on the individual applications.  Follow the links in the lefthand frame to visit the applications, commentary, and syntax-highlighted source code.  (An Emacs mode is behind the syntax highlighting.)  I recommend visiting the applications in the order listed, since that is the order in which new concepts are introduced.</p>
 
 hello.urp
