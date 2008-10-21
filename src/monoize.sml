@@ -530,6 +530,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                  (L'.TFfi ("Basis", "bool"), loc),
                                  (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
+          | L.EFfi ("Basis", "eq_bool") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "bool"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "eq_string") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "string"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EBinop ("!strcmp", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+             fm)
 
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>
             let
