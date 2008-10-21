@@ -3,4 +3,3 @@ functor Make(M : sig
              end) : sig
     val main : unit -> transaction page
 end
-

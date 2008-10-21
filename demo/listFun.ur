@@ -1,5 +1,5 @@
 functor Make(M : sig
                  type t
              end) = struct
-    val x = 6
+    fun main () = return <xml/>
 end

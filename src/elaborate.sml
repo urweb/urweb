@@ -2292,11 +2292,16 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                                    env
                                                                else
                                                                    E.pushCNamedAs env x n1 (L'.KType, loc)
-                                                                                  (SOME (L'.CNamed n1, loc))
+                                                                                  (SOME (L'.CNamed n2, loc))
                                                  in
                                                      SOME (env, denv)
                                                  end
 
+                                             val env = E.pushCNamedAs env x n1 k' NONE
+                                             val env = if n1 = n2 then
+                                                           env
+                                                       else
+                                                           E.pushCNamedAs env x n2 k' (SOME (L'.CNamed n1, loc))
                                              val env = foldl (fn (x, env) => E.pushCRel env x k) env xs1
                                              fun xncBad ((x1, _, t1), (x2, _, t2)) =
                                                  String.compare (x1, x2) <> EQUAL
