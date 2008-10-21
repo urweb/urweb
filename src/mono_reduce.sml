@@ -275,123 +275,134 @@ fun summarize d (e, _) =
       | ENextval e => summarize d e @ [WriteDb]
 
 fun exp env e =
-    case e of
-        ERel n =>
-        (case E.lookupERel env n of
-             (_, _, SOME e') => #1 e'
-           | _ => e)
-      | ENamed n =>
-        (case E.lookupENamed env n of
-             (_, _, SOME e', _) => #1 e'
-           | _ => e)
+    let
+        (*val () = Print.prefaces "exp" [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))]*)
 
-      | EApp ((EAbs (x, t, _, e1), loc), e2) =>
-        ((*Print.prefaces "Considering" [("e1", MonoPrint.p_exp env e1),
-                                       ("e2", MonoPrint.p_exp env e2)];*)
-        if impure e2 then
-            #1 (reduceExp env (ELet (x, t, e2, e1), loc))
-        else
-            #1 (reduceExp env (subExpInExp (0, e2) e1)))
+        val r =
+            case e of
+                ERel n =>
+                (case E.lookupERel env n of
+                     (_, _, SOME e') => #1 e'
+                   | _ => e)
+              | ENamed n =>
+                (case E.lookupENamed env n of
+                     (_, _, SOME e', _) => ((*Print.prefaces "Switch" [("n", Print.PD.string (Int.toString n)),
+                                                                     ("e'", MonoPrint.p_exp env e')];*)
+                                            #1 e')
+                   | _ => e)
 
-      | ECase (e', pes, {disc, result}) =>
-        let
-            fun push () =
-                case result of
-                    (TFun (dom, result), loc) =>
-                    if List.all (fn (_, (EAbs _, _)) => true | _ => false) pes then
-                        EAbs ("_", dom, result,
-                              (ECase (liftExpInExp 0 e',
-                                      map (fn (p, (EAbs (_, _, _, e), _)) =>
-                                              (p, swapExpVarsPat (0, patBinds p) e)
-                                            | _ => raise Fail "MonoReduce ECase") pes,
-                                      {disc = disc, result = result}), loc))
-                    else
-                        e
-                  | _ => e
+              | EApp ((EAbs (x, t, _, e1), loc), e2) =>
+                ((*Print.prefaces "Considering" [("e1", MonoPrint.p_exp (E.pushERel env x t NONE) e1),
+                                               ("e2", MonoPrint.p_exp env e2),
+                                               ("sub", MonoPrint.p_exp env (reduceExp env (subExpInExp (0, e2) e1)))];*)
+                 if impure e2 then
+                     #1 (reduceExp env (ELet (x, t, e2, e1), loc))
+                 else
+                     #1 (reduceExp env (subExpInExp (0, e2) e1)))
 
-            fun search pes =
-                case pes of
-                    [] => push ()
-                  | (p, body) :: pes =>
-                    case match (env, p, e') of
-                        No => search pes
-                      | Maybe => push ()
-                      | Yes env => #1 (reduceExp env body)
-        in
-            search pes
-        end
-
-      | EField ((ERecord xes, _), x) =>
-        (case List.find (fn (x', _, _) => x' = x) xes of
-             SOME (_, e, _) => #1 e
-           | NONE => e)
-
-      | ELet (x1, t1, (ELet (x2, t2, e1, b1), loc), b2) =>
-        let
-            val e' = (ELet (x2, t2, e1,
-                            (ELet (x1, t1, b1,
-                                   liftExpInExp 1 b2), loc)), loc)
-        in
-            (*Print.prefaces "ELet commute" [("e", MonoPrint.p_exp env (e, loc)),
-                                           ("e'", MonoPrint.p_exp env e')];*)
-            #1 (reduceExp env e')
-        end
-      | EApp ((ELet (x, t, e, b), loc), e') =>
-        #1 (reduceExp env (ELet (x, t, e,
-                                 (EApp (b, liftExpInExp 0 e'), loc)), loc))
-
-      | ELet (x, t, e, (EAbs (x', t' as (TRecord [], _), ran, e'), loc)) =>
-        EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e, swapExpVars 0 e'), loc))
-
-      | ELet (x, t, e', b) =>
-        if impure e' then
-            let
-                val effs_e' = summarize 0 e'
-                val effs_b = summarize 0 b
-
-                fun does eff = List.exists (fn eff' => eff' = eff) effs_e'
-                val writesPage = does WritePage
-                val readsDb = does ReadDb
-                val writesDb = does WriteDb
-
-                fun verifyUnused eff =
-                    case eff of
-                        UseRel r => r <> 0
-                      | Unsure => false
-                      | _ => true
-
-                fun verifyCompatible effs =
-                    case effs of
-                        [] => false
-                      | eff :: effs =>
-                        case eff of
-                            Unsure => false
-                          | UseRel r =>
-                            if r = 0 then
-                                List.all verifyUnused effs
+              | ECase (e', pes, {disc, result}) =>
+                let
+                    fun push () =
+                        case result of
+                            (TFun (dom, result), loc) =>
+                            if List.all (fn (_, (EAbs _, _)) => true | _ => false) pes then
+                                EAbs ("_", dom, result,
+                                      (ECase (liftExpInExp 0 e',
+                                              map (fn (p, (EAbs (_, _, _, e), _)) =>
+                                                      (p, swapExpVarsPat (0, patBinds p) e)
+                                                    | _ => raise Fail "MonoReduce ECase") pes,
+                                              {disc = disc, result = result}), loc))
                             else
-                                verifyCompatible effs
-                          | WritePage => not writesPage andalso verifyCompatible effs
-                          | ReadDb => not writesDb andalso verifyCompatible effs
-                          | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
-            in
-                (*Print.prefaces "verifyCompatible"
-                [("e'", MonoPrint.p_exp env e'),
-                 ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                 ("effs_e'", Print.p_list p_event effs_e'),
-                 ("effs_b", Print.p_list p_event effs_b)];*)
-                if verifyCompatible effs_b then
-                    #1 (reduceExp env (subExpInExp (0, e') b))
+                                e
+                          | _ => e
+
+                    fun search pes =
+                        case pes of
+                            [] => push ()
+                          | (p, body) :: pes =>
+                            case match (env, p, e') of
+                                No => search pes
+                              | Maybe => push ()
+                              | Yes env => #1 (reduceExp env body)
+                in
+                    search pes
+                end
+
+              | EField ((ERecord xes, _), x) =>
+                (case List.find (fn (x', _, _) => x' = x) xes of
+                     SOME (_, e, _) => #1 e
+                   | NONE => e)
+
+              | ELet (x1, t1, (ELet (x2, t2, e1, b1), loc), b2) =>
+                let
+                    val e' = (ELet (x2, t2, e1,
+                                    (ELet (x1, t1, b1,
+                                           liftExpInExp 1 b2), loc)), loc)
+                in
+                    (*Print.prefaces "ELet commute" [("e", MonoPrint.p_exp env (e, loc)),
+                                                     ("e'", MonoPrint.p_exp env e')];*)
+                    #1 (reduceExp env e')
+                end
+              | EApp ((ELet (x, t, e, b), loc), e') =>
+                #1 (reduceExp env (ELet (x, t, e,
+                                         (EApp (b, liftExpInExp 0 e'), loc)), loc))
+
+              | ELet (x, t, e, (EAbs (x', t' as (TRecord [], _), ran, e'), loc)) =>
+                EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e, swapExpVars 0 e'), loc))
+
+              | ELet (x, t, e', b) =>
+                if impure e' then
+                    let
+                        val effs_e' = summarize 0 e'
+                        val effs_b = summarize 0 b
+
+                        fun does eff = List.exists (fn eff' => eff' = eff) effs_e'
+                        val writesPage = does WritePage
+                        val readsDb = does ReadDb
+                        val writesDb = does WriteDb
+
+                        fun verifyUnused eff =
+                            case eff of
+                                UseRel r => r <> 0
+                              | Unsure => false
+                              | _ => true
+
+                        fun verifyCompatible effs =
+                            case effs of
+                                [] => false
+                              | eff :: effs =>
+                                case eff of
+                                    Unsure => false
+                                  | UseRel r =>
+                                    if r = 0 then
+                                        List.all verifyUnused effs
+                                    else
+                                        verifyCompatible effs
+                                  | WritePage => not writesPage andalso verifyCompatible effs
+                                  | ReadDb => not writesDb andalso verifyCompatible effs
+                                  | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
+                    in
+                        (*Print.prefaces "verifyCompatible"
+                                         [("e'", MonoPrint.p_exp env e'),
+                                          ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                          ("effs_e'", Print.p_list p_event effs_e'),
+                                          ("effs_b", Print.p_list p_event effs_b)];*)
+                        if verifyCompatible effs_b then
+                            #1 (reduceExp env (subExpInExp (0, e') b))
+                        else
+                            e
+                    end
                 else
-                    e
-            end
-        else
-            #1 (reduceExp env (subExpInExp (0, e') b))
+                    #1 (reduceExp env (subExpInExp (0, e') b))
 
-      | EStrcat ((EPrim (Prim.String s1), _), (EPrim (Prim.String s2), _)) =>
-        EPrim (Prim.String (s1 ^ s2))
+              | EStrcat ((EPrim (Prim.String s1), _), (EPrim (Prim.String s2), _)) =>
+                EPrim (Prim.String (s1 ^ s2))
 
-      | _ => e
+              | _ => e
+    in
+        (*Print.prefaces "exp'" [("r", MonoPrint.p_exp env (r, ErrorMsg.dummySpan))];*)
+        r
+    end
 
 and bind (env, b) =
     case b of

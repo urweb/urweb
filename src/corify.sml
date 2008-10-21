@@ -696,7 +696,7 @@ fun corifyDecl mods ((d, loc : EM.span), st) =
       | L.DSgn _ => ([], st)
 
       | L.DStr (x, n, _, (L.StrFun (xa, na, _, _, str), _)) =>
-        ([], St.bindFunctor st mods x n xa na str)
+        ([], St.bindFunctor st (x :: mods) x n xa na str)
 
       | L.DStr (x, n, _, (L.StrProj (str, x'), _)) =>
         let

@@ -1463,217 +1463,249 @@ fun p_file env (ds, ps) =
                 str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
         fun unurlify (t, loc) =
-            case t of
-                TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
+            let
+                fun unurlify' rf t =
+                    case t of
+                        TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
 
-              | TRecord 0 => string "uw_unit_v"
-              | TRecord i =>
-                let
-                    val xts = E.lookupStruct env i
-                in
-                    box [string "({",
-                         newline,
-                         box (map (fn (x, t) =>
-                                      box [p_typ env t,
-                                           space,
-                                           string x,
-                                           space,
-                                           string "=",
-                                           space,
-                                           unurlify t,
-                                           string ";",
-                                           newline]) xts),
-                         string "struct",
-                         space,
-                         string "__uws_",
-                         string (Int.toString i),
-                         space,
-                         string "tmp",
-                         space,
-                         string "=",
-                         space,
-                         string "{",
-                         space,
-                         p_list_sep (box [string ",", space]) (fn (x, _) => string x) xts,
-                         space,
-                         string "};",
-                         newline,
-                         string "tmp;",
-                         newline,
-                         string "})"]
-                end
-
-              | TDatatype (Enum, i, _) =>
-                let
-                    val (x, xncs) = E.lookupDatatype env i
-
-                    fun doEm xncs =
-                        case xncs of
-                            [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), (enum __uwe_"
-                                          ^ x ^ "_" ^ Int.toString i ^ ")0)")
-                          | (x', n, to) :: rest =>
-                            box [string "((!strncmp(request, \"",
-                                 string x',
-                                 string "\", ",
-                                 string (Int.toString (size x')),
-                                 string ") && (request[",
-                                 string (Int.toString (size x')),
-                                 string "] == 0 || request[",
-                                 string (Int.toString (size x')),
-                                 string ("] == '/')) ? __uwc_" ^ ident x' ^ "_" ^ Int.toString n),
-                                 space,
-                                 string ":",
-                                 space,
-                                 doEm rest,
-                                 string ")"]
-                in
-                    doEm xncs
-                end
-
-              | TDatatype (Option, i, xncs) =>
-                let
-                    val (x, _) = E.lookupDatatype env i
-
-                    val (no_arg, has_arg, t) =
-                        case !xncs of
-                            [(no_arg, _, NONE), (has_arg, _, SOME t)] =>
-                            (no_arg, has_arg, t)
-                          | [(has_arg, _, SOME t), (no_arg, _, NONE)] =>
-                            (no_arg, has_arg, t)
-                          | _ => raise Fail "CjrPrint: unfooify misclassified Option datatype"
-                in
-                    box [string "(request[0] == '/' ? ++request : request,",
-                         newline,
-                         string "((!strncmp(request, \"",
-                         string no_arg,
-                         string "\", ",
-                         string (Int.toString (size no_arg)),
-                         string ") && (request[",
-                         string (Int.toString (size no_arg)),
-                         string "] == 0 || request[",
-                         string (Int.toString (size no_arg)),
-                         string "] == '/')) ? (request",
-                         space,
-                         string "+=",
-                         space,
-                         string (Int.toString (size no_arg)),
-                         string ", NULL) : ((!strncmp(request, \"",
-                         string has_arg,
-                         string "\", ",
-                         string (Int.toString (size has_arg)),
-                         string ") && (request[",
-                         string (Int.toString (size has_arg)),
-                         string "] == 0 || request[",
-                         string (Int.toString (size has_arg)),
-                         string "] == '/')) ? (request",
-                         space,
-                         string "+=",
-                         space,
-                         string (Int.toString (size has_arg)),
-                         string ", (request[0] == '/' ? ++request : NULL), ",
-                         newline,
-                         
-                         case #1 t of
-                             TDatatype _ => unurlify t
-                           | TFfi ("Basis", "string") => unurlify t
-                           | _ => box [string "({",
-                                       newline,
-                                       p_typ env t,
-                                       space,
-                                       string "*tmp",
-                                       space,
-                                       string "=",
-                                       space,
-                                       string "uw_malloc(ctx, sizeof(",
-                                       p_typ env t,
-                                       string "));",
-                                       newline,
-                                       string "*tmp",
-                                       space,
-                                       string "=",
-                                       space,
-                                       unurlify t,
-                                       string ";",
-                                       newline,
-                                       string "tmp;",
-                                       newline,
-                                       string "})"],
-                         string ")",
-                         newline,
-                         string ":",
-                         space,
-                         string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL))))")]
-                end                     
-
-              | TDatatype (Default, i, _) =>
-                let
-                    val (x, xncs) = E.lookupDatatype env i
-
-                    fun doEm xncs =
-                        case xncs of
-                            [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL)")
-                          | (x', n, to) :: rest =>
-                            box [string "((!strncmp(request, \"",
-                                 string x',
-                                 string "\", ",
-                                 string (Int.toString (size x')),
-                                 string ") && (request[",
-                                 string (Int.toString (size x')),
-                                 string "] == 0 || request[",
-                                 string (Int.toString (size x')),
-                                 string "] == '/')) ? ({",
+                      | TRecord 0 => string "uw_unit_v"
+                      | TRecord i =>
+                        let
+                            val xts = E.lookupStruct env i
+                        in
+                            box [string "({",
                                  newline,
+                                 box (map (fn (x, t) =>
+                                              box [p_typ env t,
+                                                   space,
+                                                   string "uwr_",
+                                                   string x,
+                                                   space,
+                                                   string "=",
+                                                   space,
+                                                   unurlify' rf (#1 t),
+                                                   string ";",
+                                                   newline]) xts),
                                  string "struct",
                                  space,
-                                 string ("__uwd_" ^ ident x ^ "_" ^ Int.toString i),
-                                 space,
-                                 string "*tmp = uw_malloc(ctx, sizeof(struct __uwd_",
-                                 string x,
-                                 string "_",
+                                 string "__uws_",
                                  string (Int.toString i),
-                                 string "));",
-                                 newline,
-                                 string "tmp->tag",
+                                 space,
+                                 string "tmp",
                                  space,
                                  string "=",
                                  space,
-                                 string ("__uwc_" ^ ident x' ^ "_" ^ Int.toString n),
-                                 string ";",
-                                 newline,
-                                 string "request",
+                                 string "{",
                                  space,
-                                 string "+=",
+                                 p_list_sep (box [string ",", space]) (fn (x, _) => box [string "uwr_",
+                                                                                         string x]) xts,
                                  space,
-                                 string (Int.toString (size x')),
-                                 string ";",
+                                 string "};",
                                  newline,
-                                 string "if (request[0] == '/') ++request;",
-                                 newline,
-                                 case to of
-                                     NONE => box []
-                                   | SOME t => box [string "tmp->data.uw_",
-                                                    p_ident x',
-                                                    space,
-                                                    string "=",
-                                                    space,
-                                                    unurlify t,
-                                                    string ";",
-                                                    newline],
                                  string "tmp;",
                                  newline,
-                                 string "})",
-                                 space,
-                                 string ":",
-                                 space,
-                                 doEm rest,
-                                 string ")"]
-                in
-                    doEm xncs
-                end
+                                 string "})"]
+                        end
 
-              | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
-                      space)
+                      | TDatatype (Enum, i, _) =>
+                        let
+                            val (x, xncs) = E.lookupDatatype env i
 
+                            fun doEm xncs =
+                                case xncs of
+                                    [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), (enum __uwe_"
+                                                  ^ x ^ "_" ^ Int.toString i ^ ")0)")
+                                  | (x', n, to) :: rest =>
+                                    box [string "((!strncmp(request, \"",
+                                         string x',
+                                         string "\", ",
+                                         string (Int.toString (size x')),
+                                         string ") && (request[",
+                                         string (Int.toString (size x')),
+                                         string "] == 0 || request[",
+                                         string (Int.toString (size x')),
+                                         string ("] == '/')) ? __uwc_" ^ ident x' ^ "_" ^ Int.toString n),
+                                         space,
+                                         string ":",
+                                         space,
+                                         doEm rest,
+                                         string ")"]
+                        in
+                            doEm xncs
+                        end
+
+                      | TDatatype (Option, i, xncs) =>
+                        if IS.member (rf, i) then
+                            box [string "unurlify_",
+                                 string (Int.toString i),
+                                 string "()"]
+                        else
+                            let
+                                val (x, _) = E.lookupDatatype env i
+
+                                val (no_arg, has_arg, t) =
+                                    case !xncs of
+                                        [(no_arg, _, NONE), (has_arg, _, SOME t)] =>
+                                        (no_arg, has_arg, t)
+                                      | [(has_arg, _, SOME t), (no_arg, _, NONE)] =>
+                                        (no_arg, has_arg, t)
+                                      | _ => raise Fail "CjrPrint: unfooify misclassified Option datatype"
+
+                                val rf = IS.add (rf, i)
+                            in
+                                box [string "({",
+                                     space,
+                                     p_typ env t,
+                                     space,
+                                     string "*unurlify_",
+                                     string (Int.toString i),
+                                     string "(void) {",
+                                     newline,
+                                     box [string "return (request[0] == '/' ? ++request : request,",
+                                          newline,
+                                          string "((!strncmp(request, \"",
+                                          string no_arg,
+                                          string "\", ",
+                                          string (Int.toString (size no_arg)),
+                                          string ") && (request[",
+                                          string (Int.toString (size no_arg)),
+                                          string "] == 0 || request[",
+                                          string (Int.toString (size no_arg)),
+                                          string "] == '/')) ? (request",
+                                          space,
+                                          string "+=",
+                                          space,
+                                          string (Int.toString (size no_arg)),
+                                          string ", NULL) : ((!strncmp(request, \"",
+                                          string has_arg,
+                                          string "\", ",
+                                          string (Int.toString (size has_arg)),
+                                          string ") && (request[",
+                                          string (Int.toString (size has_arg)),
+                                          string "] == 0 || request[",
+                                          string (Int.toString (size has_arg)),
+                                          string "] == '/')) ? (request",
+                                          space,
+                                          string "+=",
+                                          space,
+                                          string (Int.toString (size has_arg)),
+                                          string ", (request[0] == '/' ? ++request : NULL), ",
+                                          newline,
+                                          
+                                          case #1 t of
+                                              TDatatype _ => unurlify' rf (#1 t)
+                                            | TFfi ("Basis", "string") => unurlify' rf (#1 t)
+                                            | _ => box [string "({",
+                                                        newline,
+                                                        p_typ env t,
+                                                        space,
+                                                        string "*tmp",
+                                                        space,
+                                                        string "=",
+                                                        space,
+                                                        string "uw_malloc(ctx, sizeof(",
+                                                        p_typ env t,
+                                                        string "));",
+                                                        newline,
+                                                        string "*tmp",
+                                                        space,
+                                                        string "=",
+                                                        space,
+                                                        unurlify' rf (#1 t),
+                                                        string ";",
+                                                        newline,
+                                                        string "tmp;",
+                                                        newline,
+                                                        string "})"],
+                                          string ")",
+                                          newline,
+                                          string ":",
+                                          space,
+                                          string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x
+                                                  ^ "\"), NULL))));"),
+                                          newline],
+                                     string "}",
+                                     newline,
+                                     newline,
+
+                                     string "unurlify_",
+                                     string (Int.toString i),
+                                     string "();",
+                                     newline,
+                                     string "})"]
+                            end
+
+                      | TDatatype (Default, i, _) =>
+                        let
+                            val (x, xncs) = E.lookupDatatype env i
+
+                            fun doEm xncs =
+                                case xncs of
+                                    [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x ^ "\"), NULL)")
+                                  | (x', n, to) :: rest =>
+                                    box [string "((!strncmp(request, \"",
+                                         string x',
+                                         string "\", ",
+                                         string (Int.toString (size x')),
+                                         string ") && (request[",
+                                         string (Int.toString (size x')),
+                                         string "] == 0 || request[",
+                                         string (Int.toString (size x')),
+                                         string "] == '/')) ? ({",
+                                         newline,
+                                         string "struct",
+                                         space,
+                                         string ("__uwd_" ^ ident x ^ "_" ^ Int.toString i),
+                                         space,
+                                         string "*tmp = uw_malloc(ctx, sizeof(struct __uwd_",
+                                         string x,
+                                         string "_",
+                                         string (Int.toString i),
+                                         string "));",
+                                         newline,
+                                         string "tmp->tag",
+                                         space,
+                                         string "=",
+                                         space,
+                                         string ("__uwc_" ^ ident x' ^ "_" ^ Int.toString n),
+                                         string ";",
+                                         newline,
+                                         string "request",
+                                         space,
+                                         string "+=",
+                                         space,
+                                         string (Int.toString (size x')),
+                                         string ";",
+                                         newline,
+                                         string "if (request[0] == '/') ++request;",
+                                         newline,
+                                         case to of
+                                             NONE => box []
+                                           | SOME (t, _) => box [string "tmp->data.uw_",
+                                                                 p_ident x',
+                                                                 space,
+                                                                 string "=",
+                                                                 space,
+                                                                 unurlify' rf t,
+                                                                 string ";",
+                                                                 newline],
+                                         string "tmp;",
+                                         newline,
+                                         string "})",
+                                         space,
+                                         string ":",
+                                         space,
+                                         doEm rest,
+                                         string ")"]
+                        in
+                            doEm xncs
+                        end
+
+                      | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
+                              space)
+            in
+                unurlify' IS.empty t
+            end
 
         fun p_page (ek, s, n, ts) =
             let

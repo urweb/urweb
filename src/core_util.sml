@@ -785,7 +785,9 @@ fun foldMap {kind, con, exp, decl} s d =
 val maxName = foldl (fn ((d, _) : decl, count) =>
                         case d of
                             DCon (_, n, _, _) => Int.max (n, count)
-                          | DDatatype (_, n, _, _) => Int.max (n, count)
+                          | DDatatype (_, n, _, ns) =>
+                            foldl (fn ((_, n', _), m) => Int.max (n', m))
+                                  (Int.max (n, count)) ns
                           | DVal (_, n, _, _, _) => Int.max (n, count)
                           | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
                           | DExport _ => count
