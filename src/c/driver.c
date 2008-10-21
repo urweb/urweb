@@ -116,7 +116,7 @@ static void *worker(void *data) {
       *back = 0;
     
       if (s = strstr(buf, "\r\n\r\n")) {
-        char *cmd, *path, *inputs;
+        char *cmd, *path, path_copy[uw_bufsize+1], *inputs;
 
         *s = 0;
 
@@ -175,7 +175,8 @@ static void *worker(void *data) {
           uw_write(ctx, "Content-type: text/html\r\n\r\n");
           uw_write(ctx, "<html>");
 
-          fk = uw_begin(ctx, path);
+          strcpy(path_copy, path);
+          fk = uw_begin(ctx, path_copy);
           if (fk == SUCCESS) {
             uw_write(ctx, "</html>");
             break;
