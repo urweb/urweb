@@ -573,6 +573,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                  (L'.TFfi ("Basis", "bool"), loc),
                                  (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
+          | L.EFfi ("Basis", "eq_float") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "float"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "float"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "float"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+             fm)
           | L.EFfi ("Basis", "eq_bool") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "bool"), loc),
                        (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
@@ -727,6 +734,32 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ordEx ((L'.TFfi ("Basis", "int"), loc),
                        intBin "<",
                        intBin "<=")
+            end
+          | L.EFfi ("Basis", "ord_float") =>
+            let
+                fun floatBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "float"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "float"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "float"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "float"), loc),
+                       floatBin "<",
+                       floatBin "<=")
+            end
+          | L.EFfi ("Basis", "ord_bool") =>
+            let
+                fun boolBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "bool"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "bool"), loc),
+                       boolBin "<",
+                       boolBin "<=")
             end
                        
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>

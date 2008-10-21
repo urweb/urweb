@@ -15,6 +15,7 @@ class eq
 val eq : t ::: Type -> eq t -> t -> t -> bool
 val ne : t ::: Type -> eq t -> t -> t -> bool
 val eq_int : eq int
+val eq_float : eq float
 val eq_string : eq string
 val eq_bool : eq bool
 
@@ -34,6 +35,9 @@ val le : t ::: Type -> ord t -> t -> t -> bool
 val gt : t ::: Type -> ord t -> t -> t -> bool
 val ge : t ::: Type -> ord t -> t -> t -> bool
 val ord_int : ord int
+val ord_float : ord float
+val ord_string : ord string
+val ord_bool : ord bool
 
 
 (** String operations *)
