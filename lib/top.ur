@@ -6,6 +6,9 @@ con sndTT (t :: (Type * Type)) = t.2
 con mapTT (f :: Type -> Type) = fold (fn nm t acc [[nm] ~ acc] =>
                                          [nm = f t] ++ acc) []
 
+con mapUT = fn f :: Type => fold (fn nm t acc [[nm] ~ acc] =>
+                                     [nm = f] ++ acc) []
+
 con mapT2T (f :: (Type * Type) -> Type) = fold (fn nm t acc [[nm] ~ acc] =>
                                                    [nm = f t] ++ acc) []
 
@@ -21,6 +24,17 @@ fun compose (t1 ::: Type) (t2 ::: Type) (t3 ::: Type)
 
 fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (sh : show t) (v : t) =
     cdata (@show sh v)
+
+fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
+           (f : nm :: Name -> rest :: {Unit}
+                -> fn [[nm] ~ rest] =>
+                      tf -> tr rest -> tr ([nm] ++ rest))
+           (i : tr []) =
+    fold [fn r :: {Unit} => $(mapUT tf r) -> tr r]
+             (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) (acc : $(mapUT tf rest) -> tr rest)
+                              [[nm] ~ rest] (r : $([nm = tf] ++ mapUT tf rest)) =>
+                 f [nm] [rest] r.nm (acc (r -- nm)))
+             (fn _ => i)
 
 fun foldTR (tf :: Type -> Type) (tr :: {Type} -> Type)
            (f : nm :: Name -> t :: Type -> rest :: {Type}

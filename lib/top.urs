@@ -6,6 +6,9 @@ con sndTT = fn t :: (Type * Type) => t.2
 con mapTT = fn f :: Type -> Type => fold (fn nm t acc [[nm] ~ acc] =>
                                              [nm = f t] ++ acc) []
 
+con mapUT = fn f :: Type => fold (fn nm t acc [[nm] ~ acc] =>
+                                     [nm = f] ++ acc) []
+
 con mapT2T = fn f :: (Type * Type) -> Type => fold (fn nm t acc [[nm] ~ acc] =>
                                                        [nm = f t] ++ acc) []
 
@@ -19,6 +22,12 @@ val compose : t1 ::: Type -> t2 ::: Type -> t3 ::: Type
 
 val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> show t -> t
           -> xml ctx use []
+
+val foldUR : tf :: Type -> tr :: ({Unit} -> Type)
+             -> (nm :: Name -> rest :: {Unit}
+                 -> fn [[nm] ~ rest] =>
+                       tf -> tr rest -> tr ([nm] ++ rest))
+             -> tr [] -> r :: {Unit} -> $(mapUT tf r) -> tr r
 
 val foldTR : tf :: (Type -> Type) -> tr :: ({Type} -> Type)
              -> (nm :: Name -> t :: Type -> rest :: {Type}

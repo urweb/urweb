@@ -821,17 +821,20 @@
              gs1 @ gs2 @ gs3 @ gs4
          end
        | _ =>
-         let
-             val (c1, gs1) = hnormCon (env, denv) c1
-             val (c2, gs2) = hnormCon (env, denv) c2
-         in
+         case (kindof env c1, kindof env c2) of
+             ((L'.KUnit, _), (L'.KUnit, _)) => []
+           | _ =>
              let
-                 val gs3 = unifyCons'' (env, denv) c1 c2
+                 val (c1, gs1) = hnormCon (env, denv) c1
+                 val (c2, gs2) = hnormCon (env, denv) c2
              in
-                 gs1 @ gs2 @ gs3
+                 let
+                     val gs3 = unifyCons'' (env, denv) c1 c2
+                 in
+                     gs1 @ gs2 @ gs3
+                 end
+                 handle ex => guessFold (env, denv) (c1, c2, gs1 @ gs2, ex)
              end
-             handle ex => guessFold (env, denv) (c1, c2, gs1 @ gs2, ex)
-         end
 
  and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
      let
