@@ -633,6 +633,25 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        intBin "/",
                        intBin "%")
             end
+          | L.EFfi ("Basis", "num_float") =>
+            let
+                fun floatBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "float"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "float"), loc), (L'.TFfi ("Basis", "float"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "float"), loc),
+                                        (L'.TFfi ("Basis", "float"), loc),
+                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+            in
+                numEx ((L'.TFfi ("Basis", "float"), loc),
+                       (L'.EAbs ("x", (L'.TFfi ("Basis", "float"), loc),
+                                 (L'.TFfi ("Basis", "float"), loc),
+                                 (L'.EUnop ("-", (L'.ERel 0, loc)), loc)), loc),
+                       floatBin "+",
+                       floatBin "-",
+                       floatBin "*",
+                       floatBin "/",
+                       floatBin "fmod")
+            end
                        
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>
             let

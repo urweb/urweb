@@ -26,6 +26,7 @@ val times : t ::: Type -> num t -> t -> t -> t
 val div : t ::: Type -> num t -> t -> t -> t
 val mod : t ::: Type -> num t -> t -> t -> t
 val num_int : num int
+val num_float : num float
 
 
 (** String operations *)

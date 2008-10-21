@@ -512,7 +512,7 @@ fun compileC {cname, oname, ename} =
         val driver_o = clibFile "driver.o"
 
         val compile = "gcc -Wstrict-prototypes -Werror -O3 -I include -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -Werror -O3 -pthread -lpq " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
+        val link = "gcc -Werror -O3 -lm -pthread -lpq " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"

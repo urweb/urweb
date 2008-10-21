@@ -617,6 +617,7 @@ fun p_exp' par env (e, loc) =
       | EBinop (s, e1, e2) =>
         if Char.isAlpha (String.sub (s, size s - 1)) then
             box [string s,
+                 string "(",
                  p_exp env e1,
                  string ",",
                  space,
@@ -2053,6 +2054,8 @@ fun p_file env (ds, ps) =
              string "#include <stdlib.h>",
              newline,
              string "#include <string.h>",
+             newline,
+             string "#include <math.h>",
              newline,
              string "#include <postgresql/libpq-fe.h>",
              newline,
