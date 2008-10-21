@@ -12,6 +12,8 @@ functor Make(M : sig
       
     fun console (ls : list M.t) = return <xml><body>
       Current list: {toXml ls}<br/>
+      Length: {[length ls]}<br/>
+      <br/>
 
       <form>
         Add element: <textbox{#X}/> <submit action={cons ls}/>
