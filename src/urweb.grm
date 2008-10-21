@@ -158,6 +158,14 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
         (EApp (e, sqlexp2), loc)
     end
 
+fun native_unop (oper, e1, loc) =
+    let
+        val e = (EVar (["Basis"], oper), loc)
+        val e = (EApp (e, (EWild, loc)), loc)
+    in
+        (EApp (e, e1), loc)
+    end
+
 fun native_op (oper, e1, e2, loc) =
     let
         val e = (EVar (["Basis"], oper), loc)
@@ -183,7 +191,7 @@ fun tagIn bt =
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
- | DIVIDE | DOTDOTDOT
+ | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD
  | CON | LTYPE | VAL | REC | AND | FUN | FOLD | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
@@ -335,7 +343,8 @@ fun tagIn bt =
 %right ARROW
 %left WITH
 %right PLUSPLUS MINUSMINUS
-%right STAR
+%left PLUS MINUS
+%left STAR DIVIDE MOD
 %left NOT
 %nonassoc TWIDDLE
 %nonassoc DOLLAR
@@ -682,6 +691,12 @@ eexp   : eapps                          (eapps)
                                          end)
        | eexp EQ eexp                   (native_op ("eq", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp NE eexp                   (native_op ("ne", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | MINUS eterm                    (native_unop ("neg", eterm, s (MINUSleft, etermright)))
+       | eexp PLUS eexp                 (native_op ("plus", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp MINUS eexp                (native_op ("minus", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eterm STAR eexp                (native_op ("times", eterm, eexp, s (etermleft, eexpright)))
+       | eexp DIVIDE eexp               (native_op ("div", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp MOD eexp                  (native_op ("mod", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp WITH cterm EQ eexp        (EWith (eexp1, cterm, eexp2), s (eexp1left, eexp2right))
 
 eargs  : earg                           (earg)

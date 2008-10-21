@@ -274,6 +274,11 @@ notags = [^<{\n]+;
 <INITIAL> "<-"        => (Tokens.LARROW (pos yypos, pos yypos + size yytext));
 <INITIAL> ";"         => (Tokens.SEMI (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "+"         => (Tokens.PLUS (pos yypos, pos yypos + size yytext));
+<INITIAL> "-"         => (Tokens.MINUS (pos yypos, pos yypos + size yytext));
+<INITIAL> "/"         => (Tokens.DIVIDE (yypos, yypos + size yytext));
+<INITIAL> "%"         => (Tokens.MOD (pos yypos, pos yypos + size yytext));
+
 <INITIAL> "con"       => (Tokens.CON (pos yypos, pos yypos + size yytext));
 <INITIAL> "type"      => (Tokens.LTYPE (pos yypos, pos yypos + size yytext));
 <INITIAL> "datatype"  => (Tokens.DATATYPE (pos yypos, pos yypos + size yytext));

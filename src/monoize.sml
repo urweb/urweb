@@ -100,6 +100,18 @@ fun monoType env =
                     in
                         (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc)
                     end
+                  | L.CApp ((L.CFfi ("Basis", "num"), _), t) =>
+                    let
+                        val t = mt env dtmap t
+                    in
+                        (L'.TRecord [("Neg", (L'.TFun (t, t), loc)),
+                                     ("Plus", (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                                     ("Minus", (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                                     ("Times", (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                                     ("Div", (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                                     ("Mod", (L'.TFun (t, (L'.TFun (t, t), loc)), loc))],
+                         loc)
+                    end
                   | L.CApp ((L.CFfi ("Basis", "show"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CFfi ("Basis", "read"), _), t) =>
@@ -469,6 +481,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             (E.errorAt loc "Unsupported expression";
              Print.eprefaces' [("Expression", CorePrint.p_exp env all)];
              (dummyExp, fm))
+
+        fun numTy t =
+            (L'.TRecord [("Neg", (L'.TFun (t, t), loc)),
+                         ("Plus", (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                         ("Minus", (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                         ("Times", (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                         ("Div", (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                         ("Mod", (L'.TFun (t, (L'.TFun (t, t), loc)), loc))], loc)
+        fun numEx (t, neg, plus, minus, times, dv, md) =
+            ((L'.ERecord [("Neg", neg, (L'.TFun (t, t), loc)),
+                          ("Plus", plus, (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                          ("Minus", minus, (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                          ("Times", times, (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                          ("Div", dv, (L'.TFun (t, (L'.TFun (t, t), loc)), loc)),
+                          ("Mod", md, (L'.TFun (t, (L'.TFun (t, t), loc)), loc))], loc), fm)
     in
         case e of
             L.EPrim p => ((L'.EPrim p, loc), fm)
@@ -545,6 +572,68 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                  (L'.EBinop ("!strcmp", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
 
+          | L.ECApp ((L.EFfi ("Basis", "neg"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("r", numTy t, (L'.TFun (t, t), loc),
+                           (L'.EField ((L'.ERel 0, loc), "Neg"), loc)), loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "plus"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("r", numTy t, (L'.TFun (t, (L'.TFun (t, t), loc)), loc),
+                           (L'.EField ((L'.ERel 0, loc), "Plus"), loc)), loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "minus"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("r", numTy t, (L'.TFun (t, (L'.TFun (t, t), loc)), loc),
+                           (L'.EField ((L'.ERel 0, loc), "Minus"), loc)), loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "times"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("r", numTy t, (L'.TFun (t, (L'.TFun (t, t), loc)), loc),
+                           (L'.EField ((L'.ERel 0, loc), "Times"), loc)), loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "div"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("r", numTy t, (L'.TFun (t, (L'.TFun (t, t), loc)), loc),
+                           (L'.EField ((L'.ERel 0, loc), "Div"), loc)), loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "mod"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("r", numTy t, (L'.TFun (t, (L'.TFun (t, t), loc)), loc),
+                           (L'.EField ((L'.ERel 0, loc), "Mod"), loc)), loc), fm)
+            end
+          | L.EFfi ("Basis", "num_int") =>
+            let
+                fun intBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "int"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "int"), loc), (L'.TFfi ("Basis", "int"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "int"), loc),
+                                        (L'.TFfi ("Basis", "int"), loc),
+                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+            in
+                numEx ((L'.TFfi ("Basis", "int"), loc),
+                       (L'.EAbs ("x", (L'.TFfi ("Basis", "int"), loc),
+                                 (L'.TFfi ("Basis", "int"), loc),
+                                 (L'.EUnop ("-", (L'.ERel 0, loc)), loc)), loc),
+                       intBin "+",
+                       intBin "-",
+                       intBin "*",
+                       intBin "/",
+                       intBin "%")
+            end
+                       
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>
             let
                 val t = monoType env t

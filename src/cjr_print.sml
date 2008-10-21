@@ -614,19 +614,20 @@ fun p_exp' par env (e, loc) =
                           space,
                           p_exp' true env e1])
 
-      | EBinop ("!strcmp", e1, e2) =>
-        box [string "!strcmp(",
-             p_exp env e1,
-             string ",",
-             space,
-             p_exp env e2,
-             string ")"]
       | EBinop (s, e1, e2) =>
-        parenIf par (box [p_exp' true env e1,
-                          space,
-                          string s,
-                          space,
-                          p_exp' true env e2])
+        if Char.isAlpha (String.sub (s, size s - 1)) then
+            box [string s,
+                 p_exp env e1,
+                 string ",",
+                 space,
+                 p_exp env e2,
+                 string ")"]
+        else
+            parenIf par (box [p_exp' true env e1,
+                              space,
+                              string s,
+                              space,
+                              p_exp' true env e2])
 
       | ERecord (i, xes) => box [string "({",
                                  space,
