@@ -175,6 +175,17 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                        fn e' =>
                                           (EAbs (x, dom', ran', e'), loc))))
 
+              | EUnop (s, e) =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (EUnop (s, e'), loc))
+              | EBinop (s, e1, e2) =>
+                S.bind2 (mfe ctx e1,
+                      fn e1' =>
+                         S.map2 (mfe ctx e2,
+                              fn e2' =>
+                                 (EBinop (s, e1', e2'), loc)))
+
               | ERecord xes =>
                 S.map2 (ListUtil.mapfold (fn (x, e, t) =>
                                              S.bind2 (mfe ctx e,

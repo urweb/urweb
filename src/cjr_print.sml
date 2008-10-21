@@ -609,6 +609,25 @@ fun p_exp' par env (e, loc) =
                           p_list_sep (box [string ",", space]) (p_exp env) args,
                           string ")"])
 
+      | EUnop (s, e1) =>
+        parenIf par (box [string s,
+                          space,
+                          p_exp' true env e1])
+
+      | EBinop ("!strcmp", e1, e2) =>
+        box [string "!strcmp(",
+             p_exp env e1,
+             string ",",
+             space,
+             p_exp env e2,
+             string ")"]
+      | EBinop (s, e1, e2) =>
+        parenIf par (box [p_exp' true env e1,
+                          space,
+                          string s,
+                          space,
+                          p_exp' true env e2])
+
       | ERecord (i, xes) => box [string "({",
                                  space,
                                  string "struct",
@@ -2059,6 +2078,8 @@ fun p_file env (ds, ps) =
              string "void uw_handle(uw_context ctx, char *request) {",
              newline,
              p_list_sep newline (fn x => x) pds',
+             newline,
+             string "uw_error(ctx, FATAL, \"Unknown page\");",
              newline,
              string "}",
              newline,

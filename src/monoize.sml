@@ -94,6 +94,12 @@ fun monoType env =
                   | L.CApp ((L.CFfi ("Basis", "option"), _), t) =>
                     (L'.TOption (mt env dtmap t), loc)
 
+                  | L.CApp ((L.CFfi ("Basis", "eq"), _), t) =>
+                    let
+                        val t = mt env dtmap t
+                    in
+                        (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc)
+                    end
                   | L.CApp ((L.CFfi ("Basis", "show"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CFfi ("Basis", "read"), _), t) =>
@@ -491,6 +497,39 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ESome (monoType env t, e), loc), fm)
             end
           | L.ECon _ => poly ()
+
+          | L.ECApp ((L.EFfi ("Basis", "eq"), _), t) =>
+            let
+                val t = monoType env t
+                val b = (L'.TFfi ("Basis", "bool"), loc)
+                val dom = (L'.TFun (t, (L'.TFun (t, b), loc)), loc)
+            in
+                ((L'.EAbs ("f", dom, dom,
+                           (L'.ERel 0, loc)), loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "ne"), _), t) =>
+            let
+                val t = monoType env t
+                val b = (L'.TFfi ("Basis", "bool"), loc)
+                val dom = (L'.TFun (t, (L'.TFun (t, b), loc)), loc)
+            in
+                ((L'.EAbs ("f", dom, dom,
+                           (L'.EAbs ("x", t, (L'.TFun (t, b), loc),
+                                     (L'.EAbs ("y", t, b,
+                                               (L'.EUnop ("!", (L'.EApp ((L'.EApp ((L'.ERel 2, loc),
+                                                                                   (L'.ERel 1, loc)), loc),
+                                                                         (L'.ERel 0, loc)), loc)), loc)),
+                                      loc)),
+                            loc)),
+                  loc), fm)
+            end
+          | L.EFfi ("Basis", "eq_int") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "int"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "int"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "int"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+             fm)
 
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>
             let

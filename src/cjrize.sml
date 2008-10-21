@@ -249,6 +249,20 @@ fun cifyExp (eAll as (e, loc), sm) =
                      Print.prefaces' [("Function", MonoPrint.p_exp MonoEnv.empty eAll)];
                      (dummye, sm))
 
+      | L.EUnop (s, e1) =>
+        let
+            val (e1, sm) = cifyExp (e1, sm)
+        in
+            ((L'.EUnop (s, e1), loc), sm)
+        end
+      | L.EBinop (s, e1, e2) =>
+        let
+            val (e1, sm) = cifyExp (e1, sm)
+            val (e2, sm) = cifyExp (e2, sm)
+        in
+            ((L'.EBinop (s, e1, e2), loc), sm)
+        end
+
       | L.ERecord xes =>
         let
             val old_xts = map (fn (x, _, t) => (x, t)) xes

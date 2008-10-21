@@ -66,6 +66,9 @@ datatype exp' =
        | EFfiApp of string * string * exp list
        | EApp of exp * exp list
 
+       | EUnop of string * exp
+       | EBinop of string * exp * exp
+
        | ERecord of int * (string * exp) list
        | EField of exp * string
 

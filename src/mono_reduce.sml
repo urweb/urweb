@@ -54,6 +54,9 @@ fun impure (e, _) =
       | EApp ((EFfi _, _), _) => false
       | EApp _ => true
 
+      | EUnop (_, e) => impure e
+      | EBinop (_, e1, e2) => impure e1 orelse impure e2
+
       | ERecord xes => List.exists (fn (_, e, _) => impure e) xes
       | EField (e, _) => impure e
 
@@ -232,6 +235,9 @@ fun summarize d (e, _) =
       | EApp ((EFfi _, _), e) => summarize d e
       | EApp _ => [Unsure]
       | EAbs _ => []
+
+      | EUnop (_, e) => summarize d e
+      | EBinop (_, e1, e2) => summarize d e1 @ summarize d e2
 
       | ERecord xets => List.concat (map (summarize d o #2) xets)
       | EField (e, _) => summarize d e

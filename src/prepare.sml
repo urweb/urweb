@@ -88,6 +88,20 @@ fun prepExp (e as (_, loc), sns) =
             ((EApp (e1, es), loc), sns)
         end
 
+      | EUnop (s, e1) =>
+        let
+            val (e1, sns) = prepExp (e1, sns)
+        in
+            ((EUnop (s, e1), loc), sns)
+        end
+      | EBinop (s, e1, e2) =>
+        let
+            val (e1, sns) = prepExp (e1, sns)
+            val (e2, sns) = prepExp (e2, sns)
+        in
+            ((EBinop (s, e1, e2), loc), sns)
+        end
+
       | ERecord (rn, xes) =>
         let
             val (xes, sns) = ListUtil.foldlMap (fn ((x, e), sns) =>
