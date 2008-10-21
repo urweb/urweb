@@ -503,14 +503,18 @@ If anyone has a good algorithm for this..."
       (urweb-seek-back)
       (beginning-of-line)
       (while (and (not done) (search-forward "<" start-pos t))
-        (if (looking-at "/")
-          (if (search-forward ">" start-pos t)
+        (cond
+         ((or (looking-at " ") (looking-at "="))
+          nil)
+         ((looking-at "/")
+          (if (re-search-forward "[^\\sw]>" start-pos t)
               (when (> depth 0) (decf depth))
-            (setq done t))
-          (if (search-forward ">" start-pos t)
+            (setq done t)))
+         (t
+          (if (re-search-forward "[^\\sw]>" start-pos t)
               (if (not (save-excursion (backward-char 2) (looking-at "/")))
                   (incf depth))
-            (setq done t))))
+            (setq done t)))))
       (and (not done) (> depth 0)))))
 
 (defun urweb-tag-matching-indent ()

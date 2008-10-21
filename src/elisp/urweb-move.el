@@ -240,16 +240,20 @@ This assumes that we are `looking-at' the OP."
   (let ((depth 0)
         (done nil))
     (while (and (not done) (search-backward ">" nil t))
-      (if (save-excursion (backward-char 1) (looking-at "/"))
-          (when (not (search-backward "<" nil t))
-            (setq done t))
-        (if (search-backward "<" nil t)
+      (cond
+       ((save-excursion (backward-char 1) (looking-at " "))
+        nil)
+       ((save-excursion (backward-char 1) (looking-at "/"))
+        (when (not (re-search-backward "<[^ =]" nil t))
+          (setq done t)))
+       (t
+        (if (re-search-backward "<[^ =]" nil t)
             (if (looking-at "</")
                 (incf depth)
               (if (= depth 0)
                   (setq done t)
                 (decf depth)))
-          (setq done t))))))
+          (setq done t)))))))
 
 (defun urweb-backward-sexp (prec)
   "Move one sexp backward if possible, or one char else.
