@@ -683,6 +683,38 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("r", ordTy t, (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc),
                            (L'.EField ((L'.ERel 0, loc), "Le"), loc)), loc), fm)
             end
+          | L.ECApp ((L.EFfi ("Basis", "gt"), _), t) =>
+            let
+                val t = monoType env t
+                val b = (L'.TFfi ("Basis", "bool"), loc)
+            in
+                ((L'.EAbs ("f", ordTy t, (L'.TFun (t, (L'.TFun (t, b), loc)), loc),
+                           (L'.EAbs ("x", t, (L'.TFun (t, b), loc),
+                                     (L'.EAbs ("y", t, b,
+                                               (L'.EUnop ("!",
+                                                          (L'.EApp ((L'.EApp ((L'.EField ((L'.ERel 2, loc),
+                                                                                          "Le"), loc),
+                                                                              (L'.ERel 1, loc)), loc),
+                                                                    (L'.ERel 0, loc)), loc)), loc)), loc)),
+                            loc)),
+                  loc), fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "ge"), _), t) =>
+            let
+                val t = monoType env t
+                val b = (L'.TFfi ("Basis", "bool"), loc)
+            in
+                ((L'.EAbs ("f", ordTy t, (L'.TFun (t, (L'.TFun (t, b), loc)), loc),
+                           (L'.EAbs ("x", t, (L'.TFun (t, b), loc),
+                                     (L'.EAbs ("y", t, b,
+                                               (L'.EUnop ("!",
+                                                          (L'.EApp ((L'.EApp ((L'.EField ((L'.ERel 2, loc),
+                                                                                          "Lt"), loc),
+                                                                              (L'.ERel 1, loc)), loc),
+                                                                    (L'.ERel 0, loc)), loc)), loc)), loc)),
+                            loc)),
+                  loc), fm)
+            end
           | L.EFfi ("Basis", "ord_int") =>
             let
                 fun intBin s =
