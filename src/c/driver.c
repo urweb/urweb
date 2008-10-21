@@ -120,8 +120,6 @@ static void *worker(void *data) {
 
         *s = 0;
 
-        printf("Read: %s\n", buf);
-      
         if (!(s = strstr(buf, "\r\n"))) {
           fprintf(stderr, "No newline in buf\n");
           break;
@@ -129,6 +127,8 @@ static void *worker(void *data) {
 
         *s = 0;
         cmd = s = buf;
+
+        printf("Read: %s\n", buf);
       
         if (!strsep(&s, " ")) {
           fprintf(stderr, "No first space in HTTP command\n");
