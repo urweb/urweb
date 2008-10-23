@@ -29,6 +29,18 @@ val foldUR : tf :: Type -> tr :: ({Unit} -> Type)
                        tf -> tr rest -> tr ([nm] ++ rest))
              -> tr [] -> r :: {Unit} -> $(mapUT tf r) -> tr r
 
+val foldUR2 : tf1 :: Type -> tf2 :: Type -> tr :: ({Unit} -> Type)
+             -> (nm :: Name -> rest :: {Unit}
+                 -> fn [[nm] ~ rest] =>
+                       tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
+             -> tr [] -> r :: {Unit} -> $(mapUT tf1 r) -> $(mapUT tf2 r) -> tr r
+
+val foldURX2: tf1 :: Type -> tf2 :: Type -> ctx :: {Unit}
+              -> (nm :: Name -> rest :: {Unit}
+                  -> fn [[nm] ~ rest] =>
+                        tf1 -> tf2 -> xml ctx [] [])
+              -> r :: {Unit} -> $(mapUT tf1 r) -> $(mapUT tf2 r) -> xml ctx [] []
+
 val foldTR : tf :: (Type -> Type) -> tr :: ({Type} -> Type)
              -> (nm :: Name -> t :: Type -> rest :: {Type}
                  -> fn [[nm] ~ rest] =>

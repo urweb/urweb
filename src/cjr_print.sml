@@ -1466,7 +1466,8 @@ fun p_file env (ds, ps) =
             let
                 fun unurlify' rf t =
                     case t of
-                        TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
+                        TFfi ("Basis", "unit") => string ("uw_unit_v")
+                      | TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
 
                       | TRecord 0 => string "uw_unit_v"
                       | TRecord i =>

@@ -36,6 +36,26 @@ fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
                  f [nm] [rest] r.nm (acc (r -- nm)))
              (fn _ => i)
 
+fun foldUR2 (tf1 :: Type) (tf2 :: Type) (tr :: {Unit} -> Type)
+           (f : nm :: Name -> rest :: {Unit}
+                -> fn [[nm] ~ rest] =>
+                      tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
+           (i : tr []) =
+    fold [fn r :: {Unit} => $(mapUT tf1 r) -> $(mapUT tf2 r) -> tr r]
+             (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
+                              [[nm] ~ rest] r1 r2 =>
+                 f [nm] [rest] r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
+             (fn _ _ => i)
+
+fun foldURX2 (tf1 :: Type) (tf2 :: Type) (ctx :: {Unit})
+           (f : nm :: Name -> rest :: {Unit}
+                -> fn [[nm] ~ rest] =>
+                      tf1 -> tf2 -> xml ctx [] []) =
+    foldUR2 [tf1] [tf2] [fn _ => xml ctx [] []]
+            (fn (nm :: Name) (rest :: {Unit}) [[nm] ~ rest] v1 v2 acc =>
+                <xml>{f [nm] [rest] v1 v2}{acc}</xml>)
+            <xml/>
+
 fun foldTR (tf :: Type -> Type) (tr :: {Type} -> Type)
            (f : nm :: Name -> t :: Type -> rest :: {Type}
                 -> fn [[nm] ~ rest] =>

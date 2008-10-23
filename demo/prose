@@ -104,3 +104,7 @@ An unusual part of the third argument is the syntax <tt>[t1 ~ t2]</tt> within a 
 tcSum.urp
 
 <p>It's easy to adapt the last example to use type classes, such that we can sum the fields of records based on any numeric type.</p>
+
+metaform1.urp
+
+metaform2.urp
