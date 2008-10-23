@@ -555,6 +555,7 @@ fun compile job =
                 val s = TextIOPP.openOut {dst = outf, wid = 80}
             in
                 Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
+		TextIO.output1 (outf, #"\n");
                 TextIO.closeOut outf;
 
                 case #sql job of
