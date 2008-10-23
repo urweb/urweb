@@ -44,11 +44,15 @@ rec.urp
 
 <p>Crafting webs of interlinked pages is easy, using recursion.</p>
 
+counter.urp
+
+<p>It is also easy to pass state around via functions, in the style commonly associated with "continuation-based" web servers.  As is usual for such systems, all state is stored on the client side.  In this case, it is encoded in URLs.</p>
+
+<p>In the implementation of <tt>Counter.counter</tt>, we see the notation <tt>{[...]}</tt>, which uses type classes to inject values of different types (<tt>int</tt> in this case) into XML.  It's probably worth stating explicitly that XML fragments <i>are not strings</i>, so that the type-checker will enforce that our final piece of XML is valid.</p>
+
 form.urp
 
 <p>Here we see a basic form.  The type system tracks which form inputs we include, and it enforces that the form handler function expects a record containing exactly those fields, with exactly the proper types.</p>
-
-<p>In the implementation of <tt>handler</tt>, we see the notation <tt>{[...]}</tt>, which uses type classes to inject values of different types (<tt>string</tt> and <tt>bool</tt> in this case) into XML.  It's probably worth stating explicitly that XML fragments <i>are not strings</i>, so that the type-checker will enforce that our final piece of XML is valid.</p>
 
 listShop.urp
 
