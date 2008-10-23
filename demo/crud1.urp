@@ -1,0 +1,5 @@
+database dbname=test
+sql crud1.sql
+
+crud
+crud1

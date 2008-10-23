@@ -121,3 +121,34 @@ metaform1.urp
 metaform2.urp
 
 <p>This example showcases code reuse by applying the same functor as in the last example.  The <tt>Metaform2</tt> module mixes pages from the functor with some new pages of its own.</p>
+
+crud1.urp
+
+<p>This example pulls together much of what we have seen so far.  It involves a generic "admin interface" builder.  That is, we have the <tt>Crud.Make</tt> functor, which takes in a description of a table and outputs a sub-application for viewing and editing that table.</p>
+
+<p>The signature of <tt>Crud.Make</tt> is based around a type function <tt>colMeta</tt>, which describes which supporting values we need for each column.  This function is declared with the keyword <tt>con</tt>, which stands for "constructor," the general class of "compile-time things" that includes types.  An argument to <tt>colMeta</tt> has kind <tt>(Type * Type)</tt>, which means that it must be a type-level tuple.  The first type is how the column is represented in SQL, and the second is how we represent it in HTML forms.  In order, the components of the resulting record give:
+
+<ol>
+<li> A display name</li>
+<li> A way of pretty-printing values of the column</li>
+<li> A way of generating an HTML form widget to input this column</li>
+<li> A way of generating an HTML form widget with an initial value specified</li>
+<li> A way of parsing values of the column from strings</li>
+<li> A type class witness, showing that the SQL representation can really be included in SQL</li>
+</ol></p>
+
+<p>The function <tt>colsMeta</tt> lifts <tt>colMeta</tt> over type-level records of type pairs.  The <tt>Crud</tt> module also defines reasonable default <tt>colMeta</tt> values for some primitive types.</p>
+
+<p>The functor signature tells us (in order) that an input must contain:
+
+<ol>
+<li> A type pair record <tt>cols</tt></li>
+<li> A proof that <tt>cols</tt> does not contain a field named <tt>Id</tt></li>
+<li> A SQL table <tt>tab</tt> with an <tt>Id</tt> field of type <tt>int</tt> and other fields whose names and types are read off of <tt>cols</tt></li>
+<li> A display title for the admin interface</li>
+<li> A record of meta-data for the columns</li>
+</ol></p>
+
+<p>Looking at <tt>crud1.ur</tt>, we see that a use of the functor is almost trivial.  Only the value components of the argument structure must be provided.  The column row type is inferred, and the disjointness constraint is proved automatically.</p>
+
+<p>We won't go into detail on the implementation of <tt>Crud.Make</tt>.  The types of the functions used there can be found in the signatures of the built-in <tt>Basis</tt> module and the <tt>Top</tt> module from the standard library.  The signature of the first and the signature and implementation of the second can be found in the <tt>lib</tt> directory of the Ur/Web distribution.</p>

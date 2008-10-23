@@ -1,3 +1,4 @@
 database dbname=test
+sql sql.sql
 
 sql

@@ -1,4 +1,5 @@
 database dbname=test
+sql ref.sql
 
 refFun
 ref
