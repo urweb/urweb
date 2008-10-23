@@ -597,6 +597,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                  (L'.TFfi ("Basis", "bool"), loc),
                                  (L'.EBinop ("!strcmp", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
+          | L.ECApp ((L.EFfi ("Basis", "mkEq"), _), t) =>
+            let
+                val t = monoType env t
+                val b = (L'.TFfi ("Basis", "bool"), loc)
+                val dom = (L'.TFun (t, (L'.TFun (t, b), loc)), loc)
+            in
+                ((L'.EAbs ("f", dom, dom,
+                           (L'.ERel 0, loc)), loc), fm)
+            end
 
           | L.ECApp ((L.EFfi ("Basis", "zero"), _), t) =>
             let

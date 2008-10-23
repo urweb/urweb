@@ -152,3 +152,7 @@ crud1.urp
 <p>Looking at <tt>crud1.ur</tt>, we see that a use of the functor is almost trivial.  Only the value components of the argument structure must be provided.  The column row type is inferred, and the disjointness constraint is proved automatically.</p>
 
 <p>We won't go into detail on the implementation of <tt>Crud.Make</tt>.  The types of the functions used there can be found in the signatures of the built-in <tt>Basis</tt> module and the <tt>Top</tt> module from the standard library.  The signature of the first and the signature and implementation of the second can be found in the <tt>lib</tt> directory of the Ur/Web distribution.</p>
+
+crud2.urp
+
+<p>This example shows another application of <tt>Crud.Make</tt>.  We mix one standard column with one customized column.  We write an underscore for the <tt>Inject</tt> field of meta-data, since the type class facility can infer that witness.</p>

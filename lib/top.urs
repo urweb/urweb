@@ -1,3 +1,5 @@
+val not : bool -> bool
+
 con idT = fn t :: Type => t
 con record = fn t :: {Type} => $t
 con fstTT = fn t :: (Type * Type) => t.1

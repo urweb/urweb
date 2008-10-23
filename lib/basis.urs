@@ -18,6 +18,7 @@ val eq_int : eq int
 val eq_float : eq float
 val eq_string : eq string
 val eq_bool : eq bool
+val mkEq : t ::: Type -> (t -> t -> bool) -> eq t
 
 class num
 val zero : t ::: Type -> num t -> t
@@ -365,7 +366,7 @@ val radioOption : unit -> tag [Value = string] radio [] [] []
 
 con select = [Select]
 val select : formTag string select []
-val option : unit -> tag [Value = string] select [] [] []
+val option : unit -> tag [Value = string, Selected = bool] select [] [] []
 
 val submit : ctx ::: {Unit} ->  use ::: {Type}
              -> fn [[Form] ~ ctx] =>

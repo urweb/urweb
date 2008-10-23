@@ -1,3 +1,5 @@
+fun not b = if b then False else True
+
 con idT (t :: Type) = t
 con record (t :: {Type}) = $t
 con fstTT (t :: (Type * Type)) = t.1
