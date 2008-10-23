@@ -76,6 +76,12 @@ sql.urp
 
 <p>
 
+ref.urp
+
+<p>This example shows how to mix the module system with SQL to implement a kind of "abstract data type."  The functor <tt>RefFun.Make</tt> takes in a type belonging to the type class of those types that may be included in SQL.  The functor output includes an abstract type <tt>ref</tt>, along with operations for working with <tt>ref</tt>s via transactions.  In the functor implementation, we see that <tt>ref</tt> is implemented as <tt>int</tt>, treated as primary keys of a SQL table.</p>
+
+<p>The functor creates a new encapsulated SQL sequence and table on each call.  These local relations show up in the automatically-generated SQL file that should be run to prepare the database for use, but they are invisible from client code.  We could change the functor to create different SQL relations, without needing to change client code.</p>
+
 sum.urp
 
 <p>Metaprogramming is one of the most important facilities of Ur.  This example shows how to write a function that is able to sum up the fields of records of integers, no matter which set of fields the particular record has.</p>
@@ -107,6 +113,11 @@ tcSum.urp
 
 metaform1.urp
 
+<p>We can use metaprogramming with row types to build HTML forms (and their handlers) generically.  The functor <tt>Metaform.Make</tt> takes in a unit row <tt>fs</tt> and a value-level record <tt>names</tt> assigning string names to the fields of <tt>fs</tt>.  The functor implementation builds a form handler with a library function <tt>foldURX2</tt>, which runs over two value-level records in parallel, building an XML fragment.</p>
+
+<p>The form itself is generated using the more primitive <tt>foldUR</tt>.  We see the type <tt>xml form [] (mapUT string cols)</tt> as the result of the fold.  This is the type of XML fragments that are suitable for inclusion in forms, require no form fields to be defined on entry, and themselves define form fields whose names and types are given by <tt>mapUT string cols</tt>.  The <tt>useMore</tt> function "weakens" the type of an XML fragment, so that it "pretends" to require additional fields as input.  This weakening is necessary to accommodate the general typing rule for concatenating bits of XML.</tt>
+<p>The functor use in <tt>Metaform1</tt> is trivial.  The compiler infers the value of the structure member <tt>fs</tt> from the type of the value provided for <tt>names</tt>.</p>
+
 metaform2.urp
 
-ref.urp
+<p>This example showcases code reuse by applying the same functor as in the last example.  The <tt>Metaform2</tt> module mixes pages from the functor with some new pages of its own.</p>

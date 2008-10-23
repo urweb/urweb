@@ -24,4 +24,5 @@ functor Make(M : sig
 
     fun delete r =
         dml (DELETE FROM t WHERE Id = {r})
+
 end
