@@ -159,10 +159,11 @@ val empty_class = {
     ground = KM.empty
 }
 
-fun printClasses cs = CM.appi (fn (cn, {ground = km}) =>
-                                  (print (cn2s cn ^ ":");
-                                   KM.appi (fn (ck, _) => print (" " ^ ck2s ck)) km;
-                                   print "\n")) cs
+fun printClasses cs = (print "Classes:\n";
+                       CM.appi (fn (cn, {ground = km}) =>
+                                   (print (cn2s cn ^ ":");
+                                    KM.appi (fn (ck, _) => print (" " ^ ck2s ck)) km;
+                                    print "\n")) cs)
 
 type env = {
      renameC : kind var' SM.map,
@@ -743,34 +744,74 @@ fun enrichClasses env classes (m1, ms) sgn =
 
                                 | SgiClassAbs xn => found xn
                                 | SgiClass (x, n, _) => found (x, n)
-                                | SgiVal (x, n, (CApp ((CNamed f, _), a), _)) =>
-                                  (case IM.find (newClasses, f) of
-                                       NONE => default ()
-                                     | SOME fx =>
-                                       case class_key_in (sgnS_con' (m1, ms, fmap) (#1 a), #2 a) of
-                                           NONE => default ()
-                                         | SOME ck =>
-                                           let
-                                               val cn = ClProj (m1, ms, fx)
+                                | SgiVal (x, n, (CApp (f, a), _)) =>
+                                  let
+                                      fun unravel c =
+                                          case #1 c of
+                                              CUnif (_, _, _, ref (SOME c)) => unravel c
+                                            | CNamed n =>
+                                              ((case lookupCNamed env n of
+                                                    (_, _, SOME c) => unravel c
+                                                  | _ => c)
+                                               handle UnboundNamed _ => c)
+                                            | _ => c
 
-                                               val classes =
-                                                   case CM.find (classes, cn) of
-                                                       NONE => classes
-                                                     | SOME class =>
-                                                       let
-                                                           val class = {
-                                                               ground = KM.insert (#ground class, ck,
-                                                                                   (EModProj (m1, ms, x), #2 sgn))
-                                                           }
-                                                       in
-                                                           CM.insert (classes, cn, class)
-                                                       end
-                                           in
-                                               (classes,
-                                                newClasses,
-                                                fmap,
-                                                env)
-                                           end)
+                                      val nc =
+                                          case f of
+                                              (CNamed f, _) => IM.find (newClasses, f)
+                                            | _ => NONE
+                                  in
+                                      case nc of
+                                          NONE =>
+                                          (case (class_name_in (unravel f),
+                                                 class_key_in (sgnS_con' (m1, ms, fmap) (#1 a), #2 a)) of
+                                               (SOME cn, SOME ck) =>
+                                               let
+                                                   val classes =
+                                                       case CM.find (classes, cn) of
+                                                           NONE => classes
+                                                         | SOME class =>
+                                                           let
+                                                               val class = {
+                                                                   ground = KM.insert (#ground class, ck,
+                                                                                       (EModProj (m1, ms, x), #2 sgn))
+                                                               }
+                                                           in
+                                                               CM.insert (classes, cn, class)
+                                                           end
+                                               in
+                                                   (classes,
+                                                    newClasses,
+                                                    fmap,
+                                                    env)
+                                               end
+                                             | _ => default ())
+                                        | SOME fx =>
+                                          case class_key_in (sgnS_con' (m1, ms, fmap) (#1 a), #2 a) of
+                                              NONE => default ()
+                                            | SOME ck =>
+                                              let
+                                                  val cn = ClProj (m1, ms, fx)
+
+                                                  val classes =
+                                                      case CM.find (classes, cn) of
+                                                          NONE => classes
+                                                        | SOME class =>
+                                                          let
+                                                              val class = {
+                                                                  ground = KM.insert (#ground class, ck,
+                                                                                      (EModProj (m1, ms, x), #2 sgn))
+                                                              }
+                                                          in
+                                                              CM.insert (classes, cn, class)
+                                                          end
+                                              in
+                                                  (classes,
+                                                   newClasses,
+                                                   fmap,
+                                                   env)
+                                              end
+                                  end
                                 | SgiVal _ => default ()
                                 | _ => default ()
                           end)
