@@ -20,6 +20,7 @@ val eq_string : eq string
 val eq_bool : eq bool
 
 class num
+val zero : t ::: Type -> num t -> t
 val neg : t ::: Type -> num t -> t -> t
 val plus : t ::: Type -> num t -> t -> t -> t
 val minus : t ::: Type -> num t -> t -> t -> t

@@ -36,6 +36,7 @@ structure U = CoreUtil
 
 val liftConInCon = E.liftConInCon
 val subConInCon = E.subConInCon
+val liftConInExp = E.liftConInExp
 
 val liftExpInExp =
     U.Exp.mapB {kind = fn k => k,
@@ -63,6 +64,7 @@ val subExpInExp =
                                          | LESS => e)
                                     | _ => e,
                 bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
+                        | ((xn, rep), U.Exp.RelC _) => (xn, liftConInExp 0 rep)
                         | (ctx, _) => ctx}
 
 val liftConInExp = E.liftConInExp
@@ -106,58 +108,67 @@ fun con env c =
 and reduceCon env = U.Con.mapB {kind = kind, con = con, bind = bindC} env
 
 fun exp env e =
-    case e of
-        ENamed n =>
-        (case E.lookupENamed env n of
-             (_, _, SOME e', _) => #1 e'
-           | _ => e)
+    let
+        (*val () = Print.prefaces "exp" [("e", CorePrint.p_exp env (e, ErrorMsg.dummySpan))]*)
 
-      | ECApp ((EApp ((EApp ((ECApp ((EFold ks, _), ran), _), f), _), i), _), (CRecord (k, xcs), loc)) =>
-        (case xcs of
-             [] => #1 i
-           | (n, v) :: rest =>
-             #1 (reduceExp env (EApp ((ECApp ((ECApp ((ECApp (f, n), loc), v), loc), (CRecord (k, rest), loc)), loc),
-                                      (ECApp ((EApp ((EApp ((ECApp ((EFold ks, loc), ran), loc), f), loc), i), loc),
-                                              (CRecord (k, rest), loc)), loc)), loc)))
+        val r = case e of
+                    ENamed n =>
+                    (case E.lookupENamed env n of
+                         (_, _, SOME e', _) => #1 e'
+                       | _ => e)
 
-      | EApp ((EAbs (_, _, _, e1), loc), e2) =>
-        #1 (reduceExp env (subExpInExp (0, e2) e1))
-      | ECApp ((ECAbs (_, _, e1), loc), c) =>
-        #1 (reduceExp env (subConInExp (0, c) e1))
+                  | ECApp ((EApp ((EApp ((ECApp ((EFold ks, _), ran), _), f), _), i), _), (CRecord (k, xcs), loc)) =>
+                    (case xcs of
+                         [] => #1 i
+                       | (n, v) :: rest =>
+                         #1 (reduceExp env (EApp ((ECApp ((ECApp ((ECApp (f, n), loc), v), loc), (CRecord (k, rest), loc)), loc),
+                                                  (ECApp ((EApp ((EApp ((ECApp ((EFold ks, loc), ran), loc), f), loc), i), loc),
+                                                          (CRecord (k, rest), loc)), loc)), loc)))
 
-      | EField ((ERecord xes, _), (CName x, _), _) =>
-        (case List.find (fn ((CName x', _), _, _) => x' = x
-                          | _ => false) xes of
-             SOME (_, e, _) => #1 e
-           | NONE => e)
-      | EWith (r as (_, loc), x, e, {rest = (CRecord (k, xts), _), field}) =>
-        let
-            fun fields (remaining, passed) =
-                case remaining of
-                    [] => []
-                  | (x, t) :: rest =>
-                    (x,
-                     (EField (r, x, {field = t,
-                                     rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
-                     t) :: fields (rest, (x, t) :: passed)
-        in
-            #1 (reduceExp env (ERecord ((x, e, field) :: fields (xts, [])), loc))
-        end
-      | ECut (r as (_, loc), _, {rest = (CRecord (k, xts), _), ...}) =>
-        let
-            fun fields (remaining, passed) =
-                case remaining of
-                    [] => []
-                  | (x, t) :: rest =>
-                    (x,
-                     (EField (r, x, {field = t,
-                                     rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
-                     t) :: fields (rest, (x, t) :: passed)
-        in
-            #1 (reduceExp env (ERecord (fields (xts, [])), loc))
-        end
+                  | EApp ((EAbs (_, _, _, e1), loc), e2) =>
+                    #1 (reduceExp env (subExpInExp (0, e2) e1))
+                  | ECApp ((ECAbs (_, _, e1), loc), c) =>
+                    #1 (reduceExp env (subConInExp (0, c) e1))
 
-      | _ => e
+                  | EField ((ERecord xes, _), (CName x, _), _) =>
+                    (case List.find (fn ((CName x', _), _, _) => x' = x
+                                      | _ => false) xes of
+                         SOME (_, e, _) => #1 e
+                       | NONE => e)
+                  | EWith (r as (_, loc), x, e, {rest = (CRecord (k, xts), _), field}) =>
+                    let
+                        fun fields (remaining, passed) =
+                            case remaining of
+                                [] => []
+                              | (x, t) :: rest =>
+                                (x,
+                                 (EField (r, x, {field = t,
+                                                 rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
+                                 t) :: fields (rest, (x, t) :: passed)
+                    in
+                        #1 (reduceExp env (ERecord ((x, e, field) :: fields (xts, [])), loc))
+                    end
+                  | ECut (r as (_, loc), _, {rest = (CRecord (k, xts), _), ...}) =>
+                    let
+                        fun fields (remaining, passed) =
+                            case remaining of
+                                [] => []
+                              | (x, t) :: rest =>
+                                (x,
+                                 (EField (r, x, {field = t,
+                                                 rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
+                                 t) :: fields (rest, (x, t) :: passed)
+                    in
+                        #1 (reduceExp env (ERecord (fields (xts, [])), loc))
+                    end
+
+                  | _ => e
+    in
+        (*Print.prefaces "exp'" [("e", CorePrint.p_exp env (e, ErrorMsg.dummySpan)),
+                               ("r", CorePrint.p_exp env (r, ErrorMsg.dummySpan))];*)
+
+        r
+    end
 
 and reduceExp env = U.Exp.mapB {kind = kind, con = con, exp = exp, bind = bind} env
 

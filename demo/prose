@@ -100,3 +100,7 @@ An unusual part of the third argument is the syntax <tt>[t1 ~ t2]</tt> within a 
 <p>The general syntax for constant row types is <tt>[Name1 = t1, ..., NameN = tN]</tt>, and there is a shorthand version <tt>[Name1, ..., NameN]</tt> for records of <tt>Unit</tt>s.</p>
 
 <p>With <tt>sum</tt> defined, it is easy to make some sample calls.  The form of the code for <tt>main</tt> does not make it apparent, but the compiler must "reverse engineer" the appropriate <tt>{Unit}</tt> from the <tt>{Type}</tt> available from the context at each call to <tt>sum</tt>.</p>
+
+tcSum.urp
+
+<p>It's easy to adapt the last example to use type classes, such that we can sum the fields of records based on any numeric type.</p>
