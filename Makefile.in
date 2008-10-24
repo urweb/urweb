@@ -8,7 +8,7 @@ LIB_C    := $(LIB)/c
 
 all: smlnj mlton c
 
-.PHONY: all smlnj mlton c clean install
+.PHONY: all smlnj mlton c clean install package
 
 smlnj: src/urweb.cm
 mlton: bin/urweb
@@ -69,3 +69,6 @@ install:
 	cp include/*.h $(INCLUDE)/
 	mkdir -p $(SITELISP)
 	cp src/elisp/*.el $(SITELISP)/
+
+package:
+	hg archive -t tgz -X tests /tmp/urweb.tgz
