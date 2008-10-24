@@ -19,6 +19,8 @@ failure_kind uw_begin(uw_context, char *path);
 
 __attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *fmt, ...);
 char *uw_error_message(uw_context);
+void uw_push_cleanup(uw_context, void (*func)(void *), void *arg);
+void uw_pop_cleanup(uw_context);
 
 void *uw_malloc(uw_context, size_t);
 void uw_begin_region(uw_context);
@@ -38,29 +40,28 @@ char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_htmlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_htmlifyBool(uw_context, uw_Basis_bool);
 
-void uw_Basis_htmlifyInt_w(uw_context, uw_Basis_int);
-void uw_Basis_htmlifyFloat_w(uw_context, uw_Basis_float);
-void uw_Basis_htmlifyString_w(uw_context, uw_Basis_string);
-void uw_Basis_htmlifyBool_w(uw_context, uw_Basis_bool);
+uw_unit uw_Basis_htmlifyInt_w(uw_context, uw_Basis_int);
+uw_unit uw_Basis_htmlifyFloat_w(uw_context, uw_Basis_float);
+uw_unit uw_Basis_htmlifyString_w(uw_context, uw_Basis_string);
+uw_unit uw_Basis_htmlifyBool_w(uw_context, uw_Basis_bool);
 
 char *uw_Basis_attrifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_attrifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_attrifyString(uw_context, uw_Basis_string);
 
-void uw_Basis_attrifyInt_w(uw_context, uw_Basis_int);
-void uw_Basis_attrifyFloat_w(uw_context, uw_Basis_float);
-void uw_Basis_attrifyString_w(uw_context, uw_Basis_string);
-
+uw_unit uw_Basis_attrifyInt_w(uw_context, uw_Basis_int);
+uw_unit uw_Basis_attrifyFloat_w(uw_context, uw_Basis_float);
+uw_unit uw_Basis_attrifyString_w(uw_context, uw_Basis_string);
 
 char *uw_Basis_urlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_urlifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_urlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_urlifyBool(uw_context, uw_Basis_bool);
 
-void uw_Basis_urlifyInt_w(uw_context, uw_Basis_int);
-void uw_Basis_urlifyFloat_w(uw_context, uw_Basis_float);
-void uw_Basis_urlifyString_w(uw_context, uw_Basis_string);
-void uw_Basis_urlifyBool_w(uw_context, uw_Basis_bool);
+uw_unit uw_Basis_urlifyInt_w(uw_context, uw_Basis_int);
+uw_unit uw_Basis_urlifyFloat_w(uw_context, uw_Basis_float);
+uw_unit uw_Basis_urlifyString_w(uw_context, uw_Basis_string);
+uw_unit uw_Basis_urlifyBool_w(uw_context, uw_Basis_bool);
 
 uw_Basis_int uw_Basis_unurlifyInt(uw_context, char **);
 uw_Basis_float uw_Basis_unurlifyFloat(uw_context, char **);

@@ -850,6 +850,8 @@ fun p_exp' par env (e, loc) =
 
                  string "uw_end_region(ctx);",
                  newline,
+                 string "uw_push_cleanup(ctx, (void (*)(void *))PQclear, res);",
+                 newline,
                  string "n = PQntuples(res);",
                  newline,
                  string "for (i = 0; i < n; ++i) {",
@@ -906,7 +908,7 @@ fun p_exp' par env (e, loc) =
                  string "}",
                  newline,
                  newline,
-                 string "PQclear(res);",
+                 string "uw_pop_cleanup(ctx);",
                  newline,
                  if wontLeakAnything then
                      box [string "uw_end_region(ctx);",

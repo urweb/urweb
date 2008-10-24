@@ -1,0 +1,5 @@
+debug
+database dbname=aborter
+sql aborter2.sql
+
+aborter2

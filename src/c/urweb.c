@@ -15,6 +15,11 @@ typedef struct regions {
   struct regions *next;
 } regions;
 
+typedef struct {
+  void (*func)(void*);
+  void *arg;
+} cleanup;
+
 struct uw_context {
   char *page, *page_front, *page_back;
   char *heap, *heap_front, *heap_back;
@@ -25,6 +30,8 @@ struct uw_context {
   jmp_buf jmp_buf;
 
   regions *regions;
+
+  cleanup *cleanup, *cleanup_front, *cleanup_back;
 
   char error_message[ERROR_BUF_LEN];
 };
@@ -46,6 +53,8 @@ uw_context uw_init(size_t page_len, size_t heap_len) {
 
   ctx->regions = NULL;
 
+  ctx->cleanup_front = ctx->cleanup_back = ctx->cleanup = malloc(0);
+
   ctx->error_message[0] = 0;
 
   return ctx;
@@ -63,6 +72,7 @@ void uw_free(uw_context ctx) {
   free(ctx->page);
   free(ctx->heap);
   free(ctx->inputs);
+  free(ctx->cleanup);
   free(ctx);
 }
 
@@ -70,6 +80,7 @@ void uw_reset_keep_request(uw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
   ctx->regions = NULL;
+  ctx->cleanup_front = ctx->cleanup;
 
   ctx->error_message[0] = 0;
 }
@@ -78,6 +89,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
   ctx->regions = NULL;
+  ctx->cleanup_front = ctx->cleanup;
 }
 
 void uw_reset(uw_context ctx) {
@@ -107,12 +119,44 @@ failure_kind uw_begin(uw_context ctx, char *path) {
 }
 
 __attribute__((noreturn)) void uw_error(uw_context ctx, failure_kind fk, const char *fmt, ...) {
+  cleanup *cl;
+
   va_list ap;
   va_start(ap, fmt);
 
   vsnprintf(ctx->error_message, ERROR_BUF_LEN, fmt, ap);
 
+  for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
+    cl->func(cl->arg);
+
+  ctx->cleanup_front = ctx->cleanup;
+
   longjmp(ctx->jmp_buf, fk);
+}
+
+void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
+  if (ctx->cleanup_front >= ctx->cleanup_back) {
+    int len = ctx->cleanup_back - ctx->cleanup, newLen;
+    if (len == 0)
+      newLen = 1;
+    else
+      newLen *= 2;
+    ctx->cleanup = realloc(ctx->cleanup, newLen);
+    ctx->cleanup_front = ctx->cleanup + len;
+    ctx->cleanup_back = ctx->cleanup + newLen;
+  }
+
+  ctx->cleanup_front->func = func;
+  ctx->cleanup_front->arg = arg;
+  ++ctx->cleanup_front;
+}
+
+void uw_pop_cleanup(uw_context ctx) {
+  if (ctx->cleanup_front == ctx->cleanup)
+    uw_error(ctx, FATAL, "Attempt to pop from empty cleanup action stack");
+
+  --ctx->cleanup_front;
+  ctx->cleanup_front->func(ctx->cleanup_front->arg);
 }
 
 char *uw_error_message(uw_context ctx) {
