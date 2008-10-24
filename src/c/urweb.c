@@ -140,7 +140,7 @@ void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
     if (len == 0)
       newLen = 1;
     else
-      newLen *= 2;
+      newLen = len * 2;
     ctx->cleanup = realloc(ctx->cleanup, newLen);
     ctx->cleanup_front = ctx->cleanup + len;
     ctx->cleanup_back = ctx->cleanup + newLen;
@@ -279,14 +279,16 @@ static void uw_check(uw_context ctx, size_t extra) {
   char *new_page;
 
   next = ctx->page_back - ctx->page;
-  if (next == 0)
-    next = 1;
-  for (; next < desired; next *= 2);
+  if (next < desired) {
+    if (next == 0)
+      next = 1;
+    for (; next < desired; next *= 2);
 
-  new_page = realloc(ctx->page, next);
-  ctx->page_front = new_page + (ctx->page_front - ctx->page);
-  ctx->page_back = new_page + next;
-  ctx->page = new_page;
+    new_page = realloc(ctx->page, next);
+    ctx->page_front = new_page + (ctx->page_front - ctx->page);
+    ctx->page_back = new_page + next;
+    ctx->page = new_page;
+  }
 }
 
 static void uw_writec_unsafe(uw_context ctx, char c) {
@@ -369,20 +371,24 @@ static void uw_Basis_attrifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
   ctx->page_front += len;
 }
 
-void uw_Basis_attrifyInt_w(uw_context ctx, uw_Basis_int n) {
+uw_unit uw_Basis_attrifyInt_w(uw_context ctx, uw_Basis_int n) {
   uw_check(ctx, INTS_MAX);
   uw_Basis_attrifyInt_w_unsafe(ctx, n);
+
+  return uw_unit_v;
 }
 
-void uw_Basis_attrifyFloat_w(uw_context ctx, uw_Basis_float n) {
+uw_unit uw_Basis_attrifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
   uw_check(ctx, FLOATS_MAX);
   sprintf(ctx->page_front, "%g%n", n, &len);
   ctx->page_front += len;
+
+  return uw_unit_v;
 }
 
-void uw_Basis_attrifyString_w(uw_context ctx, uw_Basis_string s) {
+uw_unit uw_Basis_attrifyString_w(uw_context ctx, uw_Basis_string s) {
   uw_check(ctx, strlen(s) * 6);
 
   for (; *s; s++) {
@@ -400,6 +406,8 @@ void uw_Basis_attrifyString_w(uw_context ctx, uw_Basis_string s) {
       uw_writec_unsafe(ctx, ';');
     }
   }
+
+  return uw_unit_v;
 }
 
 
@@ -462,20 +470,24 @@ static void uw_Basis_urlifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
   ctx->page_front += len;
 }
 
-void uw_Basis_urlifyInt_w(uw_context ctx, uw_Basis_int n) {
+uw_unit uw_Basis_urlifyInt_w(uw_context ctx, uw_Basis_int n) {
   uw_check(ctx, INTS_MAX);
   uw_Basis_urlifyInt_w_unsafe(ctx, n);
+
+  return uw_unit_v;
 }
 
-void uw_Basis_urlifyFloat_w(uw_context ctx, uw_Basis_float n) {
+uw_unit uw_Basis_urlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
   uw_check(ctx, FLOATS_MAX);
   sprintf(ctx->page_front, "%g%n", n, &len);
   ctx->page_front += len;
+
+  return uw_unit_v;
 }
 
-void uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
+uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
   uw_check(ctx, strlen(s) * 3);
 
   for (; *s; s++) {
@@ -490,13 +502,17 @@ void uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
       ctx->page_front += 3;
     }
   }
+
+  return uw_unit_v;
 }
 
-void uw_Basis_urlifyBool_w(uw_context ctx, uw_Basis_bool b) {
+uw_unit uw_Basis_urlifyBool_w(uw_context ctx, uw_Basis_bool b) {
   if (b == uw_Basis_False)
     uw_writec(ctx, '0');
   else
     uw_writec(ctx, '1');
+
+  return uw_unit_v;
 }
 
 
@@ -597,12 +613,14 @@ char *uw_Basis_htmlifyInt(uw_context ctx, uw_Basis_int n) {
   return r;
 }
 
-void uw_Basis_htmlifyInt_w(uw_context ctx, uw_Basis_int n) {
+uw_unit uw_Basis_htmlifyInt_w(uw_context ctx, uw_Basis_int n) {
   int len;
 
   uw_check(ctx, INTS_MAX);
   sprintf(ctx->page_front, "%lld%n", n, &len);
   ctx->page_front += len;
+  
+  return uw_unit_v;
 }
 
 char *uw_Basis_htmlifyFloat(uw_context ctx, uw_Basis_float n) {
@@ -616,12 +634,14 @@ char *uw_Basis_htmlifyFloat(uw_context ctx, uw_Basis_float n) {
   return r;
 }
 
-void uw_Basis_htmlifyFloat_w(uw_context ctx, uw_Basis_float n) {
+uw_unit uw_Basis_htmlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
   uw_check(ctx, FLOATS_MAX);
   sprintf(ctx->page_front, "%g%n", n, &len);
   ctx->page_front += len;
+
+  return uw_unit_v;
 }
 
 char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
@@ -657,7 +677,7 @@ char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
   return r;
 }
 
-void uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
+uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
   uw_check(ctx, strlen(s) * 6);
 
   for (; *s; s++) {
@@ -680,6 +700,8 @@ void uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
       }
     }
   }
+
+  return uw_unit_v;
 }
 
 uw_Basis_string uw_Basis_htmlifyBool(uw_context ctx, uw_Basis_bool b) {
@@ -689,7 +711,7 @@ uw_Basis_string uw_Basis_htmlifyBool(uw_context ctx, uw_Basis_bool b) {
     return "True";
 }
 
-void uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
+uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
   if (b == uw_Basis_False) {
     uw_check(ctx, 6);
     strcpy(ctx->page_front, "False");
@@ -699,6 +721,8 @@ void uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
     strcpy(ctx->page_front, "True");
     ctx->page_front += 4;
   }
+
+  return uw_unit_v;
 }
 
 uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_string s2) {
