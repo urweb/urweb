@@ -193,7 +193,7 @@ char *uw_get_optional_input(uw_context ctx, int n) {
     uw_error(ctx, FATAL, "Negative input index %d", n);
   if (n >= uw_inputs_len)
     uw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
-  printf("[%d] = %s\n", n, ctx->inputs[n]);
+  //printf("[%d] = %s\n", n, ctx->inputs[n]);
   return (ctx->inputs[n] == NULL ? "" : ctx->inputs[n]);
 }
 
