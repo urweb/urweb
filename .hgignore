@@ -24,3 +24,5 @@ src/config.sml
 
 demo/out/*.html
 demo/demo.*
+
+*.sql

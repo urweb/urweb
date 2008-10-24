@@ -51,6 +51,24 @@ static pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 
 #define MAX_RETRIES 5
 
+int uw_db_begin(uw_context);
+int uw_db_commit(uw_context);
+int uw_db_rollback(uw_context);
+
+static int try_rollback(uw_context ctx) {
+  int r = uw_db_rollback(ctx);
+
+  if (r) {
+    printf("Error running SQL ROLLBACK\n");
+    uw_reset(ctx);
+    uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+    uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+    uw_write(ctx, "Error running SQL ROLLBACK\n");
+  }
+
+  return r;
+}
+
 static void *worker(void *data) {
   int me = *(int *)data, retries_left = MAX_RETRIES;
   uw_context ctx = uw_init(1024, 0);
@@ -116,6 +134,7 @@ static void *worker(void *data) {
       *back = 0;
     
       if (s = strstr(buf, "\r\n\r\n")) {
+        failure_kind fk;
         char *cmd, *path, path_copy[uw_bufsize+1], *inputs;
 
         *s = 0;
@@ -169,7 +188,20 @@ static void *worker(void *data) {
         printf("Serving URI %s....\n", path);
 
         while (1) {
-          failure_kind fk;
+          if (uw_db_begin(ctx)) {
+            printf("Error running SQL BEGIN\n");
+            if (retries_left)
+              --retries_left;
+            else {
+              fk = FATAL;
+              uw_reset(ctx);
+              uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+              uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+              uw_write(ctx, "Error running SQL BEGIN\n");
+
+              break;
+            }
+          }
 
           uw_write(ctx, "HTTP/1.1 200 OK\r\n");
           uw_write(ctx, "Content-type: text/html\r\n\r\n");
@@ -179,6 +211,17 @@ static void *worker(void *data) {
           fk = uw_begin(ctx, path_copy);
           if (fk == SUCCESS) {
             uw_write(ctx, "</html>");
+
+            if (uw_db_commit(ctx)) {
+              fk = FATAL;
+
+              printf("Error running SQL COMMIT\n");
+              uw_reset(ctx);
+              uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+              uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+              uw_write(ctx, "Error running SQL COMMIT\n");
+            }
+
             break;
           } else if (fk == BOUNDED_RETRY) {
             if (retries_left) {
@@ -194,6 +237,10 @@ static void *worker(void *data) {
               uw_write(ctx, "Fatal error (out of retries): ");
               uw_write(ctx, uw_error_message(ctx));
               uw_write(ctx, "\n");
+
+              try_rollback(ctx);
+
+              break;
             }
           } else if (fk == UNLIMITED_RETRY)
             printf("Error triggers unlimited retry: %s\n", uw_error_message(ctx));
@@ -207,6 +254,8 @@ static void *worker(void *data) {
             uw_write(ctx, uw_error_message(ctx));
             uw_write(ctx, "\n");
 
+            try_rollback(ctx);
+
             break;
           } else {
             printf("Unknown uw_handle return code!\n");
@@ -216,10 +265,15 @@ static void *worker(void *data) {
             uw_write(ctx, "Content-type: text/plain\r\n\r\n");
             uw_write(ctx, "Unknown uw_handle return code!\n");
 
+            try_rollback(ctx);
+
             break;
           }
 
           uw_reset_keep_request(ctx);
+
+          if (try_rollback(ctx))
+            break;
         }
 
         uw_send(ctx, sock);
