@@ -59,6 +59,7 @@ bin/urweb: src/urweb.mlb src/*.sig src/*.sml \
 	$(MLTON) -output $@ src/urweb.mlb
 
 install:
+	mkdir -p $(BIN)
 	cp bin/urweb $(BIN)/
 	mkdir -p $(LIB_UR)
 	cp lib/*.urs $(LIB_UR)/
