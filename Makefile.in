@@ -32,7 +32,7 @@ src/urweb.cm: src/prefix.cm src/sources
 
 src/urweb.mlb: src/prefix.mlb src/sources src/suffix.mlb
 	cat src/prefix.mlb src/sources src/suffix.mlb \
-	| sed 's/^\(.*\).grm$$/\1.mlton.grm.sig\n\1.mlton.grm.sml/' \
+	| sed 's/^\(.*\).grm$$/\1.mlton.grm.sig:\1.mlton.grm.sml/; y/:/\n/' \
 	| sed 's/^\(.*\).lex$$/\1.mlton.lex.sml/' \
 	>src/urweb.mlb
 
