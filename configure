@@ -1632,20 +1632,24 @@ diagnostic() {
   true "$@"
 }
 
+if test $prefix = "NONE"; then
+    prefix=/usr/local
+fi
+
 if test -z $BIN; then
-    BIN=/usr/local/bin
+    BIN=$prefix/bin
 fi
 
 if test -z $LIB; then
-    LIB=/usr/local/lib/urweb
+    LIB=$prefix/lib/urweb
 fi
 
 if test -z $INCLUDE; then
-    INCLUDE=/usr/local/include/urweb
+    INCLUDE=$prefix/include/urweb
 fi
 
 if test -z $SITELISP; then
-    SITELISP=/usr/local/share/emacs/site-lisp/urweb-mode
+    SITELISP=$prefix/share/emacs/site-lisp/urweb-mode
 fi
 
 
