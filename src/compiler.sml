@@ -506,13 +506,13 @@ val sqlify = {
 
 val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
-fun compileC {cname, oname, ename} =
+fun compileC {cname, oname, ename, libs} =
     let
         val urweb_o = clibFile "urweb.o"
         val driver_o = clibFile "driver.o"
 
         val compile = "gcc -Wstrict-prototypes -Werror -O3 -I include -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -Werror -O3 -lm -pthread -lpq " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
+        val link = "gcc -Werror -O3 -lm -pthread " ^ libs ^ " " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"
@@ -553,6 +553,13 @@ fun compile job =
             let
                 val outf = TextIO.openOut cname
                 val s = TextIOPP.openOut {dst = outf, wid = 80}
+
+                val hasDb = List.exists (fn (Cjr.DDatabase _, _) => true | _ => false) (#1 file)
+                val libs =
+                    if hasDb then
+                        "-lpq"
+                    else
+                        ""
             in
                 Print.fprint s (CjrPrint.p_file CjrEnv.empty file);
 		TextIO.output1 (outf, #"\n");
@@ -569,7 +576,7 @@ fun compile job =
                         TextIO.closeOut outf
                     end;
 
-                compileC {cname = cname, oname = oname, ename = ename};
+                compileC {cname = cname, oname = oname, ename = ename, libs = libs};
                 
                 cleanup ()
             end

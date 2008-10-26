@@ -1341,6 +1341,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                             string "}",
                             newline]
 
+      | DPreparedStatements [] => box []
       | DPreparedStatements ss =>
         box [string "static void uw_db_prepare(uw_context ctx) {",
              newline,
@@ -2182,6 +2183,8 @@ fun p_file env (ds, ps) =
                                 end) sequences,
 
                  string "}"]
+
+        val hasDb = List.exists (fn (DDatabase _, _) => true | _ => false) ds
     in
         box [string "#include <stdio.h>",
              newline,
@@ -2191,8 +2194,11 @@ fun p_file env (ds, ps) =
              newline,
              string "#include <math.h>",
              newline,
-             string "#include <postgresql/libpq-fe.h>",
-             newline,
+             if hasDb then
+                 box [string "#include <postgresql/libpq-fe.h>",
+                      newline]
+             else
+                 box [],
              newline,
              string "#include \"",
              string (OS.Path.joinDirFile {dir = Config.includ,
@@ -2222,7 +2228,10 @@ fun p_file env (ds, ps) =
              string "}",
              newline,
              newline,
-             validate,
+             if hasDb then
+                 validate
+             else
+                 box [],
              newline,
              if List.exists (fn (DDatabase _, _) => true | _ => false) ds then
                  box []

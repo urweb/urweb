@@ -38,7 +38,7 @@ signature COMPILER = sig
          debug : bool
     }
     val compile : string -> unit
-    val compileC : {cname : string, oname : string, ename : string} -> unit
+    val compileC : {cname : string, oname : string, ename : string, libs : string} -> unit
 
     type ('src, 'dst) phase
     type ('src, 'dst) transform
