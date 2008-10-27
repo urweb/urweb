@@ -1,0 +1,12 @@
+========
+20081027
+========
+
+- On missing inputs, print an error message, but don't exit the web server.
+
+========
+20081026
+========
+
+- Change 'sed' call to work on OSX.
+- Avoid including or linking libpq files on apps that don't use SQL.
