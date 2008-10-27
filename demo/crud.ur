@@ -94,15 +94,15 @@ functor Make(M : sig
 
     and create (inputs : $(mapT2T sndTT M.cols)) =
         id <- nextval seq;
-        () <- dml (insert tab
-                          (foldT2R2 [sndTT] [colMeta]
-                                    [fn cols => $(mapT2T (fn t :: (Type * Type) =>
-                                                             sql_exp [] [] [] t.1) cols)]
-                                    (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
-                                                     [[nm] ~ rest] =>
-                                     fn input col acc => acc with nm = @sql_inject col.Inject (col.Parse input))
-                                    {} [M.cols] inputs M.cols
-                           with #Id = (SQL {id})));
+        dml (insert tab
+                    (foldT2R2 [sndTT] [colMeta]
+                              [fn cols => $(mapT2T (fn t :: (Type * Type) =>
+                                                       sql_exp [] [] [] t.1) cols)]
+                              (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                               [[nm] ~ rest] =>
+                               fn input col acc => acc with nm = @sql_inject col.Inject (col.Parse input))
+                              {} [M.cols] inputs M.cols
+                     with #Id = (SQL {id})));
         ls <- list ();
         return <xml><body>
           <p>Inserted with ID {[id]}.</p>
@@ -111,18 +111,18 @@ functor Make(M : sig
         </body></xml>
 
     and save (id : int) (inputs : $(mapT2T sndTT M.cols)) =
-        () <- dml (update [mapT2T fstTT M.cols]
-                          (foldT2R2 [sndTT] [colMeta]
-                                    [fn cols => $(mapT2T (fn t :: (Type * Type) =>
-                                                             sql_exp [T = [Id = int]
-                                                                              ++ mapT2T fstTT M.cols]
-                                                                     [] [] t.1) cols)]
-                                    (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
-                                                     [[nm] ~ rest] =>
-                                     fn input col acc => acc with nm =
-                                                                  @sql_inject col.Inject (col.Parse input))
-                                    {} [M.cols] inputs M.cols)
-                          tab (WHERE T.Id = {id}));
+        dml (update [mapT2T fstTT M.cols]
+                    (foldT2R2 [sndTT] [colMeta]
+                              [fn cols => $(mapT2T (fn t :: (Type * Type) =>
+                                                       sql_exp [T = [Id = int]
+                                                                        ++ mapT2T fstTT M.cols]
+                                                               [] [] t.1) cols)]
+                              (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                               [[nm] ~ rest] =>
+                               fn input col acc => acc with nm =
+                                                            @sql_inject col.Inject (col.Parse input))
+                              {} [M.cols] inputs M.cols)
+                    tab (WHERE T.Id = {id}));
         ls <- list ();
         return <xml><body>
           <p>Saved!</p>
@@ -150,7 +150,7 @@ functor Make(M : sig
           </form></body></xml>
 
     and delete (id : int) =
-        () <- dml (DELETE FROM tab WHERE Id = {id});
+        dml (DELETE FROM tab WHERE Id = {id});
         ls <- list ();
         return <xml><body>
           <p>The deed is done.</p>

@@ -3,6 +3,7 @@
 ========
 
 - On missing inputs, print an error message, but don't exit the web server.
+- Remove need for "() <-" notation.
 
 ========
 20081026

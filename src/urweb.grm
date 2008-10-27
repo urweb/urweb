@@ -263,6 +263,7 @@ fun tagIn bt =
  | xmlOne of exp
  | tag of string * exp
  | tagHead of string * exp
+ | bind of string * con option * exp
 
  | earg of exp * con -> exp * con
  | eargp of exp * con -> exp * con
@@ -668,20 +669,13 @@ eexp   : eapps                          (eapps)
                                              (ECase (eexp1, [((PCon (["Basis"], "True", NONE), loc), eexp2),
                                                              ((PCon (["Basis"], "False", NONE), loc), eexp3)]), loc)
                                          end)
-       | SYMBOL LARROW eexp SEMI eexp   (let
-                                             val loc = s (SYMBOLleft, eexp2right)
+       | bind SEMI eexp                 (let
+                                             val loc = s (bindleft, eexpright)
+                                             val (v, to, e1) = bind
                                              val e = (EVar (["Basis"], "bind", Infer), loc)
-                                             val e = (EApp (e, eexp1), loc)
+                                             val e = (EApp (e, e1), loc)
                                          in
-                                             (EApp (e, (EAbs (SYMBOL, NONE, eexp2), loc)), loc)
-                                         end)
-       | UNIT LARROW eexp SEMI eexp     (let
-                                             val loc = s (UNITleft, eexp2right)
-                                             val e = (EVar (["Basis"], "bind", Infer), loc)
-                                             val e = (EApp (e, eexp1), loc)
-                                             val t = (TRecord (CRecord [], loc), loc)
-                                         in
-                                             (EApp (e, (EAbs ("_", SOME t, eexp2), loc)), loc)
+                                             (EApp (e, (EAbs (v, to, eexp), loc)), loc)
                                          end)
        | eexp EQ eexp                   (native_op ("eq", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp NE eexp                   (native_op ("ne", eexp1, eexp2, s (eexp1left, eexp2right)))
@@ -698,6 +692,18 @@ eexp   : eapps                          (eapps)
        | eexp GE eexp                   (native_op ("ge", eexp1, eexp2, s (eexp1left, eexp2right)))
 
        | eexp WITH cterm EQ eexp        (EWith (eexp1, cterm, eexp2), s (eexp1left, eexp2right))
+
+bind   : SYMBOL LARROW eapps            (SYMBOL, NONE, eapps)
+       | UNIT LARROW eapps              (let
+                                             val loc = s (UNITleft, eappsright)
+                                         in
+                                             ("_", SOME (TRecord (CRecord [], loc), loc), eapps)
+                                         end)
+       | eapps                          (let
+                                             val loc = s (eappsleft, eappsright)
+                                         in
+                                             ("_", SOME (TRecord (CRecord [], loc), loc), eapps)
+                                         end)
 
 eargs  : earg                           (earg)
        | eargl                          (eargl)

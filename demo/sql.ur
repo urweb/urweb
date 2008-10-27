@@ -26,8 +26,8 @@ fun list () =
     </xml>
 
 and add r =
-    () <- dml (INSERT INTO t (A, B, C, D)
-               VALUES ({readError r.A}, {readError r.B}, {r.C}, {r.D}));
+    dml (INSERT INTO t (A, B, C, D)
+         VALUES ({readError r.A}, {readError r.B}, {r.C}, {r.D}));
     xml <- list ();
     return <xml><body>
       <p>Row added.</p>
@@ -36,8 +36,8 @@ and add r =
     </body></xml>
 
 and delete a =
-    () <- dml (DELETE FROM t
-               WHERE t.A = {a});
+    dml (DELETE FROM t
+         WHERE t.A = {a});
     xml <- list ();
     return <xml><body>
       <p>Row deleted.</p>

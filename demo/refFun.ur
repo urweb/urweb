@@ -10,7 +10,7 @@ functor Make(M : sig
 
     fun new d =
         id <- nextval s;
-        () <- dml (INSERT INTO t (Id, Data) VALUES ({id}, {d}));
+        dml (INSERT INTO t (Id, Data) VALUES ({id}, {d}));
         return id
 
     fun read r =
