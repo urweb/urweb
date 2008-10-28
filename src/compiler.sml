@@ -511,7 +511,7 @@ fun compileC {cname, oname, ename, libs} =
         val urweb_o = clibFile "urweb.o"
         val driver_o = clibFile "driver.o"
 
-        val compile = "gcc -Wstrict-prototypes -Werror -O3 -I include -c " ^ cname ^ " -o " ^ oname
+        val compile = "gcc " ^ Config.gccArgs ^ " -Wstrict-prototypes -Werror -O3 -I include -c " ^ cname ^ " -o " ^ oname
         val link = "gcc -Werror -O3 -lm -pthread " ^ libs ^ " " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then

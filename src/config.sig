@@ -6,4 +6,6 @@ signature CONFIG = sig
 
     val libUr : string
     val libC : string
+
+    val gccArgs : string
 end

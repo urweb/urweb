@@ -10,4 +10,6 @@ val libUr = OS.Path.joinDirFile {dir = lib,
 val libC = OS.Path.joinDirFile {dir = lib,
                                 file = "c"}
 
+val gccArgs = "@GCCARGS@"
+
 end

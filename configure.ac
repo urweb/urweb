@@ -56,6 +56,7 @@ AC_SUBST(BIN)
 AC_SUBST(LIB)
 AC_SUBST(INCLUDE)
 AC_SUBST(SITELISP)
+AC_SUBST(GCCARGS)
 AC_SUBST(do_not_edit)
 
 # finish the configure script and generate various files; ./configure
@@ -98,4 +99,5 @@ Ur/Web configuration:
   lib directory:       LIB       $LIB
   include directory:   INCLUDE   $INCLUDE
   site-lisp directory: SITELISP  $SITELISP
+  Extra GCC args:      GCCARGS   $GCCARGS
 EOF
