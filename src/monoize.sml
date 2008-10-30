@@ -171,6 +171,8 @@ fun monoType env =
                     (L'.TRecord [], loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_maxable"), _), _) =>
                     (L'.TRecord [], loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_nfunc"), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CRel _ => poly ()
                   | L.CNamed n =>
@@ -1126,64 +1128,69 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 case (doTables tables, doTables grouped, doTables stables, monoType env (L.TRecord sexps, loc)) of
                     (SOME tables, SOME grouped, SOME stables, (L'.TRecord sexps, _)) =>
-                    ((L'.EAbs ("r",
-                               (L'.TRecord [("From", (L'.TRecord (map (fn (x, _) => (x, s)) tables), loc)),
-                                            ("Where", s),
-                                            ("GroupBy", un),
-                                            ("Having", s),
-                                            ("SelectFields", un),
-                                            ("SelectExps", (L'.TRecord (map (fn (x, _) => (x, s)) sexps), loc))],
-                                loc),
-                               s,
-                               strcat loc [sc "SELECT ",
-                                           strcatComma loc (map (fn (x, t) =>
-                                                                    strcat loc [
-                                                                    (L'.EField (gf "SelectExps", x), loc),
-                                                                    sc (" AS _" ^ x)
+                    let
+                        val sexps = ListMergeSort.sort
+                                        (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) sexps
+                    in
+                        ((L'.EAbs ("r",
+                                   (L'.TRecord [("From", (L'.TRecord (map (fn (x, _) => (x, s)) tables), loc)),
+                                                ("Where", s),
+                                                ("GroupBy", un),
+                                                ("Having", s),
+                                                ("SelectFields", un),
+                                                ("SelectExps", (L'.TRecord (map (fn (x, _) => (x, s)) sexps), loc))],
+                                    loc),
+                                   s,
+                                   strcat loc [sc "SELECT ",
+                                               strcatComma loc (map (fn (x, t) =>
+                                                                        strcat loc [
+                                                                        (L'.EField (gf "SelectExps", x), loc),
+                                                                        sc (" AS _" ^ x)
                                                                     ]) sexps
-                                                            @ map (fn (x, xts) =>
-                                                                      strcatComma loc
-                                                                                  (map (fn (x', _) =>
-                                                                                           sc (x ^ ".uw_" ^ x'))
-                                                                                       xts)) stables),
-                                           sc " FROM ",
-                                           strcatComma loc (map (fn (x, _) => strcat loc [(L'.EField (gf "From", x), loc),
-                                                                                          sc (" AS " ^ x)]) tables),
-                                           (L'.ECase (gf "Where",
-                                                      [((L'.PPrim (Prim.String "TRUE"), loc),
-                                                        sc ""),
-                                                       ((L'.PWild, loc),
-                                                        strcat loc [sc " WHERE ", gf "Where"])],
-                                                      {disc = s,
-                                                       result = s}), loc),
-                                                        
-                                           if List.all (fn (x, xts) =>
-                                                           case List.find (fn (x', _) => x' = x) grouped of
-                                                               NONE => List.null xts
-                                                             | SOME (_, xts') =>
-                                                               List.all (fn (x, _) =>
-                                                                            List.exists (fn (x', _) => x' = x)
-                                                                                        xts') xts) tables then
-                                               sc ""
-                                           else
-                                               strcat loc [
-                                               sc " GROUP BY ",
-                                               strcatComma loc (map (fn (x, xts) =>
-                                                                        strcatComma loc
-                                                                                    (map (fn (x', _) =>
-                                                                                             sc (x ^ ".uw_" ^ x'))
-                                                                                         xts)) grouped)
-                                               ],
+                                                                @ map (fn (x, xts) =>
+                                                                          strcatComma loc
+                                                                                      (map (fn (x', _) =>
+                                                                                               sc (x ^ ".uw_" ^ x'))
+                                                                                           xts)) stables),
+                                               sc " FROM ",
+                                               strcatComma loc (map (fn (x, _) => strcat loc [(L'.EField (gf "From", x), loc),
+                                                                                              sc (" AS " ^ x)]) tables),
+                                               (L'.ECase (gf "Where",
+                                                          [((L'.PPrim (Prim.String "TRUE"), loc),
+                                                            sc ""),
+                                                           ((L'.PWild, loc),
+                                                            strcat loc [sc " WHERE ", gf "Where"])],
+                                                          {disc = s,
+                                                           result = s}), loc),
+                                               
+                                               if List.all (fn (x, xts) =>
+                                                               case List.find (fn (x', _) => x' = x) grouped of
+                                                                   NONE => List.null xts
+                                                                 | SOME (_, xts') =>
+                                                                   List.all (fn (x, _) =>
+                                                                                List.exists (fn (x', _) => x' = x)
+                                                                                            xts') xts) tables then
+                                                   sc ""
+                                               else
+                                                   strcat loc [
+                                                   sc " GROUP BY ",
+                                                   strcatComma loc (map (fn (x, xts) =>
+                                                                            strcatComma loc
+                                                                                        (map (fn (x', _) =>
+                                                                                                 sc (x ^ ".uw_" ^ x'))
+                                                                                             xts)) grouped)
+                                                   ],
 
-                                           (L'.ECase (gf "Having",
-                                                      [((L'.PPrim (Prim.String "TRUE"), loc),
-                                                        sc ""),
-                                                       ((L'.PWild, loc),
-                                                        strcat loc [sc " HAVING ", gf "Having"])],
-                                                      {disc = s,
-                                                       result = s}), loc)
-                              ]), loc),
-                     fm)
+                                               (L'.ECase (gf "Having",
+                                                          [((L'.PPrim (Prim.String "TRUE"), loc),
+                                                            sc ""),
+                                                           ((L'.PWild, loc),
+                                                            strcat loc [sc " HAVING ", gf "Having"])],
+                                                          {disc = s,
+                                                           result = s}), loc)
+                                  ]), loc),
+                         fm)
+                    end
                   | _ => poly ()
             end
 
@@ -1497,6 +1504,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_asc") => ((L'.EPrim (Prim.String ""), loc), fm)
           | L.EFfi ("Basis", "sql_desc") => ((L'.EPrim (Prim.String " DESC"), loc), fm)
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_nfunc"), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc),
+                 fm)
+            end
+          | L.EFfi ("Basis", "sql_current_timestamp") => ((L'.EPrim (Prim.String "CURRENT_TIMESTAMP"), loc), fm)
 
           | L.EFfiApp ("Basis", "nextval", [e]) =>
             let

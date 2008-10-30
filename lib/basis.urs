@@ -223,6 +223,12 @@ val sql_maxable_time : sql_maxable time
 val sql_max : t ::: Type -> sql_maxable t -> sql_aggregate t
 val sql_min : t ::: Type -> sql_maxable t -> sql_aggregate t
 
+con sql_nfunc :: Type -> Type
+val sql_nfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                -> t ::: Type
+                -> sql_nfunc t -> sql_exp tables agg exps t
+val sql_current_timestamp : sql_nfunc time
+
 
 (*** Executing queries *)
 

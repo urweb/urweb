@@ -356,6 +356,8 @@ notags = [^<{\n]+;
 <INITIAL> "SET"       => (Tokens.SET (pos yypos, pos yypos + size yytext));
 <INITIAL> "DELETE"    => (Tokens.DELETE (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "CURRENT_TIMESTAMP" => (Tokens.CURRENT_TIMESTAMP (pos yypos, pos yypos + size yytext));
+
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));
 

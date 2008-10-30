@@ -154,6 +154,13 @@ fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
         (EApp (e, sqlexp2), loc)
     end
 
+fun sql_nfunc (oper, loc) =
+    let
+        val e = (EVar (["Basis"], "sql_nfunc", Infer), loc)
+    in
+        (EApp (e, (EVar (["Basis"], "sql_" ^ oper, Infer), loc)), loc)
+    end
+
 fun native_unop (oper, e1, loc) =
     let
         val e = (EVar (["Basis"], oper, Infer), loc)
@@ -206,6 +213,7 @@ fun tagIn bt =
  | COUNT | AVG | SUM | MIN | MAX
  | ASC | DESC
  | INSERT | INTO | VALUES | UPDATE | SET | DELETE
+ | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
 
 %nonterm
@@ -1169,6 +1177,8 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                      s (FLOATleft, FLOATright)))
        | STRING                         (sql_inject (EPrim (Prim.String STRING),
                                                      s (STRINGleft, STRINGright)))
+       | CURRENT_TIMESTAMP              (sql_nfunc ("current_timestamp",
+                                                    s (CURRENT_TIMESTAMPleft, CURRENT_TIMESTAMPright)))
 
        | tident DOT fident              (let
                                              val loc = s (tidentleft, fidentright)
