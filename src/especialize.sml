@@ -117,7 +117,7 @@ fun exp (e, st : state) =
                                 (#1 e',
                                  {maxName = #maxName st,
                                   funcs = #funcs st,
-                                  decls = (name, f', typ', body', tag ^ "_espec") :: #decls st})
+                                  decls = (name, f', typ', body', tag) :: #decls st})
                             end
                     end
     end

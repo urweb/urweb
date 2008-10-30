@@ -370,9 +370,9 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   -> fn [[Form] ~ ctx] =>
                         nm :: Name -> unit
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
-val textbox : formTag string [] [Value = string]
-val password : formTag string [] []
-val textarea : formTag string [] []
+val textbox : formTag string [] [Value = string, Size = int]
+val password : formTag string [] [Value = string, Size = int]
+val textarea : formTag string [] [Rows = int, Cols = int]
 
 val checkbox : formTag bool [] [Checked = bool]
 
