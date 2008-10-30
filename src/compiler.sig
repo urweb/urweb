@@ -61,6 +61,7 @@ signature COMPILER = sig
     val termination : (Elab.file, Elab.file) phase
     val explify : (Elab.file, Expl.file) phase
     val corify : (Expl.file, Core.file) phase
+    val especialize : (Core.file, Core.file) phase
     val shake : (Core.file, Core.file) phase
     val tag : (Core.file, Core.file) phase
     val reduce : (Core.file, Core.file) phase
@@ -82,6 +83,7 @@ signature COMPILER = sig
     val toTermination : (string, Elab.file) transform
     val toExplify : (string, Expl.file) transform
     val toCorify : (string, Core.file) transform
+    val toEspecialize : (string, Core.file) transform 
     val toShake1 : (string, Core.file) transform
     val toTag : (string, Core.file) transform
     val toReduce : (string, Core.file) transform

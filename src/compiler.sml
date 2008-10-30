@@ -404,12 +404,19 @@ val corify = {
 
 val toCorify = transform corify "corify" o toExplify
 
+val especialize = {
+    func = ESpecialize.specialize,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toEspecialize = transform especialize "especialize" o toCorify
+
 val shake = {
     func = Shake.shake,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toShake1 = transform shake "shake1" o toCorify
+val toShake1 = transform shake "shake1" o toEspecialize
 
 val tag = {
     func = Tag.tag,

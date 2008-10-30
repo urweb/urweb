@@ -37,36 +37,8 @@ structure U = CoreUtil
 val liftConInCon = E.liftConInCon
 val subConInCon = E.subConInCon
 val liftConInExp = E.liftConInExp
-
-val liftExpInExp =
-    U.Exp.mapB {kind = fn k => k,
-                con = fn _ => fn c => c,
-                exp = fn bound => fn e =>
-                                     case e of
-                                         ERel xn =>
-                                         if xn < bound then
-                                             e
-                                         else
-                                             ERel (xn + 1)
-                                       | _ => e,
-                bind = fn (bound, U.Exp.RelE _) => bound + 1
-                        | (bound, _) => bound}
-
-val subExpInExp =
-    U.Exp.mapB {kind = fn k => k,
-                con = fn _ => fn c => c,
-                exp = fn (xn, rep) => fn e =>
-                                  case e of
-                                      ERel xn' =>
-                                      (case Int.compare (xn', xn) of
-                                           EQUAL => #1 rep
-                                         | GREATER=> ERel (xn' - 1)
-                                         | LESS => e)
-                                    | _ => e,
-                bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
-                        | ((xn, rep), U.Exp.RelC _) => (xn, liftConInExp 0 rep)
-                        | (ctx, _) => ctx}
-
+val liftExpInExp = E.liftExpInExp
+val subExpInExp = E.subExpInExp
 val liftConInExp = E.liftConInExp
 val subConInExp = E.subConInExp
 

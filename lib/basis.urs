@@ -352,6 +352,9 @@ val tt : bodyTag []
 val font : bodyTag [Size = int, Face = string]
 
 val h1 : bodyTag []
+val h2 : bodyTag []
+val h3 : bodyTag []
+val h4 : bodyTag []
 val li : bodyTag []
 
 val hr : bodyTag []

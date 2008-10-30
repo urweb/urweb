@@ -578,6 +578,13 @@ fun exists {kind, con, exp} k =
         S.Return _ => true
       | S.Continue _ => false
 
+fun foldMap {kind, con, exp} s e =
+    case mapfold {kind = fn k => fn s => S.Continue (kind (k, s)),
+                  con = fn c => fn s => S.Continue (con (c, s)),
+                  exp = fn e => fn s => S.Continue (exp (e, s))} e s of
+        S.Continue v => v
+      | S.Return _ => raise Fail "CoreUtil.Exp.foldMap: Impossible"
+
 end
 
 structure Decl = struct

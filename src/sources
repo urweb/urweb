@@ -93,6 +93,9 @@ unpoly.sml
 specialize.sig
 specialize.sml
 
+especialize.sig
+especialize.sml
+
 tag.sig
 tag.sml
 

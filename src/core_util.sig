@@ -107,6 +107,11 @@ structure Exp : sig
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool,
                   exp : Core.exp' -> bool} -> Core.exp -> bool
+
+    val foldMap : {kind : Core.kind' * 'state -> Core.kind' * 'state,
+                   con : Core.con' * 'state -> Core.con' * 'state,
+                   exp : Core.exp' * 'state -> Core.exp' * 'state}
+                  -> 'state -> Core.exp -> Core.exp * 'state
 end
 
 structure Decl : sig
