@@ -351,49 +351,56 @@ fun exp env e =
                 EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e, swapExpVars 0 e'), loc))
 
               | ELet (x, t, e', b) =>
-                if impure e' then
-                    let
-                        val effs_e' = summarize 0 e'
-                        val effs_b = summarize 0 b
+                let
+                    fun trySub () =
+                        case e' of
+                            (ECase _, _) => e
+                          | _ => #1 (reduceExp env (subExpInExp (0, e') b))
+                in
+                    if impure e' then
+                        let
+                            val effs_e' = summarize 0 e'
+                            val effs_b = summarize 0 b
 
-                        fun does eff = List.exists (fn eff' => eff' = eff) effs_e'
-                        val writesPage = does WritePage
-                        val readsDb = does ReadDb
-                        val writesDb = does WriteDb
+                            fun does eff = List.exists (fn eff' => eff' = eff) effs_e'
+                            val writesPage = does WritePage
+                            val readsDb = does ReadDb
+                            val writesDb = does WriteDb
 
-                        fun verifyUnused eff =
-                            case eff of
-                                UseRel r => r <> 0
-                              | Unsure => false
-                              | _ => true
-
-                        fun verifyCompatible effs =
-                            case effs of
-                                [] => false
-                              | eff :: effs =>
+                            fun verifyUnused eff =
                                 case eff of
-                                    Unsure => false
-                                  | UseRel r =>
-                                    if r = 0 then
-                                        List.all verifyUnused effs
-                                    else
-                                        verifyCompatible effs
-                                  | WritePage => not writesPage andalso verifyCompatible effs
-                                  | ReadDb => not writesDb andalso verifyCompatible effs
-                                  | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
-                    in
-                        (*Print.prefaces "verifyCompatible"
-                                         [("e'", MonoPrint.p_exp env e'),
-                                          ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                                          ("effs_e'", Print.p_list p_event effs_e'),
-                                          ("effs_b", Print.p_list p_event effs_b)];*)
-                        if verifyCompatible effs_b then
-                            #1 (reduceExp env (subExpInExp (0, e') b))
-                        else
-                            e
-                    end
-                else
-                    #1 (reduceExp env (subExpInExp (0, e') b))
+                                    UseRel r => r <> 0
+                                  | Unsure => false
+                                  | _ => true
+
+                            fun verifyCompatible effs =
+                                case effs of
+                                    [] => false
+                                  | eff :: effs =>
+                                    case eff of
+                                        Unsure => false
+                                      | UseRel r =>
+                                        if r = 0 then
+                                            List.all verifyUnused effs
+                                        else
+                                            verifyCompatible effs
+                                      | WritePage => not writesPage andalso verifyCompatible effs
+                                      | ReadDb => not writesDb andalso verifyCompatible effs
+                                      | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
+                        in
+                            (*Print.prefaces "verifyCompatible"
+                                             [("e'", MonoPrint.p_exp env e'),
+                                              ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                              ("effs_e'", Print.p_list p_event effs_e'),
+                                              ("effs_b", Print.p_list p_event effs_b)];*)
+                            if verifyCompatible effs_b then
+                                trySub ()
+                            else
+                                e
+                        end
+                    else
+                        trySub ()
+                end
 
               | EStrcat ((EPrim (Prim.String s1), _), (EPrim (Prim.String s2), _)) =>
                 EPrim (Prim.String (s1 ^ s2))
