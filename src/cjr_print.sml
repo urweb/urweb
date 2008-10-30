@@ -413,13 +413,15 @@ datatype sql_type =
        | Float
        | String
        | Bool
+       | Time
 
 fun p_sql_type t =
     string (case t of
                 Int => "uw_Basis_int"
               | Float => "uw_Basis_float"
               | String => "uw_Basis_string"
-              | Bool => "uw_Basis_bool")
+              | Bool => "uw_Basis_bool"
+              | Time => "uw_Basis_time")
 
 fun getPargs (e, _) =
     case e of
@@ -430,6 +432,7 @@ fun getPargs (e, _) =
       | EFfiApp ("Basis", "sqlifyFloat", [e]) => [(e, Float)]
       | EFfiApp ("Basis", "sqlifyString", [e]) => [(e, String)]
       | EFfiApp ("Basis", "sqlifyBool", [e]) => [(e, Bool)]
+      | EFfiApp ("Basis", "sqlifyTime", [e]) => [(e, Time)]
       | ECase (e, _, _) => [(e, Bool)]
 
       | _ => raise Fail "CjrPrint: getPargs"
@@ -440,13 +443,7 @@ fun p_ensql t e =
       | Float => box [string "uw_Basis_attrifyFloat(ctx, ", e, string ")"]
       | String => e
       | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
-
-fun p_ensql_len t e =
-    case t of
-        Int => string "sizeof(uw_Basis_int)"
-      | Float => string "sizeof(uw_Basis_float)"
-      | String => box [string "strlen(", e, string ")"]
-      | Bool => string "sizeof(uw_Basis_bool)"
+      | Time => box [string "uw_Basis_sqlifyTime(ctx, ", e, string ")"]
 
 fun notLeaky env allowHeapAllocated =
     let

@@ -77,6 +77,7 @@ uw_Basis_string uw_Basis_sqlifyInt(uw_context, uw_Basis_int);
 uw_Basis_string uw_Basis_sqlifyFloat(uw_context, uw_Basis_float);
 uw_Basis_string uw_Basis_sqlifyString(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_sqlifyBool(uw_context, uw_Basis_bool);
+uw_Basis_string uw_Basis_sqlifyTime(uw_context, uw_Basis_time);
 
 char *uw_Basis_ensqlBool(uw_Basis_bool);
 

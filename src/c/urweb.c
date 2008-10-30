@@ -860,6 +860,21 @@ char *uw_Basis_sqlifyBool(uw_context ctx, uw_Basis_bool b) {
     return "TRUE";
 }
 
+char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
+  size_t len;
+  char *r;
+  struct tm stm;
+
+  if (localtime_r(&t, &stm)) {
+    uw_check_heap(ctx, TIMES_MAX);
+    r = ctx->heap_front;
+    len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
+    ctx->heap_front += len+1;
+    return r;
+  } else
+    return "<Invalid time>";
+}
+
 char *uw_Basis_ensqlBool(uw_Basis_bool b) {
   static uw_Basis_int true = 1;
   static uw_Basis_int false = 0;
@@ -954,13 +969,33 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
   char *dot = strchr(s, '.'), *end = strchr(s, 0);
   struct tm stm;
 
-  if ((dot ? (*dot = 0, strptime(s, TIME_FMT_PG, &stm)) : strptime(s, TIME_FMT, &stm)) == end) {
-    uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
-    *r = mktime(&stm);
-    return r;    
+  if (dot) {
+    *dot = 0;
+    if (strptime(s, TIME_FMT_PG, &stm) == end) {
+      *dot = '.';
+      uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
+      *r = mktime(&stm);
+      return r;
+    }
+    else {
+      *dot = '.';
+      return NULL;
+    }
   }
-  else
-    return NULL;
+  else {
+    if (strptime(s, TIME_FMT_PG, &stm) == end) {
+      uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
+      *r = mktime(&stm);
+      return r;
+    }
+    else if (strptime(s, TIME_FMT, &stm) == end) {
+      uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
+      *r = mktime(&stm);
+      return r;
+    }
+    else
+      return NULL;
+  }
 }
 
 uw_Basis_int uw_Basis_stringToInt_error(uw_context ctx, uw_Basis_string s) {
@@ -1008,7 +1043,9 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
     }
   }
   else {
-    if (strptime(s, TIME_FMT, &stm) == end)
+    if (strptime(s, TIME_FMT_PG, &stm) == end)
+      return mktime(&stm);
+    else if (strptime(s, TIME_FMT, &stm) == end)
       return mktime(&stm);
     else
       uw_error(ctx, FATAL, "Can't parse time: %s", s);

@@ -45,6 +45,8 @@ fun prepString (e, ss, n) =
         SOME ("$" ^ Int.toString (n + 1) ^ "::text" :: ss, n + 1)
       | EFfiApp ("Basis", "sqlifyBool", [e]) =>
         SOME ("$" ^ Int.toString (n + 1) ^ "::bool" :: ss, n + 1)
+      | EFfiApp ("Basis", "sqlifyTime", [e]) =>
+        SOME ("$" ^ Int.toString (n + 1) ^ "::timestamp" :: ss, n + 1)
       | ECase (e,
                [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
                  (EPrim (Prim.String "TRUE"), _)),
