@@ -19,6 +19,7 @@ val eq_int : eq int
 val eq_float : eq float
 val eq_string : eq string
 val eq_bool : eq bool
+val eq_time : eq time
 val mkEq : t ::: Type -> (t -> t -> bool) -> eq t
 
 class num
@@ -41,6 +42,7 @@ val ord_int : ord int
 val ord_float : ord float
 val ord_string : ord string
 val ord_bool : ord bool
+val ord_time : ord time
 
 
 (** String operations *)
@@ -164,6 +166,7 @@ val sql_bool : sql_injectable bool
 val sql_int : sql_injectable int
 val sql_float : sql_injectable float
 val sql_string : sql_injectable string
+val sql_time : sql_injectable time
 val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type
                  -> sql_injectable t -> t -> sql_exp tables agg exps t
@@ -216,6 +219,7 @@ class sql_maxable
 val sql_maxable_int : sql_maxable int
 val sql_maxable_float : sql_maxable float
 val sql_maxable_string : sql_maxable string
+val sql_maxable_time : sql_maxable time
 val sql_max : t ::: Type -> sql_maxable t -> sql_aggregate t
 val sql_min : t ::: Type -> sql_maxable t -> sql_aggregate t
 
