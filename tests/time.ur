@@ -7,7 +7,9 @@ fun main () =
     dml (INSERT INTO t (Id, Time) VALUES (42, {now}));
     xml <- queryX (SELECT * FROM t)
            (fn r => <xml>{[r.T.Id]}: {[r.T.Time]}<br/></xml>);
+    minMax <- oneRow (SELECT MIN(t.Time) AS Min, MAX(t.Time) AS Max FROM t);
     return <xml><body>
       {xml}
-      {[now]}, {[now = now]}, {[now = later]}, {[later < now]}, {[now < later]}
+      {[now]}, {[now = now]}, {[now = later]}, {[later < now]}, {[now < later]}<br/>
+      {[minMax.Min]}, {[minMax.Max]}
     </body></xml>

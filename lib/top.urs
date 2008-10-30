@@ -116,3 +116,13 @@ val oneOrNoRows : tables ::: {{Type}} -> exps ::: {Type}
                                                       [[nm] ~ acc] =>
                                                    [nm = $fields] ++ acc)
                                                    [] tables))
+
+val oneRow : tables ::: {{Type}} -> exps ::: {Type}
+             -> sql_query tables exps
+             -> fn [tables ~ exps] =>
+                   transaction
+                       $(exps
+                             ++ fold (fn nm (fields :: {Type}) acc
+                                            [[nm] ~ acc] =>
+                                         [nm = $fields] ++ acc)
+                                         [] tables)

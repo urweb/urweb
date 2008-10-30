@@ -157,3 +157,11 @@ fun oneOrNoRows (tables ::: {{Type}}) (exps ::: {Type})
     query q
           (fn fs _ => return (Some fs))
           None
+
+fun oneRow (tables ::: {{Type}}) (exps ::: {Type})
+                (q : sql_query tables exps) [tables ~ exps] =
+    o <- oneOrNoRows q;
+    return (case o of
+                None => error <xml>Query returned no rows</xml>
+              | Some r => r)
+
