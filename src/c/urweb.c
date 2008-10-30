@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -256,9 +258,9 @@ void uw_memstats(uw_context ctx) {
   printf("Heap: %d/%d\n", ctx->heap_front - ctx->heap, ctx->heap_back - ctx->heap);
 }
 
-int uw_really_send(int sock, const void *buf, ssize_t len) {
+int uw_really_send(int sock, const void *buf, size_t len) {
   while (len > 0) {
-    ssize_t n = send(sock, buf, len, 0);
+    size_t n = send(sock, buf, len, 0);
 
     if (n < 0)
       return n;
@@ -725,6 +727,42 @@ uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
   return uw_unit_v;
 }
 
+#define TIME_FMT "%x %X"
+
+uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
+  size_t len;
+  char *r;
+  struct tm stm;
+
+  if (localtime_r(&t, &stm)) {
+    uw_check_heap(ctx, TIMES_MAX);
+    r = ctx->heap_front;
+    len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
+    ctx->heap_front += len+1;
+    return r;
+  } else
+    return "<i>Invalid time</i>";
+}
+
+uw_unit uw_Basis_htmlifyTime_w(uw_context ctx, uw_Basis_time t) {
+  size_t len;
+  char *r;
+  struct tm stm;
+
+  if (localtime_r(&t, &stm)) {
+    uw_check(ctx, TIMES_MAX);
+    r = ctx->page_front;
+    len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
+    ctx->page_front += len;
+  } else {
+    uw_check(ctx, 20);
+    strcpy(ctx->page_front, "<i>Invalid time</i>");
+    ctx->page_front += 19;
+  }
+
+  return uw_unit_v;
+}
+
 uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_string s2) {
   int len = strlen(s1) + strlen(s2) + 1;
   char *s;
@@ -860,6 +898,20 @@ uw_Basis_string uw_Basis_boolToString(uw_context ctx, uw_Basis_bool b) {
     return "True";
 }
 
+uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
+  size_t len;
+  char *r;
+  struct tm stm;
+
+  if (localtime_r(&t, &stm)) {
+    uw_check_heap(ctx, TIMES_MAX);
+    r = ctx->heap_front;
+    len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
+    ctx->heap_front += len+1;
+    return r;
+  } else
+    return "<Invalid time>";
+}
 
 uw_Basis_int *uw_Basis_stringToInt(uw_context ctx, uw_Basis_string s) {
   char *endptr;
@@ -897,6 +949,19 @@ uw_Basis_bool *uw_Basis_stringToBool(uw_context ctx, uw_Basis_string s) {
     return NULL;
 }
 
+uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
+  char *end = strchr(s, 0);
+  struct tm stm;
+
+  if (strptime(s, TIME_FMT, &stm) == end) {
+    uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
+    *r = mktime(&stm);
+    return r;    
+  }
+  else
+    return NULL;
+}
+
 uw_Basis_int uw_Basis_stringToInt_error(uw_context ctx, uw_Basis_string s) {
   char *endptr;
   uw_Basis_int n = strtoll(s, &endptr, 10);
@@ -924,4 +989,14 @@ uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {
     return uw_Basis_False;
   else
     uw_error(ctx, FATAL, "Can't parse bool: %s", s);
+}
+
+uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
+  char *end = strchr(s, 0);
+  struct tm stm = {};
+
+  if (strptime(s, TIME_FMT, &stm) == end)
+    return mktime(&stm);
+  else
+    uw_error(ctx, FATAL, "Can't parse time: %s", s);
 }

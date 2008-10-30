@@ -1,6 +1,7 @@
 type int
 type float
 type string
+type time
 
 type unit = {}
 
@@ -52,6 +53,7 @@ val show_int : show int
 val show_float : show float
 val show_string : show string
 val show_bool : show bool
+val show_time : show time
 
 class read
 val read : t ::: Type -> read t -> string -> option t
@@ -61,6 +63,7 @@ val read_int : read int
 val read_float : read float
 val read_string : read string
 val read_bool : read bool
+val read_time : read time
 
 
 (** SQL *)

@@ -1,6 +1,9 @@
+#include <time.h>
+
 typedef long long uw_Basis_int;
 typedef double uw_Basis_float;
 typedef char* uw_Basis_string;
+typedef time_t uw_Basis_time;
 
 struct __uws_0 {
 };
@@ -21,3 +24,4 @@ typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY } failure_kind;
 
 #define INTS_MAX 50
 #define FLOATS_MAX 100
+#define TIMES_MAX 100

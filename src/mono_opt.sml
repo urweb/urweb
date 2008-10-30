@@ -197,6 +197,13 @@ fun exp e =
       | EWrite (EFfiApp ("Basis", "htmlifyBool", [e]), _) =>
         EFfiApp ("Basis", "htmlifyBool_w", [e])
 
+      | EFfiApp ("Basis", "htmlifyString", [(EApp ((EFfi ("Basis", "timeToString"), _), e), _)]) =>
+        EFfiApp ("Basis", "htmlifyTime", [e])
+      | EFfiApp ("Basis", "htmlifyString_w", [(EApp ((EFfi ("Basis", "timeToString"), _), e), _)]) =>
+        EFfiApp ("Basis", "htmlifyTime_w", [e])
+      | EWrite (EFfiApp ("Basis", "htmlifyTime", [e]), _) =>
+        EFfiApp ("Basis", "htmlifyTime_w", [e])
+
       | EFfiApp ("Basis", "htmlifyString", [(EPrim (Prim.String s), _)]) =>
         EPrim (Prim.String (htmlifyString s))
       | EWrite (EFfiApp ("Basis", "htmlifyString", [(EPrim (Prim.String s), _)]), loc) =>

@@ -820,6 +820,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
           | L.EFfi ("Basis", "show_bool") =>
             ((L'.EFfi ("Basis", "boolToString"), loc), fm)
+          | L.EFfi ("Basis", "show_time") =>
+            ((L'.EFfi ("Basis", "timeToString"), loc), fm)
 
           | L.ECApp ((L.EFfi ("Basis", "read"), _), t) =>
             let
@@ -870,6 +872,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.ERecord [("Read", (L'.EFfi ("Basis", "stringToBool"), loc), readType' (t, loc)),
                               ("ReadError", (L'.EFfi ("Basis", "stringToBool_error"), loc), readErrType (t, loc))],
+                  loc),
+                 fm)
+            end
+          | L.EFfi ("Basis", "read_time") =>
+            let
+                val t = (L'.TFfi ("Basis", "time"), loc)
+            in
+                ((L'.ERecord [("Read", (L'.EFfi ("Basis", "stringToTime"), loc), readType' (t, loc)),
+                              ("ReadError", (L'.EFfi ("Basis", "stringToTime_error"), loc), readErrType (t, loc))],
                   loc),
                  fm)
             end

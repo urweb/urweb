@@ -39,11 +39,13 @@ char *uw_Basis_htmlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_htmlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_htmlifyBool(uw_context, uw_Basis_bool);
+char *uw_Basis_htmlifyTime(uw_context, uw_Basis_time);
 
 uw_unit uw_Basis_htmlifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_htmlifyFloat_w(uw_context, uw_Basis_float);
 uw_unit uw_Basis_htmlifyString_w(uw_context, uw_Basis_string);
 uw_unit uw_Basis_htmlifyBool_w(uw_context, uw_Basis_bool);
+uw_unit uw_Basis_htmlifyTime_w(uw_context, uw_Basis_time);
 
 char *uw_Basis_attrifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_attrifyFloat(uw_context, uw_Basis_float);
@@ -81,11 +83,14 @@ char *uw_Basis_ensqlBool(uw_Basis_bool);
 uw_Basis_string uw_Basis_intToString(uw_context, uw_Basis_int);
 uw_Basis_string uw_Basis_floatToString(uw_context, uw_Basis_float);
 uw_Basis_string uw_Basis_boolToString(uw_context, uw_Basis_bool);
+uw_Basis_string uw_Basis_timeToString(uw_context, uw_Basis_time);
 
 uw_Basis_int *uw_Basis_stringToInt(uw_context, uw_Basis_string);
 uw_Basis_float *uw_Basis_stringToFloat(uw_context, uw_Basis_string);
 uw_Basis_bool *uw_Basis_stringToBool(uw_context, uw_Basis_string);
+uw_Basis_time *uw_Basis_stringToTime(uw_context, uw_Basis_string);
 
 uw_Basis_int uw_Basis_stringToInt_error(uw_context, uw_Basis_string);
 uw_Basis_float uw_Basis_stringToFloat_error(uw_context, uw_Basis_string);
 uw_Basis_bool uw_Basis_stringToBool_error(uw_context, uw_Basis_string);
+uw_Basis_time uw_Basis_stringToTime_error(uw_context, uw_Basis_string);
