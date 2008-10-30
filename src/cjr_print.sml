@@ -403,6 +403,7 @@ fun p_unsql wontLeakStrings env (tAll as (t, loc)) e =
         else
             box [string "uw_Basis_strdup(ctx, ", e, string ")"]
       | TFfi ("Basis", "bool") => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "time") => box [string "uw_Basis_stringToTime_error(ctx, ", e, string ")"]
       | _ => (ErrorMsg.errorAt loc "Don't know how to unmarshal type from SQL";
               Print.eprefaces' [("Type", p_typ env tAll)];
               string "ERROR")
@@ -1395,6 +1396,7 @@ fun p_sqltype' env (tAll as (t, loc)) =
       | TFfi ("Basis", "float") => "float8"
       | TFfi ("Basis", "string") => "text"
       | TFfi ("Basis", "bool") => "bool"
+      | TFfi ("Basis", "time") => "timestamp"
       | _ => (ErrorMsg.errorAt loc "Don't know SQL equivalent of type";
               Print.eprefaces' [("Type", p_typ env tAll)];
               "ERROR")

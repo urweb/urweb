@@ -728,6 +728,7 @@ uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
 }
 
 #define TIME_FMT "%x %X"
+#define TIME_FMT_PG "%Y-%m-%d %T"
 
 uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
@@ -950,10 +951,10 @@ uw_Basis_bool *uw_Basis_stringToBool(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
-  char *end = strchr(s, 0);
+  char *dot = strchr(s, '.'), *end = strchr(s, 0);
   struct tm stm;
 
-  if (strptime(s, TIME_FMT, &stm) == end) {
+  if ((dot ? (*dot = 0, strptime(s, TIME_FMT_PG, &stm)) : strptime(s, TIME_FMT, &stm)) == end) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
     *r = mktime(&stm);
     return r;    
@@ -992,11 +993,24 @@ uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
-  char *end = strchr(s, 0);
+  char *dot = strchr(s, '.'), *end = strchr(s, 0);
   struct tm stm = {};
 
-  if (strptime(s, TIME_FMT, &stm) == end)
-    return mktime(&stm);
-  else
-    uw_error(ctx, FATAL, "Can't parse time: %s", s);
+  if (dot) {
+    *dot = 0;
+    if (strptime(s, TIME_FMT_PG, &stm)) {
+      *dot = '.';
+      return mktime(&stm);
+    }
+    else {
+      *dot = '.';
+      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+    }
+  }
+  else {
+    if (strptime(s, TIME_FMT, &stm) == end)
+      return mktime(&stm);
+    else
+      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+  }
 }
