@@ -424,19 +424,17 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                              S.map2 (mfc ctx rest,
                                                   fn rest' =>
                                                      (EField (e', c', {field = field', rest = rest'}), loc)))))
-              | EWith (e1, c, e2, {field, rest}) =>
+              | EConcat (e1, c1, e2, c2) =>
                 S.bind2 (mfe ctx e1,
                       fn e1' =>
-                         S.bind2 (mfc ctx c,
-                              fn c' =>
+                         S.bind2 (mfc ctx c1,
+                              fn c1' =>
                                  S.bind2 (mfe ctx e2,
                                        fn e2' =>
-                                          S.bind2 (mfc ctx field,
-                                                fn field' =>
-                                                   S.map2 (mfc ctx rest,
-                                                        fn rest' =>
-                                                           (EWith (e1', c', e2', {field = field', rest = rest'}),
-                                                            loc))))))
+                                          S.map2 (mfc ctx c2,
+                                               fn c2' =>
+                                                  (EConcat (e1', c1', e2', c2'),
+                                                   loc)))))
               | ECut (e, c, {field, rest}) =>
                 S.bind2 (mfe ctx e,
                       fn e' =>

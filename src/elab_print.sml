@@ -317,32 +317,25 @@ fun p_exp' par env (e, _) =
             box [p_exp' true env e,
                  string ".",
                  p_con' true env c]
-      | EWith (e1, c, e2, {field, rest}) =>
+      | EConcat (e1, c1, e2, c2) =>
         parenIf par (if !debug then
-                         box [p_exp env e1,
+                         box [p_exp' true env e1,
                               space,
-                              string "with",
+                              string ":",
                               space,
-                              p_con' true env c,
+                              p_con env c1,
                               space,
-                              string "=",
+                              string "++",
+                              space,
                               p_exp' true env e2,
                               space,
-                              string "[",
-                              p_con env field,
+                              string ":",
                               space,
-                              string " in ",
-                              space,
-                              p_con env rest,
-                              string "]"]
+                              p_con env c2]
                      else
-                         box [p_exp env e1,
+                         box [p_exp' true env e1,
                               space,
                               string "with",
-                              space,
-                              p_con' true env c,
-                              space,
-                              string "=",
                               space,
                               p_exp' true env e2])
       | ECut (e, c, {field, rest}) =>

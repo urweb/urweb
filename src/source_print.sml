@@ -258,13 +258,11 @@ fun p_exp' par (e, _) =
       | EField (e, c) => box [p_exp' true e,
                               string ".",
                               p_con' true c]
-      | EWith (e1, c, e2) => parenIf par (box [p_exp e1,
-                                               space,
-                                               string "with",
-                                               space,
-                                               p_con' true c,
-                                               space,
-                                               p_exp' true e2])
+      | EConcat (e1, e2) => parenIf par (box [p_exp' true e1,
+                                              space,
+                                              string "++",
+                                              space,
+                                              p_exp' true e2])
       | ECut (e, c) => parenIf par (box [p_exp' true e,
                                          space,
                                          string "--",

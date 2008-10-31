@@ -566,8 +566,8 @@ fun corifyExp st (e, loc) =
                                               (corifyCon st c, corifyExp st e, corifyCon st t)) xes), loc)
       | L.EField (e1, c, {field, rest}) => (L'.EField (corifyExp st e1, corifyCon st c,
                                                        {field = corifyCon st field, rest = corifyCon st rest}), loc)
-      | L.EWith (e1, c, e2, {field, rest}) => (L'.EWith (corifyExp st e1, corifyCon st c, corifyExp st e2,
-                                                         {field = corifyCon st field, rest = corifyCon st rest}), loc)
+      | L.EConcat (e1, c1, e2, c2) => (L'.EConcat (corifyExp st e1, corifyCon st c1, corifyExp st e2,
+                                                   corifyCon st c2), loc)
       | L.ECut (e1, c, {field, rest}) => (L'.ECut (corifyExp st e1, corifyCon st c,
                                                    {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.EFold k => (L'.EFold (corifyKind k), loc)

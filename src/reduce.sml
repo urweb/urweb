@@ -107,18 +107,18 @@ fun exp env e =
                                       | _ => false) xes of
                          SOME (_, e, _) => #1 e
                        | NONE => e)
-                  | EWith (r as (_, loc), x, e, {rest = (CRecord (k, xts), _), field}) =>
+                  | EConcat (r1 as (_, loc), (CRecord (k, xts1), _), r2, (CRecord (_, xts2), _)) =>
                     let
-                        fun fields (remaining, passed) =
+                        fun fields (r, remaining, passed) =
                             case remaining of
                                 [] => []
                               | (x, t) :: rest =>
                                 (x,
                                  (EField (r, x, {field = t,
                                                  rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
-                                 t) :: fields (rest, (x, t) :: passed)
+                                 t) :: fields (r, rest, (x, t) :: passed)
                     in
-                        #1 (reduceExp env (ERecord ((x, e, field) :: fields (xts, [])), loc))
+                        #1 (reduceExp env (ERecord (fields (r1, xts1, []) @ fields (r2, xts2, [])), loc))
                     end
                   | ECut (r as (_, loc), _, {rest = (CRecord (k, xts), _), ...}) =>
                     let

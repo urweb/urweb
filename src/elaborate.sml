@@ -1,29 +1,29 @@
 (* Copyright (c) 2008, Adam Chlipala
-  * All rights reserved.
-  *
-  * Redistribution and use in source and binary forms, with or without
-  * modification, are permitted provided that the following conditions are met:
-  *
-  * - Redistributions of source code must retain the above copyright notice,
-  *   this list of conditions and the following disclaimer.
-  * - Redistributions in binary form must reproduce the above copyright notice,
-  *   this list of conditions and the following disclaimer in the documentation
-  *   and/or other materials provided with the distribution.
-  * - The names of contributors may not be used to endorse or promote products
-  *   derived from this software without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-  * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-  * POSSIBILITY OF SUCH DAMAGE.
-  *)
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * - The names of contributors may not be used to endorse or promote products
+ *   derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *)
 
  structure Elaborate :> ELABORATE = struct
 
@@ -1603,21 +1603,21 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ enD gs2 @ enD gs3 @ enD gs4)
             end
 
-          | L.EWith (e1, c, e2) =>
+          | L.EConcat (e1, e2) =>
             let
                 val (e1', e1t, gs1) = elabExp (env, denv) e1
-                val (c', ck, gs2) = elabCon (env, denv) c
-                val (e2', e2t, gs3) = elabExp (env, denv) e2
+                val (e2', e2t, gs2) = elabExp (env, denv) e2
 
-                val rest = cunif (loc, ktype_record)
-                val first = (L'.CRecord (ktype, [(c', e2t)]), loc)
+                val r1 = cunif (loc, ktype_record)
+                val r2 = cunif (loc, ktype_record)
 
-                val gs4 = checkCon (env, denv) e1' e1t (L'.TRecord rest, loc)
-                val gs5 = D.prove env denv (first, rest, loc)
+                val gs3 = checkCon (env, denv) e1' e1t (L'.TRecord r1, loc)
+                val gs4 = checkCon (env, denv) e2' e2t (L'.TRecord r2, loc)
+                val gs5 = D.prove env denv (r1, r2, loc)
             in
-                ((L'.EWith (e1', c', e2', {field = e2t, rest = rest}), loc),
-                 (L'.TRecord ((L'.CConcat (first, rest), loc)), loc),
-                 gs1 @ enD gs2 @ gs3 @ enD gs4 @ enD gs5)
+                ((L'.EConcat (e1', r1, e2', r2), loc),
+                 (L'.TRecord ((L'.CConcat (r1, r2), loc)), loc),
+                 gs1 @ gs2 @ enD gs3 @ enD gs4 @ enD gs5)
             end
           | L.ECut (e, c) =>
             let

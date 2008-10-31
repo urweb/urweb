@@ -4,6 +4,9 @@ con idT (t :: Type) = t
 con record (t :: {Type}) = $t
 con fstTT (t :: (Type * Type)) = t.1
 con sndTT (t :: (Type * Type)) = t.2
+con fstTTT (t :: (Type * Type * Type)) = t.1
+con sndTTT (t :: (Type * Type * Type)) = t.2
+con thdTTT (t :: (Type * Type * Type)) = t.3
 
 con mapTT (f :: Type -> Type) = fold (fn nm t acc [[nm] ~ acc] =>
                                          [nm = f t] ++ acc) []
@@ -13,6 +16,9 @@ con mapUT = fn f :: Type => fold (fn nm t acc [[nm] ~ acc] =>
 
 con mapT2T (f :: (Type * Type) -> Type) = fold (fn nm t acc [[nm] ~ acc] =>
                                                    [nm = f t] ++ acc) []
+
+con mapT3T (f :: (Type * Type * Type) -> Type) = fold (fn nm t acc [[nm] ~ acc] =>
+                                                          [nm = f t] ++ acc) []
 
 con ex = fn tf :: (Type -> Type) =>
             res ::: Type -> (choice :: Type -> tf choice -> res) -> res
@@ -80,6 +86,17 @@ fun foldT2R (tf :: (Type * Type) -> Type) (tr :: {(Type * Type)} -> Type)
                  f [nm] [t] [rest] r.nm (acc (r -- nm)))
              (fn _ => i)
 
+fun foldT3R (tf :: (Type * Type * Type) -> Type) (tr :: {(Type * Type * Type)} -> Type)
+            (f : nm :: Name -> t :: (Type * Type * Type) -> rest :: {(Type * Type * Type)}
+                 -> fn [[nm] ~ rest] =>
+                       tf t -> tr rest -> tr ([nm = t] ++ rest))
+            (i : tr []) =
+    fold [fn r :: {(Type * Type * Type)} => $(mapT3T tf r) -> tr r]
+             (fn (nm :: Name) (t :: (Type * Type * Type)) (rest :: {(Type * Type * Type)})
+                              (acc : _ -> tr rest) [[nm] ~ rest] r =>
+                 f [nm] [t] [rest] r.nm (acc (r -- nm)))
+             (fn _ => i)
+
 fun foldTR2 (tf1 :: Type -> Type) (tf2 :: Type -> Type) (tr :: {Type} -> Type)
             (f : nm :: Name -> t :: Type -> rest :: {Type}
                  -> fn [[nm] ~ rest] =>
@@ -103,6 +120,18 @@ fun foldT2R2 (tf1 :: (Type * Type) -> Type) (tf2 :: (Type * Type) -> Type)
                  f [nm] [t] [rest] r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
              (fn _ _ => i)
 
+fun foldT3R2 (tf1 :: (Type * Type * Type) -> Type) (tf2 :: (Type * Type * Type) -> Type)
+             (tr :: {(Type * Type * Type)} -> Type)
+             (f : nm :: Name -> t :: (Type * Type * Type) -> rest :: {(Type * Type * Type)}
+                  -> fn [[nm] ~ rest] =>
+                        tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
+             (i : tr []) =
+    fold [fn r :: {(Type * Type * Type)} => $(mapT3T tf1 r) -> $(mapT3T tf2 r) -> tr r]
+             (fn (nm :: Name) (t :: (Type * Type * Type)) (rest :: {(Type * Type * Type)})
+                              (acc : _ -> _ -> tr rest) [[nm] ~ rest] r1 r2 =>
+                 f [nm] [t] [rest] r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
+             (fn _ _ => i)
+
 fun foldTRX (tf :: Type -> Type) (ctx :: {Unit})
             (f : nm :: Name -> t :: Type -> rest :: {Type}
                  -> fn [[nm] ~ rest] =>
@@ -118,6 +147,16 @@ fun foldT2RX (tf :: (Type * Type) -> Type) (ctx :: {Unit})
                         tf t -> xml ctx [] []) =
     foldT2R [tf] [fn _ => xml ctx [] []]
             (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                             [[nm] ~ rest] r acc =>
+                <xml>{f [nm] [t] [rest] r}{acc}</xml>)
+            <xml/>
+
+fun foldT3RX (tf :: (Type * Type * Type) -> Type) (ctx :: {Unit})
+             (f : nm :: Name -> t :: (Type * Type * Type) -> rest :: {(Type * Type * Type)}
+                  -> fn [[nm] ~ rest] =>
+                        tf t -> xml ctx [] []) =
+    foldT3R [tf] [fn _ => xml ctx [] []]
+            (fn (nm :: Name) (t :: (Type * Type * Type)) (rest :: {(Type * Type * Type)})
                              [[nm] ~ rest] r acc =>
                 <xml>{f [nm] [t] [rest] r}{acc}</xml>)
             <xml/>
@@ -139,6 +178,17 @@ fun foldT2RX2 (tf1 :: (Type * Type) -> Type) (tf2 :: (Type * Type) -> Type)
                          tf1 t -> tf2 t -> xml ctx [] []) =
     foldT2R2 [tf1] [tf2] [fn _ => xml ctx [] []]
              (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                              [[nm] ~ rest] r1 r2 acc =>
+                 <xml>{f [nm] [t] [rest] r1 r2}{acc}</xml>)
+             <xml/>
+
+fun foldT3RX2 (tf1 :: (Type * Type * Type) -> Type) (tf2 :: (Type * Type * Type) -> Type)
+              (ctx :: {Unit})
+              (f : nm :: Name -> t :: (Type * Type * Type) -> rest :: {(Type * Type * Type)}
+                   -> fn [[nm] ~ rest] =>
+                         tf1 t -> tf2 t -> xml ctx [] []) =
+    foldT3R2 [tf1] [tf2] [fn _ => xml ctx [] []]
+             (fn (nm :: Name) (t :: (Type * Type * Type)) (rest :: {(Type * Type * Type)})
                               [[nm] ~ rest] r1 r2 acc =>
                  <xml>{f [nm] [t] [rest] r1 r2}{acc}</xml>)
              <xml/>

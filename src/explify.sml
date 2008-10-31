@@ -101,8 +101,8 @@ fun explifyExp (e, loc) =
       | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) => (explifyCon c, explifyExp e, explifyCon t)) xes), loc)
       | L.EField (e1, c, {field, rest}) => (L'.EField (explifyExp e1, explifyCon c,
                                                        {field = explifyCon field, rest = explifyCon rest}), loc)
-      | L.EWith (e1, c, e2, {field, rest}) => (L'.EWith (explifyExp e1, explifyCon c, explifyExp e2,
-                                                        {field = explifyCon field, rest = explifyCon rest}), loc)
+      | L.EConcat (e1, c1, e2, c2) => (L'.EConcat (explifyExp e1, explifyCon c1, explifyExp e2, explifyCon c2),
+                                       loc)
       | L.ECut (e1, c, {field, rest}) => (L'.ECut (explifyExp e1, explifyCon c,
                                                      {field = explifyCon field, rest = explifyCon rest}), loc)
       | L.EFold k => (L'.EFold (explifyKind k), loc)

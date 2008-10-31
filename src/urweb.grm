@@ -198,7 +198,7 @@ fun tagIn bt =
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR | SEMI
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
- | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | WITH | SQL
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
  | CASE | IF | THEN | ELSE
 
@@ -344,7 +344,6 @@ fun tagIn bt =
 %right CAND
 %nonassoc EQ NE LT LE GT GE
 %right ARROW
-%left WITH
 %right PLUSPLUS MINUSMINUS
 %left PLUS MINUS
 %left STAR DIVIDE MOD
@@ -699,7 +698,7 @@ eexp   : eapps                          (eapps)
        | eexp GT eexp                   (native_op ("gt", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp GE eexp                   (native_op ("ge", eexp1, eexp2, s (eexp1left, eexp2right)))
 
-       | eexp WITH cterm EQ eexp        (EWith (eexp1, cterm, eexp2), s (eexp1left, eexp2right))
+       | eexp PLUSPLUS eexp             (EConcat (eexp1, eexp2), s (eexp1left, eexp2right))
 
 bind   : SYMBOL LARROW eapps            (SYMBOL, NONE, eapps)
        | UNIT LARROW eapps              (let
