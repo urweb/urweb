@@ -311,6 +311,9 @@ fun exp e =
       | EWrite (ELet (x, t, e1, e2), loc) =>
         optExp (ELet (x, t, e1, (EWrite e2, loc)), loc)
 
+      | EWrite (EPrim (Prim.String ""), loc) =>
+        ERecord []
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)
