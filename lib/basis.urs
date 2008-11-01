@@ -56,6 +56,7 @@ val show_float : show float
 val show_string : show string
 val show_bool : show bool
 val show_time : show time
+val mkShow : t ::: Type -> (t -> string) -> show t
 
 class read
 val read : t ::: Type -> read t -> string -> option t

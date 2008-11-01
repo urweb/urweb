@@ -1398,6 +1398,7 @@ fun normClassConstraint envs (c, loc) =
         in
             ((L'.CApp (f, x), loc), gs)
         end
+      | L'.CUnif (_, _, _, ref (SOME c)) => normClassConstraint envs c
       | _ => ((c, loc), [])
 
 

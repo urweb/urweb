@@ -419,6 +419,7 @@ fun class_pair_in (c, _) =
         (case (class_name_in f, class_key_in x) of
              (SOME f, SOME x) => SOME (f, x)
            | _ => NONE)
+      | CUnif (_, _, _, ref (SOME c)) => class_pair_in c
       | _ => NONE
 
 fun resolveClass (env : env) c =
