@@ -83,10 +83,11 @@ fun p_con' par env (c, _) =
                           p_con' true env c]
 
       | CRel n =>
-        if !debug then
-            string (#1 (E.lookupCRel env n) ^ "_" ^ Int.toString n)
-        else
-            string (#1 (E.lookupCRel env n))
+        ((if !debug then
+              string (#1 (E.lookupCRel env n) ^ "_" ^ Int.toString n)
+          else
+              string (#1 (E.lookupCRel env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_REL" ^ Int.toString n))
       | CNamed n =>
         ((if !debug then
               string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
@@ -172,7 +173,7 @@ fun p_patCon env pc =
               string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
           else
               string (#1 (E.lookupENamed env n)))
-         handle E.UnboundRel _ => string ("UNBOUND_NAMED" ^ Int.toString n))
+         handle E.UnboundNamed _ => string ("UNBOUND_NAMED" ^ Int.toString n))
       | PConProj (m1, ms, x) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)
@@ -211,15 +212,17 @@ fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t p
       | ERel n =>
-        if !debug then
-            string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
-        else
-            string (#1 (E.lookupERel env n))
+        ((if !debug then
+              string (#1 (E.lookupERel env n) ^ "_" ^ Int.toString n)
+          else
+              string (#1 (E.lookupERel env n)))
+         handle E.UnboundRel _ => string ("UNBOUND_REL" ^ Int.toString n))
       | ENamed n =>
-        if !debug then
-            string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
-        else
-            string (#1 (E.lookupENamed env n))
+        ((if !debug then
+              string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
+          else
+              string (#1 (E.lookupENamed env n)))
+         handle E.UnboundNamed _ => string ("UNBOUND_NAMED" ^ Int.toString n))
       | EModProj (m1, ms, x) =>
         let
             val (m1x, sgn) = E.lookupStrNamed env m1
@@ -361,6 +364,23 @@ fun p_exp' par env (e, loc) =
                                                         string "=>",
                                                         space,
                                                         p_exp env e]) pes])
+
+      | ELet (x, t, e1, e2) => box [string "let",
+                                    space,
+                                    string x,
+                                    space,
+                                    string ":",
+                                    p_con env t,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_exp env e1,
+                                    space,
+                                    string "in",
+                                    newline,
+                                    p_exp (E.pushERel env x t) e2]
+
+                                    
 
 and p_exp env = p_exp' false env
 

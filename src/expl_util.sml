@@ -325,6 +325,15 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                                    S.map2 (mfc ctx result,
                                                         fn result' =>
                                                            (ECase (e', pes', {disc = disc', result = result'}), loc)))))
+
+              | ELet (x, t, e1, e2) =>
+                S.bind2 (mfc ctx t,
+                         fn t' =>
+                            S.bind2 (mfe ctx e1,
+                                  fn e1' =>
+                                     S.map2 (mfe ctx e2,
+                                          fn e2' =>
+                                             (ELet (x, t', e1', e2'), loc))))
     in
         mfe
     end

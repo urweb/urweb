@@ -98,6 +98,8 @@ datatype exp' =
 
        | EWrite of exp
 
+       | ELet of string * con * exp * exp
+
 withtype exp = exp' located
 
 datatype sgn_item' =
