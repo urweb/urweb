@@ -580,6 +580,8 @@ fun corifyExp st (e, loc) =
 
       | L.EWrite e => (L'.EWrite (corifyExp st e), loc)
 
+      | L.ELet (x, t, e1, e2) => (L'.ELet (x, corifyCon st t, corifyExp st e1, corifyExp st e2), loc)
+
 fun corifyDecl mods ((d, loc : EM.span), st) =
     case d of
         L.DCon (x, n, k, c) =>

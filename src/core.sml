@@ -103,6 +103,8 @@ datatype exp' =
 
        | EClosure of int * exp list
 
+       | ELet of string * con * exp * exp
+
 withtype exp = exp' located
 
 datatype export_kind =

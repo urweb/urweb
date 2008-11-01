@@ -487,6 +487,15 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                      fn es' =>
                         (EClosure (n, es'), loc))
 
+              | ELet (x, t, e1, e2) =>
+                S.bind2 (mfc ctx t,
+                         fn t' =>
+                            S.bind2 (mfe ctx e1,
+                                  fn e1' =>
+                                     S.map2 (mfe ctx e2,
+                                          fn e2' =>
+                                             (ELet (x, t', e1', e2'), loc))))
+
         and mfp ctx (pAll as (p, loc)) =
             case p of
                 PWild => S.return2 pAll

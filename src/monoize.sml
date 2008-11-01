@@ -1954,6 +1954,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EClosure (n, es), loc), fm)
             end
+
+          | L.ELet (x, t, e1, e2) =>
+            let
+                val t' = monoType env t
+                val (e1, fm) = monoExp (env, st, fm) e1
+                val (e2, fm) = monoExp (Env.pushERel env x t, st, fm) e2
+            in
+                ((L'.ELet (x, t', e1, e2), loc), fm)
+            end
     end
 
 fun monoDecl (env, fm) (all as (d, loc)) =

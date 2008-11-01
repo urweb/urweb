@@ -362,6 +362,21 @@ fun p_exp' par env (e, _) =
                                                                       p_exp env e]) es,
                                  string ")"]
 
+      | ELet (x, t, e1, e2) => box [string "let",
+                                    space,
+                                    string x,
+                                    space,
+                                    string ":",
+                                    p_con env t,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_exp env e1,
+                                    space,
+                                    string "in",
+                                    newline,
+                                    p_exp (E.pushERel env x t) e2]
+
 and p_exp env = p_exp' false env
 
 fun p_named x n =

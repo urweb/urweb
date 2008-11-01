@@ -206,21 +206,23 @@ fun exp ((ks, ts), e, st : state) =
 
                             val subs' = ListUtil.mapi (fn (i, (_, n, _, _)) =>
                                                           let
-                                                              val e = apply (ENamed n, loc)
+                                                              val dummy = (EError, ErrorMsg.dummySpan)
+                                                                          
+                                                              fun repeatLift k =
+                                                                  if k = 0 then
+                                                                      apply (ENamed n, loc)
+                                                                  else
+                                                                      E.liftExpInExp 0 (repeatLift (k - 1))
                                                           in
-                                                              (0, E.liftExpInExp (nr - i - 1) e)
+                                                              (0, repeatLift i)
                                                           end)
-                                            vis
+                                                      vis
+
                             val subs' = rev subs'
 
                             val cfv = IS.listItems cfv
                             val efv = IS.listItems efv
                             val efn = length efv
-
-                            (*val subsInner = subs
-                                            @ map (fn (i, e) =>
-                                                      (i + efn,
-                                                       E.liftExpInExp efn e)) subs'*)
 
                             val subs = subs @ subs'
 
@@ -228,7 +230,7 @@ fun exp ((ks, ts), e, st : state) =
                                               let
                                                   (*val () = Print.prefaces "preSubst"
                                                                           [("e", ElabPrint.p_exp E.empty e)]*)
-                                                  val e = doSubst e subs(*Inner*)
+                                                  val e = doSubst e subs
 
                                                   (*val () = Print.prefaces "squishCon"
                                                                           [("t", ElabPrint.p_con E.empty t)]*)
