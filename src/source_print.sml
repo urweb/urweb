@@ -285,7 +285,46 @@ fun p_exp' par (e, _) =
 
       | EWild => string "_"
 
+      | ELet (ds, e) => box [string "let",
+                             newline,
+                             box [p_list_sep newline p_edecl ds],
+                             newline,
+                             string "in",
+                             newline,
+                             box [p_exp e],
+                             newline,
+                             string "end"]
+
 and p_exp e = p_exp' false e
+
+and p_edecl (d, _) =
+  case d of
+      EDVal vi => box [string "val",
+                       space,
+                       p_vali vi]
+    | EDValRec vis => box [string "val",
+                           space,
+                           string "rec",
+                           space,
+                           p_list_sep (box [newline, string "and", space]) p_vali vis]
+
+and p_vali (x, co, e) =
+    case co of
+        NONE => box [string x,
+                     space,
+                     string "=",
+                     space,
+                     p_exp e]
+      | SOME t => box [string x,
+                       space,
+                       string ":",
+                       space,
+                       p_con t,
+                       space,
+                       string "=",
+                       space,
+                       p_exp e]
+
 
 fun p_datatype (x, xs, cons) =
     box [string "datatype",
@@ -424,22 +463,6 @@ and p_sgn (sgn, _) =
       | SgnProj (m, ms, x) => p_list_sep (string ".") string (m :: ms @ [x])
                                    
 
-fun p_vali (x, co, e) =
-    case co of
-        NONE => box [string x,
-                     space,
-                     string "=",
-                     space,
-                     p_exp e]
-      | SOME t => box [string x,
-                       space,
-                       string ":",
-                       space,
-                       p_con t,
-                       space,
-                       string "=",
-                       space,
-                       p_exp e]
 
 fun p_decl ((d, _) : decl) =
     case d of

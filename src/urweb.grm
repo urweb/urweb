@@ -198,6 +198,7 @@ fun tagIn bt =
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR | SEMI
  | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
+ | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
  | CASE | IF | THEN | ELSE
@@ -272,6 +273,8 @@ fun tagIn bt =
  | tag of string * exp
  | tagHead of string * exp
  | bind of string * con option * exp
+ | edecl of edecl
+ | edecls of edecl list
 
  | earg of exp * con -> exp * con
  | eargp of exp * con -> exp * con
@@ -918,6 +921,15 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                          end)
 
        | UNDER                          (EWild, s (UNDERleft, UNDERright))
+
+       | LET edecls IN eexp END         (ELet (edecls, eexp), s (LETleft, ENDright))
+
+edecls :                                ([])
+       | edecl edecls                   (edecl :: edecls)
+
+edecl  : VAL vali                       ((EDVal vali, s (VALleft, valiright)))
+       | VAL REC valis                  ((EDValRec valis, s (VALleft, valisright)))
+       | FUN valis                      ((EDValRec valis, s (FUNleft, valisright)))
 
 enterDml :                              (inDml := true)
 leaveDml :                              (inDml := false)

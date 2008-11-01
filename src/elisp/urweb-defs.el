@@ -91,7 +91,7 @@ notion of \"the end of an outline\".")
 
 
 (defconst urweb-begin-syms
-  '("struct" "sig")
+  '("let" "struct" "sig")
   "Symbols matching the `end' symbol.")
 
 (defconst urweb-begin-syms-re
@@ -103,12 +103,12 @@ notion of \"the end of an outline\".")
 ;;   "Symbols matching (loosely) the `end' symbol.")
 
 (defconst urweb-sexp-head-symbols-re
-  (urweb-syms-re "struct" "sig" "with"
-	       "if" "then" "else" "case" "of" "fn" "fun" "val" "and"
-	       "datatype" "type" "open" "include"
-	       urweb-module-head-syms
-	       "con" "fold" "where" "extern" "constraint" "constraints"
-               "table" "sequence" "class")
+  (urweb-syms-re "let" "struct" "sig" "in" "with"
+                 "if" "then" "else" "case" "of" "fn" "fun" "val" "and"
+                 "datatype" "type" "open" "include"
+                 urweb-module-head-syms
+                 "con" "fold" "where" "extern" "constraint" "constraints"
+                 "table" "sequence" "class")
   "Symbols starting an sexp.")
 
 ;; (defconst urweb-not-arg-start-re
@@ -133,11 +133,11 @@ notion of \"the end of an outline\".")
      ("if" "else" 0)
      (,urweb-=-starter-syms nil)
      (("case" "datatype" "if" "then" "else"
-       "open" "sig" "struct" "type" "val"
+       "let" "open" "sig" "struct" "type" "val"
        "con" "constraint" "table" "sequence" "class")))))
 
 (defconst urweb-starters-indent-after
-  (urweb-syms-re "struct" "sig")
+  (urweb-syms-re "let" "in" "struct" "sig")
   "Indent after these.")
 
 (defconst urweb-delegate
@@ -164,11 +164,12 @@ for all symbols and in all lines starting with the given symbol."
 
 (defconst urweb-open-paren
   (urweb-preproc-alist
-   `((,(list* urweb-begin-syms) ,urweb-begin-syms-re "\\<end\\>")))
+   `((,(list* "in" urweb-begin-syms) ,urweb-begin-syms-re "\\<end\\>")))
   "Symbols that should behave somewhat like opening parens.")
 
 (defconst urweb-close-paren
-  `(("end" ,urweb-begin-syms-re)
+  `(("in" "\\<let\\>")
+    ("end" ,urweb-begin-syms-re)
     ("then" "\\<if\\>")
     ("else" "\\<if\\>" (urweb-bolp))
     ("of" "\\<case\\>")

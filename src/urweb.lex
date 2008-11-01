@@ -299,6 +299,8 @@ notags = [^<{\n]+;
 <INITIAL> "signature" => (Tokens.SIGNATURE (pos yypos, pos yypos + size yytext));
 <INITIAL> "struct"    => (Tokens.STRUCT (pos yypos, pos yypos + size yytext));
 <INITIAL> "sig"       => (if yypos = 2 then initialSig () else (); Tokens.SIG (pos yypos, pos yypos + size yytext));
+<INITIAL> "let"       => (Tokens.LET (pos yypos, pos yypos + size yytext));
+<INITIAL> "in"        => (Tokens.IN (pos yypos, pos yypos + size yytext));
 <INITIAL> "end"       => (Tokens.END (pos yypos, pos yypos + size yytext));
 <INITIAL> "functor"   => (Tokens.FUNCTOR (pos yypos, pos yypos + size yytext));
 <INITIAL> "where"     => (Tokens.WHERE (pos yypos, pos yypos + size yytext));

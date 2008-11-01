@@ -131,7 +131,14 @@ datatype exp' =
 
        | ECase of exp * (pat * exp) list
 
+       | ELet of edecl list * exp
+
+and edecl' =
+    EDVal of string * con option * exp
+  | EDValRec of (string * con option * exp) list
+
 withtype exp = exp' located
+and edecl = edecl' located
 
 datatype decl' =
          DCon of string * kind option * con
