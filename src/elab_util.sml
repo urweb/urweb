@@ -352,6 +352,48 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
               | EError => S.return2 eAll
               | EUnif (ref (SOME e)) => mfe ctx e
               | EUnif _ => S.return2 eAll
+
+              | ELet (des, e) =>
+                let
+                    val (des, ctx) = foldl (fn (ed, (des, ctx)) =>
+                                                (S.bind2 (des,
+                                                       fn des' =>
+                                                          S.map2 (mfed ctx ed,
+                                                               fn ed' => des' @ [ed'])),
+                                                 case #1 ed of
+                                                     EDVal (x, t, _) => bind (ctx, RelE (x, t))
+                                                   | EDValRec vis =>
+                                                     foldl (fn ((x, t, _), env) => bind (ctx, RelE (x, t))) ctx vis))
+                                            (S.return2 [], ctx) des
+                in
+                    S.bind2 (des,
+                         fn des' =>
+                            S.map2 (mfe ctx e,
+                                    fn e' =>
+                                       (ELet (des', e'), loc)))
+                end
+
+        and mfed ctx (dAll as (d, loc)) =
+            case d of
+                EDVal vi =>
+                S.map2 (mfvi ctx vi,
+                     fn vi' =>
+                        (EDVal vi', loc))
+              | EDValRec vis =>
+                let
+                    val ctx = foldl (fn ((x, t, _), env) => bind (ctx, RelE (x, t))) ctx vis
+                in
+                    S.map2 (ListUtil.mapfold (mfvi ctx) vis,
+                         fn vis' =>
+                            (EDValRec vis', loc))
+                end
+
+        and mfvi ctx (x, c, e) =
+            S.bind2 (mfc ctx c,
+                  fn c' =>
+                     S.map2 (mfe ctx e,
+                          fn e' =>
+                             (x, c', e')))
     in
         mfe
     end

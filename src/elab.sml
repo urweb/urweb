@@ -117,7 +117,14 @@ datatype exp' =
        | EError
        | EUnif of exp option ref
 
+       | ELet of edecl list * exp
+
+and edecl' =
+    EDVal of string * con * exp
+  | EDValRec of (string * con * exp) list
+
 withtype exp = exp' located
+     and edecl = edecl' located
 
 datatype sgn_item' =
          SgiConAbs of string * int * kind

@@ -1400,6 +1400,18 @@ fun normClassConstraint envs (c, loc) =
         end
       | _ => ((c, loc), [])
 
+
+val makeInstantiable =
+    let
+        fun kind k = k
+        fun con c =
+            case c of
+                L'.CDisjoint (L'.LeaveAlone, c1, c2, c) => L'.CDisjoint (L'.Instantiate, c1, c2, c)
+              | _ => c
+    in
+        U.Con.map {kind = kind, con = con}
+    end
+
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
         (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)];*)
@@ -1670,8 +1682,76 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 
                 ((L'.ECase (e', pes', {disc = et, result = result}), loc), result, enD gs' @ gs)
             end
+
+          | L.ELet (eds, e) =>
+            let
+                val (eds, (env, gs1)) = ListUtil.foldlMap (elabEdecl denv) (env, []) eds
+                val (e, t, gs2) = elabExp (env, denv) e
+            in
+                ((L'.ELet (eds, e), loc), t, gs1 @ gs2)
+            end
     in
         (*prefaces "/elabExp" [("e", SourcePrint.p_exp eAll)];*)
+        r
+    end
+
+and elabEdecl denv (dAll as (d, loc), (env, gs : constraint list)) =
+    let
+        val r = 
+            case d of
+                L.EDVal (x, co, e) =>
+                let
+                    val (c', _, gs1) = case co of
+                                           NONE => (cunif (loc, ktype), ktype, [])
+                                         | SOME c => elabCon (env, denv) c
+
+                    val (e', et, gs2) = elabExp (env, denv) e
+                    val gs3 = checkCon (env, denv) e' et c'
+                    val (c', gs4) = normClassConstraint (env, denv) c'
+                    val env' = E.pushERel env x c'
+                    val c' = makeInstantiable c'
+                in
+                    ((L'.EDVal (x, c', e'), loc), (env', enD gs1 @ gs2 @ enD gs3 @ enD gs4 @ gs))
+                end
+              | L.EDValRec vis =>
+                let
+                    fun allowable (e, _) =
+                        case e of
+                            L.EAbs _ => true
+                          | L.ECAbs (_, _, _, e) => allowable e
+                          | L.EDisjoint (_, _, e) => allowable e
+                          | _ => false
+
+                    val (vis, gs) = ListUtil.foldlMap
+                                        (fn ((x, co, e), gs) =>
+                                            let
+                                                val (c', _, gs1) = case co of
+                                                                       NONE => (cunif (loc, ktype), ktype, [])
+                                                                     | SOME c => elabCon (env, denv) c
+                                            in
+                                                ((x, c', e), enD gs1 @ gs)
+                                            end) gs vis
+
+                    val env = foldl (fn ((x, c', _), env) => E.pushERel env x c') env vis
+
+                    val (vis, gs) = ListUtil.foldlMap (fn ((x, c', e), gs) =>
+                                                          let
+                                                              val (e', et, gs1) = elabExp (env, denv) e
+                                                                                  
+                                                              val gs2 = checkCon (env, denv) e' et c'
+
+                                                              val c' = makeInstantiable c'
+                                                          in
+                                                              if allowable e then
+                                                                  ()
+                                                              else
+                                                                  expError env (IllegalRec (x, e'));
+                                                              ((x, c', e'), gs1 @ enD gs2 @ gs)
+                                                          end) gs vis
+                in
+                    ((L'.EDValRec vis, loc), (env, gs))
+                end
+    in
         r
     end
 
@@ -2741,17 +2821,6 @@ fun wildifyStr env (str, sgn) =
              end
            | _ => str)
       | _ => str
-
-val makeInstantiable =
-    let
-        fun kind k = k
-        fun con c =
-            case c of
-                L'.CDisjoint (L'.LeaveAlone, c1, c2, c) => L'.CDisjoint (L'.Instantiate, c1, c2, c)
-              | _ => c
-    in
-        U.Con.map {kind = kind, con = con}
-    end
 
 fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
     let

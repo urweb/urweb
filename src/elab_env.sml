@@ -1075,6 +1075,11 @@ fun projectConstraints env {sgn, str} =
       | SgnError => SOME []
       | _ => NONE
 
+fun edeclBinds env (d, loc) =
+    case d of
+        EDVal (x, t, _) => pushERel env x t
+      | EDValRec vis => foldl (fn ((x, t, _), env) => pushERel env x t) env vis
+
 fun declBinds env (d, loc) =
     case d of
         DCon (x, n, k, c) => pushCNamedAs env x n k (SOME c)

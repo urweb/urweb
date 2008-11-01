@@ -378,15 +378,52 @@ fun p_exp' par env (e, _) =
       | EUnif (ref (SOME e)) => p_exp env e
       | EUnif _ => string "_"
 
+      | ELet (ds, e) =>
+        let
+            val (dsp, env) = ListUtil.foldlMap
+                             (fn (d, env) =>
+                                 (p_edecl env d,
+                                  E.edeclBinds env d))
+                             env ds
+        in
+            box [string "let",
+                 newline,
+                 box [p_list_sep newline (fn x => x) dsp],
+                 newline,
+                 string "in",
+                 newline,
+                 box [p_exp env e],
+                 newline,
+                 string "end"]
+        end
+
 and p_exp env = p_exp' false env
 
-fun p_named x n =
-    if !debug then
-        box [string x,
-             string "__",
-             string (Int.toString n)]
-    else
-        string x
+and p_edecl env (dAll as (d, _)) =
+    case d of
+        EDVal vi => box [string "val",
+                         space,
+                         p_evali env vi]
+      | EDValRec vis =>
+        let
+            val env = E.edeclBinds env dAll
+        in
+            box [string "val",
+                 space,
+                 string "rec",
+                 space,
+                 p_list_sep (box [newline, string "and", space]) (p_evali env) vis]
+        end
+
+and p_evali env (x, t, e) = box [string x,
+                                 space,
+                                 string ":",
+                                 space,
+                                 p_con env t,
+                                 space,
+                                 string "=",
+                                 space,
+                                 p_exp env e]
 
 fun p_datatype env (x, n, xs, cons) =
     let
@@ -406,6 +443,14 @@ fun p_datatype env (x, n, xs, cons) =
                           | (x, _, SOME t) => box [string x, space, string "of", space, p_con env t])
                         cons]
     end
+
+fun p_named x n =
+    if !debug then
+        box [string x,
+             string "__",
+             string (Int.toString n)]
+    else
+        string x
 
 fun p_sgn_item env (sgi, _) =
     case sgi of
@@ -555,6 +600,8 @@ fun p_vali env (x, n, t, e) = box [p_named x n,
                                    string "=",
                                    space,
                                    p_exp env e]
+
+
 
 fun p_decl env (dAll as (d, _) : decl) =
     case d of

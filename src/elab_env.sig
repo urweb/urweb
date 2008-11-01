@@ -85,6 +85,7 @@ signature ELAB_ENV = sig
 
     val lookupStr : env -> string -> (int * Elab.sgn) option
 
+    val edeclBinds : env -> Elab.edecl -> env
     val declBinds : env -> Elab.decl -> env
     val sgiBinds : env -> Elab.sgn_item -> env
 
