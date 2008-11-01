@@ -30,6 +30,10 @@ signature ELAB_ENV = sig
     exception SynUnif
     val liftConInCon : int -> Elab.con -> Elab.con
 
+    val liftExpInExp : int -> Elab.exp -> Elab.exp
+
+    val subExpInExp : (int * Elab.exp) -> Elab.exp -> Elab.exp
+
     type env
 
     val empty : env

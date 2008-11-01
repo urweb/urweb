@@ -1,0 +1,41 @@
+fun add x =
+    let
+        fun add' y = x + y
+    in
+        add' 1 + add' 2
+    end
+
+fun f (x : int) =
+    let
+        fun page () = return <xml><body>
+          <a link={page ()}>{[x]}</a>
+        </body></xml>
+    in
+        page
+    end
+
+fun f (x : int) =
+    let
+        fun page1 () = return <xml><body>
+          <a link={page2 ()}>{[x]}</a>
+        </body></xml>
+
+        and page2 () =
+            case Some True of
+                Some r => return <xml><body><a link={page1 ()}>{[r]}</a></body></xml>
+              | _ => return <xml>Error</xml>
+    in
+        page1
+    end
+
+datatype list t = Nil | Cons of t * list t
+
+fun length (t ::: Type) (ls : list t) =
+    let
+        fun length' ls acc =
+            case ls of
+                Nil => acc
+              | Cons (_, ls') => length' ls' (acc + 1)
+    in
+        length' ls 0
+    end

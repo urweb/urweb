@@ -61,6 +61,20 @@ val liftConInCon =
 
 val lift = liftConInCon 0
 
+val liftConInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn bound => fn c =>
+                                     case c of
+                                         CRel xn =>
+                                         if xn < bound then
+                                             c
+                                         else
+                                             CRel (xn + 1)
+                                       | _ => c,
+                exp = fn _ => fn e => e,
+                bind = fn (bound, U.Exp.RelC _) => bound + 1
+                        | (bound, _) => bound}
+
 val liftExpInExp =
     U.Exp.mapB {kind = fn k => k,
                 con = fn _ => fn c => c,
@@ -77,6 +91,21 @@ val liftExpInExp =
 
 
 val liftExp = liftExpInExp 0
+
+val subExpInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn _ => fn c => c,
+                exp = fn (xn, rep) => fn e =>
+                                  case e of
+                                      ERel xn' =>
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER=> ERel (xn' - 1)
+                                         | LESS => e)
+                                    | _ => e,
+                bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
+                        | ((xn, rep), U.Exp.RelC _) => (xn, liftConInExp 0 rep)
+                        | (ctx, _) => ctx}
 
 (* Back to environments *)
 

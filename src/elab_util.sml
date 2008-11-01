@@ -226,6 +226,13 @@ fun exists {kind, con} k =
         S.Return _ => true
       | S.Continue _ => false
 
+fun foldB {kind, con, bind} ctx st c =
+    case mapfoldB {kind = fn k => fn st => S.Continue (k, kind (k, st)),
+                   con = fn ctx => fn c => fn st => S.Continue (c, con (ctx, c, st)),
+                   bind = bind} ctx c st of
+        S.Continue (_, st) => st
+      | S.Return _ => raise Fail "ElabUtil.Con.foldB: Impossible"
+
 end
 
 structure Exp = struct
@@ -340,8 +347,20 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                 S.bind2 (mfe ctx e,
                          fn e' =>
                             S.bind2 (ListUtil.mapfold (fn (p, e) =>
-                                                         S.map2 (mfe ctx e,
-                                                              fn e' => (p, e'))) pes,
+                                                          let
+                                                              fun pb ((p, _), ctx) =
+                                                                  case p of
+                                                                      PWild => ctx
+                                                                    | PVar (x, t) => bind (ctx, RelE (x, t))
+                                                                    | PPrim _ => ctx
+                                                                    | PCon (_, _, _, NONE) => ctx
+                                                                    | PCon (_, _, _, SOME p) => pb (p, ctx)
+                                                                    | PRecord xps => foldl (fn ((_, p, _), ctx) =>
+                                                                                               pb (p, ctx)) ctx xps
+                                                          in
+                                                              S.map2 (mfe (pb (p, ctx)) e,
+                                                                   fn e' => (p, e'))
+                                                          end) pes,
                                     fn pes' =>
                                        S.bind2 (mfc ctx disc,
                                              fn disc' =>
@@ -430,6 +449,14 @@ fun mapB {kind, con, exp, bind} ctx e =
                    bind = bind} ctx e () of
         S.Continue (e, ()) => e
       | S.Return _ => raise Fail "ElabUtil.Exp.mapB: Impossible"
+
+fun foldB {kind, con, exp, bind} ctx st e =
+    case mapfoldB {kind = fn k => fn st => S.Continue (k, kind (k, st)),
+                   con = fn ctx => fn c => fn st => S.Continue (c, con (ctx, c, st)),
+                   exp = fn ctx => fn e => fn st => S.Continue (e, exp (ctx, e, st)),
+                   bind = bind} ctx e st of
+        S.Continue (_, st) => st
+      | S.Return _ => raise Fail "ElabUtil.Exp.foldB: Impossible"
 
 end
 
@@ -888,6 +915,82 @@ fun search {kind, con, exp, sgn_item, sgn, str, decl} k =
         S.Return x => SOME x
       | S.Continue _ => NONE
 
+fun foldMapB {kind, con, exp, sgn_item, sgn, str, decl, bind} ctx st d =
+    case mapfoldB {kind = fn x => fn st => S.Continue (kind (x, st)),
+                   con = fn ctx => fn x => fn st => S.Continue (con (ctx, x, st)),
+                   exp = fn ctx => fn x => fn st => S.Continue (exp (ctx, x, st)),
+                   sgn_item = fn ctx => fn x => fn st => S.Continue (sgn_item (ctx, x, st)),
+                   sgn = fn ctx => fn x => fn st => S.Continue (sgn (ctx, x, st)),
+                   str = fn ctx => fn x => fn st => S.Continue (str (ctx, x, st)),
+                   decl = fn ctx => fn x => fn st => S.Continue (decl (ctx, x, st)),
+                   bind = bind} ctx d st of
+        S.Continue x => x
+      | S.Return _ => raise Fail "ElabUtil.Decl.foldMapB: Impossible"
+
+end
+
+structure File = struct
+
+fun maxName ds = foldl (fn (d, count) => Int.max (maxNameDecl d, count)) 0 ds
+
+and maxNameDecl (d, _) =
+    case d of
+        DCon (_, n, _, _) => n
+      | DDatatype (_, n, _, ns) =>
+                  foldl (fn ((_, n', _), m) => Int.max (n', m))
+                        n ns
+      | DDatatypeImp (_, n1, n2, _, _, _, ns) =>
+        foldl (fn ((_, n', _), m) => Int.max (n', m))
+              (Int.max (n1, n2)) ns
+      | DVal (_, n, _, _) => n
+      | DValRec vis => foldl (fn ((_, n, _, _), count) => Int.max (n, count)) 0 vis
+      | DStr (_, n, sgn, str) => Int.max (n, Int.max (maxNameSgn sgn, maxNameStr str))
+      | DSgn (_, n, sgn) => Int.max (n, maxNameSgn sgn)
+      | DFfiStr (_, n, sgn) => Int.max (n, maxNameSgn sgn)
+      | DConstraint _ => 0
+      | DClass (_, n, _) => n
+      | DExport _ => 0
+      | DTable (n, _, _, _) => n
+      | DSequence (n, _, _) => n
+      | DDatabase _ => 0
+
+and maxNameStr (str, _) =
+    case str of
+        StrConst ds => maxName ds
+      | StrVar n => n
+      | StrProj (str, _) => maxNameStr str
+      | StrFun (_, n, dom, ran, str) => foldl Int.max n [maxNameSgn dom, maxNameSgn ran, maxNameStr str]
+      | StrApp (str1, str2) => Int.max (maxNameStr str1, maxNameStr str2)
+      | StrError => 0
+
+and maxNameSgn (sgn, _) =
+    case sgn of
+        SgnConst sgis => foldl (fn (sgi, count) => Int.max (maxNameSgi sgi, count)) 0 sgis
+      | SgnVar n => n
+      | SgnFun (_, n, dom, ran) => Int.max (n, Int.max (maxNameSgn dom, maxNameSgn ran))
+      | SgnWhere (sgn, _, _) => maxNameSgn sgn
+      | SgnProj (n, _, _) => n
+      | SgnError => 0
+
+and maxNameSgi (sgi, _) =
+    case sgi of
+        SgiConAbs (_, n, _) => n
+      | SgiCon (_, n, _, _) => n
+      | SgiDatatype (_, n, _, ns) =>
+        foldl (fn ((_, n', _), m) => Int.max (n', m))
+              n ns
+      | SgiDatatypeImp (_, n1, n2, _, _, _, ns) =>
+        foldl (fn ((_, n', _), m) => Int.max (n', m))
+              (Int.max (n1, n2)) ns
+      | SgiVal (_, n, _) => n
+      | SgiStr (_, n, sgn) => Int.max (n, maxNameSgn sgn)
+      | SgiSgn (_, n, sgn) => Int.max (n, maxNameSgn sgn)
+      | SgiConstraint _ => 0
+      | SgiTable (n, _, _, _) => n
+      | SgiSequence (n, _, _) => n
+      | SgiClassAbs (_, n) => n
+      | SgiClass (_, n, _) => n
+              
 end
 
 end

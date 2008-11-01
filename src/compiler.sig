@@ -58,6 +58,7 @@ signature COMPILER = sig
 
     val parse : (job, Source.file) phase
     val elaborate : (Source.file, Elab.file) phase
+    val unnest : (Elab.file, Elab.file) phase
     val termination : (Elab.file, Elab.file) phase
     val explify : (Elab.file, Expl.file) phase
     val corify : (Expl.file, Core.file) phase
@@ -80,6 +81,7 @@ signature COMPILER = sig
     val toParseJob : (string, job) transform
     val toParse : (string, Source.file) transform
     val toElaborate : (string, Elab.file) transform
+    val toUnnest : (string, Elab.file) transform
     val toTermination : (string, Elab.file) transform
     val toExplify : (string, Expl.file) transform
     val toCorify : (string, Core.file) transform

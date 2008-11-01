@@ -50,6 +50,9 @@ elab_err.sml
 elaborate.sig
 elaborate.sml
 
+unnest.sig
+unnest.sml
+
 termination.sig
 termination.sml
 

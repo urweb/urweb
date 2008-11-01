@@ -198,7 +198,7 @@ fun p_patCon env pc =
               string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
           else
               string (#1 (E.lookupENamed env n)))
-         handle E.UnboundRel _ => string ("UNBOUND_NAMED" ^ Int.toString n))
+         handle E.UnboundNamed _ => string ("UNBOUND_NAMED" ^ Int.toString n))
       | PConProj (m1, ms, x) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)
@@ -247,7 +247,7 @@ fun p_exp' par env (e, _) =
               string (#1 (E.lookupENamed env n) ^ "__" ^ Int.toString n)
           else
               string (#1 (E.lookupENamed env n)))
-         handle E.UnboundRel _ => string ("UNBOUND_NAMED" ^ Int.toString n))
+         handle E.UnboundNamed _ => string ("UNBOUND_NAMED" ^ Int.toString n))
       | EModProj (m1, ms, x) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)

@@ -292,6 +292,8 @@ fun declOk' env (d, loc) =
                       | EError => (Rabble, calls)
                       | EUnif (ref (SOME e)) => exp parent (penv, calls) e
                       | EUnif (ref NONE) => (Rabble, calls)
+
+                      | ELet (_, e) => exp parent (penv, calls) e
                 end
 
             fun doVali (i, (_, f, _, e), calls) =

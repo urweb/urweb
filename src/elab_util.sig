@@ -57,6 +57,11 @@ structure Con : sig
               -> Elab.con -> Elab.con
     val exists : {kind : Elab.kind' -> bool,
                   con : Elab.con' -> bool} -> Elab.con -> bool
+
+    val foldB : {kind : Elab.kind' * 'state -> 'state,
+                 con : 'context * Elab.con' * 'state -> 'state,
+                 bind : 'context * binder -> 'context}
+                -> 'context -> 'state -> Elab.con -> 'state
 end
 
 structure Exp : sig
@@ -83,6 +88,12 @@ structure Exp : sig
     val exists : {kind : Elab.kind' -> bool,
                   con : Elab.con' -> bool,
                   exp : Elab.exp' -> bool} -> Elab.exp -> bool
+
+    val foldB : {kind : Elab.kind' * 'state -> 'state,
+                 con : 'context * Elab.con' * 'state -> 'state,
+                 exp : 'context * Elab.exp' * 'state -> 'state,
+                 bind : 'context * binder -> 'context}
+                -> 'context -> 'state -> Elab.exp -> 'state
 end
 
 structure Sgn : sig
@@ -156,6 +167,20 @@ structure Decl : sig
                   str : Elab.str' -> 'a option,
                   decl : Elab.decl' -> 'a option}
                  -> Elab.decl -> 'a option
+
+    val foldMapB : {kind : Elab.kind' * 'state -> Elab.kind' * 'state,
+                    con : 'context * Elab.con' * 'state -> Elab.con' * 'state,
+                    exp : 'context * Elab.exp' * 'state -> Elab.exp' * 'state,
+                    sgn_item : 'context * Elab.sgn_item' * 'state -> Elab.sgn_item' * 'state,
+                    sgn : 'context * Elab.sgn' * 'state -> Elab.sgn' * 'state,
+                    str : 'context * Elab.str' * 'state -> Elab.str' * 'state,
+                    decl : 'context * Elab.decl' * 'state -> Elab.decl' * 'state,
+                    bind : 'context * binder -> 'context}
+                   -> 'context -> 'state -> Elab.decl -> Elab.decl * 'state
+end
+
+structure File : sig
+    val maxName : Elab.file -> int
 end
 
 end
