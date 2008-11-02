@@ -55,14 +55,19 @@ fun shake file =
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
                                    | ((DDatatype (_, n, _, xncs), _), (cdef, edef)) =>
                                      (IM.insert (cdef, n, List.mapPartial #3 xncs), edef)
-                                   | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, (t, e)))
+                                   | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, ([], t, e)))
                                    | ((DValRec vis, _), (cdef, edef)) =>
-                                     (cdef, foldl (fn ((_, n, t, e, _), edef) => IM.insert (edef, n, (t, e))) edef vis)
+                                     let
+                                         val all_ns = map (fn (_, n, _, _, _) => n) vis
+                                     in
+                                         (cdef, foldl (fn ((_, n, t, e, _), edef) =>
+                                                          IM.insert (edef, n, (all_ns, t, e))) edef vis)
+                                     end
                                    | ((DExport _, _), acc) => acc
                                    | ((DTable (_, n, c, _), _), (cdef, edef)) =>
-                                     (cdef, IM.insert (edef, n, (c, dummye)))
+                                     (cdef, IM.insert (edef, n, ([], c, dummye)))
                                    | ((DSequence (_, n, _), _), (cdef, edef)) =>
-                                     (cdef, IM.insert (edef, n, (dummyt, dummye)))
+                                     (cdef, IM.insert (edef, n, ([], dummyt, dummye)))
                                    | ((DDatabase _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
@@ -96,9 +101,15 @@ fun shake file =
                         val s' = {exp = IS.add (#exp s, n),
                                   con = #con s}
                     in
+                        (*print ("Need " ^ Int.toString n ^ "\n");*)
                         case IM.find (edef, n) of
                             NONE => s'
-                          | SOME (t, e) => shakeExp (shakeCon s' t) e
+                          | SOME (ns, t, e) =>
+                            let
+                                val s' = shakeExp (shakeCon s' t) e
+                            in
+                                foldl (fn (n, s') => exp (ENamed n, s')) s' ns
+                            end
                     end
               | _ => s
 
@@ -109,7 +120,12 @@ fun shake file =
         val s = foldl (fn (n, s) =>
                           case IM.find (edef, n) of
                               NONE => raise Fail "Shake: Couldn't find 'val'"
-                            | SOME (t, e) => shakeExp (shakeCon s t) e) s page_es
+                            | SOME (ns, t, e) =>
+                              let
+                                  val s = shakeExp (shakeCon s t) e
+                              in
+                                  foldl (fn (n, s) => exp (ENamed n, s)) s ns
+                              end) s page_es
 
         val s = foldl (fn (c, s) => shakeCon s c) s table_cs
     in

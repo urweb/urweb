@@ -30,5 +30,7 @@
 signature MONO_REDUCE = sig
 
     val reduce : Mono.file -> Mono.file
-    
+
+    val subExpInExp : int * Mono.exp -> Mono.exp -> Mono.exp
+
 end

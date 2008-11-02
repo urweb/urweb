@@ -39,6 +39,7 @@ structure Sm :> sig
     val find : t * (string * L.typ) list * (string * L'.typ) list -> t * int
 
     val declares : t -> (int * (string * L'.typ) list) list
+    val clearDeclares : t -> t
 end = struct
 
 structure FM = BinaryMapFn(struct
@@ -60,6 +61,8 @@ fun find ((n, m, ds), xts, xts') =
     end
 
 fun declares (_, _, ds) = ds
+
+fun clearDeclares (n, m, _) = (n, m, [])
 
 end
 
@@ -520,23 +523,25 @@ fun cjrize ds =
         val (dsF, ds, ps, sm) = foldl (fn (d, (dsF, ds, ps, sm)) =>
                                           let
                                               val (dop, pop, sm) = cifyDecl (d, sm)
+
                                               val (dsF, ds) = case dop of
                                                                   NONE => (dsF, ds)
-                                                                | SOME (d as (L'.DDatatype (dk, x, n, _), loc)) =>
-                                                                  ((L'.DDatatypeForward (dk, x, n), loc) :: dsF,
-                                                                   d :: ds)
+                                                                | SOME (d as (L'.DDatatype _, loc)) =>
+                                                                  (d :: dsF, ds)
                                                                 | SOME d => (dsF, d :: ds)
+
+                                              val dsF = map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm)
+                                                        @ dsF
+
                                               val ps = case pop of
                                                            NONE => ps
                                                          | SOME p => p :: ps
                                           in
-                                              (dsF, ds, ps, sm)
+                                              (dsF, ds, ps, Sm.clearDeclares sm)
                                           end)
                                       ([], [], [], Sm.empty) ds
     in
-        (List.revAppend (dsF,
-                         List.revAppend (map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm),
-                                         rev ds)),
+        (List.revAppend (dsF, rev ds),
          ps)
     end
 

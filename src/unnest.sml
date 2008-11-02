@@ -124,7 +124,7 @@ fun squishExp (nr, cfv, efv) =
                                         case e of
                                             ERel n =>
                                             if n >= eb then
-                                                 ERel (positionOf (n - eb) efv + eb)
+                                                ERel (positionOf (n - eb) efv + eb)
                                             else
                                                 e
                                           | _ => e,
@@ -142,17 +142,21 @@ type state = {
 
 fun kind (k, st) = (k, st)
 
-fun exp ((ks, ts), e, st : state) =
+fun exp ((ks, ts), e as old, st : state) =
     case e of
         ELet (eds, e) =>
         let
+            (*val () = Print.prefaces "let" [("e", ElabPrint.p_exp E.empty (old, ErrorMsg.dummySpan))]*)
+
             val doSubst = foldl (fn (p, e) => E.subExpInExp p e)
 
-            val (eds, (maxName, ds, subs)) =
+            val (eds, (ts, maxName, ds, subs)) =
                 ListUtil.foldlMapConcat
-                (fn (ed, (maxName, ds, subs)) =>
+                (fn (ed, (ts, maxName, ds, subs)) =>
                     case #1 ed of
-                        EDVal _ => ([ed], (maxName, ds, map (fn (n, e) => (n + 1, E.liftExpInExp 0 e)) subs))
+                        EDVal (x, t, _) => ([ed],
+                                            ((x, t) :: ts,
+                                             maxName, ds, map (fn (n, e) => (n + 1, E.liftExpInExp 0 e)) subs))
                       | EDValRec vis =>
                         let
                             val loc = #2 ed
@@ -174,7 +178,10 @@ fun exp ((ks, ts), e, st : state) =
                                                        end)
                                                    (IS.empty, IS.empty) vis
 
-                            (*val () = print ("A: " ^ Int.toString (length ts) ^ ", " ^ Int.toString (length ks) ^ "\n")*)
+                            (*val () = print ("A: " ^ Int.toString (length ts) ^ ", " ^ Int.toString (length ks) ^ "\n")
+                            val () = app (fn (x, t) =>
+                                             Print.prefaces "Var" [("x", Print.PD.string x),
+                                                                   ("t", ElabPrint.p_con E.empty t)]) ts*)
                             val cfv = IS.foldl (fn (x, cfv) =>
                                                    let
                                                        (*val () = print (Int.toString x ^ "\n")*)
@@ -193,11 +200,11 @@ fun exp ((ks, ts), e, st : state) =
 
                             fun apply e =
                                 let
-                                    val e = IS.foldl (fn (x, e) =>
+                                    val e = IS.foldr (fn (x, e) =>
                                                          (ECApp (e, (CRel x, loc)), loc))
                                             e cfv
                                 in
-                                    IS.foldl (fn (x, e) =>
+                                    IS.foldr (fn (x, e) =>
                                                  (EApp (e, (ERel x, loc)), loc))
                                              e efv
                                 end
@@ -237,9 +244,9 @@ fun exp ((ks, ts), e, st : state) =
                                                   val t = squishCon cfv t
                                                   (*val () = Print.prefaces "squishExp"
                                                                           [("e", ElabPrint.p_exp E.empty e)]*)
-                                                  val e = squishExp (nr, cfv, efv) e
+                                                  val e = squishExp (0(*nr*), cfv, efv) e
 
-                                                  val (e, t) = foldr (fn (ex, (e, t)) =>
+                                                  val (e, t) = foldl (fn (ex, (e, t)) =>
                                                                          let
                                                                              val (name, t') = List.nth (ts, ex)
                                                                          in
@@ -252,7 +259,7 @@ fun exp ((ks, ts), e, st : state) =
                                                                          end)
                                                                      (e, t) efv
 
-                                                  val (e, t) = foldr (fn (cx, (e, t)) =>
+                                                  val (e, t) = foldl (fn (cx, (e, t)) =>
                                                                          let
                                                                              val (name, k) = List.nth (ks, cx)
                                                                          in
@@ -272,10 +279,12 @@ fun exp ((ks, ts), e, st : state) =
                                           vis
 
                             val d = (DValRec vis, #2 ed)
+
+                            val ts = map (fn (x, _, t, _) => (x, t)) vis @ ts
                         in
-                            ([], (maxName, d :: ds, subs))
+                            ([], (ts, maxName, d :: ds, subs))
                         end)
-                (#maxName st, #decls st, []) eds
+                (ts, #maxName st, #decls st, []) eds
         in
             (ELet (eds, doSubst e subs),
              {maxName = maxName,

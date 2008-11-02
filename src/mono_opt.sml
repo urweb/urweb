@@ -89,7 +89,7 @@ fun sqlifyFloat n = attrifyFloat n ^ "::float8"
 fun sqlifyString s = "E'" ^ String.translate (fn #"'" => "\\'"
                                                | ch => str ch)
                                              (String.toString s) ^ "'::text"
-        
+
 fun exp e =
     case e of
         EPrim (Prim.String s) =>
@@ -286,6 +286,19 @@ fun exp e =
                        map (fn (p, e) => (p, (EWrite e, loc))) pes,
                        {disc = disc,
                         result = (TRecord [], loc)}), loc)
+
+      | EApp ((ECase (discE, pes, {disc, ...}), loc), arg as (ERecord [], _)) =>
+        let
+            fun doBody e =
+                case #1 e of
+                    EAbs (_, _, _, body) => MonoReduce.subExpInExp (0, arg) body
+                  | _ => (EApp (e, arg), loc)
+        in
+            optExp (ECase (discE,
+                           map (fn (p, e) => (p, doBody e)) pes,
+                           {disc = disc,
+                            result = (TRecord [], loc)}), loc)
+        end
 
       | EWrite (EQuery {exps, tables, state, query,
                         initial = (EPrim (Prim.String ""), _),

@@ -293,7 +293,15 @@ fun declOk' env (d, loc) =
                       | EUnif (ref (SOME e)) => exp parent (penv, calls) e
                       | EUnif (ref NONE) => (Rabble, calls)
 
-                      | ELet (_, e) => exp parent (penv, calls) e
+                      | ELet (eds, e) =>
+                        let
+                            fun extPenv ((ed, _), penv) =
+                                case ed of
+                                    EDVal _ => Rabble :: penv
+                                  | EDValRec vis => foldl (fn (_, penv) => Rabble :: penv) penv vis
+                        in
+                            exp parent (foldl extPenv penv eds, calls) e
+                        end
                 end
 
             fun doVali (i, (_, f, _, e), calls) =

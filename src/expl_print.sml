@@ -370,6 +370,7 @@ fun p_exp' par env (e, loc) =
                                     string x,
                                     space,
                                     string ":",
+                                    space,
                                     p_con env t,
                                     space,
                                     string "=",

@@ -375,14 +375,19 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
               | ELet (des, e) =>
                 let
                     val (des, ctx) = foldl (fn (ed, (des, ctx)) =>
-                                                (S.bind2 (des,
-                                                       fn des' =>
-                                                          S.map2 (mfed ctx ed,
+                                               let
+                                                   val ctx' =
+                                                       case #1 ed of
+                                                           EDVal (x, t, _) => bind (ctx, RelE (x, t))
+                                                         | EDValRec vis =>
+                                                           foldl (fn ((x, t, _), ctx) => bind (ctx, RelE (x, t))) ctx vis
+                                               in
+                                                   (S.bind2 (des,
+                                                          fn des' =>
+                                                             S.map2 (mfed ctx ed,
                                                                fn ed' => des' @ [ed'])),
-                                                 case #1 ed of
-                                                     EDVal (x, t, _) => bind (ctx, RelE (x, t))
-                                                   | EDValRec vis =>
-                                                     foldl (fn ((x, t, _), env) => bind (ctx, RelE (x, t))) ctx vis))
+                                                    ctx')
+                                               end)
                                             (S.return2 [], ctx) des
                 in
                     S.bind2 (des,
@@ -400,7 +405,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                         (EDVal vi', loc))
               | EDValRec vis =>
                 let
-                    val ctx = foldl (fn ((x, t, _), env) => bind (ctx, RelE (x, t))) ctx vis
+                    val ctx = foldl (fn ((x, t, _), ctx) => bind (ctx, RelE (x, t))) ctx vis
                 in
                     S.map2 (ListUtil.mapfold (mfvi ctx) vis,
                          fn vis' =>

@@ -331,7 +331,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                          fn t' =>
                             S.bind2 (mfe ctx e1,
                                   fn e1' =>
-                                     S.map2 (mfe ctx e2,
+                                     S.map2 (mfe (bind (ctx, RelE (x, t))) e2,
                                           fn e2' =>
                                              (ELet (x, t', e1', e2'), loc))))
     in

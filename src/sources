@@ -116,14 +116,14 @@ mono_print.sml
 monoize.sig
 monoize.sml
 
+mono_reduce.sig
+mono_reduce.sml
+
 mono_opt.sig
 mono_opt.sml
 
 untangle.sig
 untangle.sml
-
-mono_reduce.sig
-mono_reduce.sml
 
 mono_shake.sig
 mono_shake.sml

@@ -45,7 +45,26 @@ fun f (x : int) =
         page3
     end
 
-datatype list t = Nil | Cons of t * list t
+fun add2 (x : int) (y : int) =
+    let
+        fun add3 () = x + y
+    in
+        add3
+    end
+
+fun add3 (x : int) =
+    let
+        fun add2 (y : int) =
+            let
+                fun add1 (z : int) = x + y + z
+            in
+                add1
+            end
+    in
+        add2
+    end
+
+(*datatype list t = Nil | Cons of t * list t
 
 fun length (t ::: Type) (ls : list t) =
     let
@@ -57,3 +76,4 @@ fun length (t ::: Type) (ls : list t) =
         length' ls 0
     end
 
+*)
