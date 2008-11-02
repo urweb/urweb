@@ -418,12 +418,19 @@ val especialize = {
 
 val toEspecialize = transform especialize "especialize" o toCorify
 
+val core_untangle = {
+    func = CoreUntangle.untangle,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toCore_untangle = transform core_untangle "core_untangle" o toEspecialize
+
 val shake = {
     func = Shake.shake,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toShake1 = transform shake "shake1" o toEspecialize
+val toShake1 = transform shake "shake1" o toCore_untangle
 
 val tag = {
     func = Tag.tag,

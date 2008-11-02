@@ -99,6 +99,9 @@ specialize.sml
 especialize.sig
 especialize.sml
 
+core_untangle.sig
+core_untangle.sml
+
 tag.sig
 tag.sml
 
