@@ -54,6 +54,10 @@ form.urp
 
 <p>Here we see a basic form.  The type system tracks which form inputs we include, and it enforces that the form handler function expects a record containing exactly those fields, with exactly the proper types.</p>
 
+nested.urp
+
+<p>Here is an implementation of the tiny challenge problem from <a href="http://www.accursoft.co.uk/web/">this web framework comparison</a>.  Using nested function definitions, it is easy to persist state across clicks.</p>
+
 listShop.urp
 
 <p>This example shows off algebraic datatypes, parametric polymorphism, and functors.</p>

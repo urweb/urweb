@@ -100,9 +100,9 @@ functor Make(M : sig
                                                        sql_exp [] [] [] t.1) cols)]
                               (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                [[nm] ~ rest] =>
-                               fn input col acc => acc with nm = @sql_inject col.Inject (col.Parse input))
+                               fn input col acc => acc ++ {nm = @sql_inject col.Inject (col.Parse input)})
                               {} [M.cols] inputs M.cols
-                     with #Id = (SQL {id})));
+                     ++ {Id = (SQL {id})}));
         ls <- list ();
         return <xml><body>
           <p>Inserted with ID {[id]}.</p>
@@ -119,8 +119,8 @@ functor Make(M : sig
                                                                [] [] t.1) cols)]
                               (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                [[nm] ~ rest] =>
-                               fn input col acc => acc with nm =
-                                                            @sql_inject col.Inject (col.Parse input))
+                               fn input col acc => acc ++ {nm =
+                                                           @sql_inject col.Inject (col.Parse input)})
                               {} [M.cols] inputs M.cols)
                     tab (WHERE T.Id = {id}));
         ls <- list ();

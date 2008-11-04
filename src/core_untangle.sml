@@ -45,6 +45,15 @@ fun exp (e, s) =
 
 fun untangle file =
     let
+        val edefs = foldl (fn ((d, _), edefs) =>
+                              case d of
+                                  DVal (_, n, _, e, _) => IM.insert (edefs, n, e)
+                                | DValRec vis =>
+                                  foldl (fn ((_, n, _, e, _), edefs) =>
+                                            IM.insert (edefs, n, e)) edefs vis
+                                | _ => edefs)
+                    IM.empty file
+
         fun decl (dAll as (d, loc)) =
             case d of
                 DValRec vis =>
@@ -52,15 +61,34 @@ fun untangle file =
                     val thisGroup = foldl (fn ((_, n, _, _, _), thisGroup) =>
                                               IS.add (thisGroup, n)) IS.empty vis
 
+                    val expUsed = U.Exp.fold {con = default,
+                                              kind = default,
+                                              exp = exp} IS.empty
+
                     val used = foldl (fn ((_, n, _, e, _), used) =>
                                        let
-                                           val usedHere = U.Exp.fold {con = default,
-                                                                      kind = default,
-                                                                      exp = exp} IS.empty e
+                                           val usedHere = expUsed e
                                        in
-                                           IM.insert (used, n, IS.intersection (usedHere, thisGroup))
+                                           IM.insert (used, n, usedHere)
                                        end)
                                IM.empty vis
+
+                    fun expand used =
+                        IS.foldl (fn (n, used) =>
+                                     case IM.find (edefs, n) of
+                                         NONE => used
+                                       | SOME e =>
+                                         let
+                                             val usedHere = expUsed e
+                                         in
+                                             if IS.isEmpty (IS.difference (usedHere, used)) then
+                                                 used
+                                             else
+                                                 expand (IS.union (usedHere, used))
+                                         end)
+                        used used
+
+                    val used = IM.map (fn s => IS.intersection (expand s, thisGroup)) used
 
                     fun p_graph reachable =
                         IM.appi (fn (n, reachableHere) =>

@@ -137,7 +137,7 @@ fun squishExp (nr, cfv, efv) =
 
 type state = {
      maxName : int,
-     decls : decl list
+     decls : (string * int * con * exp) list
 }
 
 fun kind (k, st) = (k, st)
@@ -278,11 +278,9 @@ fun exp ((ks, ts), e as old, st : state) =
                                               end)
                                           vis
 
-                            val d = (DValRec vis, #2 ed)
-
                             val ts = map (fn (x, _, t, _) => (x, t)) vis @ ts
                         in
-                            ([], (ts, maxName, d :: ds, subs))
+                            ([], (ts, maxName, vis @ ds, subs))
                         end)
                 (ts, #maxName st, #decls st, []) eds
         in
@@ -319,8 +317,13 @@ fun unnest file =
                 fun explore () =
                     let
                         val (d, st) = unnestDecl st all
+
+                        val ds =
+                            case #1 d of
+                                DValRec vis => [(DValRec (vis @ #decls st), #2 d)]
+                              | _ => [(DValRec (#decls st), #2 d), d]
                     in
-                        (rev (d :: #decls st),
+                        (ds,
                          {maxName = #maxName st,
                           decls = []})
                     end
