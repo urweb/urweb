@@ -1152,11 +1152,13 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   }
 }
 
-uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string c, uw_Basis_string v) {
+uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v) {
   uw_write_header(ctx, "Set-Cookie: ");
   uw_write_header(ctx, c);
   uw_write_header(ctx, "=");
   uw_write_header(ctx, v);
+  uw_write_header(ctx, "; path=");
+  uw_write_header(ctx, prefix);
   uw_write_header(ctx, "\r\n");
 
   return uw_unit_v;

@@ -6,7 +6,7 @@ int uw_really_send(int sock, void *buf, ssize_t len);
 
 extern uw_unit uw_unit_v;
 
-uw_context uw_init(size_t page_len, size_t heap_len);
+uw_context uw_init(size_t outHeaders_len, size_t page_len, size_t heap_len);
 void uw_set_db(uw_context, void*);
 void *uw_get_db(uw_context);
 void uw_free(uw_context);
@@ -101,5 +101,5 @@ uw_Basis_string uw_Basis_requestHeader(uw_context, uw_Basis_string);
 
 void uw_write_header(uw_context, uw_Basis_string);
 
-uw_Basis_string uw_Basis_get_cookie(uw_context, uw_Basis_string);
-uw_unit uw_Basis_set_cookie(uw_context, uw_Basis_string, uw_Basis_string);
+uw_Basis_string uw_Basis_get_cookie(uw_context, uw_Basis_string c);
+uw_unit uw_Basis_set_cookie(uw_context, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v);
