@@ -15,7 +15,7 @@ void uw_reset_keep_request(uw_context);
 void uw_reset_keep_error_message(uw_context);
 
 failure_kind uw_begin_init(uw_context);
-failure_kind uw_begin(uw_context, char *path);
+failure_kind uw_begin(uw_context, char *headers, char *path);
 
 __attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *fmt, ...);
 char *uw_error_message(uw_context);
@@ -95,3 +95,5 @@ uw_Basis_int uw_Basis_stringToInt_error(uw_context, uw_Basis_string);
 uw_Basis_float uw_Basis_stringToFloat_error(uw_context, uw_Basis_string);
 uw_Basis_bool uw_Basis_stringToBool_error(uw_context, uw_Basis_string);
 uw_Basis_time uw_Basis_stringToTime_error(uw_context, uw_Basis_string);
+
+uw_Basis_string uw_Basis_requestHeader(uw_context, uw_Basis_string);

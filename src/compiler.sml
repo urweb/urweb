@@ -552,7 +552,7 @@ fun compile job =
 
             val (cname, oname, cleanup) =
                 if #debug job then
-                    ("/tmp/urweb.c", "/tmp/urweb.o", fn () => ())
+                    ("/tmp/webapp.c", "/tmp/webapp.o", fn () => ())
                 else
                     let
                         val dir = OS.FileSys.tmpName ()
@@ -560,8 +560,8 @@ fun compile job =
                                      OS.FileSys.remove dir
                                  else
                                      ()
-                        val cname = OS.Path.joinDirFile {dir = dir, file = "urweb.c"}
-                        val oname = OS.Path.joinDirFile {dir = dir, file = "urweb.o"}
+                        val cname = OS.Path.joinDirFile {dir = dir, file = "webapp.c"}
+                        val oname = OS.Path.joinDirFile {dir = dir, file = "webapp.o"}
                     in
                         OS.FileSys.mkDir dir;
                         (cname, oname,

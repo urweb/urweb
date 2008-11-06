@@ -135,7 +135,7 @@ static void *worker(void *data) {
     
       if (s = strstr(buf, "\r\n\r\n")) {
         failure_kind fk;
-        char *cmd, *path, path_copy[uw_bufsize+1], *inputs;
+        char *cmd, *path, *headers, path_copy[uw_bufsize+1], *inputs;
 
         *s = 0;
 
@@ -145,6 +145,7 @@ static void *worker(void *data) {
         }
 
         *s = 0;
+        headers = s + 2;
         cmd = s = buf;
 
         printf("Read: %s\n", buf);
@@ -208,7 +209,7 @@ static void *worker(void *data) {
           uw_write(ctx, "<html>");
 
           strcpy(path_copy, path);
-          fk = uw_begin(ctx, path_copy);
+          fk = uw_begin(ctx, headers, path_copy);
           if (fk == SUCCESS) {
             uw_write(ctx, "</html>");
 

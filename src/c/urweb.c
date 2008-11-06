@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <ctype.h>
 #include <setjmp.h>
 #include <stdarg.h>
@@ -23,6 +24,8 @@ typedef struct {
 } cleanup;
 
 struct uw_context {
+  char *headers;
+
   char *page, *page_front, *page_back;
   char *heap, *heap_front, *heap_back;
   char **inputs;
@@ -42,6 +45,8 @@ extern int uw_inputs_len;
 
 uw_context uw_init(size_t page_len, size_t heap_len) {
   uw_context ctx = malloc(sizeof(struct uw_context));
+
+  ctx->headers = NULL;
 
   ctx->page_front = ctx->page = malloc(page_len);
   ctx->page_back = ctx->page_front + page_len;
@@ -111,8 +116,10 @@ failure_kind uw_begin_init(uw_context ctx) {
   return r;
 }
 
-failure_kind uw_begin(uw_context ctx, char *path) {
+failure_kind uw_begin(uw_context ctx, char *headers, char *path) {
   int r = setjmp(ctx->jmp_buf);
+
+  ctx->headers = headers;
 
   if (r == 0)
     uw_handle(ctx, path);
@@ -1050,4 +1057,29 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
     else
       uw_error(ctx, FATAL, "Can't parse time: %s", s);
   }
+}
+
+uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
+  int len = strlen(h);
+  char *s = ctx->headers, *p;
+
+  while (p = strchr(s, ':')) {
+    if (p - s == len && !strncasecmp(s, h, len)) {
+      s = p + 2;
+      if (p = strchr(s, '\r')) {
+        uw_Basis_string ret = uw_malloc(ctx, p - s + 1);
+        memcpy(ret, s, p - s);
+        ret[p - s] = 0;
+        return ret;
+      }
+      else
+        return NULL;
+    } else {
+      if (s = strchr(s, '\n'))
+        ++s;
+      else
+        return NULL;
+    }
+  }
+        
 }
