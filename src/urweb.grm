@@ -201,6 +201,7 @@ fun tagIn bt =
  | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
+ | COOKIE
  | CASE | IF | THEN | ELSE
 
  | XML_BEGIN of string | XML_END | XML_BEGIN_END of string
@@ -426,6 +427,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                          in
                                              [(DClass (SYMBOL1, c), s (CLASSleft, cexpright))]
                                          end)
+       | COOKIE SYMBOL COLON cexp       ([(DCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))])
 
 kopt   :                                (NONE)
        | DCOLON kind                    (SOME kind)
@@ -506,6 +508,7 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
                                          in
                                              (SgiClass (SYMBOL1, c), s (CLASSleft, cexpright))
                                          end)
+       | COOKIE SYMBOL COLON cexp       (SgiCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))
 
 sgis   :                                ([])
        | sgi sgis                       (sgi :: sgis)

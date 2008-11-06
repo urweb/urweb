@@ -348,6 +348,7 @@ fun unnest file =
                   | DSequence _ => default ()
                   | DClass _ => default ()
                   | DDatabase _ => default ()
+                  | DCookie _ => default ()
             end
 
         and doStr (all as (str, loc), st) =

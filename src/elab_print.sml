@@ -536,6 +536,13 @@ fun p_sgn_item env (sgi, _) =
                                    string "=",
                                    space,
                                    p_con env c]
+      | SgiCookie (_, x, n, c) => box [string "cookie",
+                                       space,
+                                       p_named x n,
+                                       space,
+                                       string ":",
+                                       space,
+                                       p_con env c]
 
 and p_sgn env (sgn, _) =
     case sgn of
@@ -707,6 +714,13 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DDatabase s => box [string "database",
                             space,
                             string s]
+      | DCookie (_, x, n, c) => box [string "cookie",
+                                     space,
+                                     p_named x n,
+                                     space,
+                                     string ":",
+                                     space,
+                                     p_con env c]
 
 and p_str env (str, _) =
     case str of

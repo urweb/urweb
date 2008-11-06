@@ -592,6 +592,7 @@ fun sgiSeek (sgi, (sgns, strs, cons)) =
       | SgiSequence _ => (sgns, strs, cons)
       | SgiClassAbs (x, n) => (sgns, strs, IM.insert (cons, n, x))
       | SgiClass (x, n, _) => (sgns, strs, IM.insert (cons, n, x))
+      | SgiCookie _ => (sgns, strs, cons)
 
 fun sgnSeek f sgis =
     let
@@ -945,6 +946,13 @@ fun sgiBinds env (sgi, loc) =
 
       | SgiClassAbs (x, n) => pushCNamedAs env x n (KArrow ((KType, loc), (KType, loc)), loc) NONE
       | SgiClass (x, n, c) => pushCNamedAs env x n (KArrow ((KType, loc), (KType, loc)), loc) (SOME c)
+
+      | SgiCookie (tn, x, n, c) =>
+        let
+            val t = (CApp ((CModProj (tn, [], "http_cookie"), loc), c), loc)
+        in
+            pushENamedAs env x n t
+        end
         
 
 fun sgnSubCon x =
@@ -1095,6 +1103,7 @@ fun sgnSeekConstraints (str, sgis) =
                   | SgiSequence _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiClassAbs (x, n) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiClass (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiCookie _ => seek (sgis, sgns, strs, cons, acc)
     in
         seek (sgis, IM.empty, IM.empty, IM.empty, [])
     end
@@ -1189,6 +1198,12 @@ fun declBinds env (d, loc) =
             pushClass env n
         end
       | DDatabase _ => env
+      | DCookie (tn, x, n, c) =>
+        let
+            val t = (CApp ((CModProj (tn, [], "cookie"), loc), c), loc)
+        in
+            pushENamedAs env x n t
+        end
 
 fun patBinds env (p, loc) =
     case p of

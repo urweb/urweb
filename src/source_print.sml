@@ -428,6 +428,13 @@ fun p_sgn_item (sgi, _) =
                                 string "=",
                                 space,
                                 p_con c]
+      | SgiCookie (x, c) => box [string "cookie",
+                                 space,
+                                 string x,
+                                 space,
+                                 string ":",
+                                 space,
+                                 p_con c]
 
 and p_sgn (sgn, _) =
     case sgn of
@@ -578,6 +585,14 @@ fun p_decl ((d, _) : decl) =
       | DDatabase s => box [string "database",
                             space,
                             string s]
+
+      | DCookie (x, c) => box [string "cookie",
+                               space,
+                               string x,
+                               space,
+                               string ":",
+                               space,
+                               p_con c]
 
 and p_str (str, _) =
     case str of

@@ -85,6 +85,7 @@ datatype sgn_item' =
        | SgiSequence of string
        | SgiClassAbs of string
        | SgiClass of string * con
+       | SgiCookie of string * con
 
 and sgn' =
     SgnConst of sgn_item list
@@ -157,6 +158,7 @@ datatype decl' =
        | DSequence of string
        | DClass of string * con
        | DDatabase of string
+       | DCookie of string * con
 
      and str' =
          StrConst of decl list

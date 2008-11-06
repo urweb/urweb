@@ -548,6 +548,10 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                 S.map2 (con ctx c,
                         fn c' =>
                            (SgiClass (x, n, c'), loc))
+              | SgiCookie (tn, x, n, c) =>
+                S.map2 (con ctx c,
+                        fn c' =>
+                           (SgiCookie (tn, x, n, c'), loc))
 
         and sg ctx s acc =
             S.bindP (sg' ctx s acc, sgn ctx)
@@ -576,7 +580,8 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                  | SgiClassAbs (x, n) =>
                                                    bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
                                                  | SgiClass (x, n, _) =>
-                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc))),
+                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
+                                                 | SgiCookie _ => ctx,
                                                sgi ctx si)) ctx sgis,
                      fn sgis' =>
                         (SgnConst sgis', loc))
@@ -720,7 +725,10 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                    bind (ctx, NamedE (x, (CModProj (n, [], "sql_sequence"), loc)))
                                                  | DClass (x, n, _) =>
                                                    bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
-                                                 | DDatabase _ => ctx,
+                                                 | DDatabase _ => ctx
+                                                 | DCookie (tn, x, n, c) =>
+                                                   bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "cookie"), loc),
+                                                                                c), loc))),
                                                mfd ctx d)) ctx ds,
                      fn ds' => (StrConst ds', loc))
               | StrVar _ => S.return2 strAll
@@ -820,6 +828,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                         (DClass (x, n, c'), loc))
 
               | DDatabase _ => S.return2 dAll
+
+              | DCookie (tn, x, n, c) =>
+                S.map2 (mfc ctx c,
+                        fn c' =>
+                           (DCookie (tn, x, n, c'), loc))
 
         and mfvi ctx (x, n, c, e) =
             S.bind2 (mfc ctx c,
@@ -955,9 +968,10 @@ and maxNameDecl (d, _) =
       | DConstraint _ => 0
       | DClass (_, n, _) => n
       | DExport _ => 0
-      | DTable (n, _, _, _) => n
-      | DSequence (n, _, _) => n
+      | DTable (n1, _, n2, _) => Int.max (n1, n2)
+      | DSequence (n1, _, n2) => Int.max (n1, n2)
       | DDatabase _ => 0
+      | DCookie (n1, _, n2, _) => Int.max (n1, n2)
 
 and maxNameStr (str, _) =
     case str of
@@ -991,10 +1005,11 @@ and maxNameSgi (sgi, _) =
       | SgiStr (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | SgiSgn (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | SgiConstraint _ => 0
-      | SgiTable (n, _, _, _) => n
-      | SgiSequence (n, _, _) => n
+      | SgiTable (n1, _, n2, _) => Int.max (n1, n2)
+      | SgiSequence (n1, _, n2) => Int.max (n1, n2)
       | SgiClassAbs (_, n) => n
       | SgiClass (_, n, _) => n
+      | SgiCookie (n1, _, n2, _) => Int.max (n1, n2)
               
 end
 

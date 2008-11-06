@@ -139,6 +139,7 @@ datatype sgn_item' =
        | SgiSequence of int * string * int
        | SgiClassAbs of string * int
        | SgiClass of string * int * con
+       | SgiCookie of int * string * int * con
 
 and sgn' =
     SgnConst of sgn_item list
@@ -166,6 +167,7 @@ datatype decl' =
        | DSequence of int * string * int
        | DClass of string * int * con
        | DDatabase of string
+       | DCookie of int * string * int * con
 
      and str' =
          StrConst of decl list

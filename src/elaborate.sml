@@ -1760,6 +1760,7 @@ val hnormSgn = E.hnormSgn
 
 fun tableOf () = (L'.CModProj (!basis_r, [], "sql_table"), ErrorMsg.dummySpan)
 fun sequenceOf () = (L'.CModProj (!basis_r, [], "sql_sequence"), ErrorMsg.dummySpan)
+fun cookieOf () = (L'.CModProj (!basis_r, [], "http_cookie"), ErrorMsg.dummySpan)
 
 fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
     case sgi of
@@ -1967,6 +1968,15 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             ([(L'.SgiClass (x, n, c'), loc)], (env, denv, []))
         end
 
+      | L.SgiCookie (x, c) =>
+        let
+            val (c', k, gs) = elabCon (env, denv) c
+            val (env, n) = E.pushENamed env x (L'.CApp (cookieOf (), c'), loc)
+        in
+            checkKind env c' k (L'.KType, loc);
+            ([(L'.SgiCookie (!basis_r, x, n, c'), loc)], (env, denv, gs))
+        end
+
 and elabSgn (env, denv) (sgn, loc) =
     case sgn of
         L.SgnConst sgis =>
@@ -2051,7 +2061,13 @@ and elabSgn (env, denv) (sgn, loc) =
                                        sgnError env (DuplicateCon (loc, x))
                                    else
                                        ();
-                                   (SS.add (cons, x), vals, sgns, strs)))
+                                   (SS.add (cons, x), vals, sgns, strs))
+                                | L'.SgiCookie (_, x, _, _) =>
+                                  (if SS.member (vals, x) then
+                                       sgnError env (DuplicateVal (loc, x))
+                                   else
+                                       ();
+                                   (cons, SS.add (vals, x), sgns, strs)))
                     (SS.empty, SS.empty, SS.empty, SS.empty) sgis'
         in
             ((L'.SgnConst sgis', loc), gs)
@@ -2203,6 +2219,9 @@ fun dopen (env, denv) {str, strs, sgn} =
                                               in
                                                   (L'.DCon (x, n, k, c), loc)
                                               end
+                                            | L'.SgiCookie (_, x, n, c) =>
+                                              (L'.DVal (x, n, (L'.CApp (cookieOf (), c), loc),
+                                                        (L'.EModProj (str, strs, x), loc)), loc)
                                   in
                                       (d, (E.declBinds env' d, denv'))
                                   end)
@@ -2259,6 +2278,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DSequence (tn, x, n) => [(L'.SgiSequence (tn, x, n), loc)]
       | L'.DClass (x, n, c) => [(L'.SgiClass (x, n, c), loc)]
       | L'.DDatabase _ => []
+      | L'.DCookie (tn, x, n, c) => [(L'.SgiCookie (tn, x, n, c), loc)]
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
@@ -2508,6 +2528,16 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                  SOME (env, denv))
                                      else
                                          NONE
+                                   | L'.SgiCookie (_, x', n1, c1) =>
+                                     if x = x' then
+                                         (case unifyCons (env, denv) (L'.CApp (cookieOf (), c1), loc) c2 of
+                                              [] => SOME (env, denv)
+                                            | _ => NONE)
+                                         handle CUnify (c1, c2, err) =>
+                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                 SOME (env, denv))
+                                     else
+                                         NONE
                                    | _ => NONE)
 
                       | L'.SgiStr (x, n2, sgn2) =>
@@ -2651,6 +2681,21 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                          L'.SgiClass (x', n1, c1) => found (x', n1, c1)
                                        | _ => NONE
                                  end)
+
+                      | L'.SgiCookie (_, x, n2, c2) =>
+                        seek (fn sgi1All as (sgi1, _) =>
+                                 case sgi1 of
+                                     L'.SgiCookie (_, x', n1, c1) =>
+                                     if x = x' then
+                                         (case unifyCons (env, denv) c1 c2 of
+                                              [] => SOME (env, denv)
+                                            | _ => NONE)
+                                         handle CUnify (c1, c2, err) =>
+                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                 SOME (env, denv))
+                                     else
+                                         NONE
+                                   | _ => NONE)
                 end
         in
             ignore (foldl folder (env, denv) sgis2)
@@ -3194,6 +3239,15 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
 
               | L.DDatabase s => ([(L'.DDatabase s, loc)], (env, denv, gs))
 
+              | L.DCookie (x, c) =>
+                let
+                    val (c', k, gs') = elabCon (env, denv) c
+                    val (env, n) = E.pushENamed env x (L'.CApp (cookieOf (), c'), loc)
+                in
+                    checkKind env c' k (L'.KType, loc);
+                    ([(L'.DCookie (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
+                end
+
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
     in
         (*prefaces "elabDecl" [("e", SourcePrint.p_decl dAll),
@@ -3336,6 +3390,16 @@ and elabStr (env, denv) (str, loc) =
                                           (SS.add (cons, x), x)
                               in
                                   ((L'.SgiClass (x, n, c), loc) :: sgis, cons, vals, sgns, strs)
+                              end
+                            | L'.SgiCookie (tn, x, n, c) =>
+                              let
+                                  val (vals, x) =
+                                      if SS.member (vals, x) then
+                                          (vals, "?" ^ x)
+                                      else
+                                          (SS.add (vals, x), x)
+                              in
+                                  ((L'.SgiCookie (tn, x, n, c), loc) :: sgis, cons, vals, sgns, strs)
                               end)
 
                 ([], SS.empty, SS.empty, SS.empty, SS.empty) sgis
