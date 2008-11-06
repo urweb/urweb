@@ -80,6 +80,12 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_sqlifyBool(uw_context, uw_Basis_bool);
 uw_Basis_string uw_Basis_sqlifyTime(uw_context, uw_Basis_time);
 
+uw_Basis_string uw_Basis_sqlifyIntN(uw_context, uw_Basis_int*);
+uw_Basis_string uw_Basis_sqlifyFloatN(uw_context, uw_Basis_float*);
+uw_Basis_string uw_Basis_sqlifyStringN(uw_context, uw_Basis_string);
+uw_Basis_string uw_Basis_sqlifyBoolN(uw_context, uw_Basis_bool*);
+uw_Basis_string uw_Basis_sqlifyTimeN(uw_context, uw_Basis_time*);
+
 char *uw_Basis_ensqlBool(uw_Basis_bool);
 
 uw_Basis_string uw_Basis_intToString(uw_context, uw_Basis_int);

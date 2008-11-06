@@ -1,4 +1,13 @@
 ========
+NEXT
+========
+
+- Nested function definitions
+- Primitive "time" type
+- Nullable SQL columns (via "option")
+- Cookies
+
+========
 20081028
 ========
 

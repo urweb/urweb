@@ -1,0 +1,5 @@
+debug
+database dbname=option
+sql option.sql
+
+sql_option

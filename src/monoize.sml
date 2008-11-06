@@ -982,10 +982,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfiApp ("Basis", "dml", [e]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
-                val un = (L'.TRecord [], loc)
             in
-                ((L'.EAbs ("_", un, un,
-                           (L'.EDml (liftExpInExp 0 e), loc)), loc),
+                ((L'.EDml (liftExpInExp 0 e), loc),
                  fm)
             end
 
@@ -1273,6 +1271,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfi ("Basis", "sql_time") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyTime", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_option_int") =>
+            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "int"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyIntN", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_option_float") =>
+            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "float"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyFloatN", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_option_bool") =>
+            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "bool"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyBoolN", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_option_string") =>
+            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "string"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyStringN", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_option_time") =>
+            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "time"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyTimeN", [(L'.ERel 0, loc)]), loc)), loc),
              fm)
 
           | L.ECApp ((L.EFfi ("Basis", "sql_subset"), _), _) =>

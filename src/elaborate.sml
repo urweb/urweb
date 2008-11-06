@@ -1389,17 +1389,32 @@ fun unmodCon env (c, loc) =
         end
       | _ => (c, loc)
 
-fun normClassConstraint envs (c, loc) =
+fun normClassKey envs c =
+    let
+        val c = ElabOps.hnormCon envs c
+    in
+        case #1 c of
+            L'.CApp (c1, c2) =>
+            let
+                val c1 = normClassKey envs c1
+                val c2 = normClassKey envs c2
+            in
+                (L'.CApp (c1, c2), #2 c)
+            end
+          | _ => c
+    end
+
+fun normClassConstraint env (c, loc) =
     case c of
         L'.CApp (f, x) =>
         let
-            val f = unmodCon (#1 envs) f
-            val (x, gs) = hnormCon envs x
+            val f = unmodCon env f
+            val x = normClassKey env x
         in
-            ((L'.CApp (f, x), loc), gs)
+            (L'.CApp (f, x), loc)
         end
-      | L'.CUnif (_, _, _, ref (SOME c)) => normClassConstraint envs c
-      | _ => ((c, loc), [])
+      | L'.CUnif (_, _, _, ref (SOME c)) => normClassConstraint env c
+      | _ => (c, loc)
 
 
 val makeInstantiable =
@@ -1491,12 +1506,12 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                         checkKind env t' tk ktype;
                                         (t', gs)
                                     end
-                val (dom, gs2) = normClassConstraint (env, denv) t'
-                val (e', et, gs3) = elabExp (E.pushERel env x dom, denv) e
+                val dom = normClassConstraint env t'
+                val (e', et, gs2) = elabExp (E.pushERel env x dom, denv) e
             in
                 ((L'.EAbs (x, t', et, e'), loc),
                  (L'.TFun (t', et), loc),
-                 enD gs1 @ enD gs2 @ gs3)
+                 enD gs1 @ gs2)
             end
           | L.ECApp (e, c) =>
             let
@@ -1708,11 +1723,11 @@ and elabEdecl denv (dAll as (d, loc), (env, gs : constraint list)) =
 
                     val (e', et, gs2) = elabExp (env, denv) e
                     val gs3 = checkCon (env, denv) e' et c'
-                    val (c', gs4) = normClassConstraint (env, denv) c'
+                    val c' = normClassConstraint env c'
                     val env' = E.pushERel env x c'
                     val c' = makeInstantiable c'
                 in
-                    ((L'.EDVal (x, c', e'), loc), (env', enD gs1 @ gs2 @ enD gs3 @ enD gs4 @ gs))
+                    ((L'.EDVal (x, c', e'), loc), (env', enD gs1 @ gs2 @ enD gs3 @ gs))
                 end
               | L.EDValRec vis =>
                 let
@@ -1884,12 +1899,12 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             val (c', ck, gs') = elabCon (env, denv) c
 
             val (env', n) = E.pushENamed env x c'
-            val (c', gs'') = normClassConstraint (env, denv) c'
+            val c' = normClassConstraint env c'
         in
             (unifyKinds ck ktype
              handle KUnify ue => strError env (NotType (ck, ue)));
 
-            ([(L'.SgiVal (x, n, c'), loc)], (env', denv, gs' @ gs'' @ gs))
+            ([(L'.SgiVal (x, n, c'), loc)], (env', denv, gs' @ gs))
         end
 
       | L.SgiStr (x, sgn) =>
@@ -2875,13 +2890,13 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
 
                     val (e', et, gs2) = elabExp (env, denv) e
                     val gs3 = checkCon (env, denv) e' et c'
-                    val (c', gs4) = normClassConstraint (env, denv) c'
+                    val c = normClassConstraint env c'
                     val (env', n) = E.pushENamed env x c'
                     val c' = makeInstantiable c'
                 in
                     (*prefaces "DVal" [("x", Print.PD.string x),
                                      ("c'", p_con env c')];*)
-                    ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ enD gs3 @ enD gs4 @ gs))
+                    ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ enD gs3 @ gs))
                 end
               | L.DValRec vis =>
                 let
@@ -3404,7 +3419,7 @@ fun elabFile basis topStr topSgn env file =
                                       ("Hnormed 2", p_con env (ElabOps.hnormCon env c2))]))
                   | TypeClass (env, c, r, loc) =>
                     let
-                        val c = ElabOps.hnormCon env c
+                        val c = normClassKey env c
                     in
                         case E.resolveClass env c of
                             SOME e => r := SOME e

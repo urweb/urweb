@@ -872,6 +872,13 @@ char *uw_Basis_sqlifyInt(uw_context ctx, uw_Basis_int n) {
   return r;
 }
 
+char *uw_Basis_sqlifyIntN(uw_context ctx, uw_Basis_int *n) {
+  if (n == NULL)
+    return "NULL";
+  else
+    return uw_Basis_sqlifyInt(ctx, *n);
+}
+
 char *uw_Basis_sqlifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;
   char *r;
@@ -881,6 +888,13 @@ char *uw_Basis_sqlifyFloat(uw_context ctx, uw_Basis_float n) {
   sprintf(r, "%g::float8%n", n, &len);
   ctx->heap_front += len+1;
   return r;
+}
+
+char *uw_Basis_sqlifyFloatN(uw_context ctx, uw_Basis_float *n) {
+  if (n == NULL)
+    return "NULL";
+  else
+    return uw_Basis_sqlifyFloat(ctx, *n);
 }
 
 
@@ -920,11 +934,25 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
   return r;
 }
 
+uw_Basis_string uw_Basis_sqlifyStringN(uw_context ctx, uw_Basis_string s) {
+  if (s == NULL)
+    return "NULL";
+  else
+    return uw_Basis_sqlifyString(ctx, s);
+}
+
 char *uw_Basis_sqlifyBool(uw_context ctx, uw_Basis_bool b) {
   if (b == uw_Basis_False)
     return "FALSE";
   else
     return "TRUE";
+}
+
+char *uw_Basis_sqlifyBoolN(uw_context ctx, uw_Basis_bool *b) {
+  if (b == NULL)
+    return "NULL";
+  else
+    return uw_Basis_sqlifyBool(ctx, *b);
 }
 
 char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
@@ -940,6 +968,13 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
     return r;
   } else
     return "<Invalid time>";
+}
+
+char *uw_Basis_sqlifyTimeN(uw_context ctx, uw_Basis_time *t) {
+  if (t == NULL)
+    return "NULL";
+  else
+    return uw_Basis_sqlifyTime(ctx, *t);
 }
 
 char *uw_Basis_ensqlBool(uw_Basis_bool b) {

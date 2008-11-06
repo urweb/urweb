@@ -268,6 +268,11 @@ fun exp e =
 
       | EFfiApp ("Basis", "sqlifyInt", [(EPrim (Prim.Int n), _)]) =>
         EPrim (Prim.String (sqlifyInt n))
+      | EFfiApp ("Basis", "sqlifyIntN", [(ENone _, _)]) =>
+        EPrim (Prim.String "NULL")
+      | EFfiApp ("Basis", "sqlifyIntN", [(ESome (_, (EPrim (Prim.Int n), _)), _)]) =>
+        EPrim (Prim.String (sqlifyInt n))
+
       | EFfiApp ("Basis", "sqlifyFloat", [(EPrim (Prim.Float n), _)]) =>
         EPrim (Prim.String (sqlifyFloat n))
       | EFfiApp ("Basis", "sqlifyBool", [b as (_, loc)]) =>

@@ -188,6 +188,11 @@ val sql_int : sql_injectable int
 val sql_float : sql_injectable float
 val sql_string : sql_injectable string
 val sql_time : sql_injectable time
+val sql_option_bool : sql_injectable (option bool)
+val sql_option_int : sql_injectable (option int)
+val sql_option_float : sql_injectable (option float)
+val sql_option_string : sql_injectable (option string)
+val sql_option_time : sql_injectable (option time)
 val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type
                  -> sql_injectable t -> t -> sql_exp tables agg exps t

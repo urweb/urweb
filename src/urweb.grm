@@ -214,7 +214,7 @@ fun tagIn bt =
  | TRUE | FALSE | CAND | OR | NOT
  | COUNT | AVG | SUM | MIN | MAX
  | ASC | DESC
- | INSERT | INTO | VALUES | UPDATE | SET | DELETE
+ | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
 
@@ -1250,6 +1250,9 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
        | LBRACE eexp RBRACE             (sql_inject (#1 eexp,
                                                      s (LBRACEleft, RBRACEright)))
        | LPAREN sqlexp RPAREN           (sqlexp)
+
+       | NULL                           (sql_inject ((EVar (["Basis"], "None", Infer), 
+                                                      s (NULLleft, NULLright))))
 
        | COUNT LPAREN STAR RPAREN       (let
                                              val loc = s (COUNTleft, RPARENright)

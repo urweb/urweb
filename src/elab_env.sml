@@ -150,12 +150,14 @@ datatype class_key =
          CkNamed of int
        | CkRel of int
        | CkProj of int * string list * string
+       | CkApp of class_key * class_key
 
 fun ck2s ck =
     case ck of
         CkNamed n => "Named(" ^ Int.toString n ^ ")"
       | CkRel n => "Rel(" ^ Int.toString n ^ ")"
       | CkProj (m, ms, x) => "Proj(" ^ Int.toString m ^ "," ^ String.concatWith "," ms ^ "," ^ x ^ ")"
+      | CkApp (ck1, ck2) => "App(" ^ ck2s ck1 ^ ", " ^ ck2s ck2 ^ ")"
 
 fun cp2s (cn, ck) = "(" ^ cn2s cn ^ "," ^ ck2s ck ^ ")"
 
@@ -176,6 +178,12 @@ fun compare x =
         join (Int.compare (m1, m2),
               fn () => join (joinL String.compare (ms1, ms2),
                              fn () => String.compare (x1, x2)))
+      | (CkProj _, _) => LESS
+      | (_, CkProj _) => GREATER
+
+      | (CkApp (f1, x1), CkApp (f2, x2)) =>
+        join (compare (f1, f2),
+              fn () => compare (x1, x2))
 end
 
 structure KM = BinaryMapFn(KK)
@@ -251,6 +259,7 @@ fun liftClassKey ck =
         CkNamed _ => ck
       | CkRel n => CkRel (n + 1)
       | CkProj _ => ck
+      | CkApp (ck1, ck2) => CkApp (liftClassKey ck1, liftClassKey ck2)
 
 fun pushCRel (env : env) x k =
     let
@@ -411,6 +420,10 @@ fun class_key_in (c, _) =
       | CNamed n => SOME (CkNamed n)
       | CModProj x => SOME (CkProj x)
       | CUnif (_, _, _, ref (SOME c)) => class_key_in c
+      | CApp (c1, c2) =>
+        (case (class_key_in c1, class_key_in c2) of
+             (SOME k1, SOME k2) => SOME (CkApp (k1, k2))
+           | _ => NONE)
       | _ => NONE
 
 fun class_pair_in (c, _) =
@@ -653,7 +666,7 @@ fun sgnS_con (str, (sgns, strs, cons)) c =
              end)
       | _ => c
 
-fun sgnS_con' (m1, ms', (sgns, strs, cons)) c =
+fun sgnS_con' (arg as (m1, ms', (sgns, strs, cons))) c =
     case c of
         CModProj (m1, ms, x) =>
         (case IM.find (strs, m1) of
@@ -663,6 +676,8 @@ fun sgnS_con' (m1, ms', (sgns, strs, cons)) c =
         (case IM.find (cons, n) of
              NONE => c
            | SOME nx => CModProj (m1, ms', nx))
+      | CApp (c1, c2) => CApp ((sgnS_con' arg (#1 c1), #2 c1),
+                               (sgnS_con' arg (#1 c2), #2 c2))
       | _ => c
 
 fun sgnS_sgn (str, (sgns, strs, cons)) sgn =
@@ -1033,13 +1048,21 @@ fun projectVal env {sgn, str, field} =
                 ListUtil.search (fn (x, _, to) =>
                                     if x = field then
                                         SOME (let
+                                                  val base = (CNamed n, #2 sgn)
+                                                  val nxs = length xs
+                                                  val base = ListUtil.foldli (fn (i, _, base) =>
+                                                                                 (CApp (base,
+                                                                                       (CRel (nxs - i - 1), #2 sgn)),
+                                                                                  #2 sgn))
+                                                                             base xs
+
                                                   val t =
                                                       case to of
-                                                          NONE => (CNamed n, #2 sgn)
-                                                        | SOME t => (TFun (t, (CNamed n, #2 sgn)), #2 sgn)
+                                                          NONE => base
+                                                        | SOME t => (TFun (t, base), #2 sgn)
                                                   val k = (KType, #2 sgn)
                                               in
-                                                  foldr (fn (x, t) => (TCFun (Explicit, x, k, t), #2 sgn))
+                                                  foldr (fn (x, t) => (TCFun (Implicit, x, k, t), #2 sgn))
                                                   t xs
                                               end)
                                     else
