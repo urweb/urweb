@@ -58,6 +58,12 @@ nested.urp
 
 <p>Here is an implementation of the tiny challenge problem from <a href="http://www.accursoft.co.uk/web/">this web framework comparison</a>.  Using nested function definitions, it is easy to persist state across clicks.</p>
 
+cookie.urp
+
+<p>Often, it is useful to associate persistent data with particular web clients.  Ur/Web includes an easy facility for using type-safe cookies.  This example shows how to use a form to set a named cookie.</p>
+
+<p>After setting the cookie, try browsing back to this demo from the main index.  The data you entered should still be there.</p>
+
 listShop.urp
 
 <p>This example shows off algebraic datatypes, parametric polymorphism, and functors.</p>

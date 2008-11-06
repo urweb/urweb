@@ -1565,13 +1565,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfiApp ("Basis", "nextval", [e]) =>
             let
-                val un = (L'.TRecord [], loc)
-                val int = (L'.TFfi ("Basis", "int"), loc)
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EAbs ("_", un, int,
-                           (L'.ENextval (liftExpInExp 0 e), loc)), loc),
-                 fm)
+                ((L'.ENextval e, loc), fm)
             end
 
           | L.EApp (

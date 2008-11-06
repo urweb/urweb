@@ -6,21 +6,16 @@ fun set r =
 
 fun main () =
     ro <- getCookie c;
-    let
-        val xml = case ro of
-                      None => <xml>No cookie set.</xml>
-                    | Some v => <xml>Cookie: A = {[v.A]}, B = {[v.B]}, C = {[v.C]}</xml>
-    in
-        return <xml><body>
-          {xml}<br/><br/>
+    return <xml><body>
+      {case ro of
+           None => <xml>No cookie set.</xml>
+         | Some v => <xml>Cookie: A = {[v.A]}, B = {[v.B]}, C = {[v.C]}</xml>}
+      <br/><br/>
 
-          <form>
-            A: <textbox{#A}/><br/>
-            B: <textbox{#B}/><br/>
-            C: <textbox{#C}/><br/>
-            <submit action={set}/>
-          </form>
-        </body></xml>
-    end
-
-
+      <form>
+        A: <textbox{#A}/><br/>
+        B: <textbox{#B}/><br/>
+        C: <textbox{#C}/><br/>
+        <submit action={set}/>
+      </form>
+    </body></xml>
