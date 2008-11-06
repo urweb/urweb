@@ -137,8 +137,6 @@ fun explifySgi (sgi, loc) =
       | L.SgiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, explifySgn sgn), loc)
       | L.SgiSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, explifySgn sgn), loc)
       | L.SgiConstraint _ => NONE
-      | L.SgiTable (nt, x, n, c) => SOME (L'.SgiTable (nt, x, n, explifyCon c), loc)
-      | L.SgiSequence (nt, x, n) => SOME (L'.SgiSequence (nt, x, n), loc)
       | L.SgiClassAbs (x, n) => SOME (L'.SgiConAbs (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)), loc)
       | L.SgiClass (x, n, c) => SOME (L'.SgiCon (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc),
                                                  explifyCon c), loc)
@@ -175,6 +173,7 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DClass (x, n, c) => SOME (L'.DCon (x, n,
                                              (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc), explifyCon c), loc)
       | L.DDatabase s => SOME (L'.DDatabase s, loc)
+      | L.DCookie (nt, x, n, c) => SOME (L'.DCookie (nt, x, n, explifyCon c), loc)
 
 and explifyStr (str, loc) =
     case str of

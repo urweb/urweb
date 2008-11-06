@@ -516,16 +516,6 @@ fun p_sgn_item env (sgi, _) =
                                        string "~",
                                        space,
                                        p_con env c2]
-      | SgiTable (_, x, n, c) => box [string "table",
-                                      space,
-                                      p_named x n,
-                                      space,
-                                      string ":",
-                                      space,
-                                      p_con env c]
-      | SgiSequence (_, x, n) => box [string "sequence",
-                                      space,
-                                      p_named x n]
       | SgiClassAbs (x, n) => box [string "class",
                                    space,
                                    p_named x n]
@@ -536,13 +526,6 @@ fun p_sgn_item env (sgi, _) =
                                    string "=",
                                    space,
                                    p_con env c]
-      | SgiCookie (_, x, n, c) => box [string "cookie",
-                                       space,
-                                       p_named x n,
-                                       space,
-                                       string ":",
-                                       space,
-                                       p_con env c]
 
 and p_sgn env (sgn, _) =
     case sgn of

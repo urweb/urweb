@@ -588,11 +588,8 @@ fun sgiSeek (sgi, (sgns, strs, cons)) =
       | SgiSgn (x, n, _) => (IM.insert (sgns, n, x), strs, cons)
       | SgiStr (x, n, _) => (sgns, IM.insert (strs, n, x), cons)
       | SgiConstraint _ => (sgns, strs, cons)
-      | SgiTable _ => (sgns, strs, cons)
-      | SgiSequence _ => (sgns, strs, cons)
       | SgiClassAbs (x, n) => (sgns, strs, IM.insert (cons, n, x))
       | SgiClass (x, n, _) => (sgns, strs, IM.insert (cons, n, x))
-      | SgiCookie _ => (sgns, strs, cons)
 
 fun sgnSeek f sgis =
     let
@@ -931,29 +928,8 @@ fun sgiBinds env (sgi, loc) =
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
       | SgiConstraint _ => env
 
-      | SgiTable (tn, x, n, c) =>
-        let
-            val t = (CApp ((CModProj (tn, [], "sql_table"), loc), c), loc)
-        in
-            pushENamedAs env x n t
-        end
-      | SgiSequence (tn, x, n) =>
-        let
-            val t = (CModProj (tn, [], "sql_sequence"), loc)
-        in
-            pushENamedAs env x n t
-        end
-
       | SgiClassAbs (x, n) => pushCNamedAs env x n (KArrow ((KType, loc), (KType, loc)), loc) NONE
       | SgiClass (x, n, c) => pushCNamedAs env x n (KArrow ((KType, loc), (KType, loc)), loc) (SOME c)
-
-      | SgiCookie (tn, x, n, c) =>
-        let
-            val t = (CApp ((CModProj (tn, [], "http_cookie"), loc), c), loc)
-        in
-            pushENamedAs env x n t
-        end
-        
 
 fun sgnSubCon x =
     ElabUtil.Con.map {kind = id,
@@ -1099,11 +1075,8 @@ fun sgnSeekConstraints (str, sgis) =
                   | SgiVal _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
                   | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
-                  | SgiTable _ => seek (sgis, sgns, strs, cons, acc)
-                  | SgiSequence _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiClassAbs (x, n) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiClass (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
-                  | SgiCookie _ => seek (sgis, sgns, strs, cons, acc)
     in
         seek (sgis, IM.empty, IM.empty, IM.empty, [])
     end

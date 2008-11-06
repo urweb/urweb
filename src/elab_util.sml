@@ -538,20 +538,11 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                             S.map2 (con ctx c2,
                                     fn c2' =>
                                        (SgiConstraint (c1', c2'), loc)))
-              | SgiTable (tn, x, n, c) =>
-                S.map2 (con ctx c,
-                        fn c' =>
-                           (SgiTable (tn, x, n, c'), loc))
-              | SgiSequence _ => S.return2 siAll
               | SgiClassAbs _ => S.return2 siAll
               | SgiClass (x, n, c) =>
                 S.map2 (con ctx c,
                         fn c' =>
                            (SgiClass (x, n, c'), loc))
-              | SgiCookie (tn, x, n, c) =>
-                S.map2 (con ctx c,
-                        fn c' =>
-                           (SgiCookie (tn, x, n, c'), loc))
 
         and sg ctx s acc =
             S.bindP (sg' ctx s acc, sgn ctx)
@@ -575,13 +566,10 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                  | SgiSgn (x, _, sgn) =>
                                                    bind (ctx, Sgn (x, sgn))
                                                  | SgiConstraint _ => ctx
-                                                 | SgiTable _ => ctx
-                                                 | SgiSequence _ => ctx
                                                  | SgiClassAbs (x, n) =>
                                                    bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
                                                  | SgiClass (x, n, _) =>
-                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
-                                                 | SgiCookie _ => ctx,
+                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc))),
                                                sgi ctx si)) ctx sgis,
                      fn sgis' =>
                         (SgnConst sgis', loc))
@@ -1005,11 +993,8 @@ and maxNameSgi (sgi, _) =
       | SgiStr (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | SgiSgn (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | SgiConstraint _ => 0
-      | SgiTable (n1, _, n2, _) => Int.max (n1, n2)
-      | SgiSequence (n1, _, n2) => Int.max (n1, n2)
       | SgiClassAbs (_, n) => n
       | SgiClass (_, n, _) => n
-      | SgiCookie (n1, _, n2, _) => Int.max (n1, n2)
               
 end
 

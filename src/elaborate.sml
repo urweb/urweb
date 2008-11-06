@@ -1932,22 +1932,6 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             ([(L'.SgiConstraint (c1', c2'), loc)], (env, denv, gs1 @ gs2 @ gs3))
         end
 
-      | L.SgiTable (x, c) =>
-        let
-            val (c', k, gs) = elabCon (env, denv) c
-            val (env, n) = E.pushENamed env x (L'.CApp (tableOf (), c'), loc)
-        in
-            checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
-            ([(L'.SgiTable (!basis_r, x, n, c'), loc)], (env, denv, gs))
-        end
-
-      | L.SgiSequence x =>
-        let
-            val (env, n) = E.pushENamed env x (sequenceOf ())
-        in
-            ([(L'.SgiSequence (!basis_r, x, n), loc)], (env, denv, gs))
-        end
-
       | L.SgiClassAbs x =>
         let
             val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
@@ -1966,15 +1950,6 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
         in
             checkKind env c' ck k;
             ([(L'.SgiClass (x, n, c'), loc)], (env, denv, []))
-        end
-
-      | L.SgiCookie (x, c) =>
-        let
-            val (c', k, gs) = elabCon (env, denv) c
-            val (env, n) = E.pushENamed env x (L'.CApp (cookieOf (), c'), loc)
-        in
-            checkKind env c' k (L'.KType, loc);
-            ([(L'.SgiCookie (!basis_r, x, n, c'), loc)], (env, denv, gs))
         end
 
 and elabSgn (env, denv) (sgn, loc) =
@@ -2038,18 +2013,6 @@ and elabSgn (env, denv) (sgn, loc) =
                                        ();
                                    (cons, vals, sgns, SS.add (strs, x)))
                                 | L'.SgiConstraint _ => (cons, vals, sgns, strs)
-                                | L'.SgiTable (_, x, _, _) =>
-                                  (if SS.member (vals, x) then
-                                       sgnError env (DuplicateVal (loc, x))
-                                   else
-                                       ();
-                                   (cons, SS.add (vals, x), sgns, strs))
-                                | L'.SgiSequence (_, x, _) =>
-                                  (if SS.member (vals, x) then
-                                       sgnError env (DuplicateVal (loc, x))
-                                   else
-                                       ();
-                                   (cons, SS.add (vals, x), sgns, strs))
                                 | L'.SgiClassAbs (x, _) =>
                                   (if SS.member (cons, x) then
                                        sgnError env (DuplicateCon (loc, x))
@@ -2061,13 +2024,7 @@ and elabSgn (env, denv) (sgn, loc) =
                                        sgnError env (DuplicateCon (loc, x))
                                    else
                                        ();
-                                   (SS.add (cons, x), vals, sgns, strs))
-                                | L'.SgiCookie (_, x, _, _) =>
-                                  (if SS.member (vals, x) then
-                                       sgnError env (DuplicateVal (loc, x))
-                                   else
-                                       ();
-                                   (cons, SS.add (vals, x), sgns, strs)))
+                                   (SS.add (cons, x), vals, sgns, strs)))
                     (SS.empty, SS.empty, SS.empty, SS.empty) sgis'
         in
             ((L'.SgnConst sgis', loc), gs)
@@ -2199,12 +2156,6 @@ fun dopen (env, denv) {str, strs, sgn} =
                                               (L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc)
                                             | L'.SgiConstraint (c1, c2) =>
                                               (L'.DConstraint (c1, c2), loc)
-                                            | L'.SgiTable (_, x, n, c) =>
-                                              (L'.DVal (x, n, (L'.CApp (tableOf (), c), loc),
-                                                        (L'.EModProj (str, strs, x), loc)), loc)
-                                            | L'.SgiSequence (_, x, n) =>
-                                              (L'.DVal (x, n, sequenceOf (),
-                                                        (L'.EModProj (str, strs, x), loc)), loc)
                                             | L'.SgiClassAbs (x, n) =>
                                               let
                                                   val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
@@ -2219,9 +2170,6 @@ fun dopen (env, denv) {str, strs, sgn} =
                                               in
                                                   (L'.DCon (x, n, k, c), loc)
                                               end
-                                            | L'.SgiCookie (_, x, n, c) =>
-                                              (L'.DVal (x, n, (L'.CApp (cookieOf (), c), loc),
-                                                        (L'.EModProj (str, strs, x), loc)), loc)
                                   in
                                       (d, (E.declBinds env' d, denv'))
                                   end)
@@ -2274,11 +2222,11 @@ fun sgiOfDecl (d, loc) =
       | L'.DFfiStr (x, n, sgn) => [(L'.SgiStr (x, n, sgn), loc)]
       | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
       | L'.DExport _ => []
-      | L'.DTable (tn, x, n, c) => [(L'.SgiTable (tn, x, n, c), loc)]
-      | L'.DSequence (tn, x, n) => [(L'.SgiSequence (tn, x, n), loc)]
+      | L'.DTable (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (tableOf (), c), loc)), loc)]
+      | L'.DSequence (tn, x, n) => [(L'.SgiVal (x, n, sequenceOf ()), loc)]
       | L'.DClass (x, n, c) => [(L'.SgiClass (x, n, c), loc)]
       | L'.DDatabase _ => []
-      | L'.DCookie (tn, x, n, c) => [(L'.SgiCookie (tn, x, n, c), loc)]
+      | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
 
 fun sgiBindsD (env, denv) (sgi, _) =
     case sgi of
@@ -2508,36 +2456,6 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                  SOME (env, denv))
                                      else
                                          NONE
-                                   | L'.SgiTable (_, x', n1, c1) =>
-                                     if x = x' then
-                                         (case unifyCons (env, denv) (L'.CApp (tableOf (), c1), loc) c2 of
-                                              [] => SOME (env, denv)
-                                            | _ => NONE)
-                                         handle CUnify (c1, c2, err) =>
-                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
-                                                 SOME (env, denv))
-                                     else
-                                         NONE
-                                   | L'.SgiSequence (_, x', n1) =>
-                                     if x = x' then
-                                         (case unifyCons (env, denv) (sequenceOf ()) c2 of
-                                              [] => SOME (env, denv)
-                                            | _ => NONE)
-                                         handle CUnify (c1, c2, err) =>
-                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
-                                                 SOME (env, denv))
-                                     else
-                                         NONE
-                                   | L'.SgiCookie (_, x', n1, c1) =>
-                                     if x = x' then
-                                         (case unifyCons (env, denv) (L'.CApp (cookieOf (), c1), loc) c2 of
-                                              [] => SOME (env, denv)
-                                            | _ => NONE)
-                                         handle CUnify (c1, c2, err) =>
-                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
-                                                 SOME (env, denv))
-                                     else
-                                         NONE
                                    | _ => NONE)
 
                       | L'.SgiStr (x, n2, sgn2) =>
@@ -2600,31 +2518,6 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                          NONE
                                    | _ => NONE)
 
-                      | L'.SgiTable (_, x, n2, c2) =>
-                        seek (fn sgi1All as (sgi1, _) =>
-                                 case sgi1 of
-                                     L'.SgiTable (_, x', n1, c1) =>
-                                     if x = x' then
-                                         (case unifyCons (env, denv) c1 c2 of
-                                              [] => SOME (env, denv)
-                                            | _ => NONE)
-                                         handle CUnify (c1, c2, err) =>
-                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
-                                                 SOME (env, denv))
-                                     else
-                                         NONE
-                                   | _ => NONE)
-
-                      | L'.SgiSequence (_, x, n2) =>
-                        seek (fn sgi1All as (sgi1, _) =>
-                                 case sgi1 of
-                                     L'.SgiSequence (_, x', n1) =>
-                                     if x = x' then
-                                         SOME (env, denv)
-                                     else
-                                         NONE
-                                   | _ => NONE)
-
                       | L'.SgiClassAbs (x, n2) =>
                         seek (fn sgi1All as (sgi1, _) =>
                                  let
@@ -2681,21 +2574,6 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                          L'.SgiClass (x', n1, c1) => found (x', n1, c1)
                                        | _ => NONE
                                  end)
-
-                      | L'.SgiCookie (_, x, n2, c2) =>
-                        seek (fn sgi1All as (sgi1, _) =>
-                                 case sgi1 of
-                                     L'.SgiCookie (_, x', n1, c1) =>
-                                     if x = x' then
-                                         (case unifyCons (env, denv) c1 c2 of
-                                              [] => SOME (env, denv)
-                                            | _ => NONE)
-                                         handle CUnify (c1, c2, err) =>
-                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
-                                                 SOME (env, denv))
-                                     else
-                                         NONE
-                                   | _ => NONE)
                 end
         in
             ignore (foldl folder (env, denv) sgis2)
@@ -3347,26 +3225,6 @@ and elabStr (env, denv) (str, loc) =
                                   ((L'.SgiStr (x, n, sgn), loc) :: sgis, cons, vals, sgns, strs)
                               end
                             | L'.SgiConstraint _ => ((sgi, loc) :: sgis, cons, vals, sgns, strs)
-                            | L'.SgiTable (tn, x, n, c) =>
-                              let
-                                  val (vals, x) =
-                                      if SS.member (vals, x) then
-                                          (vals, "?" ^ x)
-                                      else
-                                          (SS.add (vals, x), x)
-                              in
-                                  ((L'.SgiTable (tn, x, n, c), loc) :: sgis, cons, vals, sgns, strs)
-                              end
-                            | L'.SgiSequence (tn, x, n) =>
-                              let
-                                  val (vals, x) =
-                                      if SS.member (vals, x) then
-                                          (vals, "?" ^ x)
-                                      else
-                                          (SS.add (vals, x), x)
-                              in
-                                  ((L'.SgiSequence (tn, x, n), loc) :: sgis, cons, vals, sgns, strs)
-                              end
                             | L'.SgiClassAbs (x, n) =>
                               let
                                   val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
@@ -3390,16 +3248,6 @@ and elabStr (env, denv) (str, loc) =
                                           (SS.add (cons, x), x)
                               in
                                   ((L'.SgiClass (x, n, c), loc) :: sgis, cons, vals, sgns, strs)
-                              end
-                            | L'.SgiCookie (tn, x, n, c) =>
-                              let
-                                  val (vals, x) =
-                                      if SS.member (vals, x) then
-                                          (vals, "?" ^ x)
-                                      else
-                                          (SS.add (vals, x), x)
-                              in
-                                  ((L'.SgiCookie (tn, x, n, c), loc) :: sgis, cons, vals, sgns, strs)
                               end)
 
                 ([], SS.empty, SS.empty, SS.empty, SS.empty) sgis

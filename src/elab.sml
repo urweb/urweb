@@ -135,11 +135,8 @@ datatype sgn_item' =
        | SgiStr of string * int * sgn
        | SgiSgn of string * int * sgn
        | SgiConstraint of con * con
-       | SgiTable of int * string * int * con
-       | SgiSequence of int * string * int
        | SgiClassAbs of string * int
        | SgiClass of string * int * con
-       | SgiCookie of int * string * int * con
 
 and sgn' =
     SgnConst of sgn_item list

@@ -432,11 +432,6 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                 S.map2 (sg ctx s,
                      fn s' =>
                         (SgiSgn (x, n, s'), loc))
-              | SgiTable (tn, x, n, c) =>
-                S.map2 (con ctx c,
-                        fn c' =>
-                           (SgiTable (tn, x, n, c'), loc))
-              | SgiSequence _ => S.return2 siAll
 
         and sg ctx s acc =
             S.bindP (sg' ctx s acc, sgn ctx)
@@ -458,9 +453,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                  | SgiStr (x, _, sgn) =>
                                                    bind (ctx, Str (x, sgn))
                                                  | SgiSgn (x, _, sgn) =>
-                                                   bind (ctx, Sgn (x, sgn))
-                                                 | SgiTable _ => ctx
-                                                 | SgiSequence _ => ctx,
+                                                   bind (ctx, Sgn (x, sgn)),
                                                sgi ctx si)) ctx sgis,
                      fn sgis' =>
                         (SgnConst sgis', loc))

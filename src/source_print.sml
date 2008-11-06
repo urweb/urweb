@@ -408,16 +408,6 @@ fun p_sgn_item (sgi, _) =
                                        string "~",
                                        space,
                                        p_con c2]
-      | SgiTable (x, c) => box [string "table",
-                                space,
-                                string x,
-                                space,
-                                string ":",
-                                space,
-                                p_con c]
-      | SgiSequence x => box [string "sequence",
-                              space,
-                              string x]
       | SgiClassAbs x => box [string "class",
                               space,
                               string x]
@@ -428,13 +418,6 @@ fun p_sgn_item (sgi, _) =
                                 string "=",
                                 space,
                                 p_con c]
-      | SgiCookie (x, c) => box [string "cookie",
-                                 space,
-                                 string x,
-                                 space,
-                                 string ":",
-                                 space,
-                                 p_con c]
 
 and p_sgn (sgn, _) =
     case sgn of

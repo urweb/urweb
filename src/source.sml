@@ -81,11 +81,8 @@ datatype sgn_item' =
        | SgiSgn of string * sgn
        | SgiInclude of sgn
        | SgiConstraint of con * con
-       | SgiTable of string * con
-       | SgiSequence of string
        | SgiClassAbs of string
        | SgiClass of string * con
-       | SgiCookie of string * con
 
 and sgn' =
     SgnConst of sgn_item list

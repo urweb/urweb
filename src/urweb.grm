@@ -497,8 +497,19 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
                                          s (FUNCTORleft, sgn2right))
        | INCLUDE sgn                    (SgiInclude sgn, s (INCLUDEleft, sgnright))
        | CONSTRAINT cterm TWIDDLE cterm (SgiConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
-       | TABLE SYMBOL COLON cexp        (SgiTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))
-       | SEQUENCE SYMBOL                (SgiSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))
+       | TABLE SYMBOL COLON cexp        (let
+                                             val loc = s (TABLEleft, cexpright)
+                                             val t = (CApp ((CVar (["Basis"], "sql_table"), loc),
+                                                            entable cexp), loc)
+                                         in
+                                             (SgiVal (SYMBOL, t), loc)
+                                         end)
+       | SEQUENCE SYMBOL                (let
+                                             val loc = s (SEQUENCEleft, SYMBOLright)
+                                             val t = (CVar (["Basis"], "sql_sequence"), loc)
+                                         in
+                                             (SgiVal (SYMBOL, t), loc)
+                                         end)
        | CLASS SYMBOL                   (SgiClassAbs SYMBOL, s (CLASSleft, SYMBOLright))
        | CLASS SYMBOL EQ cexp           (SgiClass (SYMBOL, cexp), s (CLASSleft, cexpright))
        | CLASS SYMBOL SYMBOL EQ cexp    (let
@@ -508,7 +519,13 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
                                          in
                                              (SgiClass (SYMBOL1, c), s (CLASSleft, cexpright))
                                          end)
-       | COOKIE SYMBOL COLON cexp       (SgiCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))
+       | COOKIE SYMBOL COLON cexp       (let
+                                             val loc = s (COOKIEleft, cexpright)
+                                             val t = (CApp ((CVar (["Basis"], "http_cookie"), loc),
+                                                            entable cexp), loc)
+                                         in
+                                             (SgiVal (SYMBOL, t), loc)
+                                         end)
 
 sgis   :                                ([])
        | sgi sgis                       (sgi :: sgis)
