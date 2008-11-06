@@ -352,10 +352,15 @@ fun exp env e =
 
               | ELet (x, t, e', b) =>
                 let
+                    fun doSub () = #1 (reduceExp env (subExpInExp (0, e') b))
+
                     fun trySub () =
-                        case e' of
-                            (ECase _, _) => e
-                          | _ => #1 (reduceExp env (subExpInExp (0, e') b))
+                        case t of
+                            (TFfi ("Basis", "string"), _) => doSub ()
+                          | _ =>
+                            case e' of
+                                (ECase _, _) => e
+                              | _ => doSub ()
                 in
                     if impure e' then
                         let

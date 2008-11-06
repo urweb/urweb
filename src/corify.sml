@@ -540,11 +540,31 @@ fun corifyExp st (e, loc) =
                                   | _ => (all, rev args)
 
                             val (result, args) = getArgs (t, [])
+                            val (isTransaction, result) =
+                                case result of
+                                    (L'.CApp ((L'.CFfi ("Basis", "transaction"), _),
+                                              result), _) => (true, result)
+                                  | _ => (false, result)
 
-                            val (actuals, _) = foldr (fn (_, (actuals, n)) =>
-                                                         ((L'.ERel n, loc) :: actuals,
-                                                          n + 1)) ([], 0) args
-                            val app = (L'.EFfiApp (m, x, actuals), loc)
+                            fun makeApp n =
+                                let
+                                    val (actuals, _) = foldr (fn (_, (actuals, n)) =>
+                                                                 ((L'.ERel n, loc) :: actuals,
+                                                                  n + 1)) ([], n) args
+                                in
+                                    (L'.EFfiApp (m, x, actuals), loc)
+                                end
+                            val unit = (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc)
+                            val (result, app) =
+                                if isTransaction then
+                                    ((L'.TFun (unit, result), loc),
+                                     (L'.EAbs ("_",
+                                               unit,
+                                               result,
+                                               makeApp 1), loc))
+                                else
+                                    (result, makeApp 0)
+                                     
                             val (abs, _, _) = foldr (fn (t, (abs, ran, n)) =>
                                                         ((L'.EAbs ("arg" ^ Int.toString n,
                                                                    t,
@@ -734,17 +754,24 @@ fun corifyDecl mods ((d, loc : EM.span), st) =
         (case sgn of
              L.SgnConst sgis =>
              let
-                 val (ds, cmap, conmap, st) =
-                     foldl (fn ((sgi, _), (ds, cmap, conmap, st)) =>
+                 val (ds, cmap, conmap, st, _) =
+                     foldl (fn ((sgi, _), (ds, cmap, conmap, st, trans)) =>
                                case sgi of
                                    L.SgiConAbs (x, n, k) =>
                                    let
                                        val (st, n') = St.bindCon st x n
+
+                                       val trans =
+                                           if x = "transaction" then
+                                               SOME n
+                                           else
+                                               trans
                                    in
                                        ((L'.DCon (x, n', corifyKind k, (L'.CFfi (m, x), loc)), loc) :: ds,
                                         cmap,
                                         conmap,
-                                        st)
+                                        st,
+                                        trans)
                                    end
                                  | L.SgiCon (x, n, k, _) =>
                                    let
@@ -753,7 +780,8 @@ fun corifyDecl mods ((d, loc : EM.span), st) =
                                        ((L'.DCon (x, n', corifyKind k, (L'.CFfi (m, x), loc)), loc) :: ds,
                                         cmap,
                                         conmap,
-                                        st)
+                                        st,
+                                        trans)
                                    end
 
                                  | L.SgiDatatype (x, n, xs, xnts) =>
@@ -815,15 +843,40 @@ fun corifyDecl mods ((d, loc : EM.span), st) =
                                        (ds' @ (L'.DDatatype (x, n', xs, xnts), loc) :: ds,
                                         cmap,
                                         conmap,
-                                        st)
+                                        st,
+                                        trans)
                                    end
 
                                  | L.SgiVal (x, _, c) =>
-                                   (ds,
-                                    SM.insert (cmap, x, corifyCon st c),
-                                    conmap,
-                                    st)
-                                 | _ => (ds, cmap, conmap, st)) ([], SM.empty, SM.empty, st) sgis
+                                   let
+                                       val c =
+                                           case trans of
+                                               NONE => corifyCon st c
+                                             | SOME trans =>
+                                               let
+                                                   fun transactify (all as (c, loc)) =
+                                                       case c of
+                                                           L.TFun (dom, ran) =>
+                                                           (L'.TFun (corifyCon st dom, transactify ran), loc)
+                                                         | L.CApp ((L.CNamed trans', _), t) =>
+                                                           if trans' = trans then
+                                                               (L'.CApp ((L'.CFfi (m, "transaction"), loc),
+                                                                        corifyCon st t), loc)
+                                                           else
+                                                               corifyCon st all
+                                                         | _ => corifyCon st all
+                                               in
+                                                   transactify c
+                                               end
+                                   in
+                                       (ds,
+                                        SM.insert (cmap, x, c),
+                                        conmap,
+                                        st,
+                                        trans)
+                                   end
+                                 | _ => (ds, cmap, conmap, st, trans))
+                                                           ([], SM.empty, SM.empty, st, NONE) sgis
 
                  val st = St.bindStr st m n (St.ffi m cmap conmap)
              in

@@ -69,6 +69,22 @@ val read_bool : read bool
 val read_time : read time
 
 
+(** * Transactions *)
+
+con transaction :: Type -> Type
+
+val return : t ::: Type
+             -> t -> transaction t
+val bind : t1 ::: Type -> t2 ::: Type
+           -> transaction t1 -> (t1 -> transaction t2)
+           -> transaction t2
+
+
+(** HTTP operations *)
+
+val requestHeader : string -> transaction (option string)
+
+
 (** SQL *)
 
 con sql_table :: {Type} -> Type
@@ -232,13 +248,6 @@ val sql_current_timestamp : sql_nfunc time
 
 
 (*** Executing queries *)
-
-con transaction :: Type -> Type
-val return : t ::: Type
-             -> t -> transaction t
-val bind : t1 ::: Type -> t2 ::: Type
-           -> transaction t1 -> (t1 -> transaction t2)
-           -> transaction t2
 
 val query : tables ::: {{Type}} -> exps ::: {Type}
             -> fn [tables ~ exps] =>
