@@ -141,6 +141,14 @@ val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
                     -> xml ctx [] [])
                    -> transaction (xml ctx [] [])
 
+val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
+              -> sql_query tables exps
+              -> fn [tables ~ exps] =>
+                    ($(exps ++ fold (fn nm (fields :: {Type}) acc [[nm] ~ acc] =>
+                                        [nm = $fields] ++ acc) [] tables)
+                     -> transaction (xml ctx [] []))
+                    -> transaction (xml ctx [] [])
+                       
 val oneOrNoRows : tables ::: {{Type}} -> exps ::: {Type}
                   -> sql_query tables exps
                   -> fn [tables ~ exps] =>

@@ -1,11 +1,9 @@
 structure IR = RefFun.Make(struct
                                type t = int
-                               val inj = _
                            end)
 
 structure SR = RefFun.Make(struct
                                type t = string
-                               val inj = _
                            end)
 
 fun main () =

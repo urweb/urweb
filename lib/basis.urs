@@ -374,7 +374,10 @@ val h1 : bodyTag []
 val h2 : bodyTag []
 val h3 : bodyTag []
 val h4 : bodyTag []
+
 val li : bodyTag []
+val ol : bodyTag []
+val ul : bodyTag []
 
 val hr : bodyTag []
 

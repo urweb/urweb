@@ -110,7 +110,7 @@ fun exp (e, st : state) =
           | SOME (_, [], _) => (e, st)
           | SOME (f, xs, xs') =>
             case IM.find (#funcs st, f) of
-                NONE => ((*print "SHOT DOWN!\n";*) (e, st))
+                NONE => ((*print ("SHOT DOWN! " ^ Int.toString f ^ "\n");*) (e, st))
               | SOME {name, args, body, typ, tag} =>
                 case KM.find (args, xs) of
                     SOME f' => ((*Print.prefaces "Pre-existing" [("e", CorePrint.p_exp CoreEnv.empty (e, ErrorMsg.dummySpan))];*)
@@ -203,6 +203,10 @@ fun specialize' file =
                                               body = e,
                                               typ = c,
                                               tag = tag})
+                      | DVal (_, n, _, (ENamed n', _), _) =>
+                        (case IM.find (funcs, n') of
+                             NONE => funcs
+                           | SOME v => IM.insert (funcs, n, v))
                       | _ => funcs
 
                 val (changed, ds) =

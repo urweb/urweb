@@ -202,6 +202,17 @@ fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
           (fn fs acc => return <xml>{acc}{f fs}</xml>)
           <xml/>
 
+fun queryX' (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
+            (q : sql_query tables exps) [tables ~ exps]
+            (f : $(exps ++ fold (fn nm (fields :: {Type}) acc [[nm] ~ acc] =>
+                                    [nm = $fields] ++ acc) [] tables)
+                 -> transaction (xml ctx [] [])) =
+    query q
+          (fn fs acc =>
+              r <- f fs;
+              return <xml>{acc}{r}</xml>)
+          <xml/>
+
 fun oneOrNoRows (tables ::: {{Type}}) (exps ::: {Type})
                 (q : sql_query tables exps) [tables ~ exps] =
     query q

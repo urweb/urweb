@@ -1,0 +1,6 @@
+debug
+database dbname=tree
+sql tree.sql
+
+treeFun
+tree
