@@ -133,6 +133,8 @@ fun monoType env =
 
                   | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
+                  | L.CApp ((L.CFfi ("Basis", "http_cookie"), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_table"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "sql_sequence") =>
@@ -944,6 +946,33 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                           loc)), loc)), loc)), loc)), loc),
                  fm)
             end
+
+          | L.ECApp ((L.EFfi ("Basis", "getCookie"), _), t) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                val un = (L'.TRecord [], loc)
+                val t = monoType env t
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (un, s), loc),
+                           (L'.EAbs ("_", un, s,
+                                     (L'.EPrim (Prim.String "Cookie!"), loc)), loc)), loc),
+                 fm)
+            end
+
+          | L.ECApp ((L.EFfi ("Basis", "setCookie"), _), t) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                val un = (L'.TRecord [], loc)
+                val t = monoType env t
+                val (e, fm) = urlifyExp env fm ((L'.ERel 1, loc), t)
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (t, (L'.TFun (un, un), loc)), loc),
+                           (L'.EAbs ("v", t, (L'.TFun (un, un), loc),
+                                     (L'.EAbs ("_", un, un,
+                                               (L'.EFfiApp ("Basis", "set_cookie", [(L'.ERel 2, loc), e]), loc)),
+                                      loc)), loc)), loc),
+                 fm)
+            end            
 
           | L.EFfiApp ("Basis", "dml", [e]) =>
             let
@@ -2059,6 +2088,16 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                        (L'.DVal (x, n, t', e, s), loc)])
             end
           | L.DDatabase s => SOME (env, fm, [(L'.DDatabase s, loc)])
+          | L.DCookie (x, n, t, s) =>
+            let
+                val t = (L.CFfi ("Basis", "string"), loc)
+                val t' = (L'.TFfi ("Basis", "string"), loc)
+                val e = (L'.EPrim (Prim.String s), loc)
+            in
+                SOME (Env.pushENamed env x n t NONE s,
+                      fm,
+                      [(L'.DVal (x, n, t', e, s), loc)])
+            end
     end
 
 fun monoize env ds =

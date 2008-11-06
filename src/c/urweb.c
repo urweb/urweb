@@ -26,6 +26,7 @@ typedef struct {
 struct uw_context {
   char *headers, *headers_end;
 
+  char *outHeaders, *outHeaders_front, *outHeaders_back;
   char *page, *page_front, *page_back;
   char *heap, *heap_front, *heap_back;
   char **inputs;
@@ -43,10 +44,15 @@ struct uw_context {
 
 extern int uw_inputs_len;
 
-uw_context uw_init(size_t page_len, size_t heap_len) {
+uw_context uw_init(size_t outHeaders_len, size_t page_len, size_t heap_len) {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->headers = ctx->headers_end = NULL;
+
+  ctx->outHeaders_front = ctx->outHeaders = malloc(outHeaders_len);
+  ctx->outHeaders_back = ctx->outHeaders_front + outHeaders_len;
+
+  ctx->heap_front = ctx->heap = malloc(heap_len);
 
   ctx->page_front = ctx->page = malloc(page_len);
   ctx->page_back = ctx->page_front + page_len;
@@ -76,6 +82,7 @@ void *uw_get_db(uw_context ctx) {
 }
 
 void uw_free(uw_context ctx) {
+  free(ctx->outHeaders);
   free(ctx->page);
   free(ctx->heap);
   free(ctx->inputs);
@@ -84,6 +91,7 @@ void uw_free(uw_context ctx) {
 }
 
 void uw_reset_keep_request(uw_context ctx) {
+  ctx->outHeaders_front = ctx->outHeaders;
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
   ctx->regions = NULL;
@@ -93,6 +101,7 @@ void uw_reset_keep_request(uw_context ctx) {
 }
 
 void uw_reset_keep_error_message(uw_context ctx) {
+  ctx->outHeaders_front = ctx->outHeaders;
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
   ctx->regions = NULL;
@@ -276,6 +285,7 @@ void uw_end_region(uw_context ctx) {
 }
 
 void uw_memstats(uw_context ctx) {
+  printf("Headers: %d/%d\n", ctx->outHeaders_front - ctx->outHeaders, ctx->outHeaders_back - ctx->outHeaders);
   printf("Page: %d/%d\n", ctx->page_front - ctx->page, ctx->page_back - ctx->page);
   printf("Heap: %d/%d\n", ctx->heap_front - ctx->heap, ctx->heap_back - ctx->heap);
 }
@@ -295,7 +305,52 @@ int uw_really_send(int sock, const void *buf, size_t len) {
 }
 
 int uw_send(uw_context ctx, int sock) {
-  return uw_really_send(sock, ctx->page, ctx->page_front - ctx->page);
+  int n = uw_really_send(sock, ctx->outHeaders, ctx->outHeaders_front - ctx->outHeaders);
+
+  if (n < 0)
+    return n;
+
+  n = uw_really_send(sock, "\r\n", 2);
+
+  if (n < 0)
+    return n;
+
+  n = uw_really_send(sock, "<html>", 6);
+
+  if (n < 0)
+    return n;
+
+  n = uw_really_send(sock, ctx->page, ctx->page_front - ctx->page);
+
+  if (n < 0)
+    return n;
+
+  return uw_really_send(sock, "</html>", 7);
+}
+
+static void uw_check_headers(uw_context ctx, size_t extra) {
+  size_t desired = ctx->outHeaders_front - ctx->outHeaders + extra, next;
+  char *new_outHeaders;
+
+  next = ctx->outHeaders_back - ctx->outHeaders;
+  if (next < desired) {
+    if (next == 0)
+      next = 1;
+    for (; next < desired; next *= 2);
+
+    new_outHeaders = realloc(ctx->outHeaders, next);
+    ctx->outHeaders_front = new_outHeaders + (ctx->outHeaders_front - ctx->outHeaders);
+    ctx->outHeaders_back = new_outHeaders + next;
+    ctx->outHeaders = new_outHeaders;
+  }
+}
+
+void uw_write_header(uw_context ctx, uw_Basis_string s) {
+  int len = strlen(s);
+
+  uw_check_headers(ctx, len + 1);
+  strcpy(ctx->outHeaders_front, s);
+  ctx->outHeaders_front += len;
 }
 
 static void uw_check(uw_context ctx, size_t extra) {
@@ -1089,4 +1144,14 @@ uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
     }
   }
 
+}
+
+uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string c, uw_Basis_string v) {
+  uw_write_header(ctx, "Set-Cookie: ");
+  uw_write_header(ctx, c);
+  uw_write_header(ctx, "=");
+  uw_write_header(ctx, v);
+  uw_write_header(ctx, "\r\n");
+
+  return uw_unit_v;
 }

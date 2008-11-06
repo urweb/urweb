@@ -50,6 +50,7 @@ fun impure (e, _) =
       | ENone _ => false
       | ESome (_, e) => impure e
       | EFfi _ => false
+      | EFfiApp ("Basis", "set_cookie", _) => true
       | EFfiApp _ => false
       | EApp ((EFfi _, _), _) => false
       | EApp _ => true
@@ -231,6 +232,7 @@ fun summarize d (e, _) =
       | ENone _ => []
       | ESome (_, e) => summarize d e
       | EFfi _ => []
+      | EFfiApp ("Basis", "set_cookie", _) => [Unsure]
       | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
       | EApp ((EFfi _, _), e) => summarize d e
       | EApp _ => [Unsure]
@@ -347,12 +349,16 @@ fun exp env e =
                 #1 (reduceExp env (ELet (x, t, e,
                                          (EApp (b, liftExpInExp 0 e'), loc)), loc))
 
-              | ELet (x, t, e, (EAbs (x', t' as (TRecord [], _), ran, e'), loc)) =>
-                EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e, swapExpVars 0 e'), loc))
+              | ELet (x, t, e', (EAbs (x', t' as (TRecord [], _), ran, e''), loc)) =>
+                if impure e' then
+                    e
+                else
+                    EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
 
               | ELet (x, t, e', b) =>
                 let
-                    fun doSub () = #1 (reduceExp env (subExpInExp (0, e') b))
+                    fun doSub () =
+                        #1 (reduceExp env (subExpInExp (0, e') b))
 
                     fun trySub () =
                         case t of
