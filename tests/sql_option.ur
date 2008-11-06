@@ -4,9 +4,13 @@ fun addNull () =
     dml (INSERT INTO t (O) VALUES (NULL));
     return <xml>Done</xml>
 
-(*fun add42 () =
-    dml (INSERT INTO t (O) VALUES (42));
-    return <xml>Done</xml>*)
+fun add3 () =
+    dml (INSERT INTO t (O) VALUES ({Some 3}));
+    return <xml>Done</xml>
+
+fun addN r =
+    dml (INSERT INTO t (O) VALUES ({Some (readError r.N)}));
+    return <xml>Done</xml>
 
 fun main () : transaction page =
     xml <- queryX (SELECT * FROM t)
@@ -17,6 +21,8 @@ fun main () : transaction page =
       {xml}
 
       <a link={addNull ()}>Add a null</a><br/>
+      <a link={add3 ()}>Add a 3</a><br/>
+      <form>
+        Add <textbox{#N}/> <submit action={addN}/>
+      </form>
     </body></xml>
-
-(*      <a link={add42 ()}>Add a 42</a><br/>*)

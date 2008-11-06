@@ -474,6 +474,13 @@ fun getPargs (e, _) =
       | EFfiApp ("Basis", "sqlifyString", [e]) => [(e, String)]
       | EFfiApp ("Basis", "sqlifyBool", [e]) => [(e, Bool)]
       | EFfiApp ("Basis", "sqlifyTime", [e]) => [(e, Time)]
+
+      | EFfiApp ("Basis", "sqlifyIntN", [e]) => [(e, Nullable Int)]
+      | EFfiApp ("Basis", "sqlifyFloatN", [e]) => [(e, Nullable Float)]
+      | EFfiApp ("Basis", "sqlifyStringN", [e]) => [(e, Nullable String)]
+      | EFfiApp ("Basis", "sqlifyBoolN", [e]) => [(e, Nullable Bool)]
+      | EFfiApp ("Basis", "sqlifyTimeN", [e]) => [(e, Nullable Time)]
+
       | ECase (e, _, _) => [(e, Bool)]
 
       | _ => raise Fail "CjrPrint: getPargs"

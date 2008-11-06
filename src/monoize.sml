@@ -983,7 +983,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EDml (liftExpInExp 0 e), loc),
+                ((L'.EDml e, loc),
                  fm)
             end
 
