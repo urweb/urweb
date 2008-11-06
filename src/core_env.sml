@@ -257,6 +257,12 @@ fun declBinds env (d, loc) =
             pushENamed env x n t NONE s
         end
       | DDatabase _ => env
+      | DCookie (x, n, c, s) =>
+        let
+            val t = (CApp ((CFfi ("Basis", "http_cookie"), loc), c), loc)
+        in
+            pushENamed env x n t NONE s
+        end
 
 fun patBinds env (p, loc) =
     case p of

@@ -68,7 +68,9 @@ fun shake file =
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
                                    | ((DSequence (_, n, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], dummyt, dummye)))
-                                   | ((DDatabase _, _), acc) => acc)
+                                   | ((DDatabase _, _), acc) => acc
+                                   | ((DCookie (_, n, c, _), _), (cdef, edef)) =>
+                                     (cdef, IM.insert (edef, n, ([], c, dummye))))
                                  (IM.empty, IM.empty) file
 
         fun kind (_, s) = s
@@ -136,7 +138,8 @@ fun shake file =
                       | (DExport _, _) => true
                       | (DTable _, _) => true
                       | (DSequence _, _) => true
-                      | (DDatabase _, _) => true) file
+                      | (DDatabase _, _) => true
+                      | (DCookie _, _) => true) file
     end
 
 end

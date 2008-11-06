@@ -120,6 +120,7 @@ datatype decl' =
        | DTable of string * int * con * string
        | DSequence of string * int * string
        | DDatabase of string
+       | DCookie of string * int * con * string
 
 withtype decl = decl' located
 

@@ -504,6 +504,17 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DDatabase s => box [string "database",
                             space,
                             string s]
+      | DCookie (x, n, c, s) => box [string "cookie",
+                                     space,
+                                     p_named x n,
+                                     space,
+                                     string "as",
+                                     space,
+                                     string s,
+                                     space,
+                                     string ":",
+                                     space,
+                                     p_con env c]
 
 fun p_file env file =
     let
