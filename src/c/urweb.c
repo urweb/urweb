@@ -174,7 +174,7 @@ void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
       newLen = 1;
     else
       newLen = len * 2;
-    ctx->cleanup = realloc(ctx->cleanup, newLen);
+    ctx->cleanup = realloc(ctx->cleanup, newLen * sizeof(cleanup));
     ctx->cleanup_front = ctx->cleanup + len;
     ctx->cleanup_back = ctx->cleanup + newLen;
   }

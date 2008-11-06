@@ -70,13 +70,14 @@ fun isUnboxable (t : typ) =
 
 fun p_typ' par env (t, loc) =
     case t of
-        TFun (t1, t2) => parenIf par (box [p_typ' true env t2,
+        TFun (t1, t2) => parenIf par (box [string "(",
+                                           p_typ' true env t2,
                                            space,
                                            string "(*)",
                                            space,
                                            string "(",
                                            p_typ env t1,
-                                           string ")"])
+                                           string "))"])
       | TRecord i => box [string "struct",
                           space,
                           string "__uws_",
@@ -1151,6 +1152,10 @@ fun p_exp' par env (e, loc) =
                  p_exp env initial,
                  string ";",
                  newline,
+                 case prepared of
+                     NONE => box [string "printf(\"Executing: %s\\n\", query);",
+                                  newline]
+                   | _ => box [],
                  string "PGresult *res = ",
                  case prepared of
                      NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"

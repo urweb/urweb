@@ -169,3 +169,15 @@ val oneRow : tables ::: {{Type}} -> exps ::: {Type}
                                             [[nm] ~ acc] =>
                                          [nm = $fields] ++ acc)
                                          [] tables)
+
+val eqNullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                 -> t ::: Type -> sql_injectable (option t)
+                 -> sql_exp tables agg exps (option t)
+                 -> sql_exp tables agg exps (option t)
+                 -> sql_exp tables agg exps bool
+
+val eqNullable' : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                  -> t ::: Type -> sql_injectable (option t)
+                  -> sql_exp tables agg exps (option t)
+                  -> option t
+                  -> sql_exp tables agg exps bool

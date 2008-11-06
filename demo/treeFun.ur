@@ -18,7 +18,7 @@ functor Make(M : sig
              (root : option M.key) =
         let
             fun recurse (root : option key) =
-                queryX' (SELECT * FROM tab WHERE tab.{parent} = {root})
+                queryX' (SELECT * FROM tab WHERE {[eqNullable' (SQL tab.{parent}) root]})
                         (fn r =>
                             children <- recurse (Some r.Tab.id);
                             return <xml>

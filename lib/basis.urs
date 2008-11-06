@@ -197,6 +197,11 @@ val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type
                  -> sql_injectable t -> t -> sql_exp tables agg exps t
 
+val sql_is_null : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                  -> t ::: Type
+                  -> sql_exp tables agg exps (option t)
+                  -> sql_exp tables agg exps bool
+
 con sql_unary :: Type -> Type -> Type
 val sql_not : sql_unary bool bool
 val sql_unary : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}

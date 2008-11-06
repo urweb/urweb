@@ -1584,6 +1584,25 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
           | L.EFfi ("Basis", "sql_current_timestamp") => ((L'.EPrim (Prim.String "CURRENT_TIMESTAMP"), loc), fm)
 
+          | (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_is_null"), _), _),
+                _), _),
+               _), _),
+              _), _)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat loc [sc "(",
+                                       (L'.ERel 0, loc),
+                                       sc " IS NULL)"]), loc),
+                 fm)
+            end
+
           | L.EFfiApp ("Basis", "nextval", [e]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
