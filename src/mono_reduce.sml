@@ -41,6 +41,7 @@ fun impure (e, _) =
       | EQuery _ => true
       | EDml _ => true
       | ENextval _ => true
+      | EUnurlify _ => true
       | EAbs _ => false
 
       | EPrim _ => false
@@ -275,6 +276,7 @@ fun summarize d (e, _) =
 
       | EDml e => summarize d e @ [WriteDb]
       | ENextval e => summarize d e @ [WriteDb]
+      | EUnurlify (e, _) => summarize d e
 
 fun exp env e =
     let

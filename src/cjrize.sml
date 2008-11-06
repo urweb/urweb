@@ -412,6 +412,13 @@ fun cifyExp (eAll as (e, loc), sm) =
             ((L'.ENextval {seq = e, prepared = NONE}, loc), sm)
         end
 
+      | L.EUnurlify (e, t) =>
+        let
+            val (e, sm) = cifyExp (e, sm)
+            val (t, sm) = cifyTyp (t, sm)
+        in
+            ((L'.EUnurlify (e, t), loc), sm)
+        end
 
 fun cifyDecl ((d, loc), sm) =
     case d of

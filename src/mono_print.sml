@@ -272,6 +272,9 @@ fun p_exp' par env (e, _) =
       | ENextval e => box [string "nextval(",
                            p_exp env e,
                            string ")"]
+      | EUnurlify (e, _) => box [string "unurlify(",
+                                 p_exp env e,
+                                 string ")"]
 
 and p_exp env = p_exp' false env
 

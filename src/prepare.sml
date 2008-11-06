@@ -191,6 +191,13 @@ fun prepExp (e as (_, loc), sns) =
                  ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1))
         end
 
+      | EUnurlify (e, t) =>
+        let
+            val (e, sns) = prepExp (e, sns)
+        in
+            ((EUnurlify (e, t), loc), sns)
+        end
+
 fun prepDecl (d as (_, loc), sns) =
     case #1 d of
         DStruct _ => (d, sns)

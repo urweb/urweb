@@ -92,6 +92,7 @@ datatype exp' =
                    prepared : int option }
        | ENextval of { seq : exp,
                        prepared : int option }
+       | EUnurlify of exp * typ
 
 withtype exp = exp' located
 

@@ -955,7 +955,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("c", s, (L'.TFun (un, s), loc),
                            (L'.EAbs ("_", un, s,
-                                     (L'.EPrim (Prim.String "Cookie!"), loc)), loc)), loc),
+                                     (L'.EUnurlify ((L'.EFfiApp ("Basis", "get_cookie", [(L'.ERel 1, loc)]), loc),
+                                                    t),
+                                      loc)), loc)), loc),
                  fm)
             end
 

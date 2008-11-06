@@ -100,4 +100,6 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_requestHeader(uw_context, uw_Basis_string);
 
 void uw_write_header(uw_context, uw_Basis_string);
+
+uw_Basis_string uw_Basis_get_cookie(uw_context, uw_Basis_string);
 uw_unit uw_Basis_set_cookie(uw_context, uw_Basis_string, uw_Basis_string);

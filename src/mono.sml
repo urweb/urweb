@@ -94,6 +94,8 @@ datatype exp' =
        | EDml of exp
        | ENextval of exp
 
+       | EUnurlify of exp * typ
+
 
 withtype exp = exp' located
 

@@ -1143,7 +1143,23 @@ uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
         return NULL;
     }
   }
+}
 
+uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
+  int len = strlen(c);
+  char *s = ctx->headers, *p;
+
+  while (p = strchr(s, ':')) {
+    if (!strncasecmp(s, "Cookie: ", 8) && !strncmp(p + 2, c, len)
+        && p + 2 + len < ctx->headers_end && p[2 + len] == '=') {
+      return p + 3 + len;
+    } else {
+      if ((s = strchr(p, 0)) && s < ctx->headers_end)
+        s += 2;
+      else
+        return NULL;
+    }
+  }
 }
 
 uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string c, uw_Basis_string v) {
