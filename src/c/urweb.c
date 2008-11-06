@@ -315,17 +315,7 @@ int uw_send(uw_context ctx, int sock) {
   if (n < 0)
     return n;
 
-  n = uw_really_send(sock, "<html>", 6);
-
-  if (n < 0)
-    return n;
-
-  n = uw_really_send(sock, ctx->page, ctx->page_front - ctx->page);
-
-  if (n < 0)
-    return n;
-
-  return uw_really_send(sock, "</html>", 7);
+  return uw_really_send(sock, ctx->page, ctx->page_front - ctx->page);
 }
 
 static void uw_check_headers(uw_context ctx, size_t extra) {

@@ -189,6 +189,7 @@ static void *worker(void *data) {
         printf("Serving URI %s....\n", path);
 
         uw_set_headers(ctx, headers);
+        uw_write(ctx, "<html>");
 
         while (1) {
           if (uw_db_begin(ctx)) {
@@ -198,8 +199,8 @@ static void *worker(void *data) {
             else {
               fk = FATAL;
               uw_reset(ctx);
-              uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-              uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+              uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+              uw_write_header(ctx, "Content-type: text/plain\r\n\r\n");
               uw_write(ctx, "Error running SQL BEGIN\n");
 
               break;
@@ -212,13 +213,15 @@ static void *worker(void *data) {
           strcpy(path_copy, path);
           fk = uw_begin(ctx, path_copy);
           if (fk == SUCCESS) {
+            uw_write(ctx, "</html>");
+
             if (uw_db_commit(ctx)) {
               fk = FATAL;
 
               printf("Error running SQL COMMIT\n");
               uw_reset(ctx);
-              uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-              uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+              uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+              uw_write_header(ctx, "Content-type: text/plain\r\n");
               uw_write(ctx, "Error running SQL COMMIT\n");
             }
 
@@ -232,8 +235,8 @@ static void *worker(void *data) {
               printf("Fatal error (out of retries): %s\n", uw_error_message(ctx));
 
               uw_reset_keep_error_message(ctx);
-              uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-              uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+              uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+              uw_write_header(ctx, "Content-type: text/plain\r\n");
               uw_write(ctx, "Fatal error (out of retries): ");
               uw_write(ctx, uw_error_message(ctx));
               uw_write(ctx, "\n");
@@ -248,8 +251,8 @@ static void *worker(void *data) {
             printf("Fatal error: %s\n", uw_error_message(ctx));
 
             uw_reset_keep_error_message(ctx);
-            uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-            uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+            uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\r\n");
+            uw_write_header(ctx, "Content-type: text/plain\r\n");
             uw_write(ctx, "Fatal error: ");
             uw_write(ctx, uw_error_message(ctx));
             uw_write(ctx, "\n");
@@ -261,8 +264,8 @@ static void *worker(void *data) {
             printf("Unknown uw_handle return code!\n");
 
             uw_reset_keep_request(ctx);
-            uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-            uw_write(ctx, "Content-type: text/plain\r\n\r\n");
+            uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+            uw_write_header(ctx, "Content-type: text/plain\r\n");
             uw_write(ctx, "Unknown uw_handle return code!\n");
 
             try_rollback(ctx);
