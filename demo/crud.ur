@@ -102,7 +102,7 @@ functor Make(M : sig
                                                [[nm] ~ rest] =>
                                fn input col acc => acc ++ {nm = @sql_inject col.Inject (col.Parse input)})
                               {} [M.cols] inputs M.cols
-                     ++ {Id = (SQL {id})}));
+                     ++ {Id = (SQL {[id]})}));
         ls <- list ();
         return <xml><body>
           <p>Inserted with ID {[id]}.</p>
@@ -122,7 +122,7 @@ functor Make(M : sig
                                fn input col acc => acc ++ {nm =
                                                            @sql_inject col.Inject (col.Parse input)})
                               {} [M.cols] inputs M.cols)
-                    tab (WHERE T.Id = {id}));
+                    tab (WHERE T.Id = {[id]}));
         ls <- list ();
         return <xml><body>
           <p>Saved!</p>
@@ -131,7 +131,7 @@ functor Make(M : sig
         </body></xml>
 
     and upd (id : int) =
-        fso <- oneOrNoRows (SELECT tab.{{mapT2T fstTT M.cols}} FROM tab WHERE tab.Id = {id});
+        fso <- oneOrNoRows (SELECT tab.{{mapT2T fstTT M.cols}} FROM tab WHERE tab.Id = {[id]});
         case fso : (Basis.option {Tab : $(mapT2T fstTT M.cols)}) of
             None => return <xml><body>Not found!</body></xml>
           | Some fs => return <xml><body><form>
@@ -150,7 +150,7 @@ functor Make(M : sig
           </form></body></xml>
 
     and delete (id : int) =
-        dml (DELETE FROM tab WHERE Id = {id});
+        dml (DELETE FROM tab WHERE Id = {[id]});
         ls <- list ();
         return <xml><body>
           <p>The deed is done.</p>

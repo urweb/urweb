@@ -799,6 +799,43 @@ fun unurlify env (t, loc) =
                              string "})"]
                     end
 
+              | TOption t =>
+                box [string "(request[0] == '/' ? ++request : request, ",
+                     string "((!strncmp(request, \"None\", 4) ",
+                     string "&& (request[4] == 0 || request[4] == '/')) ",
+                     string "? (request += 4, NULL) ",
+                     string ": ((!strncmp(request, \"Some\", 4) ",
+                     string "&& request[4] == '/') ",
+                     string "? (request += 5, ",
+                     if isUnboxable  t then
+                         unurlify' rf (#1 t)
+                     else
+                         box [string "({",
+                              newline,
+                              p_typ env t,
+                              space,
+                              string "*tmp",
+                              space,
+                              string "=",
+                              space,
+                              string "uw_malloc(ctx, sizeof(",
+                              p_typ env t,
+                              string "));",
+                              newline,
+                              string "*tmp",
+                              space,
+                              string "=",
+                              space,
+                              unurlify' rf (#1 t),
+                              string ";",
+                              newline,
+                              string "tmp;",
+                              newline,
+                              string "})"],
+                     string ") :",
+                     space,
+                     string "(uw_error(ctx, FATAL, \"Error unurlifying option type\"), NULL))))"]
+
               | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
                       space)
     in

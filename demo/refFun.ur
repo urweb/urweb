@@ -10,19 +10,19 @@ functor Make(M : sig
 
     fun new d =
         id <- nextval s;
-        dml (INSERT INTO t (Id, Data) VALUES ({id}, {d}));
+        dml (INSERT INTO t (Id, Data) VALUES ({[id]}, {[d]}));
         return id
 
     fun read r =
-        o <- oneOrNoRows (SELECT t.Data FROM t WHERE t.Id = {r});
+        o <- oneOrNoRows (SELECT t.Data FROM t WHERE t.Id = {[r]});
         return (case o of
             None => error <xml>You already deleted that ref!</xml>
           | Some r => r.T.Data)
 
     fun write r d =
-        dml (UPDATE t SET Data = {d} WHERE Id = {r})
+        dml (UPDATE t SET Data = {[d]} WHERE Id = {[r]})
 
     fun delete r =
-        dml (DELETE FROM t WHERE Id = {r})
+        dml (DELETE FROM t WHERE Id = {[r]})
 
 end

@@ -1,5 +1,5 @@
 debug
-database dbname=tree
+database dbname=test
 sql tree.sql
 
 treeFun

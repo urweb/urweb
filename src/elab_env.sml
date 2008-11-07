@@ -542,6 +542,9 @@ fun lookupENamed (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
+fun checkENamed (env : env) n =
+    Option.isSome (IM.find (#namedE env, n))
+
 fun lookupE (env : env) x =
     case SM.find (#renameE env, x) of
         NONE => NotBound

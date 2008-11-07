@@ -1236,7 +1236,7 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                   end
                                           end)
 
-       | LBRACE LBRACK eexp RBRACK RBRACE       (eexp)
+       | LBRACE eexp RBRACE             (eexp)
 
        | sqlexp EQ sqlexp               (sql_compare ("eq", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp NE sqlexp               (sql_compare ("ne", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
@@ -1256,8 +1256,8 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                     sqlexp), loc)
                                          end)
 
-       | LBRACE eexp RBRACE             (sql_inject (#1 eexp,
-                                                     s (LBRACEleft, RBRACEright)))
+       | LBRACE LBRACK eexp RBRACK RBRACE  (sql_inject (#1 eexp,
+                                                        s (LBRACEleft, RBRACEright)))
        | LPAREN sqlexp RPAREN           (sqlexp)
 
        | NULL                           (sql_inject ((EVar (["Basis"], "None", Infer), 

@@ -74,6 +74,7 @@ signature ELAB_ENV = sig
     val pushENamed : env -> string -> Elab.con -> env * int
     val pushENamedAs : env -> string -> int -> Elab.con -> env
     val lookupENamed : env -> int -> string * Elab.con
+    val checkENamed : env -> int -> bool
 
     val lookupE : env -> string -> Elab.con var
 

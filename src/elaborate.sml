@@ -2282,9 +2282,15 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                         let
                                             val env = case #1 h of
                                                           L'.SgiCon (x, n, k, c) =>
-                                                          E.pushCNamedAs env x n k (SOME c)
+                                                          if E.checkENamed env n then
+                                                              env
+                                                          else
+                                                              E.pushCNamedAs env x n k (SOME c)
                                                         | L'.SgiConAbs (x, n, k) =>
-                                                          E.pushCNamedAs env x n k NONE
+                                                          if E.checkENamed env n then
+                                                              env
+                                                          else
+                                                              E.pushCNamedAs env x n k NONE
                                                         | _ => env
                                         in
                                             seek (E.sgiBinds env h, sgiBindsD (env, denv) h) t
@@ -2391,12 +2397,12 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
 
                                              fun good () =
                                                  let
-                                                     val env = E.sgiBinds env sgi2All
+                                                     val env = E.sgiBinds env sgi1All
                                                      val env = if n1 = n2 then
                                                                    env
                                                                else
-                                                                   E.pushCNamedAs env x n1 k'
-                                                                                  (SOME (L'.CNamed n2, loc))
+                                                                   E.pushCNamedAs env x n2 k'
+                                                                                  (SOME (L'.CNamed n1, loc))
                                                  in
                                                      SOME (env, denv)
                                                  end

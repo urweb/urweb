@@ -132,6 +132,10 @@ metaform2.urp
 
 <p>This example showcases code reuse by applying the same functor as in the last example.  The <tt>Metaform2</tt> module mixes pages from the functor with some new pages of its own.</p>
 
+tree.urp
+
+<p>Here we see how we can abstract over common patterns of SQL queries.  In particular, since standard SQL does not help much with queries over trees, we write a function for traversing an SQL tree, building an HTML representation, based on a user-provided function for rendering individual rows.</p>
+
 crud1.urp
 
 <p>This example pulls together much of what we have seen so far.  It involves a generic "admin interface" builder.  That is, we have the <tt>Crud.Make</tt> functor, which takes in a description of a table and outputs a sub-application for viewing and editing that table.</p>

@@ -230,12 +230,12 @@ fun eqNullable (tables ::: {{Type}}) (agg ::: {{Type}}) (exps ::: {Type})
     (t ::: Type) (_ : sql_injectable (option t))
     (e1 : sql_exp tables agg exps (option t))
     (e2 : sql_exp tables agg exps (option t)) =
-    (SQL ({[e1]} IS NULL AND {[e2]} IS NULL) OR {[e1]} = {[e2]})
+    (SQL ({e1} IS NULL AND {e2} IS NULL) OR {e1} = {e2})
 
 fun eqNullable' (tables ::: {{Type}}) (agg ::: {{Type}}) (exps ::: {Type})
     (t ::: Type) (inj : sql_injectable (option t))
     (e1 : sql_exp tables agg exps (option t))
     (e2 : option t) =
     case e2 of
-        None => (SQL {[e1]} IS NULL)
+        None => (SQL {e1} IS NULL)
       | Some _ => sql_comparison sql_eq e1 (@sql_inject inj e2)

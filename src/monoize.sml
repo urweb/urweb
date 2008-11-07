@@ -390,6 +390,22 @@ fun fooifyExp fk env =
                         ((L'.EApp ((L'.ENamed n, loc), e), loc), fm)
                     end
 
+                  | L'.TOption t =>
+                    let
+                        val (body, fm) = fooify fm ((L'.ERel 0, loc), t)
+                    in
+                        ((L'.ECase (e,
+                                    [((L'.PNone t, loc),
+                                      (L'.EPrim (Prim.String "None"), loc)),
+                                     
+                                     ((L'.PSome (t, (L'.PVar ("x", t), loc)), loc),
+                                      (L'.EStrcat ((L'.EPrim (Prim.String "Some/"), loc),
+                                                   body), loc))],
+                                    {disc = tAll,
+                                     result = (L'.TFfi ("Basis", "string"), loc)}), loc),
+                         fm)
+                    end
+
                   | _ => (E.errorAt loc "Don't know how to encode attribute type";
                           Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
                           (dummyExp, fm))
