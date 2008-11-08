@@ -567,7 +567,8 @@ fun compile job =
                         (cname, oname,
                          fn () => (OS.FileSys.remove cname;
                                    OS.FileSys.remove oname;
-                                   OS.FileSys.rmDir dir))
+                                   OS.FileSys.rmDir dir)
+                            handle OS.SysErr _ => OS.FileSys.rmDir dir)
                     end
             val ename = #exe job
         in

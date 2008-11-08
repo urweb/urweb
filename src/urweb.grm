@@ -1069,7 +1069,7 @@ tagHead: BEGIN_TAG                      (let
                                              val pos = s (BEGIN_TAGleft, BEGIN_TAGright)
                                          in
                                              (bt,
-                                              (EVar ([], bt, Infer), pos))
+                                              (EVar (["Basis"], bt, Infer), pos))
                                          end)
        | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
