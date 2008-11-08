@@ -199,7 +199,7 @@ datatype event =
          WritePage
        | ReadDb
        | WriteDb
-       | UseRel of int
+       | UseRel
        | Unsure
 
 fun p_event e =
@@ -210,7 +210,7 @@ fun p_event e =
             WritePage => string "WritePage"
           | ReadDb => string "ReadDb"
           | WriteDb => string "WriteDb"
-          | UseRel n => string ("UseRel" ^ Int.toString n)
+          | UseRel => string "UseRel"
           | Unsure => string "Unsure"
     end
 
@@ -249,7 +249,7 @@ fun reduce file =
         fun summarize d (e, _) =
             case e of
                 EPrim _ => []
-              | ERel n => if n >= d then [UseRel (n - d)] else []
+              | ERel n => if n = d then [UseRel] else []
               | ENamed _ => []
               | ECon (_, _, NONE) => []
               | ECon (_, _, SOME e) => summarize d e
@@ -275,7 +275,11 @@ fun reduce file =
                                     else
                                         [Unsure]
                             end
-                          | ERel n => List.revAppend (ls, [UseRel (n - d), Unsure])
+                          | ERel n => List.revAppend (ls,
+                                                      if n = d then
+                                                          [UseRel, Unsure]
+                                                      else
+                                                          [Unsure])
                           | EApp (f, x) =>
                             unravel (#1 f, summarize d x @ ls)
                           | _ => [Unsure]
@@ -435,7 +439,7 @@ fun reduce file =
 
                                     fun verifyUnused eff =
                                         case eff of
-                                            UseRel r => r <> 0
+                                            UseRel => false
                                           | _ => true
 
                                     fun verifyCompatible effs =
@@ -444,11 +448,7 @@ fun reduce file =
                                           | eff :: effs =>
                                             case eff of
                                                 Unsure => false
-                                              | UseRel r =>
-                                                if r = 0 then
-                                                    List.all verifyUnused effs
-                                                else
-                                                    verifyCompatible effs
+                                              | UseRel => List.all verifyUnused effs
                                               | WritePage => not writesPage andalso verifyCompatible effs
                                               | ReadDb => not writesDb andalso verifyCompatible effs
                                               | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
@@ -458,7 +458,7 @@ fun reduce file =
                                                       ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
                                                       ("effs_e'", Print.p_list p_event effs_e'),
                                                       ("effs_b", Print.p_list p_event effs_b)];*)
-                                    if verifyCompatible effs_b then
+                                    if List.null effs_e' orelse verifyCompatible effs_b then
                                         trySub ()
                                     else
                                         e
