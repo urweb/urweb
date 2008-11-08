@@ -4,12 +4,12 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 #include <pthread.h>
 
 #include "urweb.h"
 
-int uw_port = 8080;
 int uw_backlog = 10;
 int uw_bufsize = 1024;
 
@@ -298,18 +298,36 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in my_addr;
   struct sockaddr_in their_addr; // connector's address information
   int sin_size, yes = 1;
-  int nthreads, i, *names;
+  int uw_port = 8080, nthreads = 1, i, *names, opt;
+  
+  while ((opt = getopt(argc, argv, "p:t:")) != -1) {
+    switch (opt) {
+    case '?':
+      fprintf(stderr, "Unknown command-line option");
+      return 1;
 
-  if (argc < 2) {
-    fprintf(stderr, "No thread count specified\n");
-    return 1;
+    case 'p':
+      uw_port = atoi(optarg);
+      if (uw_port <= 0) {
+        fprintf(stderr, "Invalid port number\n");
+        return 1;
+      }
+      break;
+
+    case 't':
+      nthreads = atoi(optarg);
+      if (nthreads <= 0) {
+        fprintf(stderr, "Invalid thread count\n");
+        return 1;
+      }
+      break;
+
+    default:
+      fprintf(stderr, "Unexpected getopt() behavior\n");
+      return 1;
+    }
   }
 
-  nthreads = atoi(argv[1]);
-  if (nthreads <= 0) {
-    fprintf(stderr, "Invalid thread count\n");
-    return 1;
-  }
   names = calloc(nthreads, sizeof(int));
 
   sockfd = socket(PF_INET, SOCK_STREAM, 0); // do some error checking!
