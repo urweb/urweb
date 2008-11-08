@@ -625,11 +625,11 @@ cargp  : SYMBOL                         (fn (c, k) =>
                                                   ((CAbs (SYMBOL, SOME kind, c), loc),
                                                    (KArrow (kind, k), loc))
                                               end)
-       | LBRACK cterm TWIDDLE cterm RBRACK (fn (c, k) =>
+       | LBRACK cexp TWIDDLE cexp RBRACK (fn (c, k) =>
                                             let
                                                 val loc = s (LBRACKleft, RBRACKright)
                                             in
-                                                ((CDisjoint (cterm1, cterm2, c), loc),
+                                                ((CDisjoint (cexp1, cexp2, c), loc),
                                                  k)
                                             end)
 
@@ -810,19 +810,19 @@ eargp  : SYMBOL                         (fn (e, t) =>
                                                 ((EAbs ("_", SOME cexp, e), loc),
                                                  (TFun (cexp, t), loc))
                                             end)
-       | LPAREN cterm TWIDDLE cterm RPAREN(fn (e, t) =>
+       | LPAREN cexp TWIDDLE cexp RPAREN  (fn (e, t) =>
                                             let
                                                 val loc = s (LPARENleft, RPARENright)
                                             in
-                                                ((EDisjoint (cterm1, cterm2, e), loc),
-                                                 (CDisjoint (cterm1, cterm2, t), loc))
+                                                ((EDisjoint (cexp1, cexp2, e), loc),
+                                                 (CDisjoint (cexp1, cexp2, t), loc))
                                             end)
-       | LBRACK cterm TWIDDLE cterm RBRACK(fn (e, t) =>
+       | LBRACK cexp TWIDDLE cexp RBRACK(fn (e, t) =>
                                             let
                                                 val loc = s (LBRACKleft, RBRACKright)
                                             in
-                                                ((EDisjoint (cterm1, cterm2, e), loc),
-                                                 (CDisjoint (cterm1, cterm2, t), loc))
+                                                ((EDisjoint (cexp1, cexp2, e), loc),
+                                                 (CDisjoint (cexp1, cexp2, t), loc))
                                             end)
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))

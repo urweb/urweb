@@ -40,4 +40,6 @@ signature DISJOINT = sig
 
     val hnormCon : ElabEnv.env * env -> Elab.con -> Elab.con * goal list
 
+    val p_env : env -> unit
+
 end

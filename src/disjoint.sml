@@ -53,6 +53,8 @@ fun p2s p =
 
 fun pp p = print (p2s p ^ "\n")
 
+fun rp2s (p, ns) = String.concatWith " " (p2s p :: map Int.toString ns)
+
 structure PK = struct
 
 type ord_key = piece
@@ -104,6 +106,12 @@ structure PM = BinaryMapFn(PK)
 
 type env = PS.set PM.map
 
+fun p_env x =
+    (print "\nDENV:\n";
+     PM.appi (fn (p1, ps) =>
+                 PS.app (fn p2 =>
+                            print (rp2s p1 ^ " ~ " ^ rp2s p2 ^ "\n")) ps) x)
+     
 structure E = ElabEnv
 
 type goal = ErrorMsg.span * E.env * env * Elab.con * Elab.con

@@ -3424,7 +3424,7 @@ fun elabFile basis topStr topSgn env file =
                                                  [("loc", PD.string (ErrorMsg.spanToString loc)),
                                                   ("c1", p_con env c1),
                                                   ("c2", p_con env c2)];
-                                        raise Fail "Unresolve constraint in top.ur"))
+                                        raise Fail "Unresolved constraint in top.ur"))
                                 | TypeClass _ => raise Fail "Unresolved type class constraint in top.ur") gs
         val () = subSgn (env', D.empty) topSgn' topSgn
 
