@@ -292,6 +292,10 @@ static void *worker(void *data) {
   }
 }
 
+static void help(char *cmd) {
+  printf("Usage: %s [-p <port>] [-t <thread-count>]\n", cmd);
+}
+
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
   int sockfd;  // listen on sock_fd
@@ -300,16 +304,22 @@ int main(int argc, char *argv[]) {
   int sin_size, yes = 1;
   int uw_port = 8080, nthreads = 1, i, *names, opt;
   
-  while ((opt = getopt(argc, argv, "p:t:")) != -1) {
+  while ((opt = getopt(argc, argv, "hp:t:")) != -1) {
     switch (opt) {
     case '?':
       fprintf(stderr, "Unknown command-line option");
+      help(argv[0]);
       return 1;
+
+    case 'h':
+      help(argv[0]);
+      return 0;
 
     case 'p':
       uw_port = atoi(optarg);
       if (uw_port <= 0) {
         fprintf(stderr, "Invalid port number\n");
+        help(argv[0]);
         return 1;
       }
       break;
@@ -318,6 +328,7 @@ int main(int argc, char *argv[]) {
       nthreads = atoi(optarg);
       if (nthreads <= 0) {
         fprintf(stderr, "Invalid thread count\n");
+        help(argv[0]);
         return 1;
       }
       break;
