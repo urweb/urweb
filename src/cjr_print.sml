@@ -70,14 +70,8 @@ fun isUnboxable (t : typ) =
 
 fun p_typ' par env (t, loc) =
     case t of
-        TFun (t1, t2) => parenIf par (box [string "(",
-                                           p_typ' true env t2,
-                                           space,
-                                           string "(*)",
-                                           space,
-                                           string "(",
-                                           p_typ env t1,
-                                           string "))"])
+        TFun (t1, t2) => (EM.errorAt loc "Function type remains";
+                          string "<FUNCTION>")
       | TRecord i => box [string "struct",
                           space,
                           string "__uws_",
@@ -967,6 +961,9 @@ fun p_exp' par env (e, loc) =
              string "tmp;",
              newline,
              string "})"]
+      | EApp ((EError (e, (TFun (_, ran), _)), loc), _) =>
+        p_exp env (EError (e, ran), loc)
+
       | EFfiApp (m, x, es) => box [string "uw_",
                                    p_ident m,
                                    string "_",

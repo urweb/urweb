@@ -1193,9 +1193,21 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   }
 
   while (p = strchr(s, ':')) {
-    if (!strncasecmp(s, "Cookie: ", 8) && !strncmp(p + 2, c, len)
-        && p + 2 + len < ctx->headers_end && p[2 + len] == '=') {
-      return p + 3 + len;
+    if (!strncasecmp(s, "Cookie: ", 8)) {
+      p += 2;
+      while (1) {
+        if (!strncmp(p, c, len)
+            && p + len < ctx->headers_end && p[len] == '=')
+          return p + 1 + len;
+        else if (p = strchr(p, ';'))
+          p += 2;
+        else if ((s = strchr(s, 0)) && s < ctx->headers_end) {
+          s += 2;
+          break;
+        }
+        else
+          return NULL;
+      }
     } else {
       if ((s = strchr(p, 0)) && s < ctx->headers_end)
         s += 2;
