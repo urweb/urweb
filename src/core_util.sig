@@ -73,6 +73,8 @@ structure Con : sig
 end
 
 structure Exp : sig
+    val compare : Core.exp * Core.exp -> order
+
     datatype binder =
              RelC of string * Core.kind
            | NamedC of string * int * Core.kind * Core.con option
@@ -107,6 +109,12 @@ structure Exp : sig
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool,
                   exp : Core.exp' -> bool} -> Core.exp -> bool
+
+    val existsB : {kind : Core.kind' -> bool,
+                   con : 'context * Core.con' -> bool,
+                   exp : 'context * Core.exp' -> bool,
+                   bind : 'context * binder -> 'context}
+                  -> 'context -> Core.exp -> bool
 
     val foldMap : {kind : Core.kind' * 'state -> Core.kind' * 'state,
                    con : Core.con' * 'state -> Core.con' * 'state,

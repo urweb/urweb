@@ -31,5 +31,6 @@ signature ORDER = sig
     
     val join : order * (unit -> order) -> order
     val joinL : ('a * 'b -> order) -> 'a list * 'b list -> order
-                                                       
+    val joinO : ('a * 'b -> order) -> 'a option * 'b option -> order
+
 end

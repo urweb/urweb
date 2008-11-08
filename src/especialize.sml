@@ -32,39 +32,57 @@ open Core
 structure E = CoreEnv
 structure U = CoreUtil
 
-datatype skey =
-         Named of int
-       | App of skey * skey
+type skey = exp
 
 structure K = struct
-type ord_key = skey list
-fun compare' (k1, k2) =
-    case (k1, k2) of
-        (Named n1, Named n2) => Int.compare (n1, n2)
-      | (Named _, _) => LESS
-      | (_, Named _) => GREATER
-
-      | (App (x1, y1), App (x2, y2)) => Order.join (compare' (x1, x2), fn () => compare' (y1, y2))
-
-val compare = Order.joinL compare'
+type ord_key = exp list
+val compare = Order.joinL U.Exp.compare
 end
 
 structure KM = BinaryMapFn(K)
 structure IM = IntBinaryMap
 
-fun skeyIn (e, _) =
-    case e of
-        ENamed n => SOME (Named n)
-      | EApp (e1, e2) =>
-        (case (skeyIn e1, skeyIn e2) of
-             (SOME k1, SOME k2) => SOME (App (k1, k2))
-           | _ => NONE)
-      | _ => NONE
+val sizeOf = U.Exp.fold {kind = fn (_, n) => n,
+                         con = fn (_, n) => n,
+                         exp = fn (_, n) => n + 1}
+                        0
 
-fun skeyOut (k, loc) =
-    case k of
-        Named n => (ENamed n, loc)
-      | App (k1, k2) => (EApp (skeyOut (k1, loc), skeyOut (k2, loc)), loc)
+val isOpen = U.Exp.existsB {kind = fn _ => false,
+                            con = fn ((nc, _), c) =>
+                                    case c of
+                                        CRel n => n >= nc
+                                      | _ => false,
+                            exp = fn ((_, ne), e) =>
+                                     case e of
+                                         ERel n => n >= ne
+                                       | _ => false,
+                            bind = fn ((nc, ne), b) =>
+                                      case b of
+                                          U.Exp.RelC _ => (nc + 1, ne)
+                                        | U.Exp.RelE _ => (nc, ne + 1)
+                                        | _ => (nc, ne)}
+             (0, 0)
+
+fun baseBad (e, _) =
+    case e of
+        EAbs (_, _, _, e) => sizeOf e > 20
+      | ENamed _ => false
+      | _ => true
+
+fun isBad e =
+    case e of
+        (ERecord xes, _) =>
+        length xes > 10
+        orelse List.exists (fn (_, e, _) => baseBad e) xes
+      | _ => baseBad e
+
+fun skeyIn e =
+    if isBad e orelse isOpen e then
+        NONE
+    else
+        SOME e
+
+fun skeyOut e = e
 
 type func = {
      name : string,
@@ -126,7 +144,7 @@ fun exp (e, st : state) =
                                 (_, _, []) => SOME (body, typ)
                               | (EAbs (_, _, _, body'), TFun (_, typ'), x :: xs) =>
                                 let
-                                    val body'' = E.subExpInExp (0, skeyOut (x, #2 body)) body'
+                                    val body'' = E.subExpInExp (0, skeyOut x) body'
                                 in
                                     (*Print.prefaces "espec" [("body'", CorePrint.p_exp CoreEnv.empty body'),
                                                             ("body''", CorePrint.p_exp CoreEnv.empty body'')];*)

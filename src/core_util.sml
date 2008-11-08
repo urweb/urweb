@@ -331,6 +331,149 @@ end
 
 structure Exp = struct
 
+open Order
+
+fun pcCompare (pc1, pc2) =
+    case (pc1, pc2) of
+        (PConVar n1, PConVar n2) => Int.compare (n1, n2)
+      | (PConVar _, _) => LESS
+      | (_, PConVar _) => GREATER
+
+      | (PConFfi {mod = m1, datatyp = d1, con = c1, ...},
+         PConFfi {mod = m2, datatyp = d2, con = c2, ...}) =>
+        join (String.compare (m1, m2),
+              fn () => join (String.compare (d1, d2),
+                             fn () => String.compare (c1, c2)))
+
+fun pCompare ((p1, _), (p2, _)) =
+    case (p1, p2) of
+        (PWild, PWild) => EQUAL
+      | (PWild, _) => LESS
+      | (_, PWild) => GREATER
+
+      | (PVar _, PVar _) => EQUAL
+      | (PVar _, _) => LESS
+      | (_, PVar _) => GREATER
+
+      | (PPrim p1, PPrim p2) => Prim.compare (p1, p2)
+      | (PPrim _, _) => LESS
+      | (_, PPrim _) => GREATER
+
+      | (PCon (_, pc1, _, po1), PCon (_, pc2, _, po2)) =>
+        join (pcCompare (pc1, pc2),
+              fn () => joinO pCompare (po1, po2))
+      | (PCon _, _) => LESS
+      | (_, PCon _) => GREATER
+
+      | (PRecord xps1, PRecord xps2) =>
+        joinL (fn ((x1, p1, _), (x2, p2, _)) =>
+                  join (String.compare (x1, x2),
+                        fn () => pCompare (p1, p2))) (xps1, xps2)
+
+fun compare ((e1, _), (e2, _)) =
+    case (e1, e2) of
+        (EPrim p1, EPrim p2) => Prim.compare (p1, p2)
+      | (EPrim _, _) => LESS
+      | (_, EPrim _) => GREATER
+
+      | (ERel n1, ERel n2) => Int.compare (n1, n2)
+      | (ERel _, _) => LESS
+      | (_, ERel _) => GREATER
+
+      | (ENamed n1, ENamed n2) => Int.compare (n1, n2)
+      | (ENamed _, _) => LESS
+      | (_, ENamed _) => GREATER
+
+      | (ECon (_, pc1, _, eo1), ECon (_, pc2, _, eo2)) =>
+        join (pcCompare (pc1, pc2),
+              fn () => joinO compare (eo1, eo2))
+      | (ECon _, _) => LESS
+      | (_, ECon _) => GREATER
+
+      | (EFfi (f1, x1), EFfi (f2, x2)) =>
+        join (String.compare (f1, f2),
+              fn () => String.compare (x1, x2))
+      | (EFfi _, _) => LESS
+      | (_, EFfi _) => GREATER
+
+      | (EFfiApp (f1, x1, es1), EFfiApp (f2, x2, es2)) =>
+        join (String.compare (f1, f2),
+           fn () => join (String.compare (x1, x2),
+                       fn () => joinL compare (es1, es2)))
+      | (EFfiApp _, _) => LESS
+      | (_, EFfiApp _) => GREATER
+
+      | (EApp (f1, x1), EApp (f2, x2)) =>
+        join (compare (f1, f2),
+              fn () => compare (x1, x2))
+      | (EApp _, _) => LESS
+      | (_, EApp _) => GREATER
+
+      | (EAbs (_, _, _, e1), EAbs (_, _, _, e2)) => compare (e1, e2)
+      | (EAbs _, _) => LESS
+      | (_, EAbs _) => GREATER
+
+      | (ECApp (f1, x1), ECApp (f2, x2)) =>
+        join (compare (f1, f2),
+           fn () => Con.compare (x1, x2))
+      | (ECApp _, _) => LESS
+      | (_, ECApp _) => GREATER
+
+      | (ECAbs (_, _, e1), ECAbs (_, _, e2)) => compare (e1, e2)
+      | (ECAbs _, _) => LESS
+      | (_, ECAbs _) => GREATER
+
+      | (ERecord xes1, ERecord xes2) =>
+        joinL (fn ((x1, e1, _), (x2, e2, _)) =>
+                  join (Con.compare (x1, x2),
+                        fn () => compare (e1, e2))) (xes1, xes2)
+      | (ERecord _, _) => LESS
+      | (_, ERecord _) => GREATER
+
+      | (EField (e1, c1, _), EField (e2, c2, _)) =>
+        join (compare (e1, e2),
+              fn () => Con.compare (c1, c2))
+      | (EField _, _) => LESS
+      | (_, EField _) => GREATER
+
+      | (EConcat (x1, _, y1, _), EConcat (x2, _, y2, _)) =>
+        join (compare (x1, x2),
+              fn () => compare (y1, y2))
+      | (EConcat _, _) => LESS
+      | (_, EConcat _) => GREATER
+
+      | (ECut (e1, c1, _), ECut (e2, c2, _)) =>
+        join (compare (e1, e2),
+              fn () => Con.compare (c1, c2))
+      | (ECut _, _) => LESS
+      | (_, ECut _) => GREATER
+
+      | (EFold _, EFold _) => EQUAL
+      | (EFold _, _) => LESS
+      | (_, EFold _) => GREATER
+
+      | (ECase (e1, pes1, _), ECase (e2, pes2, _)) =>
+        join (compare (e1, e2),
+              fn () => joinL (fn ((p1, e1), (p2, e2)) =>
+                                 join (pCompare (p1, p2),
+                                       fn () => compare (e1, e2))) (pes1, pes2))
+      | (ECase _, _) => LESS
+      | (_, ECase _) => GREATER
+
+      | (EWrite e1, EWrite e2) => compare (e1, e2)
+      | (EWrite _, _) => LESS
+      | (_, EWrite _) => GREATER
+
+      | (EClosure (n1, es1), EClosure (n2, es2)) =>
+        join (Int.compare (n1, n2),
+              fn () => joinL compare (es1, es2))
+      | (EClosure _, _) => LESS
+      | (_, EClosure _) => GREATER
+
+      | (ELet (_, _, x1, e1), ELet (_, _, x2, e2)) =>
+        join (compare (x1, x2),
+              fn () => compare (e1, e2))
+
 datatype binder =
          RelC of string * kind
        | NamedC of string * int * kind * con option
@@ -582,6 +725,26 @@ fun exists {kind, con, exp} k =
                                         S.Return ()
                                     else
                                         S.Continue (e, ())} k () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+fun existsB {kind, con, exp, bind} ctx k =
+    case mapfoldB {kind = fn k => fn () =>
+                                     if kind k then
+                                         S.Return ()
+                                     else
+                                         S.Continue (k, ()),
+                   con = fn ctx => fn c => fn () =>
+                                              if con (ctx, c) then
+                                                  S.Return ()
+                                              else
+                                                  S.Continue (c, ()),
+                   exp = fn ctx => fn e => fn () =>
+                                              if exp (ctx, e) then
+                                                  S.Return ()
+                                              else
+                                                  S.Continue (e, ()),
+                   bind = bind} ctx k () of
         S.Return _ => true
       | S.Continue _ => false
 

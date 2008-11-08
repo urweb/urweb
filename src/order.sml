@@ -42,4 +42,12 @@ fun joinL f (os1, os2) =
         join (f (h1, h2), fn () => joinL f (t1, t2))
       | (_ :: _, nil) => GREATER
 
+fun joinO f (v1, v2) =
+    case (v1, v2) of
+        (NONE, NONE) => EQUAL
+      | (NONE, _) => LESS
+      | (_, NONE) => GREATER
+
+      | (SOME v1, SOME v2) => f (v1, v2)
+
 end

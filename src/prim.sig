@@ -36,5 +36,6 @@ signature PRIM = sig
     val p_t_GCC : t Print.printer
 
     val equal : t * t -> bool
+    val compare : t * t -> order
 
 end

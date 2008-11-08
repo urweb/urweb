@@ -67,4 +67,16 @@ fun equal x =
 
       | _ => false
 
+fun compare (p1, p2) =
+    case (p1, p2) of
+        (Int n1, Int n2) => Int64.compare (n1, n2)
+      | (Int _, _) => LESS
+      | (_, Int _) => GREATER
+
+      | (Float n1, Float n2) => Real64.compare (n1, n2)
+      | (Float _, _) => LESS
+      | (_, Float _) => GREATER
+
+      | (String n1, String n2) => String.compare (n1, n2)
+
 end
