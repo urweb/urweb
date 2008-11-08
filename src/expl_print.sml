@@ -97,7 +97,7 @@ fun p_con' par env (c, _) =
       | CModProj (m1, ms, x) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)
-                      handle E.UnboundNamed _ => "UNBOUND"
+                      handle E.UnboundNamed _ => "UNBOUND" ^ Int.toString m1
 
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
@@ -226,7 +226,7 @@ fun p_exp' par env (e, loc) =
       | EModProj (m1, ms, x) =>
         let
             val (m1x, sgn) = E.lookupStrNamed env m1
-                handle E.UnboundNamed _ => ("UNBOUND", (SgnConst [], loc))
+                handle E.UnboundNamed _ => ("UNBOUND" ^ Int.toString m1, (SgnConst [], loc))
 
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
@@ -487,11 +487,11 @@ and p_sgn env (sgn, loc) =
                               newline,
                               string "end"]
       | SgnVar n => string ((#1 (E.lookupSgnNamed env n))
-                            handle E.UnboundNamed _ => "UNBOUND")
+                            handle E.UnboundNamed _ => "UNBOUND" ^ Int.toString n)
       | SgnFun (x, n, sgn, sgn') => box [string "functor",
                                          space,
                                          string "(",
-                                         string x,
+                                         p_named x n,
                                          space,
                                          string ":",
                                          space,
@@ -515,7 +515,7 @@ and p_sgn env (sgn, loc) =
       | SgnProj (m1, ms, x) =>
         let
             val (m1x, sgn) = E.lookupStrNamed env m1
-                handle E.UnboundNamed _ => ("UNBOUND", (SgnConst [], loc))
+                handle E.UnboundNamed _ => ("UNBOUND" ^ Int.toString m1, (SgnConst [], loc))
                              
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
@@ -643,7 +643,7 @@ and p_str env (str, _) =
       | StrVar n =>
         let
             val x = #1 (E.lookupStrNamed env n)
-                    handle E.UnboundNamed _ => "UNBOUND"
+                    handle E.UnboundNamed _ => "UNBOUND" ^ Int.toString n
 
             val s = if !debug then
                         x ^ "__" ^ Int.toString n
@@ -662,7 +662,7 @@ and p_str env (str, _) =
             box [string "functor",
                  space,
                  string "(",
-                 string x,
+                 p_named x n,
                  space,
                  string ":",
                  space,

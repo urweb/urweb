@@ -106,6 +106,11 @@ fun exp (e, st : state) =
         fun getApp e =
             case e of
                 ENamed f => SOME (f, [], [])
+              | EField ((ERecord xes, _), (CName x, _), _) =>
+                (case List.find (fn ((CName x', _), _,_) => x' = x
+                                  | _ => false) xes of
+                     NONE => NONE
+                   | SOME (_, (e, _), _) => getApp e)
               | EApp (e1, e2) =>
                 (case getApp (#1 e1) of
                      NONE => NONE
@@ -125,10 +130,18 @@ fun exp (e, st : state) =
     in
         case getApp e of
             NONE => (e, st)
-          | SOME (_, [], _) => (e, st)
+          | SOME (f, [], xs') => (#1 (foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
+                                            (ENamed f, ErrorMsg.dummySpan) xs'), st)
           | SOME (f, xs, xs') =>
             case IM.find (#funcs st, f) of
-                NONE => ((*print ("SHOT DOWN! " ^ Int.toString f ^ "\n");*) (e, st))
+                NONE =>
+                let
+                    val e = foldl (fn (arg, e) => (EApp (e, skeyOut arg), ErrorMsg.dummySpan))
+                                  (ENamed f, ErrorMsg.dummySpan) xs
+                in
+                    (#1 (foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
+                               e xs'), st)
+                end
               | SOME {name, args, body, typ, tag} =>
                 case KM.find (args, xs) of
                     SOME f' => ((*Print.prefaces "Pre-existing" [("e", CorePrint.p_exp CoreEnv.empty (e, ErrorMsg.dummySpan))];*)

@@ -2615,14 +2615,14 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
 
       | (L'.SgnFun (m1, n1, dom1, ran1), L'.SgnFun (m2, n2, dom2, ran2)) =>
         let
-            val ran1 =
+            val ran2 =
                 if n1 = n2 then
-                    ran1
+                    ran2
                 else
-                    subStrInSgn (n1, n2) ran1
+                    subStrInSgn (n2, n1) ran2
         in
             subSgn (env, denv) dom2 dom1;
-            subSgn (E.pushStrNamedAs env m2 n2 dom2, denv) ran1 ran2
+            subSgn (E.pushStrNamedAs env m1 n1 dom2, denv) ran1 ran2
         end
 
       | _ => sgnError env (SgnWrongForm (sgn1, sgn2)))

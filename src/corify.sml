@@ -387,7 +387,7 @@ fun bindStr ({basis, cons, constructors, vals, strs, funs,
 
 fun lookupStrById ({basis, strs, ...} : t) n =
     case IM.find (strs, n) of
-        NONE => raise Fail "Corify.St.lookupStrById"
+        NONE => raise Fail ("Corify.St.lookupStrById(" ^ Int.toString n ^ ")")
       | SOME f => dummy (basis, f)
 
 fun lookupStrByName (m, {basis, current = FNormal {strs, ...}, ...} : t) =
@@ -602,7 +602,7 @@ fun corifyExp st (e, loc) =
 
       | L.ELet (x, t, e1, e2) => (L'.ELet (x, corifyCon st t, corifyExp st e1, corifyExp st e2), loc)
 
-fun corifyDecl mods ((d, loc : EM.span), st) =
+fun corifyDecl mods (all as (d, loc : EM.span), st) =
     case d of
         L.DCon (x, n, k, c) =>
         let

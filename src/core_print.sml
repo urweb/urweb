@@ -93,7 +93,7 @@ fun p_con' par env (c, _) =
               string (#1 (E.lookupCNamed env n) ^ "__" ^ Int.toString n)
           else
               string (#1 (E.lookupCNamed env n)))
-         handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n))
+        handle E.UnboundNamed _ => string ("UNBOUNDN_" ^ Int.toString n))
       | CFfi (m, x) => box [string "FFI(", string m, string ".", string x, string ")"]
 
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
