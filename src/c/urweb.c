@@ -341,6 +341,7 @@ void uw_write_header(uw_context ctx, uw_Basis_string s) {
   uw_check_headers(ctx, len + 1);
   strcpy(ctx->outHeaders_front, s);
   ctx->outHeaders_front += len;
+  *ctx->outHeaders_front = 0;
 }
 
 static void uw_check(uw_context ctx, size_t extra) {
@@ -1172,7 +1173,24 @@ uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
 
 uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   int len = strlen(c);
-  char *s = ctx->headers, *p;
+  char *s = ctx->headers, *p = ctx->outHeaders;
+
+  while (p = strstr(p, "\nSet-Cookie: ")) {
+    char *p2;
+    p += 13;
+    p2 = strchr(p, '=');
+
+    if (p2) {
+      size_t sz = strcspn(p2+1, ";\r\n");
+
+      if (!strncasecmp(p, c, p2 - p)) {
+        char *ret = uw_malloc(ctx, sz + 1);
+        memcpy(ret, p2+1, sz);
+        ret[sz] = 0;
+        return ret;
+      }
+    }
+  }
 
   while (p = strchr(s, ':')) {
     if (!strncasecmp(s, "Cookie: ", 8) && !strncmp(p + 2, c, len)
