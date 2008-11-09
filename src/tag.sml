@@ -80,8 +80,6 @@ fun exp env (e, s) =
                                                              | _ => (ErrorMsg.errorAt loc "Invalid link expression";
                                                                      (0, []))
 
-
-
                                                        val (f, args) = unravel e
 
                                                        val (cn, count, tags, newTags) =

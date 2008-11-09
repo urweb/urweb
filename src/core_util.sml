@@ -953,6 +953,13 @@ fun mapB {kind, con, exp, decl, bind} ctx ds =
         S.Continue (ds, ()) => ds
       | S.Return _ => raise Fail "CoreUtil.File.mapB: Impossible"
 
+fun map {kind, con, exp, decl} ds =
+    mapB {kind = kind,
+          con = fn () => con,
+          exp = fn () => exp,
+          decl = fn () => decl,
+          bind = fn _ => ()} () ds
+
 fun fold {kind, con, exp, decl} s d =
     case mapfold {kind = fn k => fn s => S.Continue (k, kind (k, s)),
                   con = fn c => fn s => S.Continue (c, con (c, s)),

@@ -482,7 +482,8 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 space,
                                 string "as",
                                 space,
-                                p_con env (#2 (E.lookupENamed env n))]
+                                (p_con env (#2 (E.lookupENamed env n))
+                                 handle E.UnboundNamed _ => string "UNBOUND")]
       | DTable (x, n, c, s) => box [string "table",
                                     space,
                                     p_named x n,

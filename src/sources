@@ -96,6 +96,9 @@ unpoly.sml
 specialize.sig
 specialize.sml
 
+reduce_local.sig
+reduce_local.sml
+
 especialize.sig
 especialize.sml
 

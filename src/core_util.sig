@@ -175,6 +175,12 @@ structure File : sig
                 bind : 'context * binder -> 'context}
                -> 'context -> Core.file -> Core.file
 
+    val map : {kind : Core.kind' -> Core.kind',
+               con : Core.con' -> Core.con',
+               exp : Core.exp' -> Core.exp',
+               decl : Core.decl' -> Core.decl'}
+              -> Core.file -> Core.file
+
     val fold : {kind : Core.kind' * 'state -> 'state,
                 con : Core.con' * 'state -> 'state,
                 exp : Core.exp' * 'state -> 'state,

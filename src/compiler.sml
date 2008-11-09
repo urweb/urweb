@@ -411,6 +411,13 @@ val corify = {
 
 val toCorify = transform corify "corify" o toExplify
 
+(*val reduce_local = {
+    func = ReduceLocal.reduce,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toReduce_local = transform reduce_local "reduce_local" o toCorify*)
+
 val especialize = {
     func = ESpecialize.specialize,
     print = CorePrint.p_file CoreEnv.empty
