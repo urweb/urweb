@@ -320,11 +320,39 @@ fun exp e =
 
       | EWrite (EQuery {exps, tables, state, query,
                         initial = (EPrim (Prim.String ""), _),
+                        body}, loc) =>
+        let
+            fun passLets (depth, (e', _), lets) =
+                case e' of
+                    EStrcat ((ERel x, _), e'') =>
+                    if x = depth then
+                        let
+                            val body = (optExp (EWrite e'', loc), loc)
+                            val body = foldl (fn ((x, t, e'), e) =>
+                                                 (ELet (x, t, e', e), loc))
+                                             body lets
+                        in
+                            EQuery {exps = exps, tables = tables, query = query,
+                                    state = (TRecord [], loc),
+                                    initial = (ERecord [], loc),
+                                    body = body}
+                        end
+                    else
+                        e
+                  | ELet (x, t, e', e'') =>
+                    passLets (depth + 1, e'', (x, t, e') :: lets)
+                  | _ => e
+        in
+            passLets (0, body, [])
+        end
+
+      (*| EWrite (EQuery {exps, tables, state, query,
+                        initial = (EPrim (Prim.String ""), _),
                         body = (EStrcat ((ERel 0, _), e'), _)}, loc) =>
         EQuery {exps = exps, tables = tables, query = query,
                 state = (TRecord [], loc),
                 initial = (ERecord [], loc),
-                body = (optExp (EWrite e', loc), loc)}
+                body = (optExp (EWrite e', loc), loc)}*)
 
       | EWrite (ELet (x, t, e1, e2), loc) =>
         optExp (ELet (x, t, e1, (EWrite e2, loc)), loc)

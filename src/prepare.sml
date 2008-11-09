@@ -176,13 +176,21 @@ fun prepExp (e as (_, loc), sns) =
         end
 
       | EQuery {exps, tables, rnum, state, query, body, initial, ...} =>
-        (case prepString (query, [], 0) of
-             NONE => (e, sns)
-           | SOME (ss, n) =>
-             ((EQuery {exps = exps, tables = tables, rnum = rnum,
-                       state = state, query = query, body = body,
-                       initial = initial, prepared = SOME (#2 sns)}, loc),
-              ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1)))
+        let
+            val (body, sns) = prepExp (body, sns)
+        in
+            case prepString (query, [], 0) of
+                NONE =>
+                ((EQuery {exps = exps, tables = tables, rnum = rnum,
+                          state = state, query = query, body = body,
+                          initial = initial, prepared = SOME (#2 sns)}, loc),
+                 sns)
+              | SOME (ss, n) =>
+                ((EQuery {exps = exps, tables = tables, rnum = rnum,
+                          state = state, query = query, body = body,
+                          initial = initial, prepared = SOME (#2 sns)}, loc),
+                 ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1))
+        end
 
       | EDml {dml, ...} =>
         (case prepString (dml, [], 0) of
@@ -193,8 +201,15 @@ fun prepExp (e as (_, loc), sns) =
 
       | ENextval {seq, ...} =>
         let
-            val s = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
-            val s = (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), s]), loc)
+            val s = case seq of
+                        (EPrim (Prim.String s), loc) =>
+                        (EPrim (Prim.String ("SELECT NEXTVAL('" ^ s ^ "')")), loc)
+                      | _ =>
+                        let
+                            val s' = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
+                        in
+                            (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), s']), loc)
+                        end
         in
             case prepString (s, [], 0) of
                 NONE => (e, sns)

@@ -33,4 +33,6 @@ signature MONO_REDUCE = sig
 
     val subExpInExp : int * Mono.exp -> Mono.exp -> Mono.exp
 
+    val impure : Mono.exp -> bool
+
 end

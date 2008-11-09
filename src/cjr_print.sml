@@ -1186,10 +1186,6 @@ fun p_exp' par env (e, loc) =
                  p_exp env initial,
                  string ";",
                  newline,
-                 case prepared of
-                     NONE => box [string "printf(\"Executing: %s\\n\", query);",
-                                  newline]
-                   | _ => box [],
                  string "PGresult *res = ",
                  case prepared of
                      NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
@@ -1371,8 +1367,15 @@ fun p_exp' par env (e, loc) =
 
       | ENextval {seq, prepared} =>
         let
-            val query = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
-            val query = (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), query]), loc)
+            val query = case seq of
+                            (EPrim (Prim.String s), loc) =>
+                            (EPrim (Prim.String ("SELECT NEXTVAL('" ^ s ^ "')")), loc)
+                          | _ =>
+                            let
+                                val query = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
+                            in
+                                (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), query]), loc)
+                            end
         in
             box [string "(uw_begin_region(ctx), ",
                  string "({",
