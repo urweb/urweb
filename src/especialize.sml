@@ -135,11 +135,11 @@ fun specialize' file =
 
         fun exp (e, st : state) =
             let
-                fun getApp e =
+                fun getApp' e =
                     case e of
                         ENamed f => SOME (f, [], [])
                       | EApp (e1, e2) =>
-                        (case getApp (#1 e1) of
+                        (case getApp' (#1 e1) of
                              NONE => NONE
                            | SOME (f, xs, xs') =>
                              let
@@ -154,6 +154,15 @@ fun specialize' file =
                                    | SOME k => SOME (f, xs @ [k], xs')
                              end)
                       | _ => NONE
+
+                fun getApp e =
+                    case getApp' e of
+                        NONE => NONE
+                      | SOME (f, xs, xs') =>
+                        if List.all (fn (ERecord [], _) => true | _ => false) xs then
+                            SOME (f, [], xs @ xs')
+                        else
+                            SOME (f, xs, xs')
             in
                 case getApp e of
                     NONE => (e, st)
@@ -176,6 +185,7 @@ fun specialize' file =
                                    | _ => false
                          in
                              if List.all (fn (ERel _, _) => false | _ => true) xs'
+                                andalso List.exists (fn (ERecord [], _) => false | _ => true) xs'
                                 andalso not (IS.member (actionable, f))
                                 andalso hasFunarg (typ, xs') then
                                  (#1 (foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
@@ -184,57 +194,57 @@ fun specialize' file =
                              else
                                  (e, st)
                          end)
-                                   | SOME (f, xs, xs') =>
-                                     case IM.find (#funcs st, f) of
-                                         NONE => (e, st)
-                                       | SOME {name, args, body, typ, tag} =>
-                                         case KM.find (args, xs) of
-                                             SOME f' => (#1 (foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
-                                                                   (ENamed f', ErrorMsg.dummySpan) xs'),
-                                                         st)
-                                           | NONE =>
-                                             let
-                                                 fun subBody (body, typ, xs) =
-                                                     case (#1 body, #1 typ, xs) of
-                                                         (_, _, []) => SOME (body, typ)
-                                                       | (EAbs (_, _, _, body'), TFun (_, typ'), x :: xs) =>
-                                                         let
-                                                             val body'' = E.subExpInExp (0, skeyOut x) body'
-                                                         in
-                                                             subBody (body'',
-                                                                      typ',
-                                                                      xs)
-                                                         end
-                                                       | _ => NONE
-                                             in
-                                                 case subBody (body, typ, xs) of
-                                                     NONE => (e, st)
-                                                   | SOME (body', typ') =>
-                                                     let
-                                                         val f' = #maxName st
-                                                         val funcs = IM.insert (#funcs st, f, {name = name,
-                                                                                               args = KM.insert (args,
-                                                                                                                 xs, f'),
-                                                                                               body = body,
-                                                                                               typ = typ,
-                                                                                               tag = tag})
-                                                         val st = {
-                                                             maxName = f' + 1,
-                                                             funcs = funcs,
-                                                             decls = #decls st
-                                                         }
+                  | SOME (f, xs, xs') =>
+                    case IM.find (#funcs st, f) of
+                        NONE => (e, st)
+                      | SOME {name, args, body, typ, tag} =>
+                        case KM.find (args, xs) of
+                            SOME f' => (#1 (foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
+                                                  (ENamed f', ErrorMsg.dummySpan) xs'),
+                                        st)
+                          | NONE =>
+                            let
+                                fun subBody (body, typ, xs) =
+                                    case (#1 body, #1 typ, xs) of
+                                        (_, _, []) => SOME (body, typ)
+                                      | (EAbs (_, _, _, body'), TFun (_, typ'), x :: xs) =>
+                                        let
+                                            val body'' = E.subExpInExp (0, skeyOut x) body'
+                                        in
+                                            subBody (body'',
+                                                     typ',
+                                                     xs)
+                                        end
+                                      | _ => NONE
+                            in
+                                case subBody (body, typ, xs) of
+                                    NONE => (e, st)
+                                  | SOME (body', typ') =>
+                                    let
+                                        val f' = #maxName st
+                                        val funcs = IM.insert (#funcs st, f, {name = name,
+                                                                              args = KM.insert (args,
+                                                                                                xs, f'),
+                                                                              body = body,
+                                                                              typ = typ,
+                                                                              tag = tag})
+                                        val st = {
+                                            maxName = f' + 1,
+                                            funcs = funcs,
+                                            decls = #decls st
+                                        }
 
-                                                         val (body', st) = specExp st body'
-                                                         val e' = foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
-                                                                        (ENamed f', ErrorMsg.dummySpan) xs'
-                                                     in
-                                                         (#1 e',
-                                                          {maxName = #maxName st,
-                                                           funcs = #funcs st,
-                                                           decls = (name, f', typ', body', tag) :: #decls st})
-                                                     end
-                                             end
-                         end
+                                        val (body', st) = specExp st body'
+                                        val e' = foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
+                                                       (ENamed f', ErrorMsg.dummySpan) xs'
+                                    in
+                                        (#1 e',
+                                         {maxName = #maxName st,
+                                          funcs = #funcs st,
+                                          decls = (name, f', typ', body', tag) :: #decls st})
+                                    end
+                            end
+            end
 
         and specExp st = U.Exp.foldMap {kind = kind, con = con, exp = exp} st
 

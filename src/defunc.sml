@@ -113,7 +113,10 @@ fun exp (env, e, st) =
             val (xes, st) =
                 ListUtil.foldlMap
                     (fn (tup as (fnam as (CName x, loc), e, xt), st) =>
-                         if x <> "Link" andalso x <> "Action" then
+                         if (x <> "Link" andalso x <> "Action")
+                            orelse case #1 e of
+                                       ENamed _ => true
+                                     | _ => false then
                              (tup, st)
                          else
                              let
