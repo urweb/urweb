@@ -105,6 +105,12 @@ structure Exp : sig
                 con : Core.con' * 'state -> 'state,
                 exp : Core.exp' * 'state -> 'state}
                -> 'state -> Core.exp -> 'state
+
+    val foldB : {kind : Core.kind' * 'state -> 'state,
+                 con : 'context * Core.con' * 'state -> 'state,
+                 exp : 'context * Core.exp' * 'state -> 'state,
+                 bind : 'context * binder -> 'context}
+                -> 'context -> 'state -> Core.exp -> 'state
                                         
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool,
@@ -148,6 +154,12 @@ structure Decl : sig
                    exp : Core.exp' * 'state -> Core.exp' * 'state,
                    decl : Core.decl' * 'state -> Core.decl' * 'state}
                   -> 'state -> Core.decl -> Core.decl * 'state
+    val foldMapB : {kind : Core.kind' * 'state -> Core.kind' * 'state,
+                    con : 'context * Core.con' * 'state -> Core.con' * 'state,
+                    exp : 'context * Core.exp' * 'state -> Core.exp' * 'state,
+                    decl : 'context * Core.decl' * 'state -> Core.decl' * 'state,
+                    bind : 'context * binder -> 'context}
+                   -> 'context -> 'state -> Core.decl -> Core.decl * 'state
 end
 
 structure File : sig

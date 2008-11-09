@@ -709,6 +709,14 @@ fun fold {kind, con, exp} s e =
         S.Continue (_, s) => s
       | S.Return _ => raise Fail "CoreUtil.Exp.fold: Impossible"
 
+fun foldB {kind, con, exp, bind} ctx s e =
+    case mapfoldB {kind = fn k => fn s => S.Continue (k, kind (k, s)),
+                  con = fn ctx => fn c => fn s => S.Continue (c, con (ctx, c, s)),
+                  exp = fn ctx => fn e => fn s => S.Continue (e, exp (ctx, e, s)),
+                  bind = bind} ctx e s of
+        S.Continue (_, s) => s
+      | S.Return _ => raise Fail "CoreUtil.Exp.foldB: Impossible"
+
 fun exists {kind, con, exp} k =
     case mapfold {kind = fn k => fn () =>
                                     if kind k then
@@ -860,6 +868,15 @@ fun foldMap {kind, con, exp, decl} s d =
                   decl = fn d => fn s => S.Continue (decl (d, s))} d s of
         S.Continue v => v
       | S.Return _ => raise Fail "CoreUtil.Decl.foldMap: Impossible"
+
+fun foldMapB {kind, con, exp, decl, bind} ctx s d =
+    case mapfoldB {kind = fn k => fn s => S.Continue (kind (k, s)),
+                   con = fn ctx => fn c => fn s => S.Continue (con (ctx, c, s)),
+                   exp = fn ctx => fn e => fn s => S.Continue (exp (ctx, e, s)),
+                   decl = fn ctx => fn d => fn s => S.Continue (decl (ctx, d, s)),
+                   bind = bind} ctx d s of
+        S.Continue v => v
+      | S.Return _ => raise Fail "CoreUtil.Decl.foldMapB: Impossible"
 
 end
 

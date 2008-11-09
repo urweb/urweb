@@ -105,6 +105,9 @@ especialize.sml
 core_untangle.sig
 core_untangle.sml
 
+defunc.sig
+defunc.sml
+
 tag.sig
 tag.sml
 
