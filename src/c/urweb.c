@@ -557,6 +557,10 @@ uw_unit uw_Basis_urlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   return uw_unit_v;
 }
 
+uw_Basis_string uw_Basis_urlifyTime(uw_context ctx, uw_Basis_time t) {
+  return uw_Basis_urlifyInt(ctx, t);
+}
+
 uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
   uw_check(ctx, strlen(s) * 3);
 
@@ -613,6 +617,10 @@ uw_Basis_float uw_Basis_unurlifyFloat(uw_context ctx, char **s) {
   r = atof(*s);
   *s = new_s;
   return r;
+}
+
+uw_Basis_time uw_Basis_unurlifyTime(uw_context ctx, char **s) {
+  return uw_Basis_unurlifyInt(ctx, s);
 }
 
 static uw_Basis_string uw_unurlifyString_to(uw_context ctx, char *r, char *s) {

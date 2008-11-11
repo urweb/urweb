@@ -43,47 +43,52 @@ structure KM = BinaryMapFn(K)
 structure IM = IntBinaryMap
 structure IS = IntBinarySet
 
-val sizeOf = U.Exp.fold {kind = fn (_, n) => n,
-                         con = fn (_, n) => n,
-                         exp = fn (_, n) => n + 1}
-                        0
-
-val isOpen = U.Exp.existsB {kind = fn _ => false,
-                            con = fn ((nc, _), c) =>
-                                    case c of
-                                        CRel n => n >= nc
-                                      | _ => false,
-                            exp = fn ((_, ne), e) =>
+val freeVars = U.Exp.foldB {kind = fn (_, xs) => xs,
+                            con = fn (_, _, xs) => xs,
+                            exp = fn (bound, e, xs) =>
                                      case e of
-                                         ERel n => n >= ne
-                                       | _ => false,
-                            bind = fn ((nc, ne), b) =>
+                                         ERel x =>
+                                         if x >= bound then
+                                             IS.add (xs, x - bound)
+                                         else
+                                             xs
+                                       | _ => xs,
+                            bind = fn (bound, b) =>
                                       case b of
-                                          U.Exp.RelC _ => (nc + 1, ne)
-                                        | U.Exp.RelE _ => (nc, ne + 1)
-                                        | _ => (nc, ne)}
-             (0, 0)
+                                          U.Exp.RelE _ => bound + 1
+                                        | _ => bound}
+                           0 IS.empty
 
-fun baseBad (e, _) =
-    case e of
-        EAbs (_, _, _, e) => sizeOf e > 20
-      | ENamed _ => false
-      | _ => true
+fun positionOf (v : int, ls) =
+    let
+        fun pof (pos, ls) =
+            case ls of
+                [] => raise Fail "Defunc.positionOf"
+              | v' :: ls' =>
+                if v = v' then
+                    pos
+                else
+                    pof (pos + 1, ls')
+    in
+        pof (0, ls)
+    end
 
-fun isBad e =
-    case e of
-        (ERecord xes, _) =>
-        length xes > 10
-        orelse List.exists (fn (_, e, _) => baseBad e) xes
-      | _ => baseBad e
-
-fun skeyIn e =
-    if isBad e orelse isOpen e then
-        NONE
-    else
-        SOME e
-
-fun skeyOut e = e
+fun squish fvs =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn _ => fn c => c,
+                exp = fn bound => fn e =>
+                                     case e of
+                                         ERel x =>
+                                         if x >= bound then
+                                             ERel (positionOf (x - bound, fvs) + bound)
+                                         else
+                                             e
+                                       | _ => e,
+                bind = fn (bound, b) =>
+                          case b of
+                              U.Exp.RelE _ => bound + 1
+                            | _ => bound}
+               0
 
 type func = {
      name : string,
@@ -99,12 +104,12 @@ type state = {
      decls : (string * int * con * exp * string) list
 }
 
-fun kind (k, st) = (k, st)
-fun con (c, st) = (c, st)
+fun kind x = x
+fun default (_, x, st) = (x, st)
 
 fun specialize' file =
     let
-        fun default (_, fs) = fs
+        fun default' (_, fs) = fs
 
         fun actionableExp (e, fs) =
             case e of
@@ -127,149 +132,159 @@ fun specialize' file =
               | _ => fs
 
         val actionable =
-            U.File.fold {kind = default,
-                         con = default,
+            U.File.fold {kind = default',
+                         con = default',
                          exp = actionableExp,
-                         decl = default}
+                         decl = default'}
             IS.empty file
 
-        fun exp (e, st : state) =
-            let
-                fun getApp' e =
-                    case e of
-                        ENamed f => SOME (f, [], [])
-                      | EApp (e1, e2) =>
-                        (case getApp' (#1 e1) of
-                             NONE => NONE
-                           | SOME (f, xs, xs') =>
-                             let
-                                 val k =
-                                     if List.null xs' then
-                                         skeyIn e2
-                                     else
-                                         NONE
-                             in
-                                 case k of
-                                     NONE => SOME (f, xs, xs' @ [e2])
-                                   | SOME k => SOME (f, xs @ [k], xs')
-                             end)
-                      | _ => NONE
+        fun bind (env, b) =
+            case b of
+                U.Decl.RelC (x, k) => E.pushCRel env x k
+              | U.Decl.NamedC (x, n, k, co) => E.pushCNamed env x n k co
+              | U.Decl.RelE (x, t) => E.pushERel env x t
+              | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
 
+        fun exp (env, e, st : state) =
+            let
                 fun getApp e =
-                    case getApp' e of
-                        NONE => NONE
-                      | SOME (f, xs, xs') =>
-                        if List.all (fn (ERecord [], _) => true | _ => false) xs then
-                            SOME (f, [], xs @ xs')
-                        else
-                            SOME (f, xs, xs')
+                    case e of
+                        ENamed f => SOME (f, [])
+                      | EApp (e1, e2) =>
+                        (case getApp (#1 e1) of
+                             NONE => NONE
+                           | SOME (f, xs) => SOME (f, xs @ [e2]))
+                      | _ => NONE
             in
                 case getApp e of
                     NONE => (e, st)
-                  | SOME (f, [], []) => (e, st)
-                  | SOME (f, [], xs') =>
-                    (case IM.find (#funcs st, f) of
-                         NONE => (e, st)
-                       | SOME {typ, body, ...} =>
-                         let
-                             val functionInside = U.Con.exists {kind = fn _ => false,
-                                                                con = fn TFun _ => true
-                                                                       | CFfi ("Basis", "transaction") => true
-                                                                       | _ => false}
-
-                             fun hasFunarg (t, xs) =
-                                 case (t, xs) of
-                                     ((TFun (dom, ran), _), _ :: xs) =>
-                                     functionInside dom
-                                     orelse hasFunarg (ran, xs)
-                                   | _ => false
-                         in
-                             if List.all (fn (ERel _, _) => false | _ => true) xs'
-                                andalso List.exists (fn (ERecord [], _) => false | _ => true) xs'
-                                andalso not (IS.member (actionable, f))
-                                andalso hasFunarg (typ, xs') then
-                                 let
-                                     val e = foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
-                                                   body xs'
-                                 in
-                                     (*Print.prefaces "Unfolded"
-                                                    [("e", CorePrint.p_exp CoreEnv.empty e)];*)
-                                     (#1 e, st)
-                                 end
-                             else
-                                 (e, st)
-                         end)
-                  | SOME (f, xs, xs') =>
+                  | SOME (f, xs) =>
                     case IM.find (#funcs st, f) of
                         NONE => (e, st)
                       | SOME {name, args, body, typ, tag} =>
-                        case KM.find (args, xs) of
-                            SOME f' => (#1 (foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
-                                                  (ENamed f', ErrorMsg.dummySpan) xs'),
-                                        st)
-                          | NONE =>
-                            let
-                                fun subBody (body, typ, xs) =
-                                    case (#1 body, #1 typ, xs) of
-                                        (_, _, []) => SOME (body, typ)
-                                      | (EAbs (_, _, _, body'), TFun (_, typ'), x :: xs) =>
-                                        let
-                                            val body'' = E.subExpInExp (0, skeyOut x) body'
-                                        in
-                                            subBody (body'',
-                                                     typ',
-                                                     xs)
-                                        end
-                                      | _ => NONE
-                            in
-                                case subBody (body, typ, xs) of
-                                    NONE => (e, st)
-                                  | SOME (body', typ') =>
+                        let
+                            val functionInside = U.Con.exists {kind = fn _ => false,
+                                                               con = fn TFun _ => true
+                                                                      | CFfi ("Basis", "transaction") => true
+                                                                      | _ => false}
+                            val loc = ErrorMsg.dummySpan
+
+                            fun findSplit (xs, typ, fxs, fvs) =
+                                case (#1 typ, xs) of
+                                    (TFun (dom, ran), e :: xs') =>
+                                    if functionInside dom then
+                                        findSplit (xs',
+                                                   ran,
+                                                   e :: fxs,
+                                                   IS.union (fvs, freeVars e))
+                                    else
+                                        (rev fxs, xs, fvs)
+                                  | _ => (rev fxs, xs, fvs)
+
+                            val (fxs, xs, fvs) = findSplit (xs, typ, [], IS.empty)
+
+                            val fxs' = map (squish (IS.listItems fvs)) fxs
+
+                            fun firstRel () =
+                                case fxs' of
+                                    (ERel _, _) :: _ => true
+                                  | _ => false
+                        in
+                            if firstRel ()
+                               orelse List.all (fn (ERel _, _) => true
+                                                 | _ => false) fxs' then
+                                (e, st)
+                            else
+                                case KM.find (args, fxs') of
+                                    SOME f' =>
                                     let
-                                        (*val () = Print.prefaces "sub'd"
-                                                 [("body'", CorePrint.p_exp CoreEnv.empty body')]*)
-
-                                        val f' = #maxName st
-                                        val funcs = IM.insert (#funcs st, f, {name = name,
-                                                                              args = KM.insert (args,
-                                                                                                xs, f'),
-                                                                              body = body,
-                                                                              typ = typ,
-                                                                              tag = tag})
-                                        val st = {
-                                            maxName = f' + 1,
-                                            funcs = funcs,
-                                            decls = #decls st
-                                        }
-
-                                        (*val () = print ("Created " ^ Int.toString f' ^ " from "
-                                                        ^ Int.toString f ^ "\n")
-                                        val () = Print.prefaces "body'"
-                                                 [("body'", CorePrint.p_exp CoreEnv.empty body')]*)
-                                        val (body', st) = specExp st body'
-                                        (*val () = Print.prefaces "body''"
-                                                 [("body'", CorePrint.p_exp CoreEnv.empty body')]*)
-                                        val e' = foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
-                                                       (ENamed f', ErrorMsg.dummySpan) xs'
+                                        val e = (ENamed f', loc)
+                                        val e = IS.foldr (fn (arg, e) => (EApp (e, (ERel arg, loc)), loc))
+                                                         e fvs
+                                        val e = foldl (fn (arg, e) => (EApp (e, arg), loc))
+                                                      e xs
                                     in
-                                        (#1 e',
-                                         {maxName = #maxName st,
-                                          funcs = #funcs st,
-                                          decls = (name, f', typ', body', tag) :: #decls st})
+                                        (*Print.prefaces "Brand new (reuse)"
+                                                       [("e'", CorePrint.p_exp env e)];*)
+                                        (#1 e, st)
                                     end
-                            end
+                                  | NONE =>
+                                    let
+                                        fun subBody (body, typ, fxs') =
+                                            case (#1 body, #1 typ, fxs') of
+                                                (_, _, []) => SOME (body, typ)
+                                              | (EAbs (_, _, _, body'), TFun (_, typ'), x :: fxs'') =>
+                                                let
+                                                    val body'' = E.subExpInExp (0, x) body'
+                                                in
+                                                    subBody (body'',
+                                                             typ',
+                                                             fxs'')
+                                                end
+                                              | _ => NONE
+                                    in
+                                        case subBody (body, typ, fxs') of
+                                            NONE => (e, st)
+                                          | SOME (body', typ') =>
+                                            let
+                                                val f' = #maxName st
+                                                val args = KM.insert (args, fxs', f')
+                                                val funcs = IM.insert (#funcs st, f, {name = name,
+                                                                                      args = args,
+                                                                                      body = body,
+                                                                                      typ = typ,
+                                                                                      tag = tag})
+                                                val st = {
+                                                    maxName = f' + 1,
+                                                    funcs = funcs,
+                                                    decls = #decls st
+                                                }
+
+                                                (*val () = Print.prefaces "specExp"
+                                                                        [("f", CorePrint.p_exp env (ENamed f, loc)),
+                                                                         ("f'", CorePrint.p_exp env (ENamed f', loc)),
+                                                                         ("xs", Print.p_list (CorePrint.p_exp env) xs),
+                                                                         ("fxs'", Print.p_list
+                                                                                      (CorePrint.p_exp E.empty) fxs'),
+                                                                         ("e", CorePrint.p_exp env (e, loc))]*)
+                                                val (body', typ') = IS.foldl (fn (n, (body', typ')) =>
+                                                                                 let
+                                                                                     val (x, xt) = E.lookupERel env n
+                                                                                 in
+                                                                                     ((EAbs (x, xt, typ', body'),
+                                                                                       loc),
+                                                                                      (TFun (xt, typ'), loc))
+                                                                                 end)
+                                                                             (body', typ') fvs
+                                                val (body', st) = specExp env st body'
+
+                                                val e' = (ENamed f', loc)
+                                                val e' = IS.foldr (fn (arg, e) => (EApp (e, (ERel arg, loc)), loc))
+                                                                  e' fvs
+                                                val e' = foldl (fn (arg, e) => (EApp (e, arg), loc))
+                                                               e' xs
+                                                (*val () = Print.prefaces "Brand new"
+                                                                        [("e'", CorePrint.p_exp env e'),
+                                                                         ("e", CorePrint.p_exp env (e, loc)),
+                                                                         ("body'", CorePrint.p_exp env body')]*)
+                                            in
+                                                (#1 e',
+                                                 {maxName = #maxName st,
+                                                  funcs = #funcs st,
+                                                  decls = (name, f', typ', body', tag) :: #decls st})
+                                            end
+                                    end
+                        end
             end
 
-        and specExp st = U.Exp.foldMap {kind = kind, con = con, exp = exp} st
+        and specExp env = U.Exp.foldMapB {kind = kind, con = default, exp = exp, bind = bind} env
 
-        fun decl (d, st) = (d, st)
+        val specDecl = U.Decl.foldMapB {kind = kind, con = default, exp = exp, decl = default, bind = bind}
 
-        val specDecl = U.Decl.foldMap {kind = kind, con = con, exp = exp, decl = decl}
-
-
-
-        fun doDecl (d, (st : state, changed)) =
+        fun doDecl (d, (env, st : state, changed)) =
             let
+                val env = E.declBinds env d
+
                 val funcs = #funcs st
                 val funcs = 
                     case #1 d of
@@ -288,7 +303,7 @@ fun specialize' file =
                           decls = []}
 
                 (*val () = Print.prefaces "decl" [("d", CorePrint.p_decl CoreEnv.empty d)]*)
-                val (d', st) = specDecl st d
+                val (d', st) = specDecl env st d
                 (*val () = print "/decl\n"*)
 
                 val funcs = #funcs st
@@ -314,16 +329,19 @@ fun specialize' file =
                                    (DValRec vis', _) => [(DValRec (vis @ vis'), ErrorMsg.dummySpan)]
                                  | _ => [(DValRec vis, ErrorMsg.dummySpan), d'])
             in
-                (ds, ({maxName = #maxName st,
+                (ds, (env,
+                      {maxName = #maxName st,
                        funcs = funcs,
                        decls = []}, changed))
             end
 
-        val (ds, (_, changed)) = ListUtil.foldlMapConcat doDecl
-                                                         ({maxName = U.File.maxName file + 1,
-                                                           funcs = IM.empty,
-                                                           decls = []}, false)
-                                                         file
+        val (ds, (_, _, changed)) = ListUtil.foldlMapConcat doDecl
+                                                            (E.empty,
+                                                             {maxName = U.File.maxName file + 1,
+                                                              funcs = IM.empty,
+                                                              decls = []},
+                                                             false)
+                                                            file
     in
         (changed, ds)
     end
@@ -331,10 +349,15 @@ fun specialize' file =
 fun specialize file =
     let
         (*val () = Print.prefaces "Intermediate" [("file", CorePrint.p_file CoreEnv.empty file)];*)
+        val file = ReduceLocal.reduce file
         val (changed, file) = specialize' file
+        val file = ReduceLocal.reduce file
+        (*val file = CoreUntangle.untangle file
+        val file = Shake.shake file*)
     in
+        (*print "Round over\n";*)
         if changed then
-            specialize (ReduceLocal.reduce file)
+            specialize file
         else
             file
     end

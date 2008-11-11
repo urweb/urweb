@@ -60,6 +60,7 @@ char *uw_Basis_urlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_urlifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_urlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_urlifyBool(uw_context, uw_Basis_bool);
+char *uw_Basis_urlifyTime(uw_context, uw_Basis_time);
 
 uw_unit uw_Basis_urlifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_urlifyFloat_w(uw_context, uw_Basis_float);
@@ -70,6 +71,7 @@ uw_Basis_int uw_Basis_unurlifyInt(uw_context, char **);
 uw_Basis_float uw_Basis_unurlifyFloat(uw_context, char **);
 uw_Basis_string uw_Basis_unurlifyString(uw_context, char **);
 uw_Basis_bool uw_Basis_unurlifyBool(uw_context, char **);
+uw_Basis_time uw_Basis_unurlifyTime(uw_context, char **);
 
 uw_Basis_string uw_Basis_strcat(uw_context, uw_Basis_string, uw_Basis_string);
 uw_Basis_string uw_Basis_strdup(uw_context, uw_Basis_string);

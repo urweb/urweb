@@ -90,7 +90,8 @@ signature COMPILER = sig
     val toEspecialize : (string, Core.file) transform 
     val toCore_untangle : (string, Core.file) transform
     val toShake1 : (string, Core.file) transform
-    val toDefunc : (string, Core.file) transform 
+    val toDefunc : (string, Core.file) transform
+    val toShake1' : (string, Core.file) transform
     val toTag : (string, Core.file) transform
     val toReduce : (string, Core.file) transform
     val toUnpoly : (string, Core.file) transform 

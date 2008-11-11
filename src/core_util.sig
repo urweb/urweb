@@ -126,6 +126,11 @@ structure Exp : sig
                    con : Core.con' * 'state -> Core.con' * 'state,
                    exp : Core.exp' * 'state -> Core.exp' * 'state}
                   -> 'state -> Core.exp -> Core.exp * 'state
+    val foldMapB : {kind : Core.kind' * 'state -> Core.kind' * 'state,
+                    con : 'context * Core.con' * 'state -> Core.con' * 'state,
+                    exp : 'context * Core.exp' * 'state -> Core.exp' * 'state,
+                    bind : 'context * binder -> 'context}
+                   -> 'context -> 'state -> Core.exp -> Core.exp * 'state
 end
 
 structure Decl : sig

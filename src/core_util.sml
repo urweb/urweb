@@ -763,6 +763,14 @@ fun foldMap {kind, con, exp} s e =
         S.Continue v => v
       | S.Return _ => raise Fail "CoreUtil.Exp.foldMap: Impossible"
 
+fun foldMapB {kind, con, exp, bind} ctx s e =
+    case mapfoldB {kind = fn k => fn s => S.Continue (kind (k, s)),
+                   con = fn ctx => fn c => fn s => S.Continue (con (ctx, c, s)),
+                   exp = fn ctx => fn e => fn s => S.Continue (exp (ctx, e, s)),
+                   bind = bind} ctx e s of
+        S.Continue v => v
+      | S.Return _ => raise Fail "CoreUtil.Exp.foldMapB: Impossible"
+
 end
 
 structure Decl = struct
