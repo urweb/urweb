@@ -1481,9 +1481,9 @@ fun p_exp' par env (e, loc) =
         in
             box [string "({",
                  newline,
-                 string "uw_Basis_string request = ",
+                 string "uw_Basis_string request = uw_Basis_strdup(ctx, ",
                  p_exp env e,
-                 string ";",
+                 string ");",
                  newline,
                  newline,
                  string "(request ? ",

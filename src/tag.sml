@@ -184,6 +184,8 @@ fun tag file =
                     val newDs = map
                                     (fn (ek, f, cn) =>
                                         let
+                                            val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
+
                                             fun unravel (all as (t, _)) =
                                                 case t of
                                                     TFun (dom, ran) =>
@@ -197,15 +199,14 @@ fun tag file =
                                             val (fnam, t, _, tag) = E.lookupENamed env f
                                             val (args, result) = unravel t
 
-                                            val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
-
                                             val (abs, t) =
                                                 case args of
                                                     [] =>
                                                     let
-                                                        val body = (EWrite (ENamed f, loc), loc)
+                                                        val app = (EApp ((ENamed f, loc), (ERecord [], loc)), loc)
+                                                        val body = (EWrite app, loc)
                                                     in
-                                                        ((EAbs ("x", unit, unit, body), loc),
+                                                        (body,
                                                          (TFun (unit, unit), loc))
                                                     end
                                                   | _ =>
