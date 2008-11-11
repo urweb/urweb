@@ -406,7 +406,7 @@ fun fooifyExp fk env =
                          fm)
                     end
 
-                  | _ => (E.errorAt loc "Don't know how to encode attribute type";
+                  | _ => (E.errorAt loc "Don't know how to encode attribute/URL type";
                           Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
                           (dummyExp, fm))
     in

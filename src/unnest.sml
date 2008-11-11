@@ -206,6 +206,14 @@ fun exp ((ks, ts), e as old, st : state) =
                             val loc = #2 ed
 
                             val nr = length vis
+                            val subsLocal = List.filter (fn (_, (ERel _, _)) => false
+                                                          | _ => true) subs
+                            val subsLocal = map (fn (n, e) => (n + nr, liftExpInExp nr 0 e))
+                                                subsLocal
+
+                            val vis = map (fn (x, t, e) =>
+                                              (x, t, doSubst' (e, subsLocal))) vis
+
                             val (cfv, efv) = foldl (fn ((_, t, e), (cfv, efv)) =>
                                                        let
                                                            val (cfv', efv') = fvsExp nr e
@@ -243,14 +251,11 @@ fun exp ((ks, ts), e as old, st : state) =
                                                        maxName + 1))
                                 maxName vis
 
-
-
                             val subs = map (fn (n, e) => (n + nr,
                                                           case e of
                                                               (ERel _, _) => e
                                                             | _ => liftExpInExp nr 0 e))
                                            subs
-
 
                             val subs' = ListUtil.mapi (fn (i, (_, n, _, _)) =>
                                                           let
@@ -278,7 +283,7 @@ fun exp ((ks, ts), e as old, st : state) =
                                               let
                                                   (*val () = Print.prefaces "preSubst"
                                                                           [("e", ElabPrint.p_exp E.empty e)]*)
-                                                  val e = doSubst' (e, subs)
+                                                  val e = doSubst' (e, subs')
 
                                                   (*val () = Print.prefaces "squishCon"
                                                                           [("t", ElabPrint.p_con E.empty t)]*)
