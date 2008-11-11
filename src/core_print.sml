@@ -227,7 +227,7 @@ fun p_exp' par env (e, _) =
                                    string "(",
                                    p_list (p_exp env) es,
                                    string "))"]
-      | EApp (e1, e2) => parenIf par (box [p_exp env e1,
+      | EApp (e1, e2) => parenIf par (box [p_exp' true env e1,
                                            space,
                                            p_exp' true env e2])
       | EAbs (x, t, _, e) => parenIf par (box [string "fn",

@@ -188,9 +188,14 @@ fun specialize' file =
                                 andalso List.exists (fn (ERecord [], _) => false | _ => true) xs'
                                 andalso not (IS.member (actionable, f))
                                 andalso hasFunarg (typ, xs') then
-                                 (#1 (foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
-                                            body xs'),
-                                  st)
+                                 let
+                                     val e = foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
+                                                   body xs'
+                                 in
+                                     (*Print.prefaces "Unfolded"
+                                                    [("e", CorePrint.p_exp CoreEnv.empty e)];*)
+                                     (#1 e, st)
+                                 end
                              else
                                  (e, st)
                          end)
@@ -221,6 +226,9 @@ fun specialize' file =
                                     NONE => (e, st)
                                   | SOME (body', typ') =>
                                     let
+                                        (*val () = Print.prefaces "sub'd"
+                                                 [("body'", CorePrint.p_exp CoreEnv.empty body')]*)
+
                                         val f' = #maxName st
                                         val funcs = IM.insert (#funcs st, f, {name = name,
                                                                               args = KM.insert (args,
@@ -234,7 +242,13 @@ fun specialize' file =
                                             decls = #decls st
                                         }
 
+                                        (*val () = print ("Created " ^ Int.toString f' ^ " from "
+                                                        ^ Int.toString f ^ "\n")
+                                        val () = Print.prefaces "body'"
+                                                 [("body'", CorePrint.p_exp CoreEnv.empty body')]*)
                                         val (body', st) = specExp st body'
+                                        (*val () = Print.prefaces "body''"
+                                                 [("body'", CorePrint.p_exp CoreEnv.empty body')]*)
                                         val e' = foldl (fn (arg, e) => (EApp (e, arg), ErrorMsg.dummySpan))
                                                        (ENamed f', ErrorMsg.dummySpan) xs'
                                     in
@@ -316,6 +330,7 @@ fun specialize' file =
 
 fun specialize file =
     let
+        (*val () = Print.prefaces "Intermediate" [("file", CorePrint.p_file CoreEnv.empty file)];*)
         val (changed, file) = specialize' file
     in
         if changed then

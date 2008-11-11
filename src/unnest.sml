@@ -36,6 +36,35 @@ structure U = ElabUtil
 
 structure IS = IntBinarySet
 
+fun liftExpInExp by =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn _ => fn c => c,
+                exp = fn bound => fn e =>
+                                     case e of
+                                         ERel xn =>
+                                         if xn < bound then
+                                             e
+                                         else
+                                             ERel (xn + by)
+                                       | _ => e,
+                bind = fn (bound, U.Exp.RelE _) => bound + 1
+                        | (bound, _) => bound}
+
+val subExpInExp =
+    U.Exp.mapB {kind = fn k => k,
+                con = fn _ => fn c => c,
+                exp = fn (xn, rep) => fn e =>
+                                  case e of
+                                      ERel xn' =>
+                                      if xn' = xn then
+                                           #1 rep
+                                      else
+                                          e
+                                    | _ => e,
+                bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, E.liftExpInExp 0 rep)
+                        | ((xn, rep), U.Exp.RelC _) => (xn, E.liftConInExp 0 rep)
+                        | (ctx, _) => ctx}
+
 val fvsCon = U.Con.foldB {kind = fn (_, st) => st,
                           con = fn (cb, c, cvs) =>
                                    case c of
@@ -87,7 +116,7 @@ fun positionOf (x : int) ls =
                     po (n + 1) ls'
     in
         po 0 ls
-        handle Fail _ => raise Fail ("Unnset.positionOf("
+        handle Fail _ => raise Fail ("Unnest.positionOf("
                                      ^ Int.toString x
                                      ^ ", "
                                      ^ String.concatWith ";" (map Int.toString ls)
@@ -124,7 +153,7 @@ fun squishExp (nr, cfv, efv) =
                                         case e of
                                             ERel n =>
                                             if n >= eb then
-                                                ERel (positionOf (n - eb) efv + eb)
+                                                ERel (positionOf (n - eb) efv + eb - nr)
                                             else
                                                 e
                                           | _ => e,
@@ -146,17 +175,32 @@ fun exp ((ks, ts), e as old, st : state) =
     case e of
         ELet (eds, e) =>
         let
-            (*val () = Print.prefaces "let" [("e", ElabPrint.p_exp E.empty (old, ErrorMsg.dummySpan))]*)
+            (*val () = Print.prefaces "Letto" [("e", ElabPrint.p_exp E.empty (old, ErrorMsg.dummySpan))]*)
 
-            val doSubst = foldl (fn (p, e) => E.subExpInExp p e)
+            fun doSubst' (e, subs) = foldl (fn (p, e) => subExpInExp p e) e subs
 
-            val (eds, (ts, maxName, ds, subs)) =
+            fun doSubst (e, subs, by) =
+                let
+                    val e = doSubst' (e, subs)
+                in
+                    liftExpInExp (~by) (length subs) e
+                end
+
+            val (eds, (ts, maxName, ds, subs, by)) =
                 ListUtil.foldlMapConcat
-                (fn (ed, (ts, maxName, ds, subs)) =>
+                (fn (ed, (ts, maxName, ds, subs, by)) =>
                     case #1 ed of
-                        EDVal (x, t, _) => ([ed],
-                                            ((x, t) :: ts,
-                                             maxName, ds, map (fn (n, e) => (n + 1, E.liftExpInExp 0 e)) subs))
+                        EDVal (x, t, e) =>
+                        let
+                            val e = doSubst (e, subs, by)
+                        in
+                            ([(EDVal (x, t, e), #2 ed)],
+                             ((x, t) :: ts,
+                              maxName, ds,
+                              ((0, (ERel 0, #2 ed))
+                               :: map (fn (n, e) => (n + 1, E.liftExpInExp 0 e)) subs),
+                              by))
+                        end
                       | EDValRec vis =>
                         let
                             val loc = #2 ed
@@ -182,6 +226,7 @@ fun exp ((ks, ts), e as old, st : state) =
                             val () = app (fn (x, t) =>
                                              Print.prefaces "Var" [("x", Print.PD.string x),
                                                                    ("t", ElabPrint.p_con E.empty t)]) ts*)
+
                             val cfv = IS.foldl (fn (x, cfv) =>
                                                    let
                                                        (*val () = print (Int.toString x ^ "\n")*)
@@ -198,56 +243,54 @@ fun exp ((ks, ts), e as old, st : state) =
                                                        maxName + 1))
                                 maxName vis
 
-                            fun apply e =
-                                let
-                                    val e = IS.foldr (fn (x, e) =>
-                                                         (ECApp (e, (CRel x, loc)), loc))
-                                            e cfv
-                                in
-                                    IS.foldr (fn (x, e) =>
-                                                 (EApp (e, (ERel x, loc)), loc))
-                                             e efv
-                                end
 
-                            val subs = map (fn (n, e) => (n + nr, E.liftExpInExp nr e)) subs
+
+                            val subs = map (fn (n, e) => (n + nr,
+                                                          case e of
+                                                              (ERel _, _) => e
+                                                            | _ => liftExpInExp nr 0 e))
+                                           subs
+
 
                             val subs' = ListUtil.mapi (fn (i, (_, n, _, _)) =>
                                                           let
-                                                              val dummy = (EError, ErrorMsg.dummySpan)
-                                                                          
-                                                              fun repeatLift k =
-                                                                  if k = 0 then
-                                                                      apply (ENamed n, loc)
-                                                                  else
-                                                                      E.liftExpInExp 0 (repeatLift (k - 1))
+                                                              val e = (ENamed n, loc)
+
+                                                              val e = IS.foldr (fn (x, e) =>
+                                                                                   (ECApp (e, (CRel x, loc)), loc))
+                                                                               e cfv
+
+                                                              val e = IS.foldr (fn (x, e) =>
+                                                                                   (EApp (e, (ERel (nr + x), loc)),
+                                                                                    loc))
+                                                                               e efv
                                                           in
-                                                              (0, repeatLift i)
+                                                              (nr - i - 1, e)
                                                           end)
                                                       vis
 
-                            val subs' = rev subs'
-
                             val cfv = IS.listItems cfv
                             val efv = IS.listItems efv
-                            val efn = length efv
 
-                            val subs = subs @ subs'
+                            val subs = subs' @ subs
 
                             val vis = map (fn (x, n, t, e) =>
                                               let
                                                   (*val () = Print.prefaces "preSubst"
                                                                           [("e", ElabPrint.p_exp E.empty e)]*)
-                                                  val e = doSubst e subs
+                                                  val e = doSubst' (e, subs)
 
                                                   (*val () = Print.prefaces "squishCon"
                                                                           [("t", ElabPrint.p_con E.empty t)]*)
                                                   val t = squishCon cfv t
                                                   (*val () = Print.prefaces "squishExp"
                                                                           [("e", ElabPrint.p_exp E.empty e)]*)
-                                                  val e = squishExp (0(*nr*), cfv, efv) e
+                                                  val e = squishExp (nr, cfv, efv) e
 
+                                                  (*val () = print ("Avail: " ^ Int.toString (length ts) ^ "\n")*)
                                                   val (e, t) = foldl (fn (ex, (e, t)) =>
                                                                          let
+                                                                             (*val () = print (Int.toString ex ^ "\n")*)
                                                                              val (name, t') = List.nth (ts, ex)
                                                                          in
                                                                              ((EAbs (name,
@@ -258,6 +301,7 @@ fun exp ((ks, ts), e as old, st : state) =
                                                                                      t), loc))
                                                                          end)
                                                                      (e, t) efv
+                                                  (*val () = print "Done\n"*)
 
                                                   val (e, t) = foldl (fn (cx, (e, t)) =>
                                                                          let
@@ -274,19 +318,28 @@ fun exp ((ks, ts), e as old, st : state) =
                                                                          end)
                                                                      (e, t) cfv
                                               in
+                                                  (*Print.prefaces "Have a vi"
+                                                                 [("x", Print.PD.string x),
+                                                                  ("e", ElabPrint.p_exp ElabEnv.empty e)];*)
                                                   (x, n, t, e)
                                               end)
                                           vis
 
-                            val ts = map (fn (x, _, t, _) => (x, t)) vis @ ts
+                            val ts = List.revAppend (map (fn (x, _, t, _) => (x, t)) vis, ts)
                         in
-                            ([], (ts, maxName, vis @ ds, subs))
+                            ([], (ts, maxName, vis @ ds, subs, by + nr))
                         end)
-                (ts, #maxName st, #decls st, []) eds
+                (ts, #maxName st, #decls st, [], 0) eds
+
+            val e' = doSubst (e, subs, by)
         in
-            (ELet (eds, doSubst e subs),
+            (*Print.prefaces "Before" [("e", ElabPrint.p_exp ElabEnv.empty e),
+                                     ("se", ElabPrint.p_exp ElabEnv.empty (doSubst' (e, subs))),
+                                     ("e'", ElabPrint.p_exp ElabEnv.empty e')];*)
+            (ELet (eds, e'),
              {maxName = maxName,
               decls = ds})
+            (*(ELet (eds, doSubst (liftExpInExp (~(length subs - numRemaining)) (length subs) e) subs),*)
         end
 
       | _ => (e, st)
