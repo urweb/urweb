@@ -425,12 +425,13 @@ fun reduce file =
                             if impure e' then
                                 let
                                     val effs_e' = summarize 0 e'
+                                    val effs_e' = List.filter (fn x => x <> UseRel) effs_e'
                                     val effs_b = summarize 0 b
 
                                     (*val () = Print.prefaces "Try"
-                                             [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
-                                              ("e'", p_events effs_e'),
-                                              ("b", p_events effs_b)]*)
+                                                            [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
+                                                             ("e'", p_events effs_e'),
+                                                             ("b", p_events effs_b)]*)
 
                                     fun does eff = List.exists (fn eff' => eff' = eff) effs_e'
                                     val writesPage = does WritePage
