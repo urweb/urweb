@@ -476,7 +476,12 @@ fun getPargs (e, _) =
       | EFfiApp ("Basis", "sqlifyBoolN", [e]) => [(e, Nullable Bool)]
       | EFfiApp ("Basis", "sqlifyTimeN", [e]) => [(e, Nullable Time)]
 
-      | ECase (e, _, _) => [(e, Bool)]
+      | ECase (e,
+               [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
+                 (EPrim (Prim.String "TRUE"), _)),
+                ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, _), _),
+                 (EPrim (Prim.String "FALSE"), _))],
+               _) => [(e, Bool)]
 
       | _ => raise Fail "CjrPrint: getPargs"
 

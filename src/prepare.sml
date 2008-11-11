@@ -183,7 +183,7 @@ fun prepExp (e as (_, loc), sns) =
                 NONE =>
                 ((EQuery {exps = exps, tables = tables, rnum = rnum,
                           state = state, query = query, body = body,
-                          initial = initial, prepared = SOME (#2 sns)}, loc),
+                          initial = initial, prepared = NONE}, loc),
                  sns)
               | SOME (ss, n) =>
                 ((EQuery {exps = exps, tables = tables, rnum = rnum,
