@@ -335,7 +335,7 @@ fun p_exp' par env (e, _) =
                      else
                          box [p_exp' true env e1,
                               space,
-                              string "with",
+                              string "++",
                               space,
                               p_exp' true env e2])
       | ECut (e, c, {field, rest}) =>

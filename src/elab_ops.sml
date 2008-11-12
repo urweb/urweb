@@ -150,6 +150,39 @@ fun hnormCon env (cAll as (c, loc)) =
                                          | c => c
                                    val c = unconstraint c
 
+                                   fun tryDistributivity () =
+                                       let
+                                           fun distribute (c1, c2) =
+                                               let
+                                                   val c = (CFold ks, loc)
+                                                   val c = (CApp (c, f), loc)
+                                                   val c = (CApp (c, i), loc)
+
+                                                   val c1 = (CApp (c, c1), loc)
+                                                   val c2 = (CApp (c, c2), loc)
+                                                   val c = (CConcat (c1, c2), loc)
+                                               in
+                                                   hnormCon env c
+                                               end
+                                       in
+                                           case (hnormCon env i, hnormCon env c2, hnormCon env c) of
+                                               ((CRecord (_, []), _),
+                                                (CConcat (arg1, arg2), _),
+                                                (CConcat (c1, c2'), _)) =>
+                                               (case (hnormCon env c1, hnormCon env c2') of
+                                                    ((CRecord (_, [(nm', v')]), _),
+                                                     (CUnif (_, _, _, rR'), _)) =>
+                                                    (case hnormCon env nm' of
+                                                         (CUnif (_, _, _, nmR'), _) =>
+                                                         if nmR' = nmR andalso rR' = rR then
+                                                             distribute (arg1, arg2)
+                                                         else
+                                                             default ()
+                                                       | _ => default ())
+                                                  | _ => default ())
+                                             | _ => default ()
+                                       end
+
                                    fun tryFusion () =
                                        let
                                            fun fuse (dom, new_v, r') =
@@ -205,16 +238,17 @@ fun hnormCon env (cAll as (c, loc)) =
                                                                                      rR := SOME (CError, loc);
                                                                                      fuse (dom, v', r'))
                                                                                 else
-                                                                                    default ()
-                                                                              | _ => default ())
-                                                                         | _ => default ())
-                                                                    | _ => default ()
+                                                                                    tryDistributivity ()
+                                                                              | _ => tryDistributivity ())
+                                                                         | _ => tryDistributivity ())
+                                                                    | _ => tryDistributivity ()
                                                               end
-                                                            | _ => default ())
-                                                       | _ => default ())
-                                                  | _ => default ())
-                                             | _ => default ()
+                                                            | _ => tryDistributivity ())
+                                                       | _ => tryDistributivity ())
+                                                  | _ => tryDistributivity ())
+                                             | _ => tryDistributivity ()
                                        end
+
                                in
                                    (*Print.prefaces "Consider" [("c", ElabPrint.p_con env c)];*)
                                    case (hnormCon env i, unconstraint c) of
