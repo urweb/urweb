@@ -292,7 +292,7 @@ fun exp e =
                        {disc = disc,
                         result = (TRecord [], loc)}), loc)
 
-      | EApp ((ECase (discE, pes, {disc, ...}), loc), arg as (ERecord [], _)) =>
+      | EApp ((ECase (discE, pes, {disc, result = (TFun (_, ran), _)}), loc), arg as (ERecord [], _)) =>
         let
             fun doBody e =
                 case #1 e of
@@ -302,7 +302,7 @@ fun exp e =
             optExp (ECase (discE,
                            map (fn (p, e) => (p, doBody e)) pes,
                            {disc = disc,
-                            result = (TRecord [], loc)}), loc)
+                            result = ran}), loc)
         end
 
       | EWrite (EQuery {exps, tables, state, query,
