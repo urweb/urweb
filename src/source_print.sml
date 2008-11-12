@@ -268,6 +268,11 @@ fun p_exp' par (e, _) =
                                          string "--",
                                          space,
                                          p_con' true c])
+      | ECutMulti (e, c) => parenIf par (box [p_exp' true e,
+                                              space,
+                                              string "---",
+                                              space,
+                                              p_con' true c])
       | EFold => string "fold"
 
       | ECase (e, pes) => parenIf par (box [string "case",

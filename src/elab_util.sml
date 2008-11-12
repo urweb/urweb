@@ -338,6 +338,15 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                                   fn rest' =>
                                                      (ECut (e', c', {field = field', rest = rest'}), loc)))))
 
+              | ECutMulti (e, c, {rest}) =>
+                S.bind2 (mfe ctx e,
+                      fn e' =>
+                         S.bind2 (mfc ctx c,
+                              fn c' =>
+                                 S.map2 (mfc ctx rest,
+                                      fn rest' =>
+                                         (ECutMulti (e', c', {rest = rest'}), loc))))
+
               | EFold k =>
                 S.map2 (mfk k,
                          fn k' =>

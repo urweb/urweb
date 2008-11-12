@@ -123,6 +123,7 @@ datatype exp' =
        | EField of exp * con
        | EConcat of exp * exp
        | ECut of exp * con
+       | ECutMulti of exp * con
        | EFold
 
        | EWild

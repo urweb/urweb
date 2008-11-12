@@ -1,6 +1,7 @@
 val r = {A = 1, B = "Hi", C = 0.0}
 val rA = r -- #A
+val rB = r --- [A = _, C = _]
 
-val main : unit -> page = fn () => <html><body>
-        {cdata rA.B}
-</body></html>
+fun main () : transaction page = return <xml>
+        {cdata rA.B}, {cdata rB.B}
+</xml>

@@ -105,6 +105,8 @@ fun explifyExp (e, loc) =
                                        loc)
       | L.ECut (e1, c, {field, rest}) => (L'.ECut (explifyExp e1, explifyCon c,
                                                      {field = explifyCon field, rest = explifyCon rest}), loc)
+      | L.ECutMulti (e1, c, {rest}) => (L'.ECutMulti (explifyExp e1, explifyCon c,
+                                                      {rest = explifyCon rest}), loc)
       | L.EFold k => (L'.EFold (explifyKind k), loc)
 
       | L.ECase (e, pes, {disc, result}) =>

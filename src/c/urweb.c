@@ -869,6 +869,13 @@ uw_Basis_string uw_Basis_strdup(uw_context ctx, uw_Basis_string s1) {
   return s;
 }
 
+uw_Basis_string uw_Basis_maybe_strdup(uw_context ctx, uw_Basis_string s1) {
+  if (s1)
+    return uw_Basis_strdup(ctx, s1);
+  else
+    return NULL;
+}
+
 
 char *uw_Basis_sqlifyInt(uw_context ctx, uw_Basis_int n) {
   int len;

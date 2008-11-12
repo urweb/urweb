@@ -110,6 +110,7 @@ datatype exp' =
        | EField of exp * con * { field : con, rest : con }
        | EConcat of exp * con * exp * con
        | ECut of exp * con * { field : con, rest : con }
+       | ECutMulti of exp * con * { rest : con }
        | EFold of kind
 
        | ECase of exp * (pat * exp) list * { disc : con, result : con }

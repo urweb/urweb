@@ -265,6 +265,12 @@ fun declOk' env (d, loc) =
                         in
                             (Rabble, calls)
                         end
+                      | ECutMulti (e, _, _) =>
+                        let
+                            val (_, calls) = exp parent (penv, calls) e
+                        in
+                            (Rabble, calls)
+                        end
                       | EConcat (e1, _, e2, _) =>
                         let
                             val (_, calls) = exp parent (penv, calls) e1

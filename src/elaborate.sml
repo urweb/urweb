@@ -1664,6 +1664,21 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 ((L'.ECut (e', c', {field = ft, rest = rest}), loc), (L'.TRecord rest, loc),
                  gs1 @ enD gs2 @ enD gs3 @ enD gs4)
             end
+          | L.ECutMulti (e, c) =>
+            let
+                val (e', et, gs1) = elabExp (env, denv) e
+                val (c', ck, gs2) = elabCon (env, denv) c
+
+                val rest = cunif (loc, ktype_record)
+                            
+                val gs3 =
+                    checkCon (env, denv) e' et
+                             (L'.TRecord (L'.CConcat (c', rest), loc), loc)
+                val gs4 = D.prove env denv (c', rest, loc)
+            in
+                ((L'.ECutMulti (e', c', {rest = rest}), loc), (L'.TRecord rest, loc),
+                 gs1 @ enD gs2 @ enD gs3 @ enD gs4)
+            end
 
           | L.EFold =>
             let
@@ -2694,6 +2709,33 @@ fun wildifyStr env (str, sgn) =
         (case #1 str of
              L.StrConst ds =>
              let
+                 fun decompileKind (k, loc) =
+                     case k of
+                         L'.KType => SOME (L.KType, loc)
+                       | L'.KArrow (k1, k2) =>
+                         (case (decompileKind k1, decompileKind k2) of
+                              (SOME k1, SOME k2) => SOME (L.KArrow (k1, k2), loc)
+                            | _ => NONE)
+                       | L'.KName => SOME (L.KName, loc)
+                       | L'.KRecord k =>
+                         (case decompileKind k of
+                              SOME k => SOME (L.KRecord k, loc)
+                            | _ => NONE)
+                       | L'.KUnit => SOME (L.KUnit, loc)
+                       | L'.KTuple ks =>
+                         let
+                             val ks' = List.mapPartial decompileKind ks
+                         in
+                             if length ks' = length ks then
+                                 SOME (L.KTuple ks', loc)
+                             else
+                                 NONE
+                         end
+
+                       | L'.KError => NONE
+                       | L'.KUnif (_, _, ref (SOME k)) => decompileKind k
+                       | L'.KUnif _ => NONE
+
                  fun decompileCon env (c, loc) =
                      case c of
                          L'.CRel i =>
@@ -2741,7 +2783,7 @@ fun wildifyStr env (str, sgn) =
                                let
                                    val (needed, constraints, neededV) =
                                        case sgi of
-                                           L'.SgiConAbs (x, _, _) => (SS.add (neededC, x), constraints, neededV)
+                                           L'.SgiConAbs (x, _, k) => (SM.insert (neededC, x, k), constraints, neededV)
                                          | L'.SgiConstraint cs => (neededC, (env', cs, loc) :: constraints, neededV)
 
                                          | L'.SgiVal (x, _, t) =>
@@ -2764,18 +2806,18 @@ fun wildifyStr env (str, sgn) =
                                in
                                    (needed, constraints, neededV, E.sgiBinds env' (sgi, loc))
                                end)
-                           (SS.empty, [], SS.empty, env) sgis
+                           (SM.empty, [], SS.empty, env) sgis
                                                               
                  val (neededC, neededV) = foldl (fn ((d, _), needed as (neededC, neededV)) =>
                                                     case d of
-                                                        L.DCon (x, _, _) => ((SS.delete (neededC, x), neededV)
+                                                        L.DCon (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
                                                                              handle NotFound =>
                                                                                     needed)
-                                                      | L.DClass (x, _) => ((SS.delete (neededC, x), neededV)
+                                                      | L.DClass (x, _) => ((#1 (SM.remove (neededC, x)), neededV)
                                                                             handle NotFound => needed)
                                                       | L.DVal (x, _, _) => ((neededC, SS.delete (neededV, x))
                                                                              handle NotFound => needed)
-                                                      | L.DOpen _ => (SS.empty, SS.empty)
+                                                      | L.DOpen _ => (SM.empty, SS.empty)
                                                       | _ => needed)
                                                 (neededC, neededV) ds
 
@@ -2797,13 +2839,20 @@ fun wildifyStr env (str, sgn) =
                          end
 
                  val ds' =
-                     case SS.listItems neededC of
+                     case SM.listItemsi neededC of
                          [] => ds'
                        | xs =>
                          let
-                             val kwild = (L.KWild, #2 str)
-                             val cwild = (L.CWild kwild, #2 str)
-                             val ds'' = map (fn x => (L.DCon (x, NONE, cwild), #2 str)) xs
+                             val ds'' = map (fn (x, k) =>
+                                                let
+                                                    val k =
+                                                        case decompileKind k of
+                                                            NONE => (L.KWild, #2 str)
+                                                          | SOME k => k
+                                                    val cwild = (L.CWild k, #2 str)
+                                                in
+                                                    (L.DCon (x, NONE, cwild), #2 str)
+                                                end) xs
                          in
                              ds'' @ ds'
                          end

@@ -133,6 +133,19 @@ fun exp env e =
                     in
                         #1 (reduceExp env (ERecord (fields (xts, [])), loc))
                     end
+                  | ECutMulti (r as (_, loc), _, {rest = (CRecord (k, xts), _), ...}) =>
+                    let
+                        fun fields (remaining, passed) =
+                            case remaining of
+                                [] => []
+                              | (x, t) :: rest =>
+                                (x,
+                                 (EField (r, x, {field = t,
+                                                 rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
+                                 t) :: fields (rest, (x, t) :: passed)
+                    in
+                        #1 (reduceExp env (ERecord (fields (xts, [])), loc))
+                    end
 
                   | _ => e
     in

@@ -325,6 +325,23 @@ fun p_exp' par env (e, _) =
                               string "--",
                               space,
                               p_con' true env c])
+      | ECutMulti (e, c, {rest}) =>
+        parenIf par (if !debug then
+                         box [p_exp' true env e,
+                              space,
+                              string "---",
+                              space,
+                              p_con' true env c,
+                              space,
+                              string "[",
+                              p_con env rest,
+                              string "]"]
+                     else
+                         box [p_exp' true env e,
+                              space,
+                              string "---",
+                              space,
+                              p_con' true env c])
       | EFold _ => string "fold"
 
       | ECase (e, pes, {disc, result}) =>

@@ -197,7 +197,7 @@ fun tagIn bt =
  | DATATYPE | OF
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR | SEMI
- | FN | PLUSPLUS | MINUSMINUS | DOLLAR | TWIDDLE
+ | FN | PLUSPLUS | MINUSMINUS | MINUSMINUSMINUS | DOLLAR | TWIDDLE
  | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
@@ -348,7 +348,7 @@ fun tagIn bt =
 %right CAND
 %nonassoc EQ NE LT LE GT GE IS
 %right ARROW
-%right PLUSPLUS MINUSMINUS
+%right PLUSPLUS MINUSMINUS MINUSMINUSMINUS
 %left PLUS MINUS
 %left STAR DIVIDE MOD
 %left NOT
@@ -692,6 +692,7 @@ eexp   : eapps                          (eapps)
                                          end)
        | eexp COLON cexp                (EAnnot (eexp, cexp), s (eexpleft, cexpright))
        | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
+       | eexp MINUSMINUSMINUS cexp      (ECutMulti (eexp, cexp), s (eexpleft, cexpright))
        | CASE eexp OF barOpt branch branchs (ECase (eexp, branch :: branchs), s (CASEleft, branchsright))
        | IF eexp THEN eexp ELSE eexp    (let
                                              val loc = s (IFleft, eexp3right)
