@@ -6,6 +6,7 @@ NEXT
 - Primitive "time" type
 - Nullable SQL columns (via "option")
 - Cookies
+- Compiler: Specialization of functions to known arguments (especially of function type)
 
 ========
 20081028
