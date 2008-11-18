@@ -13,7 +13,7 @@ urweb -demo /Demo demo</pre></blockquote></p>
 
 <blockquote><pre>urweb demo/hello</pre></blockquote>
 
-to build the "Hello World" demo application.  Whether building the pieces separately or all at once with the <tt>-demo</tt> flag, a standalone web server executable is generated.  The <tt>-demo</tt> command line will generate <tt>demo/demo.exe</tt>, and the other command line will generate <tt>demo/hello.exe</tt>.  Either can be run with a single argument, an integer specifying how many request handler pthreads to spawn.  The server accepts requests on port 8080.</p>
+to build the "Hello World" demo application.  Whether building the pieces separately or all at once with the <tt>-demo</tt> flag, a standalone web server executable is generated.  The <tt>-demo</tt> command line will generate <tt>demo/demo.exe</tt>, and the other command line will generate <tt>demo/hello.exe</tt>.  Either can be run with no arguments to start a single-threaded server accepting requests on port 8080.  Pass the flag <tt>-h</tt> to see which options are available.</p>
 
 <p>The <tt>-demo</tt> version also generates some HTML in a subdirectory <tt>out</tt> of the demo directory.  It is easy to set Apache up to serve these HTML files, and to proxy out to the Ur/Web web server for dynamic page requests.  This configuration works for me, where <tt>DIR</tt> is the location of an Ur/Web source distribution.
 
