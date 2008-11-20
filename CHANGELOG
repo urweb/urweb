@@ -1,4 +1,13 @@
 ========
+20081120
+========
+
+- Fix bug that sometimes led to omission of initial "<html>" in pages
+- Take advantage of nested functions in some demos
+- "profile" option that may appear in .urp files, to enable gprof profiling
+- "-guided-demo" option that works like "-demo" but uses less screen space for prose
+
+========
 20081118
 ========
 
