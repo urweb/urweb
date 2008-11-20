@@ -29,7 +29,9 @@ fun doArgs (args, (timing, demo, sources)) =
     case args of
         [] => (timing, demo, rev sources)
       | "-demo" :: prefix :: rest =>
-        doArgs (rest, (timing, SOME prefix, sources))
+        doArgs (rest, (timing, SOME (prefix, false), sources))
+      | "-guided-demo" :: prefix :: rest =>
+        doArgs (rest, (timing, SOME (prefix, true), sources))
       | arg :: rest =>
         let
             val acc =
@@ -52,8 +54,8 @@ val job =
 
 val () =
     case demo of
-        SOME prefix =>
-        Demo.make {prefix = prefix, dirname = job}
+        SOME (prefix, guided) =>
+        Demo.make {prefix = prefix, dirname = job, guided = guided}
       | NONE =>
         if timing then
             Compiler.time Compiler.toCjrize job

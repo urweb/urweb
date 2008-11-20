@@ -27,7 +27,7 @@
 
 structure Demo :> DEMO = struct
 
-fun make {prefix, dirname} =
+fun make {prefix, dirname, guided} =
     let
         val prose = OS.Path.joinDirFile {dir = dirname,
                                          file = "prose"}
@@ -127,7 +127,12 @@ fun make {prefix, dirname} =
                                                file = out}
                 val out = TextIO.openOut out
 
-                val () = (TextIO.output (out, "<frameset rows=\"50%,*\">\n");
+                val () = (TextIO.output (out, "<frameset rows=\"");
+                          TextIO.output (out, if guided then
+                                                  "*,100"
+                                              else
+                                                  "50%,*");
+                          TextIO.output (out, "\">\n");
                           TextIO.output (out, "<frame src=\"");
                           TextIO.output (out, prefix);
                           TextIO.output (out, "/");

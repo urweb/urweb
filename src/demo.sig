@@ -27,6 +27,6 @@
 
 signature DEMO = sig
 
-    val make : {prefix : string, dirname : string} -> unit
+    val make : {prefix : string, dirname : string, guided : bool} -> unit
 
 end

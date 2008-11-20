@@ -1,4 +1,4 @@
-<p><b>Ur/Web</b> is a domain-specific language for programming web applications backed by SQL databases.  It is (strongly) statically-typed (like ML and Haskell) and purely functional (like Haskell).  <b>Ur</b> is the base language, and the web-specific features of Ur/Web (mostly) come only in the form of special rules for parsing, type inference, and optimization.  The Ur core looks a lot like <a href="http://sml.sourceforge.net/">Standard ML</a>, with a few <a href="http://www.haskell.org/">Haskell</a>-isms added, and kinder, gentler versions added of many features from dependently-typed languages like the logic behind <a href="http://coq.inria.fr/">Coq</a>.  The type system is much more expressive than in ML and Haskell, such that well-typed web applications cannot "go wrong," not just in handling single HTTP requests, but across their entire lifetimes of interacting with HTTP clients.  Beyond that, Ur is unusual is using ideas from dependent typing to enable very effective metaprogramming, or programming with explicit analysis of type structure.  Many common web application components can be built by Ur/Web functions that operate on types, where it seems impossible to achieve similar code re-use in more established languages.</p>
+<p><b>Ur/Web</b> is a domain-specific language for programming web applications backed by SQL databases.  It is (strongly) statically-typed (like ML and Haskell) and purely functional (like Haskell).  <b>Ur</b> is the base language, and the web-specific features of Ur/Web (mostly) come only in the form of special rules for parsing and optimization.  The Ur core looks a lot like <a href="http://sml.sourceforge.net/">Standard ML</a>, with a few <a href="http://www.haskell.org/">Haskell</a>-isms added, and kinder, gentler versions added of many features from dependently-typed languages like the logic behind <a href="http://coq.inria.fr/">Coq</a>.  The type system is much more expressive than in ML and Haskell, such that well-typed web applications cannot "go wrong," not just in handling single HTTP requests, but across their entire lifetimes of interacting with HTTP clients.  Beyond that, Ur is unusual is using ideas from dependent typing to enable very effective metaprogramming, or programming with explicit analysis of type structure.  Many common web application components can be built by Ur/Web functions that operate on types, where it seems impossible to achieve similar code re-use in more established languages.</p>
 
 <p>This demo is built automatically from Ur/Web sources and supporting files.  If you unpack the Ur/Web source distribution, then the following steps will build you a local version of this demo:
 
@@ -92,6 +92,10 @@ ref.urp
 
 <p>The functor creates a new encapsulated SQL sequence and table on each call.  These local relations show up in the automatically-generated SQL file that should be run to prepare the database for use, but they are invisible from client code.  We could change the functor to create different SQL relations, without needing to change client code.</p>
 
+tree.urp
+
+<p>Here we see how we can abstract over common patterns of SQL queries.  In particular, since standard SQL does not help much with queries over trees, we write a function for traversing an SQL tree, building an HTML representation, based on a user-provided function for rendering individual rows.</p>
+
 sum.urp
 
 <p>Metaprogramming is one of the most important facilities of Ur.  This example shows how to write a function that is able to sum up the fields of records of integers, no matter which set of fields the particular record has.</p>
@@ -131,10 +135,6 @@ metaform1.urp
 metaform2.urp
 
 <p>This example showcases code reuse by applying the same functor as in the last example.  The <tt>Metaform2</tt> module mixes pages from the functor with some new pages of its own.</p>
-
-tree.urp
-
-<p>Here we see how we can abstract over common patterns of SQL queries.  In particular, since standard SQL does not help much with queries over trees, we write a function for traversing an SQL tree, building an HTML representation, based on a user-provided function for rendering individual rows.</p>
 
 crud1.urp
 

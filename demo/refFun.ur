@@ -15,9 +15,9 @@ functor Make(M : sig
 
     fun read r =
         o <- oneOrNoRows (SELECT t.Data FROM t WHERE t.Id = {[r]});
-        return (case o of
+        case o of
             None => error <xml>You already deleted that ref!</xml>
-          | Some r => r.T.Data)
+          | Some r => return r.T.Data
 
     fun write r d =
         dml (UPDATE t SET Data = {[d]} WHERE Id = {[r]})
