@@ -110,59 +110,64 @@ functor Make(M : sig
           {ls}
         </body></xml>
 
-    and save (id : int) (inputs : $(mapT2T sndTT M.cols)) =
-        dml (update [mapT2T fstTT M.cols]
-                    (foldT2R2 [sndTT] [colMeta]
-                              [fn cols => $(mapT2T (fn t :: (Type * Type) =>
-                                                       sql_exp [T = [Id = int]
-                                                                        ++ mapT2T fstTT M.cols]
-                                                               [] [] t.1) cols)]
-                              (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
-                                               [[nm] ~ rest] =>
-                               fn input col acc => acc ++ {nm =
-                                                           @sql_inject col.Inject (col.Parse input)})
-                              {} [M.cols] inputs M.cols)
-                    tab (WHERE T.Id = {[id]}));
-        ls <- list ();
-        return <xml><body>
-          <p>Saved!</p>
-
-          {ls}
-        </body></xml>
-
     and upd (id : int) =
-        fso <- oneOrNoRows (SELECT tab.{{mapT2T fstTT M.cols}} FROM tab WHERE tab.Id = {[id]});
-        case fso : (Basis.option {Tab : $(mapT2T fstTT M.cols)}) of
-            None => return <xml><body>Not found!</body></xml>
-          | Some fs => return <xml><body><form>
-            {foldT2R2 [fstTT] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
-                      (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
-                                       [[nm] ~ rest] (v : t.1) (col : colMeta t)
-                                       (acc : xml form [] (mapT2T sndTT rest)) =>
-                          <xml>
-                            <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
-                            {useMore acc}
-                          </xml>)
-                      <xml/>
-                      [M.cols] fs.Tab M.cols}
+        let
+            fun save (inputs : $(mapT2T sndTT M.cols)) =
+                dml (update [mapT2T fstTT M.cols]
+                            (foldT2R2 [sndTT] [colMeta]
+                                      [fn cols => $(mapT2T (fn t :: (Type * Type) =>
+                                                               sql_exp [T = [Id = int]
+                                                                                ++ mapT2T fstTT M.cols]
+                                                                       [] [] t.1) cols)]
+                                      (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                                       [[nm] ~ rest] =>
+                                       fn input col acc => acc ++ {nm =
+                                                                   @sql_inject col.Inject (col.Parse input)})
+                                      {} [M.cols] inputs M.cols)
+                            tab (WHERE T.Id = {[id]}));
+                ls <- list ();
+                return <xml><body>
+                  <p>Saved!</p>
 
-            <submit action={save id}/>
-          </form></body></xml>
+                  {ls}
+                </body></xml>
+        in
+            fso <- oneOrNoRows (SELECT tab.{{mapT2T fstTT M.cols}} FROM tab WHERE tab.Id = {[id]});
+            case fso : (Basis.option {Tab : $(mapT2T fstTT M.cols)}) of
+                None => return <xml><body>Not found!</body></xml>
+              | Some fs => return <xml><body><form>
+                {foldT2R2 [fstTT] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
+                          (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                                           [[nm] ~ rest] (v : t.1) (col : colMeta t)
+                                           (acc : xml form [] (mapT2T sndTT rest)) =>
+                              <xml>
+                                <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
+                                {useMore acc}
+                              </xml>)
+                          <xml/>
+                          [M.cols] fs.Tab M.cols}
 
-    and delete (id : int) =
-        dml (DELETE FROM tab WHERE Id = {[id]});
-        ls <- list ();
-        return <xml><body>
-          <p>The deed is done.</p>
+                <submit action={save}/>
+              </form></body></xml>
+        end
 
-          {ls}
-        </body></xml>
-
-    and confirm (id : int) = return <xml><body>
-      <p>Are you sure you want to delete ID #{[id]}?</p>
-
-      <p><a link={delete id}>I was born sure!</a></p>
-    </body></xml>
+    and confirm (id : int) =
+        let
+            fun delete () =
+                dml (DELETE FROM tab WHERE Id = {[id]});
+                ls <- list ();
+                return <xml><body>
+                  <p>The deed is done.</p>
+                  
+                  {ls}
+                </body></xml>
+        in
+            return <xml><body>
+              <p>Are you sure you want to delete ID #{[id]}?</p>
+              
+              <p><a link={delete ()}>I was born sure!</a></p>
+            </body></xml>
+        end    
 
     and main () =
         ls <- list ();
