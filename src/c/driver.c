@@ -1,10 +1,12 @@
 #include <stdio.h>
 
 #include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <pthread.h>
 
@@ -297,6 +299,11 @@ static void help(char *cmd) {
   printf("Usage: %s [-p <port>] [-t <thread-count>]\n", cmd);
 }
 
+static void sigint(int signum) {
+  printf("Exiting....\n");
+  exit(0);
+}
+
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
   int sockfd;  // listen on sock_fd
@@ -304,7 +311,9 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in their_addr; // connector's address information
   int sin_size, yes = 1;
   int uw_port = 8080, nthreads = 1, i, *names, opt;
-  
+ 
+  signal(SIGINT, sigint);
+ 
   while ((opt = getopt(argc, argv, "hp:t:")) != -1) {
     switch (opt) {
     case '?':

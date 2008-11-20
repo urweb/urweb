@@ -92,7 +92,8 @@ fun make {prefix, dirname, guided} =
                                        file = "demo.exe"},
             sql = SOME (OS.Path.joinDirFile {dir = dirname,
                                              file = "demo.sql"}),
-            debug = false
+            debug = false,
+            profile = false
         }
 
         val parse = Compiler.run (Compiler.transform Compiler.parseUrp "Demo parseUrp")

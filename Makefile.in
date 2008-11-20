@@ -21,10 +21,10 @@ clean:
 	rm -rf .cm src/.cm
 
 clib/urweb.o: src/c/urweb.c
-	gcc -O3 -I include -c src/c/urweb.c -o clib/urweb.o
+	gcc -O3 -I include -c src/c/urweb.c -o clib/urweb.o $(CFLAGS)
 
 clib/driver.o: src/c/driver.c
-	gcc -O3 -I include -c src/c/driver.c -o clib/driver.o
+	gcc -O3 -I include -c src/c/driver.c -o clib/driver.o $(CFLAGS)
 
 src/urweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \

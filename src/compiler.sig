@@ -35,10 +35,11 @@ signature COMPILER = sig
          sources : string list,
          exe : string,
          sql : string option,
-         debug : bool
+         debug : bool,
+         profile : bool
     }
     val compile : string -> unit
-    val compileC : {cname : string, oname : string, ename : string, libs : string} -> unit
+    val compileC : {cname : string, oname : string, ename : string, libs : string, profile : bool} -> unit
 
     type ('src, 'dst) phase
     type ('src, 'dst) transform

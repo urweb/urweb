@@ -41,7 +41,8 @@ type job = {
      sources : string list,
      exe : string,
      sql : string option,
-     debug : bool
+     debug : bool,
+     profile : bool
 }
 
 type ('src, 'dst) phase = {
@@ -199,13 +200,17 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}    
 
-fun p_job {prefix, database, exe, sql, sources, debug} =
+fun p_job {prefix, database, exe, sql, sources, debug, profile} =
     let
         open Print.PD
         open Print
     in
         box [if debug then
                  box [string "DEBUG", newline]
+             else
+                 box [],
+             if profile then
+                 box [string "PROFILE", newline]
              else
                  box [],
              case database of
@@ -260,19 +265,20 @@ val parseUrp = {
                               readSources acc
                           end
 
-                  fun finish (prefix, database, exe, sql, debug, sources) =
+                  fun finish (prefix, database, exe, sql, debug, profile, sources) =
                       {prefix = Option.getOpt (prefix, "/"),
                        database = database,
                        exe = Option.getOpt (exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
                                                                       ext = SOME "exe"}),
                        sql = sql,
                        debug = debug,
+                       profile = profile,
                        sources = sources}
 
-                  fun read (prefix, database, exe, sql, debug) =
+                  fun read (prefix, database, exe, sql, debug, profile) =
                       case TextIO.inputLine inf of
-                          NONE => finish (prefix, database, exe, sql, debug, [])
-                        | SOME "\n" => finish (prefix, database, exe, sql, debug, readSources [])
+                          NONE => finish (prefix, database, exe, sql, debug, profile, [])
+                        | SOME "\n" => finish (prefix, database, exe, sql, debug, profile, readSources [])
                         | SOME line =>
                           let
                               val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
@@ -284,28 +290,29 @@ val parseUrp = {
                                   (case prefix of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
-                                   read (SOME arg, database, exe, sql, debug))
+                                   read (SOME arg, database, exe, sql, debug, profile))
                                 | "database" =>
                                   (case database of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
-                                   read (prefix, SOME arg, exe, sql, debug))
+                                   read (prefix, SOME arg, exe, sql, debug, profile))
                                 | "exe" =>
                                   (case exe of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'exe' directive";
-                                   read (prefix, database, SOME (relify arg), sql, debug))
+                                   read (prefix, database, SOME (relify arg), sql, debug, profile))
                                 | "sql" =>
                                   (case sql of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'sql' directive";
-                                   read (prefix, database, exe, SOME (relify arg), debug))
-                                | "debug" => read (prefix, database, exe, sql, true)
+                                   read (prefix, database, exe, SOME (relify arg), debug, profile))
+                                | "debug" => read (prefix, database, exe, sql, true, profile)
+                                | "profile" => read (prefix, database, exe, sql, debug, true)
                                 | _ => (ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
-                                        read (prefix, database, exe, sql, debug))
+                                        read (prefix, database, exe, sql, debug, profile))
                           end
 
-                  val job = read (NONE, NONE, NONE, NONE, false)
+                  val job = read (NONE, NONE, NONE, NONE, false, false)
               in
                   TextIO.closeIn inf;
                   Monoize.urlPrefix := #prefix job;
@@ -544,13 +551,19 @@ val sqlify = {
 
 val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
-fun compileC {cname, oname, ename, libs} =
+fun compileC {cname, oname, ename, libs, profile} =
     let
         val urweb_o = clibFile "urweb.o"
         val driver_o = clibFile "driver.o"
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wstrict-prototypes -Werror -O3 -I include -c " ^ cname ^ " -o " ^ oname
         val link = "gcc -Werror -O3 -lm -pthread " ^ libs ^ " " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
+
+        val (compile, link) =
+            if profile then
+                (compile ^ " -pg", link ^ " -pg")
+            else
+                (compile, link)
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"
@@ -615,7 +628,7 @@ fun compile job =
                         TextIO.closeOut outf
                     end;
 
-                compileC {cname = cname, oname = oname, ename = ename, libs = libs};
+                compileC {cname = cname, oname = oname, ename = ename, libs = libs, profile = #profile job};
                 
                 cleanup ()
             end
