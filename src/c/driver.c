@@ -189,9 +189,10 @@ static void *worker(void *data) {
         printf("Serving URI %s....\n", path);
 
         uw_set_headers(ctx, headers);
-        uw_write(ctx, "<html>");
 
         while (1) {
+          uw_write(ctx, "<html>");
+
           if (uw_db_begin(ctx)) {
             printf("Error running SQL BEGIN\n");
             if (retries_left)
