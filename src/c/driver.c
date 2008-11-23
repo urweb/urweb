@@ -313,7 +313,8 @@ int main(int argc, char *argv[]) {
   int uw_port = 8080, nthreads = 1, i, *names, opt;
  
   signal(SIGINT, sigint);
- 
+  signal(SIGPIPE, SIG_IGN); 
+
   while ((opt = getopt(argc, argv, "hp:t:")) != -1) {
     switch (opt) {
     case '?':
