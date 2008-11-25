@@ -53,6 +53,10 @@ ifdef DEBUG
 	MLTON += -const 'Exn.keepHistory true'
 endif
 
+ifdef PROFILE
+	MLTON += -profile $(PROFILE)
+endif
+
 bin/urweb: src/urweb.mlb src/*.sig src/*.sml \
 		src/urweb.mlton.lex.sml \
 		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml

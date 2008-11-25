@@ -26,3 +26,4 @@ demo/out/*.html
 demo/demo.*
 
 *.sql
+*mlmon.out
