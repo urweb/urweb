@@ -1,4 +1,9 @@
 ========
+========
+
+- Optimization: Fusing page writes with calls to recursive functions
+
+========
 20081120
 ========
 

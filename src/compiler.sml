@@ -523,12 +523,23 @@ val toMono_shake = transform mono_shake "mono_shake1" o toMono_reduce
 
 val toMono_opt2 = transform mono_opt "mono_opt2" o toMono_shake
 
+val fuse = {
+    func = Fuse.fuse,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toFuse = transform fuse "fuse" o toMono_opt2
+
+val toUntangle2 = transform untangle "untangle2" o toFuse
+
+val toMono_shake2 = transform mono_shake "mono_shake2" o toUntangle2
+
 val pathcheck = {
     func = (fn file => (PathCheck.check file; file)),
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toPathcheck = transform pathcheck "pathcheck" o toMono_opt2
+val toPathcheck = transform pathcheck "pathcheck" o toMono_shake2
 
 val cjrize = {
     func = Cjrize.cjrize,

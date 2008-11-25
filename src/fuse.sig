@@ -25,9 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature MONO_OPT = sig
+signature FUSE = sig
 
-    val optimize : Mono.file -> Mono.file
-    val optExp : Mono.exp -> Mono.exp
+    val fuse : Mono.file -> Mono.file
 
 end

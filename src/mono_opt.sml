@@ -366,4 +366,6 @@ and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)
 
 val optimize = U.File.map {typ = typ, exp = exp, decl = decl}
 
+val optExp = U.Exp.map {typ = typ, exp = exp}
+
 end

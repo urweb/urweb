@@ -90,6 +90,11 @@ structure Decl : sig
                 exp : Mono.exp' * 'state -> 'state,
                 decl : Mono.decl' * 'state -> 'state}
                -> 'state -> Mono.decl -> 'state
+
+    val map : {typ : Mono.typ' -> Mono.typ',
+               exp : Mono.exp' -> Mono.exp',
+               decl : Mono.decl' -> Mono.decl'}
+              -> Mono.decl -> Mono.decl
 end
 
 structure File : sig
@@ -121,6 +126,8 @@ structure File : sig
                 exp : Mono.exp' * 'state -> 'state,
                 decl : Mono.decl' * 'state -> 'state}
                -> 'state -> Mono.file -> 'state
+
+    val maxName : Mono.file -> int
 end
 
 end

@@ -422,6 +422,13 @@ fun fold {typ, exp, decl} s d =
         S.Continue (_, s) => s
       | S.Return _ => raise Fail "MonoUtil.Decl.fold: Impossible"
 
+fun map {typ, exp, decl} e =
+    case mapfold {typ = fn c => fn () => S.Continue (typ c, ()),
+                  exp = fn e => fn () => S.Continue (exp e, ()),
+                  decl = fn d => fn () => S.Continue (decl d, ())} e () of
+        S.Return () => raise Fail "MonoUtil.Decl.map: Impossible"
+      | S.Continue (e, ()) => e
+
 end
 
 structure File = struct
@@ -490,7 +497,7 @@ fun map {typ, exp, decl} e =
     case mapfold {typ = fn c => fn () => S.Continue (typ c, ()),
                   exp = fn e => fn () => S.Continue (exp e, ()),
                   decl = fn d => fn () => S.Continue (decl d, ())} e () of
-        S.Return () => raise Fail "Mono_util.File.map"
+        S.Return () => raise Fail "MonoUtil.File.map: Impossible"
       | S.Continue (e, ()) => e
 
 fun fold {typ, exp, decl} s d =
@@ -499,6 +506,18 @@ fun fold {typ, exp, decl} s d =
                   decl = fn d => fn s => S.Continue (d, decl (d, s))} d s of
         S.Continue (_, s) => s
       | S.Return _ => raise Fail "MonoUtil.File.fold: Impossible"
+
+val maxName = foldl (fn ((d, _) : decl, count) =>
+                        case d of
+                            DDatatype (_, n, ns) =>
+                            foldl (fn ((_, n', _), m) => Int.max (n', m))
+                                  (Int.max (n, count)) ns
+                          | DVal (_, n, _, _, _) => Int.max (n, count)
+                          | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
+                          | DExport _ => count
+                          | DTable _ => count
+                          | DSequence _ => count
+                          | DDatabase _ => count) 0
 
 end
 

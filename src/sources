@@ -140,6 +140,9 @@ mono_shake.sml
 pathcheck.sig
 pathcheck.sml
 
+fuse.sig
+fuse.sml
+
 cjr.sml
 
 cjr_env.sig
