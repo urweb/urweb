@@ -44,9 +44,24 @@ datatype env_item =
 
 type env = env_item list
 
+fun ei2s ei =
+    case ei of
+        UnknownC => "UC"
+      | KnownC _ => "KC"
+      | UnknownE => "UE"
+      | KnownE _ => "KE"
+      | Lift (n1, n2) => "(" ^ Int.toString n1 ^ ", " ^ Int.toString n2 ^ ")"
+
+fun e2s env = String.concatWith " " (map ei2s env)
+
+val deKnown = List.filter (fn KnownC _ => false
+                            | KnownE _ => false
+                            | _ => true)
+
 fun conAndExp (namedC, namedE) =
     let
         fun con env (all as (c, loc)) =
+            ((*Print.prefaces "con" [("c", CorePrint.p_con CoreEnv.empty all)];*)
             case c of
                 TFun (c1, c2) => (TFun (con env c1, con env c2), loc)
               | TCFun (x, k, c2) => (TCFun (x, k, con (UnknownC :: env) c2), loc)
@@ -54,23 +69,25 @@ fun conAndExp (namedC, namedE) =
 
               | CRel n =>
                 let
-                    fun find (n', env, lift) =
-                        if n' = 0 then
-                            case env of
-                                UnknownC :: _ => (CRel (n + lift), loc)
-                              | KnownC c :: _ => con (Lift (lift, 0) :: env) c
-                              | Lift (lift', _) :: rest => find (0, rest, lift + lift')
-                              | _ => raise Fail "Reduce.con: CRel [1]"
-                        else
-                            case env of
-                                UnknownC :: rest => find (n' - 1, rest, lift + 1)
-                              | KnownC _ :: rest => find (n' - 1, rest, lift)
-                              | UnknownE :: rest => find (n' - 1, rest, lift)
-                              | KnownE _ :: rest => find (n' - 1, rest, lift)
-                              | Lift (lift', _) :: rest => find (n', rest, lift + lift')
-                              | [] => raise Fail "Reduce.con: CRel [2]"
+                    fun find (n', env, nudge, lift) =
+                        case env of
+                            [] => raise Fail "Reduce.con: CRel"
+                          | UnknownE :: rest => find (n', rest, nudge, lift)
+                          | KnownE _ :: rest => find (n', rest, nudge, lift)
+                          | Lift (lift', _) :: rest => find (n', rest, nudge + lift', lift + lift')
+                          | UnknownC :: rest =>
+                            if n' = 0 then
+                                (CRel (n + nudge), loc)
+                            else
+                                find (n' - 1, rest, nudge, lift + 1)
+                          | KnownC c :: rest =>
+                            if n' = 0 then
+                                con (Lift (lift, 0) :: rest) c
+                            else
+                                find (n' - 1, rest, nudge - 1, lift)
                 in
-                    find (n, env, 0)
+                    (*print (Int.toString n ^ ": " ^ e2s env ^ "\n");*)
+                    find (n, env, 0, 0)
                 end
               | CNamed n =>
                 (case IM.find (namedC, n) of
@@ -84,15 +101,16 @@ fun conAndExp (namedC, namedE) =
                 in
                     case #1 c1 of
                         CAbs (_, _, b) =>
-                        con (KnownC c2 :: env) b
+                        con (KnownC c2 :: deKnown env) b
 
                       | CApp ((CApp (fold as (CFold _, _), f), _), i) =>
                         (case #1 c2 of
                              CRecord (_, []) => i
                            | CRecord (k, (x, c) :: rest) =>
-                             con env (CApp ((CApp ((CApp (f, x), loc), c), loc),
-                                            (CApp ((CApp ((CApp (fold, f), loc), i), loc),
-                                                   (CRecord (k, rest), loc)), loc)), loc)
+                             con (deKnown env)
+                                 (CApp ((CApp ((CApp (f, x), loc), c), loc),
+                                        (CApp ((CApp ((CApp (fold, f), loc), i), loc),
+                                               (CRecord (k, rest), loc)), loc)), loc)
                            | _ => (CApp (c1, c2), loc))                           
 
                       | _ => (CApp (c1, c2), loc)
@@ -124,7 +142,7 @@ fun conAndExp (namedC, namedE) =
                     case #1 c of
                         CTuple cs => List.nth (cs, n - 1)
                       | _ => (CProj (c, n), loc)
-                end
+                end)
 
         fun patCon pc =
             case pc of
@@ -141,27 +159,33 @@ fun conAndExp (namedC, namedE) =
              this :: rest)
 
         fun exp env (all as (e, loc)) =
+            ((*Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),
+                                   ("env", Print.PD.string (e2s env))];*)
             case e of
                 EPrim _ => all
               | ERel n =>
                 let
-                    fun find (n', env, liftC, liftE) =
-                        if n' = 0 then
-                            case env of
-                                UnknownE :: _ => (ERel (n + liftE), loc)
-                              | KnownE e :: _ => exp (Lift (liftC, liftE) :: env) e
-                              | Lift (liftC', liftE') :: rest => find (0, rest, liftC + liftC', liftE + liftE')
-                              | _ => raise Fail "Reduce.exp: ERel [1]"
-                        else
-                            case env of
-                                UnknownC :: rest => find (n' - 1, rest, liftC + 1, liftE)
-                              | KnownC _ :: rest => find (n' - 1, rest, liftC, liftE)
-                              | UnknownE :: rest => find (n' - 1, rest, liftC, liftE + 1)
-                              | KnownE _ :: rest => find (n' - 1, rest, liftC, liftE)
-                              | Lift (liftC', liftE') :: rest => find (n', rest, liftC + liftC', liftE + liftE')
-                              | [] => raise Fail "Reduce.exp: ERel [2]"
+                    fun find (n', env, nudge, liftC, liftE) =
+                        case env of
+                            [] => raise Fail "Reduce.exp: ERel"
+                          | UnknownC :: rest => find (n', rest, nudge, liftC + 1, liftE)
+                          | KnownC _ :: rest => find (n', rest, nudge, liftC, liftE)
+                          | Lift (liftC', liftE') :: rest => find (n', rest, nudge + liftE',
+                                                                   liftC + liftC', liftE + liftE')
+                          | UnknownE :: rest =>
+                            if n' = 0 then
+                                (ERel (n + nudge), loc)
+                            else
+                                find (n' - 1, rest, nudge, liftC, liftE + 1)
+                          | KnownE e :: rest =>
+                            if n' = 0 then
+                                ((*print "SUBSTITUTING\n";*)
+                                exp (Lift (liftC, liftE) :: rest) e)
+                            else
+                                find (n' - 1, rest, nudge - 1, liftC, liftE)
                 in
-                    find (n, env, 0, 0)
+                    (*print (Int.toString n ^ ": " ^ e2s env ^ "\n");*)
+                    find (n, env, 0, 0, 0)
                 end
               | ENamed n =>
                 (case IM.find (namedE, n) of
@@ -178,7 +202,7 @@ fun conAndExp (namedC, namedE) =
                     val e2 = exp env e2
                 in
                     case #1 e1 of
-                        EAbs (_, _, _, b) => exp (KnownE e2 :: env) b
+                        EAbs (_, _, _, b) => exp (KnownE e2 :: deKnown env) b
                       | _ => (EApp (e1, e2), loc)
                 end
 
@@ -190,7 +214,7 @@ fun conAndExp (namedC, namedE) =
                     val c = con env c
                 in
                     case #1 e of
-                        ECAbs (_, _, b) => exp (KnownC c :: env) b
+                        ECAbs (_, _, b) => exp (KnownC c :: deKnown env) b
                       | _ => (ECApp (e, c), loc)
                 end
 
@@ -230,7 +254,7 @@ fun conAndExp (namedC, namedE) =
                                     val (xes1, rest) = ListUtil.foldlMap (doPart e1) [] xcs1
                                     val (xes2, _) = ListUtil.foldlMap (doPart e2) rest xcs2
                                 in
-                                    exp env (ERecord (xes1 @ xes2), loc)
+                                    exp (deKnown env) (ERecord (xes1 @ xes2), loc)
                                 end
                               | _ => (EConcat (e1, c1, e2, c2), loc)
                         end
@@ -250,7 +274,7 @@ fun conAndExp (namedC, namedE) =
                                 let
                                     val (xes, _) = ListUtil.foldlMap (doPart e) [] xcs
                                 in
-                                    exp env (ERecord xes, loc)
+                                    exp (deKnown env) (ERecord xes, loc)
                                 end
                               | _ => (ECut (e, c, {field = con env field, rest = rest}), loc)
                         end
@@ -279,7 +303,7 @@ fun conAndExp (namedC, namedE) =
                                 let
                                     val (xes, _) = ListUtil.foldlMap (doPart e) [] xcs
                                 in
-                                    exp env (ERecord xes, loc)
+                                    exp (deKnown env) (ERecord xes, loc)
                                 end
                               | _ => (ECutMulti (e, c, {rest = rest}), loc)
                         end
@@ -328,7 +352,7 @@ fun conAndExp (namedC, namedE) =
               | EWrite e => (EWrite (exp env e), loc)
               | EClosure (n, es) => (EClosure (n, map (exp env) es), loc)
 
-              | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc)
+              | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc))
     in
         {con = con, exp = exp}
     end
