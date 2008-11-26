@@ -31,150 +31,142 @@ structure Reduce :> REDUCE = struct
 
 open Core
 
-structure E = CoreEnv
-structure U = CoreUtil
+structure IM = IntBinaryMap
 
-val liftConInCon = E.liftConInCon
-val subConInCon = E.subConInCon
-val liftConInExp = E.liftConInExp
-val liftExpInExp = E.liftExpInExp
-val subExpInExp = E.subExpInExp
-val liftConInExp = E.liftConInExp
-val subConInExp = E.subConInExp
+datatype env_item =
+         UnknownC
+       | KnownC of con
 
-fun bindC (env, b) =
-    case b of
-        U.Con.Rel (x, k) => E.pushCRel env x k
-      | U.Con.Named (x, n, k, co) => E.pushCNamed env x n k co
+       | UnknownE
+       | KnownE of exp
 
-fun bind (env, b) =
-    case b of
-        U.Decl.RelC (x, k) => E.pushCRel env x k
-      | U.Decl.NamedC (x, n, k, co) => E.pushCNamed env x n k co
-      | U.Decl.RelE (x, t) => E.pushERel env x t
-      | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
+       | Lift of int * int
 
-fun kind k = k
+type env = env_item list
 
-fun con env c =
-    case c of
-        CApp ((CApp ((CApp ((CFold ks, _), f), _), i), loc), (CRecord (k, xcs), _)) =>
-        (case xcs of
-             [] => #1 i
-           | (n, v) :: rest =>
-             #1 (reduceCon env (CApp ((CApp ((CApp (f, n), loc), v), loc),
-                                      (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
-                                             (CRecord (k, rest), loc)), loc)), loc)))
-      | CApp ((CAbs (_, _, c1), loc), c2) =>
-        #1 (reduceCon env (subConInCon (0, c2) c1))
-      | CNamed n =>
-        (case E.lookupCNamed env n of
-             (_, _, SOME c') => #1 c'
-           | _ => c)
-      | CConcat ((CRecord (k, xcs1), loc), (CRecord (_, xcs2), _)) => CRecord (k, xcs1 @ xcs2)
-
-      | CProj ((CTuple cs, _), n) => #1 (List.nth (cs, n - 1))
-
-      | _ => c
-
-and reduceCon env = U.Con.mapB {kind = kind, con = con, bind = bindC} env
-
-fun exp env e =
+fun conAndExp (namedC, namedE) =
     let
-        (*val () = Print.prefaces "exp" [("e", CorePrint.p_exp env (e, ErrorMsg.dummySpan))]*)
+        fun con env (all as (c, loc)) =
+            case c of
+                TFun (c1, c2) => (TFun (con env c1, con env c2), loc)
+              | TCFun (x, k, c2) => (TCFun (x, k, con (UnknownC :: env) c2), loc)
+              | TRecord c => (TRecord (con env c), loc)
 
-        val r = case e of
-                    ENamed n =>
-                    (case E.lookupENamed env n of
-                         (_, _, SOME e', _) => #1 e'
-                       | _ => e)
+              | CRel n =>
+                let
+                    fun find (n', env, lift) =
+                        if n' = 0 then
+                            case env of
+                                UnknownC :: _ => (CRel (n + lift), loc)
+                              | KnownC c :: _ => con (Lift (lift, 0) :: env) c
+                              | _ => raise Fail "Reduce.con: CRel [1]"
+                        else
+                            case env of
+                                UnknownC :: rest => find (n' - 1, rest, lift + 1)
+                              | KnownC _ :: rest => find (n' - 1, rest, lift)
+                              | UnknownE :: rest => find (n' - 1, rest, lift)
+                              | KnownE _ :: rest => find (n' - 1, rest, lift)
+                              | Lift (lift', _) :: rest => find (n' - 1, rest, lift + lift')
+                              | [] => raise Fail "Reduce.con: CRel [2]"
+                in
+                    find (n, env, 0)
+                end
+              | CNamed n =>
+                (case IM.find (namedC, n) of
+                     NONE => all
+                   | SOME c => c)
+              | CFfi _ => all
+              | CApp (c1, c2) =>
+                let
+                    val c1 = con env c1
+                    val c2 = con env c2
+                in
+                    case #1 c1 of
+                        CAbs (_, _, b) =>
+                        con (KnownC c2 :: env) b
 
-                  | ECApp ((EApp ((EApp ((ECApp ((EFold ks, _), ran), _), f), _), i), _), (CRecord (k, xcs), loc)) =>
-                    (case xcs of
-                         [] => #1 i
-                       | (n, v) :: rest =>
-                         #1 (reduceExp env (EApp ((ECApp ((ECApp ((ECApp (f, n), loc), v), loc), (CRecord (k, rest), loc)), loc),
-                                                  (ECApp ((EApp ((EApp ((ECApp ((EFold ks, loc), ran), loc), f), loc), i), loc),
-                                                          (CRecord (k, rest), loc)), loc)), loc)))
+                      | CApp ((CApp (fold as (CFold _, _), f), _), i) =>
+                        (case #1 c2 of
+                             CRecord (_, []) => i
+                           | CRecord (k, (x, c) :: rest) =>
+                             con env (CApp ((CApp ((CApp (f, x), loc), c), loc),
+                                            (CApp ((CApp ((CApp (fold, f), loc), i), loc),
+                                                   (CRecord (k, rest), loc)), loc)), loc)
+                           | _ => (CApp (c1, c2), loc))                           
 
-                  | EApp ((EAbs (_, _, _, e1), loc), e2) =>
-                    #1 (reduceExp env (subExpInExp (0, e2) e1))
-                  | ECApp ((ECAbs (_, _, e1), loc), c) =>
-                    #1 (reduceExp env (subConInExp (0, c) e1))
+                      | _ => (CApp (c1, c2), loc)
+                end
+              | CAbs (x, k, b) => (CAbs (x, k, con (UnknownC :: env) b), loc)
 
-                  | EField ((ERecord xes, _), (CName x, _), _) =>
-                    (case List.find (fn ((CName x', _), _, _) => x' = x
-                                      | _ => false) xes of
-                         SOME (_, e, _) => #1 e
-                       | NONE => e)
-                  | EConcat (r1 as (_, loc), (CRecord (k, xts1), _), r2, (CRecord (_, xts2), _)) =>
-                    let
-                        fun fields (r, remaining, passed) =
-                            case remaining of
-                                [] => []
-                              | (x, t) :: rest =>
-                                (x,
-                                 (EField (r, x, {field = t,
-                                                 rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
-                                 t) :: fields (r, rest, (x, t) :: passed)
-                    in
-                        #1 (reduceExp env (ERecord (fields (r1, xts1, []) @ fields (r2, xts2, [])), loc))
-                    end
-                  | ECut (r as (_, loc), _, {rest = (CRecord (k, xts), _), ...}) =>
-                    let
-                        fun fields (remaining, passed) =
-                            case remaining of
-                                [] => []
-                              | (x, t) :: rest =>
-                                (x,
-                                 (EField (r, x, {field = t,
-                                                 rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
-                                 t) :: fields (rest, (x, t) :: passed)
-                    in
-                        #1 (reduceExp env (ERecord (fields (xts, [])), loc))
-                    end
-                  | ECutMulti (r as (_, loc), _, {rest = (CRecord (k, xts), _), ...}) =>
-                    let
-                        fun fields (remaining, passed) =
-                            case remaining of
-                                [] => []
-                              | (x, t) :: rest =>
-                                (x,
-                                 (EField (r, x, {field = t,
-                                                 rest = (CRecord (k, List.revAppend (passed, rest)), loc)}), loc),
-                                 t) :: fields (rest, (x, t) :: passed)
-                    in
-                        #1 (reduceExp env (ERecord (fields (xts, [])), loc))
-                    end
+              | CName _ => all
 
-                  | _ => e
+              | CRecord (k, xcs) => (CRecord (k, map (fn (x, c) => (con env x, con env c)) xcs), loc)
+              | CConcat (c1, c2) =>
+                let
+                    val c1 = con env c1
+                    val c2 = con env c2
+                in
+                    case (#1 c1, #1 c2) of
+                        (CRecord (k, xcs1), CRecord (_, xcs2)) =>
+                        (CRecord (k, xcs1 @ xcs2), loc)
+                      | _ => (CConcat (c1, c2), loc)
+                end
+              | CFold _ => all
+
+              | CUnit => all
+
+              | CTuple cs => (CTuple (map (con env) cs), loc)
+              | CProj (c, n) =>
+                let
+                    val c = con env c
+                in
+                    case #1 c of
+                        CTuple cs => List.nth (cs, n - 1)
+                      | _ => (CProj (c, n), loc)
+                end
+
+        fun exp env e = e
     in
-        (*Print.prefaces "exp'" [("e", CorePrint.p_exp env (e, ErrorMsg.dummySpan)),
-                               ("r", CorePrint.p_exp env (r, ErrorMsg.dummySpan))];*)
-
-        r
+        {con = con, exp = exp}
     end
 
-and reduceExp env = U.Exp.mapB {kind = kind, con = con, exp = exp, bind = bind} env
+fun con namedC c = #con (conAndExp (namedC, IM.empty)) [] c
+fun exp (namedC, namedE) e = #exp (conAndExp (namedC, namedE)) [] e
 
-fun decl env d =
-    case d of
-        DValRec [vi as (_, n, _, e, _)] =>
-        let
-            fun kind _ = false
-            fun con _ = false
-            fun exp e =
-                case e of
-                    ENamed n' => n' = n
-                  | _ => false
-        in
-            if U.Exp.exists {kind = kind, con = con, exp = exp} e then
-                d
-            else
-                DVal vi
-        end
-      | _ => d
+fun reduce file =
+    let
+        fun doDecl (d as (_, loc), st as (namedC, namedE)) =
+            case #1 d of
+                DCon (x, n, k, c) =>
+                let
+                    val c = con namedC c
+                in
+                    ((DCon (x, n, k, c), loc),
+                     (IM.insert (namedC, n, c), namedE))
+                end
+              | DDatatype (x, n, ps, cs) =>
+                ((DDatatype (x, n, ps, map (fn (x, n, co) => (x, n, Option.map (con namedC) co)) cs), loc),
+                 st)
+              | DVal (x, n, t, e, s) =>
+                let
+                    val t = con namedC t
+                    val e = exp (namedC, namedE) e
+                in
+                    ((DVal (x, n, t, e, s), loc),
+                     (namedC, IM.insert (namedE, n, e)))
+                end
+              | DValRec vis =>
+                ((DValRec (map (fn (x, n, t, e, s) => (x, n, con namedC t, exp (namedC, namedE) e, s)) vis), loc),
+                 st)
+              | DExport _ => (d, st)
+              | DTable (s, n, c, s') => ((DTable (s, n, con namedC c, s'), loc), st)
+              | DSequence _ => (d, st)
+              | DDatabase _ => (d, st)
+              | DCookie (s, n, c, s') => ((DCookie (s, n, con namedC c, s'), loc), st)
 
-val reduce = U.File.mapB {kind = kind, con = con, exp = exp, decl = decl, bind = bind} E.empty
+        val (file, _) = ListUtil.foldlMap doDecl (IM.empty, IM.empty) file
+    in
+        file
+    end
 
 end
