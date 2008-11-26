@@ -31,39 +31,127 @@ structure ReduceLocal :> REDUCE_LOCAL = struct
 
 open Core
 
-structure E = CoreEnv
-structure U = CoreUtil
+structure IM = IntBinaryMap
 
-val subExpInExp = E.subExpInExp
+datatype env_item =
+         Unknown
+       | Known of exp
 
-fun default x = x
+       | Lift of int
 
-fun exp (e : exp') =
+type env = env_item list
+
+val deKnown = List.filter (fn Known _ => false
+                            | _ => true)
+
+fun exp env (all as (e, loc)) =
+    case e of
+        EPrim _ => all
+      | ERel n =>
+        let
+            fun find (n', env, nudge, lift) =
+                case env of
+                    [] => raise Fail "ReduceLocal.exp: ERel"
+                  | Lift lift' :: rest => find (n', rest, nudge + lift', lift + lift')
+                  | Unknown :: rest =>
+                    if n' = 0 then
+                        (ERel (n + nudge), loc)
+                    else
+                        find (n' - 1, rest, nudge, lift + 1)
+                  | Known e :: rest =>
+                    if n' = 0 then
+                        ((*print "SUBSTITUTING\n";*)
+                         exp (Lift lift :: rest) e)
+                    else
+                        find (n' - 1, rest, nudge - 1, lift)
+        in
+            find (n, env, 0, 0)
+        end
+      | ENamed _ => all
+      | ECon (dk, pc, cs, eo) => (ECon (dk, pc, cs, Option.map (exp env) eo), loc)
+      | EFfi _ => all
+      | EFfiApp (m, f, es) => (EFfiApp (m, f, map (exp env) es), loc)
+
+      | EApp (e1, e2) =>
+        let
+            val e1 = exp env e1
+            val e2 = exp env e2
+        in
+            case #1 e1 of
+                EAbs (_, _, _, b) => exp (Known e2 :: deKnown env) b
+              | _ => (EApp (e1, e2), loc)
+        end
+
+      | EAbs (x, dom, ran, e) => (EAbs (x, dom, ran, exp (Unknown :: env) e), loc)
+
+      | ECApp (e, c) => (ECApp (exp env e, c), loc)
+
+      | ECAbs (x, k, e) => (ECAbs (x, k, exp env e), loc)
+
+      | ERecord xcs => (ERecord (map (fn (x, e, t) => (x, exp env e, t)) xcs), loc)
+      | EField (e, c, others) =>
+        let
+            val e = exp env e
+
+            fun default () = (EField (e, c, others), loc)
+        in
+            case (#1 e, #1 c) of
+                (ERecord xcs, CName x) =>
+                (case List.find (fn ((CName x', _), _, _) => x' = x | _ => false) xcs of
+                     NONE => default ()
+                   | SOME (_, e, _) => e)
+              | _ => default ()
+        end
+
+      | EConcat (e1, c1, e2, c2) => (EConcat (exp env e1, c1, exp env e2, c2), loc)
+      | ECut (e, c, others) => (ECut (exp env e, c, others), loc)
+      | ECutMulti (e, c, others) => (ECutMulti (exp env e, c, others), loc)
+
+      | EFold _ => all
+
+      | ECase (e, pes, others) =>
+        let
+            fun patBinds (p, _) =
+                case p of
+                    PWild => 0
+                  | PVar _ => 1
+                  | PPrim _ => 0
+                  | PCon (_, _, _, NONE) => 0
+                  | PCon (_, _, _, SOME p) => patBinds p
+                  | PRecord xpts => foldl (fn ((_, p, _), n) => n + patBinds p) 0 xpts
+        in
+            (ECase (exp env e,
+                    map (fn (p, e) => (p,
+                                       exp (List.tabulate (patBinds p, fn _ => Unknown) @ env) e))
+                        pes, others), loc)
+        end
+
+      | EWrite e => (EWrite (exp env e), loc)
+      | EClosure (n, es) => (EClosure (n, map (exp env) es), loc)
+
+      | ELet (x, t, e1, e2) => (ELet (x, t, exp env e1, exp (Unknown :: env) e2), loc)
+
+fun reduce file =
     let
-        (*val () = Print.prefaces "exp" [("e", CorePrint.p_exp env (e, ErrorMsg.dummySpan))]*)
-
-        val r = case e of
-                    EApp ((EAbs (x, t, _, e1), loc), e2) =>
-                    ((*Print.prefaces "Substitute" [("x", Print.PD.string x),
-                                                  ("t", CorePrint.p_con CoreEnv.empty t)];*)
-                     #1 (reduceExp (subExpInExp (0, e2) e1)))
-
-                  | EField ((ERecord xes, _), (CName x, _), _) =>
-                    (case List.find (fn ((CName x', _), _, _) => x' = x
-                                      | _ => false) xes of
-                         SOME (_, (e, _), _) => e
-                       | NONE => e)
-
-                  | _ => e
+        fun doDecl (d as (_, loc)) =
+            case #1 d of
+                DCon _ => d
+              | DDatatype _ => d
+              | DVal (x, n, t, e, s) =>
+                let
+                    val e = exp [] e
+                in
+                    (DVal (x, n, t, e, s), loc)
+                end
+              | DValRec vis =>
+                (DValRec (map (fn (x, n, t, e, s) => (x, n, t, exp [] e, s)) vis), loc)
+              | DExport _ => d
+              | DTable _ => d
+              | DSequence _ => d
+              | DDatabase _ => d
+              | DCookie _ => d
     in
-        (*Print.prefaces "exp'" [("e", CorePrint.p_exp env (e, ErrorMsg.dummySpan)),
-                               ("r", CorePrint.p_exp env (r, ErrorMsg.dummySpan))];*)
-
-        r
+        map doDecl file
     end
-
-and reduceExp e = U.Exp.map {kind = default, con = default, exp = exp} e
-
-val reduce = U.File.map {kind = default, con = default, exp = exp, decl = default}
 
 end
