@@ -103,13 +103,13 @@ fun conAndExp (namedC, namedE) =
                         CAbs (_, _, b) =>
                         con (KnownC c2 :: deKnown env) b
 
-                      | CApp ((CApp (fold as (CFold _, _), f), _), i) =>
+                      | CApp ((CApp ((CFold _, _), f), _), i) =>
                         (case #1 c2 of
                              CRecord (_, []) => i
                            | CRecord (k, (x, c) :: rest) =>
                              con (deKnown env)
                                  (CApp ((CApp ((CApp (f, x), loc), c), loc),
-                                        (CApp ((CApp ((CApp (fold, f), loc), i), loc),
+                                        (CApp (c1,
                                                (CRecord (k, rest), loc)), loc)), loc)
                            | _ => (CApp (c1, c2), loc))                           
 
@@ -215,6 +215,20 @@ fun conAndExp (namedC, namedE) =
                 in
                     case #1 e of
                         ECAbs (_, _, b) => exp (KnownC c :: deKnown env) b
+
+                      | EApp ((EApp ((ECApp ((EFold _, _), _), _), f), _), i) =>
+                        (case #1 c of
+                             CRecord (_, []) => i
+                           | CRecord (k, (nm, v) :: rest) =>
+                             let
+                                 val rest = (CRecord (k, rest), loc)
+                             in
+                                 exp (deKnown env)
+                                     (EApp ((ECApp ((ECApp ((ECApp (f, nm), loc), v), loc), rest), loc),
+                                            (ECApp (e, rest), loc)), loc)
+                             end
+                           | _ => (ECApp (e, c), loc))
+
                       | _ => (ECApp (e, c), loc)
                 end
 
