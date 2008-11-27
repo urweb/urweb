@@ -268,7 +268,7 @@ fun pushCRel (env : env) x k =
     in
         {renameC = SM.insert (renameC, x, Rel' (0, k)),
          relC = (x, k) :: #relC env,
-         namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
+         namedC = #namedC env,
 
          datatypes = #datatypes env,
          constructors = #constructors env,
@@ -283,7 +283,7 @@ fun pushCRel (env : env) x k =
          renameE = SM.map (fn Rel' (n, c) => Rel' (n, lift c)
                             | Named' (n, c) => Named' (n, lift c)) (#renameE env),
          relE = map (fn (x, c) => (x, lift c)) (#relE env),
-         namedE = IM.map (fn (x, c) => (x, lift c)) (#namedE env),
+         namedE = #namedE env,
 
          renameSgn = #renameSgn env,
          sgn = #sgn env,

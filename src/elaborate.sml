@@ -875,12 +875,19 @@
              []
          else
              let
+                 (*val befor = Time.now ()
+                 val old1 = c1
+                 val old2 = c2*)
                  val (c1, gs1) = hnormCon (env, denv) c1
                  val (c2, gs2) = hnormCon (env, denv) c2
              in
                  let
                      val gs3 = unifyCons'' (env, denv) c1 c2
                  in
+                     (*prefaces "unifyCons'" [("c1", p_con env old1),
+                                            ("c2", p_con env old2),
+                                            ("t", PD.string (LargeReal.toString (Time.toReal
+                                                                                 (Time.- (Time.now (), befor)))))];*)
                      gs1 @ gs2 @ gs3
                  end
                  handle ex => guessFold (env, denv) (c1, c2, gs1 @ gs2, ex)
@@ -906,7 +913,16 @@
                  err CExplicitness
              else
                  (unifyKinds d1 d2;
-                  unifyCons' (E.pushCRel env x1 d1, D.enter denv) r1 r2)
+                  let
+                      val denv' = D.enter denv
+                      (*val befor = Time.now ()*)
+                      val env' = E.pushCRel env x1 d1
+                  in
+                      (*TextIO.print ("E.pushCRel: "
+                                    ^ LargeReal.toString (Time.toReal (Time.- (Time.now (), befor)))
+                                    ^ "\n");*)
+                      unifyCons' (env', denv') r1 r2
+                  end)
            | (L'.TRecord r1, L'.TRecord r2) => unifyCons' (env, denv) r1 r2
 
            | (L'.CRel n1, L'.CRel n2) =>
@@ -1478,6 +1494,7 @@ val makeInstantiable =
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
         (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)];*)
+        (*val befor = Time.now ()*)
 
         val r = case e of
             L.EAnnot (e, t) =>
@@ -1770,7 +1787,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
             end
     in
         (*prefaces "elabExp" [("e", SourcePrint.p_exp eAll),
-                            ("t", PD.string (LargeInt.toString (Time.toMilliseconds (Time.- (Time.now (), befor)))))];*)
+                            ("t", PD.string (LargeReal.toString (Time.toReal (Time.- (Time.now (), befor)))))];*)
         r
     end
 
@@ -2913,6 +2930,7 @@ fun wildifyStr env (str, sgn) =
 fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
     let
         (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
+        (*val befor = Time.now ()*)
 
         val r = 
             case d of
@@ -3293,8 +3311,8 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
     in
         (*prefaces "elabDecl" [("e", SourcePrint.p_decl dAll),
-                             ("t", PD.string (LargeInt.toString (Time.toMilliseconds
-                                                                     (Time.- (Time.now (), befor)))))];*)
+                             ("t", PD.string (LargeReal.toString (Time.toReal
+                                                                      (Time.- (Time.now (), befor)))))];*)
 
         r
     end
