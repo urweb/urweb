@@ -99,7 +99,7 @@ $$\begin{array}{rrcll}
   \\
   \textrm{Signature items} & s &::=& \mt{con} \; x :: \kappa & \textrm{abstract constructor} \\
   &&& \mt{con} \; x :: \kappa = c & \textrm{concrete constructor} \\
-  &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype declaration} \\
+  &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype definition} \\
   &&& \mt{datatype} \; x = M.x & \textrm{algebraic datatype import} \\
   &&& \mt{val} \; x : \tau & \textrm{value} \\
   &&& \mt{structure} \; X : S & \textrm{sub-module} \\
@@ -159,5 +159,30 @@ $$\begin{array}{rrcll}
   &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually-recursive values} \\
 \end{array}$$
 
+\emph{Declarations} primarily bring new symbols into context.
+$$\begin{array}{rrcll}
+  \textrm{Declarations} & d &::=& \mt{con} \; x :: \kappa = c & \textrm{constructor synonym} \\
+  &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype definition} \\
+  &&& \mt{datatype} \; x = M.x & \textrm{algebraic datatype import} \\
+  &&& \mt{val} \; x : \tau = e & \textrm{value} \\
+  &&& \mt{val} \; \cd{rec} \; (x : \tau = e \; \mt{and})^+ & \textrm{mutually-recursive values} \\
+  &&& \mt{structure} \; X : S = M & \textrm{module definition} \\
+  &&& \mt{signature} \; X = S & \textrm{signature definition} \\
+  &&& \mt{open} \; M & \textrm{module inclusion} \\
+  &&& \mt{constraint} \; c \sim c & \textrm{record disjointness constraint} \\
+  &&& \mt{open} \; \mt{constraints} \; M & \textrm{inclusion of just the constraints from a module} \\
+  &&& \mt{table} \; x : c & \textrm{SQL table} \\
+  &&& \mt{sequence} \; x & \textrm{SQL sequence} \\
+  &&& \mt{class} \; x = c & \textrm{concrete type class} \\
+  &&& \mt{cookie} \; x : c & \textrm{HTTP cookie} \\
+  \\
+  \textrm{Modules} & M &::=& \mt{struct} \; d^* \; \mt{end} & \mt{constant} \\
+  &&& X & \mt{variable} \\
+  &&& M.X & \mt{projection} \\
+  &&& M(M) & \mt{functor application} \\
+  &&& \mt{functor}(X : S) : S = M & \mt{functor abstraction} \\
+\end{array}$$
+
+There are two kinds of Ur files.  A file named $M\texttt{.ur}$ is an \emph{implementation file}, and it should contain a sequence of declarations $d^*$.  A file named $M\texttt{.urs}$ is an \emph{interface file}; it must always have a matching $M\texttt{.ur}$ and should contain a sequence of signature items $s^*$.  When both files are present, the overall effect is the same as a monolithic declaration $\mt{structure} \; M : \mt{sig} \; s^* \; \mt{end} = \mt{struct} \; d^* \; \mt{end}$.  When no interface file is included, the overall effect is similar, with a signature for module $M$ being inferred rather than just checked against an interface.
 
 \end{document}
