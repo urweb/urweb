@@ -1,0 +1,85 @@
+\documentclass{article}
+\usepackage{fullpage,amsmath,amssymb,proof}
+
+\newcommand{\cd}[1]{\texttt{#1}}
+\newcommand{\mt}[1]{\mathsf{#1}}
+
+\newcommand{\rc}{+ \hspace{-.075in} + \;}
+
+\begin{document}
+
+\title{The Ur/Web Manual}
+\author{Adam Chlipala}
+
+\maketitle
+
+\section{Syntax}
+
+\subsection{Lexical Conventions}
+
+We give the Ur language definition in \LaTeX $\;$ math mode, since that is prettier than monospaced ASCII.  The corresponding ASCII syntax can be read off directly.  Here is the key for mapping math symbols to ASCII character sequences.
+
+\begin{center}
+  \begin{tabular}{rl}
+    \textbf{\LaTeX} & \textbf{ASCII} \\
+    $\to$ & \cd{->} \\
+    $\times$ & \cd{*} \\
+    $\lambda$ & \cd{fn} \\
+    $\Rightarrow$ & \cd{=>} \\
+    $\rc$ & \cd{++} \\
+    \\
+    $x$ & Normal textual identifier, not beginning with an uppercase letter \\
+    $\alpha$ & Normal textual identifier, not beginning with an uppercase letter \\
+    $f$ & Normal textual identifier, beginning with an uppercase letter \\
+  \end{tabular}
+\end{center}
+
+We often write syntax like $N, \cdots, N$ to stand for the non-terminal $N$ repeated 0 or more times.  That is, the $\cdots$ symbol is not translated literally to ASCII.
+
+\subsection{Core Syntax}
+
+\emph{Kinds} classify types and other compile-time-only entities.  Each kind in the grammar is listed with a description of the sort of data it classifies.
+$$\begin{array}{rrcll}
+  \textrm{Kinds} & \kappa &::=& \mt{Type} & \textrm{proper types} \\
+  &&& \mid \mt{Unit} & \textrm{the trivial constructor} \\
+  &&& \mid \mt{Name} & \textrm{field names} \\
+  &&& \mid \kappa \to \kappa & \textrm{type-level functions} \\
+  &&& \mid \{\kappa\} & \textrm{type-level records} \\
+  &&& \mid (\kappa \times \cdots \times \kappa) & \textrm{type-level tuples} \\
+  &&& \mid (\kappa) & \textrm{explicit precedence} \\
+\end{array}$$
+
+Ur supports several different notions of functions that take types as arguments.  These arguments can be either implicit, causing them to be inferred at use sites; or explicit, forcing them to be specified manually at use sites.  There is a common explicitness annotation convention applied at the definitions of and in the types of such functions.
+$$\begin{array}{rrcll}
+  \textrm{Explicitness} & ? &::=& :: & \textrm{explicit} \\
+  &&& \mid \; ::: & \textrm{implicit}
+\end{array}$$
+
+\emph{Constructors} are the main class of compile-time-only data.  They include proper types and are classified by kinds.
+$$\begin{array}{rrcll}
+  \textrm{Constructors} & c, \tau &::=& (c) :: \kappa & \textrm{kind annotation} \\
+  &&& \mid \alpha & \textrm{constructor variable} \\
+  \\
+  &&& \mid \tau \to \tau & \textrm{function type} \\
+  &&& \mid \alpha \; ? \; \kappa \to \tau & \textrm{polymorphic function type} \\
+  &&& \mid \$ c & \textrm{record type} \\
+  \\
+  &&& \mid c \; c & \textrm{type-level function application} \\
+  &&& \mid \lambda \alpha \; ? \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
+  \\
+  &&& \mid () & \textrm{type-level unit} \\
+  &&& \mid \#f & \textrm{field name} \\
+  \\
+  &&& \mid [c = c, \cdots, c = c] & \textrm{known-length type-level record} \\
+  &&& \mid c \rc c & \textrm{type-level record concatenation} \\
+  &&& \mid \mt{fold} & \textrm{type-level record fold} \\
+  \\
+  &&& \mid (c, \cdots, c) & \textrm{type-level tuple} \\
+  &&& \mid c.n & \textrm{type-level tuple projection ($n \in \mathbb N^+$)} \\
+  \\
+  &&& \mid \lambda [c \sim c] \Rightarrow c & \textrm{guarded constructor} \\
+  \\
+  &&& \mid (c) & \textrm{explicit precedence} \\
+\end{array}$$
+
+\end{document}

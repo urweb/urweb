@@ -3,6 +3,7 @@
 
 - Optimization: Fusing page writes with calls to recursive functions
 - Optimization of bottleneck compiler phases
+- Start of manual
 
 ========
 20081120

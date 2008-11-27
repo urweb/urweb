@@ -13,7 +13,7 @@ src/urweb.mlb
 *.grm.*
 *.o
 
-Makefile
+./Makefile
 src/config.sml
 
 *.exe
@@ -27,3 +27,8 @@ demo/demo.*
 
 *.sql
 *mlmon.out
+
+*.aux
+*.dvi
+*.pdf
+*.ps
