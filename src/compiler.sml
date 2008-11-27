@@ -446,22 +446,12 @@ val shake = {
 
 val toShake1 = transform shake "shake1" o toCore_untangle
 
-val defunc = {
-    func = Defunc.defunc,
-    print = CorePrint.p_file CoreEnv.empty
-}
-
-val toDefunc = transform defunc "defunc" o toShake1
-
-val toCore_untangle' = transform core_untangle "core_untangle'" o toDefunc
-val toShake1' = transform shake "shake1'" o toCore_untangle'
-
 val tag = {
     func = Tag.tag,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toTag = transform tag "tag" o toShake1'
+val toTag = transform tag "tag" o toShake1
 
 val reduce = {
     func = Reduce.reduce,
