@@ -15,7 +15,9 @@
 
 \maketitle
 
-\section{Syntax}
+\section{Ur Syntax}
+
+In this section, we describe the syntax of Ur, deferring to a later section discussion of most of the syntax specific to SQL and XML.  The sole exceptions are the declaration forms for tables, sequences, and cookies.
 
 \subsection{Lexical Conventions}
 
@@ -28,7 +30,9 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
     $\times$ & \cd{*} \\
     $\lambda$ & \cd{fn} \\
     $\Rightarrow$ & \cd{=>} \\
-    & \cd{---} \\
+    $\neq$ & \cd{<>} \\
+    $\leq$ & \cd{<=} \\
+    $\geq$ & \cd{>=} \\
     \\
     $x$ & Normal textual identifier, not beginning with an uppercase letter \\
     $X$ & Normal textual identifier, beginning with an uppercase letter \\
@@ -51,7 +55,7 @@ $$\begin{array}{rrcll}
   &&& \kappa \to \kappa & \textrm{type-level functions} \\
   &&& \{\kappa\} & \textrm{type-level records} \\
   &&& (\kappa\times^+) & \textrm{type-level tuples} \\
-  &&& \_ & \textrm{wildcard} \\
+  &&& \_\_ & \textrm{wildcard} \\
   &&& (\kappa) & \textrm{explicit precedence} \\
 \end{array}$$
 
@@ -85,7 +89,7 @@ $$\begin{array}{rrcll}
   \\
   &&& \lambda [c \sim c] \Rightarrow c & \textrm{guarded constructor} \\
   \\
-  &&& \_ & \textrm{wildcard} \\
+  &&& \_ :: \kappa & \textrm{wildcard} \\
   &&& (c) & \textrm{explicit precedence} \\
 \end{array}$$
 
@@ -94,13 +98,13 @@ $$\begin{array}{rrcll}
   \textrm{Signatures} & S &::=& \mt{sig} \; s^* \; \mt{end} & \textrm{constant} \\
   &&& X & \textrm{variable} \\
   &&& \mt{functor}(X : S) : S & \textrm{functor} \\
-  &&& S \; \mt{where} \; x = c & \textrm{concretizing an abstract constructor} \\
+  &&& S \; \mt{where} \; \mt{con} \; x = c & \textrm{concretizing an abstract constructor} \\
   &&& M.X & \textrm{projection from a module} \\
   \\
   \textrm{Signature items} & s &::=& \mt{con} \; x :: \kappa & \textrm{abstract constructor} \\
   &&& \mt{con} \; x :: \kappa = c & \textrm{concrete constructor} \\
   &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype definition} \\
-  &&& \mt{datatype} \; x = M.x & \textrm{algebraic datatype import} \\
+  &&& \mt{datatype} \; x = \mt{datatype} \; M.x & \textrm{algebraic datatype import} \\
   &&& \mt{val} \; x : \tau & \textrm{value} \\
   &&& \mt{structure} \; X : S & \textrm{sub-module} \\
   &&& \mt{signature} \; X = S & \textrm{sub-signature} \\
@@ -124,14 +128,15 @@ $$\begin{array}{rrcll}
   &&& \{(x = p,)^+, \ldots\} & \textrm{flexible record pattern} \\
   &&& (p) & \textrm{explicit precedence} \\
   \\
-  \textrm{Qualified capitalized variable} & \hat{X} &::=& X & \textrm{not from a module} \\
+  \textrm{Qualified capitalized variables} & \hat{X} &::=& X & \textrm{not from a module} \\
   &&& M.X & \textrm{projection from a module} \\
 \end{array}$$
 
 \emph{Expressions} are the main run-time entities, corresponding to both ``expressions'' and ``statements'' in mainstream imperative languages.
 $$\begin{array}{rrcll}
   \textrm{Expressions} & e &::=& e : \tau & \textrm{type annotation} \\
-  &&& x & \textrm{variable} \\
+  &&& \hat{x} & \textrm{variable} \\
+  &&& \hat{X} & \textrm{datatype constructor} \\
   &&& \ell & \textrm{constant} \\
   \\
   &&& e \; e & \textrm{function application} \\
@@ -157,13 +162,16 @@ $$\begin{array}{rrcll}
   \\
   \textrm{Local declarations} & ed &::=& \cd{val} \; x : \tau = e & \textrm{non-recursive value} \\
   &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually-recursive values} \\
+  \\
+  \textrm{Qualified uncapitalized variables} & \hat{x} &::=& x & \textrm{not from a module} \\
+  &&& M.x & \textrm{projection from a module} \\
 \end{array}$$
 
 \emph{Declarations} primarily bring new symbols into context.
 $$\begin{array}{rrcll}
   \textrm{Declarations} & d &::=& \mt{con} \; x :: \kappa = c & \textrm{constructor synonym} \\
   &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype definition} \\
-  &&& \mt{datatype} \; x = M.x & \textrm{algebraic datatype import} \\
+  &&& \mt{datatype} \; x = \mt{datatype} \; M.x & \textrm{algebraic datatype import} \\
   &&& \mt{val} \; x : \tau = e & \textrm{value} \\
   &&& \mt{val} \; \cd{rec} \; (x : \tau = e \; \mt{and})^+ & \textrm{mutually-recursive values} \\
   &&& \mt{structure} \; X : S = M & \textrm{module definition} \\
@@ -174,15 +182,51 @@ $$\begin{array}{rrcll}
   &&& \mt{table} \; x : c & \textrm{SQL table} \\
   &&& \mt{sequence} \; x & \textrm{SQL sequence} \\
   &&& \mt{class} \; x = c & \textrm{concrete type class} \\
-  &&& \mt{cookie} \; x : c & \textrm{HTTP cookie} \\
+  &&& \mt{cookie} \; x : \tau & \textrm{HTTP cookie} \\
   \\
-  \textrm{Modules} & M &::=& \mt{struct} \; d^* \; \mt{end} & \mt{constant} \\
-  &&& X & \mt{variable} \\
-  &&& M.X & \mt{projection} \\
-  &&& M(M) & \mt{functor application} \\
-  &&& \mt{functor}(X : S) : S = M & \mt{functor abstraction} \\
+  \textrm{Modules} & M &::=& \mt{struct} \; d^* \; \mt{end} & \textrm{constant} \\
+  &&& X & \textrm{variable} \\
+  &&& M.X & \textrm{projection} \\
+  &&& M(M) & \textrm{functor application} \\
+  &&& \mt{functor}(X : S) : S = M & \textrm{functor abstraction} \\
 \end{array}$$
 
 There are two kinds of Ur files.  A file named $M\texttt{.ur}$ is an \emph{implementation file}, and it should contain a sequence of declarations $d^*$.  A file named $M\texttt{.urs}$ is an \emph{interface file}; it must always have a matching $M\texttt{.ur}$ and should contain a sequence of signature items $s^*$.  When both files are present, the overall effect is the same as a monolithic declaration $\mt{structure} \; M : \mt{sig} \; s^* \; \mt{end} = \mt{struct} \; d^* \; \mt{end}$.  When no interface file is included, the overall effect is similar, with a signature for module $M$ being inferred rather than just checked against an interface.
+
+\subsection{Shorthands}
+
+There are a variety of derived syntactic forms that elaborate into the core syntax from the last subsection.  We will present the additional forms roughly following the order in which we presented the constructs that they elaborate into.
+
+In many contexts where record fields are expected, like in a projection $e.c$, a constant field may be written as simply $X$, rather than $\#X$.
+
+A record type may be written $\{(c = c,)^*\}$, which elaborates to $\$[(c = c,)^*]$.
+
+A tuple type $(\tau_1, \ldots, \tau_n)$ expands to a record type $\{1 = \tau_1, \ldots, n = \tau_n\}$, with natural numbers as field names.  A tuple pattern $(p_1, \ldots, p_n)$ expands to a rigid record pattern $\{1 = p_1, \ldots, n = p_n\}$.  Positive natural numbers may be used in most places where field names would be allowed.
+
+In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid [c \sim c]$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.  
+
+For any signature item or declaration that defines some entity to be equal to $A$ with classification annotation $B$ (e.g., $\mt{val} \; x : B = A$), $B$ and the preceding colon (or similar punctuation) may be omitted, in which case it is filled in as a wildcard.
+
+A signature item or declaration $\mt{type} \; x$ or $\mt{type} \; x = \tau$ is elaborated into $\mt{con} \; x :: \mt{Type}$ or $\mt{con} \; x :: \mt{Type} = \tau$, respectively.
+
+A signature item or declaration $\mt{class} \; x = \lambda y :: \mt{Type} \Rightarrow c$ may be abbreviated $\mt{class} \; x \; y = c$.
+
+Handling of implicit and explicit constructor arguments may be tweaked with some prefixes to variable references.  An expression $@x$ is a version of $x$ where all implicit constructor arguments have been made explicit.  An expression $@@x$ achieves the same effect, additionally halting automatic resolution of type class instances.  The same syntax works for variables projected out of modules and for capitalized variables (datatype constructors).
+
+At the expression level, an analogue is available of the composite $\lambda$ form for constructors.  We define the language of binders as $b ::= x \mid (x : \tau) \mid (x \; ? \; \kappa) \mid [c \sim c]$.  A lone variable $x$ as a binder stands for an expression variable of unspecified type.
+
+A $\mt{val}$ or $\mt{val} \; \mt{rec}$ declaration may include expression binders before the equal sign, following the binder grammar from the last paragraph.  Such declarations are elaborated into versions that add additional $\lambda$s to the fronts of the righthand sides, as appropriate.  The keyword $\mt{fun}$ is a synonym for $\mt{val} \; \mt{rec}$.
+
+A signature item $\mt{functor} \; X_1 \; (X_2 : S_1) : S_2$ is elaborated into $\mt{structure} \; X_1 : \mt{functor}(X_2 : S_1) : S_2$.  A declaration $\mt{functor} \; X_1 \; (X_2 : S_1) : S_2 = M$ is elaborated into $\mt{structure} \; X_1 : \mt{functor}(X_2 : S_1) : S_2 = \mt{functor}(X_2 : S_1) : S_2 = M$.
+
+A declaration $\mt{table} \; x : \{(c = c,)^*\}$ is elaborated into $\mt{table} \; x : [(c = c,)^*]$
+
+The syntax $\mt{where} \; \mt{type}$ is an alternate form of $\mt{where} \; \mt{con}$.
+
+The syntax $\mt{if} \; e \; \mt{then} \; e_1 \; \mt{else} \; e_2$ expands to $\mt{case} \; e \; \mt{of} \; \mt{Basis}.\mt{True} \Rightarrow e_1 \mid \mt{Basis}.\mt{False} \Rightarrow e_2$.
+
+There are infix operator syntaxes for a number of functions defined in the $\mt{Basis}$ module.  There is $=$ for $\mt{eq}$, $\neq$ for $\mt{neq}$, $-$ for $\mt{neg}$ (as a prefix operator) and $\mt{minus}$, $+$ for $\mt{plus}$, $\times$ for $\mt{times}$, $/$ for $\mt{div}$, $\%$ for $\mt{mod}$, $<$ for $\mt{lt}$, $\leq$ for $\mt{le}$, $>$ for $\mt{gt}$, and $\geq$ for $\mt{ge}$.
+
+A signature item $\mt{table} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_table} \; c$.  $\mt{sequence} \; x$ is short for $\mt{val} \; x : \mt{Basis}.\mt{sql\_sequence}$, and $\mt{cookie} \; x : \tau$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{http\_cookie} \; \tau$.
 
 \end{document}
