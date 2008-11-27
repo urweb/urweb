@@ -104,7 +104,7 @@ type state = {
      decls : (string * int * con * exp * string) list
 }
 
-fun kind x = x
+fun id x = x
 fun default (_, x, st) = (x, st)
 
 fun specialize' file =
@@ -140,10 +140,8 @@ fun specialize' file =
 
         fun bind (env, b) =
             case b of
-                U.Decl.RelC (x, k) => E.pushCRel env x k
-              | U.Decl.NamedC (x, n, k, co) => E.pushCNamed env x n k co
-              | U.Decl.RelE (x, t) => E.pushERel env x t
-              | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
+                U.Decl.RelE xt => xt :: env
+              | _ => env
 
         fun exp (env, e, st : state) =
             let
@@ -249,7 +247,7 @@ fun specialize' file =
                                                                          ("e", CorePrint.p_exp env (e, loc))]*)
                                                 val (body', typ') = IS.foldl (fn (n, (body', typ')) =>
                                                                                  let
-                                                                                     val (x, xt) = E.lookupERel env n
+                                                                                     val (x, xt) = List.nth (env, n)
                                                                                  in
                                                                                      ((EAbs (x, xt, typ', body'),
                                                                                        loc),
@@ -277,13 +275,13 @@ fun specialize' file =
                         end
             end
 
-        and specExp env = U.Exp.foldMapB {kind = kind, con = default, exp = exp, bind = bind} env
+        and specExp env = U.Exp.foldMapB {kind = id, con = default, exp = exp, bind = bind} env
 
-        val specDecl = U.Decl.foldMapB {kind = kind, con = default, exp = exp, decl = default, bind = bind}
+        val specDecl = U.Decl.foldMapB {kind = id, con = default, exp = exp, decl = default, bind = bind}
 
-        fun doDecl (d, (env, st : state, changed)) =
+        fun doDecl (d, (st : state, changed)) =
             let
-                val env = E.declBinds env d
+                (*val befor = Time.now ()*)
 
                 val funcs = #funcs st
                 val funcs = 
@@ -303,7 +301,9 @@ fun specialize' file =
                           decls = []}
 
                 (*val () = Print.prefaces "decl" [("d", CorePrint.p_decl CoreEnv.empty d)]*)
-                val (d', st) = specDecl env st d
+
+                val (d', st) = specDecl [] st d
+
                 (*val () = print "/decl\n"*)
 
                 val funcs = #funcs st
@@ -329,15 +329,16 @@ fun specialize' file =
                                    (DValRec vis', _) => [(DValRec (vis @ vis'), ErrorMsg.dummySpan)]
                                  | _ => [(DValRec vis, ErrorMsg.dummySpan), d'])
             in
-                (ds, (env,
-                      {maxName = #maxName st,
+                (*Print.prefaces "doDecl" [("d", CorePrint.p_decl E.empty d),
+                                         ("t", Print.PD.string (Real.toString (Time.toReal
+                                                                                   (Time.- (Time.now (), befor)))))];*)
+                (ds, ({maxName = #maxName st,
                        funcs = funcs,
                        decls = []}, changed))
             end
 
-        val (ds, (_, _, changed)) = ListUtil.foldlMapConcat doDecl
-                                                            (E.empty,
-                                                             {maxName = U.File.maxName file + 1,
+        val (ds, (_, changed)) = ListUtil.foldlMapConcat doDecl
+                                                            ({maxName = U.File.maxName file + 1,
                                                               funcs = IM.empty,
                                                               decls = []},
                                                              false)
