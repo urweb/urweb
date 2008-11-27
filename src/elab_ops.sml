@@ -32,21 +32,37 @@ open Elab
 structure E = ElabEnv
 structure U = ElabUtil
 
-val liftConInCon = E.liftConInCon
-
-val subConInCon =
+fun liftConInCon by =
     U.Con.mapB {kind = fn k => k,
-                con = fn (xn, rep) => fn c =>
-                                  case c of
-                                      CRel xn' =>
-                                      (case Int.compare (xn', xn) of
-                                           EQUAL => #1 rep
-                                         | GREATER => CRel (xn' - 1)
-                                         | LESS => c)
-                                    (*| CUnif _ => raise SynUnif*)
-                                    | _ => c,
-                bind = fn ((xn, rep), U.Con.Rel _) => (xn+1, liftConInCon 0 rep)
+                con = fn bound => fn c =>
+                                     case c of
+                                         CRel xn =>
+                                         if xn < bound then
+                                             c
+                                         else
+                                             CRel (xn + by)
+                                       (*| CUnif _ => raise SynUnif*)
+                                       | _ => c,
+                bind = fn (bound, U.Con.Rel _) => bound + 1
+                        | (bound, _) => bound}
+
+fun subConInCon' rep =
+    U.Con.mapB {kind = fn k => k,
+                con = fn (by, xn) => fn c =>
+                                        case c of
+                                            CRel xn' =>
+                                            (case Int.compare (xn', xn) of
+                                                 EQUAL => #1 (liftConInCon by 0 rep)
+                                               | GREATER => CRel (xn' - 1)
+                                               | LESS => c)
+                                          (*| CUnif _ => raise SynUnif*)
+                                          | _ => c,
+                bind = fn ((by, xn), U.Con.Rel _) => (by+1, xn+1)
                         | (ctx, _) => ctx}
+
+val liftConInCon = liftConInCon 1
+
+fun subConInCon (xn, rep) = subConInCon' rep (0, xn)
 
 fun subStrInSgn (m1, m2) =
     U.Sgn.map {kind = fn k => k,
