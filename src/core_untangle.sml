@@ -37,22 +37,21 @@ structure IM = IntBinaryMap
 
 fun default (k, s) = s
 
-fun exp (e, s) =
+fun exp thisGroup (e, s) =
     case e of
-        ENamed n => IS.add (s, n)
+        ENamed n =>
+        if IS.member (thisGroup, n) then
+            IS.add (s, n)
+        else
+            s
 
       | _ => s
 
 fun untangle file =
     let
-        val edefs = foldl (fn ((d, _), edefs) =>
-                              case d of
-                                  DVal (_, n, _, e, _) => IM.insert (edefs, n, e)
-                                | DValRec vis =>
-                                  foldl (fn ((_, n, _, e, _), edefs) =>
-                                            IM.insert (edefs, n, e)) edefs vis
-                                | _ => edefs)
-                    IM.empty file
+        fun expUsed thisGroup = U.Exp.fold {con = default,
+                                            kind = default,
+                                            exp = exp thisGroup} IS.empty
 
         fun decl (dAll as (d, loc)) =
             case d of
@@ -61,34 +60,22 @@ fun untangle file =
                     val thisGroup = foldl (fn ((_, n, _, _, _), thisGroup) =>
                                               IS.add (thisGroup, n)) IS.empty vis
 
-                    val expUsed = U.Exp.fold {con = default,
-                                              kind = default,
-                                              exp = exp} IS.empty
+                    val edefs = foldl (fn ((_, n, _, e, _), edefs) =>
+                                         IM.insert (edefs, n, expUsed thisGroup e))
+                                     IM.empty vis
 
-                    val used = foldl (fn ((_, n, _, e, _), used) =>
-                                       let
-                                           val usedHere = expUsed e
-                                       in
-                                           IM.insert (used, n, usedHere)
-                                       end)
-                               IM.empty vis
+                    val used = edefs
 
                     fun expand used =
                         IS.foldl (fn (n, used) =>
                                      case IM.find (edefs, n) of
                                          NONE => used
-                                       | SOME e =>
-                                         let
-                                             val usedHere = expUsed e
-                                         in
-                                             if IS.isEmpty (IS.difference (usedHere, used)) then
-                                                 used
-                                             else
-                                                 expand (IS.union (usedHere, used))
-                                         end)
+                                       | SOME usedHere =>
+                                         if IS.isEmpty (IS.difference (usedHere, used)) then
+                                             used
+                                         else
+                                             expand (IS.union (usedHere, used)))
                         used used
-
-                    val used = IM.map (fn s => IS.intersection (expand s, thisGroup)) used
 
                     fun p_graph reachable =
                         IM.appi (fn (n, reachableHere) =>
@@ -164,6 +151,7 @@ fun untangle file =
                             end
 
                     val sccs = sccs (thisGroup, [])
+
                     (*val () = app (fn nodes => (print "SCC:";
                                                IS.app (fn i => (print " ";
                                                                 print (Int.toString i))) nodes;
@@ -199,6 +187,7 @@ fun untangle file =
                             end
 
                     val sccs = topo (sccs, [])
+
                     (*val () = app (fn nodes => (print "SCC':";
                                                IS.app (fn i => (print " ";
                                                                 print (Int.toString i))) nodes;
