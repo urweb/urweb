@@ -540,6 +540,53 @@
 
  exception SummaryFailure
 
+ fun isUnitCon env (c, loc) =
+     case c of
+         L'.TFun _ => false
+       | L'.TCFun _ => false
+       | L'.TRecord _ => false
+
+       | L'.CRel xn => #1 (#2 (E.lookupCRel env xn)) = L'.KUnit
+       | L'.CNamed xn => #1 (#2 (E.lookupCNamed env xn)) = L'.KUnit
+       | L'.CModProj (n, ms, x) =>
+         let
+             val (_, sgn) = E.lookupStrNamed env n
+             val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                        case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                            NONE => raise Fail "kindof: Unknown substructure"
+                                          | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                              ((L'.StrVar n, loc), sgn) ms
+         in
+             case E.projectCon env {sgn = sgn, str = str, field = x} of
+                 NONE => raise Fail "kindof: Unknown con in structure"
+               | SOME ((k, _), _) => k = L'.KUnit
+         end
+
+       | L'.CApp (c, _) =>
+         (case hnormKind (kindof env c) of
+              (L'.KArrow (_, k), _) => #1 k = L'.KUnit
+            | (L'.KError, _) => false
+            | k => raise CUnify' (CKindof (k, c, "arrow")))
+       | L'.CAbs _ => false
+       | L'.CDisjoint (_, _, _, c) => isUnitCon env c
+
+       | L'.CName _ => false
+
+       | L'.CRecord _ => false
+       | L'.CConcat _ => false
+       | L'.CFold _ => false
+
+       | L'.CUnit => true
+
+       | L'.CTuple _ => false
+       | L'.CProj (c, n) =>
+         (case hnormKind (kindof env c) of
+              (L'.KTuple ks, _) => #1 (List.nth (ks, n - 1)) = L'.KUnit
+            | k => raise CUnify' (CKindof (k, c, "tuple")))
+
+       | L'.CError => false
+       | L'.CUnif (_, k, _, _) => #1 k = L'.KUnit
+
  fun unifyRecordCons (env, denv) (c1, c2) =
      let
          fun rkindof c =
@@ -824,9 +871,9 @@
              gs1 @ gs2 @ gs3 @ gs4
          end
        | _ =>
-         case (kindof env c1, kindof env c2) of
-             ((L'.KUnit, _), (L'.KUnit, _)) => []
-           | _ =>
+         if isUnitCon env c1 andalso isUnitCon env c2 then
+             []
+         else
              let
                  val (c1, gs1) = hnormCon (env, denv) c1
                  val (c2, gs2) = hnormCon (env, denv) c2
@@ -1722,7 +1769,8 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 ((L'.ELet (eds, e), loc), t, gs1 @ gs2)
             end
     in
-        (*prefaces "/elabExp" [("e", SourcePrint.p_exp eAll)];*)
+        (*prefaces "elabExp" [("e", SourcePrint.p_exp eAll),
+                            ("t", PD.string (LargeInt.toString (Time.toMilliseconds (Time.- (Time.now (), befor)))))];*)
         r
     end
 
@@ -3245,7 +3293,8 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
     in
         (*prefaces "elabDecl" [("e", SourcePrint.p_decl dAll),
-                            ("|tcs|", PD.string (Int.toString (length tcs)))];*)
+                             ("t", PD.string (LargeInt.toString (Time.toMilliseconds
+                                                                     (Time.- (Time.now (), befor)))))];*)
 
         r
     end
