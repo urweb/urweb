@@ -5,6 +5,8 @@
 \newcommand{\mt}[1]{\mathsf{#1}}
 
 \newcommand{\rc}{+ \hspace{-.075in} + \;}
+\newcommand{\rcut}{\; \texttt{--} \;}
+\newcommand{\rcutM}{\; \texttt{---} \;}
 
 \begin{document}
 
@@ -26,7 +28,7 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
     $\times$ & \cd{*} \\
     $\lambda$ & \cd{fn} \\
     $\Rightarrow$ & \cd{=>} \\
-    $\rc$ & \cd{++} \\
+    & \cd{---} \\
     \\
     $x$ & Normal textual identifier, not beginning with an uppercase letter \\
     $X$ & Normal textual identifier, beginning with an uppercase letter \\
@@ -36,6 +38,8 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
 We often write syntax like $e^*$ to indicate zero or more copies of $e$, $e^+$ to indicate one or more copies, and $e,^*$ and $e,^+$ to indicate multiple copies separated by commas.  Another separator may be used in place of a comma.  The $e$ term may be surrounded by parentheses to indicate grouping; those parentheses should not be included in the actual ASCII.
 
 We write $\ell$ for literals of the primitive types, for the most part following C conventions.  There are $\mt{int}$, $\mt{float}$, and $\mt{string}$ literals.
+
+This version of the manual doesn't include operator precedences; see \texttt{src/urweb.grm} for that.
 
 \subsection{Core Syntax}
 
@@ -47,6 +51,7 @@ $$\begin{array}{rrcll}
   &&& \kappa \to \kappa & \textrm{type-level functions} \\
   &&& \{\kappa\} & \textrm{type-level records} \\
   &&& (\kappa\times^+) & \textrm{type-level tuples} \\
+  &&& \_ & \textrm{wildcard} \\
   &&& (\kappa) & \textrm{explicit precedence} \\
 \end{array}$$
 
@@ -80,6 +85,7 @@ $$\begin{array}{rrcll}
   \\
   &&& \lambda [c \sim c] \Rightarrow c & \textrm{guarded constructor} \\
   \\
+  &&& \_ & \textrm{wildcard} \\
   &&& (c) & \textrm{explicit precedence} \\
 \end{array}$$
 
@@ -116,9 +122,42 @@ $$\begin{array}{rrcll}
   &&& \hat{X} \; p & \textrm{unary constructor} \\
   &&& \{(x = p,)^*\} & \textrm{rigid record pattern} \\
   &&& \{(x = p,)^+, \ldots\} & \textrm{flexible record pattern} \\
+  &&& (p) & \textrm{explicit precedence} \\
   \\
   \textrm{Qualified capitalized variable} & \hat{X} &::=& X & \textrm{not from a module} \\
   &&& M.X & \textrm{projection from a module} \\
 \end{array}$$
+
+\emph{Expressions} are the main run-time entities, corresponding to both ``expressions'' and ``statements'' in mainstream imperative languages.
+$$\begin{array}{rrcll}
+  \textrm{Expressions} & e &::=& e : \tau & \textrm{type annotation} \\
+  &&& x & \textrm{variable} \\
+  &&& \ell & \textrm{constant} \\
+  \\
+  &&& e \; e & \textrm{function application} \\
+  &&& \lambda x : \tau \Rightarrow e & \textrm{function abstraction} \\
+  &&& e [c] & \textrm{polymorphic function application} \\
+  &&& \lambda x \; ? \; \kappa \Rightarrow e & \textrm{polymorphic function abstraction} \\
+  \\
+  &&& \{(c = e,)^*\} & \textrm{known-length record} \\
+  &&& e.c & \textrm{record field projection} \\
+  &&& e \rc e & \textrm{record concatenation} \\
+  &&& e \rcut c & \textrm{removal of a single record field} \\
+  &&& e \rcutM c & \textrm{removal of multiple record fields} \\
+  &&& \mt{fold} & \textrm{fold over fields of a type-level record} \\
+  \\
+  &&& \mt{let} \; ed^* \; \mt{in} \; e \; \mt{end} & \textrm{local definitions} \\
+  \\
+  &&& \mt{case} \; e \; \mt{of} \; (p \Rightarrow e|)^+ & \textrm{pattern matching} \\
+  \\
+  &&& \lambda [c \sim c] \Rightarrow e & \textrm{guarded expression} \\
+  \\
+  &&& \_ & \textrm{wildcard} \\
+  &&& (e) & \textrm{explicit precedence} \\
+  \\
+  \textrm{Local declarations} & ed &::=& \cd{val} \; x : \tau = e & \textrm{non-recursive value} \\
+  &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually-recursive values} \\
+\end{array}$$
+
 
 \end{document}
