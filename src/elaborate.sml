@@ -548,8 +548,8 @@
 
        | L'.CRel xn => #1 (#2 (E.lookupCRel env xn)) = L'.KUnit
        | L'.CNamed xn => #1 (#2 (E.lookupCNamed env xn)) = L'.KUnit
-       | L'.CModProj (n, ms, x) =>
-         let
+       | L'.CModProj (n, ms, x) => false
+         (*let
              val (_, sgn) = E.lookupStrNamed env n
              val (str, sgn) = foldl (fn (m, (str, sgn)) =>
                                         case E.projectStr env {sgn = sgn, str = str, field = m} of
@@ -560,15 +560,15 @@
              case E.projectCon env {sgn = sgn, str = str, field = x} of
                  NONE => raise Fail "kindof: Unknown con in structure"
                | SOME ((k, _), _) => k = L'.KUnit
-         end
+         end*)
 
-       | L'.CApp (c, _) =>
-         (case hnormKind (kindof env c) of
+       | L'.CApp (c, _) => false
+         (*(case hnormKind (kindof env c) of
               (L'.KArrow (_, k), _) => #1 k = L'.KUnit
             | (L'.KError, _) => false
-            | k => raise CUnify' (CKindof (k, c, "arrow")))
+            | k => raise CUnify' (CKindof (k, c, "arrow")))*)
        | L'.CAbs _ => false
-       | L'.CDisjoint (_, _, _, c) => isUnitCon env c
+       | L'.CDisjoint (_, _, _, c) => false(*isUnitCon env c*)
 
        | L'.CName _ => false
 
@@ -579,10 +579,10 @@
        | L'.CUnit => true
 
        | L'.CTuple _ => false
-       | L'.CProj (c, n) =>
-         (case hnormKind (kindof env c) of
+       | L'.CProj (c, n) => false
+         (*(case hnormKind (kindof env c) of
               (L'.KTuple ks, _) => #1 (List.nth (ks, n - 1)) = L'.KUnit
-            | k => raise CUnify' (CKindof (k, c, "tuple")))
+            | k => raise CUnify' (CKindof (k, c, "tuple")))*)
 
        | L'.CError => false
        | L'.CUnif (_, k, _, _) => #1 k = L'.KUnit
