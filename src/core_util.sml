@@ -900,6 +900,30 @@ fun foldMapB {kind, con, exp, decl, bind} ctx s d =
         S.Continue v => v
       | S.Return _ => raise Fail "CoreUtil.Decl.foldMapB: Impossible"
 
+fun exists {kind, con, exp, decl} d =
+    case mapfold {kind = fn k => fn () =>
+                                    if kind k then
+                                        S.Return ()
+                                    else
+                                        S.Continue (k, ()),
+                  con = fn c => fn () =>
+                                    if con c then
+                                        S.Return ()
+                                    else
+                                        S.Continue (c, ()),
+                  exp = fn e => fn () =>
+                                    if exp e then
+                                        S.Return ()
+                                    else
+                                        S.Continue (e, ()),
+                  decl = fn d => fn () =>
+                                   if decl d then
+                                       S.Return ()
+                                   else
+                                       S.Continue (d, ())} d () of
+        S.Return _ => true
+      | S.Continue _ => false
+
 end
 
 structure File = struct

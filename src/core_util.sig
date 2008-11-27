@@ -165,6 +165,11 @@ structure Decl : sig
                     decl : 'context * Core.decl' * 'state -> Core.decl' * 'state,
                     bind : 'context * binder -> 'context}
                    -> 'context -> 'state -> Core.decl -> Core.decl * 'state
+
+    val exists : {kind : Core.kind' -> bool,
+                  con : Core.con' -> bool,
+                  exp : Core.exp' -> bool,
+                  decl : Core.decl' -> bool} -> Core.decl -> bool
 end
 
 structure File : sig

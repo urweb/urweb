@@ -59,6 +59,12 @@ val freeVars = U.Exp.foldB {kind = fn (_, xs) => xs,
                                         | _ => bound}
                            0 IS.empty
 
+val isPoly = U.Decl.exists {kind = fn _ => false,
+                            con = fn _ => false,
+                            exp = fn ECAbs _ => true
+                                   | _ => false,
+                            decl = fn _ => false}
+
 fun positionOf (v : int, ls) =
     let
         fun pof (pos, ls) =
@@ -302,7 +308,11 @@ fun specialize' file =
 
                 (*val () = Print.prefaces "decl" [("d", CorePrint.p_decl CoreEnv.empty d)]*)
 
-                val (d', st) = specDecl [] st d
+                val (d', st) =
+                    if isPoly d then
+                        (d, st)
+                    else
+                        specDecl [] st d
 
                 (*val () = print "/decl\n"*)
 
