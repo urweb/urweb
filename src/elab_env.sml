@@ -281,7 +281,7 @@ fun pushCRel (env : env) x k =
                           (#classes env),
 
          renameE = SM.map (fn Rel' (n, c) => Rel' (n, lift c)
-                            | Named' (n, c) => Named' (n, lift c)) (#renameE env),
+                            | Named' (n, c) => Named' (n, c)) (#renameE env),
          relE = map (fn (x, c) => (x, lift c)) (#relE env),
          namedE = #namedE env,
 
