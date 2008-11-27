@@ -35,6 +35,8 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
 
 We often write syntax like $e^*$ to indicate zero or more copies of $e$, $e^+$ to indicate one or more copies, and $e,^*$ and $e,^+$ to indicate multiple copies separated by commas.  Another separator may be used in place of a comma.  The $e$ term may be surrounded by parentheses to indicate grouping; those parentheses should not be included in the actual ASCII.
 
+We write $\ell$ for literals of the primitive types, for the most part following C conventions.  There are $\mt{int}$, $\mt{float}$, and $\mt{string}$ literals.
+
 \subsection{Core Syntax}
 
 \emph{Kinds} classify types and other compile-time-only entities.  Each kind in the grammar is listed with a description of the sort of data it classifies.
@@ -103,6 +105,20 @@ $$\begin{array}{rrcll}
   \\
   \textrm{Datatype constructors} & dc &::=& X & \textrm{nullary constructor} \\
   &&& X \; \mt{of} \; \tau & \textrm{unary constructor} \\
+\end{array}$$
+
+\emph{Patterns} are used to describe structural conditions on expressions, such that expressions may be tested against patterns, generating assignments to pattern variables if successful.
+$$\begin{array}{rrcll}
+  \textrm{Patterns} & p &::=& \_ & \textrm{wildcard} \\
+  &&& x & \textrm{variable} \\
+  &&& \ell & \textrm{constant} \\
+  &&& \hat{X} & \textrm{nullary constructor} \\
+  &&& \hat{X} \; p & \textrm{unary constructor} \\
+  &&& \{(x = p,)^*\} & \textrm{rigid record pattern} \\
+  &&& \{(x = p,)^+, \ldots\} & \textrm{flexible record pattern} \\
+  \\
+  \textrm{Qualified capitalized variable} & \hat{X} &::=& X & \textrm{not from a module} \\
+  &&& M.X & \textrm{projection from a module} \\
 \end{array}$$
 
 \end{document}
