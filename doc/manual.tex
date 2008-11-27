@@ -29,57 +29,80 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
     $\rc$ & \cd{++} \\
     \\
     $x$ & Normal textual identifier, not beginning with an uppercase letter \\
-    $\alpha$ & Normal textual identifier, not beginning with an uppercase letter \\
-    $f$ & Normal textual identifier, beginning with an uppercase letter \\
+    $X$ & Normal textual identifier, beginning with an uppercase letter \\
   \end{tabular}
 \end{center}
 
-We often write syntax like $N, \cdots, N$ to stand for the non-terminal $N$ repeated 0 or more times.  That is, the $\cdots$ symbol is not translated literally to ASCII.
+We often write syntax like $e^*$ to indicate zero or more copies of $e$, $e^+$ to indicate one or more copies, and $e,^*$ and $e,^+$ to indicate multiple copies separated by commas.  Another separator may be used in place of a comma.  The $e$ term may be surrounded by parentheses to indicate grouping; those parentheses should not be included in the actual ASCII.
 
 \subsection{Core Syntax}
 
 \emph{Kinds} classify types and other compile-time-only entities.  Each kind in the grammar is listed with a description of the sort of data it classifies.
 $$\begin{array}{rrcll}
   \textrm{Kinds} & \kappa &::=& \mt{Type} & \textrm{proper types} \\
-  &&& \mid \mt{Unit} & \textrm{the trivial constructor} \\
-  &&& \mid \mt{Name} & \textrm{field names} \\
-  &&& \mid \kappa \to \kappa & \textrm{type-level functions} \\
-  &&& \mid \{\kappa\} & \textrm{type-level records} \\
-  &&& \mid (\kappa \times \cdots \times \kappa) & \textrm{type-level tuples} \\
-  &&& \mid (\kappa) & \textrm{explicit precedence} \\
+  &&& \mt{Unit} & \textrm{the trivial constructor} \\
+  &&& \mt{Name} & \textrm{field names} \\
+  &&& \kappa \to \kappa & \textrm{type-level functions} \\
+  &&& \{\kappa\} & \textrm{type-level records} \\
+  &&& (\kappa\times^+) & \textrm{type-level tuples} \\
+  &&& (\kappa) & \textrm{explicit precedence} \\
 \end{array}$$
 
 Ur supports several different notions of functions that take types as arguments.  These arguments can be either implicit, causing them to be inferred at use sites; or explicit, forcing them to be specified manually at use sites.  There is a common explicitness annotation convention applied at the definitions of and in the types of such functions.
 $$\begin{array}{rrcll}
   \textrm{Explicitness} & ? &::=& :: & \textrm{explicit} \\
-  &&& \mid \; ::: & \textrm{implicit}
+  &&& \; ::: & \textrm{implicit}
 \end{array}$$
 
 \emph{Constructors} are the main class of compile-time-only data.  They include proper types and are classified by kinds.
 $$\begin{array}{rrcll}
   \textrm{Constructors} & c, \tau &::=& (c) :: \kappa & \textrm{kind annotation} \\
-  &&& \mid \alpha & \textrm{constructor variable} \\
+  &&& x & \textrm{constructor variable} \\
   \\
-  &&& \mid \tau \to \tau & \textrm{function type} \\
-  &&& \mid \alpha \; ? \; \kappa \to \tau & \textrm{polymorphic function type} \\
-  &&& \mid \$ c & \textrm{record type} \\
+  &&& \tau \to \tau & \textrm{function type} \\
+  &&& x \; ? \; \kappa \to \tau & \textrm{polymorphic function type} \\
+  &&& \$ c & \textrm{record type} \\
   \\
-  &&& \mid c \; c & \textrm{type-level function application} \\
-  &&& \mid \lambda \alpha \; ? \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
+  &&& c \; c & \textrm{type-level function application} \\
+  &&& \lambda x \; ? \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
   \\
-  &&& \mid () & \textrm{type-level unit} \\
-  &&& \mid \#f & \textrm{field name} \\
+  &&& () & \textrm{type-level unit} \\
+  &&& \#X & \textrm{field name} \\
   \\
-  &&& \mid [c = c, \cdots, c = c] & \textrm{known-length type-level record} \\
-  &&& \mid c \rc c & \textrm{type-level record concatenation} \\
-  &&& \mid \mt{fold} & \textrm{type-level record fold} \\
+  &&& [(c = c)^*] & \textrm{known-length type-level record} \\
+  &&& c \rc c & \textrm{type-level record concatenation} \\
+  &&& \mt{fold} & \textrm{type-level record fold} \\
   \\
-  &&& \mid (c, \cdots, c) & \textrm{type-level tuple} \\
-  &&& \mid c.n & \textrm{type-level tuple projection ($n \in \mathbb N^+$)} \\
+  &&& (c^+) & \textrm{type-level tuple} \\
+  &&& c.n & \textrm{type-level tuple projection ($n \in \mathbb N^+$)} \\
   \\
-  &&& \mid \lambda [c \sim c] \Rightarrow c & \textrm{guarded constructor} \\
+  &&& \lambda [c \sim c] \Rightarrow c & \textrm{guarded constructor} \\
   \\
-  &&& \mid (c) & \textrm{explicit precedence} \\
+  &&& (c) & \textrm{explicit precedence} \\
+\end{array}$$
+
+Modules of the module system are described by \emph{signatures}.
+$$\begin{array}{rrcll}
+  \textrm{Signatures} & S &::=& \mt{sig} \; s^* \; \mt{end} & \textrm{constant} \\
+  &&& X & \textrm{variable} \\
+  &&& \mt{functor}(X : S) : S & \textrm{functor} \\
+  &&& S \; \mt{where} \; x = c & \textrm{concretizing an abstract constructor} \\
+  &&& M.X & \textrm{projection from a module} \\
+  \\
+  \textrm{Signature items} & s &::=& \mt{con} \; x :: \kappa & \textrm{abstract constructor} \\
+  &&& \mt{con} \; x :: \kappa = c & \textrm{concrete constructor} \\
+  &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype declaration} \\
+  &&& \mt{datatype} \; x = M.x & \textrm{algebraic datatype import} \\
+  &&& \mt{val} \; x : \tau & \textrm{value} \\
+  &&& \mt{structure} \; X : S & \textrm{sub-module} \\
+  &&& \mt{signature} \; X = S & \textrm{sub-signature} \\
+  &&& \mt{include} \; S & \textrm{signature inclusion} \\
+  &&& \mt{constraint} \; c \sim c & \textrm{record disjointness constraint} \\
+  &&& \mt{class} \; x & \textrm{abstract type class} \\
+  &&& \mt{class} \; x = c & \textrm{concrete type class} \\
+  \\
+  \textrm{Datatype constructors} & dc &::=& X & \textrm{nullary constructor} \\
+  &&& X \; \mt{of} \; \tau & \textrm{unary constructor} \\
 \end{array}$$
 
 \end{document}
