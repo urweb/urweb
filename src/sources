@@ -99,11 +99,11 @@ specialize.sml
 reduce_local.sig
 reduce_local.sml
 
-especialize.sig
-especialize.sml
-
 core_untangle.sig
 core_untangle.sml
+
+especialize.sig
+especialize.sml
 
 defunc.sig
 defunc.sml

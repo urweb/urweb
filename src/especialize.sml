@@ -349,15 +349,22 @@ fun specialize' file =
 fun specialize file =
     let
         (*val () = Print.prefaces "Intermediate" [("file", CorePrint.p_file CoreEnv.empty file)];*)
-        val file = ReduceLocal.reduce file
+        (*val file = ReduceLocal.reduce file*)
         val (changed, file) = specialize' file
-        val file = ReduceLocal.reduce file
-        (*val file = CoreUntangle.untangle file
+        (*val file = ReduceLocal.reduce file
+        val file = CoreUntangle.untangle file
         val file = Shake.shake file*)
     in
         (*print "Round over\n";*)
         if changed then
-            specialize file
+            let
+                val file = ReduceLocal.reduce file
+                val file = CoreUntangle.untangle file
+                val file = Shake.shake file
+            in
+                (*print "Again!\n";*)
+                specialize file
+            end
         else
             file
     end
