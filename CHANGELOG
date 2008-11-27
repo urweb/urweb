@@ -2,6 +2,7 @@
 ========
 
 - Optimization: Fusing page writes with calls to recursive functions
+- Optimization of bottleneck compiler phases
 
 ========
 20081120
