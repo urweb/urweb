@@ -243,7 +243,7 @@ Since there is significant mutual recursion among the judgments, we introduce th
 \item $\Gamma \vdash c \hookrightarrow C$ proves that record constructor $c$ decomposes into set $C$ of field names and record constructors.
 \item $\Gamma \vdash c \equiv c$ proves the computational equivalence of two constructors.  This is often called a \emph{definitional equality} in the world of type theory.
 \item $\Gamma \vdash e : \tau$ is a standard typing judgment.
-\item $\Gamma \vdash p \leadsto \Gamma, \tau$ combines typing of patterns with calculation of which new variables they bind.
+\item $\Gamma \vdash p \leadsto \Gamma; \tau$ combines typing of patterns with calculation of which new variables they bind.
 \item $\Gamma \vdash d \leadsto \Gamma$ expresses how a declaration modifies a context.  We overload this judgment to apply to sequences of declarations.
 \item $\Gamma \vdash M : S$ is the module signature checking judgment.
 \item $\mt{proj}(M, S, V)$ is a partial function for projecting a signature item from a signature $S$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items of $S$.
@@ -397,7 +397,7 @@ $$\infer{\Gamma \vdash \mt{map} \; (\lambda x \Rightarrow x) \; c \equiv c}{}
 
 $$\infer{\Gamma \vdash \mt{map} \; f \; (c_1 \rc c_2) \equiv \mt{map} \; f \; c_1 \rc \mt{map} \; f \; c_2}{}$$
 
-\subsection{Typing}
+\subsection{Expression Typing}
 
 We assume the existence of a function $T$ assigning types to literal constants.  It maps integer constants to $\mt{Basis}.\mt{int}$, float constants to $\mt{Basis}.\mt{float}$, and string constants to $\mt{Basis}.\mt{string}$.
 
@@ -483,6 +483,42 @@ $$\infer{\Gamma \vdash [c_1 \sim c_2] \Rightarrow e : [c_1 \sim c_2] \Rightarrow
   \Gamma \vdash c_1 :: \{\kappa\}
   & \Gamma \vdash c_2 :: \{\kappa\}
   & \Gamma, c_1 \sim c_2 \vdash e : \tau
+}$$
+
+\subsection{Pattern Typing}
+
+$$\infer{\Gamma \vdash \_ \leadsto \Gamma; \tau}{}
+\quad \infer{\Gamma \vdash x \leadsto \Gamma, x : \tau; \tau}{}
+\quad \infer{\Gamma \vdash \ell \leadsto \Gamma; T(\ell)}{}$$
+
+$$\infer{\Gamma \vdash X \leadsto \Gamma; \overline{[x_i \mapsto \tau'_i]}\tau}{
+  X : \overline{x ::: \mt{Type}} \to \tau \in \Gamma
+  & \textrm{$\tau$ not a function type}
+}
+\quad \infer{\Gamma \vdash X \; p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau}{
+  X : \overline{x ::: \mt{Type}} \to \tau'' \to \tau \in \Gamma
+  & \Gamma \vdash p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau''
+}$$
+
+$$\infer{\Gamma \vdash M.X \leadsto \Gamma; \overline{[x_i \mapsto \tau'_i]}\tau}{
+  \Gamma \vdash M : S
+  & \mt{proj}(M, S, \mt{val} \; X) = \overline{x ::: \mt{Type}} \to \tau
+  & \textrm{$\tau$ not a function type}
+}$$
+
+$$\infer{\Gamma \vdash M.X \; p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau}{
+  \Gamma \vdash M : S
+  & \mt{proj}(M, S, \mt{val} \; X) = \overline{x ::: \mt{Type}} \to \tau'' \to \tau
+  & \Gamma \vdash p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau''
+}$$
+
+$$\infer{\Gamma \vdash \{\overline{x = p}\} \leadsto \Gamma_n; \{\overline{x = \tau}\}}{
+  \Gamma_0 = \Gamma
+  & \forall i: \Gamma_i \vdash p_i \leadsto \Gamma_{i+1}; \tau_i
+}
+\quad \infer{\Gamma \vdash \{\overline{x = p}, \ldots\} \leadsto \Gamma_n; \$([\overline{x = \tau}] \rc c)}{
+  \Gamma_0 = \Gamma
+  & \forall i: \Gamma_i \vdash p_i \leadsto \Gamma_{i+1}; \tau_i
 }$$
 
 \end{document}
