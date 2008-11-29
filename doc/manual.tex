@@ -765,4 +765,54 @@ $$\infer{\Gamma \vdash \mt{class} \; x \leq \mt{class} \; x}{}
   \Gamma \vdash c_1 \equiv c_2
 }$$
 
+\subsection{Module Typing}
+
+We use a helper function $\mt{sigOf}$, which converts declarations and sequences of declarations into their principal signature items and sequences of signature items, respectively.
+
+$$\infer{\Gamma \vdash M : S}{
+  \Gamma \vdash M : S'
+  & \Gamma \vdash S' \leq S
+}
+\quad \infer{\Gamma \vdash \mt{struct} \; \overline{d} \; \mt{end} : \mt{sig} \; \mt{sigOf}(\overline{d}) \; \mt{end}}{
+  \Gamma \vdash \overline{d} \leadsto \Gamma'
+}
+\quad \infer{\Gamma \vdash X : S}{
+  X : S \in \Gamma
+}$$
+
+$$\infer{\Gamma \vdash M.X : S}{
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{structure} \; X) = S
+}$$
+
+$$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
+  \Gamma \vdash M_1 : \mt{functor}(X : S_1) : S_2
+  & \Gamma \vdash M_2 : S_1
+}
+\quad \infer{\Gamma \vdash \mt{functor} (X : S_1) : S_2 = M : \mt{functor} (X : S_1) : S_2}{
+  \Gamma \vdash S_1
+  & \Gamma, X : S_1 \vdash S_2
+  & \Gamma, X : S_1 \vdash M : S_2
+}$$
+
+\begin{eqnarray*}
+  \mt{sigOf}(\cdot) &=& \cdot \\
+  \mt{sigOf}(s \; \overline{s'}) &=& \mt{sigOf}(s) \; \mt{sigOf}(\overline{s'}) \\
+  \\
+  \mt{sigOf}(\mt{con} \; x :: \kappa = c) &=& \mt{con} \; x :: \kappa = c \\
+  \mt{sigOf}(\mt{datatype} \; x \; \overline{y} = \overline{dc}) &=& \mt{datatype} \; x \; \overline{y} = \overline{dc} \\
+  \mt{sigOf}(\mt{datatype} \; x = \mt{datatype} \; M.z) &=& \mt{datatype} \; x = \mt{datatype} \; M.z \\
+  \mt{sigOf}(\mt{val} \; x : \tau = e) &=& \mt{val} \; x : \tau \\
+  \mt{sigOf}(\mt{val} \; \mt{rec} \; \overline{x : \tau = e}) &=& \overline{\mt{val} \; x : \tau} \\
+  \mt{sigOf}(\mt{structure} \; X : S = M) &=& \mt{structure} \; X : S \\
+  \mt{sigOf}(\mt{signature} \; X = S) &=& \mt{signature} \; X = S \\
+  \mt{sigOf}(\mt{open} \; M) &=& \mt{include} \; S \textrm{ (where $\Gamma \vdash M : S$)} \\
+  \mt{sigOf}(\mt{constraint} \; c_1 \sim c_2) &=& \mt{constraint} \; c_1 \sim c_2 \\
+  \mt{sigOf}(\mt{open} \; \mt{constraints} \; M) &=& \cdot \\
+  \mt{sigOf}(\mt{table} \; x : c) &=& \mt{table} \; x : c \\
+  \mt{sigOf}(\mt{sequence} \; x) &=& \mt{sequence} \; x \\
+  \mt{sigOf}(\mt{cookie} \; x : \tau) &=& \mt{cookie} \; x : \tau \\
+  \mt{sigOf}(\mt{class} \; x = c) &=& \mt{class} \; x = c \\
+\end{eqnarray*}
+
 \end{document}
