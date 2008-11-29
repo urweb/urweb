@@ -349,5 +349,48 @@ $$\infer{\Gamma \vdash c \hookrightarrow \{c\}}{}
   \Gamma \vdash c \hookrightarrow C
 }$$
 
+\subsection{Definitional Equality}
+
+We use $\mathcal C$ to stand for a one-hole context that, when filled, yields a constructor.  The notation $\mathcal C[c]$ plugs $c$ into $\mathcal C$.  We omit the standard definition of one-hole contexts.  We write $[x \mapsto c_1]c_2$ for capture-avoiding substitution of $c_1$ for $x$ in $c_2$.
+
+$$\infer{\Gamma \vdash c \equiv c}{}
+\quad \infer{\Gamma \vdash c_1 \equiv c_2}{
+  \Gamma \vdash c_2 \equiv c_1
+}
+\quad \infer{\Gamma \vdash c_1 \equiv c_3}{
+  \Gamma \vdash c_1 \equiv c_2
+  & \Gamma \vdash c_2 \equiv c_3
+}
+\quad \infer{\Gamma \vdash \mathcal C[c_1] \equiv \mathcal C[c_2]}{
+  \Gamma \vdash c_1 \equiv c_2
+}$$
+
+$$\infer{\Gamma \vdash x \equiv c}{
+  x :: \kappa = c \in \Gamma
+}
+\quad \infer{\Gamma \vdash M.x \equiv c}{
+  \Gamma \vdash M : S
+  & \mt{proj}(M, S, \mt{con} \; x) = (\kappa, c)
+}
+\quad \infer{\Gamma \vdash (\overline c).i \equiv c_i}{}$$
+
+$$\infer{\Gamma \vdash (\lambda x :: \kappa \Rightarrow c) \; c' \equiv [x \mapsto c'] c}{}
+\quad \infer{\Gamma \vdash c_1 \rc c_2 \equiv c_2 \rc c_1}{}
+\quad \infer{\Gamma \vdash c_1 \rc (c_2 \rc c_3) \equiv (c_1 \rc c_2) \rc c_3}{}$$
+
+$$\infer{\Gamma \vdash [] \rc c \equiv c}{}
+\quad \infer{\Gamma \vdash [\overline{c_1 = c'_1}] \rc [\overline{c_2 = c'_2}] \equiv [\overline{c_1 = c'_1}, \overline{c_2 = c'_2}]}{}$$
+
+$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow c \equiv c}{
+  \Gamma \vdash c_1 \sim c_2
+}
+\quad \infer{\Gamma \vdash \mt{fold} \; f \; i \; [] \equiv i}{}
+\quad \infer{\Gamma \vdash \mt{fold} \; f \; i \; ([c_1 = c_2] \rc c) \equiv f \; c_1 \; c_2 \; (\mt{fold} \; f \; i \; c)}{}$$
+
+$$\infer{\Gamma \vdash \mt{map} \; (\lambda x \Rightarrow x) \; c \equiv c}{}
+\quad \infer{\Gamma \vdash \mt{fold} \; f \; i \; (\mt{map} \; f' \; c)
+  \equiv \mt{fold} \; (\lambda (x_1 :: \mt{Name}) (x_2 :: \kappa) \Rightarrow f \; x_1 \; (f' \; x_2)) \; i \; c}{}$$
+
+$$\infer{\Gamma \vdash \mt{map} \; f \; (c_1 \rc c_2) \equiv \mt{map} \; f \; c_1 \rc \mt{map} \; f \; c_2}{}$$
 
 \end{document}
