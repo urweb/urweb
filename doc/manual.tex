@@ -181,8 +181,8 @@ $$\begin{array}{rrcll}
   &&& \mt{open} \; \mt{constraints} \; M & \textrm{inclusion of just the constraints from a module} \\
   &&& \mt{table} \; x : c & \textrm{SQL table} \\
   &&& \mt{sequence} \; x & \textrm{SQL sequence} \\
-  &&& \mt{class} \; x = c & \textrm{concrete type class} \\
   &&& \mt{cookie} \; x : \tau & \textrm{HTTP cookie} \\
+  &&& \mt{class} \; x = c & \textrm{concrete type class} \\
   \\
   \textrm{Modules} & M &::=& \mt{struct} \; d^* \; \mt{end} & \textrm{constant} \\
   &&& X & \textrm{variable} \\
@@ -245,8 +245,10 @@ Since there is significant mutual recursion among the judgments, we introduce th
 \item $\Gamma \vdash e : \tau$ is a standard typing judgment.
 \item $\Gamma \vdash p \leadsto \Gamma; \tau$ combines typing of patterns with calculation of which new variables they bind.
 \item $\Gamma \vdash d \leadsto \Gamma$ expresses how a declaration modifies a context.  We overload this judgment to apply to sequences of declarations.
+\item $\Gamma \vdash S$ is the signature validity judgment.
+\item $\Gamma \vdash S \leq S$ is the signature compatibility judgment.
 \item $\Gamma \vdash M : S$ is the module signature checking judgment.
-\item $\mt{proj}(M, S, V)$ is a partial function for projecting a signature item from a signature $S$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items of $S$.
+\item $\mt{proj}(M, S, V)$ is a partial function for projecting a signature item from a signature $S$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{datatype} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items of $S$.
 \end{itemize}
 
 \subsection{Kinding}
@@ -519,6 +521,83 @@ $$\infer{\Gamma \vdash \{\overline{x = p}\} \leadsto \Gamma_n; \{\overline{x = \
 \quad \infer{\Gamma \vdash \{\overline{x = p}, \ldots\} \leadsto \Gamma_n; \$([\overline{x = \tau}] \rc c)}{
   \Gamma_0 = \Gamma
   & \forall i: \Gamma_i \vdash p_i \leadsto \Gamma_{i+1}; \tau_i
+}$$
+
+\subsection{Declaration Typing}
+
+We use an auxiliary judgment $\overline{y}; x; \Gamma \vdash \overline{dc} \leadsto \Gamma'$, expressing the enrichment of $\Gamma$ with the types of the datatype constructors $\overline{dc}$, when they are known to belong to datatype $x$ with type parameters $\overline{y}$.
+
+This is the first judgment where we deal with type classes, for the $\mt{class}$ declaration form.  We will omit their special handling in this formal specification.  In the compiler, a set of available type classes and their instances is maintained, and these instances are used to fill in expression wildcards.
+
+We presuppose the existence of a function $\mathcal O$, where $\mathcal(M, S)$ implements the $\mt{open}$ declaration by producing a context with the appropriate entry for each available component of module $M$ with signature $S$.  Where possible, $\mathcal O$ uses ``transparent'' entries (e.g., an abstract type $M.x$ is mapped to $x :: \mt{Type} = M.x$), so that the relationship with $M$ is maintained.  A related function $\mathcal O_c$ builds a context containing the disjointness constraints found in $S$.
+
+$$\infer{\Gamma \vdash \cdot \leadsto \Gamma}{}
+\quad \infer{\Gamma \vdash d, \overline{d} \leadsto \Gamma''}{
+  \Gamma \vdash d \leadsto \Gamma'
+  & \Gamma' \vdash \overline{d} \leadsto \Gamma''
+}$$
+
+$$\infer{\Gamma \vdash \mt{con} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa = c}{
+  \Gamma \vdash c :: \kappa
+}
+\quad \infer{\Gamma \vdash \mt{datatype} \; x \; \overline{y} = \overline{dc} \leadsto \Gamma'}{
+  \overline{y}; x; \Gamma, x :: \mt{Type}^{\mt{len}(\overline y)} \to \mt{Type} \vdash \overline{dc} \leadsto \Gamma'
+}$$
+
+$$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leadsto \Gamma'}{
+  \Gamma \vdash M : S
+  & \mt{proj}(M, S, \mt{datatype} \; z) = (\overline{y}, \overline{dc})
+  & \overline{y}; x; \Gamma, x :: \mt{Type}^{\mt{len}(\overline y)} \to \mt{Type} = M.z \vdash \overline{dc} \leadsto \Gamma'
+}$$
+
+$$\infer{\Gamma \vdash \mt{val} \; x : \tau = e \leadsto \Gamma, x : \tau}{
+  \Gamma \vdash e : \tau
+}$$
+
+$$\infer{\Gamma \vdash \mt{val} \; \mt{rec} \; \overline{x : \tau = e} \leadsto \Gamma, \overline{x : \tau}}{
+  \forall i: \Gamma, \overline{x : \tau} \vdash e_i : \tau_i
+  & \textrm{$e_i$ starts with an expression $\lambda$, optionally preceded by constructor and disjointness $\lambda$s}
+}$$
+
+$$\infer{\Gamma \vdash \mt{structure} \; X : S = M \leadsto \Gamma, X : S}{
+  \Gamma \vdash M : S
+}
+\quad \infer{\Gamma \vdash \mt{siganture} \; X = S \leadsto \Gamma, X = S}{
+  \Gamma \vdash S
+}$$
+
+$$\infer{\Gamma \vdash \mt{open} \; M \leadsto \Gamma, \mathcal O(M, S)}{
+  \Gamma \vdash M : S
+}$$
+
+$$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leadsto \Gamma}{
+  \Gamma \vdash c_1 :: \{\kappa\}
+  & \Gamma \vdash c_2 :: \{\kappa\}
+  & \Gamma \vdash c_1 \sim c_2
+}
+\quad \infer{\Gamma \vdash \mt{open} \; \mt{constraints} \; M \leadsto \Gamma, \mathcal O_c(M, S)}{
+  \Gamma \vdash M : S
+}$$
+
+$$\infer{\Gamma \vdash \mt{table} \; x : c \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_table} \; c}{
+  \Gamma \vdash c :: \{\mt{Type}\}
+}
+\quad \infer{\Gamma \vdash \mt{sequence} \; x \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_sequence}}{}$$
+
+$$\infer{\Gamma \vdash \mt{cookie} \; x : \tau \leadsto \Gamma, x : \mt{Basis}.\mt{http\_cookie} \; \tau}{
+  \Gamma \vdash \tau :: \mt{Type}
+}$$
+
+$$\infer{\Gamma \vdash \mt{class} \; x = c \leadsto \Gamma, x :: \mt{Type} \to \mt{Type} = c}{
+  \Gamma \vdash c :: \mt{Type} \to \mt{Type}
+}$$
+
+$$\infer{\overline{y}; x; \Gamma \vdash \cdot \leadsto \Gamma}{}
+\quad \infer{\overline{y}; x; \Gamma \vdash X \mid \overline{dc} \leadsto \Gamma', X : \overline{y ::: \mt{Type}} \to x \; \overline{y}}{
+  \overline{y}; x; \Gamma \vdash \overline{dc} \leadsto \Gamma'
+}
+\quad \infer{\overline{y}; x; \Gamma \vdash X \; \mt{of} \; \tau \mid \overline{dc} \leadsto \Gamma', X : \overline{y ::: \mt{Type}} \to \tau \to x \; \overline{y}}{
+  \overline{y}; x; \Gamma \vdash \overline{dc} \leadsto \Gamma'
 }$$
 
 \end{document}
