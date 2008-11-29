@@ -245,8 +245,7 @@ Since there is significant mutual recursion among the judgments, we introduce th
 \item $\Gamma \vdash e : \tau$ is a standard typing judgment.
 \item $\Gamma \vdash p \leadsto \Gamma; \tau$ combines typing of patterns with calculation of which new variables they bind.
 \item $\Gamma \vdash d \leadsto \Gamma$ expresses how a declaration modifies a context.  We overload this judgment to apply to sequences of declarations.
-\item $\Gamma \vdash S$ is the signature validity judgment.
-\item $\Gamma \vdash S \leq S$ is the signature compatibility judgment.
+\item $\Gamma \vdash S \leq S$ is the signature compatibility judgment.  We write $\Gamma \vdash S$ as shorthand for $\Gamma \vdash S \leq S$.
 \item $\Gamma \vdash M : S$ is the module signature checking judgment.
 \item $\mt{proj}(M, S, V)$ is a partial function for projecting a signature item from a signature $S$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{datatype} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items of $S$.
 \end{itemize}
@@ -598,6 +597,39 @@ $$\infer{\overline{y}; x; \Gamma \vdash \cdot \leadsto \Gamma}{}
 }
 \quad \infer{\overline{y}; x; \Gamma \vdash X \; \mt{of} \; \tau \mid \overline{dc} \leadsto \Gamma', X : \overline{y ::: \mt{Type}} \to \tau \to x \; \overline{y}}{
   \overline{y}; x; \Gamma \vdash \overline{dc} \leadsto \Gamma'
+}$$
+
+\subsection{Signature Compatibility}
+
+$$\infer{\Gamma \vdash S \equiv S}{}
+\quad \infer{\Gamma \vdash S_1 \equiv S_2}{
+  \Gamma \vdash S_2 \equiv S_1
+}
+\quad \infer{\Gamma \vdash X \equiv S}{
+  X = S \in \Gamma
+}
+\quad \infer{\Gamma \vdash M.X \equiv S}{
+  \Gamma \vdash M : S'
+  & \mt{proj}(M, S', \mt{signature} \; X) = S
+}$$
+
+$$\infer{\Gamma \vdash S \; \mt{where} \; \mt{con} \; x = c \equiv \mt{sig} \; \overline{s^1} \; \mt{con} \; x :: \kappa = c \; \overline{s_2} \; \mt{end}}{
+  \Gamma \vdash S \equiv \mt{sig} \; \overline{s^1} \; \mt{con} \; x :: \kappa \; \overline{s_2} \; \mt{end}
+  & \Gamma \vdash c :: \kappa
+}$$
+
+$$\infer{\Gamma \vdash S_1 \leq S_2}{
+  \Gamma \vdash S_1 \equiv S_2
+}
+\quad \infer{\Gamma \vdash \mt{sig} \; \overline{s} \; \mt{end} \leq \mt{sig} \; \mt{end}}{}
+\quad \infer{\Gamma \vdash \mt{sig} \; \overline{s^1} \; s \; \overline{s^2} \; \mt{end} \leq \mt{sig} \; s' \; \overline{s} \; \mt{end}}{
+  \Gamma \vdash s \leq s'; \Gamma'
+  & \Gamma' \vdash \mt{sig} \; \overline{s^1} \; s \; \overline{s^2} \; \mt{end} \leq \mt{sig} \; \overline{s} \; \mt{end}
+}$$
+
+$$\infer{\Gamma \vdash \mt{functor} (X : S_1) : S_2 \leq \mt{functor} (X : S'_1) : S'_2}{
+  \Gamma \vdash S'_1 \leq S_1
+  & \Gamma, X : S'_1 \vdash S_2 \leq S'_2
 }$$
 
 \end{document}
