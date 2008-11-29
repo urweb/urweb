@@ -201,6 +201,8 @@ In many contexts where record fields are expected, like in a projection $e.c$, a
 
 A record type may be written $\{(c = c,)^*\}$, which elaborates to $\$[(c = c,)^*]$.
 
+The notation $[c_1, \ldots, c_n]$ is shorthand for $[c_1 = (), \ldots, c_n = ()]$.
+
 A tuple type $(\tau_1, \ldots, \tau_n)$ expands to a record type $\{1 = \tau_1, \ldots, n = \tau_n\}$, with natural numbers as field names.  A tuple pattern $(p_1, \ldots, p_n)$ expands to a rigid record pattern $\{1 = p_1, \ldots, n = p_n\}$.  Positive natural numbers may be used in most places where field names would be allowed.
 
 In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid [c \sim c]$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.  
@@ -241,6 +243,8 @@ Since there is significant mutual recursion among the judgments, we introduce th
 \item $\Gamma \vdash c \hookrightarrow C$ proves that record constructor $c$ decomposes into set $C$ of field names and record constructors.
 \item $\Gamma \vdash c \equiv c$ proves the computational equivalence of two constructors.  This is often called a \emph{definitional equality} in the world of type theory.
 \item $\Gamma \vdash e : \tau$ is a standard typing judgment.
+\item $\Gamma \vdash p \leadsto \Gamma, \tau$ combines typing of patterns with calculation of which new variables they bind.
+\item $\Gamma \vdash d \leadsto \Gamma$ expresses how a declaration modifies a context.  We overload this judgment to apply to sequences of declarations.
 \item $\Gamma \vdash M : S$ is the module signature checking judgment.
 \item $\mt{proj}(M, S, V)$ is a partial function for projecting a signature item from a signature $S$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items of $S$.
 \end{itemize}
@@ -392,5 +396,93 @@ $$\infer{\Gamma \vdash \mt{map} \; (\lambda x \Rightarrow x) \; c \equiv c}{}
   \equiv \mt{fold} \; (\lambda (x_1 :: \mt{Name}) (x_2 :: \kappa) \Rightarrow f \; x_1 \; (f' \; x_2)) \; i \; c}{}$$
 
 $$\infer{\Gamma \vdash \mt{map} \; f \; (c_1 \rc c_2) \equiv \mt{map} \; f \; c_1 \rc \mt{map} \; f \; c_2}{}$$
+
+\subsection{Typing}
+
+We assume the existence of a function $T$ assigning types to literal constants.  It maps integer constants to $\mt{Basis}.\mt{int}$, float constants to $\mt{Basis}.\mt{float}$, and string constants to $\mt{Basis}.\mt{string}$.
+
+We also refer to a function $\mathcal I$, such that $\mathcal I(\tau)$ ``uses an oracle'' to instantiate all constructor function arguments at the beginning of $\tau$ that are marked implicit; i.e., replace $x_1 ::: \kappa_1 \to \ldots \to x_n ::: \kappa_n \to \tau$ with $[x_1 \mapsto c_1]\ldots[x_n \mapsto c_n]\tau$, where the $c_i$s are inferred and $\tau$ does not start like $x ::: \kappa \to \tau'$.
+
+$$\infer{\Gamma \vdash e : \tau : \tau}{
+  \Gamma \vdash e : \tau
+}
+\quad \infer{\Gamma \vdash e : \tau}{
+  \Gamma \vdash e : \tau'
+  & \Gamma \vdash \tau' \equiv \tau
+}
+\quad \infer{\Gamma \vdash \ell : T(\ell)}{}$$
+
+$$\infer{\Gamma \vdash x : \mathcal I(\tau)}{
+  x : \tau \in \Gamma
+}
+\quad \infer{\Gamma \vdash M.x : \mathcal I(\tau)}{
+  \Gamma \vdash M : S
+  & \mt{proj}(M, S, \mt{val} \; x) = \tau
+}
+\quad \infer{\Gamma \vdash X : \mathcal I(\tau)}{
+  X : \tau \in \Gamma
+}
+\quad \infer{\Gamma \vdash M.X : \mathcal I(\tau)}{
+  \Gamma \vdash M : S
+  & \mt{proj}(M, S, \mt{val} \; X) = \tau
+}$$
+
+$$\infer{\Gamma \vdash e_1 \; e_2 : \tau_2}{
+  \Gamma \vdash e_1 : \tau_1 \to \tau_2
+  & \Gamma \vdash e_2 : \tau_1
+}
+\quad \infer{\Gamma \vdash \lambda x : \tau_1 \Rightarrow e : \tau_1 \to \tau_2}{
+  \Gamma, x : \tau_1 \vdash e : \tau_2
+}$$
+
+$$\infer{\Gamma \vdash e [c] : [x \mapsto c]\tau}{
+  \Gamma \vdash e : x :: \kappa \to \tau
+  & \Gamma \vdash c :: \kappa
+}
+\quad \infer{\Gamma \vdash \lambda x \; ? \; \kappa \Rightarrow e : x \; ? \; \kappa \to \tau}{
+  \Gamma, x :: \kappa \vdash e : \tau
+}$$
+
+$$\infer{\Gamma \vdash \{\overline{c = e}\} : \{\overline{c : \tau}\}}{
+  \forall i: \Gamma \vdash c_i :: \mt{Name}
+  & \Gamma \vdash e_i : \tau_i
+  & \forall i \neq j: \Gamma \vdash c_i \sim c_j
+}
+\quad \infer{\Gamma \vdash e.c : \tau}{
+  \Gamma \vdash e : \$([c = \tau] \rc c')
+}
+\quad \infer{\Gamma \vdash e_1 \rc e_2 : \$(c_1 \rc c_2)}{
+  \Gamma \vdash e_1 : \$c_1
+  & \Gamma \vdash e_2 : \$c_2
+}$$
+
+$$\infer{\Gamma \vdash e \rcut c : \$c'}{
+  \Gamma \vdash e : \$([c = \tau] \rc c')
+}
+\quad \infer{\Gamma \vdash e \rcutM c : \$c'}{
+  \Gamma \vdash e : \$(c \rc c')
+}$$
+
+$$\infer{\Gamma \vdash \mt{fold} : \begin{array}{c}
+    x_1 :: (\{\kappa\} \to \tau)
+    \to (x_2 :: \mt{Name} \to x_3 :: \kappa \to x_4 :: \{\kappa\} \to \lambda [[x_2] \sim x_4]
+    \Rightarrow x_1 \; x_4 \to x_1 \; ([x_2 = x_3] \rc x_4)) \\
+    \to x_1 \; [] \to x_5 :: \{\kappa\} \to x_1 \; x_5
+  \end{array}}{}$$
+
+$$\infer{\Gamma \vdash \mt{let} \; \overline{ed} \; \mt{in} \; e \; \mt{end} : \tau}{
+  \Gamma \vdash \overline{ed} \leadsto \Gamma'
+  & \Gamma' \vdash e : \tau
+}
+\quad \infer{\Gamma \vdash \mt{case} \; e \; \mt{of} \; \overline{p \Rightarrow e} : \tau}{
+  \forall i: \Gamma \vdash p_i \leadsto \Gamma_i, \tau'
+  & \Gamma_i \vdash e_i : \tau
+}$$
+
+$$\infer{\Gamma \vdash [c_1 \sim c_2] \Rightarrow e : [c_1 \sim c_2] \Rightarrow \tau}{
+  \Gamma \vdash c_1 :: \{\kappa\}
+  & \Gamma \vdash c_2 :: \{\kappa\}
+  & \Gamma, c_1 \sim c_2 \vdash e : \tau
+}$$
 
 \end{document}
