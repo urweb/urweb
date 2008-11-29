@@ -238,7 +238,7 @@ Since there is significant mutual recursion among the judgments, we introduce th
 \begin{itemize}
 \item $\Gamma \vdash c :: \kappa$ assigns a kind to a constructor in a context.
 \item $\Gamma \vdash c \sim c$ proves the disjointness of two record constructors; that is, that they share no field names.  We overload the judgment to apply to pairs of field names as well.
-\item $\Gamma \vdash c \hookrightarrow \overline{c}$ proves that record constructor $c$ decomposes into set $\overline{c}$ of field names and record constructors.
+\item $\Gamma \vdash c \hookrightarrow C$ proves that record constructor $c$ decomposes into set $C$ of field names and record constructors.
 \item $\Gamma \vdash c \equiv c$ proves the computational equivalence of two constructors.  This is often called a \emph{definitional equality} in the world of type theory.
 \item $\Gamma \vdash e : \tau$ is a standard typing judgment.
 \item $\Gamma \vdash M : S$ is the module signature checking judgment.
@@ -313,5 +313,41 @@ $$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow c :: \kappa}{
   & \Gamma \vdash c_2 :: \{\kappa'\}
   & \Gamma, c_1 \sim c_2 \vdash c :: \kappa
 }$$
+
+\subsection{Record Disjointness}
+
+We will use a keyword $\mt{map}$ as a shorthand, such that, for $f$ of kind $\kappa \to \kappa'$, $\mt{map} \; f$ stands for $\mt{fold} \; (\lambda (x_1 :: \mt{Name}) (x_2 :: \kappa) (x_3 :: \{\kappa'\}) \Rightarrow [x_1 = f \; x_2] \rc x_3) \; []$.
+
+$$\infer{\Gamma \vdash c_1 \sim c_2}{
+  \Gamma \vdash c_1 \hookrightarrow c'_1
+  & \Gamma \vdash c_2 \hookrightarrow c'_2
+  & \forall c''_1 \in c'_1, c''_2 \in c'_2: \Gamma \vdash c''_1 \sim c''_2
+}
+\quad \infer{\Gamma \vdash X \sim X'}{
+  X \neq X'
+}$$
+
+$$\infer{\Gamma \vdash c_1 \sim c_2}{
+  c'_1 \sim c'_2 \in \Gamma
+  & \Gamma \vdash c'_1 \hookrightarrow c''_1
+  & \Gamma \vdash c'_2 \hookrightarrow c''_2
+  & c_1 \in c''_1
+  & c_2 \in c''_2
+}$$
+
+$$\infer{\Gamma \vdash c \hookrightarrow \{c\}}{}
+\quad \infer{\Gamma \vdash [\overline{c = c'}] \hookrightarrow \{\overline{c}\}}{}
+\quad \infer{\Gamma \vdash c_1 \rc c_2 \hookrightarrow C_1 \cup C_2}{
+  \Gamma \vdash c_1 \hookrightarrow C_1
+  & \Gamma \vdash c_2 \hookrightarrow C_2
+}
+\quad \infer{\Gamma \vdash c \hookrightarrow C}{
+  \Gamma \vdash c \equiv c'
+  & \Gamma \vdash c' \hookrightarrow C
+}
+\quad \infer{\Gamma \vdash \mt{map} \; f \; c \hookrightarrow C}{
+  \Gamma \vdash c \hookrightarrow C
+}$$
+
 
 \end{document}
