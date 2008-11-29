@@ -32,3 +32,4 @@ demo/demo.*
 *.dvi
 *.pdf
 *.ps
+*.toc

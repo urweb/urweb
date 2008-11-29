@@ -15,6 +15,8 @@
 
 \maketitle
 
+\tableofcontents
+
 \section{Ur Syntax}
 
 In this section, we describe the syntax of Ur, deferring to a later section discussion of most of the syntax specific to SQL and XML.  The sole exceptions are the declaration forms for tables, sequences, and cookies.
@@ -836,6 +838,45 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{selfify}(M, \mt{constraint} \; c_1 \sim c_2) &=& \mt{constraint} \; c_1 \sim c_2 \\
   \mt{selfify}(M, \mt{class} \; x) &=& \mt{class} \; x = M.x \\
   \mt{selfify}(M, \mt{class} \; x = c) &=& \mt{class} \; x = c \\
+\end{eqnarray*}
+
+\subsection{Module Projection}
+
+\begin{eqnarray*}
+  \mt{proj}(M, \mt{con} \; x :: \kappa \; \overline{s}, \mt{con} \; x) &=& \kappa \\
+  \mt{proj}(M, \mt{con} \; x :: \kappa = c \; \overline{s}, \mt{con} \; x) &=& (\kappa, c) \\
+  \mt{proj}(M, \mt{datatype} \; x \; \overline{y} = \overline{dc} \; \overline{s}, \mt{con} \; x) &=& \mt{Type}^{\mt{len}(\overline{y})} \to \mt{Type} \\
+  \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z \; \overline{s}, \mt{con} \; x) &=& (\mt{Type}^{\mt{len}(\overline{y})} \to \mt{Type}, M'.z) \textrm{ (where $\Gamma \vdash M' : \mt{sig} \; \overline{s'} \; \mt{end}$} \\
+  && \textrm{and $\mt{proj}(M', \overline{s'}, \mt{datatype} \; z) = (\overline{y}, \overline{dc})$)} \\
+  \mt{proj}(M, \mt{class} \; x \; \overline{s}, \mt{con} \; x) &=& \mt{Type} \to \mt{Type} \\
+  \mt{proj}(M, \mt{class} \; x = c \; \overline{s}, \mt{con} \; x) &=& (\mt{Type} \to \mt{Type}, c) \\
+  \\
+  \mt{proj}(M, \mt{datatype} \; x \; \overline{y} = \overline{dc} \; \overline{s}, \mt{datatype} \; x) &=& (\overline{y}, \overline{dc}) \\
+  \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z \; \overline{s}, \mt{con} \; x) &=& \mt{proj}(M', \overline{s'}, \mt{datatype} \; z) \textrm{ (where $\Gamma \vdash M' : \mt{sig} \; \overline{s'} \; \mt{end}$)} \\
+  \\
+  \mt{proj}(M, \mt{val} \; x : \tau \; \overline{s}, \mt{val} \; x) &=& \tau \\
+  \mt{proj}(M, \mt{datatype} \; x \; \overline{y} = \overline{dc} \; \overline{s}, \mt{val} \; X) &=& \overline{y ::: \mt{Type}} \to M.x \; \overline y \textrm{ (where $X \in \overline{dc}$)} \\
+  \mt{proj}(M, \mt{datatype} \; x \; \overline{y} = \overline{dc} \; \overline{s}, \mt{val} \; X) &=& \overline{y ::: \mt{Type}} \to \tau \to M.x \; \overline y \textrm{ (where $X \; \mt{of} \; \tau \in \overline{dc}$)} \\
+  \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z, \mt{val} \; X) &=& \overline{y ::: \mt{Type}} \to M.x \; \overline y \textrm{ (where $\Gamma \vdash M' : \mt{sig} \; \overline{s'} \; \mt{end}$} \\
+  && \textrm{and $\mt{proj}(M', \overline{s'}, \mt{datatype} \; z = (\overline{y}, \overline{dc})$ and $X \in \overline{dc}$)} \\
+  \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z, \mt{val} \; X) &=& \overline{y ::: \mt{Type}} \to \tau \to M.x \; \overline y \textrm{ (where $\Gamma \vdash M' : \mt{sig} \; \overline{s'} \; \mt{end}$} \\
+  && \textrm{and $\mt{proj}(M', \overline{s'}, \mt{datatype} \; z = (\overline{y}, \overline{dc})$ and $X : \tau \in \overline{dc}$)} \\
+  \\
+  \mt{proj}(M, \mt{structure} \; X : S \; \overline{s}, \mt{structure} \; X) &=& S \\
+  \\
+  \mt{proj}(M, \mt{signature} \; X = S \; \overline{s}, \mt{signature} \; X) &=& S \\
+  \\
+  \mt{proj}(M, \mt{con} \; x :: \kappa \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{con} \; x :: \kappa = c \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{datatype} \; x \; \overline{y} = \overline{dc} \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{val} \; x : \tau \; \overline{s}, V) &=& \mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{structure} \; X : S \; \overline{s}, V) &=& [X \mapsto M.X]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{signature} \; X = S \; \overline{s}, V) &=& [X \mapsto M.X]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{include} \; S \; \overline{s}, V) &=& \mt{proj}(M, \overline{s'} \; \overline{s}, V) \textrm{ (where $\Gamma \vdash S \equiv \mt{sig} \; \overline{s'} \; \mt{end}$)} \\
+  \mt{proj}(M, \mt{constraint} \; c_1 \sim c_2 \; \overline{s}, V) &=& \mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{class} \; x \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{class} \; x = c \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
 \end{eqnarray*}
 
 \end{document}
