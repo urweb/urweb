@@ -244,10 +244,11 @@ Since there is significant mutual recursion among the judgments, we introduce th
 \item $\Gamma \vdash c \equiv c$ proves the computational equivalence of two constructors.  This is often called a \emph{definitional equality} in the world of type theory.
 \item $\Gamma \vdash e : \tau$ is a standard typing judgment.
 \item $\Gamma \vdash p \leadsto \Gamma; \tau$ combines typing of patterns with calculation of which new variables they bind.
-\item $\Gamma \vdash d \leadsto \Gamma$ expresses how a declaration modifies a context.  We overload this judgment to apply to sequences of declarations.
+\item $\Gamma \vdash d \leadsto \Gamma$ expresses how a declaration modifies a context.  We overload this judgment to apply to sequences of declarations, as well as to signature items and sequences of signature items.
+\item $\Gamma \vdash S \equiv S$ is the signature equivalence judgment.
 \item $\Gamma \vdash S \leq S$ is the signature compatibility judgment.  We write $\Gamma \vdash S$ as shorthand for $\Gamma \vdash S \leq S$.
 \item $\Gamma \vdash M : S$ is the module signature checking judgment.
-\item $\mt{proj}(M, S, V)$ is a partial function for projecting a signature item from a signature $S$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{datatype} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items of $S$.
+\item $\mt{proj}(M, \overline{s}, V)$ is a partial function for projecting a signature item from $\overline{s}$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{datatype} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items from $\overline{s}$.
 \end{itemize}
 
 \subsection{Kinding}
@@ -263,12 +264,12 @@ $$\infer{\Gamma \vdash (c) :: \kappa :: \kappa}{
 }$$
 
 $$\infer{\Gamma \vdash M.x :: \kappa}{
-  \Gamma \vdash M : S
-  & \mt{proj}(M, S, \mt{con} \; x) = \kappa
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{con} \; x) = \kappa
 }
 \quad \infer{\Gamma \vdash M.x :: \kappa}{
-  \Gamma \vdash M : S
-  & \mt{proj}(M, S, \mt{con} \; x) = (\kappa, c)
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{con} \; x) = (\kappa, c)
 }$$
 
 $$\infer{\Gamma \vdash \tau_1 \to \tau_2 :: \mt{Type}}{
@@ -374,8 +375,8 @@ $$\infer{\Gamma \vdash x \equiv c}{
   x :: \kappa = c \in \Gamma
 }
 \quad \infer{\Gamma \vdash M.x \equiv c}{
-  \Gamma \vdash M : S
-  & \mt{proj}(M, S, \mt{con} \; x) = (\kappa, c)
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{con} \; x) = (\kappa, c)
 }
 \quad \infer{\Gamma \vdash (\overline c).i \equiv c_i}{}$$
 
@@ -417,15 +418,15 @@ $$\infer{\Gamma \vdash x : \mathcal I(\tau)}{
   x : \tau \in \Gamma
 }
 \quad \infer{\Gamma \vdash M.x : \mathcal I(\tau)}{
-  \Gamma \vdash M : S
-  & \mt{proj}(M, S, \mt{val} \; x) = \tau
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{val} \; x) = \tau
 }
 \quad \infer{\Gamma \vdash X : \mathcal I(\tau)}{
   X : \tau \in \Gamma
 }
 \quad \infer{\Gamma \vdash M.X : \mathcal I(\tau)}{
-  \Gamma \vdash M : S
-  & \mt{proj}(M, S, \mt{val} \; X) = \tau
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{val} \; X) = \tau
 }$$
 
 $$\infer{\Gamma \vdash e_1 \; e_2 : \tau_2}{
@@ -502,14 +503,14 @@ $$\infer{\Gamma \vdash X \leadsto \Gamma; \overline{[x_i \mapsto \tau'_i]}\tau}{
 }$$
 
 $$\infer{\Gamma \vdash M.X \leadsto \Gamma; \overline{[x_i \mapsto \tau'_i]}\tau}{
-  \Gamma \vdash M : S
-  & \mt{proj}(M, S, \mt{val} \; X) = \overline{x ::: \mt{Type}} \to \tau
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{val} \; X) = \overline{x ::: \mt{Type}} \to \tau
   & \textrm{$\tau$ not a function type}
 }$$
 
 $$\infer{\Gamma \vdash M.X \; p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau}{
-  \Gamma \vdash M : S
-  & \mt{proj}(M, S, \mt{val} \; X) = \overline{x ::: \mt{Type}} \to \tau'' \to \tau
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{val} \; X) = \overline{x ::: \mt{Type}} \to \tau'' \to \tau
   & \Gamma \vdash p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau''
 }$$
 
@@ -528,7 +529,9 @@ We use an auxiliary judgment $\overline{y}; x; \Gamma \vdash \overline{dc} \lead
 
 This is the first judgment where we deal with type classes, for the $\mt{class}$ declaration form.  We will omit their special handling in this formal specification.  In the compiler, a set of available type classes and their instances is maintained, and these instances are used to fill in expression wildcards.
 
-We presuppose the existence of a function $\mathcal O$, where $\mathcal(M, S)$ implements the $\mt{open}$ declaration by producing a context with the appropriate entry for each available component of module $M$ with signature $S$.  Where possible, $\mathcal O$ uses ``transparent'' entries (e.g., an abstract type $M.x$ is mapped to $x :: \mt{Type} = M.x$), so that the relationship with $M$ is maintained.  A related function $\mathcal O_c$ builds a context containing the disjointness constraints found in $S$.
+We presuppose the existence of a function $\mathcal O$, where $\mathcal(M, \overline{s})$ implements the $\mt{open}$ declaration by producing a context with the appropriate entry for each available component of module $M$ with signature items $\overline{s}$.  Where possible, $\mathcal O$ uses ``transparent'' entries (e.g., an abstract type $M.x$ is mapped to $x :: \mt{Type} = M.x$), so that the relationship with $M$ is maintained.  A related function $\mathcal O_c$ builds a context containing the disjointness constraints found in $S$.
+
+We write $\kappa_1^n \to \kappa$ as a shorthand, where $\kappa_1^0 \to \kappa = \kappa$ and $\kappa_1^{n+1} \to \kappa_2 = \kappa_1 \to (\kappa_1^n \to \kappa_2)$.  We write $\mt{len}(\overline{y})$ for the length of vector $\overline{y}$ of variables.
 
 $$\infer{\Gamma \vdash \cdot \leadsto \Gamma}{}
 \quad \infer{\Gamma \vdash d, \overline{d} \leadsto \Gamma''}{
@@ -544,8 +547,8 @@ $$\infer{\Gamma \vdash \mt{con} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa 
 }$$
 
 $$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leadsto \Gamma'}{
-  \Gamma \vdash M : S
-  & \mt{proj}(M, S, \mt{datatype} \; z) = (\overline{y}, \overline{dc})
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{datatype} \; z) = (\overline{y}, \overline{dc})
   & \overline{y}; x; \Gamma, x :: \mt{Type}^{\mt{len}(\overline y)} \to \mt{Type} = M.z \vdash \overline{dc} \leadsto \Gamma'
 }$$
 
@@ -561,12 +564,12 @@ $$\infer{\Gamma \vdash \mt{val} \; \mt{rec} \; \overline{x : \tau = e} \leadsto 
 $$\infer{\Gamma \vdash \mt{structure} \; X : S = M \leadsto \Gamma, X : S}{
   \Gamma \vdash M : S
 }
-\quad \infer{\Gamma \vdash \mt{siganture} \; X = S \leadsto \Gamma, X = S}{
+\quad \infer{\Gamma \vdash \mt{signature} \; X = S \leadsto \Gamma, X = S}{
   \Gamma \vdash S
 }$$
 
-$$\infer{\Gamma \vdash \mt{open} \; M \leadsto \Gamma, \mathcal O(M, S)}{
-  \Gamma \vdash M : S
+$$\infer{\Gamma \vdash \mt{open} \; M \leadsto \Gamma, \mathcal O(M, \overline{s})}{
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
 }$$
 
 $$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leadsto \Gamma}{
@@ -574,8 +577,8 @@ $$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leadsto \Gamma}{
   & \Gamma \vdash c_2 :: \{\kappa\}
   & \Gamma \vdash c_1 \sim c_2
 }
-\quad \infer{\Gamma \vdash \mt{open} \; \mt{constraints} \; M \leadsto \Gamma, \mathcal O_c(M, S)}{
-  \Gamma \vdash M : S
+\quad \infer{\Gamma \vdash \mt{open} \; \mt{constraints} \; M \leadsto \Gamma, \mathcal O_c(M, \overline{s})}{
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
 }$$
 
 $$\infer{\Gamma \vdash \mt{table} \; x : c \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_table} \; c}{
@@ -599,7 +602,61 @@ $$\infer{\overline{y}; x; \Gamma \vdash \cdot \leadsto \Gamma}{}
   \overline{y}; x; \Gamma \vdash \overline{dc} \leadsto \Gamma'
 }$$
 
+\subsection{Signature Item Typing}
+
+We appeal to a signature item analogue of the $\mathcal O$ function from the last subsection.
+
+$$\infer{\Gamma \vdash \cdot \leadsto \Gamma}{}
+\quad \infer{\Gamma \vdash s, \overline{s} \leadsto \Gamma''}{
+  \Gamma \vdash s \leadsto \Gamma'
+  & \Gamma' \vdash \overline{s} \leadsto \Gamma''
+}$$
+
+$$\infer{\Gamma \vdash \mt{con} \; x :: \kappa \leadsto \Gamma, x :: \kappa}{}
+\quad \infer{\Gamma \vdash \mt{con} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa = c}{
+  \Gamma \vdash c :: \kappa
+}
+\quad \infer{\Gamma \vdash \mt{datatype} \; x \; \overline{y} = \overline{dc} \leadsto \Gamma'}{
+  \overline{y}; x; \Gamma, x :: \mt{Type}^{\mt{len}(\overline y)} \to \mt{Type} \vdash \overline{dc} \leadsto \Gamma'
+}$$
+
+$$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leadsto \Gamma'}{
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{datatype} \; z) = (\overline{y}, \overline{dc})
+  & \overline{y}; x; \Gamma, x :: \mt{Type}^{\mt{len}(\overline y)} \to \mt{Type} = M.z \vdash \overline{dc} \leadsto \Gamma'
+}$$
+
+$$\infer{\Gamma \vdash \mt{val} \; x : \tau \leadsto \Gamma, x : \tau}{
+  \Gamma \vdash \tau :: \mt{Type}
+}$$
+
+$$\infer{\Gamma \vdash \mt{structure} \; X : S \leadsto \Gamma, X : S}{
+  \Gamma \vdash S
+}
+\quad \infer{\Gamma \vdash \mt{signature} \; X = S \leadsto \Gamma, X = S}{
+  \Gamma \vdash S
+}$$
+
+$$\infer{\Gamma \vdash \mt{include} \; S \leadsto \Gamma, \mathcal O(\overline{s})}{
+  \Gamma \vdash S
+  & \Gamma \vdash S \equiv \mt{sig} \; \overline{s} \; \mt{end}
+}$$
+
+$$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leadsto \Gamma, c_1 \sim c_2}{
+  \Gamma \vdash c_1 :: \{\kappa\}
+  & \Gamma \vdash c_2 :: \{\kappa\}
+}$$
+
+$$\infer{\Gamma \vdash \mt{class} \; x = c \leadsto \Gamma, x :: \mt{Type} \to \mt{Type} = c}{
+  \Gamma \vdash c :: \mt{Type} \to \mt{Type}
+}
+\quad \infer{\Gamma \vdash \mt{class} \; x \leadsto \Gamma, x :: \mt{Type} \to \mt{Type}}{}$$
+
 \subsection{Signature Compatibility}
+
+To simplify the judgments in this section, we assume that all signatures are alpha-varied as necessary to avoid including mmultiple bindings for the same identifier.  This is in addition to the usual alpha-variation of locally-bound variables.
+
+We rely on a judgment $\Gamma \vdash \overline{s} \leq s'$, which expresses the occurrence in signature items $\overline{s}$ of an item compatible with $s'$.  We also use a judgment $\Gamma \vdash \overline{dc} \leq \overline{dc}$, which expresses compatibility of datatype definitions.
 
 $$\infer{\Gamma \vdash S \equiv S}{}
 \quad \infer{\Gamma \vdash S_1 \equiv S_2}{
@@ -609,27 +666,103 @@ $$\infer{\Gamma \vdash S \equiv S}{}
   X = S \in \Gamma
 }
 \quad \infer{\Gamma \vdash M.X \equiv S}{
-  \Gamma \vdash M : S'
-  & \mt{proj}(M, S', \mt{signature} \; X) = S
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{signature} \; X) = S
 }$$
 
 $$\infer{\Gamma \vdash S \; \mt{where} \; \mt{con} \; x = c \equiv \mt{sig} \; \overline{s^1} \; \mt{con} \; x :: \kappa = c \; \overline{s_2} \; \mt{end}}{
   \Gamma \vdash S \equiv \mt{sig} \; \overline{s^1} \; \mt{con} \; x :: \kappa \; \overline{s_2} \; \mt{end}
   & \Gamma \vdash c :: \kappa
+}
+\quad \infer{\Gamma \vdash \mt{sig} \; \overline{s^1} \; \mt{include} \; S \; \overline{s^2} \; \mt{end} \equiv \mt{sig} \; \overline{s^1} \; \overline{s} \; \overline{s^2} \; \mt{end}}{
+  \Gamma \vdash S \equiv \mt{sig} \; \overline{s} \; \mt{end}
 }$$
 
 $$\infer{\Gamma \vdash S_1 \leq S_2}{
   \Gamma \vdash S_1 \equiv S_2
 }
 \quad \infer{\Gamma \vdash \mt{sig} \; \overline{s} \; \mt{end} \leq \mt{sig} \; \mt{end}}{}
-\quad \infer{\Gamma \vdash \mt{sig} \; \overline{s^1} \; s \; \overline{s^2} \; \mt{end} \leq \mt{sig} \; s' \; \overline{s} \; \mt{end}}{
-  \Gamma \vdash s \leq s'; \Gamma'
-  & \Gamma' \vdash \mt{sig} \; \overline{s^1} \; s \; \overline{s^2} \; \mt{end} \leq \mt{sig} \; \overline{s} \; \mt{end}
+\quad \infer{\Gamma \vdash \mt{sig} \; \overline{s} \; \mt{end} \leq \mt{sig} \; s' \; \overline{s'} \; \mt{end}}{
+  \Gamma \vdash \overline{s} \leq s'
+  & \Gamma \vdash s' \leadsto \Gamma'
+  & \Gamma' \vdash \mt{sig} \; \overline{s} \; \mt{end} \leq \mt{sig} \; \overline{s'} \; \mt{end}
+}$$
+
+$$\infer{\Gamma \vdash s \; \overline{s} \leq s'}{
+  \Gamma \vdash s \leq s'
+}
+\quad \infer{\Gamma \vdash s \; \overline{s} \leq s'}{
+  \Gamma \vdash s \leadsto \Gamma'
+  & \Gamma' \vdash \overline{s} \leq s'
 }$$
 
 $$\infer{\Gamma \vdash \mt{functor} (X : S_1) : S_2 \leq \mt{functor} (X : S'_1) : S'_2}{
   \Gamma \vdash S'_1 \leq S_1
   & \Gamma, X : S'_1 \vdash S_2 \leq S'_2
+}$$
+
+$$\infer{\Gamma \vdash \mt{con} \; x :: \kappa \leq \mt{con} \; x :: \kappa}{}
+\quad \infer{\Gamma \vdash \mt{con} \; x :: \kappa = c \leq \mt{con} \; x :: \kappa}{}
+\quad \infer{\Gamma \vdash \mt{datatype} \; x \; \overline{y} = \overline{dc} \leq \mt{con} \; x :: \mt{Type}}{}$$
+
+$$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leq \mt{con} \; x :: \mt{Type}^{\mt{len}(y)} \to \mt{Type}}{
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{datatype} \; z) = (\overline{y}, \overline{dc})
+}$$
+
+$$\infer{\Gamma \vdash \mt{class} \; x \leq \mt{con} \; x :: \mt{Type} \to \mt{Type}}{}
+\quad \infer{\Gamma \vdash \mt{class} \; x = c \leq \mt{con} \; x :: \mt{Type} \to \mt{Type}}{}$$
+
+$$\infer{\Gamma \vdash \mt{con} \; x :: \kappa = c_1 \leq \mt{con} \; x :: \mt{\kappa} = c_2}{
+  \Gamma \vdash c_1 \equiv c_2
+}
+\quad \infer{\Gamma \vdash \mt{class} \; x = c_1 \leq \mt{con} \; x :: \mt{Type} \to \mt{Type} = c_2}{
+  \Gamma \vdash c_1 \equiv c_2
+}$$
+
+$$\infer{\Gamma \vdash \mt{datatype} \; x \; \overline{y} = \overline{dc} \leq \mt{datatype} \; x \; \overline{y} = \overline{dc'}}{
+  \Gamma, \overline{y :: \mt{Type}} \vdash \overline{dc} \leq \overline{dc'}
+}$$
+
+$$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leq \mt{datatype} \; x \; \overline{y} = \overline{dc'}}{
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
+  & \mt{proj}(M, \overline{s}, \mt{datatype} \; z) = (\overline{y}, \overline{dc})
+  & \Gamma, \overline{y :: \mt{Type}} \vdash \overline{dc} \leq \overline{dc'}
+}$$
+
+$$\infer{\Gamma \vdash \cdot \leq \cdot}{}
+\quad \infer{\Gamma \vdash X; \overline{dc} \leq X; \overline{dc'}}{
+  \Gamma \vdash \overline{dc} \leq \overline{dc'}
+}
+\quad \infer{\Gamma \vdash X \; \mt{of} \; \tau_1; \overline{dc} \leq X \; \mt{of} \; \tau_2; \overline{dc'}}{
+  \Gamma \vdash \tau_1 \equiv \tau_2
+  & \Gamma \vdash \overline{dc} \leq \overline{dc'}
+}$$
+
+$$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leq \mt{datatype} \; x = \mt{datatype} \; M'.z'}{
+  \Gamma \vdash M.z \equiv M'.z'
+}$$
+
+$$\infer{\Gamma \vdash \mt{val} \; x : \tau_1 \leq \mt{val} \; x : \tau_2}{
+  \Gamma \vdash \tau_1 \equiv \tau_2
+}
+\quad \infer{\Gamma \vdash \mt{structure} \; X : S_1 \leq \mt{structure} \; X : S_2}{
+  \Gamma \vdash S_1 \leq S_2
+}
+\quad \infer{\Gamma \vdash \mt{signature} \; X = S_1 \leq \mt{signature} \; X = S_2}{
+  \Gamma \vdash S_1 \leq S_2
+  & \Gamma \vdash S_2 \leq S_1
+}$$
+
+$$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leq \mt{constraint} \; c'_1 \sim c'_2}{
+  \Gamma \vdash c_1 \equiv c'_1
+  & \Gamma \vdash c_2 \equiv c'_2
+}$$
+
+$$\infer{\Gamma \vdash \mt{class} \; x \leq \mt{class} \; x}{}
+\quad \infer{\Gamma \vdash \mt{class} \; x = c \leq \mt{class} \; x}{}
+\quad \infer{\Gamma \vdash \mt{class} \; x = c_1 \leq \mt{class} \; x = c_2}{
+  \Gamma \vdash c_1 \equiv c_2
 }$$
 
 \end{document}
