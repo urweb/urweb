@@ -68,14 +68,14 @@ $$\begin{array}{rrcll}
 \emph{Constructors} are the main class of compile-time-only data.  They include proper types and are classified by kinds.
 $$\begin{array}{rrcll}
   \textrm{Constructors} & c, \tau &::=& (c) :: \kappa & \textrm{kind annotation} \\
-  &&& x & \textrm{constructor variable} \\
+  &&& \hat{x} & \textrm{constructor variable} \\
   \\
   &&& \tau \to \tau & \textrm{function type} \\
   &&& x \; ? \; \kappa \to \tau & \textrm{polymorphic function type} \\
   &&& \$ c & \textrm{record type} \\
   \\
   &&& c \; c & \textrm{type-level function application} \\
-  &&& \lambda x \; ? \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
+  &&& \lambda x \; :: \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
   \\
   &&& () & \textrm{type-level unit} \\
   &&& \#X & \textrm{field name} \\
@@ -91,6 +91,9 @@ $$\begin{array}{rrcll}
   \\
   &&& \_ :: \kappa & \textrm{wildcard} \\
   &&& (c) & \textrm{explicit precedence} \\
+  \\
+  \textrm{Qualified uncapitalized variables} & \hat{x} &::=& x & \textrm{not from a module} \\
+  &&& M.x & \textrm{projection from a module} \\
 \end{array}$$
 
 Modules of the module system are described by \emph{signatures}.
@@ -162,9 +165,6 @@ $$\begin{array}{rrcll}
   \\
   \textrm{Local declarations} & ed &::=& \cd{val} \; x : \tau = e & \textrm{non-recursive value} \\
   &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually-recursive values} \\
-  \\
-  \textrm{Qualified uncapitalized variables} & \hat{x} &::=& x & \textrm{not from a module} \\
-  &&& M.x & \textrm{projection from a module} \\
 \end{array}$$
 
 \emph{Declarations} primarily bring new symbols into context.
@@ -228,5 +228,90 @@ The syntax $\mt{if} \; e \; \mt{then} \; e_1 \; \mt{else} \; e_2$ expands to $\m
 There are infix operator syntaxes for a number of functions defined in the $\mt{Basis}$ module.  There is $=$ for $\mt{eq}$, $\neq$ for $\mt{neq}$, $-$ for $\mt{neg}$ (as a prefix operator) and $\mt{minus}$, $+$ for $\mt{plus}$, $\times$ for $\mt{times}$, $/$ for $\mt{div}$, $\%$ for $\mt{mod}$, $<$ for $\mt{lt}$, $\leq$ for $\mt{le}$, $>$ for $\mt{gt}$, and $\geq$ for $\mt{ge}$.
 
 A signature item $\mt{table} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_table} \; c$.  $\mt{sequence} \; x$ is short for $\mt{val} \; x : \mt{Basis}.\mt{sql\_sequence}$, and $\mt{cookie} \; x : \tau$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{http\_cookie} \; \tau$.
+
+
+\section{Static Semantics}
+
+In this section, we give a declarative presentation of Ur's typing rules and related judgments.  Inference is the subject of the next section; here, we assume that an oracle has filled in all wildcards with concrete values.
+
+Since there is significant mutual recursion among the judgments, we introduce them all before beginning to give rules.  We use the same variety of contexts throughout this section, implicitly introducing new sorts of context entries as needed.
+\begin{itemize}
+\item $\Gamma \vdash c :: \kappa$ assigns a kind to a constructor in a context.
+\item $\Gamma \vdash c \sim c$ proves the disjointness of two record constructors; that is, that they share no field names.  We overload the judgment to apply to pairs of field names as well.
+\item $\Gamma \vdash c \hookrightarrow \overline{c}$ proves that record constructor $c$ decomposes into set $\overline{c}$ of field names and record constructors.
+\item $\Gamma \vdash c \equiv c$ proves the computational equivalence of two constructors.  This is often called a \emph{definitional equality} in the world of type theory.
+\item $\Gamma \vdash e : \tau$ is a standard typing judgment.
+\item $\Gamma \vdash M : S$ is the module signature checking judgment.
+\item $\mt{proj}(M, S, V)$ is a partial function for projecting a signature item from a signature $S$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items of $S$.
+\end{itemize}
+
+\subsection{Kinding}
+
+$$\infer{\Gamma \vdash (c) :: \kappa :: \kappa}{
+  \Gamma \vdash c :: \kappa
+}
+\quad \infer{\Gamma \vdash x :: \kappa}{
+  x :: \kappa \in \Gamma
+}
+\quad \infer{\Gamma \vdash x :: \kappa}{
+  x :: \kappa = c \in \Gamma
+}$$
+
+$$\infer{\Gamma \vdash M.x :: \kappa}{
+  \Gamma \vdash M : S
+  & \mt{proj}(M, S, \mt{con} \; x) = \kappa
+}
+\quad \infer{\Gamma \vdash M.x :: \kappa}{
+  \Gamma \vdash M : S
+  & \mt{proj}(M, S, \mt{con} \; x) = (\kappa, c)
+}$$
+
+$$\infer{\Gamma \vdash \tau_1 \to \tau_2 :: \mt{Type}}{
+  \Gamma \vdash \tau_1 :: \mt{Type}
+  & \Gamma \vdash \tau_2 :: \mt{Type}
+}
+\quad \infer{\Gamma \vdash x \; ? \: \kappa \to \tau :: \mt{Type}}{
+  \Gamma, x :: \kappa \vdash \tau :: \mt{Type}
+}
+\quad \infer{\Gamma \vdash \$c :: \mt{Type}}{
+  \Gamma \vdash c :: \{\mt{Type}\}
+}$$
+
+$$\infer{\Gamma \vdash c_1 \; c_2 :: \kappa_2}{
+  \Gamma \vdash c_1 :: \kappa_1 \to \kappa_2
+  & \Gamma \vdash c_2 :: \kappa_1
+}
+\quad \infer{\Gamma \vdash \lambda x \; :: \; \kappa_1 \Rightarrow c :: \kappa_1 \to \kappa_2}{
+  \Gamma, x :: \kappa_1 \vdash c :: \kappa_2
+}$$
+
+$$\infer{\Gamma \vdash () :: \mt{Unit}}{}
+\quad \infer{\Gamma \vdash \#X :: \mt{Name}}{}$$
+
+$$\infer{\Gamma \vdash [\overline{c_i = c'_i}] :: \{\kappa\}}{
+  \forall i: \Gamma \vdash c_i : \mt{Name}
+  & \Gamma \vdash c'_i :: \kappa
+  & \forall i \neq j: \Gamma \vdash c_i \sim c_j
+}
+\quad \infer{\Gamma \vdash c_1 \rc c_2 :: \{\kappa\}}{
+  \Gamma \vdash c_1 :: \{\kappa\}
+  & \Gamma \vdash c_2 :: \{\kappa\}
+  & \Gamma \vdash c_1 \sim c_2
+}$$
+
+$$\infer{\Gamma \vdash \mt{fold} :: ((\mt{Name} \to \kappa_1 \to \kappa_2 \to \kappa_2) \to \kappa_2 \to \{\kappa_1\} \to \kappa_2}{}$$
+
+$$\infer{\Gamma \vdash (\overline c) :: (k_1 \times \ldots \times k_n)}{
+  \forall i: \Gamma \vdash c_i :: k_i
+}
+\quad \infer{\Gamma \vdash c.i :: k_i}{
+  \Gamma \vdash c :: (k_1 \times \ldots \times k_n)
+}$$
+
+$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow c :: \kappa}{
+  \Gamma \vdash c_1 :: \{\kappa'\}
+  & \Gamma \vdash c_2 :: \{\kappa'\}
+  & \Gamma, c_1 \sim c_2 \vdash c :: \kappa
+}$$
 
 \end{document}
