@@ -249,6 +249,7 @@ Since there is significant mutual recursion among the judgments, we introduce th
 \item $\Gamma \vdash S \leq S$ is the signature compatibility judgment.  We write $\Gamma \vdash S$ as shorthand for $\Gamma \vdash S \leq S$.
 \item $\Gamma \vdash M : S$ is the module signature checking judgment.
 \item $\mt{proj}(M, \overline{s}, V)$ is a partial function for projecting a signature item from $\overline{s}$, given the module $M$ that we project from.  $V$ may be $\mt{con} \; x$, $\mt{datatype} \; x$, $\mt{val} \; x$, $\mt{signature} \; X$, or $\mt{structure} \; X$.  The parameter $M$ is needed because the projected signature item may refer to other items from $\overline{s}$.
+\item $\mt{selfify}(M, \overline{s})$ adds information to signature items $\overline{s}$ to reflect the fact that we are concerned with the particular module $M$.  This function is overloaded to work over individual signature items as well.
 \end{itemize}
 
 \subsection{Kinding}
@@ -563,8 +564,13 @@ $$\infer{\Gamma \vdash \mt{val} \; \mt{rec} \; \overline{x : \tau = e} \leadsto 
 
 $$\infer{\Gamma \vdash \mt{structure} \; X : S = M \leadsto \Gamma, X : S}{
   \Gamma \vdash M : S
+  & \textrm{ ($M$ not a $\mt{struct} \; \ldots \; \mt{end}$)}
 }
-\quad \infer{\Gamma \vdash \mt{signature} \; X = S \leadsto \Gamma, X = S}{
+\quad \infer{\Gamma \vdash \mt{structure} \; X : S = \mt{struct} \; \overline{d} \; \mt{end} \leadsto \Gamma, X : \mt{selfify}(X, \overline{s})}{
+  \Gamma \vdash \mt{struct} \; \overline{d} \; \mt{end} : \mt{sig} \; \overline{s} \; \mt{end}
+}$$
+
+$$\infer{\Gamma \vdash \mt{signature} \; X = S \leadsto \Gamma, X = S}{
   \Gamma \vdash S
 }$$
 
@@ -813,6 +819,23 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{sigOf}(\mt{sequence} \; x) &=& \mt{sequence} \; x \\
   \mt{sigOf}(\mt{cookie} \; x : \tau) &=& \mt{cookie} \; x : \tau \\
   \mt{sigOf}(\mt{class} \; x = c) &=& \mt{class} \; x = c \\
+\end{eqnarray*}
+
+\begin{eqnarray*}
+  \mt{selfify}(M, \cdot) &=& \cdot \\
+  \mt{selfify}(M, s \; \overline{s'}) &=& \mt{selfify}(M, \sigma, s) \; \mt{selfify}(M, \overline{s'}) \\
+  \\
+  \mt{selfify}(M, \mt{con} \; x :: \kappa) &=& \mt{con} \; x :: \kappa = M.x \\
+  \mt{selfify}(M, \mt{con} \; x :: \kappa = c) &=& \mt{con} \; x :: \kappa = c \\
+  \mt{selfify}(M, \mt{datatype} \; x \; \overline{y} = \overline{dc}) &=& \mt{datatype} \; x \; \overline{y} = \mt{datatype} \; M.x \\
+  \mt{selfify}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z) &=& \mt{datatype} \; x = \mt{datatype} \; M'.z \\
+  \mt{selfify}(M, \mt{val} \; x : \tau) &=& \mt{val} \; x : \tau \\
+  \mt{selfify}(M, \mt{structure} \; X : S) &=& \mt{structure} \; X : \mt{selfify}(M.X, \overline{s}) \textrm{ (where $\Gamma \vdash S \equiv \mt{sig} \; \overline{s} \; \mt{end}$)} \\
+  \mt{selfify}(M, \mt{signature} \; X = S) &=& \mt{signature} \; X = S \\
+  \mt{selfify}(M, \mt{include} \; S) &=& \mt{include} \; S \\
+  \mt{selfify}(M, \mt{constraint} \; c_1 \sim c_2) &=& \mt{constraint} \; c_1 \sim c_2 \\
+  \mt{selfify}(M, \mt{class} \; x) &=& \mt{class} \; x = M.x \\
+  \mt{selfify}(M, \mt{class} \; x = c) &=& \mt{class} \; x = c \\
 \end{eqnarray*}
 
 \end{document}
