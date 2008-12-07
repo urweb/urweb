@@ -1245,4 +1245,58 @@ $$\begin{array}{l}
   \mt{val} \; \mt{error} : \mt{t} ::: \mt{Type} \to \mt{xml} \; [\mt{Body}] \; [] \; [] \to \mt{t}
 \end{array}$$
 
+
+\section{Ur/Web Syntax Extensions}
+
+Ur/Web features some syntactic shorthands for building values using the functions from the last section.  This section sketches the grammar of those extensions.  We write spans of syntax inside brackets to indicate that they are optional.
+
+\subsection{SQL}
+
+\subsubsection{Queries}
+
+$$\begin{array}{rrcll}
+  \textrm{Queries} & Q &::=& (q \; [\mt{ORDER} \; \mt{BY} \; (E \; [D],)^+] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N]) \\
+  \textrm{Pre-queries} & q &::=& \mt{SELECT} \; P \; \mt{FROM} \; T,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
+  &&& \mid q \; R \; q \\
+  \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT}
+\end{array}$$
+
+$$\begin{array}{rrcll}
+  \textrm{Projections} & P &::=& \ast & \textrm{all columns} \\
+  &&& p,^+ & \textrm{particular columns} \\
+  \textrm{Pre-projections} & p &::=& t.f & \textrm{one column from a table} \\
+  &&& t.\{\{c\}\} & \textrm{a record of colums from a table (of kind $\{\mt{Type}\}$)} \\
+  \textrm{Table names} & t &::=& x & \textrm{constant table name (automatically capitalized)} \\
+  &&& X & \textrm{constant table name} \\
+  &&& \{\{c\}\} & \textrm{computed table name (of kind $\mt{Name}$)} \\
+  \textrm{Column names} & f &::=& X & \textrm{constant column name} \\
+  &&& \{c\} & \textrm{computed column name (of kind $\mt{Name}$)} \\
+  \textrm{Tables} & T &::=& x & \textrm{table variable, named locally by its own capitalization} \\
+  &&& x \; \mt{AS} \; t & \textrm{table variable, with local name} \\
+  &&& \{\{e\}\} \; \mt{AS} \; t & \textrm{computed table expression, with local name} \\
+  \textrm{SQL expressions} & E &::=& p & \textrm{column references} \\
+  &&& X & \textrm{named expression references} \\
+  &&& \{\{e\}\} & \textrm{injected native Ur expressions} \\
+  &&& \{e\} & \textrm{computed expressions, probably using $\mt{sql\_exp}$ directly} \\
+  &&& \mt{TRUE} \mid \mt{FALSE} & \textrm{boolean constants} \\
+  &&& \ell & \textrm{primitive type literals} \\
+  &&& \mt{NULL} & \textrm{null value (injection of $\mt{None}$)} \\
+  &&& E \; \mt{IS} \; \mt{NULL} & \textrm{nullness test} \\
+  &&& n & \textrm{nullary operators} \\
+  &&& u \; E & \textrm{unary operators} \\
+  &&& E \; b \; E & \textrm{binary operators} \\
+  &&& \mt{COUNT}(\ast) & \textrm{count number of rows} \\
+  &&& a(E) & \textrm{other aggregate function} \\
+  &&& (E) & \textrm{explicit precedence} \\
+  \textrm{Nullary operators} & n &::=& \mt{CURRENT\_TIMESTAMP} \\
+  \textrm{Unary operators} & u &::=& \mt{NOT} \\
+  \textrm{Binary operators} & b &::=& \mt{AND} \mid \mt{OR} \mid \neq \mid < \mid \leq \mid > \mid \geq \\
+  \textrm{Aggregate functions} & a &::=& \mt{AVG} \mid \mt{SUM} \mid \mt{MIN} \mid \mt{MAX} \\
+  \textrm{Directions} & D &::=& \mt{ASC} \mid \mt{DESC} \\
+  \textrm{SQL integer} & N &::=& n \mid \{e\} \\
+\end{array}$$
+
+Additionally, an SQL expression may be inserted into normal Ur code with the syntax $(\mt{SQL} \; E)$ or $(\mt{WHERE} \; E)$.
+
+
 \end{document}
