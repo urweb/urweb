@@ -1313,4 +1313,20 @@ $$\begin{array}{rrcll}
 
 Inside $\mt{UPDATE}$ and $\mt{DELETE}$ commands, lone variables $X$ are interpreted as references to columns of the implicit table $\mt{T}$, rather than to named expressions.
 
+\subsection{XML}
+
+XML fragments $L$ are added to the rules for expressions $e$.
+
+$$\begin{array}{rrcll}
+  \textrm{XML fragments} & L &::=& \texttt{<xml/>} \mid \texttt{<xml>}l^*\texttt{</xml>} \\
+  \textrm{XML pieces} & l &::=& \textrm{text} & \textrm{cdata} \\
+  &&& \texttt{<}g\texttt{/>} & \textrm{tag with no children} \\
+  &&& \texttt{<}g\texttt{>}l^*\texttt{</}x\texttt{>} & \textrm{tag with children} \\
+  \textrm{Tag} & g &::=& h \; (x = v)^* \\
+  \textrm{Tag head} & h &::=& x & \textrm{tag name} \\
+  &&& h\{c\} & \textrm{constructor parameter} \\
+  \textrm{Attribute value} & v &::=& \ell & \textrm{literal value} \\
+  &&& \{e\} & \textrm{computed value} \\
+\end{array}$$
+
 \end{document}
