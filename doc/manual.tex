@@ -981,6 +981,14 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{sql\_query} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
 
+Queries are used by folding over their results inside transactions.
+$$\begin{array}{l}
+  \mt{val} \; \mt{query} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \lambda [\mt{tables} \sim \mt{exps}] \Rightarrow \mt{state} ::: \mt{Type} \to \mt{sql\_query} \; \mt{tables} \; \mt{exps} \\
+  \hspace{.1in} \to (\$(\mt{exps} \rc \mt{fold} \; (\lambda \mt{nm} \; (\mt{fields} :: \{\mt{Type}\}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \$\mt{fields}] \rc \mt{acc}) \; [] \; \mt{tables}) \\
+  \hspace{.2in} \to \mt{state} \to \mt{transaction} \; \mt{state}) \\
+  \hspace{.1in} \to \mt{state} \to \mt{transaction} \; \mt{state}
+\end{array}$$
+
 Most of the complexity of the query encoding is in the type $\mt{sql\_query1}$, which includes simple queries and derived queries based on relational operators.  Constructor arguments respectively specify the tables we select from, the subset of fields that we keep from each table for the result rows, and the extra expressions that we select.
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_query1} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
@@ -1149,6 +1157,34 @@ $$\begin{array}{l}
   \mt{type} \; \mt{sql\_offset} \\
   \mt{val} \; \mt{sql\_no\_offset} : \mt{sql\_offset} \\
   \mt{val} \; \mt{sql\_offset} : \mt{int} \to \mt{sql\_offset}
+\end{array}$$
+
+
+\subsubsection{DML}
+
+The Ur/Web library also includes an embedding of a fragment of SQL's DML, the Data Manipulation Language, for modifying database tables.  Any piece of DML may be executed in a transaction.
+
+$$\begin{array}{l}
+  \mt{type} \; \mt{dml} \\
+  \mt{val} \; \mt{dml} : \mt{dml} \to \mt{transaction} \; \mt{unit}
+\end{array}$$
+
+Properly-typed records may be used to form $\mt{INSERT}$ commands.
+$$\begin{array}{l}
+  \mt{val} \; \mt{insert} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \\
+  \hspace{.1in} \to \$(\mt{fold} \; (\lambda \mt{nm} \; (\mt{t} :: \mt{Type}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{sql\_exp} \; [] \; [] \; [] \; \mt{t}] \rc \mt{acc}) \; [] \; \mt{fields}) \to \mt{dml}
+\end{array}$$
+
+An $\mt{UPDATE}$ command is formed from a choice of which table fields to leave alone and which to change, along with an expression to use to compute the new value of each changed field and a $\mt{WHERE}$ clause.
+$$\begin{array}{l}
+  \mt{val} \; \mt{update} : \mt{unchanged} ::: \{\mt{Type}\} \to \mt{changed} :: \{\mt{Type}\} \to \lambda [\mt{changed} \sim \mt{unchanged}] \\
+  \hspace{.1in} \Rightarrow \$(\mt{fold} \; (\lambda \mt{nm} \; (\mt{t} :: \mt{Type}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{t}] \rc \mt{acc}) \; [] \; \mt{changed}) \\
+  \hspace{.1in} \to \mt{sql\_table} \; (\mt{changed} \rc \mt{unchanged}) \to \mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{bool} \to \mt{dml}
+\end{array}$$
+
+A $\mt{DELETE}$ command is formed from a table and a $\mt{WHERE}$ clause.
+$$\begin{array}{l}
+  \mt{val} \; \mt{delete} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \to \mt{sql\_exp} \; [\mt{T} = \mt{fields}] \; [] \; [] \; \mt{bool} \to \mt{dml}
 \end{array}$$
 
 \end{document}
