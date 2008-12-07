@@ -1254,8 +1254,10 @@ Ur/Web features some syntactic shorthands for building values using the function
 
 \subsubsection{Queries}
 
+Queries $Q$ are added to the rules for expressions $e$.
+
 $$\begin{array}{rrcll}
-  \textrm{Queries} & Q &::=& (q \; [\mt{ORDER} \; \mt{BY} \; (E \; [D],)^+] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N]) \\
+  \textrm{Queries} & Q &::=& (q \; [\mt{ORDER} \; \mt{BY} \; (E \; [o],)^+] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N]) \\
   \textrm{Pre-queries} & q &::=& \mt{SELECT} \; P \; \mt{FROM} \; T,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
   &&& \mid q \; R \; q \\
   \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT}
@@ -1292,11 +1294,23 @@ $$\begin{array}{rrcll}
   \textrm{Unary operators} & u &::=& \mt{NOT} \\
   \textrm{Binary operators} & b &::=& \mt{AND} \mid \mt{OR} \mid \neq \mid < \mid \leq \mid > \mid \geq \\
   \textrm{Aggregate functions} & a &::=& \mt{AVG} \mid \mt{SUM} \mid \mt{MIN} \mid \mt{MAX} \\
-  \textrm{Directions} & D &::=& \mt{ASC} \mid \mt{DESC} \\
+  \textrm{Directions} & o &::=& \mt{ASC} \mid \mt{DESC} \\
   \textrm{SQL integer} & N &::=& n \mid \{e\} \\
 \end{array}$$
 
 Additionally, an SQL expression may be inserted into normal Ur code with the syntax $(\mt{SQL} \; E)$ or $(\mt{WHERE} \; E)$.
 
+\subsubsection{DML}
+
+DML commands $D$ are added to the rules for expressions $e$.
+
+$$\begin{array}{rrcll}
+  \textrm{Commands} & D &::=& (\mt{INSERT} \; \mt{INTO} \; T^E \; (f,^+) \; \mt{VALUES} \; (E,^+)) \\
+  &&& (\mt{UPDATE} \; T^E \; \mt{SET} \; (f = E,)^+ \; \mt{WHERE} \; E) \\
+  &&& (\mt{DELETE} \; \mt{FROM} \; T^E \; \mt{WHERE} \; E) \\
+  \textrm{Table expressions} & T^E &::=& x \mid \{\{e\}\}
+\end{array}$$
+
+Inside $\mt{UPDATE}$ and $\mt{DELETE}$ commands, lone variables $X$ are interpreted as references to columns of the implicit table $\mt{T}$, rather than to named expressions.
 
 \end{document}
