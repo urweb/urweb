@@ -1187,4 +1187,14 @@ $$\begin{array}{l}
   \mt{val} \; \mt{delete} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \to \mt{sql\_exp} \; [\mt{T} = \mt{fields}] \; [] \; [] \; \mt{bool} \to \mt{dml}
 \end{array}$$
 
+\subsubsection{Sequences}
+
+SQL sequences are counters with concurrency control, often used to assign unique IDs.  Ur/Web supports them via a simple interface.  The only way to create a sequence is with the $\mt{sequence}$ declaration form.
+
+$$\begin{array}{l}
+  \mt{type} \; \mt{sql\_sequence} \\
+  \mt{val} \; \mt{nextval} : \mt{sql\_sequence} \to \mt{transaction} \; \mt{int}
+\end{array}$$
+
+
 \end{document}
