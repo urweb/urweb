@@ -232,7 +232,7 @@ val sql_comparison : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
         -> sql_exp tables agg exps bool
 
 val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                -> unit -> sql_exp tables agg exps int
+                -> sql_exp tables agg exps int
 
 con sql_aggregate :: Type -> Type
 val sql_aggregate : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}

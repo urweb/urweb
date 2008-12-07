@@ -922,7 +922,6 @@ The built-in parts of the Ur/Web standard library are described by the signature
 Additionally, other common functions that are definable within Ur are included in \texttt{lib/top.urs} and \texttt{lib/top.ur}.  This $\mt{Top}$ module is also opened implicitly.
 
 The idea behind Ur is to serve as the ideal host for embedded domain-specific languages.  For now, however, the ``generic'' functionality is intermixed with Ur/Web-specific functionality, including in these two library modules.  We hope that these generic library components have types that speak for themselves.  The next section introduces the Ur/Web-specific elements.  Here, we only give the type declarations from the beginning of $\mt{Basis}$.
-
 $$\begin{array}{l}
   \mt{type} \; \mt{int} \\
   \mt{type} \; \mt{float} \\
@@ -942,7 +941,6 @@ $$\begin{array}{l}
 \subsection{Transactions}
 
 Ur is a pure language; we use Haskell's trick to support controlled side effects.  The standard library defines a monad $\mt{transaction}$, meant to stand for actions that may be undone cleanly.  By design, no other kinds of actions are supported.
-
 $$\begin{array}{l}
   \mt{con} \; \mt{transaction} :: \mt{Type} \to \mt{Type} \\
   \\
@@ -953,7 +951,6 @@ $$\begin{array}{l}
 \subsection{HTTP}
 
 There are transactions for reading an HTTP header by name and for getting and setting strongly-typed cookies.  Cookies may only be created by the $\mt{cookie}$ declaration form, ensuring that they be named consistently based on module structure.
-
 $$\begin{array}{l}
 \mt{val} \; \mt{requestHeader} : \mt{string} \to \mt{transaction} \; (\mt{option} \; \mt{string}) \\
 \\
@@ -965,7 +962,6 @@ $$\begin{array}{l}
 \subsection{SQL}
 
 The fundamental unit of interest in the embedding of SQL is tables, described by a type family and creatable only via the $\mt{table}$ declaration form.
-
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_table} :: \{\mt{Type}\} \to \mt{Type}
 \end{array}$$
@@ -973,7 +969,6 @@ $$\begin{array}{l}
 \subsubsection{Queries}
 
 A final query is constructed via the $\mt{sql\_query}$ function.  Constructor arguments respectively specify the table fields we select (as records mapping tables to the subsets of their fields that we choose) and the (always named) extra expressions that we select.
-
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_query} :: \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_query} : \mt{tables} ::: \{\{\mt{Type}\}\} \\
@@ -987,7 +982,6 @@ $$\begin{array}{l}
 \end{array}$$
 
 Most of the complexity of the query encoding is in the type $\mt{sql\_query1}$, which includes simple queries and derived queries based on relational operators.  Constructor arguments respectively specify the tables we select from, the subset of fields that we keep from each table for the result rows, and the extra expressions that we select.
-
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_query1} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
   \\
@@ -1020,7 +1014,6 @@ $$\begin{array}{l}
 \end{array}$$
 
 To encode projection of subsets of fields in $\mt{SELECT}$ clauses, and to encode $\mt{GROUP} \; \mt{BY}$ clauses, we rely on a type family $\mt{sql\_subset}$, capturing what it means for one record of table fields to be a subset of another.  The main constructor $\mt{sql\_subset}$ ``proves subset facts'' by requiring a split of a record into kept and dropped parts.  The extra constructor $\mt{sql\_subset\_all}$ is a convenience for keeping all fields of a record.
-
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_subset} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_subset} : \mt{keep\_drop} :: \{(\{\mt{Type}\} \times \{\mt{Type}\})\} \\
@@ -1032,19 +1025,130 @@ $$\begin{array}{l}
 \end{array}$$
 
 SQL expressions are used in several places, including $\mt{SELECT}$, $\mt{WHERE}$, $\mt{HAVING}$, and $\mt{ORDER} \; \mt{BY}$ clauses.  They reify a fragment of the standard SQL expression language, while making it possible to inject ``native'' Ur values in some places.  The arguments to the $\mt{sql\_exp}$ type family respectively give the unrestricted-availablity table fields, the table fields that may only be used in arguments to aggregate functions, the available selected expressions, and the type of the expression.
-
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_exp} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \to \mt{Type}
 \end{array}$$
 
 Any field in scope may be converted to an expression.
-
 $$\begin{array}{l}
   \mt{val} \; \mt{sql\_field} : \mt{otherTabs} ::: \{\{\mt{Type}\}\} \to \mt{otherFields} ::: \{\mt{Type}\} \\
   \hspace{.1in} \to \mt{fieldType} ::: \mt{Type} \to \mt{agg} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{exps} ::: \{\mt{Type}\} \\
   \hspace{.1in} \to \mt{tab} :: \mt{Name} \to \mt{field} :: \mt{Name} \\
   \hspace{.1in} \to \mt{sql\_exp} \; ([\mt{tab} = [\mt{field} = \mt{fieldType}] \rc \mt{otherFields}] \rc \mt{otherTabs}) \; \mt{agg} \; \mt{exps} \; \mt{fieldType}
+\end{array}$$
+
+There is an analogous function for referencing named expressions.
+$$\begin{array}{l}
+  \mt{val} \; \mt{sql\_exp} : \mt{tabs} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{t} ::: \mt{Type} \to \mt{rest} ::: \{\mt{Type}\} \to \mt{nm} :: \mt{Name} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tabs} \; \mt{agg} \; ([\mt{nm} = \mt{t}] \rc \mt{rest}) \; \mt{t}
+\end{array}$$
+
+Ur values of appropriate types may be injected into SQL expressions.
+$$\begin{array}{l}
+  \mt{class} \; \mt{sql\_injectable} \\
+  \mt{val} \; \mt{sql\_bool} : \mt{sql\_injectable} \; \mt{bool} \\
+  \mt{val} \; \mt{sql\_int} : \mt{sql\_injectable} \; \mt{int} \\
+  \mt{val} \; \mt{sql\_float} : \mt{sql\_injectable} \; \mt{float} \\
+  \mt{val} \; \mt{sql\_string} : \mt{sql\_injectable} \; \mt{string} \\
+  \mt{val} \; \mt{sql\_time} : \mt{sql\_injectable} \; \mt{time} \\
+  \mt{val} \; \mt{sql\_option\_bool} : \mt{sql\_injectable} \; (\mt{option} \; \mt{bool}) \\
+  \mt{val} \; \mt{sql\_option\_int} : \mt{sql\_injectable} \; (\mt{option} \; \mt{int}) \\
+  \mt{val} \; \mt{sql\_option\_float} : \mt{sql\_injectable} \; (\mt{option} \; \mt{float}) \\
+  \mt{val} \; \mt{sql\_option\_string} : \mt{sql\_injectable} \; (\mt{option} \; \mt{string}) \\
+  \mt{val} \; \mt{sql\_option\_time} : \mt{sql\_injectable} \; (\mt{option} \; \mt{time}) \\
+  \mt{val} \; \mt{sql\_inject} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \to \mt{sql\_injectable} \; \mt{t} \\
+  \hspace{.1in} \to \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+\end{array}$$
+
+We have the SQL nullness test, which is necessary because of the strange SQL semantics of equality in the presence of null values.
+$$\begin{array}{l}
+  \mt{val} \; \mt{sql\_is\_null} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; (\mt{option} \; \mt{t}) \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{bool}
+\end{array}$$
+
+We have generic nullary, unary, and binary operators, as well as comparison operators.
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_nfunc} :: \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_current\_timestamp} : \mt{sql\_nfunc} \; \mt{time} \\
+  \mt{val} \; \mt{sql\_nfunc} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_nfunc} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \\\end{array}$$
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_unary} :: \mt{Type} \to \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_not} : \mt{sql\_unary} \; \mt{bool} \; \mt{bool} \\
+  \mt{val} \; \mt{sql\_unary} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{arg} ::: \mt{Type} \to \mt{res} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_unary} \; \mt{arg} \; \mt{res} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{arg} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{res} \\
+\end{array}$$
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_binary} :: \mt{Type} \to \mt{Type} \to \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_and} : \mt{sql\_binary} \; \mt{bool} \; \mt{bool} \; \mt{bool} \\
+  \mt{val} \; \mt{sql\_or} : \mt{sql\_binary} \; \mt{bool} \; \mt{bool} \; \mt{bool} \\
+  \mt{val} \; \mt{sql\_binary} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{arg_1} ::: \mt{Type} \to \mt{arg_2} ::: \mt{Type} \to \mt{res} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_binary} \; \mt{arg_1} \; \mt{arg_2} \; \mt{res} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{arg_1} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{arg_2} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{res}
+\end{array}$$
+
+$$\begin{array}{l}
+  \mt{type} \; \mt{sql\_comparison} \\
+  \mt{val} \; \mt{sql\_eq} : \mt{sql\_comparison} \\
+  \mt{val} \; \mt{sql\_ne} : \mt{sql\_comparison} \\
+  \mt{val} \; \mt{sql\_lt} : \mt{sql\_comparison} \\
+  \mt{val} \; \mt{sql\_le} : \mt{sql\_comparison} \\
+  \mt{val} \; \mt{sql\_gt} : \mt{sql\_comparison} \\
+  \mt{val} \; \mt{sql\_ge} : \mt{sql\_comparison} \\
+  \mt{val} \; \mt{sql\_comparison} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_comparison} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{bool}
+ \end{array}$$
+
+Finally, we have aggregate functions.  The $\mt{COUNT(\ast)}$ syntax is handled specially, since it takes no real argument.  The other aggregate functions are placed into a general type family, using type classes to restrict usage to properly-typed arguments.  The key aspect of the $\mt{sql\_aggregate}$ function's type is the shift of aggregate-function-only fields into unrestricted fields.
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{sql\_count} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{int}
+\end{array}$$
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_aggregate} :: \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_aggregate} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_aggregate} \; \mt{t} \to \mt{sql\_exp} \; \mt{agg} \; \mt{agg} \; \mt{exps} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+\end{array}$$
+ 
+$$\begin{array}{l}
+  \mt{class} \; \mt{sql\_summable} \\
+  \mt{val} \; \mt{sql\_summable\_int} : \mt{sql\_summable} \; \mt{int} \\
+  \mt{val} \; \mt{sql\_summable\_float} : \mt{sql\_summable} \; \mt{float} \\
+  \mt{val} \; \mt{sql\_avg} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_sum} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \mt{t} \to \mt{sql\_aggregate} \; \mt{t}
+\end{array}$$
+
+$$\begin{array}{l}
+  \mt{class} \; \mt{sql\_maxable} \\
+  \mt{val} \; \mt{sql\_maxable\_int} : \mt{sql\_maxable} \; \mt{int} \\
+  \mt{val} \; \mt{sql\_maxable\_float} : \mt{sql\_maxable} \; \mt{float} \\
+  \mt{val} \; \mt{sql\_maxable\_string} : \mt{sql\_maxable} \; \mt{string} \\
+  \mt{val} \; \mt{sql\_maxable\_time} : \mt{sql\_maxable} \; \mt{time} \\
+  \mt{val} \; \mt{sql\_max} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_min} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t}
+\end{array}$$
+
+We wrap up the definition of query syntax with the types used in representing $\mt{ORDER} \; \mt{BY}$, $\mt{LIMIT}$, and $\mt{OFFSET}$ clauses.
+$$\begin{array}{l}
+  \mt{type} \; \mt{sql\_direction} \\
+  \mt{val} \; \mt{sql\_asc} : \mt{sql\_direction} \\
+  \mt{val} \; \mt{sql\_desc} : \mt{sql\_direction} \\
+  \\
+  \mt{con} \; \mt{sql\_order\_by} :: \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_order\_by\_Nil} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} :: \{\mt{Type}\} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
+  \mt{val} \; \mt{sql\_order\_by\_Cons} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; [] \; \mt{exps} \; \mt{t} \to \mt{sql\_direction} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
+  \\
+  \mt{type} \; \mt{sql\_limit} \\
+  \mt{val} \; \mt{sql\_no\_limit} : \mt{sql\_limit} \\
+  \mt{val} \; \mt{sql\_limit} : \mt{int} \to \mt{sql\_limit} \\
+  \\
+  \mt{type} \; \mt{sql\_offset} \\
+  \mt{val} \; \mt{sql\_no\_offset} : \mt{sql\_offset} \\
+  \mt{val} \; \mt{sql\_offset} : \mt{int} \to \mt{sql\_offset}
 \end{array}$$
 
 \end{document}

@@ -1267,8 +1267,7 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
        | COUNT LPAREN STAR RPAREN       (let
                                              val loc = s (COUNTleft, RPARENright)
                                          in
-                                             (EApp ((EVar (["Basis"], "sql_count", Infer), loc),
-                                                    (ERecord [], loc)), loc)
+                                             (EVar (["Basis"], "sql_count", Infer), loc)
                                          end)
        | sqlagg LPAREN sqlexp RPAREN    (let
                                              val loc = s (sqlaggleft, RPARENright)

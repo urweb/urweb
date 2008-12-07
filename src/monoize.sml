@@ -1530,8 +1530,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               (L.EFfi ("Basis", "sql_count"), _),
               _), _),
              _), _),
-            _) => ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                             (L'.EPrim (Prim.String "COUNT(*)"), loc)), loc),
+            _) => ((L'.EPrim (Prim.String "COUNT(*)"), loc),
                    fm)
 
           | L.ECApp (
