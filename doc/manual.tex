@@ -47,7 +47,7 @@ We write $\ell$ for literals of the primitive types, for the most part following
 
 This version of the manual doesn't include operator precedences; see \texttt{src/urweb.grm} for that.
 
-\subsection{Core Syntax}
+\subsection{\label{core}Core Syntax}
 
 \emph{Kinds} classify types and other compile-time-only entities.  Each kind in the grammar is listed with a description of the sort of data it classifies.
 $$\begin{array}{rrcll}
@@ -1328,5 +1328,102 @@ $$\begin{array}{rrcll}
   \textrm{Attribute value} & v &::=& \ell & \textrm{literal value} \\
   &&& \{e\} & \textrm{computed value} \\
 \end{array}$$
+
+
+\section{Compiler Phases}
+
+The Ur/Web compiler is unconventional in that it relies on a kind of \emph{heuristic compilation}.  Not all valid programs will compile successfully.  Informally, programs fail to compile when they are ``too higher order.''  Compiler phases do their best to eliminate different kinds of higher order-ness, but some programs just won't compile.  This is a trade-off for producing very efficient executables.  Compiled Ur/Web programs use native C representations and require no garbage collection.
+
+In this section, we step through the main phases of compilation, noting what consequences each phase has for effective programming.
+
+\subsection{Parse}
+
+The compiler reads a \texttt{.urp} file, figures out which \texttt{.urs} and \texttt{.ur} files it references, and combines them all into what is conceptually a single sequence of declarations in the core language of Section \ref{core}.
+
+\subsection{Elaborate}
+
+This is where type inference takes place, translating programs into an explicit form with no more wildcards.  This phase is the most likely source of compiler error messages.
+
+\subsection{Unnest}
+
+Named local function definitions are moved to the top level, to avoid the need to generate closures.
+
+\subsection{Corify}
+
+Module system features are compiled away, through inlining of functor definitions at application sites.  Afterward, most abstraction boundaries are broken, facilitating optimization.
+
+\subsection{Especialize}
+
+Functions are specialized to particular argument patterns.  This is an important trick for avoiding the need to maintain any closures at runtime.
+
+\subsection{Untangle}
+
+Remove unnecessary mutual recursion, splitting recursive groups into strongly-connected components.
+
+\subsection{Shake}
+
+Remove all definitions not needed to run the page handlers that are visible in the signature of the last module listed in the \texttt{.urp} file.
+
+\subsection{Tag}
+
+Assign a URL name to each link and form action.  It is important that these links and actions are written as applications of named functions, because such names are used to generate URL patterns.  A URL pattern has a name built from the full module path of the named function, followed by the function name, with all pieces separated by slashes.  The path of a functor application is based on the name given to the result, rather than the path of the functor itself.
+
+\subsection{Reduce}
+
+Apply definitional equality rules to simplify the program as much as possible.  This effectively includes inlining of every non-recursive definition.
+
+\subsection{Unpoly}
+
+This phase specializes polymorphic functions to the specific arguments passed to them in the program.  If the program contains real polymorphic recursion, Unpoly will be insufficient to avoid later error messages about too much polymorphism.
+
+\subsection{Specialize}
+
+Replace uses of parametrized datatypes with versions specialized to specific parameters.  As for Unpoly, this phase will not be effective enough in the presence of polymorphic recursion or other fancy uses of impredicative polymorphism.
+
+\subsection{Shake}
+
+Here the compiler repeats the earlier shake phase.
+
+\subsection{Monoize}
+
+Programs are translated to a new intermediate language without polymorphism or non-$\mt{Type}$ constructors.  Error messages may pop up here if earlier phases failed to remove such features.
+
+This is the stage at which concrete names are generated for cookies, tables, and sequences.  They are named following the same convention as for links and actions, based on module path information saved from earlier stages.  Table and sequence names separate path elements with underscores instead of slashes, and they are prefixed by \texttt{uw\_}.
+\subsection{MonoOpt}
+
+Simple algebraic laws are applied to simplify the program, focusing especially on efficient imperative generation of HTML pages.
+
+\subsection{MonoUntangle}
+
+Unnecessary mutual recursion is broken up again.
+
+\subsection{MonoReduce}
+
+Equivalents of the definitional equality rules are applied to simplify programs, with inlining again playing a major role.
+
+\subsection{MonoShake, MonoOpt}
+
+Unneeded declarations are removed, and basic optimizations are repeated.
+
+\subsection{Fuse}
+
+The compiler tries to simplify calls to recursive functions whose results are immediately written as page output.  The write action is pushed inside the function definitions to avoid allocation of intermediate results.
+
+\subsection{MonoUntangle, MonoShake}
+
+Fuse often creates more opportunities to remove spurious mutual recursion.
+
+\subsection{Pathcheck}
+
+The compiler checks that no link or action name has been used more than once.
+
+\subsection{Cjrize}
+
+The program is translated to what is more or less a subset of C.  If any use of functions as data remains at this point, the compiler will complain.
+
+\subsection{C Compilation and Linking}
+
+The output of the last phase is pretty-printed as C source code and passed to GCC.
+
 
 \end{document}
