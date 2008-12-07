@@ -255,10 +255,11 @@ static void *worker(void *data) {
 
             uw_reset_keep_error_message(ctx);
             uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\r\n");
-            uw_write_header(ctx, "Content-type: text/plain\r\n");
+            uw_write_header(ctx, "Content-type: text/html\r\n");
+            uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
             uw_write(ctx, "Fatal error: ");
             uw_write(ctx, uw_error_message(ctx));
-            uw_write(ctx, "\n");
+            uw_write(ctx, "\n</body></html>");
 
             try_rollback(ctx);
 
