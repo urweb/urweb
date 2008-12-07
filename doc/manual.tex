@@ -1,5 +1,5 @@
 \documentclass{article}
-\usepackage{fullpage,amsmath,amssymb,proof}
+\usepackage{fullpage,amsmath,amssymb,proof,url}
 
 \newcommand{\cd}[1]{\texttt{#1}}
 \newcommand{\mt}[1]{\mathsf{#1}}
@@ -16,6 +16,33 @@
 \maketitle
 
 \tableofcontents
+
+
+\section{Introduction}
+
+\emph{Ur} is a programming language designed to introduce richer type system features into functional programming in the tradition of ML and Haskell.  Ur is functional, pure, statically-typed, and strict.  Ur supports a powerful kind of \emph{metaprogramming} based on \emph{row types}.
+
+\emph{Ur/Web} is Ur plus a special standard library and associated rules for parsing and optimization.  Ur/Web supports construction of dynamic web applications backed by SQL databases.  The signature of the standard library is such that well-typed Ur/Web programs ``don't go wrong'' in a very broad sense.  Not only do they not crash during particular page generations, but they also may not:
+
+\begin{itemize}
+\item Suffer from any kinds of code-injection attacks
+\item Return invalid HTML
+\item Contain dead intra-application links
+\item Have mismatches between HTML forms and the fields expected by their handlers
+\item Attempt invalid SQL queries
+\item Use improper marshaling or unmarshaling in communication with SQL databases
+\end{itemize}
+
+This type safety is just the foundation of the Ur/Web methodology.  It is also possible to use metaprogramming to build significant application pieces by analysis of type structure.  For instance, the demo includes an ML-style functor for building an admin interface for an arbitrary SQL table.  The type system guarantees that the admin interface sub-application that comes out will always be free of the above-listed bugs, no matter which well-typed table description is given as input.
+
+The Ur/Web compiler also produces very efficient object code that does not use garbage collection.  These compiled programs will often be even more efficient than what most programmers would bother to write in C.
+
+\medskip
+
+The official web site for Ur is:
+\begin{center}
+  \url{http://www.impredicative.com/ur/}
+\end{center}
 
 \section{Ur Syntax}
 
