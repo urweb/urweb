@@ -962,4 +962,89 @@ $$\begin{array}{l}
 \mt{val} \; \mt{setCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{t} \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
+\subsection{SQL}
+
+The fundamental unit of interest in the embedding of SQL is tables, described by a type family and creatable only via the $\mt{table}$ declaration form.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_table} :: \{\mt{Type}\} \to \mt{Type}
+\end{array}$$
+
+\subsubsection{Queries}
+
+A final query is constructed via the $\mt{sql\_query}$ function.  Constructor arguments respectively specify the table fields we select (as records mapping tables to the subsets of their fields that we choose) and the (always named) extra expressions that we select.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_query} :: \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_query} : \mt{tables} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \{\mt{Rows} : \mt{sql\_query1} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}, \\
+  \hspace{.2in} \mt{OrderBy} : \mt{sql\_order\_by} \; \mt{tables} \; \mt{selectedExps}, \\
+  \hspace{.2in} \mt{Limit} : \mt{sql\_limit}, \\
+  \hspace{.2in} \mt{Offset} : \mt{sql\_offset}\} \\
+  \hspace{.1in} \to \mt{sql\_query} \; \mt{selectedFields} \; \mt{selectedExps}
+\end{array}$$
+
+Most of the complexity of the query encoding is in the type $\mt{sql\_query1}$, which includes simple queries and derived queries based on relational operators.  Constructor arguments respectively specify the tables we select from, the subset of fields that we keep from each table for the result rows, and the extra expressions that we select.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_query1} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
+  \\
+  \mt{type} \; \mt{sql\_relop} \\
+  \mt{val} \; \mt{sql\_union} : \mt{sql\_relop} \\
+  \mt{val} \; \mt{sql\_intersect} : \mt{sql\_relop} \\
+  \mt{val} \; \mt{sql\_except} : \mt{sql\_relop} \\
+  \mt{val} \; \mt{sql\_relop} : \mt{tables1} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{tables2} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \mt{sql\_relop} \\
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{tables1} \; \mt{selectedFields} \; \mt{selectedExps} \\
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{tables2} \; \mt{selectedFields} \; \mt{selectedExps} \\
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{selectedFields} \; \mt{selectedFields} \; \mt{selectedExps}
+\end{array}$$
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{sql\_query1} : \mt{tables} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{grouped} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \{\mt{From} : \$(\mt{fold} \; (\lambda \mt{nm} \; (\mt{fields} :: \{\mt{Type}\}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{sql\_table} \; \mt{fields}] \rc \mt{acc}) \; [] \; \mt{tables}), \\
+  \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; \mt{tables} \; [] \; [] \; \mt{bool}, \\
+  \hspace{.2in} \mt{GroupBy} : \mt{sql\_subset} \; \mt{tables} \; \mt{grouped}, \\
+  \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; [] \; \mt{bool}, \\
+  \hspace{.2in} \mt{SelectFields} : \mt{sql\_subset} \; \mt{grouped} \; \mt{selectedFields}, \\
+  \hspace{.2in} \mt {SelectExps} : \$(\mt{fold} \; (\lambda \mt{nm} \; (\mt{t} :: \mt{Type}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; [] \; \mt{t}] \rc \mt{acc}) \; [] \; \mt{selectedExps}) \} \\
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}
+\end{array}$$
+
+To encode projection of subsets of fields in $\mt{SELECT}$ clauses, and to encode $\mt{GROUP} \; \mt{BY}$ clauses, we rely on a type family $\mt{sql\_subset}$, capturing what it means for one record of table fields to be a subset of another.  The main constructor $\mt{sql\_subset}$ ``proves subset facts'' by requiring a split of a record into kept and dropped parts.  The extra constructor $\mt{sql\_subset\_all}$ is a convenience for keeping all fields of a record.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_subset} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_subset} : \mt{keep\_drop} :: \{(\{\mt{Type}\} \times \{\mt{Type}\})\} \\
+  \hspace{.1in} \to \mt{sql\_subset} \\
+  \hspace{.2in} (\mt{fold} \; (\lambda \mt{nm} \; (\mt{fields} :: (\{\mt{Type}\} \times \{\mt{Type}\})) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \; [\mt{fields}.1 \sim \mt{fields}.2] \Rightarrow \\
+  \hspace{.3in} [\mt{nm} = \mt{fields}.1 \rc \mt{fields}.2] \rc \mt{acc}) \; [] \; \mt{keep\_drop}) \\
+  \hspace{.2in} (\mt{fold} \; (\lambda \mt{nm} \; (\mt{fields} :: (\{\mt{Type}\} \times \{\mt{Type}\})) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{fields}.1] \rc \mt{acc}) \; [] \; \mt{keep\_drop}) \\
+\mt{val} \; \mt{sql\_subset\_all} : \mt{tables} :: \{\{\mt{Type}\}\} \to \mt{sql\_subset} \; \mt{tables} \; \mt{tables}
+\end{array}$$
+
+SQL expressions are used in several places, including $\mt{SELECT}$, $\mt{WHERE}$, $\mt{HAVING}$, and $\mt{ORDER} \; \mt{BY}$ clauses.  They reify a fragment of the standard SQL expression language, while making it possible to inject ``native'' Ur values in some places.  The arguments to the $\mt{sql\_exp}$ type family respectively give the unrestricted-availablity table fields, the table fields that may only be used in arguments to aggregate functions, the available selected expressions, and the type of the expression.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_exp} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \to \mt{Type}
+\end{array}$$
+
+Any field in scope may be converted to an expression.
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{sql\_field} : \mt{otherTabs} ::: \{\{\mt{Type}\}\} \to \mt{otherFields} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \mt{fieldType} ::: \mt{Type} \to \mt{agg} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{exps} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \mt{tab} :: \mt{Name} \to \mt{field} :: \mt{Name} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; ([\mt{tab} = [\mt{field} = \mt{fieldType}] \rc \mt{otherFields}] \rc \mt{otherTabs}) \; \mt{agg} \; \mt{exps} \; \mt{fieldType}
+\end{array}$$
+
 \end{document}
