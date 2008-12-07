@@ -1197,4 +1197,52 @@ $$\begin{array}{l}
 \end{array}$$
 
 
+\subsection{XML}
+
+Ur/Web's library contains an encoding of XML syntax and semantic constraints.  We make no effort to follow the standards governing XML schemas.  Rather, XML fragments are viewed more as values of ML datatypes, and we only track which tags are allowed inside which other tags.
+
+The basic XML type family has arguments respectively indicating the \emph{context} of a fragment, the fields that the fragment expects to be bound on entry (and their types), and the fields that the fragment will bind (and their types).  Contexts are a record-based ``poor man's subtyping'' encoding, with each possible set of valid tags corresponding to a different context record.  The arguments dealing with field binding are only relevant to HTML forms.
+$$\begin{array}{l}
+  \mt{con} \; \mt{xml} :: \{\mt{Unit}\} \to \{\mt{Type}\} \to \{\mt{Type}\} \to \mt{Type}
+\end{array}$$
+
+We also have a type family of XML tags, indexed respectively by the record of optional attributes accepted by the tag, the context in which the tag may be placed, the context required of children of the tag, which form fields the tag uses, and which fields the tag defines.
+$$\begin{array}{l}
+  \mt{con} \; \mt{tag} :: \{\mt{Type}\} \to \{\mt{Unit}\} \to \{\mt{Unit}\} \to \{\mt{Type}\} \to \{\mt{Type}\} \to \mt{Type}
+\end{array}$$
+
+Literal text may be injected into XML as ``CDATA.''
+$$\begin{array}{l}
+  \mt{val} \; \mt{cdata} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use} ::: \{\mt{Type}\} \to \mt{string} \to \mt{xml} \; \mt{ctx} \; \mt{use} \; []
+\end{array}$$
+
+There is a function for producing an XML tree with a particular tag at its root.
+$$\begin{array}{l}
+  \mt{val} \; \mt{tag} : \mt{attrsGiven} ::: \{\mt{Type}\} \to \mt{attrsAbsent} ::: \{\mt{Type}\} \to \mt{ctxOuter} ::: \{\mt{Unit}\} \to \mt{ctxInner} ::: \{\mt{Unit}\} \\
+  \hspace{.1in} \to \mt{useOuter} ::: \{\mt{Type}\} \to \mt{useInner} ::: \{\mt{Type}\} \to \mt{bindOuter} ::: \{\mt{Type}\} \to \mt{bindInner} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \lambda [\mt{attrsGiven} \sim \mt{attrsAbsent}] \; [\mt{useOuter} \sim \mt{useInner}] \; [\mt{bindOuter} \sim \mt{bindInner}] \Rightarrow \$\mt{attrsGiven} \\
+  \hspace{.1in} \to \mt{tag} \; (\mt{attrsGiven} \rc \mt{attrsAbsent}) \; \mt{ctxOuter} \; \mt{ctxInner} \; \mt{useOuter} \; \mt{bindOuter} \\
+  \hspace{.1in} \to \mt{xml} \; \mt{ctxInner} \; \mt{useInner} \; \mt{bindInner} \to \mt{xml} \; \mt{ctxOuter} \; (\mt{useOuter} \rc \mt{useInner}) \; (\mt{bindOuter} \rc \mt{bindInner})
+\end{array}$$
+
+Two XML fragments may be concatenated.
+$$\begin{array}{l}
+  \mt{val} \; \mt{join} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use_1} ::: \{\mt{Type}\} \to \mt{bind_1} ::: \{\mt{Type}\} \to \mt{bind_2} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \lambda [\mt{use_1} \sim \mt{bind_1}] \; [\mt{bind_1} \sim \mt{bind_2}] \\
+  \hspace{.1in} \Rightarrow \mt{xml} \; \mt{ctx} \; \mt{use_1} \; \mt{bind_1} \to \mt{xml} \; \mt{ctx} \; (\mt{use_1} \rc \mt{bind_1}) \; \mt{bind_2} \to \mt{xml} \; \mt{ctx} \; \mt{use_1} \; (\mt{bind_1} \rc \mt{bind_2})
+\end{array}$$
+
+Finally, any XML fragment may be updated to ``claim'' to use more form fields than it does.
+$$\begin{array}{l}
+  \mt{val} \; \mt{useMore} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use_1} ::: \{\mt{Type}\} \to \mt{use_2} ::: \{\mt{Type}\} \to \mt{bind} ::: \{\mt{Type}\} \to \lambda [\mt{use_1} \sim \mt{use_2}] \\
+  \hspace{.1in} \Rightarrow \mt{xml} \; \mt{ctx} \; \mt{use_1} \; \mt{bind} \to \mt{xml} \; \mt{ctx} \; (\mt{use_1} \rc \mt{use_2}) \; \mt{bind}
+\end{array}$$
+
+We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.
+
+One last useful function is for aborting any page generation, returning some XML as an error message.  This function takes the place of some uses of a general exception mechanism.
+$$\begin{array}{l}
+  \mt{val} \; \mt{error} : \mt{t} ::: \mt{Type} \to \mt{xml} \; [\mt{Body}] \; [] \; [] \to \mt{t}
+\end{array}$$
+
 \end{document}
