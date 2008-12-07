@@ -1330,6 +1330,17 @@ $$\begin{array}{rrcll}
 \end{array}$$
 
 
+\section{The Structure of Web Applications}
+
+A web application is built from a series of modules, with one module, the last one appearing in the \texttt{.urp} file, designated as the main module.  The signature of the main module determines the URL entry points to the application.  Such an entry point should have type $\mt{unit} \to \mt{transaction} \; \mt{page}$, where $\mt{page}$ is a type synonym for top-level HTML pages, defined in $\mt{Basis}$.  If such a function is at the top level of main module $M$, it will be accessible at URI \texttt{/M/f}, and so on for more deeply-nested functions, as described in Section \ref{tag} below.
+
+When the standalone web server receives a request for a known page, it calls the function for that page, ``running'' the resulting transaction to produce the page to return to the client.  Pages link to other pages with the \texttt{link} attribute of the \texttt{a} HTML tag.  A link has type $\mt{transaction} \; \mt{page}$, and the semantics of a link are that this transaction should be run to compute the result page, when the link is followed.  Link targets are assigned URL names in the same way as top-level entry points.
+
+HTML forms are handled in a similar way.  The $\mt{action}$ attribute of a $\mt{submit}$ form tag takes a value of type $\$\mt{use} \to \mt{transaction} \; \mt{page}$, where $\mt{use}$ is a kind-$\{\mt{Type}\}$ record of the form fields used by this action handler.  Action handlers are assigned URL patterns in the same way as above.
+
+For both links and actions, direct arguments and local variables mentioned implicitly via closures are automatically included in serialized form in URLs, in the order in which they appeared in the source code.
+
+
 \section{Compiler Phases}
 
 The Ur/Web compiler is unconventional in that it relies on a kind of \emph{heuristic compilation}.  Not all valid programs will compile successfully.  Informally, programs fail to compile when they are ``too higher order.''  Compiler phases do their best to eliminate different kinds of higher order-ness, but some programs just won't compile.  This is a trade-off for producing very efficient executables.  Compiled Ur/Web programs use native C representations and require no garbage collection.
@@ -1364,7 +1375,7 @@ Remove unnecessary mutual recursion, splitting recursive groups into strongly-co
 
 Remove all definitions not needed to run the page handlers that are visible in the signature of the last module listed in the \texttt{.urp} file.
 
-\subsection{Tag}
+\subsection{\label{tag}Tag}
 
 Assign a URL name to each link and form action.  It is important that these links and actions are written as applications of named functions, because such names are used to generate URL patterns.  A URL pattern has a name built from the full module path of the named function, followed by the function name, with all pieces separated by slashes.  The path of a functor application is based on the name given to the result, rather than the path of the functor itself.
 
