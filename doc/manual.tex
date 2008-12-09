@@ -44,6 +44,61 @@ The official web site for Ur is:
   \url{http://www.impredicative.com/ur/}
 \end{center}
 
+
+\section{Installation}
+
+If you are lucky, then the following standard command sequence will suffice for installation, in a directory to which you have unpacked the latest distribution tarball.
+
+\begin{verbatim}
+./configure
+make
+sudo make install
+\end{verbatim}
+
+Some other packages must be installed for the above to work.  At a minimum, you need a standard UNIX shell, with standard UNIX tools like sed and GCC in your execution path; and MLton, the whole-program optimizing compiler for Standard ML.  To build programs that access SQL databases, you also need libpq, the PostgreSQL client library.  As of this writing, in the ``testing'' version of Debian Linux, this command will install the more uncommon of these dependencies:
+
+\begin{verbatim}
+apt-get install mlton libpq-dev
+\end{verbatim}
+
+It is also possible to access the modules of the Ur/Web compiler interactively, within Standard ML of New Jersey.  To install the prerequisites in Debian testing:
+
+\begin{verbatim}
+apt-get install smlnj libsmlnj-smlnj ml-yacc ml-lpt
+\end{verbatim}
+
+To begin an interactive session with the Ur compiler modules, run \texttt{make smlnj}, and then, from within an \texttt{sml} session, run \texttt{CM.make "src/urweb.cm";}.  The \texttt{Compiler} module is the main entry point.
+
+To run an SQL-backed application, you will probably want to install the PostgreSQL server.  Version 8.3 or higher is required.
+
+\begin{verbatim}
+apt-get install postgresql-8.3
+\end{verbatim}
+
+To use the Emacs mode, you must have a modern Emacs installed.  We assume that you already know how to do this, if you're in the business of looking for an Emacs mode.  The demo generation facility of the compiler will also call out to Emacs to syntax-highlight code, and that process depends on the \texttt{htmlize} module, which can be installed in Debian testing via:
+
+\begin{verbatim}
+apt-get install emacs-goodies-el
+\end{verbatim}
+
+Even with the right packages installed, configuration and building might fail to work.  After you run \texttt{./configure}, you will see the values of some named environment variables printed.  You may need to adjust these values to get proper installation for your system.  To change a value, store your preferred alternative in the corresponding UNIX environment variable, before running \texttt{./configure}.  For instance, here is how to change the list of extra arguments that the Ur/Web compiler will pass to GCC on every invocation.
+
+\begin{verbatim}
+GCCARGS=-fnested-functions ./configure
+\end{verbatim}
+
+Some OSX users have reported needing to use this particular GCCARGS value.
+
+The Emacs mode can be set to autoload by adding the following to your \texttt{.emacs} file.
+
+\begin{verbatim}
+(add-to-list 'load-path "/usr/local/share/emacs/site-lisp/urweb-mode")
+(load "urweb-mode-startup")
+\end{verbatim}
+
+Change the path in the first line if you chose a different Emacs installation path during configuration.
+
+
 \section{Ur Syntax}
 
 In this section, we describe the syntax of Ur, deferring to a later section discussion of most of the syntax specific to SQL and XML.  The sole exceptions are the declaration forms for tables, sequences, and cookies.
