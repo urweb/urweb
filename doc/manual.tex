@@ -99,6 +99,36 @@ The Emacs mode can be set to autoload by adding the following to your \texttt{.e
 Change the path in the first line if you chose a different Emacs installation path during configuration.
 
 
+\section{Command-Line Compiler}
+
+\subsection{Project Files}
+
+The basic inputs to the \texttt{urweb} compiler are project files, which have the extension \texttt{.urp}.  Here is a sample \texttt{.urp} file.
+
+\begin{verbatim}
+database dbname=test
+sql crud1.sql
+
+crud
+crud1
+\end{verbatim}
+
+The \texttt{database} line gives the database information string to pass to libpq.  In this case, the string only says to connect to a local database named \texttt{test}.
+
+The \texttt{sql} line asks for an SQL source file to be generated, giving the commands to run to create the tables and sequences that this application expects to find.  After building this \texttt{.urp} file, the following commands could be used to initialize the database, assuming that the current UNIX user exists as a Postgres user with database creation privileges:
+
+\begin{verbatim}
+createdb test
+psql -f crud1.sql test
+\end{verbatim}
+
+A blank line always separates the named directives from a list of modules to include in the project; if there are no named directives, a blank line must begin the file.
+
+For each entry \texttt{M} in the module list, the file \texttt{M.urs} is included in the project if it exists, and the file \texttt{M.ur} must exist and is always included.
+
+A few other named directives are supported.  \texttt{prefix PREFIX} sets the prefix included before every URI within the generated application; the default is \texttt{/}.  \texttt{exe FILENAME} sets the filename to which to write the output executable; the default for file \texttt{P.urp} is \texttt{P.exe}.  \texttt{debug} saves some intermediate C files, which is mostly useful to help in debugging the compiler itself.  \texttt{profile} generates an executable that may be used with gprof.
+
+
 \section{Ur Syntax}
 
 In this section, we describe the syntax of Ur, deferring to a later section discussion of most of the syntax specific to SQL and XML.  The sole exceptions are the declaration forms for tables, sequences, and cookies.
