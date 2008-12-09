@@ -1009,9 +1009,9 @@ The Ur/Web compiler uses \emph{heuristic type inference}, with no claims of comp
 
 \subsection{Basic Unification}
 
-Type-checkers for languages based on the Hindly-Milner type discipline, like ML and Haskell, take advantage of \emph{principal typing} properties, making complete type inference relatively straightforward.  Inference algorithms are traditionally implemented using type unification variables, at various points asserting equalities between types, in the process discovering the values of type variables.  The Ur/Web compiler uses the same basic strategy, but the complexity of the type system rules out easy completeness.
+Type-checkers for languages based on the Hindley-Milner type discipline, like ML and Haskell, take advantage of \emph{principal typing} properties, making complete type inference relatively straightforward.  Inference algorithms are traditionally implemented using type unification variables, at various points asserting equalities between types, in the process discovering the values of type variables.  The Ur/Web compiler uses the same basic strategy, but the complexity of the type system rules out easy completeness.
 
-Type-checking can require evaluating recursive functional programs, thanks to the type-level $\mt{fold}$ operator.  When a unification variable appears in such a type, the next step of computation can be undetermined.  The value of that variable might be determined later, but this would be ``too late'' for the unification problems generated at the first occurrence.  This is the essential source of incompletness.
+Type-checking can require evaluating recursive functional programs, thanks to the type-level $\mt{fold}$ operator.  When a unification variable appears in such a type, the next step of computation can be undetermined.  The value of that variable might be determined later, but this would be ``too late'' for the unification problems generated at the first occurrence.  This is the essential source of incompleteness.
 
 Nonetheless, the unification engine tends to do reasonably well.  Unlike in ML, polymorphism is never inferred in definitions; it must be indicated explicitly by writing out constructor-level parameters.  By writing these and other annotations, the programmer can generally get the type inference engine to do most of the type reconstruction work.
 
@@ -1155,7 +1155,7 @@ $$\begin{array}{l}
 \mt{val} \; \mt{sql\_subset\_all} : \mt{tables} :: \{\{\mt{Type}\}\} \to \mt{sql\_subset} \; \mt{tables} \; \mt{tables}
 \end{array}$$
 
-SQL expressions are used in several places, including $\mt{SELECT}$, $\mt{WHERE}$, $\mt{HAVING}$, and $\mt{ORDER} \; \mt{BY}$ clauses.  They reify a fragment of the standard SQL expression language, while making it possible to inject ``native'' Ur values in some places.  The arguments to the $\mt{sql\_exp}$ type family respectively give the unrestricted-availablity table fields, the table fields that may only be used in arguments to aggregate functions, the available selected expressions, and the type of the expression.
+SQL expressions are used in several places, including $\mt{SELECT}$, $\mt{WHERE}$, $\mt{HAVING}$, and $\mt{ORDER} \; \mt{BY}$ clauses.  They reify a fragment of the standard SQL expression language, while making it possible to inject ``native'' Ur values in some places.  The arguments to the $\mt{sql\_exp}$ type family respectively give the unrestricted-availability table fields, the table fields that may only be used in arguments to aggregate functions, the available selected expressions, and the type of the expression.
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_exp} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \to \mt{Type}
 \end{array}$$
