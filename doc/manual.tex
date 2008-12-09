@@ -128,6 +128,18 @@ For each entry \texttt{M} in the module list, the file \texttt{M.urs} is include
 
 A few other named directives are supported.  \texttt{prefix PREFIX} sets the prefix included before every URI within the generated application; the default is \texttt{/}.  \texttt{exe FILENAME} sets the filename to which to write the output executable; the default for file \texttt{P.urp} is \texttt{P.exe}.  \texttt{debug} saves some intermediate C files, which is mostly useful to help in debugging the compiler itself.  \texttt{profile} generates an executable that may be used with gprof.
 
+\subsection{Building an Application}
+
+To compile project \texttt{P.urp}, simply run
+\begin{verbatim}
+urweb P
+\end{verbatim}
+
+To time how long the different compiler phases run, without generating an executable, run
+\begin{verbatim}
+urweb -timing P
+\end{verbatim}
+
 
 \section{Ur Syntax}
 
