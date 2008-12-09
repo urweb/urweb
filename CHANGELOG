@@ -1,9 +1,11 @@
 ========
+20081209
 ========
 
 - Optimization: Fusing page writes with calls to recursive functions
 - Optimization of bottleneck compiler phases
-- Start of manual
+- Reference manual
+- SQL arithmetic operators
 
 ========
 20081120
