@@ -134,6 +134,7 @@ To compile project \texttt{P.urp}, simply run
 \begin{verbatim}
 urweb P
 \end{verbatim}
+The output executable is a standalone web server.  Run it with the command-line argument \texttt{-h} to see which options it takes.  If the project file lists a database, the web server will attempt to connect to that database on startup.
 
 To time how long the different compiler phases run, without generating an executable, run
 \begin{verbatim}
@@ -188,7 +189,7 @@ $$\begin{array}{rrcll}
 Ur supports several different notions of functions that take types as arguments.  These arguments can be either implicit, causing them to be inferred at use sites; or explicit, forcing them to be specified manually at use sites.  There is a common explicitness annotation convention applied at the definitions of and in the types of such functions.
 $$\begin{array}{rrcll}
   \textrm{Explicitness} & ? &::=& :: & \textrm{explicit} \\
-  &&& \; ::: & \textrm{implicit}
+  &&& ::: & \textrm{implicit}
 \end{array}$$
 
 \emph{Constructors} are the main class of compile-time-only data.  They include proper types and are classified by kinds.
@@ -210,7 +211,7 @@ $$\begin{array}{rrcll}
   &&& c \rc c & \textrm{type-level record concatenation} \\
   &&& \mt{fold} & \textrm{type-level record fold} \\
   \\
-  &&& (c^+) & \textrm{type-level tuple} \\
+  &&& (c,^+) & \textrm{type-level tuple} \\
   &&& c.n & \textrm{type-level tuple projection ($n \in \mathbb N^+$)} \\
   \\
   &&& \lambda [c \sim c] \Rightarrow c & \textrm{guarded constructor} \\
@@ -452,9 +453,9 @@ $$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow c :: \kappa}{
 We will use a keyword $\mt{map}$ as a shorthand, such that, for $f$ of kind $\kappa \to \kappa'$, $\mt{map} \; f$ stands for $\mt{fold} \; (\lambda (x_1 :: \mt{Name}) (x_2 :: \kappa) (x_3 :: \{\kappa'\}) \Rightarrow [x_1 = f \; x_2] \rc x_3) \; []$.
 
 $$\infer{\Gamma \vdash c_1 \sim c_2}{
-  \Gamma \vdash c_1 \hookrightarrow c'_1
-  & \Gamma \vdash c_2 \hookrightarrow c'_2
-  & \forall c''_1 \in c'_1, c''_2 \in c'_2: \Gamma \vdash c''_1 \sim c''_2
+  \Gamma \vdash c_1 \hookrightarrow C_1
+  & \Gamma \vdash c_2 \hookrightarrow C_2
+  & \forall c'_1 \in C_1, c'_2 \in C_2: \Gamma \vdash c'_1 \sim c'_2
 }
 \quad \infer{\Gamma \vdash X \sim X'}{
   X \neq X'
@@ -462,10 +463,10 @@ $$\infer{\Gamma \vdash c_1 \sim c_2}{
 
 $$\infer{\Gamma \vdash c_1 \sim c_2}{
   c'_1 \sim c'_2 \in \Gamma
-  & \Gamma \vdash c'_1 \hookrightarrow c''_1
-  & \Gamma \vdash c'_2 \hookrightarrow c''_2
-  & c_1 \in c''_1
-  & c_2 \in c''_2
+  & \Gamma \vdash c'_1 \hookrightarrow C_1
+  & \Gamma \vdash c'_2 \hookrightarrow C_2
+  & c_1 \in C_1
+  & c_2 \in C_2
 }$$
 
 $$\infer{\Gamma \vdash c \hookrightarrow \{c\}}{}
@@ -656,8 +657,7 @@ We use an auxiliary judgment $\overline{y}; x; \Gamma \vdash \overline{dc} \lead
 
 This is the first judgment where we deal with type classes, for the $\mt{class}$ declaration form.  We will omit their special handling in this formal specification.  Section \ref{typeclasses} gives an informal description of how type classes influence type inference.
 
-We presuppose the existence of a function $\mathcal O$, where $\mathcal(M, \overline{s})$ implements the $\mt{open}$ declaration by producing a context with the appropriate entry for each available component of module $M$ with signature items $\overline{s}$.  Where possible, $\mathcal O$ uses ``transparent'' entries (e.g., an abstract type $M.x$ is mapped to $x :: \mt{Type} = M.x$), so that the relationship with $M$ is maintained.  A related function $\mathcal O_c$ builds a context containing the disjointness constraints found in $S$.
-
+We presuppose the existence of a function $\mathcal O$, where $\mathcal O(M, \overline{s})$ implements the $\mt{open}$ declaration by producing a context with the appropriate entry for each available component of module $M$ with signature items $\overline{s}$.  Where possible, $\mathcal O$ uses ``transparent'' entries (e.g., an abstract type $M.x$ is mapped to $x :: \mt{Type} = M.x$), so that the relationship with $M$ is maintained.  A related function $\mathcal O_c$ builds a context containing the disjointness constraints found in $\overline s$.
 We write $\kappa_1^n \to \kappa$ as a shorthand, where $\kappa_1^0 \to \kappa = \kappa$ and $\kappa_1^{n+1} \to \kappa_2 = \kappa_1 \to (\kappa_1^n \to \kappa_2)$.  We write $\mt{len}(\overline{y})$ for the length of vector $\overline{y}$ of variables.
 
 $$\infer{\Gamma \vdash \cdot \leadsto \Gamma}{}
@@ -690,10 +690,10 @@ $$\infer{\Gamma \vdash \mt{val} \; \mt{rec} \; \overline{x : \tau = e} \leadsto 
 
 $$\infer{\Gamma \vdash \mt{structure} \; X : S = M \leadsto \Gamma, X : S}{
   \Gamma \vdash M : S
-  & \textrm{ ($M$ not a $\mt{struct} \; \ldots \; \mt{end}$)}
+  & \textrm{ $M$ not a constant or application}
 }
-\quad \infer{\Gamma \vdash \mt{structure} \; X : S = \mt{struct} \; \overline{d} \; \mt{end} \leadsto \Gamma, X : \mt{selfify}(X, \overline{s})}{
-  \Gamma \vdash \mt{struct} \; \overline{d} \; \mt{end} : \mt{sig} \; \overline{s} \; \mt{end}
+\quad \infer{\Gamma \vdash \mt{structure} \; X : S = M \leadsto \Gamma, X : \mt{selfify}(X, \overline{s})}{
+  \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
 }$$
 
 $$\infer{\Gamma \vdash \mt{signature} \; X = S \leadsto \Gamma, X = S}{
@@ -786,7 +786,7 @@ $$\infer{\Gamma \vdash \mt{class} \; x = c \leadsto \Gamma, x :: \mt{Type} \to \
 
 \subsection{Signature Compatibility}
 
-To simplify the judgments in this section, we assume that all signatures are alpha-varied as necessary to avoid including mmultiple bindings for the same identifier.  This is in addition to the usual alpha-variation of locally-bound variables.
+To simplify the judgments in this section, we assume that all signatures are alpha-varied as necessary to avoid including multiple bindings for the same identifier.  This is in addition to the usual alpha-variation of locally-bound variables.
 
 We rely on a judgment $\Gamma \vdash \overline{s} \leq s'$, which expresses the occurrence in signature items $\overline{s}$ of an item compatible with $s'$.  We also use a judgment $\Gamma \vdash \overline{dc} \leq \overline{dc}$, which expresses compatibility of datatype definitions.
 
@@ -835,7 +835,7 @@ $$\infer{\Gamma \vdash \mt{functor} (X : S_1) : S_2 \leq \mt{functor} (X : S'_1)
 
 $$\infer{\Gamma \vdash \mt{con} \; x :: \kappa \leq \mt{con} \; x :: \kappa}{}
 \quad \infer{\Gamma \vdash \mt{con} \; x :: \kappa = c \leq \mt{con} \; x :: \kappa}{}
-\quad \infer{\Gamma \vdash \mt{datatype} \; x \; \overline{y} = \overline{dc} \leq \mt{con} \; x :: \mt{Type}}{}$$
+\quad \infer{\Gamma \vdash \mt{datatype} \; x \; \overline{y} = \overline{dc} \leq \mt{con} \; x :: \mt{Type}^{\mt{len}(\overline y)} \to \mt{Type}}{}$$
 
 $$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leq \mt{con} \; x :: \mt{Type}^{\mt{len}(y)} \to \mt{Type}}{
   \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
@@ -946,10 +946,9 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{sigOf}(\mt{cookie} \; x : \tau) &=& \mt{cookie} \; x : \tau \\
   \mt{sigOf}(\mt{class} \; x = c) &=& \mt{class} \; x = c \\
 \end{eqnarray*}
-
 \begin{eqnarray*}
   \mt{selfify}(M, \cdot) &=& \cdot \\
-  \mt{selfify}(M, s \; \overline{s'}) &=& \mt{selfify}(M, \sigma, s) \; \mt{selfify}(M, \overline{s'}) \\
+  \mt{selfify}(M, s \; \overline{s'}) &=& \mt{selfify}(M, s) \; \mt{selfify}(M, \overline{s'}) \\
   \\
   \mt{selfify}(M, \mt{con} \; x :: \kappa) &=& \mt{con} \; x :: \kappa = M.x \\
   \mt{selfify}(M, \mt{con} \; x :: \kappa = c) &=& \mt{con} \; x :: \kappa = c \\
@@ -984,7 +983,7 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z, \mt{val} \; X) &=& \overline{y ::: \mt{Type}} \to M.x \; \overline y \textrm{ (where $\Gamma \vdash M' : \mt{sig} \; \overline{s'} \; \mt{end}$} \\
   && \textrm{and $\mt{proj}(M', \overline{s'}, \mt{datatype} \; z = (\overline{y}, \overline{dc})$ and $X \in \overline{dc}$)} \\
   \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z, \mt{val} \; X) &=& \overline{y ::: \mt{Type}} \to \tau \to M.x \; \overline y \textrm{ (where $\Gamma \vdash M' : \mt{sig} \; \overline{s'} \; \mt{end}$} \\
-  && \textrm{and $\mt{proj}(M', \overline{s'}, \mt{datatype} \; z = (\overline{y}, \overline{dc})$ and $X : \tau \in \overline{dc}$)} \\
+  && \textrm{and $\mt{proj}(M', \overline{s'}, \mt{datatype} \; z = (\overline{y}, \overline{dc})$ and $X \; \mt{of} \; \tau \in \overline{dc}$)} \\
   \\
   \mt{proj}(M, \mt{structure} \; X : S \; \overline{s}, \mt{structure} \; X) &=& S \\
   \\
@@ -1391,7 +1390,7 @@ $$\begin{array}{rrcll}
   \textrm{Projections} & P &::=& \ast & \textrm{all columns} \\
   &&& p,^+ & \textrm{particular columns} \\
   \textrm{Pre-projections} & p &::=& t.f & \textrm{one column from a table} \\
-  &&& t.\{\{c\}\} & \textrm{a record of colums from a table (of kind $\{\mt{Type}\}$)} \\
+  &&& t.\{\{c\}\} & \textrm{a record of columns from a table (of kind $\{\mt{Type}\}$)} \\
   \textrm{Table names} & t &::=& x & \textrm{constant table name (automatically capitalized)} \\
   &&& X & \textrm{constant table name} \\
   &&& \{\{c\}\} & \textrm{computed table name (of kind $\mt{Name}$)} \\
@@ -1462,7 +1461,7 @@ When the standalone web server receives a request for a known page, it calls the
 
 HTML forms are handled in a similar way.  The $\mt{action}$ attribute of a $\mt{submit}$ form tag takes a value of type $\$\mt{use} \to \mt{transaction} \; \mt{page}$, where $\mt{use}$ is a kind-$\{\mt{Type}\}$ record of the form fields used by this action handler.  Action handlers are assigned URL patterns in the same way as above.
 
-For both links and actions, direct arguments and local variables mentioned implicitly via closures are automatically included in serialized form in URLs, in the order in which they appeared in the source code.
+For both links and actions, direct arguments and local variables mentioned implicitly via closures are automatically included in serialized form in URLs, in the order in which they appear in the source code.
 
 
 \section{Compiler Phases}
@@ -1513,11 +1512,11 @@ This phase specializes polymorphic functions to the specific arguments passed to
 
 \subsection{Specialize}
 
-Replace uses of parametrized datatypes with versions specialized to specific parameters.  As for Unpoly, this phase will not be effective enough in the presence of polymorphic recursion or other fancy uses of impredicative polymorphism.
+Replace uses of parameterized datatypes with versions specialized to specific parameters.  As for Unpoly, this phase will not be effective enough in the presence of polymorphic recursion or other fancy uses of impredicative polymorphism.
 
 \subsection{Shake}
 
-Here the compiler repeats the earlier shake phase.
+Here the compiler repeats the earlier Shake phase.
 
 \subsection{Monoize}
 
