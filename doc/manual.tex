@@ -1198,7 +1198,7 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; (\mt{option} \; \mt{t}) \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{bool}
 \end{array}$$
 
-We have generic nullary, unary, and binary operators, as well as comparison operators.
+We have generic nullary, unary, and binary operators.
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_nfunc} :: \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_current\_timestamp} : \mt{sql\_nfunc} \; \mt{time} \\
@@ -1221,16 +1221,16 @@ $$\begin{array}{l}
 \end{array}$$
 
 $$\begin{array}{l}
-  \mt{type} \; \mt{sql\_comparison} \\
-  \mt{val} \; \mt{sql\_eq} : \mt{sql\_comparison} \\
-  \mt{val} \; \mt{sql\_ne} : \mt{sql\_comparison} \\
-  \mt{val} \; \mt{sql\_lt} : \mt{sql\_comparison} \\
-  \mt{val} \; \mt{sql\_le} : \mt{sql\_comparison} \\
-  \mt{val} \; \mt{sql\_gt} : \mt{sql\_comparison} \\
-  \mt{val} \; \mt{sql\_ge} : \mt{sql\_comparison} \\
-  \mt{val} \; \mt{sql\_comparison} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_comparison} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{bool}
- \end{array}$$
+  \mt{class} \; \mt{sql\_arith} \\
+  \mt{val} \; \mt{sql\_int\_arith} : \mt{sql\_arith} \; \mt{int} \\
+  \mt{val} \; \mt{sql\_float\_arith} : \mt{sql\_arith} \; \mt{float} \\
+  \mt{val} \; \mt{sql\_neg} : \mt{t} ::: \mt{Type} \to \mt{sql\_arith} \; \mt{t} \to \mt{sql\_unary} \; \mt{t} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_plus} : \mt{t} ::: \mt{Type} \to \mt{sql\_arith} \; \mt{t} \to \mt{sql\_binary} \; \mt{t} \; \mt{t} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_minus} : \mt{t} ::: \mt{Type} \to \mt{sql\_arith} \; \mt{t} \to \mt{sql\_binary} \; \mt{t} \; \mt{t} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_times} : \mt{t} ::: \mt{Type} \to \mt{sql\_arith} \; \mt{t} \to \mt{sql\_binary} \; \mt{t} \; \mt{t} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_div} : \mt{t} ::: \mt{Type} \to \mt{sql\_arith} \; \mt{t} \to \mt{sql\_binary} \; \mt{t} \; \mt{t} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_mod} : \mt{sql\_binary} \; \mt{int} \; \mt{int} \; \mt{int}
+\end{array}$$
 
 Finally, we have aggregate functions.  The $\mt{COUNT(\ast)}$ syntax is handled specially, since it takes no real argument.  The other aggregate functions are placed into a general type family, using type classes to restrict usage to properly-typed arguments.  The key aspect of the $\mt{sql\_aggregate}$ function's type is the shift of aggregate-function-only fields into unrestricted fields.
 
@@ -1445,6 +1445,8 @@ $$\begin{array}{rrcll}
   \textrm{XML pieces} & l &::=& \textrm{text} & \textrm{cdata} \\
   &&& \texttt{<}g\texttt{/>} & \textrm{tag with no children} \\
   &&& \texttt{<}g\texttt{>}l^*\texttt{</}x\texttt{>} & \textrm{tag with children} \\
+  &&& \{e\} & \textrm{computed XML fragment} \\
+  &&& \{[e]\} & \textrm{injection of an Ur expression, via the $\mt{Top}.\mt{txt}$ function} \\
   \textrm{Tag} & g &::=& h \; (x = v)^* \\
   \textrm{Tag head} & h &::=& x & \textrm{tag name} \\
   &&& h\{c\} & \textrm{constructor parameter} \\

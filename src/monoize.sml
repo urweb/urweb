@@ -165,13 +165,13 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_binary"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
-                  | L.CFfi ("Basis", "sql_comparison") =>
-                    (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_aggregate"), _), t) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_summable"), _), _) =>
                     (L'.TRecord [], loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_maxable"), _), _) =>
+                    (L'.TRecord [], loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_arith"), _), _) =>
                     (L'.TRecord [], loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_nfunc"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
@@ -1369,18 +1369,33 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.EFfi ("Basis", "sql_eq") =>
+          | L.ECApp ((L.EFfi ("Basis", "sql_eq"), _), _) =>
             ((L'.EPrim (Prim.String "="), loc), fm)
-          | L.EFfi ("Basis", "sql_ne") =>
+          | L.ECApp ((L.EFfi ("Basis", "sql_ne"), _), _) =>
             ((L'.EPrim (Prim.String "<>"), loc), fm)
-          | L.EFfi ("Basis", "sql_lt") =>
+          | L.ECApp ((L.EFfi ("Basis", "sql_lt"), _), _) =>
             ((L'.EPrim (Prim.String "<"), loc), fm)
-          | L.EFfi ("Basis", "sql_le") =>
+          | L.ECApp ((L.EFfi ("Basis", "sql_le"), _), _) =>
             ((L'.EPrim (Prim.String "<="), loc), fm)
-          | L.EFfi ("Basis", "sql_gt") =>
+          | L.ECApp ((L.EFfi ("Basis", "sql_gt"), _), _) =>
             ((L'.EPrim (Prim.String ">"), loc), fm)
-          | L.EFfi ("Basis", "sql_ge") =>
+          | L.ECApp ((L.EFfi ("Basis", "sql_ge"), _), _) =>
             ((L'.EPrim (Prim.String ">="), loc), fm)
+
+          | L.ECApp ((L.EFfi ("Basis", "sql_plus"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "+"), loc)), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_minus"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "-"), loc)), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_times"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "*"), loc)), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_div"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "/"), loc)), loc), fm)
+          | L.EFfi ("Basis", "sql_mod") =>
+            ((L'.EPrim (Prim.String "%"), loc), fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -1407,6 +1422,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
           | L.EFfi ("Basis", "sql_not") => ((L'.EPrim (Prim.String "NOT"), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_neg"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "-"), loc)), loc), fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -1439,32 +1457,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
           | L.EFfi ("Basis", "sql_and") => ((L'.EPrim (Prim.String "AND"), loc), fm)
           | L.EFfi ("Basis", "sql_or") => ((L'.EPrim (Prim.String "OR"), loc), fm)
-
-          | L.ECApp (
-            (L.ECApp (
-             (L.ECApp (
-              (L.ECApp (
-               (L.EFfi ("Basis", "sql_comparison"), _),
-               _), _),
-              _), _),
-             _), _),
-            _) =>
-            let
-                val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
-            in
-                ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
-                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
-                                     (L'.EAbs ("e2", s, s,
-                                               strcat loc [sc "(",
-                                                           (L'.ERel 1, loc),
-                                                           sc " ",
-                                                           (L'.ERel 2, loc),
-                                                           sc " ",
-                                                           (L'.ERel 0, loc),
-                                                           sc ")"]), loc)), loc)), loc),
-                 fm)
-            end
 
           | L.ECApp (
             (L.ECApp (
@@ -1565,6 +1557,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EPrim (Prim.String "SUM"), loc)), loc),
              fm)
+
+          | L.EFfi ("Basis", "sql_arith_int") => ((L'.ERecord [], loc), fm)
+          | L.EFfi ("Basis", "sql_arith_float") => ((L'.ERecord [], loc), fm)
 
           | L.EFfi ("Basis", "sql_maxable_int") => ((L'.ERecord [], loc), fm)
           | L.EFfi ("Basis", "sql_maxable_float") => ((L'.ERecord [], loc), fm)

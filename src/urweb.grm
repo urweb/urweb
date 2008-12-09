@@ -119,15 +119,6 @@ fun amend_group loc (gi, tabs) =
 fun sql_inject (v, loc) =
     (EApp ((EVar (["Basis"], "sql_inject", Infer), loc), (v, loc)), loc)
 
-fun sql_compare (oper, sqlexp1, sqlexp2, loc) =
-    let
-        val e = (EVar (["Basis"], "sql_comparison", Infer), loc)
-        val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper, Infer), loc)), loc)
-        val e = (EApp (e, sqlexp1), loc)
-    in
-        (EApp (e, sqlexp2), loc)
-    end
-
 fun sql_binary (oper, sqlexp1, sqlexp2, loc) =
     let
         val e = (EVar (["Basis"], "sql_binary", Infer), loc)
@@ -1239,16 +1230,24 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
 
        | LBRACE eexp RBRACE             (eexp)
 
-       | sqlexp EQ sqlexp               (sql_compare ("eq", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
-       | sqlexp NE sqlexp               (sql_compare ("ne", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
-       | sqlexp LT sqlexp               (sql_compare ("lt", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
-       | sqlexp LE sqlexp               (sql_compare ("le", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
-       | sqlexp GT sqlexp               (sql_compare ("gt", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
-       | sqlexp GE sqlexp               (sql_compare ("ge", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp EQ sqlexp               (sql_binary ("eq", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp NE sqlexp               (sql_binary ("ne", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp LT sqlexp               (sql_binary ("lt", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp LE sqlexp               (sql_binary ("le", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp GT sqlexp               (sql_binary ("gt", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp GE sqlexp               (sql_binary ("ge", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+
+       | sqlexp PLUS sqlexp             (sql_binary ("plus", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp MINUS sqlexp            (sql_binary ("minus", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp STAR sqlexp             (sql_binary ("times", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp DIVIDE sqlexp           (sql_binary ("div", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp MOD sqlexp              (sql_binary ("mod", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
 
        | sqlexp CAND sqlexp             (sql_binary ("and", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp OR sqlexp               (sql_binary ("or", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+
        | NOT sqlexp                     (sql_unary ("not", sqlexp, s (NOTleft, sqlexpright)))
+       | MINUS sqlexp                   (sql_unary ("neg", sqlexp, s (MINUSleft, sqlexpright)))
 
        | sqlexp IS NULL                 (let
                                              val loc = s (sqlexpleft, NULLright)

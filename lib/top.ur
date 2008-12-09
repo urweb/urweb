@@ -238,4 +238,4 @@ fun eqNullable' (tables ::: {{Type}}) (agg ::: {{Type}}) (exps ::: {Type})
     (e2 : option t) =
     case e2 of
         None => (SQL {e1} IS NULL)
-      | Some _ => sql_comparison sql_eq e1 (@sql_inject inj e2)
+      | Some _ => sql_binary sql_eq e1 (@sql_inject inj e2)

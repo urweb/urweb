@@ -202,12 +202,18 @@ val sql_is_null : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                   -> sql_exp tables agg exps (option t)
                   -> sql_exp tables agg exps bool
 
+class sql_arith
+val sql_int_arith : sql_arith int
+val sql_float_arith : sql_arith float
+
 con sql_unary :: Type -> Type -> Type
 val sql_not : sql_unary bool bool
 val sql_unary : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> arg ::: Type -> res ::: Type
                 -> sql_unary arg res -> sql_exp tables agg exps arg
                 -> sql_exp tables agg exps res
+
+val sql_neg : t ::: Type -> sql_arith t -> sql_unary t t
 
 con sql_binary :: Type -> Type -> Type -> Type
 val sql_and : sql_binary bool bool bool
@@ -218,18 +224,18 @@ val sql_binary : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> sql_exp tables agg exps arg2
                  -> sql_exp tables agg exps res
 
-type sql_comparison
-val sql_eq : sql_comparison
-val sql_ne : sql_comparison
-val sql_lt : sql_comparison
-val sql_le : sql_comparison
-val sql_gt : sql_comparison
-val sql_ge : sql_comparison
-val sql_comparison : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-        -> t ::: Type
-        -> sql_comparison
-        -> sql_exp tables agg exps t -> sql_exp tables agg exps t
-        -> sql_exp tables agg exps bool
+val sql_plus : t ::: Type -> sql_arith t -> sql_binary t t t
+val sql_minus : t ::: Type -> sql_arith t -> sql_binary t t t
+val sql_times : t ::: Type -> sql_arith t -> sql_binary t t t
+val sql_div : t ::: Type -> sql_arith t -> sql_binary t t t
+val sql_mod : sql_binary int int int
+
+val sql_eq : t ::: Type -> sql_binary t t bool
+val sql_ne : t ::: Type -> sql_binary t t bool
+val sql_lt : t ::: Type -> sql_binary t t bool
+val sql_le : t ::: Type -> sql_binary t t bool
+val sql_gt : t ::: Type -> sql_binary t t bool
+val sql_ge : t ::: Type -> sql_binary t t bool
 
 val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps int
