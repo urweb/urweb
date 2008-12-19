@@ -934,7 +934,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.ECApp ((L.EFfi ("Basis", "return"), _), t) =>
+          | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "return"), _), _), _), t), _),
+                    (L.EFfi ("Basis", "transaction_monad"), _)) =>
             let
                 val t = monoType env t
             in
@@ -943,7 +944,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.EAbs ("_", (L'.TRecord [], loc), t,
                                      (L'.ERel 1, loc)), loc)), loc), fm)
             end
-          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "bind"), _), t1), _), t2) =>
+          | L.EApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "bind"), _), _), _), t1), _), t2), _),
+                    (L.EFfi ("Basis", "transaction_monad"), _)) =>
             let
                 val t1 = monoType env t1
                 val t2 = monoType env t2

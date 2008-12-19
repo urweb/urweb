@@ -69,15 +69,22 @@ val read_bool : read bool
 val read_time : read time
 
 
-(** * Transactions *)
+(** * Monads *)
+
+class monad :: Type -> Type
+val return : m ::: (Type -> Type) -> t ::: Type
+             -> monad m
+             -> t -> m t
+val bind : m ::: (Type -> Type) -> t1 ::: Type -> t2 ::: Type
+           -> monad m
+           -> m t1 -> (t1 -> m t2)
+           -> m t2
+
+(** ** Transactions *)
 
 con transaction :: Type -> Type
+val transaction_monad : monad transaction
 
-val return : t ::: Type
-             -> t -> transaction t
-val bind : t1 ::: Type -> t2 ::: Type
-           -> transaction t1 -> (t1 -> transaction t2)
-           -> transaction t2
 
 
 (** HTTP operations *)

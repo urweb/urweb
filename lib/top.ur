@@ -30,8 +30,8 @@ fun ex (tf :: (Type -> Type)) (choice :: Type) (body : tf choice) : ex tf =
 fun compose (t1 ::: Type) (t2 ::: Type) (t3 ::: Type)
             (f1 : t2 -> t3) (f2 : t1 -> t2) (x : t1) = f1 (f2 x)
 
-fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (sh : show t) (v : t) =
-    cdata (@show sh v)
+fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (_ : show t) (v : t) =
+    cdata (show v)
 
 fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
            (f : nm :: Name -> rest :: {Unit}
@@ -233,9 +233,9 @@ fun eqNullable (tables ::: {{Type}}) (agg ::: {{Type}}) (exps ::: {Type})
     (SQL ({e1} IS NULL AND {e2} IS NULL) OR {e1} = {e2})
 
 fun eqNullable' (tables ::: {{Type}}) (agg ::: {{Type}}) (exps ::: {Type})
-    (t ::: Type) (inj : sql_injectable (option t))
+    (t ::: Type) (_ : sql_injectable (option t))
     (e1 : sql_exp tables agg exps (option t))
     (e2 : option t) =
     case e2 of
         None => (SQL {e1} IS NULL)
-      | Some _ => sql_binary sql_eq e1 (@sql_inject inj e2)
+      | Some _ => sql_binary sql_eq e1 (sql_inject e2)
