@@ -20,10 +20,10 @@ clean:
 		clib/*.o
 	rm -rf .cm src/.cm
 
-clib/urweb.o: src/c/urweb.c
+clib/urweb.o: src/c/urweb.c include/*.h
 	gcc -O3 -I include -c src/c/urweb.c -o clib/urweb.o $(CFLAGS)
 
-clib/driver.o: src/c/driver.c
+clib/driver.o: src/c/driver.c include/*.h
 	gcc -O3 -I include -c src/c/driver.c -o clib/driver.o $(CFLAGS)
 
 src/urweb.cm: src/prefix.cm src/sources

@@ -73,7 +73,7 @@ static int try_rollback(uw_context ctx) {
 
 static void *worker(void *data) {
   int me = *(int *)data, retries_left = MAX_RETRIES;
-  uw_context ctx = uw_init(0, 1024, 0);
+  uw_context ctx = uw_init(0, 0, 1024, 0);
   
   while (1) {
     failure_kind fk = uw_begin_init(ctx);

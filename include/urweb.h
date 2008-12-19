@@ -6,7 +6,7 @@ int uw_really_send(int sock, void *buf, ssize_t len);
 
 extern uw_unit uw_unit_v;
 
-uw_context uw_init(size_t outHeaders_len, size_t page_len, size_t heap_len);
+uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, size_t heap_len);
 void uw_set_db(uw_context, void*);
 void *uw_get_db(uw_context);
 void uw_free(uw_context);
@@ -35,6 +35,8 @@ char *uw_get_input(uw_context, int name);
 char *uw_get_optional_input(uw_context, int name);
 
 void uw_write(uw_context, const char*);
+
+int uw_Basis_new_client_reactive(uw_context);
 
 char *uw_Basis_htmlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);

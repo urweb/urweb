@@ -31,6 +31,9 @@ struct uw_context {
   char *heap, *heap_front, *heap_back;
   char **inputs;
 
+  char *script, *script_front, *script_back;
+  int reactive_count;
+
   void *db;
 
   jmp_buf jmp_buf;
@@ -44,7 +47,7 @@ struct uw_context {
 
 extern int uw_inputs_len;
 
-uw_context uw_init(size_t outHeaders_len, size_t page_len, size_t heap_len) {
+uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, size_t heap_len) {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->headers = ctx->headers_end = NULL;
@@ -70,6 +73,10 @@ uw_context uw_init(size_t outHeaders_len, size_t page_len, size_t heap_len) {
 
   ctx->error_message[0] = 0;
 
+  ctx->script_front = ctx->script = malloc(script_len);
+  ctx->script_back = ctx->script_front + script_len;
+  ctx->reactive_count = 0;
+
   return ctx;
 }
 
@@ -83,6 +90,7 @@ void *uw_get_db(uw_context ctx) {
 
 void uw_free(uw_context ctx) {
   free(ctx->outHeaders);
+  free(ctx->script);
   free(ctx->page);
   free(ctx->heap);
   free(ctx->inputs);
@@ -90,22 +98,19 @@ void uw_free(uw_context ctx) {
   free(ctx);
 }
 
-void uw_reset_keep_request(uw_context ctx) {
-  ctx->outHeaders_front = ctx->outHeaders;
-  ctx->page_front = ctx->page;
-  ctx->heap_front = ctx->heap;
-  ctx->regions = NULL;
-  ctx->cleanup_front = ctx->cleanup;
-
-  ctx->error_message[0] = 0;
-}
-
 void uw_reset_keep_error_message(uw_context ctx) {
   ctx->outHeaders_front = ctx->outHeaders;
+  ctx->script_front = ctx->script;
   ctx->page_front = ctx->page;
   ctx->heap_front = ctx->heap;
   ctx->regions = NULL;
   ctx->cleanup_front = ctx->cleanup;
+  ctx->reactive_count = 0;
+}
+
+void uw_reset_keep_request(uw_context ctx) {
+  uw_reset_keep_error_message(ctx);
+  ctx->error_message[0] = 0;
 }
 
 void uw_reset(uw_context ctx) {
@@ -286,6 +291,7 @@ void uw_end_region(uw_context ctx) {
 
 void uw_memstats(uw_context ctx) {
   printf("Headers: %d/%d\n", ctx->outHeaders_front - ctx->outHeaders, ctx->outHeaders_back - ctx->outHeaders);
+  printf("Script: %d/%d\n", ctx->script_front - ctx->script, ctx->script_back - ctx->script);
   printf("Page: %d/%d\n", ctx->page_front - ctx->page, ctx->page_back - ctx->page);
   printf("Heap: %d/%d\n", ctx->heap_front - ctx->heap, ctx->heap_back - ctx->heap);
 }
@@ -341,7 +347,41 @@ void uw_write_header(uw_context ctx, uw_Basis_string s) {
   uw_check_headers(ctx, len + 1);
   strcpy(ctx->outHeaders_front, s);
   ctx->outHeaders_front += len;
-  *ctx->outHeaders_front = 0;
+}
+
+static void uw_check_script(uw_context ctx, size_t extra) {
+  size_t desired = ctx->script_front - ctx->script + extra, next;
+  char *new_script;
+
+  next = ctx->script_back - ctx->script;
+  if (next < desired) {
+    if (next == 0)
+      next = 1;
+    for (; next < desired; next *= 2);
+
+    new_script = realloc(ctx->script, next);
+    ctx->script_front = new_script + (ctx->script_front - ctx->script);
+    ctx->script_back = new_script + next;
+    ctx->script = new_script;
+  }
+}
+
+void uw_write_script(uw_context ctx, uw_Basis_string s) {
+  int len = strlen(s);
+
+  uw_check_script(ctx, len + 1);
+  strcpy(ctx->script_front, s);
+  ctx->script_front += len;
+}
+
+int uw_Basis_new_client_reactive(uw_context ctx) {
+  size_t len;
+
+  uw_check_script(ctx, 8 + INTS_MAX);
+  sprintf(ctx->script_front, "var e%d=0\n%n", ctx->reactive_count, &len);
+  ctx->script_front += len;
+
+  return ctx->reactive_count++;
 }
 
 static void uw_check(uw_context ctx, size_t extra) {
