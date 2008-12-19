@@ -139,9 +139,9 @@ fun explifySgi (sgi, loc) =
       | L.SgiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, explifySgn sgn), loc)
       | L.SgiSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, explifySgn sgn), loc)
       | L.SgiConstraint _ => NONE
-      | L.SgiClassAbs (x, n) => SOME (L'.SgiConAbs (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)), loc)
-      | L.SgiClass (x, n, c) => SOME (L'.SgiCon (x, n, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc),
-                                                 explifyCon c), loc)
+      | L.SgiClassAbs (x, n, k) => SOME (L'.SgiConAbs (x, n, (L'.KArrow (explifyKind k, (L'.KType, loc)), loc)), loc)
+      | L.SgiClass (x, n, k, c) => SOME (L'.SgiCon (x, n, (L'.KArrow (explifyKind k, (L'.KType, loc)), loc),
+                                                    explifyCon c), loc)
 
 and explifySgn (sgn, loc) =
     case sgn of
@@ -172,8 +172,8 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DExport (en, sgn, str) => SOME (L'.DExport (en, explifySgn sgn, explifyStr str), loc)
       | L.DTable (nt, x, n, c) => SOME (L'.DTable (nt, x, n, explifyCon c), loc)
       | L.DSequence (nt, x, n) => SOME (L'.DSequence (nt, x, n), loc)
-      | L.DClass (x, n, c) => SOME (L'.DCon (x, n,
-                                             (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc), explifyCon c), loc)
+      | L.DClass (x, n, k, c) => SOME (L'.DCon (x, n,
+                                                (L'.KArrow (explifyKind k, (L'.KType, loc)), loc), explifyCon c), loc)
       | L.DDatabase s => SOME (L'.DDatabase s, loc)
       | L.DCookie (nt, x, n, c) => SOME (L'.DCookie (nt, x, n, explifyCon c), loc)
 

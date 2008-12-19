@@ -604,8 +604,8 @@ fun sgiSeek (sgi, (sgns, strs, cons)) =
       | SgiSgn (x, n, _) => (IM.insert (sgns, n, x), strs, cons)
       | SgiStr (x, n, _) => (sgns, IM.insert (strs, n, x), cons)
       | SgiConstraint _ => (sgns, strs, cons)
-      | SgiClassAbs (x, n) => (sgns, strs, IM.insert (cons, n, x))
-      | SgiClass (x, n, _) => (sgns, strs, IM.insert (cons, n, x))
+      | SgiClassAbs (x, n, _) => (sgns, strs, IM.insert (cons, n, x))
+      | SgiClass (x, n, _, _) => (sgns, strs, IM.insert (cons, n, x))
 
 fun sgnSeek f sgis =
     let
@@ -788,8 +788,8 @@ fun enrichClasses env classes (m1, ms) sgn =
                                    fmap,
                                    pushSgnNamedAs env x n sgn)
 
-                                | SgiClassAbs xn => found xn
-                                | SgiClass (x, n, _) => found (x, n)
+                                | SgiClassAbs (x, n, _) => found (x, n)
+                                | SgiClass (x, n, _, _) => found (x, n)
                                 | SgiVal (x, n, (CApp (f, a), _)) =>
                                   let
                                       fun unravel c =
@@ -946,8 +946,8 @@ fun sgiBinds env (sgi, loc) =
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
       | SgiConstraint _ => env
 
-      | SgiClassAbs (x, n) => pushCNamedAs env x n (KArrow ((KType, loc), (KType, loc)), loc) NONE
-      | SgiClass (x, n, c) => pushCNamedAs env x n (KArrow ((KType, loc), (KType, loc)), loc) (SOME c)
+      | SgiClassAbs (x, n, k) => pushCNamedAs env x n (KArrow (k, (KType, loc)), loc) NONE
+      | SgiClass (x, n, k, c) => pushCNamedAs env x n (KArrow (k, (KType, loc)), loc) (SOME c)
 
 fun sgnSubCon x =
     ElabUtil.Con.map {kind = id,
@@ -998,14 +998,14 @@ fun projectCon env {sgn, str, field} =
                               end
                           else
                               NONE
-                        | SgiClassAbs (x, _) => if x = field then
-                                                    SOME ((KArrow ((KType, #2 sgn), (KType, #2 sgn)), #2 sgn), NONE)
-                                                else
-                                                    NONE
-                        | SgiClass (x, _, c) => if x = field then
-                                                    SOME ((KArrow ((KType, #2 sgn), (KType, #2 sgn)), #2 sgn), SOME c)
-                                                else
-                                                    NONE
+                        | SgiClassAbs (x, _, k) => if x = field then
+                                                       SOME ((KArrow (k, (KType, #2 sgn)), #2 sgn), NONE)
+                                                   else
+                                                       NONE
+                        | SgiClass (x, _, k, c) => if x = field then
+                                                       SOME ((KArrow (k, (KType, #2 sgn)), #2 sgn), SOME c)
+                                                   else
+                                                       NONE
                         | _ => NONE) sgis of
              NONE => NONE
            | SOME ((k, co), subs) => SOME (k, Option.map (sgnSubCon (str, subs)) co))
@@ -1101,8 +1101,8 @@ fun sgnSeekConstraints (str, sgis) =
                   | SgiVal _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
                   | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
-                  | SgiClassAbs (x, n) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
-                  | SgiClass (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiClassAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
+                  | SgiClass (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
     in
         seek (sgis, IM.empty, IM.empty, IM.empty, [])
     end
@@ -1189,9 +1189,9 @@ fun declBinds env (d, loc) =
         in
             pushENamedAs env x n t
         end
-      | DClass (x, n, c) =>
+      | DClass (x, n, k, c) =>
         let
-            val k = (KArrow ((KType, loc), (KType, loc)), loc)
+            val k = (KArrow (k, (KType, loc)), loc)
             val env = pushCNamedAs env x n k (SOME c)
         in
             pushClass env n

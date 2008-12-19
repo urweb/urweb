@@ -534,16 +534,24 @@ fun p_sgn_item env (sgi, _) =
                                        string "~",
                                        space,
                                        p_con env c2]
-      | SgiClassAbs (x, n) => box [string "class",
-                                   space,
-                                   p_named x n]
-      | SgiClass (x, n, c) => box [string "class",
-                                   space,
-                                   p_named x n,
-                                   space,
-                                   string "=",
-                                   space,
-                                   p_con env c]
+      | SgiClassAbs (x, n, k) => box [string "class",
+                                      space,
+                                      p_named x n,
+                                      space,
+                                      string "::",
+                                      space,
+                                      p_kind k]
+      | SgiClass (x, n, k, c) => box [string "class",
+                                      space,
+                                      p_named x n,
+                                      space,
+                                      string "::",
+                                      space,
+                                      p_kind k,
+                                      space,
+                                      string "=",
+                                      space,
+                                      p_con env c]
 
 and p_sgn env (sgn, _) =
     case sgn of
@@ -705,13 +713,17 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DSequence (_, x, n) => box [string "sequence",
                                     space,
                                     p_named x n]
-      | DClass (x, n, c) => box [string "class",
-                                 space,
-                                 p_named x n,
-                                 space,
-                                 string "=",
-                                 space,
-                                 p_con env c]
+      | DClass (x, n, k, c) => box [string "class",
+                                    space,
+                                    p_named x n,
+                                    space,
+                                    string "::",
+                                    space,
+                                    p_kind k,
+                                    space,
+                                    string "=",
+                                    space,
+                                    p_con env c]
       | DDatabase s => box [string "database",
                             space,
                             string s]

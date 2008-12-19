@@ -136,8 +136,8 @@ datatype sgn_item' =
        | SgiStr of string * int * sgn
        | SgiSgn of string * int * sgn
        | SgiConstraint of con * con
-       | SgiClassAbs of string * int
-       | SgiClass of string * int * con
+       | SgiClassAbs of string * int * kind
+       | SgiClass of string * int * kind * con
 
 and sgn' =
     SgnConst of sgn_item list
@@ -163,7 +163,7 @@ datatype decl' =
        | DExport of int * sgn * str
        | DTable of int * string * int * con
        | DSequence of int * string * int
-       | DClass of string * int * con
+       | DClass of string * int * kind * con
        | DDatabase of string
        | DCookie of int * string * int * con
 

@@ -410,13 +410,24 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
        | EXPORT spath                   ([(DExport spath, s (EXPORTleft, spathright))])
        | TABLE SYMBOL COLON cexp        ([(DTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))])
        | SEQUENCE SYMBOL                ([(DSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))])
-       | CLASS SYMBOL EQ cexp           ([(DClass (SYMBOL, cexp), s (CLASSleft, cexpright))])
+       | CLASS SYMBOL EQ cexp           (let
+                                             val loc = s (CLASSleft, cexpright)
+                                         in
+                                             [(DClass (SYMBOL, (KWild, loc), cexp), loc)]
+                                         end)
+       | CLASS SYMBOL DCOLON kind EQ cexp ([(DClass (SYMBOL, kind, cexp), s (CLASSleft, cexpright))])
        | CLASS SYMBOL SYMBOL EQ cexp    (let
                                              val loc = s (CLASSleft, cexpright)
-                                             val k = (KType, loc)
+                                             val k = (KWild, loc)
                                              val c = (CAbs (SYMBOL2, SOME k, cexp), loc)
                                          in
-                                             [(DClass (SYMBOL1, c), s (CLASSleft, cexpright))]
+                                             [(DClass (SYMBOL1, k, c), s (CLASSleft, cexpright))]
+                                         end)
+       | CLASS SYMBOL LPAREN SYMBOL DCOLON kind RPAREN EQ cexp (let
+                                             val loc = s (CLASSleft, cexpright)
+                                             val c = (CAbs (SYMBOL2, SOME kind, cexp), loc)
+                                         in
+                                             [(DClass (SYMBOL1, kind, c), s (CLASSleft, cexpright))]
                                          end)
        | COOKIE SYMBOL COLON cexp       ([(DCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))])
 
@@ -501,14 +512,38 @@ sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, k
                                          in
                                              (SgiVal (SYMBOL, t), loc)
                                          end)
-       | CLASS SYMBOL                   (SgiClassAbs SYMBOL, s (CLASSleft, SYMBOLright))
-       | CLASS SYMBOL EQ cexp           (SgiClass (SYMBOL, cexp), s (CLASSleft, cexpright))
+       | CLASS SYMBOL                   (let
+                                             val loc = s (CLASSleft, SYMBOLright)
+                                         in
+                                             (SgiClassAbs (SYMBOL, (KWild, loc)), loc)
+                                         end)
+       | CLASS SYMBOL DCOLON kind       (let
+                                             val loc = s (CLASSleft, kindright)
+                                         in
+                                             (SgiClassAbs (SYMBOL, kind), loc)
+                                         end)
+       | CLASS SYMBOL EQ cexp           (let
+                                             val loc = s (CLASSleft, cexpright)
+                                         in
+                                             (SgiClass (SYMBOL, (KWild, loc), cexp), loc)
+                                         end)
+       | CLASS SYMBOL DCOLON kind EQ cexp (let
+                                               val loc = s (CLASSleft, cexpright)
+                                           in
+                                               (SgiClass (SYMBOL, kind, cexp), loc)
+                                           end)
        | CLASS SYMBOL SYMBOL EQ cexp    (let
                                              val loc = s (CLASSleft, cexpright)
-                                             val k = (KType, loc)
+                                             val k = (KWild, loc)
                                              val c = (CAbs (SYMBOL2, SOME k, cexp), loc)
                                          in
-                                             (SgiClass (SYMBOL1, c), s (CLASSleft, cexpright))
+                                             (SgiClass (SYMBOL1, k, c), s (CLASSleft, cexpright))
+                                         end)
+       | CLASS SYMBOL LPAREN SYMBOL DCOLON kind RPAREN EQ cexp    (let
+                                             val loc = s (CLASSleft, cexpright)
+                                             val c = (CAbs (SYMBOL2, SOME kind, cexp), loc)
+                                         in
+                                             (SgiClass (SYMBOL1, kind, c), s (CLASSleft, cexpright))
                                          end)
        | COOKIE SYMBOL COLON cexp       (let
                                              val loc = s (COOKIEleft, cexpright)

@@ -547,11 +547,16 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                             S.map2 (con ctx c2,
                                     fn c2' =>
                                        (SgiConstraint (c1', c2'), loc)))
-              | SgiClassAbs _ => S.return2 siAll
-              | SgiClass (x, n, c) =>
-                S.map2 (con ctx c,
-                        fn c' =>
-                           (SgiClass (x, n, c'), loc))
+              | SgiClassAbs (x, n, k) =>
+                S.map2 (kind k,
+                        fn k' =>
+                           (SgiClassAbs (x, n, k'), loc))
+              | SgiClass (x, n, k, c) =>
+                S.bind2 (kind k,
+                      fn k' => 
+                         S.map2 (con ctx c,
+                              fn c' =>
+                                 (SgiClass (x, n, k', c'), loc)))
 
         and sg ctx s acc =
             S.bindP (sg' ctx s acc, sgn ctx)
@@ -575,10 +580,10 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                  | SgiSgn (x, _, sgn) =>
                                                    bind (ctx, Sgn (x, sgn))
                                                  | SgiConstraint _ => ctx
-                                                 | SgiClassAbs (x, n) =>
-                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
-                                                 | SgiClass (x, n, _) =>
-                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc))),
+                                                 | SgiClassAbs (x, n, k) =>
+                                                   bind (ctx, NamedC (x, n, (KArrow (k, (KType, loc)), loc)))
+                                                 | SgiClass (x, n, k, _) =>
+                                                   bind (ctx, NamedC (x, n, (KArrow (k, (KType, loc)), loc))),
                                                sgi ctx si)) ctx sgis,
                      fn sgis' =>
                         (SgnConst sgis', loc))
@@ -720,8 +725,8 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                                                 c), loc)))
                                                  | DSequence (tn, x, n) =>
                                                    bind (ctx, NamedE (x, (CModProj (n, [], "sql_sequence"), loc)))
-                                                 | DClass (x, n, _) =>
-                                                   bind (ctx, NamedC (x, n, (KArrow ((KType, loc), (KType, loc)), loc)))
+                                                 | DClass (x, n, k, _) =>
+                                                   bind (ctx, NamedC (x, n, (KArrow (k, (KType, loc)), loc)))
                                                  | DDatabase _ => ctx
                                                  | DCookie (tn, x, n, c) =>
                                                    bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "cookie"), loc),
@@ -819,10 +824,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                            (DTable (tn, x, n, c'), loc))
               | DSequence _ => S.return2 dAll
 
-              | DClass (x, n, c) =>
-                S.map2 (mfc ctx c,
-                     fn c' =>
-                        (DClass (x, n, c'), loc))
+              | DClass (x, n, k, c) =>
+                S.bind2 (mfk k,
+                         fn k' =>
+                            S.map2 (mfc ctx c,
+                                 fn c' =>
+                                    (DClass (x, n, k', c'), loc)))
 
               | DDatabase _ => S.return2 dAll
 
@@ -963,7 +970,7 @@ and maxNameDecl (d, _) =
       | DSgn (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | DFfiStr (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | DConstraint _ => 0
-      | DClass (_, n, _) => n
+      | DClass (_, n, _, _) => n
       | DExport _ => 0
       | DTable (n1, _, n2, _) => Int.max (n1, n2)
       | DSequence (n1, _, n2) => Int.max (n1, n2)
@@ -1002,8 +1009,8 @@ and maxNameSgi (sgi, _) =
       | SgiStr (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | SgiSgn (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | SgiConstraint _ => 0
-      | SgiClassAbs (_, n) => n
-      | SgiClass (_, n, _) => n
+      | SgiClassAbs (_, n, _) => n
+      | SgiClass (_, n, _, _) => n
               
 end
 

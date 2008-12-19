@@ -413,17 +413,25 @@ fun p_sgn_item (sgi, _) =
                                        string "~",
                                        space,
                                        p_con c2]
-      | SgiClassAbs x => box [string "class",
-                              space,
-                              string x]
-      | SgiClass (x, c) => box [string "class",
-                                space,
-                                string x,
-                                space,
-                                string "=",
-                                space,
-                                p_con c]
-
+      | SgiClassAbs (x, k) => box [string "class",
+                                   space,
+                                   string x,
+                                   space,
+                                   string "::",
+                                   space,
+                                   p_kind k]
+      | SgiClass (x, k, c) => box [string "class",
+                                   space,
+                                   string x,
+                                   space,
+                                   string "::",
+                                   space,
+                                   p_kind k,
+                                   space,
+                                   string "=",
+                                   space,
+                                   p_con c]
+                              
 and p_sgn (sgn, _) =
     case sgn of
         SgnConst sgis => box [string "sig",
@@ -562,13 +570,13 @@ fun p_decl ((d, _) : decl) =
       | DSequence x => box [string "sequence",
                             space,
                             string x]
-      | DClass (x, c) => box [string "class",
-                              space,
-                              string x,
-                              space,
-                              string "=",
-                              space,
-                              p_con c]
+      | DClass (x, k, c) => box [string "class",
+                                 space,
+                                 string x,
+                                 space,
+                                 string "=",
+                                 space,
+                                 p_con c]
 
       | DDatabase s => box [string "database",
                             space,

@@ -2059,24 +2059,26 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             ([(L'.SgiConstraint (c1', c2'), loc)], (env, denv, gs1 @ gs2 @ gs3))
         end
 
-      | L.SgiClassAbs x =>
+      | L.SgiClassAbs (x, k) =>
         let
-            val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
-            val (env, n) = E.pushCNamed env x k NONE
+            val k = elabKind k
+            val k' = (L'.KArrow (k, (L'.KType, loc)), loc)
+            val (env, n) = E.pushCNamed env x k' NONE
             val env = E.pushClass env n
         in
-            ([(L'.SgiClassAbs (x, n), loc)], (env, denv, []))
+            ([(L'.SgiClassAbs (x, n, k), loc)], (env, denv, []))
         end
 
-      | L.SgiClass (x, c) =>
+      | L.SgiClass (x, k, c) =>
         let
-            val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
+            val k = elabKind k
+            val k' = (L'.KArrow (k, (L'.KType, loc)), loc)
             val (c', ck, gs) = elabCon (env, denv) c
-            val (env, n) = E.pushCNamed env x k (SOME c')
+            val (env, n) = E.pushCNamed env x k' (SOME c')
             val env = E.pushClass env n
         in
-            checkKind env c' ck k;
-            ([(L'.SgiClass (x, n, c'), loc)], (env, denv, []))
+            checkKind env c' ck k';
+            ([(L'.SgiClass (x, n, k, c'), loc)], (env, denv, []))
         end
 
 and elabSgn (env, denv) (sgn, loc) =
@@ -2140,13 +2142,13 @@ and elabSgn (env, denv) (sgn, loc) =
                                        ();
                                    (cons, vals, sgns, SS.add (strs, x)))
                                 | L'.SgiConstraint _ => (cons, vals, sgns, strs)
-                                | L'.SgiClassAbs (x, _) =>
+                                | L'.SgiClassAbs (x, _, _) =>
                                   (if SS.member (cons, x) then
                                        sgnError env (DuplicateCon (loc, x))
                                    else
                                        ();
                                    (SS.add (cons, x), vals, sgns, strs))
-                                | L'.SgiClass (x, _, _) =>
+                                | L'.SgiClass (x, _, _, _) =>
                                   (if SS.member (cons, x) then
                                        sgnError env (DuplicateCon (loc, x))
                                    else
@@ -2222,8 +2224,8 @@ fun selfify env {str, strs, sgn} =
                               (L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
                             | (L'.SgiDatatype (x, n, xs, xncs), loc) =>
                               (L'.SgiDatatypeImp (x, n, str, strs, x, xs, xncs), loc)
-                            | (L'.SgiClassAbs (x, n), loc) =>
-                              (L'.SgiClass (x, n, (L'.CModProj (str, strs, x), loc)), loc)
+                            | (L'.SgiClassAbs (x, n, k), loc) =>
+                              (L'.SgiClass (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)
                             | (L'.SgiStr (x, n, sgn), loc) =>
                               (L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)
                             | x => x) sgis), #2 sgn)
@@ -2284,19 +2286,19 @@ fun dopen (env, denv) {str, strs, sgn} =
                                               (L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc)
                                             | L'.SgiConstraint (c1, c2) =>
                                               (L'.DConstraint (c1, c2), loc)
-                                            | L'.SgiClassAbs (x, n) =>
+                                            | L'.SgiClassAbs (x, n, k) =>
                                               let
-                                                  val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
+                                                  val k' = (L'.KArrow (k, (L'.KType, loc)), loc)
                                                   val c = (L'.CModProj (str, strs, x), loc)
                                               in
-                                                  (L'.DCon (x, n, k, c), loc)
+                                                  (L'.DCon (x, n, k', c), loc)
                                               end
-                                            | L'.SgiClass (x, n, _) =>
+                                            | L'.SgiClass (x, n, k, _) =>
                                               let
-                                                  val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
+                                                  val k' = (L'.KArrow (k, (L'.KType, loc)), loc)
                                                   val c = (L'.CModProj (str, strs, x), loc)
                                               in
-                                                  (L'.DCon (x, n, k, c), loc)
+                                                  (L'.DCon (x, n, k', c), loc)
                                               end
                                   in
                                       (d, (E.declBinds env' d, denv'))
@@ -2320,7 +2322,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DExport _ => []
       | L'.DTable (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (tableOf (), c), loc)), loc)]
       | L'.DSequence (tn, x, n) => [(L'.SgiVal (x, n, sequenceOf ()), loc)]
-      | L'.DClass (x, n, c) => [(L'.SgiClass (x, n, c), loc)]
+      | L'.DClass (x, n, k, c) => [(L'.SgiClass (x, n, k, c), loc)]
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
 
@@ -2418,14 +2420,14 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                          in
                                              found (x', n1, k', SOME (L'.CModProj (m1, ms, s), loc))
                                          end
-                                       | L'.SgiClassAbs (x', n1) => found (x', n1,
-                                                                           (L'.KArrow ((L'.KType, loc),
-                                                                                       (L'.KType, loc)), loc),
-                                                                           NONE)
-                                       | L'.SgiClass (x', n1, c) => found (x', n1,
-                                                                           (L'.KArrow ((L'.KType, loc),
-                                                                                       (L'.KType, loc)), loc),
-                                                                           SOME c)
+                                       | L'.SgiClassAbs (x', n1, k) => found (x', n1,
+                                                                              (L'.KArrow (k,
+                                                                                          (L'.KType, loc)), loc),
+                                                                              NONE)
+                                       | L'.SgiClass (x', n1, k, c) => found (x', n1,
+                                                                              (L'.KArrow (k,
+                                                                                          (L'.KType, loc)), loc),
+                                                                              SOME c)
                                        | _ => NONE
                                  end)
 
@@ -2458,8 +2460,8 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                  in
                                      case sgi1 of
                                          L'.SgiCon (x', n1, k1, c1) => found (x', n1, k1, c1)
-                                       | L'.SgiClass (x', n1, c1) =>
-                                         found (x', n1, (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc), c1)
+                                       | L'.SgiClass (x', n1, k1, c1) =>
+                                         found (x', n1, (L'.KArrow (k1, (L'.KType, loc)), loc), c1)
                                        | _ => NONE
                                  end)
 
@@ -2632,13 +2634,17 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                          NONE
                                    | _ => NONE)
 
-                      | L'.SgiClassAbs (x, n2) =>
+                      | L'.SgiClassAbs (x, n2, k2) =>
                         seek (fn (env, sgi1All as (sgi1, _)) =>
                                  let
-                                     fun found (x', n1, co) =
+                                     fun found (x', n1, k1, co) =
                                          if x = x' then
                                              let
-                                                 val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
+                                                 val () = unifyKinds k1 k2
+                                                     handle KUnify (k1, k2, err) =>
+                                                            sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
+
+                                                 val k = (L'.KArrow (k1, (L'.KType, loc)), loc)
                                                  val env = E.pushCNamedAs env x n1 k co
                                              in
                                                  SOME (if n1 = n2 then
@@ -2651,18 +2657,22 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                              NONE
                                  in
                                      case sgi1 of
-                                         L'.SgiClassAbs (x', n1) => found (x', n1, NONE)
-                                       | L'.SgiClass (x', n1, c) => found (x', n1, SOME c)
+                                         L'.SgiClassAbs (x', n1, k1) => found (x', n1, k1, NONE)
+                                       | L'.SgiClass (x', n1, k1, c) => found (x', n1, k1, SOME c)
                                        | _ => NONE
                                  end)
-                      | L'.SgiClass (x, n2, c2) =>
+                      | L'.SgiClass (x, n2, k2, c2) =>
                         seek (fn (env, sgi1All as (sgi1, _)) =>
                                  let
-                                     val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
+                                     val k = (L'.KArrow (k2, (L'.KType, loc)), loc)
 
-                                     fun found (x', n1, c1) =
+                                     fun found (x', n1, k1, c1) =
                                          if x = x' then
                                              let
+                                                 val () = unifyKinds k1 k2
+                                                     handle KUnify (k1, k2, err) =>
+                                                            sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
+
                                                  fun good () =
                                                      let
                                                          val env = E.pushCNamedAs env x n2 k (SOME c2)
@@ -2685,7 +2695,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                              NONE
                                  in
                                      case sgi1 of
-                                         L'.SgiClass (x', n1, c1) => found (x', n1, c1)
+                                         L'.SgiClass (x', n1, k1, c1) => found (x', n1, k1, c1)
                                        | _ => NONE
                                  end)
                 end
@@ -2878,8 +2888,8 @@ fun wildifyStr env (str, sgn) =
                                                         L.DCon (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
                                                                              handle NotFound =>
                                                                                     needed)
-                                                      | L.DClass (x, _) => ((#1 (SM.remove (neededC, x)), neededV)
-                                                                            handle NotFound => needed)
+                                                      | L.DClass (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
+                                                                               handle NotFound => needed)
                                                       | L.DVal (x, _, _) => ((neededC, SS.delete (neededV, x))
                                                                              handle NotFound => needed)
                                                       | L.DOpen _ => (SM.empty, SS.empty)
@@ -3286,15 +3296,16 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                     ([(L'.DSequence (!basis_r, x, n), loc)], (env, denv, gs))
                 end
 
-              | L.DClass (x, c) =>
+              | L.DClass (x, k, c) =>
                 let
-                    val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
+                    val k = elabKind k
+                    val k' = (L'.KArrow (k, (L'.KType, loc)), loc)
                     val (c', ck, gs') = elabCon (env, denv) c
-                    val (env, n) = E.pushCNamed env x k (SOME c')
+                    val (env, n) = E.pushCNamed env x k' (SOME c')
                     val env = E.pushClass env n
                 in
-                    checkKind env c' ck k;
-                    ([(L'.DClass (x, n, c'), loc)], (env, denv, enD gs' @ gs))
+                    checkKind env c' ck k';
+                    ([(L'.DClass (x, n, k, c'), loc)], (env, denv, enD gs' @ gs))
                 end
 
               | L.DDatabase s => ([(L'.DDatabase s, loc)], (env, denv, gs))
@@ -3408,29 +3419,25 @@ and elabStr (env, denv) (str, loc) =
                                   ((L'.SgiStr (x, n, sgn), loc) :: sgis, cons, vals, sgns, strs)
                               end
                             | L'.SgiConstraint _ => ((sgi, loc) :: sgis, cons, vals, sgns, strs)
-                            | L'.SgiClassAbs (x, n) =>
+                            | L'.SgiClassAbs (x, n, k) =>
                               let
-                                  val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
-
                                   val (cons, x) =
                                       if SS.member (cons, x) then
                                           (cons, "?" ^ x)
                                       else
                                           (SS.add (cons, x), x)
                               in
-                                  ((L'.SgiClassAbs (x, n), loc) :: sgis, cons, vals, sgns, strs)
+                                  ((L'.SgiClassAbs (x, n, k), loc) :: sgis, cons, vals, sgns, strs)
                               end
-                            | L'.SgiClass (x, n, c) =>
+                            | L'.SgiClass (x, n, k, c) =>
                               let
-                                  val k = (L'.KArrow ((L'.KType, loc), (L'.KType, loc)), loc)
-
                                   val (cons, x) =
                                       if SS.member (cons, x) then
                                           (cons, "?" ^ x)
                                       else
                                           (SS.add (cons, x), x)
                               in
-                                  ((L'.SgiClass (x, n, c), loc) :: sgis, cons, vals, sgns, strs)
+                                  ((L'.SgiClass (x, n, k, c), loc) :: sgis, cons, vals, sgns, strs)
                               end)
 
                 ([], SS.empty, SS.empty, SS.empty, SS.empty) sgis
