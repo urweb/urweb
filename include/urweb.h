@@ -36,7 +36,8 @@ char *uw_get_optional_input(uw_context, int name);
 
 void uw_write(uw_context, const char*);
 
-int uw_Basis_new_client_reactive(uw_context);
+int uw_Basis_new_client_source(uw_context, uw_unit);
+char *uw_Basis_get_script(uw_context, uw_unit);
 
 char *uw_Basis_htmlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);

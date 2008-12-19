@@ -32,7 +32,7 @@ struct uw_context {
   char **inputs;
 
   char *script, *script_front, *script_back;
-  int reactive_count;
+  int source_count;
 
   void *db;
 
@@ -75,7 +75,7 @@ uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, si
 
   ctx->script_front = ctx->script = malloc(script_len);
   ctx->script_back = ctx->script_front + script_len;
-  ctx->reactive_count = 0;
+  ctx->source_count = 0;
 
   return ctx;
 }
@@ -105,7 +105,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->heap_front = ctx->heap;
   ctx->regions = NULL;
   ctx->cleanup_front = ctx->cleanup;
-  ctx->reactive_count = 0;
+  ctx->source_count = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -374,14 +374,27 @@ void uw_write_script(uw_context ctx, uw_Basis_string s) {
   ctx->script_front += len;
 }
 
-int uw_Basis_new_client_reactive(uw_context ctx) {
+char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
+  if (ctx->script_front == ctx->script) {
+    char *r = uw_malloc(ctx, 1);
+    r[0] = 0;
+    return r;
+  } else {
+    char *r = uw_malloc(ctx, 41 + (ctx->script_front - ctx->script));
+
+    sprintf(r, "<script type=\"text/javascript\">%s</script>", ctx->script);
+    return r;
+  }
+}
+
+int uw_Basis_new_client_source(uw_context ctx, uw_unit u) {
   size_t len;
 
   uw_check_script(ctx, 8 + INTS_MAX);
-  sprintf(ctx->script_front, "var e%d=0\n%n", ctx->reactive_count, &len);
+  sprintf(ctx->script_front, "var e%d=0\n%n", ctx->source_count, &len);
   ctx->script_front += len;
 
-  return ctx->reactive_count++;
+  return ctx->source_count++;
 }
 
 static void uw_check(uw_context ctx, size_t extra) {

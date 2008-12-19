@@ -80,11 +80,15 @@ val bind : m ::: (Type -> Type) -> t1 ::: Type -> t2 ::: Type
            -> m t1 -> (t1 -> m t2)
            -> m t2
 
-(** ** Transactions *)
-
 con transaction :: Type -> Type
 val transaction_monad : monad transaction
 
+con source :: Type -> Type
+val source : t ::: Type -> t -> transaction (source t)
+
+con signal :: Type -> Type
+val signal_monad : monad signal
+val signal : t ::: Type -> source t -> signal t
 
 
 (** HTTP operations *)

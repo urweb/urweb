@@ -133,6 +133,8 @@ fun monoType env =
 
                   | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
+                  | L.CApp ((L.CFfi ("Basis", "source"), _), t) =>
+                    (L'.TFfi ("Basis", "int"), loc)
                   | L.CApp ((L.CFfi ("Basis", "http_cookie"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_table"), _), _) =>
@@ -965,6 +967,17 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.ECApp ((L.EFfi ("Basis", "source"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("x", t, (L'.TFun ((L'.TRecord [], loc), (L'.TFfi ("Basis", "int"), loc)), loc),
+                           (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "int"), loc),
+                                     (L'.EFfiApp ("Basis", "new_client_source", [(L'.ERecord [], loc)]), loc)), loc)),
+                  loc),
+                 fm)
+            end
+
           | L.ECApp ((L.EFfi ("Basis", "getCookie"), _), t) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
@@ -1769,7 +1782,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                               raise Fail "No name passed to input tag")
 
-                fun normal (tag, extra) =
+                fun normal (tag, extra, extraInner) =
                     let
                         val (tagStart, fm) = tagStart tag
                         val tagStart = case extra of
@@ -1779,6 +1792,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         fun normal () =
                             let
                                 val (xml, fm) = monoExp (env, st, fm) xml
+                                val xml = case extraInner of
+                                              NONE => xml
+                                            | SOME ei => (L'.EStrcat (ei, xml), loc)
                             in
                                 ((L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
                                               (L'.EStrcat (xml,
@@ -1802,7 +1818,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     end
             in
                 case tag of
-                    "submit" => normal ("input type=\"submit\"", NONE)
+                    "body" => normal ("body", NONE,
+                                      SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
+                    
+                  | "submit" => normal ("input type=\"submit\"", NONE, NONE)
 
                   | "textbox" =>
                     (case targs of
@@ -1847,7 +1866,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          NONE => raise Fail "No name for radioGroup"
                        | SOME name =>
                          normal ("input",
-                                 SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc)))
+                                 SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc),
+                                 NONE))
 
                   | "select" =>
                     (case targs of
@@ -1867,10 +1887,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to lselect tag"))
 
-                  | "option" => normal ("option", NONE)
+                  | "option" => normal ("option", NONE, NONE)
 
-                  | "tabl" => normal ("table", NONE)
-                  | _ => normal (tag, NONE)
+                  | "tabl" => normal ("table", NONE, NONE)
+                  | _ => normal (tag, NONE, NONE)
             end
 
           | L.EApp ((L.ECApp (
