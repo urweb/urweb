@@ -94,6 +94,8 @@ uw_Basis_string uw_Basis_sqlifyTimeN(uw_context, uw_Basis_time*);
 
 char *uw_Basis_ensqlBool(uw_Basis_bool);
 
+char *uw_Basis_jsifyString(uw_context, uw_Basis_string);
+
 uw_Basis_string uw_Basis_intToString(uw_context, uw_Basis_int);
 uw_Basis_string uw_Basis_floatToString(uw_context, uw_Basis_float);
 uw_Basis_string uw_Basis_boolToString(uw_context, uw_Basis_bool);

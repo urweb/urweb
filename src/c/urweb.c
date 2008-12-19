@@ -1056,6 +1056,41 @@ char *uw_Basis_ensqlBool(uw_Basis_bool b) {
     return (char *)&true;
 }
 
+uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
+  char *r, *s2;
+
+  uw_check_heap(ctx, strlen(s) * 4 + 2);
+
+  r = s2 = ctx->heap_front;
+  *s2++ = '"';
+
+  for (; *s; s++) {
+    char c = *s;
+
+    switch (c) {
+    case '"':
+      strcpy(s2, "\\\"");
+      s2 += 2;
+      break;
+    case '\\':
+      strcpy(s2, "\\\\");
+      s2 += 2;
+      break;
+    default:
+      if (isprint(c))
+        *s2++ = c;
+      else {
+        sprintf(s2, "\\%3o", c);
+        s2 += 4;
+      }
+    }
+  }
+
+  strcpy(s2, "\"");
+  ctx->heap_front = s2 + 1;
+  return r;
+}
+
 uw_Basis_string uw_Basis_intToString(uw_context ctx, uw_Basis_int n) {
   int len;
   char *r;

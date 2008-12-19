@@ -420,6 +420,8 @@ fun cifyExp (eAll as (e, loc), sm) =
             ((L'.EUnurlify (e, t), loc), sm)
         end
 
+      | L.EJavaScript _ => raise Fail "EJavaScript remains"
+
 fun cifyDecl ((d, loc), sm) =
     case d of
         L.DDatatype (x, n, xncs) =>

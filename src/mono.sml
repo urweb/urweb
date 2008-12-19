@@ -96,6 +96,8 @@ datatype exp' =
 
        | EUnurlify of exp * typ
 
+       | EJavaScript of exp
+
 
 withtype exp = exp' located
 

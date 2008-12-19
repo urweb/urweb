@@ -1744,6 +1744,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                            result = (L'.TFfi ("Basis", "string"), loc)}), loc),
                                                fm)
                                           end
+                                        | (L'.TFun _, _) =>
+                                          let
+                                              val s' = " " ^ lowercaseFirst x ^ "='"
+                                          in
+                                              ((L'.EStrcat (s,
+                                                            (L'.EStrcat (
+                                                             (L'.EPrim (Prim.String s'), loc),
+                                                             (L'.EStrcat (
+                                                              (L'.EJavaScript e, loc),
+                                                              (L'.EPrim (Prim.String "'"), loc)), loc)),
+                                                             loc)), loc),
+                                               fm)
+                                          end
                                         | _ =>
                                           let
                                               val fooify =

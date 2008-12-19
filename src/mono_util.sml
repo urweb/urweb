@@ -311,6 +311,10 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                         S.map2 (mft t,
                                 fn t' =>
                                    (EUnurlify (e', t'), loc)))
+              | EJavaScript e =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (EJavaScript e', loc))
     in
         mfe
     end

@@ -100,6 +100,11 @@ val getCookie : t ::: Type -> http_cookie t -> transaction (option t)
 val setCookie : t ::: Type -> http_cookie t -> t -> transaction unit
 
 
+(** JavaScript-y gadgets *)
+
+val alert : string -> transaction unit
+
+
 (** SQL *)
 
 con sql_table :: {Type} -> Type
@@ -403,7 +408,7 @@ val ul : bodyTag []
 
 val hr : bodyTag []
 
-val a : bodyTag [Link = transaction page]
+val a : bodyTag [Link = transaction page, Onclick = transaction unit]
 
 val form : ctx ::: {Unit} -> bind ::: {Type}
             -> fn [[Body] ~ ctx] =>
