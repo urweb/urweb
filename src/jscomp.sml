@@ -69,8 +69,15 @@ fun varDepth (e, _) =
       | ENextval _ => 0
       | EUnurlify _ => 0
       | EJavaScript _ => 0
+      | ESignalReturn e => varDepth e
 
-fun jsExp inAttr outer =
+fun strcat loc es =
+    case es of
+        [] => (EPrim (Prim.String ""), loc)
+      | [x] => x
+      | x :: es' => (EStrcat (x, strcat loc es'), loc)
+
+fun jsExp mode outer =
     let
         val len = length outer
 
@@ -85,11 +92,7 @@ fun jsExp inAttr outer =
                         PConVar n => str (Int.toString n)
                       | PConFfi {con, ...} => str ("\"_" ^ con ^ "\"")
 
-                fun strcat es =
-                    case es of
-                        [] => (EPrim (Prim.String ""), loc)
-                      | [x] => x
-                      | x :: es' => (EStrcat (x, strcat es'), loc)
+
 
                 fun isNullable (t, _) =
                     case t of
@@ -99,17 +102,19 @@ fun jsExp inAttr outer =
                 fun unsupported s =
                   (EM.errorAt loc (s ^ " in code to be compiled to JavaScript");
                    (str "ERROR", st))
+
+                val strcat = strcat loc
             in
                 case #1 e of
                     EPrim (Prim.String s) =>
                     (str ("\""
                           ^ String.translate (fn #"'" =>
-                                                 if inAttr then
+                                                 if mode = Attribute then
                                                      "\\047"
                                                  else
                                                      "'"
                                                | #"<" =>
-                                                 if inAttr then
+                                                 if mode = Script then
                                                      "<"
                                                  else
                                                      "\\074"
@@ -274,7 +279,14 @@ fun jsExp inAttr outer =
                          st)
                     end
 
-                  | EWrite _ => unsupported "EWrite"
+                  | EWrite e =>
+                    let
+                        val (e, st) = jsE inner (e, st)
+                    in
+                        (strcat [str "document.write(",
+                                 e,
+                                 str ")"], st)
+                    end
 
                   | ESeq (e1, e2) =>
                     let
@@ -301,6 +313,15 @@ fun jsExp inAttr outer =
                   | ENextval _ => unsupported "Nextval"
                   | EUnurlify _ => unsupported "EUnurlify"
                   | EJavaScript _ => unsupported "Nested JavaScript"
+                  | ESignalReturn e =>
+                    let
+                        val (e, st) = jsE inner (e, st)
+                    in
+                        (strcat [(*str "sreturn(",*)
+                                 e(*,
+                                 str ")"*)],
+                         st)
+                    end
             end
     in
         jsE
@@ -309,14 +330,25 @@ fun jsExp inAttr outer =
 val decl : state -> decl -> decl * state =
     U.Decl.foldMapB {typ = fn x => x,
                      exp = fn (env, e, st) =>
-                              case e of
-                                  EJavaScript (EAbs (_, t, _, e), _) =>
-                                  let
-                                      val (e, st) = jsExp true (t :: env) 0 (e, st)
-                                  in
-                                      (#1 e, st)
-                                  end
-                                | _ => (e, st),
+                              let
+                                  fun doCode m env e =
+                                      let
+                                          val len = length env
+                                          fun str s = (EPrim (Prim.String s), #2 e)
+
+                                          val locals = List.tabulate
+                                                           (varDepth e,
+                                                         fn i => str ("var uwr" ^ Int.toString (len + i) ^ ";"))
+                                          val (e, st) = jsExp m env 0 (e, st)
+                                      in
+                                          (#1 (strcat (#2 e) (locals @ [e])), st)
+                                      end
+                              in
+                                  case e of
+                                      EJavaScript (m, (EAbs (_, t, _, e), _)) => doCode m (t :: env) e
+                                    | EJavaScript (m, e) => doCode m env e
+                                    | _ => (e, st)
+                              end,
                      decl = fn (_, e, st) => (e, st),
                      bind = fn (env, U.Decl.RelE (_, t)) => t :: env
                              | (env, _) => env}

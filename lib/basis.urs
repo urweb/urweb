@@ -376,6 +376,9 @@ con form = [Body, Form]
 con tabl = [Body, Table]
 con tr = [Body, Tr]
 
+val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> unit
+          -> tag [Signal = signal (xml ctx use bind)] ctx [] use bind
+
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
 
@@ -433,7 +436,7 @@ con select = [Select]
 val select : formTag string select []
 val option : unit -> tag [Value = string, Selected = bool] select [] [] []
 
-val submit : ctx ::: {Unit} ->  use ::: {Type}
+val submit : ctx ::: {Unit} -> use ::: {Type}
              -> fn [[Form] ~ ctx] =>
                    unit
                    -> tag [Value = string, Action = $use -> transaction page]

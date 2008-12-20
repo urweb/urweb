@@ -65,6 +65,9 @@ fun p_typ' par env (t, _) =
       | TOption t => box [string "option(",
                           p_typ env t,
                           string ")"]
+      | TSignal t => box [string "signal(",
+                          p_typ env t,
+                          string ")"]
 
 and p_typ env = p_typ' false env
 
@@ -275,9 +278,13 @@ fun p_exp' par env (e, _) =
       | EUnurlify (e, _) => box [string "unurlify(",
                                  p_exp env e,
                                  string ")"]
-      | EJavaScript e => box [string "JavaScript(",
-                              p_exp env e,
-                              string ")"]
+      | EJavaScript (_, e) => box [string "JavaScript(",
+                                   p_exp env e,
+                                   string ")"]
+
+      | ESignalReturn e => box [string "Return(",
+                                p_exp env e,
+                                string ")"]
 
 and p_exp env = p_exp' false env
 

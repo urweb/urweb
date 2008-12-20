@@ -37,6 +37,7 @@ datatype typ' =
        | TDatatype of int * (datatype_kind * (string * int * typ option) list) ref
        | TFfi of string * string
        | TOption of typ
+       | TSignal of typ
 
 withtype typ = typ' located
 
@@ -54,6 +55,11 @@ datatype pat' =
        | PSome of typ * pat
 
 withtype pat = pat' located
+
+datatype javascript_mode =
+         Attribute
+       | Script
+       | File
 
 datatype exp' =
          EPrim of Prim.t
@@ -96,8 +102,9 @@ datatype exp' =
 
        | EUnurlify of exp * typ
 
-       | EJavaScript of exp
+       | EJavaScript of javascript_mode * exp
 
+       | ESignalReturn of exp
 
 withtype exp = exp' located
 

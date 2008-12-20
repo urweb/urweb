@@ -51,6 +51,7 @@ fun compare ((t1, _), (t2, _)) =
       | (TDatatype (n1, _), TDatatype (n2, _)) => Int.compare (n1, n2)
       | (TFfi (m1, x1), TFfi (m2, x2)) => join (String.compare (m1, m2), fn () => String.compare (x1, x2))
       | (TOption t1, TOption t2) => compare (t1, t2)
+      | (TSignal t1, TSignal t2) => compare (t1, t2)
 
       | (TFun _, _) => LESS
       | (_, TFun _) => GREATER
@@ -63,6 +64,9 @@ fun compare ((t1, _), (t2, _)) =
 
       | (TFfi _, _) => LESS
       | (_, TFfi _) => GREATER
+
+      | (TOption _, _) => LESS
+      | (_, TOption _) => GREATER
 
 and compareFields ((x1, t1), (x2, t2)) =
     join (String.compare (x1, x2),
@@ -96,6 +100,10 @@ fun mapfold fc =
                 S.map2 (mft t,
                         fn t' =>
                            (TOption t, loc))
+              | TSignal t =>
+                S.map2 (mft t,
+                        fn t' =>
+                           (TSignal t, loc))
     in
         mft
     end
@@ -311,10 +319,14 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                         S.map2 (mft t,
                                 fn t' =>
                                    (EUnurlify (e', t'), loc)))
-              | EJavaScript e =>
+              | EJavaScript (m, e) =>
                 S.map2 (mfe ctx e,
                      fn e' =>
-                        (EJavaScript e', loc))
+                        (EJavaScript (m, e'), loc))
+              | ESignalReturn e =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (ESignalReturn e', loc))
     in
         mfe
     end

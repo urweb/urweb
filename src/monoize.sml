@@ -135,6 +135,8 @@ fun monoType env =
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
                   | L.CApp ((L.CFfi ("Basis", "source"), _), t) =>
                     (L'.TFfi ("Basis", "int"), loc)
+                  | L.CApp ((L.CFfi ("Basis", "signal"), _), t) =>
+                    (L'.TSignal (mt env dtmap t), loc)
                   | L.CApp ((L.CFfi ("Basis", "http_cookie"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_table"), _), _) =>
@@ -978,6 +980,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "return"), _), _), _), t), _),
+                    (L.EFfi ("Basis", "signal_monad"), _)) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("x", t, (L'.TSignal t, loc),
+                           (L'.ESignalReturn (L'.ERel 0, loc), loc)), loc),
+                 fm)
+            end
+
           | L.ECApp ((L.EFfi ("Basis", "getCookie"), _), t) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
@@ -1752,7 +1764,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                             (L'.EStrcat (
                                                              (L'.EPrim (Prim.String s'), loc),
                                                              (L'.EStrcat (
-                                                              (L'.EJavaScript e, loc),
+                                                              (L'.EJavaScript (L'.Attribute, e), loc),
                                                               (L'.EPrim (Prim.String "'"), loc)), loc)),
                                                              loc)), loc),
                                                fm)
@@ -1833,6 +1845,25 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 case tag of
                     "body" => normal ("body", NONE,
                                       SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
+
+                  | "dyn" =>
+                    (case #1 attrs of
+                         (*L'.ERecord [("Signal", (L'.ESignalReturn e, _), _)] => (e, fm)
+                       | L'.ERecord [("Signal", (L'.EApp ((L'.EAbs (_, _, _, (L'.ESignalReturn (L'.ERel 0, _), _)), _),
+                                                          e), _), _)] => (e, fm) *)
+
+                         L'.ERecord [("Signal", e, _)] =>
+                         ((L'.EStrcat
+                               ((L'.EPrim (Prim.String "<script type=\"text/javascript\">"), loc),
+                                (L'.EStrcat ((L'.EJavaScript (L'.Script,
+                                                              (L'.ELet ("signal", (L'.TSignal
+                                                                                       (L'.TFfi ("Basis", "string"), loc),
+                                                                                   loc),
+                                                                        e,
+                                                                        (L'.EWrite (L'.ERel 0, loc), loc)), loc)), loc),
+                                             (L'.EPrim (Prim.String "</script>"), loc)), loc)), loc),
+                          fm)
+                       | _ => raise Fail "Monoize: Bad dyn attributes")
                     
                   | "submit" => normal ("input type=\"submit\"", NONE, NONE)
 

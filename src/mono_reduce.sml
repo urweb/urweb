@@ -75,7 +75,8 @@ fun impure (e, _) =
       | ELet (_, _, e1, e2) => impure e1 orelse impure e2
 
       | EClosure (_, es) => List.exists impure es
-      | EJavaScript e => impure e
+      | EJavaScript (_, e) => impure e
+      | ESignalReturn e => impure e
 
 
 val liftExpInExp = Monoize.liftExpInExp
@@ -330,7 +331,8 @@ fun reduce file =
               | EDml e => summarize d e @ [WriteDb]
               | ENextval e => summarize d e @ [WriteDb]
               | EUnurlify (e, _) => summarize d e
-              | EJavaScript e => summarize d e
+              | EJavaScript (_, e) => summarize d e
+              | ESignalReturn e => summarize d e
 
 
         fun exp env e =
@@ -421,6 +423,7 @@ fun reduce file =
                             fun trySub () =
                                 case t of
                                     (TFfi ("Basis", "string"), _) => doSub ()
+                                  | (TSignal _, _) => e
                                   | _ =>
                                     case e' of
                                         (ECase _, _) => e

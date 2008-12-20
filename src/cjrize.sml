@@ -120,6 +120,7 @@ fun cifyTyp x =
                 in
                     ((L'.TOption t, loc), sm)
                 end
+              | L.TSignal _ => raise Fail "Cjrize: TSignal remains"
     in
         cify IM.empty x
     end
@@ -420,7 +421,8 @@ fun cifyExp (eAll as (e, loc), sm) =
             ((L'.EUnurlify (e, t), loc), sm)
         end
 
-      | L.EJavaScript _ => raise Fail "EJavaScript remains"
+      | L.EJavaScript _ => raise Fail "Cjrize: EJavaScript remains"
+      | L.ESignalReturn _ => raise Fail "Cjrize: ESignalReturn remains"
 
 fun cifyDecl ((d, loc), sm) =
     case d of
