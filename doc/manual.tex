@@ -1017,7 +1017,7 @@ Nonetheless, the unification engine tends to do reasonably well.  Unlike in ML, 
 
 \subsection{Unifying Record Types}
 
-The type inference engine tries to take advantage of the algebraic rules governing type-level records, as shown in Section \ref{definitional}.  When two constructors of record kind are unified, they are reduce to normal forms, with like terms crossed off from each normal form until, hopefully, nothing remains.  This cannot be complete, with the inclusion of unification variables.  The type-checker can help you understand what goes wrong when the process fails, as it outputs the unmatched remainders of the two normal forms.
+The type inference engine tries to take advantage of the algebraic rules governing type-level records, as shown in Section \ref{definitional}.  When two constructors of record kind are unified, they are reduced to normal forms, with like terms crossed off from each normal form until, hopefully, nothing remains.  This cannot be complete, with the inclusion of unification variables.  The type-checker can help you understand what goes wrong when the process fails, as it outputs the unmatched remainders of the two normal forms.
 
 \subsection{\label{typeclasses}Type Classes}
 
