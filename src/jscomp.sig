@@ -25,64 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Prim :> PRIM = struct
+signature JSCOMP = sig
 
-datatype t =
-         Int of Int64.int
-       | Float of Real64.real
-       | String of string
-
-open Print.PD
-open Print
-
-fun p_t t =
-    case t of
-        Int n => string (Int64.toString n)
-      | Float n => string (Real64.toString n)
-      | String s => box [string "\"", string (String.toString s), string "\""]
-
-fun int2s n =
-    if Int64.compare (n, Int64.fromInt 0) = LESS then
-        "-" ^ Int64.toString (Int64.~ n) ^ "LL"
-    else
-        Int64.toString n ^ "LL"
-
-fun float2s n =
-    if Real64.compare (n, Real64.fromInt 0) = LESS then
-        "-" ^ Real64.toString (Real64.~ n)
-    else
-        Real64.toString n
-
-fun toString t =
-    case t of
-        Int n => int2s n
-      | Float n => float2s n
-      | String s => s
-
-fun p_t_GCC t =
-    case t of
-        Int n => string (int2s n)
-      | Float n => string (float2s n)
-      | String s => box [string "\"", string (String.toString s), string "\""]
-
-fun equal x =
-    case x of
-        (Int n1, Int n2) => n1 = n2
-      | (Float n1, Float n2) => Real64.== (n1, n2)
-      | (String s1, String s2) => s1 = s2
-
-      | _ => false
-
-fun compare (p1, p2) =
-    case (p1, p2) of
-        (Int n1, Int n2) => Int64.compare (n1, n2)
-      | (Int _, _) => LESS
-      | (_, Int _) => GREATER
-
-      | (Float n1, Float n2) => Real64.compare (n1, n2)
-      | (Float _, _) => LESS
-      | (_, Float _) => GREATER
-
-      | (String n1, String n2) => String.compare (n1, n2)
+    val process : Mono.file -> Mono.file
 
 end

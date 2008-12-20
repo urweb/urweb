@@ -357,6 +357,13 @@ fun exists {typ, exp} k =
         S.Return _ => true
       | S.Continue _ => false
 
+fun foldB {typ, exp, bind} ctx s e =
+    case mapfoldB {typ = fn t => fn s => S.Continue (t, typ (t, s)),
+                   exp = fn ctx => fn e => fn s => S.Continue (e, exp (ctx, e, s)),
+                   bind = bind} ctx e s of
+        S.Continue (_, s) => s
+      | S.Return _ => raise Fail "MonoUtil.Exp.foldB: Impossible"
+
 end
 
 structure Decl = struct
@@ -432,6 +439,14 @@ fun map {typ, exp, decl} e =
                   decl = fn d => fn () => S.Continue (decl d, ())} e () of
         S.Return () => raise Fail "MonoUtil.Decl.map: Impossible"
       | S.Continue (e, ()) => e
+
+fun foldMapB {typ, exp, decl, bind} ctx s d =
+    case mapfoldB {typ = fn c => fn s => S.Continue (typ (c, s)),
+                   exp = fn ctx => fn e => fn s => S.Continue (exp (ctx, e, s)),
+                   decl = fn ctx => fn d => fn s => S.Continue (decl (ctx, d, s)),
+                   bind = bind} ctx d s of
+        S.Continue v => v
+      | S.Return _ => raise Fail "MonoUtil.Decl.foldMapB: Impossible"
 
 end
 

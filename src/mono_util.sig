@@ -71,6 +71,11 @@ structure Exp : sig
                                         
     val exists : {typ : Mono.typ' -> bool,
                   exp : Mono.exp' -> bool} -> Mono.exp -> bool
+
+    val foldB : {typ : Mono.typ' * 'state -> 'state,
+                 exp : 'context * Mono.exp' * 'state -> 'state,
+                 bind : 'context * binder -> 'context}
+                -> 'context -> 'state -> Mono.exp -> 'state
 end
 
 structure Decl : sig
@@ -95,6 +100,12 @@ structure Decl : sig
                exp : Mono.exp' -> Mono.exp',
                decl : Mono.decl' -> Mono.decl'}
               -> Mono.decl -> Mono.decl
+
+    val foldMapB : {typ : Mono.typ' * 'state -> Mono.typ' * 'state,
+                    exp : 'context * Mono.exp' * 'state -> Mono.exp' * 'state,
+                    decl : 'context * Mono.decl' * 'state -> Mono.decl' * 'state,
+                    bind : 'context * binder -> 'context}
+                   -> 'context -> 'state -> Mono.decl -> Mono.decl * 'state
 end
 
 structure File : sig

@@ -38,4 +38,6 @@ signature PRIM = sig
     val equal : t * t -> bool
     val compare : t * t -> order
 
+    val toString : t -> string
+
 end

@@ -75,6 +75,7 @@ signature COMPILER = sig
     val untangle : (Mono.file, Mono.file) phase
     val mono_reduce : (Mono.file, Mono.file) phase
     val mono_shake : (Mono.file, Mono.file) phase
+    val jscomp : (Mono.file, Mono.file) phase
     val fuse : (Mono.file, Mono.file) phase
     val pathcheck : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
@@ -101,6 +102,7 @@ signature COMPILER = sig
     val toUntangle : (string, Mono.file) transform
     val toMono_reduce : (string, Mono.file) transform
     val toMono_shake : (string, Mono.file) transform
+    val toJscomp : (string, Mono.file) transform
     val toMono_opt2 : (string, Mono.file) transform
     val toFuse : (string, Mono.file) transform
     val toUntangle2 : (string, Mono.file) transform

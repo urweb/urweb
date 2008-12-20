@@ -47,5 +47,6 @@ signature MONO_ENV = sig
 
     val declBinds : env -> Mono.decl -> env
     val patBinds : env -> Mono.pat -> env
+    val patBindsN : Mono.pat -> int
                                                  
 end

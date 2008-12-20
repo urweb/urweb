@@ -360,11 +360,6 @@ fun exp e =
       | EWrite (EPrim (Prim.String ""), loc) =>
         ERecord []
 
-      | EJavaScript (EAbs (_, (TRecord [], _), _, (EFfiApp ("Basis", "alert", [s]), _)), loc) =>
-        EStrcat ((EPrim (Prim.String "alert("), loc),
-                 (EStrcat ((EFfiApp ("Basis", "jsifyString", [s]), loc),
-                           (EPrim (Prim.String ")"), loc)), loc))
-
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)

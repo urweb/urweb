@@ -122,4 +122,15 @@ fun patBinds env (p, loc) =
       | PNone _ => env
       | PSome (_, p) => patBinds env p
 
+fun patBindsN (p, loc) =
+    case p of
+        PWild => 0
+      | PVar _ => 1
+      | PPrim _ => 0
+      | PCon (_, _, NONE) => 0
+      | PCon (_, _, SOME p) => patBindsN p
+      | PRecord xps => foldl (fn ((_, p, _), count) => count + patBindsN p) 0 xps
+      | PNone _ => 0
+      | PSome (_, p) => patBindsN p
+
 end
