@@ -379,6 +379,10 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DDatabase s => box [string "database",
                             space,
                             string s]
+      | DJavaScript s => box [string "JavaScript(",
+                              string s,
+                              string ")"]
+
                           
 fun p_file env file =
     let

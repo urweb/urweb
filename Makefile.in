@@ -5,6 +5,7 @@ SITELISP := @SITELISP@
 
 LIB_UR   := $(LIB)/ur
 LIB_C    := $(LIB)/c
+LIB_JS    := $(LIB)/js
 
 all: smlnj mlton c
 
@@ -70,6 +71,8 @@ install:
 	cp lib/*.ur $(LIB_UR)/
 	mkdir -p $(LIB_C)
 	cp clib/*.o $(LIB_C)/
+	mkdir -p $(LIB_JS)
+	cp jslib/*.js $(LIB_JS)/
 	mkdir -p $(INCLUDE)
 	cp include/*.h $(INCLUDE)/
 	mkdir -p $(SITELISP)

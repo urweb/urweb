@@ -1800,6 +1800,10 @@ fun p_decl env (dAll as (d, _) : decl) =
              
              string "}"]
 
+      | DJavaScript s => box [string "static char jslib[] = \"",
+                              string (String.toString s),
+                              string "\";"]
+
 datatype 'a search =
          Found of 'a
        | NotFound
@@ -2048,6 +2052,10 @@ fun p_file env (ds, ps) =
                      newline,
                      string "if (*request == '/') ++request;",
                      newline,
+                     string "uw_write_header(ctx, \"Content-type: text/html\\r\\n\");",
+                     newline,
+                     string "uw_write(ctx, \"<html>\");",
+                     newline,
                      box [string "{",
                           newline,
                           box (ListUtil.mapi (fn (i, t) => box [p_typ env t,
@@ -2069,6 +2077,8 @@ fun p_file env (ds, ps) =
                                       :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts),
                           inputsVar,
                           string ", uw_unit_v);",
+                          newline,
+                          string "uw_write(ctx, \"</html>\");",
                           newline,
                           string "return;",
                           newline,
@@ -2373,6 +2383,16 @@ fun p_file env (ds, ps) =
              newline,
              newline,
              string "void uw_handle(uw_context ctx, char *request) {",
+             newline,
+             string "if (!strcmp(request, \"/app.js\")) {",
+             newline,
+             box [string "uw_write_header(ctx, \"Content-type: text/javascript\\r\\n\");",
+                  newline,
+                  string "uw_write(ctx, jslib);",
+                  newline,
+                  string "return;",
+                  newline],
+             string "}",
              newline,
              p_list_sep newline (fn x => x) pds',
              newline,

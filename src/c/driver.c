@@ -193,8 +193,6 @@ static void *worker(void *data) {
         uw_set_headers(ctx, headers);
 
         while (1) {
-          uw_write(ctx, "<html>");
-
           if (uw_db_begin(ctx)) {
             printf("Error running SQL BEGIN\n");
             if (retries_left)
@@ -211,13 +209,10 @@ static void *worker(void *data) {
           }
 
           uw_write_header(ctx, "HTTP/1.1 200 OK\r\n");
-          uw_write_header(ctx, "Content-type: text/html\r\n");
 
           strcpy(path_copy, path);
           fk = uw_begin(ctx, path_copy);
           if (fk == SUCCESS) {
-            uw_write(ctx, "</html>");
-
             if (uw_db_commit(ctx)) {
               fk = FATAL;
 

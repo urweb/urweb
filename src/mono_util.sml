@@ -323,6 +323,7 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                      fn e' =>
                         (EJavaScript (m, e'), loc))
+
               | ESignalReturn e =>
                 S.map2 (mfe ctx e,
                      fn e' =>
@@ -421,6 +422,7 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
               | DTable _ => S.return2 dAll
               | DSequence _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll
+              | DJavaScript _ => S.return2 dAll
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mft t,
@@ -501,6 +503,7 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DTable _ => ctx
                                       | DSequence _ => ctx
                                       | DDatabase _ => ctx
+                                      | DJavaScript _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
                                      fn ds' =>
@@ -548,7 +551,8 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DExport _ => count
                           | DTable _ => count
                           | DSequence _ => count
-                          | DDatabase _ => count) 0
+                          | DDatabase _ => count
+                          | DJavaScript _ => count) 0
 
 end
 

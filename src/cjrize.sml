@@ -528,6 +528,7 @@ fun cifyDecl ((d, loc), sm) =
       | L.DSequence s =>
         (SOME (L'.DSequence s, loc), NONE, sm)
       | L.DDatabase s => (SOME (L'.DDatabase s, loc), NONE, sm)
+      | L.DJavaScript s => (SOME (L'.DJavaScript s, loc), NONE, sm)
 
 fun cjrize ds =
     let

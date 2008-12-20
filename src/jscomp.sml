@@ -285,7 +285,7 @@ fun jsExp mode outer =
                     in
                         (strcat [str "document.write(",
                                  e,
-                                 str ")"], st)
+                                 str ".v)"], st)
                     end
 
                   | ESeq (e1, e2) =>
@@ -317,9 +317,9 @@ fun jsExp mode outer =
                     let
                         val (e, st) = jsE inner (e, st)
                     in
-                        (strcat [(*str "sreturn(",*)
-                                 e(*,
-                                 str ")"*)],
+                        (strcat [str "sreturn(",
+                                 e,
+                                 str ")"],
                          st)
                     end
             end
@@ -369,8 +369,16 @@ fun process file =
                        {decls = [],
                         script = ""}
                        file
+
+        val inf = TextIO.openIn (OS.Path.joinDirFile {dir = Config.libJs, file = "urweb.js"})
+        fun lines acc =
+            case TextIO.inputLine inf of
+                NONE => String.concat (rev acc)
+              | SOME line => lines (line :: acc)
+        val lines = lines []
     in
-        ds
+        TextIO.closeIn inf;
+        (DJavaScript lines, ErrorMsg.dummySpan) :: ds
     end
 
 end

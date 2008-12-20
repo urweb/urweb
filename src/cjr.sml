@@ -109,6 +109,8 @@ datatype decl' =
        | DDatabase of string
        | DPreparedStatements of (string * int) list
 
+       | DJavaScript of string
+
 withtype decl = decl' located
 
 type file = decl list * (Core.export_kind * string * int * typ list) list

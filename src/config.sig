@@ -6,6 +6,7 @@ signature CONFIG = sig
 
     val libUr : string
     val libC : string
+    val libJs : string
 
     val gccArgs : string
 end

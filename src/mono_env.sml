@@ -110,6 +110,7 @@ fun declBinds env (d, loc) =
       | DTable _ => env
       | DSequence _ => env
       | DDatabase _ => env
+      | DJavaScript _ => env
 
 fun patBinds env (p, loc) =
     case p of

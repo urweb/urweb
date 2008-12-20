@@ -118,6 +118,9 @@ datatype decl' =
        | DSequence of string
        | DDatabase of string
 
+       | DJavaScript of string
+
+
 withtype decl = decl' located
 
 type file = decl list
