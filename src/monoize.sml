@@ -975,7 +975,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("x", t, (L'.TFun ((L'.TRecord [], loc), (L'.TFfi ("Basis", "int"), loc)), loc),
                            (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "int"), loc),
-                                     (L'.EFfiApp ("Basis", "new_client_source", [(L'.ERecord [], loc)]), loc)), loc)),
+                                     (L'.EFfiApp ("Basis", "new_client_source", [(L'.ERel 1, loc)]), loc)), loc)),
                   loc),
                  fm)
             end
@@ -1001,6 +1001,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("m1", mt1, (L'.TFun ((L'.TFun (t1, mt2), loc), mt2), loc),
                            (L'.EAbs ("m2", (L'.TFun (t1, mt2), loc), mt2,
                                      (L'.ESignalBind ((L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "signal"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("x", (L'.TFfi ("Basis", "int"), loc), (L'.TSignal t, loc),
+                           (L'.ESignalSource (L'.ERel 0, loc), loc)), loc),
                  fm)
             end
 

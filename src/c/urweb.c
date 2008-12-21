@@ -387,12 +387,84 @@ char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
   }
 }
 
-int uw_Basis_new_client_source(uw_context ctx, uw_unit u) {
+uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
+  char *r, *s2;
+
+  uw_check_heap(ctx, strlen(s) * 4 + 2);
+
+  r = s2 = ctx->heap_front;
+  *s2++ = '"';
+
+  for (; *s; s++) {
+    char c = *s;
+
+    switch (c) {
+    case '"':
+      strcpy(s2, "\\\"");
+      s2 += 2;
+      break;
+    case '\\':
+      strcpy(s2, "\\\\");
+      s2 += 2;
+      break;
+    default:
+      if (isprint(c))
+        *s2++ = c;
+      else {
+        sprintf(s2, "\\%3o", c);
+        s2 += 4;
+      }
+    }
+  }
+
+  strcpy(s2, "\"");
+  ctx->heap_front = s2 + 1;
+  return r;
+}
+
+uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
+  char *r, *s2;
+
+  uw_check_script(ctx, strlen(s) * 4 + 2);
+
+  r = s2 = ctx->script_front;
+  *s2++ = '"';
+
+  for (; *s; s++) {
+    char c = *s;
+
+    switch (c) {
+    case '"':
+      strcpy(s2, "\\\"");
+      s2 += 2;
+      break;
+    case '\\':
+      strcpy(s2, "\\\\");
+      s2 += 2;
+      break;
+    default:
+      if (isprint(c))
+        *s2++ = c;
+      else {
+        sprintf(s2, "\\%3o", c);
+        s2 += 4;
+      }
+    }
+  }
+
+  strcpy(s2, "\"");
+  ctx->script_front = s2 + 1;
+  return r;
+}
+
+int uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
   size_t len;
 
   uw_check_script(ctx, 8 + INTS_MAX);
-  sprintf(ctx->script_front, "var e%d=0\n%n", ctx->source_count, &len);
+  sprintf(ctx->script_front, "var s%d=sc(%n", ctx->source_count, &len);
   ctx->script_front += len;
+  uw_Basis_jsifyString_ws(ctx, s);
+  uw_write_script(ctx, ");");
 
   return ctx->source_count++;
 }
@@ -1054,41 +1126,6 @@ char *uw_Basis_ensqlBool(uw_Basis_bool b) {
     return (char *)&false;
   else
     return (char *)&true;
-}
-
-uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
-  char *r, *s2;
-
-  uw_check_heap(ctx, strlen(s) * 4 + 2);
-
-  r = s2 = ctx->heap_front;
-  *s2++ = '"';
-
-  for (; *s; s++) {
-    char c = *s;
-
-    switch (c) {
-    case '"':
-      strcpy(s2, "\\\"");
-      s2 += 2;
-      break;
-    case '\\':
-      strcpy(s2, "\\\\");
-      s2 += 2;
-      break;
-    default:
-      if (isprint(c))
-        *s2++ = c;
-      else {
-        sprintf(s2, "\\%3o", c);
-        s2 += 4;
-      }
-    }
-  }
-
-  strcpy(s2, "\"");
-  ctx->heap_front = s2 + 1;
-  return r;
 }
 
 uw_Basis_string uw_Basis_intToString(uw_context ctx, uw_Basis_int n) {

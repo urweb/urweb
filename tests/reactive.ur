@@ -1,4 +1,5 @@
 fun main () : transaction page =
-  x <- source ();
-  y <- source ();
-  return <xml><body>Hi!</body></xml>
+  x <- source <xml>TEST</xml>;
+  return <xml><body>
+    <dyn signal={signal x}/>
+  </body></xml>

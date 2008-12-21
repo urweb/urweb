@@ -106,6 +106,7 @@ datatype exp' =
 
        | ESignalReturn of exp
        | ESignalBind of exp * exp
+       | ESignalSource of exp
 
 withtype exp = exp' located
 

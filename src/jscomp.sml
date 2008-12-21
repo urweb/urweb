@@ -34,7 +34,8 @@ structure E = MonoEnv
 structure U = MonoUtil
 
 val funcs = [(("Basis", "alert"), "alert"),
-             (("Basis", "htmlifyString"), "escape")]
+             (("Basis", "htmlifyString"), "escape"),
+             (("Basis", "new_client_source"), "sc")]
 
 structure FM = BinaryMapFn(struct
                            type ord_key = string * string
@@ -85,6 +86,7 @@ fun varDepth (e, _) =
       | EJavaScript _ => 0
       | ESignalReturn e => varDepth e
       | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
+      | ESignalSource e => varDepth e
 
 fun strcat loc es =
     case es of
@@ -168,7 +170,7 @@ fun jsExp mode outer =
                   | EFfi k =>
                     let
                         val name = case ffi k of
-                                       NONE => (EM.errorAt loc "Unsupported FFI identifier in JavaScript";
+                                       NONE => (EM.errorAt loc ("Unsupported FFI identifier " ^ #2 k ^ " in JavaScript");
                                                 "ERROR")
                                      | SOME s => s
                     in
@@ -177,7 +179,7 @@ fun jsExp mode outer =
                   | EFfiApp (m, x, args) =>
                     let
                         val name = case ffi (m, x) of
-                                       NONE => (EM.errorAt loc "Unsupported FFI function in JavaScript";
+                                       NONE => (EM.errorAt loc ("Unsupported FFI function " ^ x ^ " in JavaScript");
                                                 "ERROR")
                                      | SOME s => s
                     in
@@ -363,6 +365,15 @@ fun jsExp mode outer =
                                  e1,
                                  str ",",
                                  e2,
+                                 str ")"],
+                         st)
+                    end
+                  | ESignalSource e =>
+                    let
+                        val (e, st) = jsE inner (e, st)
+                    in
+                        (strcat [str "ss(",
+                                 e,
                                  str ")"],
                          st)
                     end

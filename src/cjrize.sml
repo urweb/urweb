@@ -424,6 +424,7 @@ fun cifyExp (eAll as (e, loc), sm) =
       | L.EJavaScript _ => raise Fail "Cjrize: EJavaScript remains"
       | L.ESignalReturn _ => raise Fail "Cjrize: ESignalReturn remains"
       | L.ESignalBind _ => raise Fail "Cjrize: ESignalBind remains"
+      | L.ESignalSource _ => raise Fail "Cjrize: ESignalSource remains"
 
 fun cifyDecl ((d, loc), sm) =
     case d of

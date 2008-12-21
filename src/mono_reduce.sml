@@ -78,6 +78,7 @@ fun impure (e, _) =
       | EJavaScript (_, e) => impure e
       | ESignalReturn e => impure e
       | ESignalBind (e1, e2) => impure e1 orelse impure e2
+      | ESignalSource e => impure e
 
 
 val liftExpInExp = Monoize.liftExpInExp
@@ -335,7 +336,7 @@ fun reduce file =
               | EJavaScript (_, e) => summarize d e
               | ESignalReturn e => summarize d e
               | ESignalBind (e1, e2) => summarize d e1 @ summarize d e2
-
+              | ESignalSource e => summarize d e
 
         fun exp env e =
             let
