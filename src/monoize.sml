@@ -1850,20 +1850,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                   | "dyn" =>
                     (case #1 attrs of
-                         (*L'.ERecord [("Signal", (L'.ESignalReturn e, _), _)] => (e, fm)
-                       | L'.ERecord [("Signal", (L'.EApp ((L'.EAbs (_, _, _, (L'.ESignalReturn (L'.ERel 0, _), _)), _),
+                         (*L'.ERecord [("Signal", (L'.EApp ((L'.EAbs (_, _, _, (L'.ESignalReturn (L'.ERel 0, _), _)), _),
                                                           e), _), _)] => (e, fm) *)
 
                          L'.ERecord [("Signal", e, _)] =>
                          ((L'.EStrcat
-                               ((L'.EPrim (Prim.String "<script type=\"text/javascript\">"), loc),
-                                (L'.EStrcat ((L'.EJavaScript (L'.Script,
-                                                              (L'.ELet ("signal", (L'.TSignal
-                                                                                       (L'.TFfi ("Basis", "string"), loc),
-                                                                                   loc),
-                                                                        e,
-                                                                        (L'.EWrite (L'.ERel 0, loc), loc)), loc)), loc),
-                                             (L'.EPrim (Prim.String "</script>"), loc)), loc)), loc),
+                               ((L'.EPrim (Prim.String "<script type=\"text/javascript\">dyn("), loc),
+                                (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
+                                             (L'.EPrim (Prim.String ")</script>"), loc)), loc)), loc),
                           fm)
                        | _ => raise Fail "Monoize: Bad dyn attributes")
                     
