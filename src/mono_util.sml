@@ -328,6 +328,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                      fn e' =>
                         (ESignalReturn e', loc))
+              | ESignalBind (e1, e2) =>
+                S.bind2 (mfe ctx e1,
+                      fn e1' =>
+                         S.map2 (mfe ctx e2,
+                              fn e2' =>
+                                 (ESignalBind (e1', e2'), loc)))
     in
         mfe
     end

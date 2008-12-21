@@ -511,21 +511,23 @@ val mono_shake = {
 
 val toMono_shake = transform mono_shake "mono_shake1" o toMono_reduce
 
+val toMono_opt2 = transform mono_opt "mono_opt2" o toMono_shake
+
 val jscomp = {
     func = JsComp.process,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toJscomp = transform jscomp "jscomp" o toMono_reduce
+val toJscomp = transform jscomp "jscomp" o toMono_opt2
 
-val toMono_opt2 = transform mono_opt "mono_opt2" o toJscomp
+val toMono_opt3 = transform mono_opt "mono_opt3" o toJscomp
 
 val fuse = {
     func = Fuse.fuse,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toFuse = transform fuse "fuse" o toMono_opt2
+val toFuse = transform fuse "fuse" o toMono_opt3
 
 val toUntangle2 = transform untangle "untangle2" o toFuse
 

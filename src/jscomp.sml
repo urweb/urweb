@@ -33,6 +33,20 @@ structure EM = ErrorMsg
 structure E = MonoEnv
 structure U = MonoUtil
 
+val funcs = [(("Basis", "alert"), "alert"),
+             (("Basis", "htmlifyString"), "escape")]
+
+structure FM = BinaryMapFn(struct
+                           type ord_key = string * string
+                           fun compare ((m1, x1), (m2, x2)) =
+                               Order.join (String.compare (m1, m2),
+                                           fn () => String.compare (x1, x2))
+                           end)
+
+val funcs = foldl (fn ((k, v), m) => FM.insert (m, k, v)) FM.empty funcs
+
+fun ffi k = FM.find (funcs, k)
+
 type state = {
      decls : decl list,
      script : string
@@ -70,6 +84,7 @@ fun varDepth (e, _) =
       | EUnurlify _ => 0
       | EJavaScript _ => 0
       | ESignalReturn e => varDepth e
+      | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
 
 fun strcat loc es =
     case es of
@@ -150,33 +165,50 @@ fun jsExp mode outer =
                              e, st)
                     end
 
-                  | EFfi (_, s) => (str s, st)
-                  | EFfiApp (_, s, []) => (str (s ^ "()"), st)
-                  | EFfiApp (_, s, [e]) =>
+                  | EFfi k =>
                     let
-                        val (e, st) = jsE inner (e, st)
-                        
+                        val name = case ffi k of
+                                       NONE => (EM.errorAt loc "Unsupported FFI identifier in JavaScript";
+                                                "ERROR")
+                                     | SOME s => s
                     in
-                        (strcat [str (s ^ "("),
-                                 e,
-                                 str ")"], st)
+                        (str name, st)
                     end
-                  | EFfiApp (_, s, e :: es) =>
+                  | EFfiApp (m, x, args) =>
                     let
-                        val (e, st) = jsE inner (e, st)
-                        val (es, st) = ListUtil.foldlMapConcat
-                                           (fn (e, st) =>
-                                               let
-                                                   val (e, st) = jsE inner (e, st)
-                                               in
-                                                   ([str ",", e], st)
-                                               end)
-                                           st es
+                        val name = case ffi (m, x) of
+                                       NONE => (EM.errorAt loc "Unsupported FFI function in JavaScript";
+                                                "ERROR")
+                                     | SOME s => s
                     in
-                        (strcat (str (s ^ "(")
-                                 :: e
-                                 :: es
-                                 @ [str ")"]), st)
+                        case args of
+                            [] => (str (name ^ "()"), st)
+                          | [e] =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                                              
+                            in
+                                (strcat [str (name ^ "("),
+                                         e,
+                                         str ")"], st)
+                            end
+                          | e :: es =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                                val (es, st) = ListUtil.foldlMapConcat
+                                                   (fn (e, st) =>
+                                                       let
+                                                           val (e, st) = jsE inner (e, st)
+                                                       in
+                                                           ([str ",", e], st)
+                                                       end)
+                                                   st es
+                            in
+                                (strcat (str (name ^ "(")
+                                         :: e
+                                         :: es
+                                         @ [str ")"]), st)
+                            end
                     end
 
                   | EApp (e1, e2) =>
@@ -317,8 +349,20 @@ fun jsExp mode outer =
                     let
                         val (e, st) = jsE inner (e, st)
                     in
-                        (strcat [str "sreturn(",
+                        (strcat [str "sr(",
                                  e,
+                                 str ")"],
+                         st)
+                    end
+                  | ESignalBind (e1, e2) =>
+                    let
+                        val (e1, st) = jsE inner (e1, st)
+                        val (e2, st) = jsE inner (e2, st)
+                    in
+                        (strcat [str "sb(",
+                                 e1,
+                                 str ",",
+                                 e2,
                                  str ")"],
                          st)
                     end

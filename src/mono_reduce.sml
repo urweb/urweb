@@ -77,6 +77,7 @@ fun impure (e, _) =
       | EClosure (_, es) => List.exists impure es
       | EJavaScript (_, e) => impure e
       | ESignalReturn e => impure e
+      | ESignalBind (e1, e2) => impure e1 orelse impure e2
 
 
 val liftExpInExp = Monoize.liftExpInExp
@@ -333,6 +334,7 @@ fun reduce file =
               | EUnurlify (e, _) => summarize d e
               | EJavaScript (_, e) => summarize d e
               | ESignalReturn e => summarize d e
+              | ESignalBind (e1, e2) => summarize d e1 @ summarize d e2
 
 
         fun exp env e =
@@ -477,6 +479,9 @@ fun reduce file =
 
                       | EStrcat ((EPrim (Prim.String s1), _), (EPrim (Prim.String s2), _)) =>
                         EPrim (Prim.String (s1 ^ s2))
+
+                      | ESignalBind ((ESignalReturn e1, loc), e2) =>
+                        #1 (reduceExp env (EApp (e2, e1), loc))
 
                       | _ => e
             in

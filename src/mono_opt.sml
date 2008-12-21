@@ -360,6 +360,9 @@ fun exp e =
       | EWrite (EPrim (Prim.String ""), loc) =>
         ERecord []
 
+      | ESignalBind ((ESignalReturn e1, loc), e2) =>
+        optExp (EApp (e2, e1), loc)
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)

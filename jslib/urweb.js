@@ -1,4 +1,5 @@
-function sreturn(v) { return {v : v} }
+function sr(v) { return {v : v} }
+function sb(x,y) { return {v : y(x.v).v} }
 
 function dyn(s) {
   var x = document.createElement("span");

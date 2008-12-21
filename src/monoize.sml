@@ -957,8 +957,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val mt1 = (L'.TFun (un, t1), loc)
                 val mt2 = (L'.TFun (un, t2), loc)
             in
-                ((L'.EAbs ("m1", mt1, (L'.TFun (mt1, (L'.TFun (mt2, (L'.TFun (un, un), loc)), loc)), loc),
-                           (L'.EAbs ("m2", mt2, (L'.TFun (un, un), loc),
+                ((L'.EAbs ("m1", mt1, (L'.TFun ((L'.TFun (t1, mt2), loc), (L'.TFun (un, un), loc)), loc),
+                           (L'.EAbs ("m2", (L'.TFun (t1, mt2), loc), (L'.TFun (un, un), loc),
                                      (L'.EAbs ("_", un, un,
                                                (L'.ELet ("r", t1, (L'.EApp ((L'.ERel 2, loc),
                                                                             (L'.ERecord [], loc)), loc),
@@ -987,6 +987,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("x", t, (L'.TSignal t, loc),
                            (L'.ESignalReturn (L'.ERel 0, loc), loc)), loc),
+                 fm)
+            end
+          | L.EApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "bind"), _), _), _), t1), _), t2), _),
+                    (L.EFfi ("Basis", "signal_monad"), _)) =>
+            let
+                val t1 = monoType env t1
+                val t2 = monoType env t2
+                val un = (L'.TRecord [], loc)
+                val mt1 = (L'.TSignal t1, loc)
+                val mt2 = (L'.TSignal t2, loc)
+            in
+                ((L'.EAbs ("m1", mt1, (L'.TFun ((L'.TFun (t1, mt2), loc), mt2), loc),
+                           (L'.EAbs ("m2", (L'.TFun (t1, mt2), loc), mt2,
+                                     (L'.ESignalBind ((L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
                  fm)
             end
 

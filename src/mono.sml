@@ -105,6 +105,7 @@ datatype exp' =
        | EJavaScript of javascript_mode * exp
 
        | ESignalReturn of exp
+       | ESignalBind of exp * exp
 
 withtype exp = exp' located
 

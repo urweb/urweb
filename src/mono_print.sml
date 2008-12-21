@@ -285,6 +285,12 @@ fun p_exp' par env (e, _) =
       | ESignalReturn e => box [string "Return(",
                                 p_exp env e,
                                 string ")"]
+      | ESignalBind (e1, e2) => box [string "Return(",
+                                     p_exp env e1,
+                                     string ",",
+                                     space,
+                                     p_exp env e2,
+                                     string ")"]
 
 and p_exp env = p_exp' false env
 
