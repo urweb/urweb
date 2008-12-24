@@ -435,11 +435,11 @@ $$\infer{\Gamma \vdash [\overline{c_i = c'_i}] :: \{\kappa\}}{
 
 $$\infer{\Gamma \vdash \mt{fold} :: ((\mt{Name} \to \kappa_1 \to \kappa_2 \to \kappa_2) \to \kappa_2 \to \{\kappa_1\} \to \kappa_2}{}$$
 
-$$\infer{\Gamma \vdash (\overline c) :: (k_1 \times \ldots \times k_n)}{
-  \forall i: \Gamma \vdash c_i :: k_i
+$$\infer{\Gamma \vdash (\overline c) :: (\kappa_1 \times \ldots \times \kappa_n)}{
+  \forall i: \Gamma \vdash c_i :: \kappa_i
 }
-\quad \infer{\Gamma \vdash c.i :: k_i}{
-  \Gamma \vdash c :: (k_1 \times \ldots \times k_n)
+\quad \infer{\Gamma \vdash c.i :: \kappa_i}{
+  \Gamma \vdash c :: (\kappa_1 \times \ldots \times \kappa_n)
 }$$
 
 $$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow c :: \kappa}{
@@ -584,6 +584,7 @@ $$\infer{\Gamma \vdash \{\overline{c = e}\} : \{\overline{c : \tau}\}}{
 \quad \infer{\Gamma \vdash e_1 \rc e_2 : \$(c_1 \rc c_2)}{
   \Gamma \vdash e_1 : \$c_1
   & \Gamma \vdash e_2 : \$c_2
+  & \Gamma \vdash c_1 \sim c_2
 }$$
 
 $$\infer{\Gamma \vdash e \rcut c : \$c'}{
@@ -609,7 +610,7 @@ $$\infer{\Gamma \vdash \mt{let} \; \overline{ed} \; \mt{in} \; e \; \mt{end} : \
   & \Gamma_i \vdash e_i : \tau
 }$$
 
-$$\infer{\Gamma \vdash [c_1 \sim c_2] \Rightarrow e : [c_1 \sim c_2] \Rightarrow \tau}{
+$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow e : \lambda [c_1 \sim c_2] \Rightarrow \tau}{
   \Gamma \vdash c_1 :: \{\kappa\}
   & \Gamma \vdash c_2 :: \{\kappa\}
   & \Gamma, c_1 \sim c_2 \vdash e : \tau
