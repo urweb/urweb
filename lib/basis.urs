@@ -85,6 +85,7 @@ val transaction_monad : monad transaction
 
 con source :: Type -> Type
 val source : t ::: Type -> t -> transaction (source t)
+val set : t ::: Type -> source t -> t -> transaction unit
 
 con signal :: Type -> Type
 val signal_monad : monad signal

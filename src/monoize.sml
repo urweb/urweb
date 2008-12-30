@@ -979,6 +979,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                   loc),
                  fm)
             end
+          | L.ECApp ((L.EFfi ("Basis", "set"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("src", (L'.TFfi ("Basis", "int"), loc),
+                           (L'.TFun (t, (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc)), loc),
+                           (L'.EAbs ("v", t, (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc),
+                                     (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                                               (L'.EFfiApp ("Basis", "set_client_source",
+                                                            [(L'.ERel 2, loc), (L'.ERel 1, loc)]),
+                                                loc)), loc)), loc)), loc),
+                 fm)
+            end
 
           | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "return"), _), _), _), t), _),
                     (L.EFfi ("Basis", "signal_monad"), _)) =>
