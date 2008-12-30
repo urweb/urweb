@@ -190,6 +190,12 @@ fun jsExp mode outer =
                     end
                   | EFfiApp (m, x, args) =>
                     let
+                        val args =
+                            case (m, x, args) of
+                                ("Basis", "new_client_source", [(EJavaScript (_, e, _), _)]) => [e]
+                              | ("Basis", "set_client_source", [e1, (EJavaScript (_, e2, _), _)]) => [e1, e2]
+                              | _ => args
+
                         val name = case ffi (m, x) of
                                        NONE => (EM.errorAt loc ("Unsupported FFI function " ^ x ^ " in JavaScript");
                                                 "ERROR")
@@ -200,7 +206,6 @@ fun jsExp mode outer =
                           | [e] =>
                             let
                                 val (e, st) = jsE inner (e, st)
-                                              
                             in
                                 (strcat [str (name ^ "("),
                                          e,
@@ -398,7 +403,7 @@ val decl : state -> decl -> decl * state =
     U.Decl.foldMapB {typ = fn x => x,
                      exp = fn (env, e, st) =>
                               let
-                                  fun doCode m env e =
+                                  fun doCode m env orig e =
                                       let
                                           val len = length env
                                           fun str s = (EPrim (Prim.String s), #2 e)
@@ -408,12 +413,12 @@ val decl : state -> decl -> decl * state =
                                                          fn i => str ("var uwr" ^ Int.toString (len + i) ^ ";"))
                                           val (e, st) = jsExp m env 0 (e, st)
                                       in
-                                          (#1 (strcat (#2 e) (locals @ [e])), st)
+                                          (EJavaScript (m, orig, SOME (strcat (#2 e) (locals @ [e]))), st)
                                       end
                               in
                                   case e of
-                                      EJavaScript (m, (EAbs (_, t, _, e), _)) => doCode m (t :: env) e
-                                    | EJavaScript (m, e) => doCode m env e
+                                      EJavaScript (m, orig as (EAbs (_, t, _, e), _), _) => doCode m (t :: env) orig e
+                                    | EJavaScript (m, e, _) => doCode m env e e
                                     | _ => (e, st)
                               end,
                      decl = fn (_, e, st) => (e, st),

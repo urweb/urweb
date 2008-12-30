@@ -363,6 +363,8 @@ fun exp e =
       | ESignalBind ((ESignalReturn e1, loc), e2) =>
         optExp (EApp (e2, e1), loc)
 
+      | EJavaScript (_, _, SOME (e, _)) => e
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)

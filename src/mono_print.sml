@@ -216,10 +216,12 @@ fun p_exp' par env (e, _) =
                          p_exp env e,
                          string ")"]
 
-      | ESeq (e1, e2) => box [p_exp env e1,
+      | ESeq (e1, e2) => box [string "(",
+                              p_exp env e1,
                               string ";",
                               space,
-                              p_exp env e2]
+                              p_exp env e2,
+                              string ")"]
       | ELet (x, t, e1, e2) => box [string "(let",
                                     space,
                                     string x,
@@ -279,9 +281,10 @@ fun p_exp' par env (e, _) =
       | EUnurlify (e, _) => box [string "unurlify(",
                                  p_exp env e,
                                  string ")"]
-      | EJavaScript (_, e) => box [string "JavaScript(",
-                                   p_exp env e,
-                                   string ")"]
+      | EJavaScript (_, e, NONE) => box [string "JavaScript(",
+                                         p_exp env e,
+                                         string ")"]
+      | EJavaScript (_, _, SOME e) => p_exp env e
 
       | ESignalReturn e => box [string "Return(",
                                 p_exp env e,

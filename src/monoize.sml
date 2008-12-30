@@ -976,7 +976,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("x", t, (L'.TFun ((L'.TRecord [], loc), (L'.TSource, loc)), loc),
                            (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TSource, loc),
                                      (L'.EFfiApp ("Basis", "new_client_source",
-                                                  [(L'.EJavaScript (L'.File, (L'.ERel 1, loc)), loc)]), loc)), loc)),
+                                                  [(L'.EJavaScript (L'.File, (L'.ERel 1, loc), NONE), loc)]),
+                                      loc)), loc)),
                   loc),
                  fm)
             end
@@ -990,7 +991,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                      (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
                                                (L'.EFfiApp ("Basis", "set_client_source",
                                                             [(L'.ERel 2, loc),
-                                                             (L'.EJavaScript (L'.File, (L'.ERel 1, loc)), loc)]),
+                                                             (L'.EJavaScript (L'.File, (L'.ERel 1, loc), NONE), loc)]),
                                                 loc)), loc)), loc)), loc),
                  fm)
             end
@@ -1801,7 +1802,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                             (L'.EStrcat (
                                                              (L'.EPrim (Prim.String s'), loc),
                                                              (L'.EStrcat (
-                                                              (L'.EJavaScript (L'.Attribute, e), loc),
+                                                              (L'.EJavaScript (L'.Attribute, e, NONE), loc),
                                                               (L'.EPrim (Prim.String "'"), loc)), loc)),
                                                              loc)), loc),
                                                fm)
@@ -1887,13 +1888,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                   | "dyn" =>
                     (case #1 attrs of
-                         (*L'.ERecord [("Signal", (L'.EApp ((L'.EAbs (_, _, _, (L'.ESignalReturn (L'.ERel 0, _), _)), _),
-                                                          e), _), _)] => (e, fm) *)
-
-                         L'.ERecord [("Signal", e, _)] =>
+                         L'.ERecord [("Signal", (L'.EApp ((L'.EAbs (_, _, _, (L'.ESignalReturn (L'.ERel 0, _), _)), _),
+                                                          e), _), _)] => (e, fm)
+                       | L'.ERecord [("Signal", e, _)] =>
                          ((L'.EStrcat
                                ((L'.EPrim (Prim.String "<script type=\"text/javascript\">dyn("), loc),
-                                (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
+                                (L'.EStrcat ((L'.EJavaScript (L'.Script, e, NONE), loc),
                                              (L'.EPrim (Prim.String ")</script>"), loc)), loc)), loc),
                           fm)
                        | _ => raise Fail "Monoize: Bad dyn attributes")

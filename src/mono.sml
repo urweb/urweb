@@ -103,7 +103,7 @@ datatype exp' =
 
        | EUnurlify of exp * typ
 
-       | EJavaScript of javascript_mode * exp
+       | EJavaScript of javascript_mode * exp * exp option
 
        | ESignalReturn of exp
        | ESignalBind of exp * exp
