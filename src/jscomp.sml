@@ -121,6 +121,13 @@ fun jsExp mode outer =
                    (str "ERROR", st))
 
                 val strcat = strcat loc
+
+                fun quoteExp (t : typ) e =
+                    case #1 t of
+                        TSource => strcat [str "s",
+                                           (EFfiApp ("Basis", "htmlifyInt", [e]), loc)]
+                      | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
+                              str "ERROR")
             in
                 case #1 e of
                     EPrim (Prim.String s) =>
@@ -130,6 +137,7 @@ fun jsExp mode outer =
                                                      "\\047"
                                                  else
                                                      "'"
+                                               | #"\"" => "\\\""
                                                | #"<" =>
                                                  if mode = Script then
                                                      "<"
@@ -143,7 +151,11 @@ fun jsExp mode outer =
                     if n < inner then
                         (str ("uwr" ^ var n), st)
                     else
-                        (str ("uwo" ^ var n), st)
+                        let
+                            val n = n - inner
+                        in
+                            (quoteExp (List.nth (outer, n)) (ERel n, loc), st)
+                        end
                   | ENamed _ => raise Fail "Named"
                   | ECon (_, pc, NONE) => (patCon pc, st)
                   | ECon (_, pc, SOME e) =>

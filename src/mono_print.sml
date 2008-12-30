@@ -65,6 +65,7 @@ fun p_typ' par env (t, _) =
       | TOption t => box [string "option(",
                           p_typ env t,
                           string ")"]
+      | TSource => string "source"
       | TSignal t => box [string "signal(",
                           p_typ env t,
                           string ")"]

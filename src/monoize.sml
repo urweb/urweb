@@ -134,7 +134,7 @@ fun monoType env =
                   | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
                   | L.CApp ((L.CFfi ("Basis", "source"), _), t) =>
-                    (L'.TFfi ("Basis", "int"), loc)
+                    (L'.TSource, loc)
                   | L.CApp ((L.CFfi ("Basis", "signal"), _), t) =>
                     (L'.TSignal (mt env dtmap t), loc)
                   | L.CApp ((L.CFfi ("Basis", "http_cookie"), _), _) =>
@@ -973,9 +973,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val t = monoType env t
             in
-                ((L'.EAbs ("x", t, (L'.TFun ((L'.TRecord [], loc), (L'.TFfi ("Basis", "int"), loc)), loc),
-                           (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "int"), loc),
-                                     (L'.EFfiApp ("Basis", "new_client_source", [(L'.ERel 1, loc)]), loc)), loc)),
+                ((L'.EAbs ("x", t, (L'.TFun ((L'.TRecord [], loc), (L'.TSource, loc)), loc),
+                           (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TSource, loc),
+                                     (L'.EFfiApp ("Basis", "new_client_source",
+                                                  [(L'.EJavaScript (L'.File, (L'.ERel 1, loc)), loc)]), loc)), loc)),
                   loc),
                  fm)
             end
@@ -983,12 +984,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val t = monoType env t
             in
-                ((L'.EAbs ("src", (L'.TFfi ("Basis", "int"), loc),
+                ((L'.EAbs ("src", (L'.TSource, loc),
                            (L'.TFun (t, (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc)), loc),
                            (L'.EAbs ("v", t, (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc),
                                      (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
                                                (L'.EFfiApp ("Basis", "set_client_source",
-                                                            [(L'.ERel 2, loc), (L'.ERel 1, loc)]),
+                                                            [(L'.ERel 2, loc),
+                                                             (L'.EJavaScript (L'.File, (L'.ERel 1, loc)), loc)]),
                                                 loc)), loc)), loc)), loc),
                  fm)
             end

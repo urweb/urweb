@@ -363,6 +363,7 @@ static void uw_check_script(uw_context ctx, size_t extra) {
     ctx->script_front = new_script + (ctx->script_front - ctx->script);
     ctx->script_back = new_script + next;
     ctx->script = new_script;
+    printf("new_script = %p\n", new_script);
   }
 }
 
@@ -434,7 +435,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
     char c = *s;
 
     switch (c) {
-    case '"':
+    case '\'':
       strcpy(s2, "\\\"");
       s2 += 2;
       break;
@@ -457,16 +458,34 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
   return r;
 }
 
-int uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
-  size_t len;
+uw_Basis_int uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
+  int len;
+  size_t s_len = strlen(s);
 
-  uw_check_script(ctx, 8 + INTS_MAX);
+  uw_check_script(ctx, 12 + INTS_MAX + s_len);
   sprintf(ctx->script_front, "var s%d=sc(%n", ctx->source_count, &len);
   ctx->script_front += len;
-  uw_Basis_jsifyString_ws(ctx, s);
-  uw_write_script(ctx, ");");
+  strcpy(ctx->script_front, s);
+  ctx->script_front += s_len;
+  strcpy(ctx->script_front, ");");
+  ctx->script_front += 2;
 
   return ctx->source_count++;
+}
+
+uw_unit uw_Basis_set_client_source(uw_context ctx, uw_Basis_int n, uw_Basis_string s) {
+  int len;
+  size_t s_len = strlen(s);
+
+  uw_check_script(ctx, 6 + INTS_MAX + s_len);
+  sprintf(ctx->script_front, "s%d.v=%n", (int)n, &len);
+  ctx->script_front += len;
+  strcpy(ctx->script_front, s);
+  ctx->script_front += s_len;
+  strcpy(ctx->script_front, ";");
+  ctx->script_front++;
+
+  return uw_unit_v;
 }
 
 static void uw_check(uw_context ctx, size_t extra) {

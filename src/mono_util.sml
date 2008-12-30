@@ -51,6 +51,7 @@ fun compare ((t1, _), (t2, _)) =
       | (TDatatype (n1, _), TDatatype (n2, _)) => Int.compare (n1, n2)
       | (TFfi (m1, x1), TFfi (m2, x2)) => join (String.compare (m1, m2), fn () => String.compare (x1, x2))
       | (TOption t1, TOption t2) => compare (t1, t2)
+      | (TSource, TSource) => EQUAL
       | (TSignal t1, TSignal t2) => compare (t1, t2)
 
       | (TFun _, _) => LESS
@@ -67,6 +68,9 @@ fun compare ((t1, _), (t2, _)) =
 
       | (TOption _, _) => LESS
       | (_, TOption _) => GREATER
+
+      | (TSource, _) => LESS
+      | (_, TSource) => GREATER
 
 and compareFields ((x1, t1), (x2, t2)) =
     join (String.compare (x1, x2),
@@ -100,6 +104,7 @@ fun mapfold fc =
                 S.map2 (mft t,
                         fn t' =>
                            (TOption t, loc))
+              | TSource => S.return2 cAll
               | TSignal t =>
                 S.map2 (mft t,
                         fn t' =>
