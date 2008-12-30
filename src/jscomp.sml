@@ -35,7 +35,8 @@ structure U = MonoUtil
 
 val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "htmlifyString"), "escape"),
-             (("Basis", "new_client_source"), "sc")]
+             (("Basis", "new_client_source"), "sc"),
+             (("Basis", "set_client_source"), "sv")]
 
 structure FM = BinaryMapFn(struct
                            type ord_key = string * string
@@ -94,7 +95,7 @@ fun strcat loc es =
       | [x] => x
       | x :: es' => (EStrcat (x, strcat loc es'), loc)
 
-fun jsExp mode outer =
+fun jsExp mode skip outer =
     let
         val len = length outer
 
@@ -126,7 +127,10 @@ fun jsExp mode outer =
                     case #1 t of
                         TSource => strcat [str "s",
                                            (EFfiApp ("Basis", "htmlifyInt", [e]), loc)]
+                      | TRecord [] => str "null"
+                      | TFfi ("Basis", "string") => e
                       | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
+                              Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
                               str "ERROR")
             in
                 case #1 e of
@@ -154,7 +158,7 @@ fun jsExp mode outer =
                         let
                             val n = n - inner
                         in
-                            (quoteExp (List.nth (outer, n)) (ERel n, loc), st)
+                            (quoteExp (List.nth (outer, n)) (ERel (n - skip), loc), st)
                         end
                   | ENamed _ => raise Fail "Named"
                   | ECon (_, pc, NONE) => (patCon pc, st)
@@ -403,7 +407,7 @@ val decl : state -> decl -> decl * state =
     U.Decl.foldMapB {typ = fn x => x,
                      exp = fn (env, e, st) =>
                               let
-                                  fun doCode m env orig e =
+                                  fun doCode m skip env orig e =
                                       let
                                           val len = length env
                                           fun str s = (EPrim (Prim.String s), #2 e)
@@ -411,14 +415,14 @@ val decl : state -> decl -> decl * state =
                                           val locals = List.tabulate
                                                            (varDepth e,
                                                          fn i => str ("var uwr" ^ Int.toString (len + i) ^ ";"))
-                                          val (e, st) = jsExp m env 0 (e, st)
+                                          val (e, st) = jsExp m skip env 0 (e, st)
                                       in
                                           (EJavaScript (m, orig, SOME (strcat (#2 e) (locals @ [e]))), st)
                                       end
                               in
                                   case e of
-                                      EJavaScript (m, orig as (EAbs (_, t, _, e), _), _) => doCode m (t :: env) orig e
-                                    | EJavaScript (m, e, _) => doCode m env e e
+                                      EJavaScript (m, orig as (EAbs (_, t, _, e), _), _) => doCode m 1 (t :: env) orig e
+                                    | EJavaScript (m, e, _) => doCode m 0 env e e
                                     | _ => (e, st)
                               end,
                      decl = fn (_, e, st) => (e, st),

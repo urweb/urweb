@@ -56,6 +56,7 @@ fun impure (e, _) =
       | EFfiApp ("Basis", "set_cookie", _) => true
       | EFfiApp ("Basis", "new_client_source", _) => true
       | EFfiApp ("Basis", "set_client_source", _) => true
+      | EFfiApp ("Basis", "alert", _) => true
       | EFfiApp _ => false
       | EApp ((EFfi _, _), _) => false
       | EApp _ => true
@@ -253,92 +254,103 @@ fun reduce file =
             IM.empty file
 
         fun summarize d (e, _) =
-            case e of
-                EPrim _ => []
-              | ERel n => if n = d then [UseRel] else []
-              | ENamed _ => []
-              | ECon (_, _, NONE) => []
-              | ECon (_, _, SOME e) => summarize d e
-              | ENone _ => []
-              | ESome (_, e) => summarize d e
-              | EFfi _ => []
-              | EFfiApp ("Basis", "set_cookie", _) => [Unsure]
-              | EFfiApp ("Basis", "new_client_source", _) => [Unsure]
-              | EFfiApp ("Basis", "set_client_source", _) => [Unsure]
-              | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
-              | EApp ((EFfi _, _), e) => summarize d e
-              | EApp _ =>
-                let
-                    fun unravel (e, ls) =
-                        case e of
-                            ENamed n =>
-                            let
-                                val ls = rev ls
-                            in
-                                case IM.find (absCounts, n) of
-                                    NONE => [Unsure]
-                                  | SOME len =>
-                                    if length ls < len then
-                                        ls
-                                    else
-                                        [Unsure]
-                            end
-                          | ERel n => List.revAppend (ls,
-                                                      if n = d then
-                                                          [UseRel, Unsure]
-                                                      else
-                                                          [Unsure])
-                          | EApp (f, x) =>
-                            unravel (#1 f, summarize d x @ ls)
-                          | _ => [Unsure]
-                in
-                    unravel (e, [])
-                end
+            let
+                val s =
+                    case e of
+                        EPrim _ => []
+                      | ERel n => if n = d then [UseRel] else []
+                      | ENamed _ => []
+                      | ECon (_, _, NONE) => []
+                      | ECon (_, _, SOME e) => summarize d e
+                      | ENone _ => []
+                      | ESome (_, e) => summarize d e
+                      | EFfi _ => []
+                      | EFfiApp ("Basis", "set_cookie", es) => List.concat (map (summarize d) es) @ [Unsure]
+                      | EFfiApp ("Basis", "new_client_source", es) => List.concat (map (summarize d) es) @ [Unsure]
+                      | EFfiApp ("Basis", "set_client_source", es) => List.concat (map (summarize d) es) @ [Unsure]
+                      | EFfiApp ("Basis", "alert", es) => List.concat (map (summarize d) es) @ [Unsure]
+                      | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
+                      | EApp ((EFfi _, _), e) => summarize d e
+                      | EApp _ =>
+                        let
+                            fun unravel (e, ls) =
+                                case e of
+                                    ENamed n =>
+                                    let
+                                        val ls = rev ls
+                                    in
+                                        case IM.find (absCounts, n) of
+                                            NONE => [Unsure]
+                                          | SOME len =>
+                                            if length ls < len then
+                                                ls
+                                            else
+                                                [Unsure]
+                                    end
+                                  | ERel n => List.revAppend (ls,
+                                                              if n = d then
+                                                                  [UseRel, Unsure]
+                                                              else
+                                                                  [Unsure])
+                                  | EApp (f, x) =>
+                                    unravel (#1 f, summarize d x @ ls)
+                                  | _ => [Unsure]
+                        in
+                            unravel (e, [])
+                        end
 
-              | EAbs _ => []
+                      | EAbs (_, _, _, e) => List.filter (fn UseRel => true
+                                                           | _ => false) (summarize (d + 1) e)
 
-              | EUnop (_, e) => summarize d e
-              | EBinop (_, e1, e2) => summarize d e1 @ summarize d e2
+                      | EUnop (_, e) => summarize d e
+                      | EBinop (_, e1, e2) => summarize d e1 @ summarize d e2
 
-              | ERecord xets => List.concat (map (summarize d o #2) xets)
-              | EField (e, _) => summarize d e
+                      | ERecord xets => List.concat (map (summarize d o #2) xets)
+                      | EField (e, _) => summarize d e
 
-              | ECase (e, pes, _) =>
-                let
-                    val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
-                in
-                    case lss of
-                        [] => raise Fail "Empty pattern match"
-                      | ls :: lss =>
-                        if List.all (fn ls' => ls' = ls) lss then
-                            summarize d e @ ls
-                        else
-                            [Unsure]
-                end
-              | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
+                      | ECase (e, pes, _) =>
+                        let
+                            val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
+                        in
+                            case lss of
+                                [] => raise Fail "Empty pattern match"
+                              | ls :: lss =>
+                                if List.all (fn ls' => ls' = ls) lss then
+                                    summarize d e @ ls
+                                else
+                                    [Unsure]
+                        end
+                      | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
 
-              | EError (e, _) => summarize d e @ [Unsure]
+                      | EError (e, _) => summarize d e @ [Unsure]
 
-              | EWrite e => summarize d e @ [WritePage]
-                            
-              | ESeq (e1, e2) => summarize d e1 @ summarize d e2
-              | ELet (_, _, e1, e2) => summarize d e1 @ summarize (d + 1) e2
+                      | EWrite e => summarize d e @ [WritePage]
+                                    
+                      | ESeq (e1, e2) => summarize d e1 @ summarize d e2
+                      | ELet (_, _, e1, e2) => summarize d e1 @ summarize (d + 1) e2
 
-              | EClosure (_, es) => List.concat (map (summarize d) es)
+                      | EClosure (_, es) => List.concat (map (summarize d) es)
 
-              | EQuery {query, body, initial, ...} =>
-                List.concat [summarize d query,
-                             summarize (d + 2) body,
-                             summarize d initial,
-                             [ReadDb]]
+                      | EQuery {query, body, initial, ...} =>
+                        List.concat [summarize d query,
+                                     summarize (d + 2) body,
+                                     summarize d initial,
+                                     [ReadDb]]
 
-              | EDml e => summarize d e @ [WriteDb]
-              | ENextval e => summarize d e @ [WriteDb]
-              | EUnurlify (e, _) => summarize d e
-              | EJavaScript (_, e, _) => summarize d e
-              | ESignalReturn e => summarize d e
-              | ESignalBind (e1, e2) => summarize d e1 @ summarize d e2
-              | ESignalSource e => summarize d e
+                      | EDml e => summarize d e @ [WriteDb]
+                      | ENextval e => summarize d e @ [WriteDb]
+                      | EUnurlify (e, _) => summarize d e
+                      | EJavaScript (_, e, _) => summarize d e
+                      | ESignalReturn e => summarize d e
+                      | ESignalBind (e1, e2) => summarize d e1 @ summarize d e2
+                      | ESignalSource e => summarize d e
+            in
+                (*Print.prefaces "Summarize"
+                               [("e", MonoPrint.p_exp MonoEnv.empty (e, ErrorMsg.dummySpan)),
+                                ("d", Print.PD.string (Int.toString d)),
+                                ("s", p_events s)];*)
+                s
+            end
 
         fun exp env e =
             let
