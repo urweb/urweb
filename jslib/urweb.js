@@ -42,3 +42,4 @@ function dyn(s) {
 }
 
 function ts(x) { return x.toString() }
+function pf() { alert("Pattern match failure") }

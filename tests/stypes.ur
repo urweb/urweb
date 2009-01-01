@@ -11,4 +11,9 @@ fun main () : transaction page =
       <dyn signal={n <- signal sFloat; return <xml>{[n + 1.0]}</xml>}/> <a onclick={set sFloat 4.56}>Change</a><br/>
 
       <dyn signal={p <- signal sBoth; return <xml>{[p.1]}, {[p.2]}</xml>}/> <a onclick={set sBoth (8, 100.001)}>Change</a><br/>
+
+      <dyn signal={o <- signal sOpt; case o of
+                                         None => return <xml>None</xml>
+                                       | Some n => return <xml>{[n]}</xml>}/>
+        <a onclick={set sOpt (Some 7)}>Change</a><br/>
     </body></xml>

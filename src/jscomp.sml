@@ -133,25 +133,64 @@ fun jsExp mode skip outer =
                       | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
                               Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
                               str "ERROR")
+
+                fun jsPrim p =
+                    case p of
+                        Prim.String s =>
+                        str ("\""
+                             ^ String.translate (fn #"'" =>
+                                                    if mode = Attribute then
+                                                        "\\047"
+                                                    else
+                                                        "'"
+                                                  | #"\"" => "\\\""
+                                                  | #"<" =>
+                                                    if mode = Script then
+                                                        "<"
+                                                    else
+                                                        "\\074"
+                                                  | #"\\" => "\\\\"
+                                                  | ch => String.str ch) s
+                             ^ "\"")
+                      | _ => str (Prim.toString p)
+
+                fun jsPat inner (p, _) succ fail =
+                    case p of
+                        PWild => succ
+                      | PVar _ => strcat [str ("(_" ^ Int.toString (len + inner) ^ "=d,"),
+                                          succ,
+                                          str ")"]
+                      | PPrim p => strcat [str "(d==",
+                                           jsPrim p,
+                                           str "?",
+                                           succ,
+                                           str ":",
+                                           fail,
+                                           str ")"]
+                      | PCon _ => raise Fail "jsPat: PCon"
+                      | PRecord xps =>
+                        let
+                            val (_, succ) = foldl
+                                            (fn ((x, p, _), (inner, succ)) =>
+                                                (inner + E.patBindsN p,
+                                                 jsPat inner p succ fail))
+                                            (inner, succ) xps
+                        in
+                            succ
+                        end
+                      | PNone _ => strcat [str "(d?",
+                                           fail,
+                                           str ":",
+                                           succ,
+                                           str ")"]
+                      | PSome (_, p) => strcat [str "(d?",
+                                                jsPat inner p succ fail,
+                                                str ":",
+                                                fail,
+                                                str ")"]
             in
                 case #1 e of
-                    EPrim (Prim.String s) =>
-                    (str ("\""
-                          ^ String.translate (fn #"'" =>
-                                                 if mode = Attribute then
-                                                     "\\047"
-                                                 else
-                                                     "'"
-                                               | #"\"" => "\\\""
-                                               | #"<" =>
-                                                 if mode = Script then
-                                                     "<"
-                                                 else
-                                                     "\\074"
-                                               | #"\\" => "\\\\"
-                                               | ch => String.str ch) s
-                          ^ "\""), st)
-                  | EPrim p => (str (Prim.toString p), st)
+                    EPrim p => (jsPrim p, st)
                   | ERel n =>
                     if n < inner then
                         (str ("_" ^ var n), st)
@@ -317,7 +356,36 @@ fun jsExp mode skip outer =
                                  str ("._" ^ x)], st)
                     end
 
-                  | ECase _ => raise Fail "Jscomp: ECase"
+                  | ECase (e, pes, _) =>
+                    let
+                        val plen = length pes
+
+                        val (cases, st) = ListUtil.foldliMap
+                                              (fn (i, (p, e), st) =>
+                                                  let
+                                                      val (e, st) = jsE (inner + E.patBindsN p) (e, st)
+                                                      val fail =
+                                                          if i = plen - 1 then
+                                                              str "pf()"
+                                                          else
+                                                              str ("c" ^ Int.toString (i+1) ^ "()")
+                                                      val c = jsPat inner p e fail
+                                                  in
+                                                      (strcat [str ("c" ^ Int.toString i ^ "=function(){return "),
+                                                               c,
+                                                               str "},"],
+                                                       st)
+                                                  end)
+                                              st pes
+
+                        val (e, st) = jsE inner (e, st)
+                    in
+                        (strcat (str "("
+                                 :: List.revAppend (cases,
+                                                    [str "d=",
+                                                     e,
+                                                     str ",c0())"])), st)
+                    end
 
                   | EStrcat (e1, e2) =>
                     let
