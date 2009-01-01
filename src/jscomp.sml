@@ -162,9 +162,23 @@ fun process file =
                                    (EFfiApp ("Basis", "htmlifyInt", [e]), loc)]
               | TRecord [] => str loc "null"
 
-              | TFfi ("Basis", "string") => e
+              | TFfi ("Basis", "string") => (EFfiApp ("Basis", "jsifyString", [e]), loc)
               | TFfi ("Basis", "int") => (EFfiApp ("Basis", "htmlifyInt", [e]), loc)
               | TFfi ("Basis", "float") => (EFfiApp ("Basis", "htmlifyFloat", [e]), loc)
+
+              | TFfi ("Basis", "bool") => (ECase (e,
+                                                  [((PCon (Enum, PConFfi {mod = "Basis",
+                                                                          datatyp = "bool",
+                                                                          con = "True",
+                                                                          arg = NONE}, NONE), loc),
+                                                    str loc "true"),
+                                                   ((PCon (Enum, PConFfi {mod = "Basis",
+                                                                          datatyp = "bool",
+                                                                          con = "False",
+                                                                          arg = NONE}, NONE), loc),
+                                                    str loc "false")],
+                                                  {disc = (TFfi ("Basis", "bool"), loc),
+                                                   result = (TFfi ("Basis", "string"), loc)}), loc)
 
               | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
                       Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
