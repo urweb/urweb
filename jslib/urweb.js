@@ -42,4 +42,6 @@ function dyn(s) {
 }
 
 function ts(x) { return x.toString() }
+function bs(b) { return (b ? "True" : "False") }
+
 function pf() { alert("Pattern match failure") }

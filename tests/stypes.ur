@@ -4,6 +4,7 @@ fun main () : transaction page =
     sBoth <- source (7, 42.1);
 
     sOpt <- source None;
+    sBool <- source True;
 
     return <xml><body>
       <dyn signal={n <- signal sInt; return <xml>{[n + 3]}</xml>}/> <a onclick={set sInt 1}>Change</a><br/>
@@ -20,4 +21,6 @@ fun main () : transaction page =
                                          None => return <xml>None</xml>
                                        | Some n => return <xml>{[n]}</xml>}/>
         <a onclick={set sOpt (Some 7)}>Change</a><br/>
+
+      <dyn signal={b <- signal sBool; return <xml>{[b]}</xml>}/> <a onclick={set sBool False}>Change</a><br/>
     </body></xml>

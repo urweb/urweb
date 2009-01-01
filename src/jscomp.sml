@@ -34,6 +34,7 @@ structure E = MonoEnv
 structure U = MonoUtil
 
 val funcs = [(("Basis", "alert"), "alert"),
+             (("Basis", "htmlifyBool"), "bs"),
              (("Basis", "htmlifyFloat"), "ts"),
              (("Basis", "htmlifyInt"), "ts"),
              (("Basis", "htmlifyString"), "escape"),
@@ -110,6 +111,8 @@ fun jsExp mode skip outer =
                 fun patCon pc =
                     case pc of
                         PConVar n => str (Int.toString n)
+                      | PConFfi {mod = "Basis", con = "True", ...} => str "true"
+                      | PConFfi {mod = "Basis", con = "False", ...} => str "false"
                       | PConFfi {con, ...} => str ("\"_" ^ con ^ "\"")
 
                 fun isNullable (t, _) =
