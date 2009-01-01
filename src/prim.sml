@@ -47,6 +47,12 @@ fun int2s n =
     else
         Int64.toString n ^ "LL"
 
+fun int2s' n =
+    if Int64.compare (n, Int64.fromInt 0) = LESS then
+        "-" ^ Int64.toString (Int64.~ n)
+    else
+        Int64.toString n
+
 fun float2s n =
     if Real64.compare (n, Real64.fromInt 0) = LESS then
         "-" ^ Real64.toString (Real64.~ n)
@@ -55,7 +61,7 @@ fun float2s n =
 
 fun toString t =
     case t of
-        Int n => int2s n
+        Int n => int2s' n
       | Float n => float2s n
       | String s => s
 

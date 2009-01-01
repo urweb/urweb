@@ -34,6 +34,7 @@ structure E = MonoEnv
 structure U = MonoUtil
 
 val funcs = [(("Basis", "alert"), "alert"),
+             (("Basis", "htmlifyInt"), "ts"),
              (("Basis", "htmlifyString"), "escape"),
              (("Basis", "new_client_source"), "sc"),
              (("Basis", "set_client_source"), "sv")]

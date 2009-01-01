@@ -40,3 +40,5 @@ function dyn(s) {
   document.body.appendChild(x);
   s.h = cons(function() { x.innerHTML = s.v }, s.h);
 }
+
+function ts(x) { return x.toString() }
