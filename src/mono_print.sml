@@ -120,6 +120,12 @@ fun p_pat' par env (p, _) =
 
 and p_pat x = p_pat' false x
 
+fun p_mode env m =
+    case m of
+        Attribute => string "Attribute"
+      | Script => string "Script"
+      | Source t => box [string "Source", space, p_typ env t]
+
 fun p_exp' par env (e, _) =
     case e of
         EPrim p => Prim.p_t p
@@ -281,7 +287,10 @@ fun p_exp' par env (e, _) =
       | EUnurlify (e, _) => box [string "unurlify(",
                                  p_exp env e,
                                  string ")"]
-      | EJavaScript (_, e, NONE) => box [string "JavaScript(",
+      | EJavaScript (m, e, NONE) => box [string "JavaScript(",
+                                         p_mode env m,
+                                         string ",",
+                                         space,
                                          p_exp env e,
                                          string ")"]
       | EJavaScript (_, _, SOME e) => p_exp env e

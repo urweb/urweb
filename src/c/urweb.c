@@ -363,7 +363,6 @@ static void uw_check_script(uw_context ctx, size_t extra) {
     ctx->script_front = new_script + (ctx->script_front - ctx->script);
     ctx->script_back = new_script + next;
     ctx->script = new_script;
-    printf("new_script = %p\n", new_script);
   }
 }
 

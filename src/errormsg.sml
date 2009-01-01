@@ -95,7 +95,7 @@ fun error s = (TextIO.output (TextIO.stdErr, s);
                TextIO.output1 (TextIO.stdErr, #"\n");
                errors := true)
 fun errorAt span s = (TextIO.output (TextIO.stdErr, spanToString span);
-                      TextIO.output1 (TextIO.stdErr, #" ");
+                      TextIO.output (TextIO.stdErr, ": ");
                       error s)
 fun errorAt' span s = errorAt (spanOf span) s
 
