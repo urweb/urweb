@@ -34,6 +34,7 @@ structure E = MonoEnv
 structure U = MonoUtil
 
 val funcs = [(("Basis", "alert"), "alert"),
+             (("Basis", "htmlifyFloat"), "ts"),
              (("Basis", "htmlifyInt"), "ts"),
              (("Basis", "htmlifyString"), "escape"),
              (("Basis", "new_client_source"), "sc"),
@@ -111,11 +112,10 @@ fun jsExp mode skip outer =
                         PConVar n => str (Int.toString n)
                       | PConFfi {con, ...} => str ("\"_" ^ con ^ "\"")
 
-
-
                 fun isNullable (t, _) =
                     case t of
                         TOption _ => true
+                      | TRecord [] => true
                       | _ => false
 
                 fun unsupported s =
@@ -154,7 +154,7 @@ fun jsExp mode skip outer =
                   | EPrim p => (str (Prim.toString p), st)
                   | ERel n =>
                     if n < inner then
-                        (str ("uwr" ^ var n), st)
+                        (str ("_" ^ var n), st)
                     else
                         let
                             val n = n - inner
@@ -246,10 +246,10 @@ fun jsExp mode skip outer =
                     let
                         val locals = List.tabulate
                                      (varDepth e,
-                                   fn i => str ("var uwr" ^ Int.toString (len + inner + i) ^ ";"))
+                                   fn i => str ("var _" ^ Int.toString (len + inner + i) ^ ";"))
                         val (e, st) = jsE (inner + 1) (e, st)
                     in
-                        (strcat (str ("function(uwr"
+                        (strcat (str ("function(_"
                                       ^ Int.toString (len + inner)
                                       ^ "){")
                                  :: locals
@@ -286,7 +286,7 @@ fun jsExp mode skip outer =
                     let
                         val (e, st) = jsE inner (e, st)
                     in
-                        (strcat [str "{uw_x:", e, str "}"], st)
+                        (strcat [str "{_x:", e, str "}"], st)
                     end
                   | ERecord ((x, e, _) :: xes) =>
                     let
@@ -297,14 +297,14 @@ fun jsExp mode skip outer =
                                       let
                                           val (e, st) = jsE inner (e, st)
                                       in
-                                          (str (",uw_" ^ x ^ ":")
+                                          (str (",_" ^ x ^ ":")
                                            :: e
                                            :: es,
                                            st)
                                       end)
                                   ([str "}"], st) xes
                     in
-                        (strcat (str ("{uw_" ^ x ^ ":")
+                        (strcat (str ("{_" ^ x ^ ":")
                                  :: e
                                  :: es),
                          st)
@@ -314,7 +314,7 @@ fun jsExp mode skip outer =
                         val (e, st) = jsE inner (e, st)
                     in
                         (strcat [e,
-                                 str ("." ^ x)], st)
+                                 str ("._" ^ x)], st)
                     end
 
                   | ECase _ => raise Fail "Jscomp: ECase"
@@ -356,7 +356,7 @@ fun jsExp mode skip outer =
                         val (e1, st) = jsE inner (e1, st)
                         val (e2, st) = jsE (inner + 1) (e2, st)
                     in
-                        (strcat [str ("(uwr" ^ Int.toString (len + inner) ^ "="),
+                        (strcat [str ("(_" ^ Int.toString (len + inner) ^ "="),
                                  e1,
                                  str ",",
                                  e2,
@@ -415,7 +415,7 @@ val decl : state -> decl -> decl * state =
 
                                           val locals = List.tabulate
                                                            (varDepth e,
-                                                         fn i => str ("var uwr" ^ Int.toString (len + i) ^ ";"))
+                                                         fn i => str ("var _" ^ Int.toString (len + i) ^ ";"))
                                           val (e, st) = jsExp m skip env 0 (e, st)
                                       in
                                           (EJavaScript (m, orig, SOME (strcat (#2 e) (locals @ [e]))), st)
