@@ -10,7 +10,11 @@ fun main () : transaction page =
 
       <dyn signal={n <- signal sFloat; return <xml>{[n + 1.0]}</xml>}/> <a onclick={set sFloat 4.56}>Change</a><br/>
 
-      <dyn signal={p <- signal sBoth; return <xml>{[p.1]}, {[p.2]}</xml>}/> <a onclick={set sBoth (8, 100.001)}>Change</a><br/>
+      <dyn signal={p <- signal sBoth; return <xml>{[p.1]}, {[p.2]}</xml>}/>;
+      <dyn signal={p <- signal sBoth; case p of
+                                          (7, _) => return <xml>Initial</xml>
+                                        | (fst, snd) => return <xml>{[fst]}, {[snd]}</xml>}/>
+      <a onclick={set sBoth (8, 100.001)}>Change</a><br/>
 
       <dyn signal={o <- signal sOpt; case o of
                                          None => return <xml>None</xml>

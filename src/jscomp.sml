@@ -154,13 +154,13 @@ fun jsExp mode skip outer =
                              ^ "\"")
                       | _ => str (Prim.toString p)
 
-                fun jsPat inner (p, _) succ fail =
+                fun jsPat depth inner (p, _) succ fail =
                     case p of
                         PWild => succ
-                      | PVar _ => strcat [str ("(_" ^ Int.toString (len + inner) ^ "=d,"),
+                      | PVar _ => strcat [str ("(_" ^ Int.toString (len + inner) ^ "=d" ^ Int.toString depth ^ ","),
                                           succ,
                                           str ")"]
-                      | PPrim p => strcat [str "(d==",
+                      | PPrim p => strcat [str ("(d" ^ Int.toString depth ^ "=="),
                                            jsPrim p,
                                            str "?",
                                            succ,
@@ -173,18 +173,21 @@ fun jsExp mode skip outer =
                             val (_, succ) = foldl
                                             (fn ((x, p, _), (inner, succ)) =>
                                                 (inner + E.patBindsN p,
-                                                 jsPat inner p succ fail))
+                                                 strcat [str ("(d" ^ Int.toString (depth+1) ^ "=d"
+                                                              ^ Int.toString depth ^ "._" ^ x ^ ","),
+                                                         jsPat (depth+1) inner p succ fail,
+                                                         str ")"]))
                                             (inner, succ) xps
                         in
                             succ
                         end
-                      | PNone _ => strcat [str "(d?",
+                      | PNone _ => strcat [str ("(d" ^ Int.toString depth ^ "?"),
                                            fail,
                                            str ":",
                                            succ,
                                            str ")"]
-                      | PSome (_, p) => strcat [str "(d?",
-                                                jsPat inner p succ fail,
+                      | PSome (_, p) => strcat [str ("(d" ^ Int.toString depth ^ "?"),
+                                                jsPat depth inner p succ fail,
                                                 str ":",
                                                 fail,
                                                 str ")"]
@@ -285,7 +288,7 @@ fun jsExp mode skip outer =
                     let
                         val locals = List.tabulate
                                      (varDepth e,
-                                   fn i => str ("var _" ^ Int.toString (len + inner + i) ^ ";"))
+                                   fn i => str ("var _" ^ Int.toString (len + inner + i + 1) ^ ";"))
                         val (e, st) = jsE (inner + 1) (e, st)
                     in
                         (strcat (str ("function(_"
@@ -369,7 +372,7 @@ fun jsExp mode skip outer =
                                                               str "pf()"
                                                           else
                                                               str ("c" ^ Int.toString (i+1) ^ "()")
-                                                      val c = jsPat inner p e fail
+                                                      val c = jsPat 0 inner p e fail
                                                   in
                                                       (strcat [str ("c" ^ Int.toString i ^ "=function(){return "),
                                                                c,
@@ -382,7 +385,7 @@ fun jsExp mode skip outer =
                     in
                         (strcat (str "("
                                  :: List.revAppend (cases,
-                                                    [str "d=",
+                                                    [str "d0=",
                                                      e,
                                                      str ",c0())"])), st)
                     end

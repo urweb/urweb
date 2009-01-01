@@ -2,7 +2,7 @@ function cons(v, ls) {
   return { n : ls, v : v };
 }
 function callAll(ls) {
-  for (; ls; ls = ls.next)
+  for (; ls; ls = ls.n)
     ls.v();
 }
 
