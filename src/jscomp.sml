@@ -170,7 +170,19 @@ fun jsExp mode skip outer =
                                            str ":",
                                            fail,
                                            str ")"]
-                      | PCon _ => raise Fail "jsPat: PCon"
+                      | PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE) =>
+                        strcat [str ("(d" ^ Int.toString depth ^ "?"),
+                                succ,
+                                str ":",
+                                fail,
+                                str ")"]
+                      | PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE) =>
+                        strcat [str ("(d" ^ Int.toString depth ^ "?"),
+                                fail,
+                                str ":",
+                                succ,
+                                str ")"]
+                      | PCon _ => raise Fail "PCon"
                       | PRecord xps =>
                         let
                             val (_, succ) = foldl

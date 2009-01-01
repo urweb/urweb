@@ -22,5 +22,7 @@ fun main () : transaction page =
                                        | Some n => return <xml>{[n]}</xml>}/>
         <a onclick={set sOpt (Some 7)}>Change</a><br/>
 
-      <dyn signal={b <- signal sBool; return <xml>{[b]}</xml>}/> <a onclick={set sBool False}>Change</a><br/>
+      <dyn signal={b <- signal sBool; return <xml>{[b]}</xml>}/>
+      <dyn signal={b <- signal sBool; if b then return <xml>Yes</xml> else return <xml>No</xml>}/>
+      <a onclick={set sBool False}>Change</a><br/>
     </body></xml>
