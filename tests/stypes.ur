@@ -56,6 +56,7 @@ fun main () : transaction page =
       <a onclick={set sColor White}>White</a>
       <a onclick={set sColor Blue}>Blue</a><br/>
 
-      <dyn signal={ls <- signal sList; return <xml>{[isNil ls]}</xml>}/>
+      <dyn signal={ls <- signal sList; return <xml>{[isNil ls]}</xml>}/>;
+      <dyn signal={ls <- signal sList; return <xml>{delist ls}</xml>}/>
       <a onclick={set sList (Cons ("A", Cons ("B", Nil)))}>Change</a><br/>
     </body></xml>
