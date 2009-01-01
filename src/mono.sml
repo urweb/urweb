@@ -60,7 +60,7 @@ withtype pat = pat' located
 datatype javascript_mode =
          Attribute
        | Script
-       | File
+       | Source of typ
 
 datatype exp' =
          EPrim of Prim.t

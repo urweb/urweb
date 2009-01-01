@@ -976,7 +976,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("x", t, (L'.TFun ((L'.TRecord [], loc), (L'.TSource, loc)), loc),
                            (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TSource, loc),
                                      (L'.EFfiApp ("Basis", "new_client_source",
-                                                  [(L'.EJavaScript (L'.File, (L'.ERel 1, loc), NONE), loc)]),
+                                                  [(L'.EJavaScript (L'.Source t, (L'.ERel 1, loc), NONE), loc)]),
                                       loc)), loc)),
                   loc),
                  fm)
@@ -991,7 +991,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                      (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
                                                (L'.EFfiApp ("Basis", "set_client_source",
                                                             [(L'.ERel 2, loc),
-                                                             (L'.EJavaScript (L'.File, (L'.ERel 1, loc), NONE), loc)]),
+                                                             (L'.EJavaScript (L'.Source t,
+                                                                              (L'.ERel 1, loc), NONE), loc)]),
                                                 loc)), loc)), loc)), loc),
                  fm)
             end

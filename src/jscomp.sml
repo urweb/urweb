@@ -102,6 +102,8 @@ fun strcat loc es =
       | [x] => x
       | x :: es' => (EStrcat (x, strcat loc es'), loc)
 
+exception Unsupported of string * EM.span
+
 fun process file =
     let
         val nameds = foldl (fn ((DVal (_, n, t, e, _), _), nameds) => IM.insert (nameds, n, e)
@@ -111,13 +113,28 @@ fun process file =
                              | (_, nameds) => nameds)
                            IM.empty file
 
+        fun str loc s = (EPrim (Prim.String s), loc)
+
+        fun quoteExp loc (t : typ) e =
+            case #1 t of
+                TSource => strcat loc [str loc "s",
+                                   (EFfiApp ("Basis", "htmlifyInt", [e]), loc)]
+              | TRecord [] => str loc "null"
+
+              | TFfi ("Basis", "string") => e
+              | TFfi ("Basis", "int") => (EFfiApp ("Basis", "htmlifyInt", [e]), loc)
+
+              | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
+                      Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
+                      str loc "ERROR")
+
         fun jsExp mode skip outer =
             let
                 val len = length outer
 
                 fun jsE inner (e as (_, loc), st) =
                     let
-                        fun str s = (EPrim (Prim.String s), loc)
+                        val str = str loc
 
                         fun var n = Int.toString (len + inner - n - 1)
 
@@ -134,21 +151,9 @@ fun process file =
                               | TRecord [] => true
                               | _ => false
 
-                        fun unsupported s =
-                            (EM.errorAt loc (s ^ " in code to be compiled to JavaScript");
-                             (str "ERROR", st))
+                        fun unsupported s = raise Unsupported (s, loc)
 
                         val strcat = strcat loc
-
-                        fun quoteExp (t : typ) e =
-                            case #1 t of
-                                TSource => strcat [str "s",
-                                                   (EFfiApp ("Basis", "htmlifyInt", [e]), loc)]
-                              | TRecord [] => str "null"
-                              | TFfi ("Basis", "string") => e
-                              | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
-                                      Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
-                                      str "ERROR")
 
                         fun jsPrim p =
                             case p of
@@ -241,7 +246,11 @@ fun process file =
                                 EPrim (Prim.String s) => s
                               | EStrcat (e1, e2) => deStrcat e1 ^ deStrcat e2
                               | _ => raise Fail "Jscomp: deStrcat"
+
+                        val quoteExp = quoteExp loc
                     in
+                        (*Print.prefaces "jsE" [("e", MonoPrint.p_exp MonoEnv.empty e)];*)
+
                         case #1 e of
                             EPrim p => (jsPrim p, st)
                           | ERel n =>
@@ -513,12 +522,15 @@ fun process file =
                                          str ")"], st)
                             end
 
+                          | EJavaScript (_, _, SOME e) => (e, st)
+
                           | EClosure _ => unsupported "EClosure"
                           | EQuery _ => unsupported "Query"
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
-                          | EJavaScript _ => unsupported "Nested JavaScript"
+                          | EJavaScript (_, e, _) => unsupported "Nested JavaScript"
+
                           | ESignalReturn e =>
                             let
                                 val (e, st) = jsE inner (e, st)
@@ -572,9 +584,28 @@ fun process file =
                                               end
                                       in
                                           case e of
-                                              EJavaScript (m, orig as (EAbs (_, t, _, e), _), _) =>
-                                              doCode m 1 (t :: env) orig e
-                                            | EJavaScript (m, e, _) => doCode m 0 env e e
+                                              EJavaScript (m as Source t, orig, _) =>
+                                              (doCode m 0 env orig orig
+                                               handle Unsupported (s, loc) =>
+                                                      let
+                                                          val e = ELet ("js", t, orig, quoteExp (#2 orig) t
+                                                                                                (ERel 0, #2 orig))
+                                                      in
+                                                          (EJavaScript (m, orig, SOME (e, #2 orig)), st)
+                                                      end)
+
+                                            | EJavaScript (m, orig as (EAbs (_, t, _, e), _), _) =>
+                                              (doCode m 1 (t :: env) orig e
+                                               handle Unsupported (s, loc) =>
+                                                      (EM.errorAt loc (s ^ " in code to be compiled to JavaScript");
+                                                       (EPrim (Prim.String "ERROR"), st)))
+                                                      
+                                            | EJavaScript (m, orig, _) =>
+                                              (doCode m 0 env orig orig
+                                               handle Unsupported (s, loc) =>
+                                                      (EM.errorAt loc (s ^ " in code to be compiled to JavaScript");
+                                                       (EPrim (Prim.String "ERROR"), st)))
+
                                             | _ => (e, st)
                                       end,
                              decl = fn (_, e, st) => (e, st),
