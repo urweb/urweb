@@ -7,6 +7,7 @@ cookie int : int
 cookie float : float
 cookie string : string
 cookie bool : bool
+cookie pair : int * float
 
 fun main () : transaction page =
     n <- getCookie int;
@@ -25,6 +26,10 @@ fun main () : transaction page =
     b <- return (getOpt b True);
     sb <- source False;
 
+    p <- getCookie pair;
+    p <- return (getOpt p (1, 2.3));
+    sp <- source (4, 5.6);
+
     return <xml><body>
       <dyn signal={n <- signal sn; return <xml>{[n]}</xml>}/>
       <a onclick={set sn n}>CHANGE</a><br/>
@@ -37,4 +42,7 @@ fun main () : transaction page =
 
       <dyn signal={b <- signal sb; return <xml>{[b]}</xml>}/>
       <a onclick={set sb b}>CHANGE</a><br/>
+
+      <dyn signal={p <- signal sp; return <xml>{[p.1]}, {[p.2]}</xml>}/>
+      <a onclick={set sp p}>CHANGE</a><br/>
     </body></xml>

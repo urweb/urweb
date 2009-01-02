@@ -156,33 +156,60 @@ fun process file =
 
         fun str loc s = (EPrim (Prim.String s), loc)
 
-        fun quoteExp loc (t : typ) e =
+        fun quoteExp loc (t : typ) (e, st) =
             case #1 t of
-                TSource => strcat loc [str loc "s",
-                                   (EFfiApp ("Basis", "htmlifyInt", [e]), loc)]
-              | TRecord [] => str loc "null"
+                TSource => (strcat loc [str loc "s",
+                                        (EFfiApp ("Basis", "htmlifyInt", [e]), loc)], st)
 
-              | TFfi ("Basis", "string") => (EFfiApp ("Basis", "jsifyString", [e]), loc)
-              | TFfi ("Basis", "int") => (EFfiApp ("Basis", "htmlifyInt", [e]), loc)
-              | TFfi ("Basis", "float") => (EFfiApp ("Basis", "htmlifyFloat", [e]), loc)
+              | TRecord [] => (str loc "null", st)
+              | TRecord [(x, t)] =>
+                let
+                    val (e, st) = quoteExp loc t ((EField (e, x), loc), st)
+                in
+                    (strcat loc [str loc ("{_" ^ x ^ ":"),
+                                 e,
+                                 str loc "}"], st)
+                end
+              | TRecord ((x, t) :: xts) =>
+                let
+                    val (e', st) = quoteExp loc t ((EField (e, x), loc), st)
+                    val (es, st) = ListUtil.foldlMap
+                                   (fn ((x, t), st) =>
+                                       let
+                                           val (e, st) = quoteExp loc t ((EField (e, x), loc), st)
+                                       in
+                                           (strcat loc [str loc (",_" ^ x ^ ":"), e], st)
+                                       end)
+                                   st xts
+                in
+                    (strcat loc (str loc ("{_" ^ x ^ ":")
+                                 :: e'
+                                 :: es
+                                 @ [str loc "}"]), st)
+                end
 
-              | TFfi ("Basis", "bool") => (ECase (e,
-                                                  [((PCon (Enum, PConFfi {mod = "Basis",
-                                                                          datatyp = "bool",
-                                                                          con = "True",
-                                                                          arg = NONE}, NONE), loc),
-                                                    str loc "true"),
-                                                   ((PCon (Enum, PConFfi {mod = "Basis",
-                                                                          datatyp = "bool",
-                                                                          con = "False",
-                                                                          arg = NONE}, NONE), loc),
-                                                    str loc "false")],
-                                                  {disc = (TFfi ("Basis", "bool"), loc),
-                                                   result = (TFfi ("Basis", "string"), loc)}), loc)
+              | TFfi ("Basis", "string") => ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
+              | TFfi ("Basis", "int") => ((EFfiApp ("Basis", "htmlifyInt", [e]), loc), st)
+              | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [e]), loc), st)
+
+              | TFfi ("Basis", "bool") => ((ECase (e,
+                                                   [((PCon (Enum, PConFfi {mod = "Basis",
+                                                                           datatyp = "bool",
+                                                                           con = "True",
+                                                                           arg = NONE}, NONE), loc),
+                                                     str loc "true"),
+                                                    ((PCon (Enum, PConFfi {mod = "Basis",
+                                                                           datatyp = "bool",
+                                                                           con = "False",
+                                                                           arg = NONE}, NONE), loc),
+                                                     str loc "false")],
+                                                   {disc = (TFfi ("Basis", "bool"), loc),
+                                                    result = (TFfi ("Basis", "string"), loc)}), loc),
+                                           st)
 
               | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
                       Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
-                      str loc "ERROR")
+                      (str loc "ERROR", st))
 
         fun jsExp mode skip outer =
             let
@@ -318,7 +345,7 @@ fun process file =
                                 let
                                     val n = n - inner
                                 in
-                                    (quoteExp (List.nth (outer, n)) (ERel (n - skip), loc), st)
+                                    quoteExp (List.nth (outer, n)) ((ERel (n - skip), loc), st)
                                 end
 
                           | ENamed n =>
@@ -507,8 +534,12 @@ fun process file =
 
                           | ECase (e', pes, {result, ...}) =>
                             if closedUpto inner e andalso List.all (fn (_, e) => closedUpto inner e) pes then
-                                ((ELet ("js", result, e, quoteExp result (ERel 0, loc)), loc),
-                                 st)
+                                let
+                                    val (e', st) = quoteExp result ((ERel 0, loc), st)
+                                in
+                                    ((ELet ("js", result, e, e'), loc),
+                                     st)
+                                end
                             else
                                 let
                                     val plen = length pes
