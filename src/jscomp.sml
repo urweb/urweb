@@ -156,6 +156,12 @@ fun process file =
 
         fun str loc s = (EPrim (Prim.String s), loc)
 
+        fun isNullable (t, _) =
+            case t of
+                TOption _ => true
+              | TRecord [] => true
+              | _ => false
+
         fun quoteExp loc (t : typ) (e, st) =
             case #1 t of
                 TSource => (strcat loc [str loc "s",
@@ -207,6 +213,23 @@ fun process file =
                                                     result = (TFfi ("Basis", "string"), loc)}), loc),
                                            st)
 
+              | TOption t =>
+                let
+                    val (e', st) = quoteExp loc t ((ERel 0, loc), st)
+                in
+                    ((ECase (e,
+                             [((PNone t, loc),
+                               str loc "null"),
+                              ((PSome (t, (PVar ("x", t), loc)), loc),
+                               if isNullable t then
+                                   strcat loc [str loc "{v:", e', str loc "}"]
+                               else
+                                   e')],
+                             {disc = (TOption t, loc),
+                              result = (TFfi ("Basis", "string"), loc)}), loc),
+                     st)
+                end
+
               | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
                       Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
                       (str loc "ERROR", st))
@@ -227,12 +250,6 @@ fun process file =
                               | PConFfi {mod = "Basis", con = "True", ...} => str "true"
                               | PConFfi {mod = "Basis", con = "False", ...} => str "false"
                               | PConFfi {con, ...} => str ("\"_" ^ con ^ "\"")
-
-                        fun isNullable (t, _) =
-                            case t of
-                                TOption _ => true
-                              | TRecord [] => true
-                              | _ => false
 
                         fun unsupported s =
                             (EM.errorAt loc (s ^ " in code to be compiled to JavaScript[2]");
@@ -320,11 +337,16 @@ fun process file =
                                                    str ":",
                                                    succ,
                                                    str ")"]
-                              | PSome (_, p) => strcat [str ("(d" ^ Int.toString depth ^ "?"),
-                                                        jsPat depth inner p succ fail,
-                                                        str ":",
-                                                        fail,
-                                                        str ")"]
+                              | PSome (t, p) => strcat (str ("(d" ^ Int.toString depth ^ "?")
+                                                        :: (if isNullable t then
+                                                                [str ("d" ^ Int.toString depth
+                                                                      ^ "=d" ^ Int.toString depth ^ ".v")]
+                                                            else
+                                                                [])
+                                                        @ [jsPat depth inner p succ fail,
+                                                           str ":",
+                                                           fail,
+                                                           str ")"])
 
                         fun deStrcat (e, _) =
                             case e of
