@@ -41,6 +41,10 @@ function dyn(s) {
   s.h = cons(function() { x.innerHTML = s.v }, s.h);
 }
 
+function eh(x) {
+  return x.split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;");
+}
+
 function ts(x) { return x.toString() }
 function bs(b) { return (b ? "True" : "False") }
 

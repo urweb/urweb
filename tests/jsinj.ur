@@ -20,6 +20,16 @@ fun delist ls : xbody =
         Nil => <xml>Nil</xml>
       | Cons (h, t) => <xml>{cdata h} :: {delist t}</xml>
 
+datatype weird = Foo | Bar | Baz of string
+
+fun weirdToString w =
+    case w of
+        Foo => "Foo"
+      | Bar => "Bar"
+      | Baz s => s
+
+val show_weird = mkShow weirdToString
+
 cookie int : int
 cookie float : float
 cookie string : string
@@ -28,6 +38,7 @@ cookie pair : int * float
 cookie option : option int
 cookie color : color
 cookie list : list string
+cookie weird : weird
 
 fun main () : transaction page =
     n <- getCookie int;
@@ -62,6 +73,10 @@ fun main () : transaction page =
     l <- return (getOpt l (Cons ("A", Cons ("B", Nil))));
     sl <- source Nil;
 
+    w <- getCookie weird;
+    w <- return (getOpt w (Baz "TADA!"));
+    sw <- source Foo;
+
     return <xml><body>
       <dyn signal={n <- signal sn; return <xml>{[n]}</xml>}/>
       <a onclick={set sn n}>CHANGE</a><br/>
@@ -88,4 +103,7 @@ fun main () : transaction page =
 
       <dyn signal={l <- signal sl; return <xml>{delist l}</xml>}/>
       <a onclick={set sl l}>CHANGE</a><br/>
+
+      <dyn signal={w <- signal sw; return <xml>{[w]}</xml>}/>
+      <a onclick={set sw w}>CHANGE</a><br/>
     </body></xml>

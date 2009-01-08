@@ -40,7 +40,7 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "htmlifyBool"), "bs"),
              (("Basis", "htmlifyFloat"), "ts"),
              (("Basis", "htmlifyInt"), "ts"),
-             (("Basis", "htmlifyString"), "escape"),
+             (("Basis", "htmlifyString"), "eh"),
              (("Basis", "new_client_source"), "sc"),
              (("Basis", "set_client_source"), "sv")]
 
@@ -274,7 +274,10 @@ fun process file =
                                                                            str loc "}"]
                                                            else
                                                                e
-                                                         | _ => e),
+                                                         | _ => strcat loc [str loc ("{n:" ^ Int.toString cn
+                                                                                     ^ ",v:"),
+                                                                            e,
+                                                                            str loc "}"]),
                                                       st)
                                                  end)
                                              st cs
