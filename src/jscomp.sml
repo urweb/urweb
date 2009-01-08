@@ -149,13 +149,20 @@ fun strcat loc es =
 
 fun process file =
     let
-        val nameds =
-            foldl (fn ((DVal (_, n, t, e, _), _), nameds) => IM.insert (nameds, n, e)
-                    | ((DValRec vis, _), nameds) =>
-                      foldl (fn ((_, n, _, e, _), nameds) => IM.insert (nameds, n, e))
-                            nameds vis
+        val (someTs, nameds) =
+            foldl (fn ((DVal (_, n, t, e, _), _), (someTs, nameds)) => (someTs, IM.insert (nameds, n, e))
+                    | ((DValRec vis, _), (someTs, nameds)) =>
+                      (someTs, foldl (fn ((_, n, _, e, _), nameds) => IM.insert (nameds, n, e))
+                                     nameds vis)
+                    | ((DDatatype (_, _, cs), _), state as (someTs, nameds)) =>
+                      if ElabUtil.classifyDatatype cs = Option then
+                          (foldl (fn ((_, n, SOME t), someTs) => IM.insert (someTs, n, t)
+                                   | (_, someTs) => someTs) someTs cs,
+                           nameds)
+                      else
+                          state
                     | (_, state) => state)
-                  IM.empty file
+                  (IM.empty, IM.empty) file
 
         fun str loc s = (EPrim (Prim.String s), loc)
 
@@ -250,14 +257,24 @@ fun process file =
                          val (pes, st) = ListUtil.foldlMap
                                              (fn ((_, cn, NONE), st) =>
                                                  (((PCon (dk, PConVar cn, NONE), loc),
-                                                   str loc (Int.toString cn)),
+                                                   case dk of
+                                                       Option => str loc "null"
+                                                     | _ => str loc (Int.toString cn)),
                                                   st)
                                                | ((_, cn, SOME t), st) =>
                                                  let
                                                      val (e, st) = quoteExp loc t ((ERel 0, loc), st)
                                                  in
                                                      (((PCon (dk, PConVar cn, SOME (PVar ("x", t), loc)), loc),
-                                                       e),
+                                                       case dk of
+                                                           Option =>
+                                                           if isNullable t then
+                                                               strcat loc [str loc "{_v:",
+                                                                           e,
+                                                                           str loc "}"]
+                                                           else
+                                                               e
+                                                         | _ => e),
                                                       st)
                                                  end)
                                              st cs
@@ -350,6 +367,26 @@ fun process file =
                                         str ":",
                                         succ,
                                         str ")"]
+                              | PCon (Option, _, NONE) =>
+                                strcat [str ("(d" ^ Int.toString depth ^ "?"),
+                                        fail,
+                                        str ":",
+                                        succ,
+                                        str ")"]
+                              | PCon (Option, PConVar n, SOME p) =>
+                                (case IM.find (someTs, n) of
+                                     NONE => raise Fail "Jscomp: Not in someTs"
+                                   | SOME t =>
+                                     strcat [str ("(d" ^ Int.toString depth ^ "?("
+                                                  ^ (if isNullable t then
+                                                         "d" ^ Int.toString depth ^ "=d"
+                                                         ^ Int.toString depth ^ ".v,"
+                                                     else
+                                                         "")),
+                                             jsPat depth inner p succ fail,
+                                             str "):",
+                                             fail,
+                                             str ")"])
                               | PCon (_, pc, NONE) =>
                                 strcat [str ("(d" ^ Int.toString depth ^ "=="),
                                         patCon pc,
@@ -448,6 +485,22 @@ fun process file =
                                 (str ("_n" ^ Int.toString n), st)
                             end
 
+                          | ECon (Option, _, NONE) => (str "null", st)
+                          | ECon (Option, PConVar n, SOME e) =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                            in
+                                case IM.find (someTs, n) of
+                                    NONE => raise Fail "Jscomp: Not in someTs [2]"
+                                  | SOME t =>
+                                    (if isNullable t then
+                                         strcat [str "{v:",
+                                                 e,
+                                                 str "}"]
+                                     else
+                                         e, st)
+                            end
+
                           | ECon (_, pc, NONE) => (patCon pc, st)
                           | ECon (_, pc, SOME e) =>
                             let
@@ -459,6 +512,7 @@ fun process file =
                                          s,
                                          str "}"], st)
                             end
+
                           | ENone _ => (str "null", st)
                           | ESome (t, e) =>
                             let

@@ -13,6 +13,13 @@ fun colorToString c =
 
 val show_color = mkShow colorToString
 
+datatype list a = Nil | Cons of a * list a
+
+fun delist ls : xbody =
+    case ls of
+        Nil => <xml>Nil</xml>
+      | Cons (h, t) => <xml>{cdata h} :: {delist t}</xml>
+
 cookie int : int
 cookie float : float
 cookie string : string
@@ -20,6 +27,7 @@ cookie bool : bool
 cookie pair : int * float
 cookie option : option int
 cookie color : color
+cookie list : list string
 
 fun main () : transaction page =
     n <- getCookie int;
@@ -50,6 +58,10 @@ fun main () : transaction page =
     c <- return (getOpt c White);
     sc <- source Blue;
 
+    l <- getCookie list;
+    l <- return (getOpt l (Cons ("A", Cons ("B", Nil))));
+    sl <- source Nil;
+
     return <xml><body>
       <dyn signal={n <- signal sn; return <xml>{[n]}</xml>}/>
       <a onclick={set sn n}>CHANGE</a><br/>
@@ -73,4 +85,7 @@ fun main () : transaction page =
 
       <dyn signal={c <- signal sc; return <xml>{[c]}</xml>}/>
       <a onclick={set sc c}>CHANGE</a><br/>
+
+      <dyn signal={l <- signal sl; return <xml>{delist l}</xml>}/>
+      <a onclick={set sl l}>CHANGE</a><br/>
     </body></xml>
