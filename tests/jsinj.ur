@@ -3,12 +3,23 @@ fun getOpt (t ::: Type) (o : option t) (v : t) : t =
         None => v
       | Some x => x
 
+datatype color = Red | White | Blue
+
+fun colorToString c =
+    case c of
+        Red => "R"
+      | White => "W"
+      | Blue => "B"
+
+val show_color = mkShow colorToString
+
 cookie int : int
 cookie float : float
 cookie string : string
 cookie bool : bool
 cookie pair : int * float
 cookie option : option int
+cookie color : color
 
 fun main () : transaction page =
     n <- getCookie int;
@@ -33,7 +44,11 @@ fun main () : transaction page =
 
     o <- getCookie option;
     o <- return (getOpt o (Some 1));
-    op <- source None;
+    so <- source None;
+
+    c <- getCookie color;
+    c <- return (getOpt c White);
+    sc <- source Blue;
 
     return <xml><body>
       <dyn signal={n <- signal sn; return <xml>{[n]}</xml>}/>
@@ -51,8 +66,11 @@ fun main () : transaction page =
       <dyn signal={p <- signal sp; return <xml>{[p.1]}, {[p.2]}</xml>}/>
       <a onclick={set sp p}>CHANGE</a><br/>
 
-      <dyn signal={o <- signal op; case o of
+      <dyn signal={o <- signal so; case o of
                                        None => return <xml>None</xml>
                                      | Some x => return <xml>{[x]}</xml>}/>
-      <a onclick={set op o}>CHANGE</a><br/>
+      <a onclick={set so o}>CHANGE</a><br/>
+
+      <dyn signal={c <- signal sc; return <xml>{[c]}</xml>}/>
+      <a onclick={set sc c}>CHANGE</a><br/>
     </body></xml>

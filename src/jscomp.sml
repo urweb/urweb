@@ -58,7 +58,9 @@ fun ffi k = FM.find (funcs, k)
 type state = {
      decls : decl list,
      script : string list,
-     included : IS.set
+     included : IS.set,
+     injectors : int IM.map,
+     maxName : int
 }
 
 fun varDepth (e, _) =
@@ -147,12 +149,13 @@ fun strcat loc es =
 
 fun process file =
     let
-        val nameds = foldl (fn ((DVal (_, n, t, e, _), _), nameds) => IM.insert (nameds, n, e)
-                             | ((DValRec vis, _), nameds) =>
-                               foldl (fn ((_, n, _, e, _), nameds) => IM.insert (nameds, n, e))
-                                     nameds vis
-                             | (_, nameds) => nameds)
-                           IM.empty file
+        val nameds =
+            foldl (fn ((DVal (_, n, t, e, _), _), nameds) => IM.insert (nameds, n, e)
+                    | ((DValRec vis, _), nameds) =>
+                      foldl (fn ((_, n, _, e, _), nameds) => IM.insert (nameds, n, e))
+                            nameds vis
+                    | (_, state) => state)
+                  IM.empty file
 
         fun str loc s = (EPrim (Prim.String s), loc)
 
@@ -229,6 +232,50 @@ fun process file =
                               result = (TFfi ("Basis", "string"), loc)}), loc),
                      st)
                 end
+
+              | TDatatype (n, ref (dk, cs)) =>
+                (case IM.find (#injectors st, n) of
+                     SOME n' => ((EApp ((ENamed n', loc), e), loc), st)
+                   | NONE =>
+                     let
+                         val dk = ElabUtil.classifyDatatype cs
+
+                         val n' = #maxName st
+                         val st = {decls = #decls st,
+                                   script = #script st,
+                                   included = #included st,
+                                   injectors = IM.insert (#injectors st, n, n'),
+                                   maxName = n' + 1}
+
+                         val (pes, st) = ListUtil.foldlMap
+                                             (fn ((_, cn, NONE), st) =>
+                                                 (((PCon (dk, PConVar cn, NONE), loc),
+                                                   str loc (Int.toString cn)),
+                                                  st)
+                                               | ((_, cn, SOME t), st) =>
+                                                 let
+                                                     val (e, st) = quoteExp loc t ((ERel 0, loc), st)
+                                                 in
+                                                     (((PCon (dk, PConVar cn, SOME (PVar ("x", t), loc)), loc),
+                                                       e),
+                                                      st)
+                                                 end)
+                                             st cs
+
+                         val s = (TFfi ("Basis", "string"), loc)
+                         val body = (ECase ((ERel 0, loc), pes,
+                                            {disc = t, result = s}), loc)
+                         val body = (EAbs ("x", t, s, body), loc)
+
+                         val st = {decls = (DValRec [("jsify", n', (TFun (t, s), loc),
+                                                      body, "jsify")], loc) :: #decls st,
+                                   script = #script st,
+                                   included = #included st,
+                                   injectors = #injectors st,
+                                   maxName = #maxName st}
+                     in
+                         ((EApp ((ENamed n', loc), e), loc), st)
+                     end)
 
               | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
                       Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
@@ -382,7 +429,9 @@ fun process file =
                                             let
                                                 val st = {decls = #decls st,
                                                           script = #script st,
-                                                          included = IS.add (#included st, n)}
+                                                          included = IS.add (#included st, n),
+                                                          injectors = #injectors st,
+                                                          maxName = #maxName st}
 
                                                 val (e, st) = jsExp mode skip [] 0 (e, st)
                                                 val e = deStrcat e
@@ -391,7 +440,9 @@ fun process file =
                                             in
                                                 {decls = #decls st,
                                                  script = sc :: #script st,
-                                                 included = #included st}
+                                                 included = #included st,
+                                                 injectors = #injectors st,
+                                                 maxName = #maxName st}
                                             end
                             in
                                 (str ("_n" ^ Int.toString n), st)
@@ -717,13 +768,17 @@ fun process file =
                 (List.revAppend (#decls st, [d]),
                  {decls = [],
                   script = #script st,
-                  included = #included st})
+                  included = #included st,
+                  injectors = #injectors st,
+                  maxName = #maxName st})
             end
 
         val (ds, st) = ListUtil.foldlMapConcat doDecl
                        {decls = [],
                         script = [],
-                        included = IS.empty}
+                        included = IS.empty,
+                        injectors = IM.empty,
+                        maxName = U.File.maxName file + 1}
                        file
 
         val inf = TextIO.openIn (OS.Path.joinDirFile {dir = Config.libJs, file = "urweb.js"})
