@@ -2054,6 +2054,8 @@ fun p_file env (ds, ps) =
                      newline,
                      string "uw_write_header(ctx, \"Content-type: text/html\\r\\n\");",
                      newline,
+                     string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
+                     newline,
                      string "uw_write(ctx, \"<html>\");",
                      newline,
                      box [string "{",

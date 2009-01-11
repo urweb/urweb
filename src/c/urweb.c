@@ -382,7 +382,7 @@ char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
   } else {
     char *r = uw_malloc(ctx, 41 + (ctx->script_front - ctx->script));
 
-    sprintf(r, "<script type=\"text/javascript\">%s</script>", ctx->script);
+    sprintf(r, "<script>%s</script>", ctx->script);
     return r;
   }
 }

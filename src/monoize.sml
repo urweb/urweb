@@ -1898,7 +1898,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                e), _), _)] => (e, fm)
                        | [("Signal", e, _)] =>
                          ((L'.EStrcat
-                               ((L'.EPrim (Prim.String "<script type=\"text/javascript\">dyn("), loc),
+                               ((L'.EPrim (Prim.String "<script>dyn("), loc),
                                 (L'.EStrcat ((L'.EJavaScript (L'.Script, e, NONE), loc),
                                              (L'.EPrim (Prim.String ")</script>"), loc)), loc)), loc),
                           fm)
@@ -1919,7 +1919,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                  loc)), loc), fm)
                               end
                             | SOME (_, src, _) =>
-                              (strcat [str "<script type=\"text/javascript\">inp(\"input\",",
+                              (strcat [str "<script>inp(\"input\",",
                                        (L'.EJavaScript (L'.Script, src, NONE), loc),
                                        str ")</script>"],
                                fm))
