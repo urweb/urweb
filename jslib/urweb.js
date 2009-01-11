@@ -34,17 +34,26 @@ function sb(x,y) {
   return s;
 }
 
+function myParent() {
+  var pos = document;
+
+  while (pos.lastChild && pos.lastChild.nodeType == 1)
+    pos = pos.lastChild;
+
+  return pos.parentNode;
+}
+
 function dyn(s) {
   var x = document.createElement("span");
   x.innerHTML = s.v;
-  document.body.appendChild(x);
+  myParent().appendChild(x);
   s.h = cons(function() { x.innerHTML = s.v }, s.h);
 }
 
 function inp(t, s) {
   var x = document.createElement(t);
   x.value = s.v;
-  document.body.appendChild(x);
+  myParent().appendChild(x);
   s.h = cons(function() { x.value = s.v }, s.h);
   x.onkeyup = function() { sv(s, x.value) };
 }
