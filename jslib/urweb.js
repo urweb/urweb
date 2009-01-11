@@ -41,6 +41,14 @@ function dyn(s) {
   s.h = cons(function() { x.innerHTML = s.v }, s.h);
 }
 
+function inp(t, s) {
+  var x = document.createElement(t);
+  x.value = s.v;
+  document.body.appendChild(x);
+  s.h = cons(function() { x.value = s.v }, s.h);
+  x.onkeyup = function() { sv(s, x.value) };
+}
+
 function eh(x) {
   return x.split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;");
 }
