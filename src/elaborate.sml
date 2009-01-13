@@ -3003,10 +3003,10 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                     val env = E.pushDatatype env n xs xcs
                     val d' = (L'.DDatatype (x, n, xs, xcs), loc)
                 in
-                    if positive then
+                    (*if positive then
                         ()
                     else
-                        declError env (Nonpositive d');
+                        declError env (Nonpositive d');*)
 
                     ([d'], (env, denv, gs' @ gs))
                 end

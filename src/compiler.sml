@@ -531,7 +531,8 @@ val toFuse = transform fuse "fuse" o toMono_opt3
 
 val toUntangle2 = transform untangle "untangle2" o toFuse
 
-val toMono_shake2 = transform mono_shake "mono_shake2" o toUntangle2
+val toMono_reduce2 = transform mono_reduce "mono_reduce2" o toUntangle2
+val toMono_shake2 = transform mono_shake "mono_shake2" o toMono_reduce2
 
 val pathcheck = {
     func = (fn file => (PathCheck.check file; file)),

@@ -479,11 +479,12 @@ fun reduce file =
                                               | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
                                 in
                                     (*Print.prefaces "verifyCompatible"
-                                                     [("e'", MonoPrint.p_exp env e'),
-                                                      ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                                                      ("effs_e'", Print.p_list p_event effs_e'),
-                                                      ("effs_b", Print.p_list p_event effs_b)];*)
-                                    if List.null effs_e' orelse verifyCompatible effs_b then
+                                                   [("e'", MonoPrint.p_exp env e'),
+                                                    ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                                    ("effs_e'", Print.p_list p_event effs_e'),
+                                                    ("effs_b", Print.p_list p_event effs_b)];*)
+                                    if List.null effs_e' orelse (List.all (fn eff => eff <> Unsure) effs_e'
+                                                                 andalso verifyCompatible effs_b) then
                                         trySub ()
                                     else
                                         e

@@ -1000,6 +1000,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                 loc)), loc)), loc)), loc),
                  fm)
             end
+          | L.ECApp ((L.EFfi ("Basis", "get"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("src", (L'.TSource, loc),
+                           (L'.TFun ((L'.TRecord [], loc), t), loc),
+                           (L'.EAbs ("_", (L'.TRecord [], loc), t,
+                                     (L'.EFfiApp ("Basis", "get_client_source",
+                                                  [(L'.ERel 1, loc)]),
+                                      loc)), loc)), loc),
+                 fm)
+            end
 
           | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "return"), _), _), _), t), _),
                     (L.EFfi ("Basis", "signal_monad"), _)) =>
@@ -1905,6 +1917,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        | _ => raise Fail "Monoize: Bad dyn attributes")
                     
                   | "submit" => normal ("input type=\"submit\"", NONE, NONE)
+                  | "button" => normal ("input type=\"submit\"", NONE, NONE)
 
                   | "textbox" =>
                     (case targs of
@@ -1977,6 +1990,22 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          end
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to lselect tag"))
+
+                  | "ctextbox" =>
+                    (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                         NONE =>
+                         let
+                             val (ts, fm) = tagStart "input"
+                         in
+                             ((L'.EStrcat (ts,
+                                           (L'.EPrim (Prim.String "/>"), loc)),
+                               loc), fm)
+                         end
+                       | SOME (_, src, _) =>
+                         (strcat [str "<script>inp(\"input\",",
+                                  (L'.EJavaScript (L'.Script, src, NONE), loc),
+                                  str ")</script>"],
+                          fm))
 
                   | "option" => normal ("option", NONE, NONE)
 

@@ -37,6 +37,7 @@ structure IS = IntBinarySet
 structure IM = IntBinaryMap
 
 val funcs = [(("Basis", "alert"), "alert"),
+             (("Basis", "get_client_source"), "sg"),
              (("Basis", "htmlifyBool"), "bs"),
              (("Basis", "htmlifyFloat"), "ts"),
              (("Basis", "htmlifyInt"), "ts"),
@@ -435,11 +436,22 @@ fun process file =
                                                            fail,
                                                            str ")"])
 
-                        fun deStrcat (e, _) =
+                        val jsifyString = String.translate (fn #"\"" => "\\\""
+                                                             | #"\\" => "\\\\"
+                                                             | ch => String.str ch)
+
+                        fun jsifyStringMulti (n, s) =
+                            case n of
+                                0 => s
+                              | _ => jsifyStringMulti (n - 1, jsifyString s)
+
+                        fun deStrcat level (all as (e, _)) =
                             case e of
-                                EPrim (Prim.String s) => s
-                              | EStrcat (e1, e2) => deStrcat e1 ^ deStrcat e2
-                              | _ => raise Fail "Jscomp: deStrcat"
+                                EPrim (Prim.String s) => jsifyStringMulti (level, s)
+                              | EStrcat (e1, e2) => deStrcat level e1 ^ deStrcat level e2
+                              | EFfiApp ("Basis", "jsifyString", [e]) => "\"" ^ deStrcat (level + 1) e ^ "\""
+                              | _ => (Print.prefaces "deStrcat" [("e", MonoPrint.p_exp MonoEnv.empty all)];
+                                      raise Fail "Jscomp: deStrcat")
 
                         val quoteExp = quoteExp loc
                     in
@@ -474,7 +486,8 @@ fun process file =
                                                           maxName = #maxName st}
 
                                                 val (e, st) = jsExp mode skip [] 0 (e, st)
-                                                val e = deStrcat e
+                                                val () = Print.prefaces "Pre-e" [("e", MonoPrint.p_exp MonoEnv.empty e)]
+                                                val e = deStrcat 0 e
                                                 
                                                 val sc = "_n" ^ Int.toString n ^ "=" ^ e ^ ";\n"
                                             in
@@ -745,14 +758,20 @@ fun process file =
                                          str ")"], st)
                             end
 
-                          | EJavaScript (_, _, SOME _) => (e, st)
+                          | EJavaScript (Source _, _, SOME _) => (e, st)
+                          | EJavaScript (_, _, SOME e) => ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
 
                           | EClosure _ => unsupported "EClosure"
                           | EQuery _ => unsupported "Query"
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
-                          | EJavaScript (_, e, _) => unsupported "Nested JavaScript"
+                          | EJavaScript (_, e, _) =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                            in
+                                ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
+                            end
 
                           | ESignalReturn e =>
                             let

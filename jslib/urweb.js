@@ -13,6 +13,9 @@ function sv(s, v) {
   s.v = v;
   callAll(s.h);
 }
+function sg(s) {
+  return s.v;
+}
 
 function ss(s) {
   return s;

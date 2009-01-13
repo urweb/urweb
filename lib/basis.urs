@@ -86,6 +86,7 @@ val transaction_monad : monad transaction
 con source :: Type -> Type
 val source : t ::: Type -> t -> transaction (source t)
 val set : t ::: Type -> source t -> t -> transaction unit
+val get : t ::: Type -> source t -> transaction t
 
 con signal :: Type -> Type
 val signal_monad : monad signal
@@ -442,6 +443,16 @@ val submit : ctx ::: {Unit} -> use ::: {Type}
                    unit
                    -> tag [Value = string, Action = $use -> transaction page]
                           ([Form] ++ ctx) ([Form] ++ ctx) use []
+
+(*** AJAX-oriented widgets *)
+
+con cformTag = fn (attrs :: {Type}) =>
+                  ctx ::: {Unit}
+                  -> fn [[Body] ~ ctx] =>
+                        unit -> tag attrs ([Body] ++ ctx) [] [] []
+
+val ctextbox : cformTag [Value = string, Size = int, Source = source string]
+val button : cformTag [Value = string, Onclick = transaction unit]
 
 (*** Tables *)
 
