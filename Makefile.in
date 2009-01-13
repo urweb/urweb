@@ -13,19 +13,19 @@ all: smlnj mlton c
 
 smlnj: src/urweb.cm
 mlton: bin/urweb
-c: clib/urweb.o clib/driver.o
+c: lib/c/urweb.o lib/c/driver.o
 
 clean:
 	rm -f src/*.mlton.grm.* src/*.mlton.lex.* \
 		src/urweb.cm src/urweb.mlb \
-		clib/*.o
+		lib/c/*.o
 	rm -rf .cm src/.cm
 
-clib/urweb.o: src/c/urweb.c include/*.h
-	gcc -O3 -I include -c src/c/urweb.c -o clib/urweb.o $(CFLAGS)
+lib/c/urweb.o: src/c/urweb.c include/*.h
+	gcc -O3 -I include -c src/c/urweb.c -o lib/c/urweb.o $(CFLAGS)
 
-clib/driver.o: src/c/driver.c include/*.h
-	gcc -O3 -I include -c src/c/driver.c -o clib/driver.o $(CFLAGS)
+lib/c/driver.o: src/c/driver.c include/*.h
+	gcc -O3 -I include -c src/c/driver.c -o lib/c/driver.o $(CFLAGS)
 
 src/urweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \
@@ -67,12 +67,12 @@ install:
 	mkdir -p $(BIN)
 	cp bin/urweb $(BIN)/
 	mkdir -p $(LIB_UR)
-	cp lib/*.urs $(LIB_UR)/
-	cp lib/*.ur $(LIB_UR)/
+	cp lib/ur/*.urs $(LIB_UR)/
+	cp lib/ur/*.ur $(LIB_UR)/
 	mkdir -p $(LIB_C)
-	cp clib/*.o $(LIB_C)/
+	cp lib/c/*.o $(LIB_C)/
 	mkdir -p $(LIB_JS)
-	cp jslib/*.js $(LIB_JS)/
+	cp lib/js/*.js $(LIB_JS)/
 	mkdir -p $(INCLUDE)
 	cp include/*.h $(INCLUDE)/
 	mkdir -p $(SITELISP)
