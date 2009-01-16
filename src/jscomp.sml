@@ -486,7 +486,6 @@ fun process file =
                                                           maxName = #maxName st}
 
                                                 val (e, st) = jsExp mode skip [] 0 (e, st)
-                                                val () = Print.prefaces "Pre-e" [("e", MonoPrint.p_exp MonoEnv.empty e)]
                                                 val e = deStrcat 0 e
                                                 
                                                 val sc = "_n" ^ Int.toString n ^ "=" ^ e ^ ";\n"
@@ -759,7 +758,11 @@ fun process file =
                             end
 
                           | EJavaScript (Source _, _, SOME _) => (e, st)
-                          | EJavaScript (_, _, SOME e) => ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
+                          | EJavaScript (_, _, SOME e) =>
+                            (strcat [str "\"cr(\"+ca(function(){return ",
+                                     e,
+                                     str "})+\")\""],
+                             st)
 
                           | EClosure _ => unsupported "EClosure"
                           | EQuery _ => unsupported "Query"
@@ -770,7 +773,10 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
+                                (strcat [str "\"cr(\"+ca(function(){return ",
+                                         e,
+                                         str "})+\")\""],
+                                 st)
                             end
 
                           | ESignalReturn e =>

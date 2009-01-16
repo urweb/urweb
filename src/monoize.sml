@@ -1910,9 +1910,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                e), _), _)] => (e, fm)
                        | [("Signal", e, _)] =>
                          ((L'.EStrcat
-                               ((L'.EPrim (Prim.String "<script>dyn("), loc),
+                               ((L'.EPrim (Prim.String "<span><script type=\"text/javascript\">dyn("), loc),
                                 (L'.EStrcat ((L'.EJavaScript (L'.Script, e, NONE), loc),
-                                             (L'.EPrim (Prim.String ")</script>"), loc)), loc)), loc),
+                                             (L'.EPrim (Prim.String ")</script></span>"), loc)), loc)), loc),
                           fm)
                        | _ => raise Fail "Monoize: Bad dyn attributes")
                     
@@ -1932,7 +1932,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                  loc)), loc), fm)
                               end
                             | SOME (_, src, _) =>
-                              (strcat [str "<script>inp(\"input\",",
+                              (strcat [str "<script type=\"text/javascript\">inp(\"input\",",
                                        (L'.EJavaScript (L'.Script, src, NONE), loc),
                                        str ")</script>"],
                                fm))
@@ -2002,7 +2002,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                loc), fm)
                          end
                        | SOME (_, src, _) =>
-                         (strcat [str "<script>inp(\"input\",",
+                         (strcat [str "<script type=\"text/javascript\">inp(\"input\",",
                                   (L'.EJavaScript (L'.Script, src, NONE), loc),
                                   str ")</script>"],
                           fm))

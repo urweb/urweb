@@ -19,4 +19,5 @@ fun main () : transaction page =
                                    tl <- get s;
                                    s' <- source (Cons (hd, tl));
                                    set s s'}/>
+      <button value="Reset" onclick={set s ns}/>
     </body></xml>
