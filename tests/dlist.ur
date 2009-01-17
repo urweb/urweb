@@ -3,7 +3,7 @@ datatype dlist = Nil | Cons of string * source dlist
 fun delist dl =
     case dl of
         Nil => <xml>[]</xml>
-      | Cons (x, s) => <xml>{[x]} :: {delistSource s}</xml>
+      | Cons (x, s) => <xml>{[x]} :: ({delistSource s})</xml>
 
 and delistSource s = <xml><dyn signal={dl <- signal s; return (delist dl)}/></xml>
 
