@@ -1777,12 +1777,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                 L'.ERecord xes => xes
                               | _ => raise Fail "Non-record attributes!"
 
+                fun lowercaseFirst "" = ""
+                  | lowercaseFirst s = String.str (Char.toLower (String.sub (s, 0)))
+                                       ^ String.extract (s, 1, NONE)
+
                 fun tagStart tag =
                     let
-                        fun lowercaseFirst "" = ""
-                          | lowercaseFirst s = String.str (Char.toLower (String.sub (s, 0)))
-                                               ^ String.extract (s, 1, NONE)
-
                         val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
                     in
                         foldl (fn (("Action", _, _), acc) => acc
@@ -1897,6 +1897,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                 normal ()
                           | _ => normal ()
                     end
+
+                fun setAttrs jexp =
+                    let
+                        val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
+
+                        val assgns = List.mapPartial
+                                     (fn ("Source", _, _) => NONE
+                                       | (x, e, _) =>
+                                         SOME (strcat [str ("d." ^ lowercaseFirst x ^ "="),
+                                                       (L'.EJavaScript (L'.Script, e, NONE), loc),
+                                                       str ";"]))
+                                     attrs
+                    in
+                        case assgns of
+                            [] => jexp
+                          | _ => strcat (str "var d="
+                                         :: jexp
+                                         :: str ";"
+                                         :: assgns)
+                    end
             in
                 case tag of
                     "body" => normal ("body", NONE,
@@ -2002,12 +2022,17 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                loc), fm)
                          end
                        | SOME (_, src, _) =>
-                         (strcat [str "<script type=\"text/javascript\">inp(\"input\",",
-                                  (L'.EJavaScript (L'.Script, src, NONE), loc),
-                                  str ")</script>"],
-                          fm))
-
-                  | "option" => normal ("option", NONE, NONE)
+                         let
+                             val sc = strcat [str "inp(\"input\",",
+                                              (L'.EJavaScript (L'.Script, src, NONE), loc),
+                                              str ")"]
+                             val sc = setAttrs sc
+                         in
+                             (strcat [str "<script type=\"text/javascript\">",
+                                      sc,
+                                      str "</script>"],
+                              fm)
+                         end)
 
                   | "tabl" => normal ("table", NONE, NONE)
                   | _ => normal (tag, NONE, NONE)
