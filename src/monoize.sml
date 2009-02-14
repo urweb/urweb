@@ -2224,6 +2224,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.ELet (x, t', e1, e2), loc), fm)
             end
+
+          | L.EServerCall _ => raise Fail "Monoize EServerCall"
     end
 
 fun monoDecl (env, fm) (all as (d, loc)) =

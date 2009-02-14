@@ -94,26 +94,31 @@ fun shake file =
         and shakeCon s = U.Con.fold {kind = kind, con = con} s
 
         fun exp (e, s) =
-            case e of
-                ENamed n =>
-                if IS.member (#exp s, n) then
-                    s
-                else
-                    let
-                        val s' = {exp = IS.add (#exp s, n),
-                                  con = #con s}
-                    in
-                        (*print ("Need " ^ Int.toString n ^ "\n");*)
-                        case IM.find (edef, n) of
-                            NONE => s'
-                          | SOME (ns, t, e) =>
-                            let
-                                val s' = shakeExp (shakeCon s' t) e
-                            in
-                                foldl (fn (n, s') => exp (ENamed n, s')) s' ns
-                            end
-                    end
-              | _ => s
+            let
+                fun check n =
+                    if IS.member (#exp s, n) then
+                        s
+                    else
+                        let
+                            val s' = {exp = IS.add (#exp s, n),
+                                      con = #con s}
+                        in
+                            (*print ("Need " ^ Int.toString n ^ "\n");*)
+                            case IM.find (edef, n) of
+                                NONE => s'
+                              | SOME (ns, t, e) =>
+                                let
+                                    val s' = shakeExp (shakeCon s' t) e
+                                in
+                                    foldl (fn (n, s') => exp (ENamed n, s')) s' ns
+                                end
+                        end
+            in
+                case e of
+                    ENamed n => check n
+                  | EServerCall (n, _, _) => check n
+                  | _ => s
+            end
 
         and shakeExp s = U.Exp.fold {kind = kind, con = con, exp = exp} s
 

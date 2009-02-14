@@ -131,6 +131,8 @@ fun exp env (all as (e, loc)) =
 
       | ELet (x, t, e1, e2) => (ELet (x, t, exp env e1, exp (Unknown :: env) e2), loc)
 
+      | EServerCall (n, es, e) => (EServerCall (n, map (exp env) es, exp env e), loc)
+
 fun reduce file =
     let
         fun doDecl (d as (_, loc)) =

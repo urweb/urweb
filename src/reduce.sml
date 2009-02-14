@@ -366,7 +366,9 @@ fun conAndExp (namedC, namedE) =
               | EWrite e => (EWrite (exp env e), loc)
               | EClosure (n, es) => (EClosure (n, map (exp env) es), loc)
 
-              | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc))
+              | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc)
+
+              | EServerCall (n, es, e) => (EServerCall (n, map (exp env) es, exp env e), loc))
     in
         {con = con, exp = exp}
     end

@@ -446,12 +446,19 @@ val shake = {
 
 val toShake1 = transform shake "shake1" o toCore_untangle
 
+val rpcify = {
+    func = Rpcify.frob,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toRpcify = transform rpcify "rpcify" o toShake1
+
 val tag = {
     func = Tag.tag,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toTag = transform tag "tag" o toShake1
+val toTag = transform tag "tag" o toRpcify
 
 val reduce = {
     func = Reduce.reduce,

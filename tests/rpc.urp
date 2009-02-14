@@ -1,0 +1,5 @@
+debug
+sql rpc.sql
+database rpc
+
+rpc

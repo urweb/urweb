@@ -108,6 +108,9 @@ especialize.sml
 defunc.sig
 defunc.sml
 
+rpcify.sig
+rpcify.sml
+
 tag.sig
 tag.sml
 
