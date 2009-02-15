@@ -436,6 +436,7 @@ fun p_export_kind ck =
     case ck of
         Link => string "link"
       | Action => string "action"
+      | Rpc => string "rpc"
 
 fun p_datatype env (x, n, xs, cons) =
     let

@@ -109,6 +109,8 @@ datatype exp' =
        | ESignalBind of exp * exp
        | ESignalSource of exp
 
+       | EServerCall of int * exp list * exp
+
 withtype exp = exp' located
 
 datatype decl' =

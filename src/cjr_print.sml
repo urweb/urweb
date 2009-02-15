@@ -1849,6 +1849,7 @@ fun p_file env (ds, ps) =
         val fields = foldl (fn ((ek, _, _, ts), fields) =>
                                case ek of
                                    Core.Link => fields
+                                 | Core.Rpc => fields
                                  | Core.Action =>
                                    case List.nth (ts, length ts - 2) of
                                        (TRecord i, _) =>
@@ -1971,6 +1972,7 @@ fun p_file env (ds, ps) =
                 val (ts, defInputs, inputsVar) =
                     case ek of
                         Core.Link => (List.take (ts, length ts - 1), string "", string "")
+                      | Core.Rpc => (List.take (ts, length ts - 1), string "", string "")
                       | Core.Action =>
                         case List.nth (ts, length ts - 2) of
                             (TRecord i, _) =>

@@ -2225,7 +2225,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ELet (x, t', e1, e2), loc), fm)
             end
 
-          | L.EServerCall _ => raise Fail "Monoize EServerCall"
+          | L.EServerCall (n, es, ek) =>
+            let
+                val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
+                val (ek, fm) = monoExp (env, st, fm) ek
+            in
+                ((L'.EServerCall (n, es, ek), loc), fm)
+            end
     end
 
 fun monoDecl (env, fm) (all as (d, loc)) =

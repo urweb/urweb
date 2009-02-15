@@ -349,6 +349,13 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                      fn e' =>
                         (ESignalSource e', loc))
+
+              | EServerCall (n, es, ek) =>
+                S.bind2 (ListUtil.mapfold (fn e => mfe ctx e) es,
+                      fn es' =>
+                         S.map2 (mfe ctx ek,
+                                 fn ek' =>
+                                    (EServerCall (n, es', ek'), loc)))
     in
         mfe
     end

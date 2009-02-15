@@ -113,6 +113,7 @@ withtype exp = exp' located
 datatype export_kind =
          Link
        | Action
+       | Rpc
 
 datatype decl' =
          DCon of string * int * kind * con

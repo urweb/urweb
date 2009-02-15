@@ -308,6 +308,15 @@ fun p_exp' par env (e, _) =
                                 p_exp env e,
                                 string ")"]
 
+      | EServerCall (n, es, e) => box [string "Server(",
+                                       p_enamed env n,
+                                       string ",",
+                                       space,
+                                       p_list (p_exp env) es,
+                                       string ")[",
+                                       p_exp env e,
+                                       string "]"]
+
 and p_exp env = p_exp' false env
 
 fun p_vali env (x, n, t, e, s) =

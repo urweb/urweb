@@ -53,8 +53,11 @@ val csBasis = SS.addList (SS.empty,
                            "alert"])
 
 type state = {
-     exps : int IM.map,
-     decls : (string * int * con * exp * string) list
+     cpsed : int IM.map,
+     cps_decls : (string * int * con * exp * string) list,
+
+     exported : IS.set,
+     export_decls : decl list
 }
 
 fun frob file =
@@ -114,6 +117,19 @@ fun frob file =
                                        (0, []))
 
                          val (n, args) = getApp (trans1, [])
+
+                         val (exported, export_decls) =
+                             if IS.member (#exported st, n) then
+                                 (#exported st, #export_decls st)
+                             else
+                                 (IS.add (#exported st, n),
+                                  (DExport (Rpc, n), loc) :: #export_decls st)
+
+                         val st = {cpsed = #cpsed st,
+                                   cps_decls = #cps_decls st,
+
+                                   exported = exported,
+                                   export_decls = export_decls}
                      in
                          (EServerCall (n, args, trans2), st)
                      end
@@ -128,19 +144,26 @@ fun frob file =
                                               decl = fn x => x}
                               st d
             in
-                (case #decls st of
-                     [] => [d]
-                   | ds =>
-                     case d of
-                         (DValRec vis, loc) => [(DValRec (ds @ vis), loc)]
-                       | (_, loc) => [(DValRec ds, loc), d],
-                 {decls = [],
-                  exps = #exps st})
+                (List.revAppend (case #cps_decls st of
+                                     [] => [d]
+                                   | ds =>
+                                     case d of
+                                         (DValRec vis, loc) => [(DValRec (ds @ vis), loc)]
+                                       | (_, loc) => [d, (DValRec ds, loc)],
+                                 #export_decls st),
+                 {cpsed = #cpsed st,
+                  cps_decls = [],
+                  
+                  exported = #exported st,
+                  export_decls = []})
             end
 
         val (file, _) = ListUtil.foldlMapConcat decl
-                        {decls = [],
-                         exps = IM.empty}
+                        {cpsed = IM.empty,
+                         cps_decls = [],
+
+                         exported = IS.empty,
+                         export_decls = []}
                         file
     in
         file

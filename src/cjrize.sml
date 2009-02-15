@@ -429,6 +429,8 @@ fun cifyExp (eAll as (e, loc), sm) =
       | L.ESignalBind _ => raise Fail "Cjrize: ESignalBind remains"
       | L.ESignalSource _ => raise Fail "Cjrize: ESignalSource remains"
 
+      | L.EServerCall _ => raise Fail "Cjrize EServerCall"
+
 fun cifyDecl ((d, loc), sm) =
     case d of
         L.DDatatype (x, n, xncs) =>
