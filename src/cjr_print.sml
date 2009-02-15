@@ -848,30 +848,45 @@ fun urlify env t =
                 TFfi ("Basis", "unit") => box []
               | TFfi (m, t) => box [string ("uw_" ^ ident m ^ "_urlify" ^ capitalize t
                                             ^ "_w(ctx, it" ^ Int.toString level ^ ");"),
-                                    newline,
-                                    string "uw_write(ctx, \"/\");",
                                     newline]
 
               | TRecord 0 => box []
               | TRecord i =>
                 let
+                    fun empty (t, _) =
+                        case t of
+                            TFfi ("Basis", "unit") => true
+                          | TRecord 0 => true
+                          | TRecord j =>
+                            List.all (fn (_, t) => empty t) (E.lookupStruct env j)
+                          | _ => false
+
                     val xts = E.lookupStruct env i
+
+                    val (blocks, _) = ListUtil.foldlMap
+                                      (fn ((x, t), wasEmpty) =>
+                                          (box [string "{",
+                                                newline,
+                                                p_typ env t,
+                                                space,
+                                                string ("it" ^ Int.toString (level + 1)),
+                                                space,
+                                                string "=",
+                                                space,
+                                                string ("it" ^ Int.toString level ^ ".__uwf_" ^ x ^ ";"),
+                                                newline,
+                                                box (if wasEmpty then
+                                                         []
+                                                     else
+                                                         [string "uw_write(ctx, \"/\");",
+                                                          newline]),
+                                                urlify' rf (level + 1) t,
+                                                string "}",
+                                                newline],
+                                           empty t))
+                                      false xts
                 in
-                    p_list_sep newline
-                               (fn (x, t) =>
-                                   box [string "{",
-                                        newline,
-                                        p_typ env t,
-                                        space,
-                                        string ("it" ^ Int.toString (level + 1)),
-                                        space,
-                                        string "=",
-                                        space,
-                                        string ("it" ^ Int.toString level ^ ".__uwf_" ^ x ^ ";"),
-                                        newline,
-                                        urlify' rf (level + 1) t,
-                                        string "}"])
-                               xts
+                    box blocks
                 end
 
               | TDatatype (Enum, i, _) => box []
