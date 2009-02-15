@@ -350,12 +350,14 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                      fn e' =>
                         (ESignalSource e', loc))
 
-              | EServerCall (n, es, ek) =>
+              | EServerCall (n, es, ek, t) =>
                 S.bind2 (ListUtil.mapfold (fn e => mfe ctx e) es,
                       fn es' =>
-                         S.map2 (mfe ctx ek,
+                         S.bind2 (mfe ctx ek,
                                  fn ek' =>
-                                    (EServerCall (n, es', ek'), loc)))
+                                    S.map2 (mft t,
+                                            fn t' =>
+                                               (EServerCall (n, es', ek', t'), loc))))
     in
         mfe
     end
@@ -443,10 +445,12 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                          fn vis' =>
                             (DValRec vis', loc))
                 end
-              | DExport (ek, s, n, ts) =>
-                S.map2 (ListUtil.mapfold mft ts,
+              | DExport (ek, s, n, ts, t) =>
+                S.bind2 (ListUtil.mapfold mft ts,
                         fn ts' =>
-                           (DExport (ek, s, n, ts'), loc))
+                           S.map2 (mft t,
+                                   fn t' =>
+                                      (DExport (ek, s, n, ts', t'), loc)))
               | DTable _ => S.return2 dAll
               | DSequence _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll

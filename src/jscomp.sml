@@ -98,7 +98,7 @@ fun varDepth (e, _) =
       | ESignalReturn e => varDepth e
       | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
       | ESignalSource e => varDepth e
-      | EServerCall (_, es, ek) => foldl Int.max (varDepth ek) (map varDepth es)
+      | EServerCall (_, es, ek, _) => foldl Int.max (varDepth ek) (map varDepth es)
 
 fun closedUpto d =
     let
@@ -139,7 +139,7 @@ fun closedUpto d =
               | ESignalReturn e => cu inner e
               | ESignalBind (e1, e2) => cu inner e1 andalso cu inner e2
               | ESignalSource e => cu inner e
-              | EServerCall (_, es, ek) => List.all (cu inner) es andalso cu inner ek
+              | EServerCall (_, es, ek, _) => List.all (cu inner) es andalso cu inner ek
     in
         cu 0
     end
@@ -812,7 +812,15 @@ fun process file =
                                  st)
                             end
 
-                          | EServerCall _ => raise Fail "Jscomp EServerCall"
+                          | EServerCall (x, es, ek, _) =>
+                            let
+                                val (ek, st) = jsE inner (ek, st)
+                            in
+                                (strcat [str ("rc(\"" ^ !Monoize.urlPrefix ^ x ^ "\","),
+                                         ek,
+                                         str ")"],
+                                 st)
+                            end
                     end
             in
                 jsE

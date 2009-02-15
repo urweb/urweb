@@ -98,6 +98,29 @@ fun frob file =
         val serverSide = sideish (ssBasis, ssids)
         val clientSide = sideish (csBasis, csids)
 
+        val tfuncs = foldl
+                     (fn ((d, _), tfuncs) =>
+                         let
+                             fun doOne ((_, n, t, _, _), tfuncs) =
+                                 let
+                                     fun crawl ((t, _), args) =
+                                         case t of
+                                             CApp ((CFfi ("Basis", "transaction"), _), ran) => SOME (rev args, ran)
+                                           | TFun (arg, rest) => crawl (rest, arg :: args)
+                                           | _ => NONE
+                                 in
+                                     case crawl (t, []) of
+                                         NONE => tfuncs
+                                       | SOME sg => IM.insert (tfuncs, n, sg)
+                                 end
+                         in
+                             case d of
+                                 DVal vi => doOne (vi, tfuncs)
+                               | DValRec vis => foldl doOne tfuncs vis
+                               | _ => tfuncs
+                         end)
+                     IM.empty file
+                             
         fun exp (e, st) =
             case e of
                 EApp (
@@ -130,8 +153,13 @@ fun frob file =
 
                                    exported = exported,
                                    export_decls = export_decls}
+
+                         val ran =
+                             case IM.find (tfuncs, n) of
+                                 NONE => raise Fail "Rpcify: Undetected transaction function"
+                               | SOME (_, ran) => ran
                      in
-                         (EServerCall (n, args, trans2), st)
+                         (EServerCall (n, args, trans2, ran), st)
                      end
                    | _ => (e, st))
               | _ => (e, st)

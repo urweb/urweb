@@ -2225,12 +2225,28 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ELet (x, t', e1, e2), loc), fm)
             end
 
-          | L.EServerCall (n, es, ek) =>
+          | L.EServerCall (n, es, ek, t) =>
             let
+                val t = monoType env t
+                val (_, _, _, name) = Env.lookupENamed env n
                 val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
                 val (ek, fm) = monoExp (env, st, fm) ek
+
+                val ekf = (L'.EAbs ("f",
+                                    (L'.TFun (t,
+                                              (L'.TFun ((L'.TRecord [], loc),
+                                                        (L'.TRecord [], loc)), loc)), loc),
+                                    (L'.TFun (t,
+                                              (L'.TRecord [], loc)), loc),
+                                    (L'.EAbs ("x",
+                                              t,
+                                              (L'.TRecord [], loc),
+                                              (L'.EApp ((L'.EApp ((L'.ERel 1, loc),
+                                                                  (L'.ERel 0, loc)), loc),
+                                                        (L'.ERecord [], loc)), loc)), loc)), loc)
+                val ek = (L'.EApp (ekf, ek), loc)
             in
-                ((L'.EServerCall (n, es, ek), loc), fm)
+                ((L'.EServerCall (name, es, ek, t), loc), fm)
             end
     end
 
@@ -2280,16 +2296,18 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             let
                 val (_, t, _, s) = Env.lookupENamed env n
 
-                fun unwind (t, _) =
-                    case t of
-                        L.TFun (dom, ran) => dom :: unwind ran
+                fun unwind (t, args) =
+                    case #1 t of
+                        L.TFun (dom, ran) => unwind (ran, dom :: args)
                       | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
-                        (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc) :: unwind t
-                      | _ => []
+                        unwind (t, (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc) :: args)
+                      | _ => (rev args, t)
 
-                val ts = map (monoType env) (unwind t)
+                val (ts, ran) = unwind (t, [])
+                val ts = map (monoType env) ts
+                val ran = monoType env ran
             in
-                SOME (env, fm, [(L'.DExport (ek, s, n, ts), loc)])
+                SOME (env, fm, [(L'.DExport (ek, s, n, ts, ran), loc)])
             end
           | L.DTable (x, n, (L.CRecord (_, xts), _), s) =>
             let

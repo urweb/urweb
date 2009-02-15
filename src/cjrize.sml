@@ -514,11 +514,12 @@ fun cifyDecl ((d, loc), sm) =
             (SOME (L'.DFunRec vis, loc), NONE, sm)
         end        
 
-      | L.DExport (ek, s, n, ts) =>
+      | L.DExport (ek, s, n, ts, t) =>
         let
             val (ts, sm) = ListUtil.foldlMap cifyTyp sm ts
+            val (t, sm) = cifyTyp (t, sm)
         in
-            (NONE, SOME (ek, "/" ^ s, n, ts), sm)
+            (NONE, SOME (ek, "/" ^ s, n, ts, t), sm)
         end
 
       | L.DTable (s, xts) =>

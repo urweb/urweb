@@ -109,7 +109,7 @@ datatype exp' =
        | ESignalBind of exp * exp
        | ESignalSource of exp
 
-       | EServerCall of int * exp list * exp
+       | EServerCall of string * exp list * exp * typ
 
 withtype exp = exp' located
 
@@ -117,7 +117,7 @@ datatype decl' =
          DDatatype of string * int * (string * int * typ option) list
        | DVal of string * int * typ * exp * string
        | DValRec of (string * int * typ * exp * string) list
-       | DExport of Core.export_kind * string * int * typ list
+       | DExport of Core.export_kind * string * int * typ list * typ
 
        | DTable of string * (string * typ) list
        | DSequence of string

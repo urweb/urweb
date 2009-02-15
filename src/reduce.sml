@@ -368,7 +368,7 @@ fun conAndExp (namedC, namedE) =
 
               | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc)
 
-              | EServerCall (n, es, e) => (EServerCall (n, map (exp env) es, exp env e), loc))
+              | EServerCall (n, es, e, t) => (EServerCall (n, map (exp env) es, exp env e, con env t), loc))
     in
         {con = con, exp = exp}
     end

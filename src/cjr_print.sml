@@ -1846,7 +1846,7 @@ fun p_file env (ds, ps) =
                                               E.declBinds env d))
                              env ds
 
-        val fields = foldl (fn ((ek, _, _, ts), fields) =>
+        val fields = foldl (fn ((ek, _, _, ts, _), fields) =>
                                case ek of
                                    Core.Link => fields
                                  | Core.Rpc => fields
@@ -1967,7 +1967,7 @@ fun p_file env (ds, ps) =
                              string "}"]
                 end
 
-        fun p_page (ek, s, n, ts) =
+        fun p_page (ek, s, n, ts, ran) =
             let
                 val (ts, defInputs, inputsVar) =
                     case ek of
@@ -2054,12 +2054,14 @@ fun p_file env (ds, ps) =
                      newline,
                      string "if (*request == '/') ++request;",
                      newline,
-                     string "uw_write_header(ctx, \"Content-type: text/html\\r\\n\");",
-                     newline,
-                     string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
-                     newline,
-                     string "uw_write(ctx, \"<html>\");",
-                     newline,
+                     box (case ek of
+                              Core.Rpc => []
+                            | _ => [string "uw_write_header(ctx, \"Content-type: text/html\\r\\n\");",
+                                    newline,
+                                    string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
+                                    newline,
+                                    string "uw_write(ctx, \"<html>\");",
+                                    newline]),
                      box [string "{",
                           newline,
                           box (ListUtil.mapi (fn (i, t) => box [p_typ env t,
@@ -2073,6 +2075,14 @@ fun p_file env (ds, ps) =
                                                                 string ";",
                                                                 newline]) ts),
                           defInputs,
+                          box (case ek of
+                                   Core.Rpc => [p_typ env ran,
+                                                space,
+                                                string "res",
+                                                space,
+                                                string "=",
+                                                space]
+                                 | _ => []),
                           p_enamed env n,
                           string "(",
                           p_list_sep (box [string ",", space])
@@ -2082,8 +2092,10 @@ fun p_file env (ds, ps) =
                           inputsVar,
                           string ", uw_unit_v);",
                           newline,
-                          string "uw_write(ctx, \"</html>\");",
-                          newline,
+                          box (case ek of
+                                   Core.Rpc => []
+                                 | _ => [string "uw_write(ctx, \"</html>\");",
+                                         newline]),
                           string "return;",
                           newline,
                           string "}",

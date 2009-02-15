@@ -482,7 +482,7 @@ fun compare ((e1, _), (e2, _)) =
       | (ELet _, _) => LESS
       | (_, ELet _) => GREATER
 
-      | (EServerCall (n1, es1, e1), EServerCall (n2, es2, e2)) =>
+      | (EServerCall (n1, es1, e1, _), EServerCall (n2, es2, e2, _)) =>
         join (Int.compare (n1, n2),
               fn () => join (joinL compare (es1, es2),
                              fn () => compare (e1, e2)))
@@ -660,12 +660,14 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                           fn e2' =>
                                              (ELet (x, t', e1', e2'), loc))))
 
-              | EServerCall (n, es, e) =>
+              | EServerCall (n, es, e, t) =>
                 S.bind2 (ListUtil.mapfold (mfe ctx) es,
                       fn es' =>
-                         S.map2 (mfe ctx e,
+                         S.bind2 (mfe ctx e,
                                  fn e' =>
-                                    (EServerCall (n, es', e'), loc)))
+                                    S.map2 (mfc ctx t,
+                                            fn t' =>
+                                               (EServerCall (n, es', e', t'), loc))))
                          
         and mfp ctx (pAll as (p, loc)) =
             case p of

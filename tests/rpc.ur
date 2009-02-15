@@ -8,6 +8,8 @@ fun main () : transaction page =
         return <xml><body>
           <button value="Get It On!"
                   onclick={n <- getNext ();
-                           set s n}/>
+                           set s n}/><br/>
+          <br/>
+          Current: <dyn signal={n <- signal s; return <xml>{[n]}</xml>}/>
         </body></xml>
     end

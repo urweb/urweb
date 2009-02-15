@@ -308,14 +308,14 @@ fun p_exp' par env (e, _) =
                                 p_exp env e,
                                 string ")"]
 
-      | EServerCall (n, es, e) => box [string "Server(",
-                                       p_enamed env n,
-                                       string ",",
-                                       space,
-                                       p_list (p_exp env) es,
-                                       string ")[",
-                                       p_exp env e,
-                                       string "]"]
+      | EServerCall (n, es, e, _) => box [string "Server(",
+                                          string n,
+                                          string ",",
+                                          space,
+                                          p_list (p_exp env) es,
+                                          string ")[",
+                                          p_exp env e,
+                                          string "]"]
 
 and p_exp env = p_exp' false env
 
@@ -378,19 +378,23 @@ fun p_decl env (dAll as (d, _) : decl) =
                  p_list_sep (box [newline, string "and", space]) (p_vali env) vis]
         end
 
-      | DExport (ek, s, n, ts) => box [string "export",
-                                       space,
-                                       CorePrint.p_export_kind ek,
-                                       space,
-                                       p_enamed env n,
-                                       space,
-                                       string "as",
-                                       space,
-                                       string s,
-                                       p_list_sep (string "") (fn t => box [space,
-                                                                            string "(",
-                                                                            p_typ env t,
-                                                                            string ")"]) ts]
+      | DExport (ek, s, n, ts, t) => box [string "export",
+                                          space,
+                                          CorePrint.p_export_kind ek,
+                                          space,
+                                          p_enamed env n,
+                                          space,
+                                          string "as",
+                                          space,
+                                          string s,
+                                          p_list_sep (string "") (fn t => box [space,
+                                                                               string "(",
+                                                                               p_typ env t,
+                                                                               string ")"]) ts,
+                                          space,
+                                          string "->",
+                                          space,
+                                          p_typ env t]
 
       | DTable (s, xts) => box [string "(* SQL table ",
                                 string s,

@@ -46,7 +46,7 @@ fun checkDecl ((d, loc), (funcs, rels)) =
              (funcs, SS.add (rels, s)))
     in
         case d of
-            DExport (_, s, _, _) =>
+            DExport (_, s, _, _, _) =>
             (if SS.member (funcs, s) then
                  E.errorAt loc ("Duplicate function path " ^ s)
              else
