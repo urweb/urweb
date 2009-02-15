@@ -863,30 +863,37 @@ fun urlify env t =
 
                     val xts = E.lookupStruct env i
 
-                    val (blocks, _) = ListUtil.foldlMap
-                                      (fn ((x, t), wasEmpty) =>
-                                          (box [string "{",
-                                                newline,
-                                                p_typ env t,
-                                                space,
-                                                string ("it" ^ Int.toString (level + 1)),
-                                                space,
-                                                string "=",
-                                                space,
-                                                string ("it" ^ Int.toString level ^ ".__uwf_" ^ x ^ ";"),
-                                                newline,
-                                                box (if wasEmpty then
-                                                         []
-                                                     else
-                                                         [string "uw_write(ctx, \"/\");",
-                                                          newline]),
-                                                urlify' rf (level + 1) t,
-                                                string "}",
-                                                newline],
-                                           empty t))
-                                      false xts
+                    val (blocks, _) = foldl
+                                      (fn ((x, t), (blocks, printingSinceLastSlash)) =>
+                                          let
+                                              val thisEmpty = empty t
+                                          in
+                                              if thisEmpty then
+                                                  (blocks, printingSinceLastSlash)
+                                              else
+                                                  (box [string "{",
+                                                        newline,
+                                                        p_typ env t,
+                                                        space,
+                                                        string ("it" ^ Int.toString (level + 1)),
+                                                        space,
+                                                        string "=",
+                                                        space,
+                                                        string ("it" ^ Int.toString level ^ ".__uwf_" ^ x ^ ";"),
+                                                        newline,
+                                                        box (if printingSinceLastSlash then
+                                                                 [string "uw_write(ctx, \"/\");",
+                                                                  newline]
+                                                             else
+                                                                 []),
+                                                        urlify' rf (level + 1) t,
+                                                        string "}",
+                                                        newline] :: blocks,
+                                                   true)
+                                          end)
+                                      ([], false) xts
                 in
-                    box blocks
+                    box (rev blocks)
                 end
 
               | TDatatype (Enum, i, _) => box []

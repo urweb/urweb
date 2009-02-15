@@ -304,6 +304,120 @@ fun process file =
                       Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
                       (str loc "ERROR", st))
 
+        fun unurlifyExp loc (t : typ, st) =
+            case #1 t of
+                TRecord [] => ("null", st)
+              | TRecord [(x, t)] =>
+                let
+                    val (e, st) = unurlifyExp loc (t, st)
+                in
+                    ("{_" ^ x ^ ":" ^ e ^ "}",
+                     st)
+                end
+              | TRecord ((x, t) :: xts) =>
+                let
+                    val (e', st) = unurlifyExp loc (t, st)
+                    val (es, st) = ListUtil.foldlMap
+                                   (fn ((x, t), st) =>
+                                       let
+                                           val (e, st) = unurlifyExp loc (t, st)
+                                       in
+                                           (",_" ^ x ^ ":" ^ e, st)
+                                       end)
+                                   st xts
+                in
+                    (String.concat ("{_"
+                                    :: x
+                                    :: ":"
+                                    :: e'
+                                    :: es
+                                    @ ["}"]), st)
+                end
+
+              | TFfi ("Basis", "string") => ("decode(t[i++])", st)
+              | TFfi ("Basis", "int") => ("parseInt(t[i++])", st)
+              | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
+
+              | TFfi ("Basis", "bool") => ("t[i++] == \"True\"", st)
+
+              | TOption t => raise Fail "!!" (*
+                let
+                    val (e', st) = quoteExp loc t ((ERel 0, loc), st)
+                in
+                    ((ECase (e,
+                             [((PNone t, loc),
+                               str loc "null"),
+                              ((PSome (t, (PVar ("x", t), loc)), loc),
+                               if isNullable t then
+                                   strcat loc [str loc "{v:", e', str loc "}"]
+                               else
+                                   e')],
+                             {disc = (TOption t, loc),
+                              result = (TFfi ("Basis", "string"), loc)}), loc),
+                     st)
+                end*)
+
+              | TDatatype (n, ref (dk, cs)) => raise Fail "!!" (*
+                (case IM.find (#injectors st, n) of
+                     SOME n' => ((EApp ((ENamed n', loc), e), loc), st)
+                   | NONE =>
+                     let
+                         val dk = ElabUtil.classifyDatatype cs
+
+                         val n' = #maxName st
+                         val st = {decls = #decls st,
+                                   script = #script st,
+                                   included = #included st,
+                                   injectors = IM.insert (#injectors st, n, n'),
+                                   maxName = n' + 1}
+
+                         val (pes, st) = ListUtil.foldlMap
+                                             (fn ((_, cn, NONE), st) =>
+                                                 (((PCon (dk, PConVar cn, NONE), loc),
+                                                   case dk of
+                                                       Option => str loc "null"
+                                                     | _ => str loc (Int.toString cn)),
+                                                  st)
+                                               | ((_, cn, SOME t), st) =>
+                                                 let
+                                                     val (e, st) = quoteExp loc t ((ERel 0, loc), st)
+                                                 in
+                                                     (((PCon (dk, PConVar cn, SOME (PVar ("x", t), loc)), loc),
+                                                       case dk of
+                                                           Option =>
+                                                           if isNullable t then
+                                                               strcat loc [str loc "{_v:",
+                                                                           e,
+                                                                           str loc "}"]
+                                                           else
+                                                               e
+                                                         | _ => strcat loc [str loc ("{n:" ^ Int.toString cn
+                                                                                     ^ ",v:"),
+                                                                            e,
+                                                                            str loc "}"]),
+                                                      st)
+                                                 end)
+                                             st cs
+
+                         val s = (TFfi ("Basis", "string"), loc)
+                         val body = (ECase ((ERel 0, loc), pes,
+                                            {disc = t, result = s}), loc)
+                         val body = (EAbs ("x", t, s, body), loc)
+
+                         val st = {decls = (DValRec [("jsify", n', (TFun (t, s), loc),
+                                                      body, "jsify")], loc) :: #decls st,
+                                   script = #script st,
+                                   included = #included st,
+                                   injectors = #injectors st,
+                                   maxName = #maxName st}
+                     in
+                         ((EApp ((ENamed n', loc), e), loc), st)
+                     end)*)
+
+              | _ => (EM.errorAt loc "Don't know how to unurlify type in JavaScript";
+                      Print.prefaces "Can't unurlify" [("t", MonoPrint.p_typ MonoEnv.empty t)];
+                      ("ERROR", st))
+
         fun jsExp mode skip outer =
             let
                 val len = length outer
@@ -812,11 +926,13 @@ fun process file =
                                  st)
                             end
 
-                          | EServerCall (x, es, ek, _) =>
+                          | EServerCall (x, es, ek, t) =>
                             let
                                 val (ek, st) = jsE inner (ek, st)
+                                val (unurl, st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str ("rc(\"" ^ !Monoize.urlPrefix ^ x ^ "\","),
+                                (strcat [str ("rc(\"" ^ !Monoize.urlPrefix ^ x ^ "\", function(s){var t=s.split(\"/\");var i=0;return "
+                                              ^ unurl ^ "},"),
                                          ek,
                                          str ")"],
                                  st)

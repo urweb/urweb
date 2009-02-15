@@ -103,8 +103,8 @@ fun frob file =
                          let
                              fun doOne ((_, n, t, _, _), tfuncs) =
                                  let
-                                     fun crawl ((t, _), args) =
-                                         case t of
+                                     fun crawl (t, args) =
+                                         case #1 t of
                                              CApp ((CFfi ("Basis", "transaction"), _), ran) => SOME (rev args, ran)
                                            | TFun (arg, rest) => crawl (rest, arg :: args)
                                            | _ => NONE
@@ -130,7 +130,7 @@ fun frob file =
                       trans1), _),
                 trans2) =>
                 (case (serverSide trans1, clientSide trans1, serverSide trans2, clientSide trans2) of
-                     (true, false, false, _) =>
+                     (true, false, false, true) =>
                      let
                          fun getApp (e, args) =
                              case #1 e of
@@ -156,7 +156,8 @@ fun frob file =
 
                          val ran =
                              case IM.find (tfuncs, n) of
-                                 NONE => raise Fail "Rpcify: Undetected transaction function"
+                                 NONE => (Print.prefaces "BAD" [("e", CorePrint.p_exp CoreEnv.empty (e, loc))];
+                                          raise Fail "Rpcify: Undetected transaction function")
                                | SOME (_, ran) => ran
                      in
                          (EServerCall (n, args, trans2, ran), st)
