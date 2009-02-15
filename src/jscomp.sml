@@ -43,7 +43,10 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "htmlifyInt"), "ts"),
              (("Basis", "htmlifyString"), "eh"),
              (("Basis", "new_client_source"), "sc"),
-             (("Basis", "set_client_source"), "sv")]
+             (("Basis", "set_client_source"), "sv"),
+             (("Basis", "urlifyInt"), "ts"),
+             (("Basis", "urlifyFloat"), "ts"),
+             (("Basis", "urlifyString"), "escape")]
 
 structure FM = BinaryMapFn(struct
                            type ord_key = string * string
@@ -98,7 +101,7 @@ fun varDepth (e, _) =
       | ESignalReturn e => varDepth e
       | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
       | ESignalSource e => varDepth e
-      | EServerCall (_, es, ek, _) => foldl Int.max (varDepth ek) (map varDepth es)
+      | EServerCall (e, ek, _) => Int.max (varDepth e, varDepth ek)
 
 fun closedUpto d =
     let
@@ -139,7 +142,7 @@ fun closedUpto d =
               | ESignalReturn e => cu inner e
               | ESignalBind (e1, e2) => cu inner e1 andalso cu inner e2
               | ESignalSource e => cu inner e
-              | EServerCall (_, es, ek, _) => List.all (cu inner) es andalso cu inner ek
+              | EServerCall (e, ek, _) => cu inner e andalso cu inner ek
     in
         cu 0
     end
@@ -926,12 +929,15 @@ fun process file =
                                  st)
                             end
 
-                          | EServerCall (x, es, ek, t) =>
+                          | EServerCall (e, ek, t) =>
                             let
+                                val (e, st) = jsE inner (e, st)
                                 val (ek, st) = jsE inner (ek, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str ("rc(\"" ^ !Monoize.urlPrefix ^ x ^ "\", function(s){var t=s.split(\"/\");var i=0;return "
+                                (strcat [str ("rc(\"" ^ !Monoize.urlPrefix ^ "\"+"),
+                                         e,
+                                         str (", function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ unurl ^ "},"),
                                          ek,
                                          str ")"],

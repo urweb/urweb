@@ -109,7 +109,7 @@ datatype exp' =
        | ESignalBind of exp * exp
        | ESignalSource of exp
 
-       | EServerCall of string * exp list * exp * typ
+       | EServerCall of exp * exp * typ
 
 withtype exp = exp' located
 

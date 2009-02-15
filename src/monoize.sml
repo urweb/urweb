@@ -2228,8 +2228,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EServerCall (n, es, ek, t) =>
             let
                 val t = monoType env t
-                val (_, _, _, name) = Env.lookupENamed env n
+                val (_, ft, _, name) = Env.lookupENamed env n
                 val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
+
+                fun encodeArgs (es, ft, acc, fm) =
+                    case (es, ft) of
+                        ([], _) => (rev acc, fm)
+                      | (e :: es, (L.TFun (dom, ran), _)) =>
+                        let
+                            val (e, fm) = urlifyExp env fm (e, monoType env dom)
+                        in
+                            encodeArgs (es, ran, e
+                                                 :: (L'.EPrim (Prim.String "/"), loc)
+                                                 :: acc, fm)
+                        end
+                      | _ => raise Fail "Monoize: Not enough arguments visible in RPC function type"
+
+                val (call, fm) = encodeArgs (es, ft, [], fm)
+                val call = foldl (fn (e, call) => (L'.EStrcat (call, e), loc))
+                                 (L'.EPrim (Prim.String name), loc) call
+
                 val (ek, fm) = monoExp (env, st, fm) ek
 
                 val ekf = (L'.EAbs ("f",
@@ -2246,7 +2264,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                         (L'.ERecord [], loc)), loc)), loc)), loc)
                 val ek = (L'.EApp (ekf, ek), loc)
             in
-                ((L'.EServerCall (name, es, ek, t), loc), fm)
+                ((L'.EServerCall (call, ek, t), loc), fm)
             end
     end
 
