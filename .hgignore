@@ -33,3 +33,7 @@ demo/demo.*
 *.pdf
 *.ps
 *.toc
+
+.depend
+Makefile.coq
+*.vo
