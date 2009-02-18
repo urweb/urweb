@@ -25,33 +25,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-Require Import Arith List Omega TheoryList.
+Require Import Arith List TheoryList.
 
+Require Import Axioms.
 Require Import Syntax.
 
 Set Implicit Arguments.
 
 
-Section row'.
-  Variable A : Type.
+Definition row (T : Type) := list (name * T).
 
-  Inductive row' : list name -> Type :=
-  | Nil : row' nil
-  | Cons : forall n ls, A -> AllS (lt n) ls -> row' ls -> row' (n :: ls).
-End row'.
-
-Implicit Arguments Nil [A].
-
-Record row (A : Type) : Type := Row {
-  keys : list name;
-  data : row' A keys
-}.
-
-Inductive record' : forall ls, row' Set ls -> Set :=
-| RNil : record' Nil
-| RCons : forall n ls (T : Set) (pf : AllS (lt n) ls) r, T -> record' r -> record' (Cons T pf r).
-
-Definition record (r : row Set) := record' (data r).
+Fixpoint record (r : row Set) : Set :=
+  match r with
+    | nil => unit
+    | (_, T) :: r' => T * record r'
+  end%type.
 
 Fixpoint kDen (k : kind) : Type :=
   match k with
@@ -61,82 +49,10 @@ Fixpoint kDen (k : kind) : Type :=
     | KRecord k1 => row (kDen k1)
   end.
 
-Axiom cheat : forall T, T.
-
-Fixpoint cinsert (n : name) (ls : list name) {struct ls} : list name :=
-  match ls with
-    | nil => n :: nil
-    | n' :: ls' =>
-      if eq_nat_dec n n'
-        then ls
-        else if le_lt_dec n n'
-          then n :: ls
-          else n' :: cinsert n ls'
-  end.
-
-Hint Constructors AllS.
-Hint Extern 1 (_ < _) => omega.
-
-Lemma insert_front' : forall n n',
-  n <> n'
-  -> n <= n'
-  -> forall ls, AllS (lt n') ls
-    -> AllS (lt n) ls.
-  induction 3; auto.
-Qed.
-
-Lemma insert_front : forall n n',
-  n <> n'
-  -> n <= n'
-  -> forall ls, AllS (lt n') ls
-    -> AllS (lt n) (n' :: ls).
-  Hint Resolve insert_front'.
-  eauto.
-Qed.
-
-Lemma insert_continue : forall n n',
-  n <> n'
-  -> n' < n
-  -> forall ls, AllS (lt n') ls
-    -> AllS (lt n') (cinsert n ls).
-  induction 3; simpl; auto;
-    repeat (match goal with
-              | [ |- context[if ?E then _ else _] ] => destruct E
-            end; auto).
-Qed.
-
-Fixpoint insert T (n : name) (v : T) ls (r : row' T ls) {struct r} : row' T (cinsert n ls) :=
-  match r in row' _ ls return row' T (cinsert n ls) with
-    | Nil => Cons (n := n) v (allS_nil _) Nil
-    | Cons n' ls' v' pf r' =>
-      match eq_nat_dec n n' as END
-        return row' _ (if END then _ else _) with
-        | left _ => Cons (n := n') v' pf r'
-        | right pfNe =>
-          match le_lt_dec n n' as LLD
-            return row' _ (if LLD then _ else _) with
-            | left pfLe => Cons (n := n) v (insert_front pfNe pfLe pf) (Cons (n := n') v' pf r')
-            | right pfLt => Cons (n := n') v' (insert_continue pfNe pfLt pf) (insert n v r')
-          end
-      end
-  end.
-
-Fixpoint cconcat (ls1 ls2 : list name) {struct ls1} : list name :=
-  match ls1 with
-    | nil => ls2
-    | n :: ls1' => cinsert n (cconcat ls1' ls2)
-  end.
-
-Fixpoint concat T ls1 ls2 (r1 : row' T ls1) (r2 : row' T ls2) {struct r1} : row' T (cconcat ls1 ls2) :=
-  match r1 in row' _ ls1 return row' _ (cconcat ls1 _) with
-    | Nil => r2
-    | Cons n _ v _ r1' => insert n v (concat r1' r2)
-  end.
-
-Fixpoint cfold T T' (f : name -> T -> T' -> T') (i : T') ls (r : row' T ls) {struct r} : T' :=
+Fixpoint cfold T T' (f : name -> T -> T' -> T') (i : T') (r : row T) {struct r} : T' :=
   match r with
-    | Nil => i
-    | Cons n _ v _ r' => f n v (cfold f i r')
+    | nil => i
+    | (n, v) :: r' => f n v (cfold f i r')
   end.
 
 Fixpoint cDen k (c : con kDen k) {struct c} : kDen k :=
@@ -148,9 +64,107 @@ Fixpoint cDen k (c : con kDen k) {struct c} : kDen k :=
     | CApp _ _ c1 c2 => (cDen c1) (cDen c2)
     | Name n => n
     | TRecord c1 => record (cDen c1)
-    | CEmpty _ => Row Nil
-    | CSingle _ c1 c2 => Row (Cons (n := cDen c1) (cDen c2) (allS_nil _) Nil)
-    | CConcat _ c1 c2 => Row (concat (data (cDen c1)) (data (cDen c2)))
-    | CFold k1 k2 => fun f i r => cfold f i (data r)
+    | CEmpty _ => nil
+    | CSingle _ c1 c2 => (cDen c1, cDen c2) :: nil
+    | CConcat _ c1 c2 => cDen c1 ++ cDen c2
+    | CFold k1 k2 => @cfold _ _
     | CGuarded _ _ _ _ c => cDen c
   end.
+
+Theorem subs_correct : forall k1 (c1 : con kDen k1) k2 (c2 : _ -> con kDen k2) c2',
+  subs c1 c2 c2'
+  -> cDen (c2 (cDen c1)) = cDen c2'.
+  induction 1; simpl; intuition; try (apply ext_eq_forallS || apply ext_eq);
+    repeat match goal with
+             | [ H : _ |- _ ] => rewrite H
+           end; intuition.
+Qed.
+
+Definition disjoint T (r1 r2 : row T) :=
+  AllS (fun p1 => AllS (fun p2 => fst p1 <> fst p2) r2) r1.
+Definition dvar k (c1 c2 : con kDen (KRecord k)) :=
+  disjoint (cDen c1) (cDen c2).
+
+Lemma AllS_app : forall T P (ls2 : list T),
+  AllS P ls2
+  -> forall ls1, AllS P ls1
+    -> AllS P (ls1 ++ ls2).
+  induction 2; simpl; intuition.
+Qed.
+
+Lemma AllS_weaken : forall T (P P' : T -> Prop),
+  (forall x, P x -> P' x)
+  -> forall ls,
+    AllS P ls
+    -> AllS P' ls.
+  induction 2; simpl; intuition.
+Qed.
+
+Theorem disjoint_symm : forall T (r1 r2 : row T),
+  disjoint r1 r2
+  -> disjoint r2 r1.
+  Hint Constructors AllS.
+  Hint Resolve AllS_weaken.
+  
+  unfold disjoint; induction r2; simpl; intuition.
+  constructor.
+  eapply AllS_weaken; eauto.
+  intuition.
+  inversion H0; auto.
+
+  apply IHr2.
+  eapply AllS_weaken; eauto.
+  intuition.
+  inversion H0; auto.
+Qed.  
+
+Lemma map_id : forall k (r : row k),
+  cfold (fun x x0 (x1 : row _) => (x, x0) :: x1) nil r = r.
+  induction r; simpl; intuition;
+    match goal with
+      | [ H : _ |- _ ] => rewrite H
+    end; intuition.
+Qed.
+
+Lemma map_dist : forall T1 T2 (f : T1 -> T2) (r2 r1 : row T1),
+  cfold (fun x x0 (x1 : row _) => (x, f x0) :: x1) nil (r1 ++ r2)
+  = cfold (fun x x0 (x1 : row _) => (x, f x0) :: x1) nil r1
+  ++ cfold (fun x x0 (x1 : row _) => (x, f x0) :: x1) nil r2.
+  induction r1; simpl; intuition;
+    match goal with
+      | [ H : _ |- _ ] => rewrite H
+    end; intuition.
+Qed.
+
+Lemma fold_fuse : forall T1 T2 T3 (f : name -> T1 -> T2 -> T2) (i : T2) (f' : T3 -> T1) (c : row T3),
+  cfold f i (cfold (fun x x0 (x1 : row _) => (x, f' x0) :: x1) nil c)
+  = cfold (fun x x0 => f x (f' x0)) i c.
+  induction c; simpl; intuition;
+    match goal with
+      | [ H : _ |- _ ] => rewrite <- H
+    end; intuition.
+Qed.
+
+Scheme deq_mut := Minimality for deq Sort Prop
+with disj_mut := Minimality for disj Sort Prop.
+
+Theorem deq_correct : forall k (c1 c2 : con kDen k),
+  deq dvar c1 c2
+  -> cDen c1 = cDen c2.
+  Hint Resolve map_id map_dist fold_fuse AllS_app disjoint_symm.
+  Hint Extern 1 (_ = _) => unfold row; symmetry; apply app_ass.
+
+  apply (deq_mut (dvar := dvar)
+    (fun k (c1 c2 : con kDen k) =>
+      cDen c1 = cDen c2)
+    (fun k (c1 c2 : con kDen (KRecord k)) =>
+      disjoint (cDen c1) (cDen c2)));
+  simpl; intuition;
+    repeat (match goal with
+              | [ H : _ |- _ ] => rewrite H
+              | [ H : subs _ _ _ |- _ ] => rewrite <- (subs_correct H)
+            end; simpl; intuition); try congruence; unfold disjoint in *; intuition;
+    fold kDen in *; repeat match goal with
+                             | [ H : AllS _ (_ :: _) |- _ ] => inversion H; clear H; subst; simpl in *
+                           end; auto.
+Qed.

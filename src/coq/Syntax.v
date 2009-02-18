@@ -145,15 +145,14 @@ Section vars.
 
   | Eq_Concat_Empty : forall k c,
     deq (CConcat (CEmpty k) c) c
-  | Eq_Concat_Comm : forall k (c1 c2 : con (KRecord k)),
-    deq (CConcat c1 c2) (CConcat c2 c1)
   | Eq_Concat_Assoc : forall k (c1 c2 c3 : con (KRecord k)),
     deq (CConcat c1 (CConcat c2 c3)) (CConcat (CConcat c1 c2) c3)
 
   | Eq_Fold_Empty : forall k1 k2 f i,
     deq (CApp (CApp (CApp (CFold k1 k2) f) i) (CEmpty _)) i
   | Eq_Fold_Cons : forall k1 k2 f i c1 c2 c3,
-    deq (CApp (CApp (CApp (CFold k1 k2) f) i) (CConcat (CSingle c1 c2) c3))
+    disj (CSingle c1 c2) c3
+    -> deq (CApp (CApp (CApp (CFold k1 k2) f) i) (CConcat (CSingle c1 c2) c3))
     (CApp (CApp (CApp f c1) c2) (CApp (CApp (CApp (CFold k1 k2) f) i) c3))
 
   | Eq_Guarded : forall k1 k2 (c1 c2 : con (KRecord k1)) (c : con k2),
@@ -184,30 +183,4 @@ Section vars.
     (CApp (CApp (CApp (CFold k3 k2)
       (CAbs (fun x1 => CAbs (fun x2 => CApp (CApp f (CVar x1)) (CApp f' (CVar x2))))))
       i) c).
-
-  Inductive wf : forall k, con k -> Type :=
-  | HK_CVar : forall k (x : cvar k),
-    wf (CVar x)
-  | HK_Arrow : forall c1 c2,
-    wf c1 -> wf c2 -> wf (Arrow c1 c2)
-  | HK_Poly : forall k (c1 : cvar k -> _),
-    (forall x, wf (c1 x)) -> wf (Poly c1)
-  | HK_CAbs : forall k1 k2 (c1 : cvar k1 -> con k2),
-    (forall x, wf (c1 x)) -> wf (CAbs c1)
-  | HK_CApp : forall k1 k2 (c1 : con (KArrow k1 k2)) c2,
-    wf c1 -> wf c2 -> wf (CApp c1 c2)
-  | HK_Name : forall X,
-    wf (Name X)
-  | HK_TRecord : forall c,
-    wf c -> wf (TRecord c)
-  | HK_CEmpty : forall k,
-    wf (CEmpty k)
-  | HK_CSingle : forall k c1 (c2 : con k),
-    wf c1 -> wf c2 -> wf (CSingle c1 c2)
-  | HK_CConcat : forall k (c1 c2 : con (KRecord k)),
-    wf c2 -> wf c2 -> disj c1 c2 -> wf (CConcat c1 c2)
-  | HK_CFold : forall k1 k2,
-    wf (CFold k1 k2)
-  | HK_CGuarded : forall k1 k2 (c1 c2 : con (KRecord k1)) (c : con k2),
-    wf c1 -> wf c2 -> (disj c1 c2 -> wf c) -> wf (CGuarded c1 c2 c).
 End vars.
