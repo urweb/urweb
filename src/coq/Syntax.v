@@ -25,10 +25,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
+Require Import String.
+
 Set Implicit Arguments.
 
 
-Definition name := nat.
+Definition name : Type := string.
+Definition name_eq_dec : forall (x y : name), {x = y} + {x <> y} := string_dec.
 
 
 (** Syntax of Featherweight Ur *)
@@ -53,8 +56,7 @@ Section vars.
   | CEmpty : forall k, con (KRecord k)
   | CSingle : forall k, con KName -> con k -> con (KRecord k)
   | CConcat : forall k, con (KRecord k) -> con (KRecord k) -> con (KRecord k)
-  | CFold : forall k1 k2, con (KArrow (KArrow KName (KArrow k1 (KArrow k2 k2)))
-    (KArrow k2 (KArrow (KRecord k1) k2)))
+  | CMap : forall k1 k2, con (KArrow (KArrow k1 k2) (KArrow (KRecord k1) (KRecord k2)))
   | CGuarded : forall k1 k2, con (KRecord k1) -> con (KRecord k1) -> con k2 -> con k2.
 
   Variable dvar : forall k, con (KRecord k) -> con (KRecord k) -> Type.
@@ -121,7 +123,7 @@ Section vars.
 
   | DEq : forall k (c1 c2 c1' : con (KRecord k)),
     disj c1 c2
-    -> deq c1 c1'
+    -> deq c1' c1
     -> disj c1' c2
 
   with deq : forall k, con k -> con k -> Prop :=
@@ -145,42 +147,30 @@ Section vars.
 
   | Eq_Concat_Empty : forall k c,
     deq (CConcat (CEmpty k) c) c
+  | Eq_Concat_Comm : forall k (c1 c2 c3 : con (KRecord k)),
+    disj c1 c2
+    -> deq (CConcat c1 c2) (CConcat c2 c1)
   | Eq_Concat_Assoc : forall k (c1 c2 c3 : con (KRecord k)),
     deq (CConcat c1 (CConcat c2 c3)) (CConcat (CConcat c1 c2) c3)
 
-  | Eq_Fold_Empty : forall k1 k2 f i,
-    deq (CApp (CApp (CApp (CFold k1 k2) f) i) (CEmpty _)) i
-  | Eq_Fold_Cons : forall k1 k2 f i c1 c2 c3,
+  | Eq_Map_Empty : forall k1 k2 f,
+    deq (CApp (CApp (CMap k1 k2) f) (CEmpty _)) (CEmpty _)
+  | Eq_Map_Cons : forall k1 k2 f c1 c2 c3,
     disj (CSingle c1 c2) c3
-    -> deq (CApp (CApp (CApp (CFold k1 k2) f) i) (CConcat (CSingle c1 c2) c3))
-    (CApp (CApp (CApp f c1) c2) (CApp (CApp (CApp (CFold k1 k2) f) i) c3))
+    -> deq (CApp (CApp (CMap k1 k2) f) (CConcat (CSingle c1 c2) c3))
+    (CConcat (CSingle c1 (CApp f c2)) (CApp (CApp (CMap k1 k2) f) c3))
 
   | Eq_Guarded : forall k1 k2 (c1 c2 : con (KRecord k1)) (c : con k2),
-    disj c1 c2
-    -> deq (CGuarded c1 c2 c) c
+    (*disj c1 c2
+    ->*) deq (CGuarded c1 c2 c) c
 
   | Eq_Map_Ident : forall k c,
-    deq (CApp (CApp (CApp (CFold k (KRecord k))
-      (CAbs (fun x1 => CAbs (fun x2 => CAbs (fun x3 => CConcat (CSingle (CVar x1) (CVar x2)) (CVar x3))))))
-    (CEmpty _)) c) c
+    deq (CApp (CApp (CMap k k) (CAbs (fun x => CVar x))) c) c
   | Eq_Map_Dist : forall k1 k2 f c1 c2,
-    deq (CApp (CApp (CApp (CFold k1 (KRecord k2))
-      (CAbs (fun x1 => CAbs (fun x2 => CAbs (fun x3 => CConcat (CSingle (CVar x1) (CApp f (CVar x2))) (CVar x3))))))
-    (CEmpty _)) (CConcat c1 c2))
-    (CConcat
-      (CApp (CApp (CApp (CFold k1 (KRecord k2))
-        (CAbs (fun x1 => CAbs (fun x2 => CAbs (fun x3 => CConcat (CSingle (CVar x1) (CApp f (CVar x2))) (CVar x3))))))
-      (CEmpty _)) c1)
-      (CApp (CApp (CApp (CFold k1 (KRecord k2))
-        (CAbs (fun x1 => CAbs (fun x2 => CAbs (fun x3 => CConcat (CSingle (CVar x1) (CApp f (CVar x2))) (CVar x3))))))
-      (CEmpty _)) c2))
-
-  | Eq_Fold_Fuse : forall k1 k2 k3 f i f' c,
-    deq (CApp (CApp (CApp (CFold k1 k2) f) i)
-      (CApp (CApp (CApp (CFold k3 (KRecord k1))
-        (CAbs (fun x1 => CAbs (fun x2 => CAbs (fun x3 => CConcat (CSingle (CVar x1) (CApp f' (CVar x2))) (CVar x3))))))
-      (CEmpty _)) c))
-    (CApp (CApp (CApp (CFold k3 k2)
-      (CAbs (fun x1 => CAbs (fun x2 => CApp (CApp f (CVar x1)) (CApp f' (CVar x2))))))
-      i) c).
+    deq (CApp (CApp (CMap k1 k2) f) (CConcat c1 c2))
+    (CConcat (CApp (CApp (CMap k1 k2) f) c1) (CApp (CApp (CMap k1 k2) f) c2))
+  | Eq_Map_Fuse : forall k1 k2 k3 f f' c,
+    deq (CApp (CApp (CMap k2 k3) f')
+      (CApp (CApp (CMap k1 k2) f) c))
+    (CApp (CApp (CMap k1 k3) (CAbs (fun x => CApp f' (CApp f (CVar x))))) c).
 End vars.

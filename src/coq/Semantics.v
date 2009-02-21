@@ -25,21 +25,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-Require Import Arith List TheoryList.
-
 Require Import Axioms.
 Require Import Syntax.
 
 Set Implicit Arguments.
 
 
-Definition row (T : Type) := list (name * T).
+Definition row (A : Type) : Type := name -> option A.
 
-Fixpoint record (r : row Set) : Set :=
-  match r with
-    | nil => unit
-    | (_, T) :: r' => T * record r'
-  end%type.
+Definition record (r : row Set) := forall n, match r n with
+                                               | None => unit
+                                               | Some T => T
+                                             end.
 
 Fixpoint kDen (k : kind) : Type :=
   match k with
@@ -47,12 +44,6 @@ Fixpoint kDen (k : kind) : Type :=
     | KName => name
     | KArrow k1 k2 => kDen k1 -> kDen k2
     | KRecord k1 => row (kDen k1)
-  end.
-
-Fixpoint cfold T T' (f : name -> T -> T' -> T') (i : T') (r : row T) {struct r} : T' :=
-  match r with
-    | nil => i
-    | (n, v) :: r' => f n v (cfold f i r')
   end.
 
 Fixpoint cDen k (c : con kDen k) {struct c} : kDen k :=
@@ -64,10 +55,16 @@ Fixpoint cDen k (c : con kDen k) {struct c} : kDen k :=
     | CApp _ _ c1 c2 => (cDen c1) (cDen c2)
     | Name n => n
     | TRecord c1 => record (cDen c1)
-    | CEmpty _ => nil
-    | CSingle _ c1 c2 => (cDen c1, cDen c2) :: nil
-    | CConcat _ c1 c2 => cDen c1 ++ cDen c2
-    | CFold k1 k2 => @cfold _ _
+    | CEmpty _ => fun _ => None
+    | CSingle _ c1 c2 => fun n => if name_eq_dec n (cDen c1) then Some (cDen c2) else None
+    | CConcat _ c1 c2 => fun n => match (cDen c1) n with
+                                    | None => (cDen c2) n
+                                    | v => v
+                                  end
+    | CMap k1 k2 => fun f r n => match r n with
+                                   | None => None
+                                   | Some T => Some (f T)
+                                 end
     | CGuarded _ _ _ _ c => cDen c
   end.
 
@@ -81,69 +78,12 @@ Theorem subs_correct : forall k1 (c1 : con kDen k1) k2 (c2 : _ -> con kDen k2) c
 Qed.
 
 Definition disjoint T (r1 r2 : row T) :=
-  AllS (fun p1 => AllS (fun p2 => fst p1 <> fst p2) r2) r1.
+  forall n, match r1 n, r2 n with
+              | Some _, Some _ => False
+              | _, _ => True
+            end.
 Definition dvar k (c1 c2 : con kDen (KRecord k)) :=
   disjoint (cDen c1) (cDen c2).
-
-Lemma AllS_app : forall T P (ls2 : list T),
-  AllS P ls2
-  -> forall ls1, AllS P ls1
-    -> AllS P (ls1 ++ ls2).
-  induction 2; simpl; intuition.
-Qed.
-
-Lemma AllS_weaken : forall T (P P' : T -> Prop),
-  (forall x, P x -> P' x)
-  -> forall ls,
-    AllS P ls
-    -> AllS P' ls.
-  induction 2; simpl; intuition.
-Qed.
-
-Theorem disjoint_symm : forall T (r1 r2 : row T),
-  disjoint r1 r2
-  -> disjoint r2 r1.
-  Hint Constructors AllS.
-  Hint Resolve AllS_weaken.
-  
-  unfold disjoint; induction r2; simpl; intuition.
-  constructor.
-  eapply AllS_weaken; eauto.
-  intuition.
-  inversion H0; auto.
-
-  apply IHr2.
-  eapply AllS_weaken; eauto.
-  intuition.
-  inversion H0; auto.
-Qed.  
-
-Lemma map_id : forall k (r : row k),
-  cfold (fun x x0 (x1 : row _) => (x, x0) :: x1) nil r = r.
-  induction r; simpl; intuition;
-    match goal with
-      | [ H : _ |- _ ] => rewrite H
-    end; intuition.
-Qed.
-
-Lemma map_dist : forall T1 T2 (f : T1 -> T2) (r2 r1 : row T1),
-  cfold (fun x x0 (x1 : row _) => (x, f x0) :: x1) nil (r1 ++ r2)
-  = cfold (fun x x0 (x1 : row _) => (x, f x0) :: x1) nil r1
-  ++ cfold (fun x x0 (x1 : row _) => (x, f x0) :: x1) nil r2.
-  induction r1; simpl; intuition;
-    match goal with
-      | [ H : _ |- _ ] => rewrite H
-    end; intuition.
-Qed.
-
-Lemma fold_fuse : forall T1 T2 T3 (f : name -> T1 -> T2 -> T2) (i : T2) (f' : T3 -> T1) (c : row T3),
-  cfold f i (cfold (fun x x0 (x1 : row _) => (x, f' x0) :: x1) nil c)
-  = cfold (fun x x0 => f x (f' x0)) i c.
-  induction c; simpl; intuition;
-    match goal with
-      | [ H : _ |- _ ] => rewrite <- H
-    end; intuition.
-Qed.
 
 Scheme deq_mut := Minimality for deq Sort Prop
 with disj_mut := Minimality for disj Sort Prop.
@@ -151,20 +91,38 @@ with disj_mut := Minimality for disj Sort Prop.
 Theorem deq_correct : forall k (c1 c2 : con kDen k),
   deq dvar c1 c2
   -> cDen c1 = cDen c2.
-  Hint Resolve map_id map_dist fold_fuse AllS_app disjoint_symm.
-  Hint Extern 1 (_ = _) => unfold row; symmetry; apply app_ass.
+  Ltac t := repeat progress (simpl; intuition; subst).
+
+  Ltac use_disjoint' notDone E :=
+    match goal with
+      | [ H : disjoint _ _ |- _ ] =>
+        notDone H; generalize (H E); use_disjoint'
+          ltac:(fun H' =>
+            match H' with
+              | H => fail 1
+              | _ => notDone H'
+            end) E
+      | _ => idtac
+    end.
+  Ltac use_disjoint := use_disjoint' ltac:(fun _ => idtac).
 
   apply (deq_mut (dvar := dvar)
     (fun k (c1 c2 : con kDen k) =>
       cDen c1 = cDen c2)
     (fun k (c1 c2 : con kDen (KRecord k)) =>
-      disjoint (cDen c1) (cDen c2)));
-  simpl; intuition;
+      disjoint (cDen c1) (cDen c2))); t;
+  repeat ((unfold row; apply ext_eq)
+    || (match goal with
+          | [ H : _ |- _ ] => rewrite H
+          | [ H : subs _ _ _ |- _ ] => rewrite <- (subs_correct H)
+        end); t);
+  unfold disjoint; t;
     repeat (match goal with
-              | [ H : _ |- _ ] => rewrite H
-              | [ H : subs _ _ _ |- _ ] => rewrite <- (subs_correct H)
-            end; simpl; intuition); try congruence; unfold disjoint in *; intuition;
-    fold kDen in *; repeat match goal with
-                             | [ H : AllS _ (_ :: _) |- _ ] => inversion H; clear H; subst; simpl in *
-                           end; auto.
+              | [ |- context[match cDen ?C ?E with Some _ => _ | None => _ end] ] =>
+                use_disjoint E; destruct (cDen C E)
+              | [ |- context[if name_eq_dec ?N1 ?N2 then _ else _] ] =>
+                use_disjoint N1; use_disjoint N2; destruct (name_eq_dec N1 N2)
+              | [ _ : context[match cDen ?C ?E with Some _ => _ | None => _ end] |- _ ] =>
+                use_disjoint E; destruct (cDen C E)
+            end; t).
 Qed.
