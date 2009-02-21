@@ -178,11 +178,11 @@ fun compare ((c1, _), (c2, _)) =
       | (CConcat _, _) => LESS
       | (_, CConcat _) => GREATER
 
-      | (CFold (d1, r1), CFold (d2, r2)) =>
+      | (CMap (d1, r1), CMap (d2, r2)) =>
         join (Kind.compare (d1, r2),
               fn () => Kind.compare (r1, r2))
-      | (CFold _, _) => LESS
-      | (_, CFold _) => GREATER
+      | (CMap _, _) => LESS
+      | (_, CMap _) => GREATER
 
       | (CUnit, CUnit) => EQUAL
       | (CUnit, _) => LESS
@@ -261,12 +261,12 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                          S.map2 (mfc ctx c2,
                               fn c2' =>
                                  (CConcat (c1', c2'), loc)))
-              | CFold (k1, k2) =>
+              | CMap (k1, k2) =>
                 S.bind2 (mfk k1,
                          fn k1' =>
                             S.map2 (mfk k2,
                                     fn k2' =>
-                                       (CFold (k1', k2'), loc)))
+                                       (CMap (k1', k2'), loc)))
 
               | CUnit => S.return2 cAll
 

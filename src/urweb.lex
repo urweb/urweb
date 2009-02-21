@@ -290,6 +290,7 @@ notags = [^<{\n]+;
 <INITIAL> "and"       => (Tokens.AND (pos yypos, pos yypos + size yytext));
 <INITIAL> "fun"       => (Tokens.FUN (pos yypos, pos yypos + size yytext));
 <INITIAL> "fn"        => (Tokens.FN (pos yypos, pos yypos + size yytext));
+<INITIAL> "map"       => (Tokens.MAP (pos yypos, pos yypos + size yytext));
 <INITIAL> "fold"      => (Tokens.FOLD (pos yypos, pos yypos + size yytext));
 <INITIAL> "case"      => (Tokens.CASE (pos yypos, pos yypos + size yytext));
 <INITIAL> "if"        => (Tokens.IF (pos yypos, pos yypos + size yytext));

@@ -107,7 +107,7 @@ notion of \"the end of an outline\".")
                  "if" "then" "else" "case" "of" "fn" "fun" "val" "and"
                  "datatype" "type" "open" "include"
                  urweb-module-head-syms
-                 "con" "fold" "where" "extern" "constraint" "constraints"
+                 "con" "map" "where" "extern" "constraint" "constraints"
                  "table" "sequence" "class" "cookie")
   "Symbols starting an sexp.")
 
@@ -192,7 +192,7 @@ for all symbols and in all lines starting with the given symbol."
   "The starters of new expressions.")
 
 (defconst urweb-exptrail-syms
-  '("if" "then" "else" "case" "of" "fn" "with" "fold"))
+  '("if" "then" "else" "case" "of" "fn" "with" "map"))
 
 (defconst urweb-pipeheads
    '("|" "of" "fun" "fn" "and" "datatype")

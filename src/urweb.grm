@@ -184,7 +184,7 @@ fun tagIn bt =
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
  | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD | AT
- | CON | LTYPE | VAL | REC | AND | FUN | FOLD | UNIT | KUNIT | CLASS
+ | CON | LTYPE | VAL | REC | AND | FUN | MAP | FOLD | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR | SEMI
@@ -681,7 +681,7 @@ cterm  : LPAREN cexp RPAREN             (#1 cexp, s (LPARENleft, RPARENright))
        | path DOT INT                   (CProj ((CVar path, s (pathleft, pathright)), Int64.toInt INT),
                                          s (pathleft, INTright))
        | UNDER                          (CWild (KWild, s (UNDERleft, UNDERright)), s (UNDERleft, UNDERright))
-       | FOLD                           (CFold, s (FOLDleft, FOLDright))
+       | MAP                            (CMap, s (MAPleft, MAPright))
        | UNIT                           (CUnit, s (UNITleft, UNITright))
        | LPAREN ctuplev RPAREN          (CTuple ctuplev, s (LPARENleft, RPARENright))
 

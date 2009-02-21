@@ -139,7 +139,7 @@ fun p_con' par (c, _) =
                                               string "++",
                                               space,
                                               p_con c2])
-      | CFold => string "fold"
+      | CMap => string "map"
 
       | CUnit => string "()"
 

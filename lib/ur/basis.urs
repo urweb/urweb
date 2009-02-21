@@ -120,31 +120,20 @@ con sql_exp :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
 con sql_subset :: {{Type}} -> {{Type}} -> Type
 val sql_subset : keep_drop :: {({Type} * {Type})}
                               -> sql_subset
-                                     (fold (fn nm (fields :: ({Type} * {Type}))
-                                                  acc [[nm] ~ acc]
-                                                  [fields.1 ~ fields.2] =>
-                                               [nm = fields.1 ++ fields.2]
-                                                   ++ acc) [] keep_drop)
-                                     (fold (fn nm (fields :: ({Type} * {Type}))
-                                                  acc [[nm] ~ acc] =>
-                                               [nm = fields.1] ++ acc)
-                                               [] keep_drop)
+                                     (map (fn fields :: ({Type} * {Type}) => fields.1 ++ fields.2) keep_drop)
+                                     (map (fn fields :: ({Type} * {Type}) => fields.1) keep_drop)
 val sql_subset_all : tables :: {{Type}} -> sql_subset tables tables
 
 val sql_query1 : tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}
                  -> selectedExps ::: {Type}
-                 -> {From : $(fold (fn nm (fields :: {Type}) acc [[nm] ~ acc] =>
-                                       [nm = sql_table fields] ++ acc)
-                                       [] tables),
+                 -> {From : $(map (fn fields :: {Type} => sql_table fields) tables),
                      Where : sql_exp tables [] [] bool,
                      GroupBy : sql_subset tables grouped,
                      Having : sql_exp grouped tables [] bool,
                      SelectFields : sql_subset grouped selectedFields,
-                     SelectExps : $(fold (fn nm (t :: Type) acc [[nm] ~ acc] =>
-                                             [nm = sql_exp grouped tables [] t]
-                                                 ++ acc) [] selectedExps) }
+                     SelectExps : $(map (fn (t :: Type) => sql_exp grouped tables [] t) selectedExps) }
                  -> sql_query1 tables selectedFields selectedExps
 
 type sql_relop 
@@ -291,8 +280,7 @@ val query : tables ::: {{Type}} -> exps ::: {Type}
             -> fn [tables ~ exps] =>
                   state ::: Type
                   -> sql_query tables exps
-                  -> ($(exps ++ fold (fn nm (fields :: {Type}) acc [[nm] ~ acc] =>
-                                         [nm = $fields] ++ acc) [] tables)
+                  -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
                       -> state
                       -> transaction state)
                   -> state
@@ -306,17 +294,12 @@ val dml : dml -> transaction unit
 
 val insert : fields ::: {Type}
              -> sql_table fields
-             -> $(fold (fn nm (t :: Type) acc [[nm] ~ acc] =>
-                           [nm = sql_exp [] [] [] t] ++ acc)
-                           [] fields)
+             -> $(map (fn t :: Type => sql_exp [] [] [] t) fields)
              -> dml
 
 val update : unchanged ::: {Type} -> changed :: {Type} ->
              fn [changed ~ unchanged] =>
-                $(fold (fn nm (t :: Type) acc [[nm] ~ acc] =>
-                           [nm = sql_exp [T = changed ++ unchanged] [] [] t]
-                               ++ acc)
-                           [] changed)
+                $(map (fn t :: Type => sql_exp [T = changed ++ unchanged] [] [] t) changed)
                 -> sql_table (changed ++ unchanged)
                 -> sql_exp [T = changed ++ unchanged] [] [] bool
                 -> dml

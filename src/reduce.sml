@@ -103,14 +103,13 @@ fun conAndExp (namedC, namedE) =
                         CAbs (_, _, b) =>
                         con (KnownC c2 :: deKnown env) b
 
-                      | CApp ((CApp ((CFold _, _), f), _), i) =>
+                      | CApp ((CMap (dom, ran), _), f) =>
                         (case #1 c2 of
-                             CRecord (_, []) => i
-                           | CRecord (k, (x, c) :: rest) =>
+                             CRecord (_, []) => (CRecord (ran, []), loc)
+                           | CRecord (_, (x, c) :: rest) =>
                              con (deKnown env)
-                                 (CApp ((CApp ((CApp (f, x), loc), c), loc),
-                                        (CApp (c1,
-                                               (CRecord (k, rest), loc)), loc)), loc)
+                                 (CConcat ((CRecord (ran, [(x, (CApp (f, c), loc))]), loc),
+                                           (CApp (c1, (CRecord (dom, rest), loc)), loc)), loc)
                            | _ => (CApp (c1, c2), loc))                           
 
                       | _ => (CApp (c1, c2), loc)
@@ -130,7 +129,7 @@ fun conAndExp (namedC, namedE) =
                         (CRecord (k, xcs1 @ xcs2), loc)
                       | _ => (CConcat (c1, c2), loc)
                 end
-              | CFold _ => all
+              | CMap _ => all
 
               | CUnit => all
 

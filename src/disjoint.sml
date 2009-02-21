@@ -213,37 +213,8 @@ fun decomposeRow (env, denv) c =
                                                 ("c'", ElabPrint.p_con env (#1 (hnormCon (env, denv) c)))];*)
                 case #1 (#1 (hnormCon (env, denv) c)) of
                     CApp (
-                    (CApp (
-                     (CApp ((CFold (dom, ran), _), f), _),
-                     i), _),
-                    r) =>
-                    let
-                        val (env', nm) = E.pushCNamed env "nm" (KName, loc) NONE
-                        val (env', v) = E.pushCNamed env' "v" dom NONE
-                        val (env', st) = E.pushCNamed env' "st" ran NONE
-
-                        val (denv', gs') = assert env' denv ((CRecord (dom, [((CNamed nm, loc),
-                                                                              (CUnit, loc))]), loc),
-                                                             (CNamed st, loc))
-
-                        val c' = (CApp (f, (CNamed nm, loc)), loc)
-                        val c' = (CApp (c', (CNamed v, loc)), loc)
-                        val c' = (CApp (c', (CNamed st, loc)), loc)
-                        val (ps, gs'') = decomposeRow (env', denv') c'
-
-                        fun covered p =
-                            case p of
-                                Unknown _ => false
-                              | Piece p =>
-                                case p of
-                                    (NameN n, []) => n = nm
-                                  | (RowN n, []) => n = st
-                                  | _ => false
-
-                        val ps = List.filter (not o covered) ps
-                    in
-                        decomposeRow' (i, decomposeRow' (r, (ps @ acc, gs'' @ gs' @ gs)))
-                    end
+                    (CApp ((CMap _, _), _), _),
+                    r) => decomposeRow' (r, (acc, gs))
                   | _ => default ()
             end
     in

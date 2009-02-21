@@ -149,7 +149,7 @@ fun p_con' par env (c, _) =
                                               string "++",
                                               space,
                                               p_con env c2])
-      | CFold _ => string "fold"
+      | CMap _ => string "map"
       | CUnit => string "()"
 
       | CTuple cs => box [string "(",

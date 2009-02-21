@@ -473,7 +473,7 @@ fun corifyCon st (c, loc) =
       | L.CRecord (k, xcs) =>
         (L'.CRecord (corifyKind k, map (fn (c1, c2) => (corifyCon st c1, corifyCon st c2)) xcs), loc)
       | L.CConcat (c1, c2) => (L'.CConcat (corifyCon st c1, corifyCon st c2), loc)
-      | L.CFold (k1, k2) => (L'.CFold (corifyKind k1, corifyKind k2), loc)
+      | L.CMap (k1, k2) => (L'.CMap (corifyKind k1, corifyKind k2), loc)
       | L.CUnit => (L'.CUnit, loc)
 
       | L.CTuple cs => (L'.CTuple (map (corifyCon st) cs), loc)

@@ -114,181 +114,98 @@ fun hnormCon env (cAll as (c, loc)) =
                                           ("sc", ElabPrint.p_con env sc)];*)
                  sc
              end
-           | c1' as CApp (c', i) =>
+           | c1' as CApp (c', f) =>
              let
                  fun default () = (CApp ((c1', loc), hnormCon env c2), loc)
              in
                  case #1 (hnormCon env c') of
-                     CApp (c', f) =>
-                     (case #1 (hnormCon env c') of
-                          CFold ks =>
-                          (case #1 (hnormCon env c2) of
-                               CRecord (_, []) => hnormCon env i
-                             | CRecord (k, (x, c) :: rest) =>
-                               hnormCon env
-                                        (CApp ((CApp ((CApp (f, x), loc), c), loc),
-                                               (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
-                                                      (CRecord (k, rest), loc)), loc)), loc)
-                             | CConcat ((CRecord (k, (x, c) :: rest), _), rest') =>
-                               let
-                                   val rest'' = (CConcat ((CRecord (k, rest), loc), rest'), loc)
+                     CMap (ks as (k1, k2)) =>
+                     (case #1 (hnormCon env c2) of
+                          CRecord (_, []) => (CRecord (k2, []), loc)
+                        | CRecord (_, (x, c) :: rest) =>
+                          hnormCon env
+                                   (CConcat ((CRecord (k2, [(x, (CApp (f, c), loc))]), loc),
+                                             (CApp (c1, (CRecord (k2, rest), loc)), loc)), loc)
+                        | CConcat ((CRecord (k, (x, c) :: rest), _), rest') =>
+                          let
+                              val rest'' = (CConcat ((CRecord (k, rest), loc), rest'), loc)
+                          in
+                              hnormCon env
+                                       (CConcat ((CRecord (k2, [(x, (CApp (f, c), loc))]), loc),
+                                                 (CApp (c1, rest''), loc)), loc)
+                          end
+                        | _ =>
+                          let
+                              fun unconstraint c =
+                                  case hnormCon env c of
+                                      (CDisjoint (_, _, _, c), _) => unconstraint c
+                                    | c => c
 
-                               (*val ccc = (CApp ((CApp ((CApp (f, x), loc), c), loc),
-                                                  (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
-                                                         rest''), loc)), loc)*)
-                               in
-                                   (*eprefaces "Red to" [("ccc", p_con env ccc), ("ccc'", p_con env (hnormCon env ccc))];*)
-                                   hnormCon env
-                                            (CApp ((CApp ((CApp (f, x), loc), c), loc),
-                                                   (CApp ((CApp ((CApp ((CFold ks, loc), f), loc), i), loc),
-                                                          rest''), loc)), loc)
-                               end
-                             | _ =>
-                               let
-                                   fun cunif () =
-                                       let
-                                           val r = ref NONE
-                                       in
-                                           (r, (CUnif (loc, (KType, loc), "_", r), loc))
-                                       end
+                              fun tryDistributivity () =
+                                  case hnormCon env c2 of
+                                      (CConcat (c1, c2'), _) =>
+                                      let
+                                          val c = (CMap ks, loc)
+                                          val c = (CApp (c, f), loc)
+                                                  
+                                          val c1 = (CApp (c, c1), loc)
+                                          val c2 = (CApp (c, c2'), loc)
+                                          val c = (CConcat (c1, c2), loc)
+                                      in
+                                          hnormCon env c
+                                      end
+                                    | _ => default ()
 
-                                   val (nmR, nm) = cunif ()
-                                   val (vR, v) = cunif ()
-                                   val (rR, r) = cunif ()
+                              fun tryFusion () =
+                                  case #1 (hnormCon env c2) of
+                                      CApp (f', r') =>
+                                      (case #1 (hnormCon env f') of
+                                           CApp (f', inner_f) =>
+                                           (case #1 (hnormCon env f') of
+                                                CMap (dom, _) =>
+                                                let
+                                                    val f' = (CApp (inner_f, (CRel 0, loc)), loc)
+                                                    val f' = (CApp (f, f'), loc)
+                                                    val f' = (CAbs ("v", dom, f'), loc)
 
-                                   val c = f
-                                   val c = (CApp (c, nm), loc)
-                                   val c = (CApp (c, v), loc)
-                                   val c = (CApp (c, r), loc)
-                                   fun unconstraint c =
-                                       case hnormCon env c of
-                                           (CDisjoint (_, _, _, c), _) => unconstraint c
-                                         | c => c
-                                   val c = unconstraint c
+                                                    val c = (CMap (dom, k2), loc)
+                                                    val c = (CApp (c, f'), loc)
+                                                    val c = (CApp (c, r'), loc)
+                                                in
+                                                    hnormCon env c
+                                                end
+                                              | _ => tryDistributivity ())
+                                         | _ => tryDistributivity ())
+                                    | _ => tryDistributivity ()
 
-                                   fun tryDistributivity () =
-                                       let
-                                           fun distribute (c1, c2) =
-                                               let
-                                                   val c = (CFold ks, loc)
-                                                   val c = (CApp (c, f), loc)
-                                                   val c = (CApp (c, i), loc)
+                              fun tryIdentity () =
+                                  let
+                                      fun cunif () =
+                                          let
+                                              val r = ref NONE
+                                          in
+                                              (r, (CUnif (loc, (KType, loc), "_", r), loc))
+                                          end
+                                          
+                                      val (vR, v) = cunif ()
 
-                                                   val c1 = (CApp (c, c1), loc)
-                                                   val c2 = (CApp (c, c2), loc)
-                                                   val c = (CConcat (c1, c2), loc)
-                                               in
-                                                   hnormCon env c
-                                               end
-                                       in
-                                           case (hnormCon env i, hnormCon env c2, hnormCon env c) of
-                                               ((CRecord (_, []), _),
-                                                (CConcat (arg1, arg2), _),
-                                                (CConcat (c1, c2'), _)) =>
-                                               (case (hnormCon env c1, hnormCon env c2') of
-                                                    ((CRecord (_, [(nm', v')]), _),
-                                                     (CUnif (_, _, _, rR'), _)) =>
-                                                    (case hnormCon env nm' of
-                                                         (CUnif (_, _, _, nmR'), _) =>
-                                                         if nmR' = nmR andalso rR' = rR then
-                                                             distribute (arg1, arg2)
-                                                         else
-                                                             default ()
-                                                       | _ => default ())
-                                                  | _ => default ())
-                                             | _ => default ()
-                                       end
-
-                                   fun tryFusion () =
-                                       let
-                                           fun fuse (dom, new_v, r') =
-                                               let
-                                                   val ran = #2 ks
-
-                                                   val f = (CApp (f, (CRel 2, loc)), loc)
-                                                   val f = (CApp (f, new_v), loc)
-                                                   val f = (CApp (f, (CRel 0, loc)), loc)
-                                                   val f = (CAbs ("acc", ran, f), loc)
-                                                   val f = (CAbs ("v", dom, f), loc)
-                                                   val f = (CAbs ("nm", (KName, loc), f), loc)
-
-                                                   val c = (CFold (dom, ran), loc)
-                                                   val c = (CApp (c, f), loc)
-                                                   val c = (CApp (c, i), loc)
-                                                   val c = (CApp (c, r'), loc)
-                                               in
-                                                   hnormCon env c
-                                               end
-                                       in
-                                           case #1 (hnormCon env c2) of
-                                               CApp (f, r') =>
-                                               (case #1 (hnormCon env f) of
-                                                    CApp (f, inner_i) =>
-                                                    (case (#1 (hnormCon env f), #1 (hnormCon env inner_i)) of
-                                                         (CApp (f, inner_f), CRecord (_, [])) =>
-                                                         (case #1 (hnormCon env f) of
-                                                              CFold (dom, _) =>
-                                                              let
-                                                                  val c = inner_f
-                                                                  val c = (CApp (c, nm), loc)
-                                                                  val c = (CApp (c, v), loc)
-                                                                  val c = (CApp (c, r), loc)
-                                                                  val c = unconstraint c
-
-                                                                  (*val () = Print.prefaces "Onto something!"
-                                                                           [("c", ElabPrint.p_con env cAll),
-                                                                            ("c'", ElabPrint.p_con env c)]*)
-
-                                                              in
-                                                                  case #1 (hnormCon env c) of
-                                                                      CConcat (first, rest) =>
-                                                                      (case (#1 (hnormCon env first),
-                                                                             #1 (hnormCon env rest)) of
-                                                                           (CRecord (_, [(nm', v')]),
-                                                                            CUnif (_, _, _, rR')) =>
-                                                                           (case #1 (hnormCon env nm') of
-                                                                                CUnif (_, _, _, nmR') =>
-                                                                                if rR' = rR andalso nmR' = nmR then
-                                                                                    (nmR := SOME (CRel 2, loc);
-                                                                                     vR := SOME (CRel 1, loc);
-                                                                                     rR := SOME (CError, loc);
-                                                                                     fuse (dom, v', r'))
-                                                                                else
-                                                                                    tryDistributivity ()
-                                                                              | _ => tryDistributivity ())
-                                                                         | _ => tryDistributivity ())
-                                                                    | _ => tryDistributivity ()
-                                                              end
-                                                            | _ => tryDistributivity ())
-                                                       | _ => tryDistributivity ())
-                                                  | _ => tryDistributivity ())
-                                             | _ => tryDistributivity ()
-                                       end
-
-                               in
-                                   (*Print.prefaces "Consider" [("c", ElabPrint.p_con env c)];*)
-                                   case (hnormCon env i, unconstraint c) of
-                                       ((CRecord (_, []), _),
-                                        (CConcat (c1, c2'), _)) =>
-                                       (case (hnormCon env c1, hnormCon env c2') of
-                                            ((CRecord (_, [(nm', v')]), _),
-                                             (CUnif (_, _, _, rR'), _)) =>
-                                            (case (hnormCon env nm', hnormCon env v') of
-                                                 ((CUnif (_, _, _, nmR'), _),
-                                                  (CUnif (_, _, _, vR'), _)) =>
-                                                 if nmR' = nmR andalso vR' = vR andalso rR' = rR then
-                                                     hnormCon env c2
-                                                 else
-                                                     tryFusion ()
-                                               | _ => tryFusion ())
-                                          | _ => tryFusion ())
-                                     | _ => tryFusion ()
-                               end)
-                        | _ => default ())
+                                      val c = (CApp (f, v), loc)
+                                  in
+                                      case unconstraint c of
+                                          (CUnif (_, _, _, vR'), _) =>
+                                          if vR' = vR then
+                                              hnormCon env c2
+                                          else
+                                              tryFusion ()
+                                        | _ => tryFusion ()
+                                  end
+                          in
+                              tryIdentity ()
+                          end)
                    | _ => default ()
              end
            | c1' => (CApp ((c1', loc), hnormCon env c2), loc))
-
+        
       | CConcat (c1, c2) =>
         (case (hnormCon env c1, hnormCon env c2) of
              ((CRecord (k, xcs1), loc), (CRecord (_, xcs2), _)) =>

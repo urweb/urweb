@@ -133,7 +133,7 @@ See doc for the variable `urweb-mode-info'."
 
 (defconst urweb-keywords-regexp
   (urweb-syms-re "and" "case" "class" "con" "constraint" "constraints"
-	       "datatype" "else" "end" "extern" "fn" "fold"
+	       "datatype" "else" "end" "extern" "fn" "map"
 	       "fun" "functor" "if" "include"
 	       "of" "open" "let" "in"
 	       "rec" "sequence" "sig" "signature" "cookie"

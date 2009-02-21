@@ -60,7 +60,7 @@ datatype con' =
 
        | CRecord of (con * con) list
        | CConcat of con * con
-       | CFold
+       | CMap
 
        | CUnit
 
