@@ -25,13 +25,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-Require Import String.
+Require Import Name.
+Export Name.
 
 Set Implicit Arguments.
-
-
-Definition name : Type := string.
-Definition name_eq_dec : forall (x y : name), {x = y} + {x <> y} := string_dec.
 
 
 (** Syntax of Featherweight Ur *)
@@ -160,9 +157,12 @@ Section vars.
     -> deq (CApp (CApp (CMap k1 k2) f) (CConcat (CSingle c1 c2) c3))
     (CConcat (CSingle c1 (CApp f c2)) (CApp (CApp (CMap k1 k2) f) c3))
 
-  | Eq_Guarded : forall k1 k2 (c1 c2 : con (KRecord k1)) (c : con k2),
-    (*disj c1 c2
-    ->*) deq (CGuarded c1 c2 c) c
+  | Eq_Guarded_Remove : forall k1 k2 (c1 c2 : con (KRecord k1)) (c : con k2),
+    disj c1 c2
+    -> deq (CGuarded c1 c2 c) c
+  | Eq_Guarded_Cong : forall k1 k2 (c1 c2 : con (KRecord k1)) (c c' : con k2),
+    (dvar c1 c2 -> deq c c')
+    -> deq (CGuarded c1 c2 c) (CGuarded c1 c2 c')
 
   | Eq_Map_Ident : forall k c,
     deq (CApp (CApp (CMap k k) (CAbs (fun x => CVar x))) c) c
