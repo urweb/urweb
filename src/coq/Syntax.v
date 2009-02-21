@@ -187,6 +187,6 @@ Section vars.
   | Single : forall c t, exp t -> exp (TRecord (CConcat (CSingle c t) (CEmpty _)))
   | Proj : forall c t c', exp (TRecord (CConcat (CSingle c t) c')) -> exp t
   | Cut : forall c t c', disj (CSingle c t) c' -> exp (TRecord (CConcat (CSingle c t) c')) -> exp (TRecord c')
-  | Concat : forall c1 c2, disj c1 c2 -> exp (TRecord c1) -> exp (TRecord c2) -> exp (TRecord (CConcat c1 c2))
+  | Concat : forall c1 c2, exp (TRecord c1) -> exp (TRecord c2) -> exp (TRecord (CConcat c1 c2))
   | Guarded : forall k (c1 c2 : con (KRecord k)) c, (dvar c1 c2 -> exp c) -> exp (CGuarded c1 c2 c).
 End vars.

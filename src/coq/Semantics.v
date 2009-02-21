@@ -209,5 +209,21 @@ Fixpoint eDen t (e : exp dvar tDen t) {struct e} : tDen t :=
         | right _ => fun x => x
       end ((eDen e1) n)
 
+    | Concat c1 c2 e1 e2 => fun n =>
+      match (cDen c1) n as D return match D with
+                                      | None => unit
+                                      | Some T => T
+                                    end
+      -> match (match D with
+                  | None => (cDen c2) n
+                  | v => v
+                end) with
+           | None => unit
+           | Some T => T
+         end with
+        | None => fun _ => (eDen e2) n
+        | _ => fun x => x
+      end ((eDen e1) n)
+
     | _ => cheat _
   end.
