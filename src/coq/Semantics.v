@@ -25,6 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
+Require Import Eqdep.
+
 Require Import Axioms.
 Require Import Syntax.
 
@@ -88,12 +90,10 @@ Definition dvar k (c1 c2 : con kDen (KRecord k)) :=
 Scheme deq_mut := Minimality for deq Sort Prop
 with disj_mut := Minimality for disj Sort Prop.
 
-Theorem deq_correct : forall k (c1 c2 : con kDen k),
-  deq dvar c1 c2
-  -> cDen c1 = cDen c2.
-  Ltac t := repeat progress (simpl; intuition; subst).
+Ltac deq_disj_correct scm :=
+  let t := repeat progress (simpl; intuition; subst) in
 
-  Ltac use_disjoint' notDone E :=
+  let rec use_disjoint' notDone E :=
     match goal with
       | [ H : disjoint _ _ |- _ ] =>
         notDone H; generalize (H E); use_disjoint'
@@ -103,10 +103,10 @@ Theorem deq_correct : forall k (c1 c2 : con kDen k),
               | _ => notDone H'
             end) E
       | _ => idtac
-    end.
-  Ltac use_disjoint := use_disjoint' ltac:(fun _ => idtac).
+    end in
+  let use_disjoint := use_disjoint' ltac:(fun _ => idtac) in
 
-  apply (deq_mut (dvar := dvar)
+  apply (scm _ dvar
     (fun k (c1 c2 : con kDen k) =>
       cDen c1 = cDen c2)
     (fun k (c1 c2 : con kDen (KRecord k)) =>
@@ -125,4 +125,89 @@ Theorem deq_correct : forall k (c1 c2 : con kDen k),
               | [ _ : context[match cDen ?C ?E with Some _ => _ | None => _ end] |- _ ] =>
                 use_disjoint E; destruct (cDen C E)
             end; t).
+
+Theorem deq_correct : forall k (c1 c2 : con kDen k),
+  deq dvar c1 c2
+  -> cDen c1 = cDen c2.
+  deq_disj_correct deq_mut.
 Qed.
+
+Theorem disj_correct : forall k (c1 c2 : con kDen (KRecord k)),
+  disj dvar c1 c2
+  -> disjoint (cDen c1) (cDen c2).
+  deq_disj_correct disj_mut.
+Qed.
+
+Axiom cheat : forall T, T.
+
+Definition tDen (t : con kDen KType) : Set := cDen t.
+
+Theorem name_eq_dec_refl : forall n, name_eq_dec n n = left _ (refl_equal n).
+  intros; destruct (name_eq_dec n n); intuition; [
+    match goal with
+      | [ e : _ = _ |- _ ] => rewrite (UIP_refl _ _ e); reflexivity
+    end
+    | elimtype False; tauto
+  ].
+Qed.
+
+Theorem cut_disjoint : forall n1 v r,
+  disjoint (fun n => if name_eq_dec n n1 then Some v else None) r
+  -> unit = match r n1 with
+              | Some T => T
+              | None => unit
+            end.
+  intros;
+    match goal with
+      | [ H : disjoint _ _ |- _ ] => generalize (H n1)
+    end; rewrite name_eq_dec_refl;
+    destruct (r n1); intuition.
+Qed.
+
+Implicit Arguments cut_disjoint [v r].
+
+Fixpoint eDen t (e : exp dvar tDen t) {struct e} : tDen t :=
+  match e in exp _ _ t return tDen t with
+    | Var _ x => x
+    | App _ _ e1 e2 => (eDen e1) (eDen e2)
+    | Abs _ _ e1 => fun x => eDen (e1 x)
+    | ECApp _ c _ _ e1 Hsub => match subs_correct Hsub in _ = T return T with
+                                 | refl_equal => (eDen e1) (cDen c)
+                               end
+    | ECAbs _ _ e1 => fun X => eDen (e1 X)
+    | Cast _ _ Heq e1 => match deq_correct Heq in _ = T return T with
+                           | refl_equal => eDen e1
+                         end
+    | Empty => fun _ => tt
+    | Single c _ e1 => fun n => if name_eq_dec n (cDen c) as B
+      return (match (match (if B then _ else _) with Some _ => if B then _ else _ | None => _ end)
+                with Some _ => _ | None => unit end)
+      then eDen e1 else tt
+    | Proj c _ _ e1 =>
+      match name_eq_dec_refl (cDen c) in _ = B
+        return (match (match (if B then _ else _) with
+                         | Some _ => if B then _ else _
+                         | None => _ end)
+        return Set
+                  with Some _ => _ | None => _ end) with
+        | refl_equal => (eDen e1) (cDen c)
+      end
+    | Cut c _ c' Hdisj e1 => fun n =>
+      match name_eq_dec n (cDen c) as B return (match (match (if B then Some _ else None) with Some _ => if B then _ else _ | None => (cDen c') n end)
+                                                  with Some T => T | None => unit end
+      -> match (cDen c') n with
+           | None => unit
+           | Some T => T
+         end) with 
+        | left Heq => fun _ =>
+          match sym_eq Heq in _ = n' return match cDen c' n' return Set with Some _ => _ | None => _ end with
+            | refl_equal =>
+              match cut_disjoint _ (disj_correct Hdisj) in _ = T return T with
+                | refl_equal => tt
+              end
+          end
+        | right _ => fun x => x
+      end ((eDen e1) n)
+
+    | _ => cheat _
+  end.

@@ -25,8 +25,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-Require Import Syntax.
-
 Set Implicit Arguments.
 
 

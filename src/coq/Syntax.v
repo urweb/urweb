@@ -173,4 +173,20 @@ Section vars.
     deq (CApp (CApp (CMap k2 k3) f')
       (CApp (CApp (CMap k1 k2) f) c))
     (CApp (CApp (CMap k1 k3) (CAbs (fun x => CApp f' (CApp f (CVar x))))) c).
+
+  Variable evar : con KType -> Type.
+
+  Inductive exp : con KType -> Type :=
+  | Var : forall t, evar t -> exp t
+  | App : forall dom ran, exp (Arrow dom ran) -> exp dom -> exp ran
+  | Abs : forall dom ran, (evar dom -> exp ran) -> exp (Arrow dom ran)
+  | ECApp : forall k (dom : con k) ran ran', exp (Poly ran) -> subs dom ran ran' -> exp ran'
+  | ECAbs : forall k (ran : cvar k -> _), (forall X, exp (ran X)) -> exp (Poly ran)
+  | Cast : forall t1 t2, deq t1 t2 -> exp t1 -> exp t2
+  | Empty : exp (TRecord (CEmpty _))
+  | Single : forall c t, exp t -> exp (TRecord (CConcat (CSingle c t) (CEmpty _)))
+  | Proj : forall c t c', exp (TRecord (CConcat (CSingle c t) c')) -> exp t
+  | Cut : forall c t c', disj (CSingle c t) c' -> exp (TRecord (CConcat (CSingle c t) c')) -> exp (TRecord c')
+  | Concat : forall c1 c2, disj c1 c2 -> exp (TRecord c1) -> exp (TRecord c2) -> exp (TRecord (CConcat c1 c2))
+  | Guarded : forall k (c1 c2 : con (KRecord k)) c, (dvar c1 c2 -> exp c) -> exp (CGuarded c1 c2 c).
 End vars.
