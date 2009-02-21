@@ -782,7 +782,7 @@
                                  val v' = case dom of
                                               (L'.KUnit, _) => (L'.CUnit, loc)
                                             | _ => cunif (loc, dom)
-                                 val gs2 = unifyCons (env, denv) v' (L'.CApp (f, v), loc)
+                                 val gs2 = unifyCons (env, denv) v (L'.CApp (f, v'), loc)
 
                                  val gs3 = unifyCons (env, denv) r (L'.CRecord (dom, [(x, v')]), loc)
                              in
@@ -792,10 +792,10 @@
                              let
                                  val r1 = cunif (loc, (L'.KRecord dom, loc))
                                  val r2 = cunif (loc, (L'.KRecord dom, loc))
-                                 val gs2 = unifyCons (env, denv) r (L'.CConcat (r1, r2), loc)
 
-                                 val gs3 = unfold (r1, (L'.CRecord (ran, [(x, v)]), loc))
-                                 val gs4 = unfold (r2, (L'.CRecord (ran, rest), loc))
+                                 val gs2 = unfold (r1, (L'.CRecord (ran, [(x, v)]), loc))
+                                 val gs3 = unfold (r2, (L'.CRecord (ran, rest), loc))
+                                 val gs4 = unifyCons (env, denv) r (L'.CConcat (r1, r2), loc)
                              in
                                  gs1 @ gs2 @ gs3 @ gs4
                              end
@@ -803,10 +803,10 @@
                              let
                                  val r1 = cunif (loc, (L'.KRecord dom, loc))
                                  val r2 = cunif (loc, (L'.KRecord dom, loc))
-                                 val gs2 = unifyCons (env, denv) r (L'.CConcat (r1, r2), loc)
 
-                                 val gs3 = unfold (r1, c1')
-                                 val gs4 = unfold (r2, c2')
+                                 val gs2 = unfold (r1, c1')
+                                 val gs3 = unfold (r2, c2')
+                                 val gs4 = unifyCons (env, denv) r (L'.CConcat (r1, r2), loc)
                              in
                                  gs1 @ gs2 @ gs3 @ gs4
                              end
@@ -815,7 +815,7 @@
              in
                  unfold (r, c)
              end
-             handle _ => raise ex
+             handle _ => (TextIO.print "Guess failure!\n"; raise ex)
      in
          case (#1 c1, #1 c2) of
              (L'.CApp ((L'.CApp ((L'.CMap (dom, ran), _), f), _), r), _) =>

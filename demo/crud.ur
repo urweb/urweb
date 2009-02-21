@@ -6,7 +6,7 @@ con colMeta = fn t_formT :: (Type * Type) => {
                  Parse : t_formT.2 -> t_formT.1,
                  Inject : sql_injectable t_formT.1
                  }
-con colsMeta = fn cols :: {(Type * Type)} => $(Top.mapT2T colMeta cols)
+con colsMeta = fn cols :: {(Type * Type)} => $(map colMeta cols)
 
 fun default (t ::: Type) (sh : show t) (rd : read t) (inj : sql_injectable t)
             name : colMeta (t, string) =
@@ -33,7 +33,7 @@ fun bool name = {Nam = name,
 functor Make(M : sig
                  con cols :: {(Type * Type)}
                  constraint [Id] ~ cols
-                 val tab : sql_table ([Id = int] ++ mapT2T fstTT cols)
+                 val tab : sql_table ([Id = int] ++ map fstTT cols)
 
                  val title : string
 
@@ -47,7 +47,7 @@ functor Make(M : sig
 
     fun list () =
         rows <- queryX (SELECT * FROM tab AS T)
-                       (fn (fs : {T : $([Id = int] ++ mapT2T fstTT M.cols)}) => <xml>
+                       (fn (fs : {T : $([Id = int] ++ map fstTT M.cols)}) => <xml>
                          <tr>
                            <td>{[fs.T.Id]}</td>
                            {foldT2RX2 [fstTT] [colMeta] [tr]
@@ -79,9 +79,9 @@ functor Make(M : sig
           <br/><hr/><br/>
 
           <form>
-            {foldT2R [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
+            {foldT2R [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map sndTT cols)]
                      (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
-                                      [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (mapT2T sndTT rest)) => <xml>
+                                      [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (map sndTT rest)) => <xml>
                                         <li> {cdata col.Nam}: {col.Widget [nm]}</li>
                                         {useMore acc}
                                       </xml>)
@@ -92,11 +92,11 @@ functor Make(M : sig
           </form>
         </xml>
 
-    and create (inputs : $(mapT2T sndTT M.cols)) =
+    and create (inputs : $(map sndTT M.cols)) =
         id <- nextval seq;
         dml (insert tab
                     (foldT2R2 [sndTT] [colMeta]
-                              [fn cols => $(mapT2T (fn t :: (Type * Type) =>
+                              [fn cols => $(map (fn t :: (Type * Type) =>
                                                        sql_exp [] [] [] t.1) cols)]
                               (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                [[nm] ~ rest] =>
@@ -112,12 +112,12 @@ functor Make(M : sig
 
     and upd (id : int) =
         let
-            fun save (inputs : $(mapT2T sndTT M.cols)) =
-                dml (update [mapT2T fstTT M.cols]
+            fun save (inputs : $(map sndTT M.cols)) =
+                dml (update [map fstTT M.cols]
                             (foldT2R2 [sndTT] [colMeta]
-                                      [fn cols => $(mapT2T (fn t :: (Type * Type) =>
+                                      [fn cols => $(map (fn t :: (Type * Type) =>
                                                                sql_exp [T = [Id = int]
-                                                                                ++ mapT2T fstTT M.cols]
+                                                                                ++ map fstTT M.cols]
                                                                        [] [] t.1) cols)]
                                       (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                        [[nm] ~ rest] =>
@@ -132,14 +132,14 @@ functor Make(M : sig
                   {ls}
                 </body></xml>
         in
-            fso <- oneOrNoRows (SELECT tab.{{mapT2T fstTT M.cols}} FROM tab WHERE tab.Id = {[id]});
-            case fso : (Basis.option {Tab : $(mapT2T fstTT M.cols)}) of
+            fso <- oneOrNoRows (SELECT tab.{{map fstTT M.cols}} FROM tab WHERE tab.Id = {[id]});
+            case fso : (Basis.option {Tab : $(map fstTT M.cols)}) of
                 None => return <xml><body>Not found!</body></xml>
               | Some fs => return <xml><body><form>
-                {foldT2R2 [fstTT] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (mapT2T sndTT cols)]
+                {foldT2R2 [fstTT] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map sndTT cols)]
                           (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                            [[nm] ~ rest] (v : t.1) (col : colMeta t)
-                                           (acc : xml form [] (mapT2T sndTT rest)) =>
+                                           (acc : xml form [] (map sndTT rest)) =>
                               <xml>
                                 <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
                                 {useMore acc}
