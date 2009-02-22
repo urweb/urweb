@@ -351,7 +351,6 @@ fun p_exp' par env (e, loc) =
                               string "---",
                               space,
                               p_con' true env c])
-      | EFold _ => string "fold"
 
       | EWrite e => box [string "write(",
                          p_exp env e,

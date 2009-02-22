@@ -1,3 +1,12 @@
+(** Row folding *)
+
+con folder = K ==> fn r :: {K} =>
+                      tf :: ({K} -> Type)
+                      -> (nm :: Name -> v :: K -> r :: {K} -> tf r
+                          -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
+                      -> tf [] -> tf r
+
+
 val not : bool -> bool
 
 con idT = fn t :: Type => t
@@ -25,103 +34,46 @@ val foldUR : tf :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}
                  -> fn [[nm] ~ rest] =>
                        tf -> tr rest -> tr ([nm] ++ rest))
-             -> tr [] -> r :: {Unit} -> $(mapUT tf r) -> tr r
+             -> tr [] -> r ::: {Unit} -> folder r -> $(mapUT tf r) -> tr r
 
 val foldUR2 : tf1 :: Type -> tf2 :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}
                  -> fn [[nm] ~ rest] =>
                        tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
-             -> tr [] -> r :: {Unit} -> $(mapUT tf1 r) -> $(mapUT tf2 r) -> tr r
+             -> tr [] -> r ::: {Unit} -> folder r -> $(mapUT tf1 r) -> $(mapUT tf2 r) -> tr r
 
 val foldURX2: tf1 :: Type -> tf2 :: Type -> ctx :: {Unit}
               -> (nm :: Name -> rest :: {Unit}
                   -> fn [[nm] ~ rest] =>
                         tf1 -> tf2 -> xml ctx [] [])
-              -> r :: {Unit} -> $(mapUT tf1 r) -> $(mapUT tf2 r) -> xml ctx [] []
+              -> r ::: {Unit} -> folder r -> $(mapUT tf1 r) -> $(mapUT tf2 r) -> xml ctx [] []
 
-val foldTR : tf :: (Type -> Type) -> tr :: ({Type} -> Type)
-             -> (nm :: Name -> t :: Type -> rest :: {Type}
+val foldR : K --> tf :: (K -> Type) -> tr :: ({K} -> Type)
+             -> (nm :: Name -> t :: K -> rest :: {K}
                  -> fn [[nm] ~ rest] =>
                        tf t -> tr rest -> tr ([nm = t] ++ rest))
-             -> tr [] -> r :: {Type} -> $(map tf r) -> tr r
+             -> tr [] -> r ::: {K} -> folder r -> $(map tf r) -> tr r
 
-val foldT2R : tf :: ((Type * Type) -> Type) -> tr :: ({(Type * Type)} -> Type)
-              -> (nm :: Name -> t :: (Type * Type) -> rest :: {(Type * Type)}
+val foldR2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
+             -> tr :: ({K} -> Type)
+             -> (nm :: Name -> t :: K -> rest :: {K}
+                 -> fn [[nm] ~ rest] =>
+                       tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
+             -> tr []
+             -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> tr r
+
+val foldRX : K --> tf :: (K -> Type) -> ctx :: {Unit}
+             -> (nm :: Name -> t :: K -> rest :: {K}
+                 -> fn [[nm] ~ rest] =>
+                       tf t -> xml ctx [] [])
+             -> r ::: {K} -> folder r -> $(map tf r) -> xml ctx [] []
+
+val foldRX2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> ctx :: {Unit}
+              -> (nm :: Name -> t :: K -> rest :: {K}
                   -> fn [[nm] ~ rest] =>
-                        tf t -> tr rest -> tr ([nm = t] ++ rest))
-              -> tr [] -> r :: {(Type * Type)} -> $(map tf r) -> tr r
-
-val foldT3R : tf :: ((Type * Type * Type) -> Type) -> tr :: ({(Type * Type * Type)} -> Type)
-              -> (nm :: Name -> t :: (Type * Type * Type) -> rest :: {(Type * Type * Type)}
-                  -> fn [[nm] ~ rest] =>
-                        tf t -> tr rest -> tr ([nm = t] ++ rest))
-              -> tr [] -> r :: {(Type * Type * Type)} -> $(map tf r) -> tr r
-
-val foldTR2 : tf1 :: (Type -> Type) -> tf2 :: (Type -> Type)
-              -> tr :: ({Type} -> Type)
-              -> (nm :: Name -> t :: Type -> rest :: {Type}
-                  -> fn [[nm] ~ rest] =>
-                        tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
-              -> tr []
-              -> r :: {Type} -> $(map tf1 r) -> $(map tf2 r) -> tr r
-                                                                    
-val foldT2R2 : tf1 :: ((Type * Type) -> Type) -> tf2 :: ((Type * Type) -> Type)
-               -> tr :: ({(Type * Type)} -> Type)
-               -> (nm :: Name -> t :: (Type * Type) -> rest :: {(Type * Type)}
-                   -> fn [[nm] ~ rest] =>
-                         tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
-               -> tr [] -> r :: {(Type * Type)}
-               -> $(map tf1 r) -> $(map tf2 r) -> tr r
-
-val foldT3R2 : tf1 :: ((Type * Type * Type) -> Type) -> tf2 :: ((Type * Type * Type) -> Type)
-               -> tr :: ({(Type * Type * Type)} -> Type)
-               -> (nm :: Name -> t :: (Type * Type * Type) -> rest :: {(Type * Type * Type)}
-                   -> fn [[nm] ~ rest] =>
-                         tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
-               -> tr [] -> r :: {(Type * Type * Type)}
-               -> $(map tf1 r) -> $(map tf2 r) -> tr r
-
-val foldTRX : tf :: (Type -> Type) -> ctx :: {Unit}
-              -> (nm :: Name -> t :: Type -> rest :: {Type}
-                  -> fn [[nm] ~ rest] =>
-                        tf t -> xml ctx [] [])
-              -> r :: {Type} -> $(map tf r) -> xml ctx [] []
-
-val foldT2RX : tf :: ((Type * Type) -> Type) -> ctx :: {Unit}
-               -> (nm :: Name -> t :: (Type * Type) -> rest :: {(Type * Type)}
-                   -> fn [[nm] ~ rest] =>
-                         tf t -> xml ctx [] [])
-               -> r :: {(Type * Type)} -> $(map tf r) -> xml ctx [] []
-
-val foldT3RX : tf :: ((Type * Type * Type) -> Type) -> ctx :: {Unit}
-               -> (nm :: Name -> t :: (Type * Type * Type) -> rest :: {(Type * Type * Type)}
-                   -> fn [[nm] ~ rest] =>
-                         tf t -> xml ctx [] [])
-               -> r :: {(Type * Type * Type)} -> $(map tf r) -> xml ctx [] []
-
-val foldTRX2 : tf1 :: (Type -> Type) -> tf2 :: (Type -> Type) -> ctx :: {Unit}
-               -> (nm :: Name -> t :: Type -> rest :: {Type}
-                   -> fn [[nm] ~ rest] =>
-                         tf1 t -> tf2 t -> xml ctx [] [])
-               -> r :: {Type}
-               -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] []
-
-val foldT2RX2 : tf1 :: ((Type * Type) -> Type) -> tf2 :: ((Type * Type) -> Type)
-                -> ctx :: {Unit}
-                -> (nm :: Name -> t :: (Type * Type) -> rest :: {(Type * Type)}
-                    -> fn [[nm] ~ rest] =>
-                          tf1 t -> tf2 t -> xml ctx [] [])
-                -> r :: {(Type * Type)}
-                -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] []
-
-
-val foldT3RX2 : tf1 :: ((Type * Type * Type) -> Type) -> tf2 :: ((Type * Type * Type) -> Type)
-                -> ctx :: {Unit}
-                -> (nm :: Name -> t :: (Type * Type * Type) -> rest :: {(Type * Type * Type)}
-                    -> fn [[nm] ~ rest] =>
-                          tf1 t -> tf2 t -> xml ctx [] [])
-                -> r :: {(Type * Type * Type)}
-                -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] []
+                        tf1 t -> tf2 t -> xml ctx [] [])
+              -> r ::: {K} -> folder r
+              -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] []
 
 val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
              -> sql_query tables exps

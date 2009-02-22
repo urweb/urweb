@@ -184,10 +184,10 @@ fun tagIn bt =
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
  | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD | AT
- | CON | LTYPE | VAL | REC | AND | FUN | MAP | FOLD | UNIT | KUNIT | CLASS
+ | CON | LTYPE | VAL | REC | AND | FUN | MAP | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
- | ARROW | LARROW | DARROW | STAR | SEMI
+ | ARROW | LARROW | DARROW | STAR | SEMI | KARROW | DKARROW
  | FN | PLUSPLUS | MINUSMINUS | MINUSMINUSMINUS | DOLLAR | TWIDDLE
  | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
@@ -327,6 +327,8 @@ fun tagIn bt =
 
 %name Urweb
 
+%right KARROW
+%nonassoc DKARROW
 %right SEMI
 %nonassoc LARROW
 %nonassoc IF THEN ELSE
@@ -575,6 +577,8 @@ kind   : TYPE                           (KType, s (TYPEleft, TYPEright))
        | KUNIT                          (KUnit, s (KUNITleft, KUNITright))
        | UNDERUNDER                     (KWild, s (UNDERUNDERleft, UNDERUNDERright))
        | LPAREN ktuple RPAREN           (KTuple ktuple, s (LPARENleft, RPARENright))
+       | CSYMBOL                        (KVar CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
+       | CSYMBOL KARROW kind            (KFun (CSYMBOL, kind), s (CSYMBOLleft, kindright))
 
 ktuple : kind STAR kind                 ([kind1, kind2])
        | kind STAR ktuple               (kind :: ktuple)
@@ -585,10 +589,12 @@ capps  : cterm                          (cterm)
 cexp   : capps                          (capps)
        | cexp ARROW cexp                (TFun (cexp1, cexp2), s (cexp1left, cexp2right))
        | SYMBOL kcolon kind ARROW cexp  (TCFun (kcolon, SYMBOL, kind, cexp), s (SYMBOLleft, cexpright))
+       | CSYMBOL KARROW cexp            (TKFun (CSYMBOL, cexp), s (CSYMBOLleft, cexpright))
 
        | cexp PLUSPLUS cexp             (CConcat (cexp1, cexp2), s (cexp1left, cexp1right))
 
        | FN cargs DARROW cexp           (#1 (cargs (cexp, (KWild, s (FNleft, cexpright)))))
+       | CSYMBOL DKARROW cexp           (CKAbs (CSYMBOL, cexp), s (CSYMBOLleft, cexpright))
 
        | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, kindright))
 
@@ -651,7 +657,7 @@ cargp  : SYMBOL                         (fn (c, k) =>
                                                   ((CAbs (SYMBOL, SOME kind, c), loc),
                                                    (KArrow (kind, k), loc))
                                               end)
-       | LBRACK cexp TWIDDLE cexp RBRACK (fn (c, k) =>
+       | LBRACK cexp TWIDDLE cexp RBRACK  (fn (c, k) =>
                                             let
                                                 val loc = s (LBRACKleft, RBRACKright)
                                             in
@@ -716,6 +722,7 @@ eexp   : eapps                          (eapps)
                                          in
                                              #1 (eargs (eexp, (CWild (KType, loc), loc)))
                                          end)
+       | CSYMBOL DKARROW eexp           (EKAbs (CSYMBOL, eexp), s (CSYMBOLleft, eexpright))
        | eexp COLON cexp                (EAnnot (eexp, cexp), s (eexpleft, cexpright))
        | eexp MINUSMINUS cexp           (ECut (eexp, cexp), s (eexpleft, cexpright))
        | eexp MINUSMINUSMINUS cexp      (ECutMulti (eexp, cexp), s (eexpleft, cexpright))
@@ -851,6 +858,13 @@ eargp  : SYMBOL                         (fn (e, t) =>
                                                 ((EDisjoint (cexp1, cexp2, e), loc),
                                                  (CDisjoint (cexp1, cexp2, t), loc))
                                             end)
+       | CSYMBOL                           (fn (e, t) =>
+                                               let
+                                                   val loc = s (CSYMBOLleft, CSYMBOLright)
+                                               in
+                                                   ((EKAbs (CSYMBOL, e), loc),
+                                                    (TKFun (CSYMBOL, t), loc))
+                                               end)
 
 eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | LPAREN etuple RPAREN           (let
@@ -895,7 +909,6 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                        (EField (e, ident), loc))
                                                    (EVar (#1 path, #2 path, DontInfer), s (pathleft, pathright)) idents
                                          end)
-       | FOLD                           (EFold, s (FOLDleft, FOLDright))
 
        | XML_BEGIN xml XML_END          (let
                                              val loc = s (XML_BEGINleft, XML_ENDright)
@@ -1070,7 +1083,7 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                       ()
                                                   else
                                                       ErrorMsg.errorAt pos "Begin and end tags don't match.";
-                                                  (EFold, pos))
+                                                  (EWild, pos))
                                          end)
        | LBRACE eexp RBRACE             (eexp)
        | LBRACE LBRACK eexp RBRACK RBRACE (let

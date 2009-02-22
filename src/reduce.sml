@@ -214,20 +214,6 @@ fun conAndExp (namedC, namedE) =
                 in
                     case #1 e of
                         ECAbs (_, _, b) => exp (KnownC c :: deKnown env) b
-
-                      | EApp ((EApp ((ECApp ((EFold _, _), _), _), f), _), i) =>
-                        (case #1 c of
-                             CRecord (_, []) => i
-                           | CRecord (k, (nm, v) :: rest) =>
-                             let
-                                 val rest = (CRecord (k, rest), loc)
-                             in
-                                 exp (deKnown env)
-                                     (EApp ((ECApp ((ECApp ((ECApp (f, nm), loc), v), loc), rest), loc),
-                                            (ECApp (e, rest), loc)), loc)
-                             end
-                           | _ => (ECApp (e, c), loc))
-
                       | _ => (ECApp (e, c), loc)
                 end
 
@@ -333,8 +319,6 @@ fun conAndExp (namedC, namedE) =
                             default ()
                       | _ => default ()
                 end
-
-              | EFold _ => all
 
               | ECase (e, pes, {disc, result}) =>
                 let

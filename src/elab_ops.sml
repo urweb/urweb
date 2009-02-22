@@ -32,8 +32,64 @@ open Elab
 structure E = ElabEnv
 structure U = ElabUtil
 
+fun liftKindInKind' by =
+    U.Kind.mapB {kind = fn bound => fn k =>
+                                       case k of
+                                         KRel xn =>
+                                         if xn < bound then
+                                             k
+                                         else
+                                             KRel (xn + by)
+                                       | _ => k,
+                bind = fn (bound, _) => bound + 1}
+
+fun subKindInKind' rep =
+    U.Kind.mapB {kind = fn (by, xn) => fn k =>
+                                          case k of
+                                              KRel xn' =>
+                                              (case Int.compare (xn', xn) of
+                                                   EQUAL => #1 (liftKindInKind' by 0 rep)
+                                                 | GREATER => KRel (xn' - 1)
+                                                 | LESS => k)
+                                            | _ => k,
+                 bind = fn ((by, xn), _) => (by+1, xn+1)}
+
+val liftKindInKind = liftKindInKind' 1
+
+fun subKindInKind (xn, rep) = subKindInKind' rep (0, xn)
+
+fun liftKindInCon by =
+    U.Con.mapB {kind = fn bound => fn k =>
+                                      case k of
+                                          KRel xn =>
+                                          if xn < bound then
+                                              k
+                                          else
+                                              KRel (xn + by)
+                                        | _ => k,
+                con = fn _ => fn c => c,
+                bind = fn (bound, U.Con.RelK _) => bound + 1
+                        | (bound, _) => bound}
+
+fun subKindInCon' rep =
+    U.Con.mapB {kind = fn (by, xn) => fn k =>
+                                         case k of
+                                             KRel xn' =>
+                                             (case Int.compare (xn', xn) of
+                                                  EQUAL => #1 (liftKindInKind' by 0 rep)
+                                                | GREATER => KRel (xn' - 1)
+                                                | LESS => k)
+                                           | _ => k,
+                con = fn _ => fn c => c,
+                bind = fn ((by, xn), U.Con.RelK _) => (by+1, xn+1)
+                        | (st, _) => st}
+
+val liftKindInCon = liftKindInCon 1
+
+fun subKindInCon (xn, rep) = subKindInCon' rep (0, xn)
+
 fun liftConInCon by =
-    U.Con.mapB {kind = fn k => k,
+    U.Con.mapB {kind = fn _ => fn k => k,
                 con = fn bound => fn c =>
                                      case c of
                                          CRel xn =>
@@ -43,11 +99,11 @@ fun liftConInCon by =
                                              CRel (xn + by)
                                        (*| CUnif _ => raise SynUnif*)
                                        | _ => c,
-                bind = fn (bound, U.Con.Rel _) => bound + 1
+                bind = fn (bound, U.Con.RelC _) => bound + 1
                         | (bound, _) => bound}
 
 fun subConInCon' rep =
-    U.Con.mapB {kind = fn k => k,
+    U.Con.mapB {kind = fn _ => fn k => k,
                 con = fn (by, xn) => fn c =>
                                         case c of
                                             CRel xn' =>
@@ -57,7 +113,7 @@ fun subConInCon' rep =
                                                | LESS => c)
                                           (*| CUnif _ => raise SynUnif*)
                                           | _ => c,
-                bind = fn ((by, xn), U.Con.Rel _) => (by+1, xn+1)
+                bind = fn ((by, xn), U.Con.RelC _) => (by+1, xn+1)
                         | (ctx, _) => ctx}
 
 val liftConInCon = liftConInCon 1
@@ -205,6 +261,11 @@ fun hnormCon env (cAll as (c, loc)) =
                    | _ => default ()
              end
            | c1' => (CApp ((c1', loc), hnormCon env c2), loc))
+
+      | CKApp (c1, k) =>
+        (case hnormCon env c1 of
+             (CKAbs (_, body), _) => hnormCon env (subKindInCon (0, k) body)
+           | _ => cAll)
         
       | CConcat (c1, c2) =>
         (case (hnormCon env c1, hnormCon env c2) of

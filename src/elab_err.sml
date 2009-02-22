@@ -36,7 +36,7 @@ structure U = ElabUtil
 open Print
 structure P = ElabPrint
 
-val simplCon = U.Con.mapB {kind = fn k => k,
+val simplCon = U.Con.mapB {kind = fn _ => fn k => k,
                            con = fn env => fn c =>
                                               let
                                                   val c = (c, ErrorMsg.dummySpan)
@@ -46,25 +46,34 @@ val simplCon = U.Con.mapB {kind = fn k => k,
                                                                     ("c'", P.p_con env c')];*)
                                                   #1 c'
                                               end,
-                           bind = fn (env, U.Con.Rel (x, k)) => E.pushCRel env x k
-                                   | (env, U.Con.Named (x, n, k)) => E.pushCNamedAs env x n k NONE}
+                           bind = fn (env, U.Con.RelC (x, k)) => E.pushCRel env x k
+                                   | (env, U.Con.NamedC (x, n, k)) => E.pushCNamedAs env x n k NONE
+                                   | (env, _) => env}
 
 val p_kind = P.p_kind
+             
+datatype kind_error =
+         UnboundKind of ErrorMsg.span * string
+
+fun kindError env err =
+    case err of
+        UnboundKind (loc, s) =>
+        ErrorMsg.errorAt loc ("Unbound kind variable " ^ s)
 
 datatype kunify_error =
          KOccursCheckFailed of kind * kind
        | KIncompatible of kind * kind
 
-fun kunifyError err =
+fun kunifyError env err =
     case err of
         KOccursCheckFailed (k1, k2) =>
         eprefaces "Kind occurs check failed"
-        [("Kind 1", p_kind k1),
-         ("Kind 2", p_kind k2)]
+        [("Kind 1", p_kind env k1),
+         ("Kind 2", p_kind env k2)]
       | KIncompatible (k1, k2) =>
         eprefaces "Incompatible kinds"
-        [("Kind 1", p_kind k1),
-         ("Kind 2", p_kind k2)]
+        [("Kind 1", p_kind env k1),
+         ("Kind 2", p_kind env k2)]
 
 
 fun p_con env c = P.p_con env (simplCon env c)
@@ -89,9 +98,9 @@ fun conError env err =
       | WrongKind (c, k1, k2, kerr) =>
         (ErrorMsg.errorAt (#2 c) "Wrong kind";
          eprefaces' [("Constructor", p_con env c),
-                     ("Have kind", p_kind k1),
-                     ("Need kind", p_kind k2)];
-         kunifyError kerr)
+                     ("Have kind", p_kind env k1),
+                     ("Need kind", p_kind env k2)];
+         kunifyError env kerr)
       | DuplicateField (loc, s) =>
         ErrorMsg.errorAt loc ("Duplicate record field " ^ s)
       | ProjBounds (c, n) =>
@@ -101,7 +110,7 @@ fun conError env err =
       | ProjMismatch (c, k) =>
         (ErrorMsg.errorAt (#2 c) "Projection from non-tuple constructor";
          eprefaces' [("Constructor", p_con env c),
-                     ("Kind", p_kind k)])
+                     ("Kind", p_kind env k)])
 
 
 datatype cunify_error =
@@ -116,9 +125,9 @@ fun cunifyError env err =
     case err of
         CKind (k1, k2, kerr) =>
         (eprefaces "Kind unification failure"
-                   [("Kind 1", p_kind k1),
-                    ("Kind 2", p_kind k2)];
-         kunifyError kerr)
+                   [("Kind 1", p_kind env k1),
+                    ("Kind 2", p_kind env k2)];
+         kunifyError env kerr)
       | COccursCheckFailed (c1, c2) =>
         eprefaces "Constructor occurs check failed"
                   [("Con 1", p_con env c1),
@@ -133,7 +142,7 @@ fun cunifyError env err =
                    ("Con 2", p_con env c2)]
       | CKindof (k, c, expected) =>
         eprefaces ("Unexpected kind for kindof calculation (expecting " ^ expected ^ ")")
-                  [("Kind", p_kind k),
+                  [("Kind", p_kind env k),
                    ("Con", p_con env c)]
       | CRecordFailure (c1, c2) =>
         eprefaces "Can't unify record constructors"
@@ -267,9 +276,9 @@ fun sgnError env err =
         (ErrorMsg.errorAt (#2 sgi1) "Kind unification failure in signature matching:";
          eprefaces' [("Have", p_sgn_item env sgi1),
                      ("Need", p_sgn_item env sgi2),
-                     ("Kind 1", p_kind k1),
-                     ("Kind 2", p_kind k2)];
-         kunifyError kerr)
+                     ("Kind 1", p_kind env k1),
+                     ("Kind 2", p_kind env k2)];
+         kunifyError env kerr)
       | SgiWrongCon (sgi1, c1, sgi2, c2, cerr) =>
         (ErrorMsg.errorAt (#2 sgi1) "Constructor unification failure in signature matching:";
          eprefaces' [("Have", p_sgn_item env sgi1),
@@ -296,9 +305,9 @@ fun sgnError env err =
                      ("Field", PD.string x)])
       | WhereWrongKind (k1, k2, kerr) =>
         (ErrorMsg.errorAt (#2 k1) "Wrong kind for 'where'";
-         eprefaces' [("Have", p_kind k1),
-                     ("Need", p_kind k2)];
-         kunifyError kerr)
+         eprefaces' [("Have", p_kind env k1),
+                     ("Need", p_kind env k2)];
+         kunifyError env kerr)
       | NotIncludable sgn =>
         (ErrorMsg.errorAt (#2 sgn) "Invalid signature to 'include'";
          eprefaces' [("Signature", p_sgn env sgn)])
@@ -337,10 +346,10 @@ fun strError env err =
          eprefaces' [("Signature", p_sgn env sgn)])
       | NotType (k, (k1, k2, ue)) =>
         (ErrorMsg.errorAt (#2 k) "'val' type kind is not 'Type'";
-         eprefaces' [("Kind", p_kind k),
-                     ("Subkind 1", p_kind k1),
-                     ("Subkind 2", p_kind k2)];
-         kunifyError ue)
+         eprefaces' [("Kind", p_kind env k),
+                     ("Subkind 1", p_kind env k1),
+                     ("Subkind 2", p_kind env k2)];
+         kunifyError env ue)
       | DuplicateConstructor (x, loc) =>
         ErrorMsg.errorAt loc ("Duplicate datatype constructor " ^ x)
       | NotDatatype loc =>

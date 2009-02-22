@@ -45,8 +45,32 @@ exception UnboundNamed of int
 
 exception SynUnif
 
+val liftKindInKind =
+    U.Kind.mapB {kind = fn bound => fn k =>
+                                       case k of
+                                         KRel xn =>
+                                         if xn < bound then
+                                             k
+                                         else
+                                             KRel (xn + 1)
+                                       | _ => k,
+                 bind = fn (bound, _) => bound + 1}
+
+val liftKindInCon =
+    U.Con.mapB {kind = fn bound => fn k =>
+                                      case k of
+                                          KRel xn =>
+                                          if xn < bound then
+                                              k
+                                          else
+                                              KRel (xn + 1)
+                                        | _ => k,
+                con = fn _ => fn c => c,
+                bind = fn (bound, U.Con.RelK _) => bound + 1
+                        | (bound, _) => bound}
+
 val liftConInCon =
-    U.Con.mapB {kind = fn k => k,
+    U.Con.mapB {kind = fn _ => fn k => k,
                 con = fn bound => fn c =>
                                      case c of
                                          CRel xn =>
@@ -56,13 +80,27 @@ val liftConInCon =
                                              CRel (xn + 1)
                                        (*| CUnif _ => raise SynUnif*)
                                        | _ => c,
-                bind = fn (bound, U.Con.Rel _) => bound + 1
+                bind = fn (bound, U.Con.RelC _) => bound + 1
                         | (bound, _) => bound}
 
 val lift = liftConInCon 0
 
+val liftKindInExp =
+    U.Exp.mapB {kind = fn bound => fn k =>
+                                      case k of
+                                          KRel xn =>
+                                          if xn < bound then
+                                              k
+                                          else
+                                              KRel (xn + 1)
+                                        | _ => k,
+                con = fn _ => fn c => c,
+                exp = fn _ => fn e => e,
+                bind = fn (bound, U.Exp.RelK _) => bound + 1
+                        | (bound, _) => bound}
+
 val liftConInExp =
-    U.Exp.mapB {kind = fn k => k,
+    U.Exp.mapB {kind = fn _ => fn k => k,
                 con = fn bound => fn c =>
                                      case c of
                                          CRel xn =>
@@ -76,7 +114,7 @@ val liftConInExp =
                         | (bound, _) => bound}
 
 val liftExpInExp =
-    U.Exp.mapB {kind = fn k => k,
+    U.Exp.mapB {kind = fn _ => fn k => k,
                 con = fn _ => fn c => c,
                 exp = fn bound => fn e =>
                                      case e of
@@ -93,7 +131,7 @@ val liftExpInExp =
 val liftExp = liftExpInExp 0
 
 val subExpInExp =
-    U.Exp.mapB {kind = fn k => k,
+    U.Exp.mapB {kind = fn _ => fn k => k,
                 con = fn _ => fn c => c,
                 exp = fn (xn, rep) => fn e =>
                                   case e of
@@ -203,6 +241,9 @@ fun printClasses cs = (print "Classes:\n";
                                     print "\n")) cs)
 
 type env = {
+     renameK : int SM.map,
+     relK : string list,
+
      renameC : kind var' SM.map,
      relC : (string * kind) list,
      namedC : (string * kind * con option) IM.map,
@@ -234,6 +275,9 @@ fun newNamed () =
     end
 
 val empty = {
+    renameK = SM.empty,
+    relK = [],
+
     renameC = SM.empty,
     relC = [],
     namedC = IM.empty,
@@ -261,12 +305,51 @@ fun liftClassKey ck =
       | CkProj _ => ck
       | CkApp (ck1, ck2) => CkApp (liftClassKey ck1, liftClassKey ck2)
 
+fun pushKRel (env : env) x =
+    let
+        val renameK = SM.map (fn n => n+1) (#renameK env)
+    in
+        {renameK = SM.insert (renameK, x, 0),
+         relK = x :: #relK env,
+
+         renameC = SM.map (fn Rel' (n, k) => Rel' (n, liftKindInKind 0 k)
+                            | x => x) (#renameC env),
+         relC = map (fn (x, k) => (x, liftKindInKind 0 k)) (#relC env),
+         namedC = #namedC env,
+
+         datatypes = #datatypes env,
+         constructors = #constructors env,
+
+         classes = #classes env,
+
+         renameE = SM.map (fn Rel' (n, c) => Rel' (n, liftKindInCon 0 c)
+                            | Named' (n, c) => Named' (n, c)) (#renameE env),
+         relE = map (fn (x, c) => (x, liftKindInCon 0 c)) (#relE env),
+         namedE = #namedE env,
+
+         renameSgn = #renameSgn env,
+         sgn = #sgn env,
+
+         renameStr = #renameStr env,
+         str = #str env
+        }
+    end
+
+fun lookupKRel (env : env) n =
+    (List.nth (#relK env, n))
+    handle Subscript => raise UnboundRel n
+
+fun lookupK (env : env) x = SM.find (#renameK env, x)
+
 fun pushCRel (env : env) x k =
     let
         val renameC = SM.map (fn Rel' (n, k) => Rel' (n+1, k)
                                | x => x) (#renameC env)
     in
-        {renameC = SM.insert (renameC, x, Rel' (0, k)),
+        {renameK = #renameK env,
+         relK = #relK env,
+
+         renameC = SM.insert (renameC, x, Rel' (0, k)),
          relC = (x, k) :: #relC env,
          namedC = #namedC env,
 
@@ -298,7 +381,10 @@ fun lookupCRel (env : env) n =
     handle Subscript => raise UnboundRel n
 
 fun pushCNamedAs (env : env) x n k co =
-    {renameC = SM.insert (#renameC env, x, Named' (n, k)),
+    {renameK = #renameK env,
+     relK = #relK env,
+
+     renameC = SM.insert (#renameC env, x, Named' (n, k)),
      relC = #relC env,
      namedC = IM.insert (#namedC env, n, (x, k, co)),
 
@@ -340,7 +426,10 @@ fun pushDatatype (env : env) n xs xncs =
     let
         val dk = U.classifyDatatype xncs
     in
-        {renameC = #renameC env,
+        {renameK = #renameK env,
+         relK = #relK env,
+
+         renameC = #renameC env,
          relC = #relC env,
          namedC = #namedC env,
 
@@ -380,7 +469,10 @@ fun datatypeArgs (xs, _) = xs
 fun constructors (_, dt) = IM.foldri (fn (n, (x, to), ls) => (x, n, to) :: ls) [] dt
 
 fun pushClass (env : env) n =
-    {renameC = #renameC env,
+    {renameK = #renameK env,
+     relK = #relK env,
+
+     renameC = #renameC env,
      relC = #relC env,
      namedC = #namedC env,
 
@@ -468,7 +560,10 @@ fun pushERel (env : env) x t =
                                   CM.insert (classes, f, class)
                               end
     in
-        {renameC = #renameC env,
+        {renameK = #renameK env,
+         relK = #relK env,
+
+         renameC = #renameC env,
          relC = #relC env,
          namedC = #namedC env,
 
@@ -509,7 +604,10 @@ fun pushENamedAs (env : env) x n t =
                                   CM.insert (classes, f, class)
                               end
     in
-        {renameC = #renameC env,
+        {renameK = #renameK env,
+         relK = #relK env,
+
+         renameC = #renameC env,
          relC = #relC env,
          namedC = #namedC env,
 
@@ -552,7 +650,10 @@ fun lookupE (env : env) x =
       | SOME (Named' x) => Named x
 
 fun pushSgnNamedAs (env : env) x n sgis =
-    {renameC = #renameC env,
+    {renameK = #renameK env,
+     relK = #relK env,
+
+     renameC = #renameC env,
      relC = #relC env,
      namedC = #namedC env,
 
@@ -868,7 +969,10 @@ fun enrichClasses env classes (m1, ms) sgn =
       | _ => classes
 
 fun pushStrNamedAs (env : env) x n sgn =
-    {renameC = #renameC env,
+    {renameK = #renameK env,
+     relK = #relK env,
+
+     renameC = #renameC env,
      relC = #relC env,
      namedC = #namedC env,
 

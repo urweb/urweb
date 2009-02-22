@@ -28,7 +28,7 @@
 (* Pretty-printing Ur/Web *)
 
 signature ELAB_PRINT = sig
-    val p_kind : Elab.kind Print.printer
+    val p_kind : ElabEnv.env -> Elab.kind Print.printer
     val p_explicitness : Elab.explicitness Print.printer
     val p_con : ElabEnv.env -> Elab.con Print.printer
     val p_pat : ElabEnv.env -> Elab.pat Print.printer

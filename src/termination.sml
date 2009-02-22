@@ -190,6 +190,7 @@ fun declOk' env (d, loc) =
                                     in
                                         (p, ps, calls)
                                     end
+                                  | EKApp (e, _) => combiner calls e
                                   | _ =>
                                     let
                                         val (p, calls) = exp parent (penv, calls) e
@@ -239,6 +240,13 @@ fun declOk' env (d, loc) =
                         in
                             (Rabble, calls)
                         end
+                      | EKApp _ => apps ()
+                      | EKAbs (_, e) =>
+                        let
+                            val (_, calls) = exp parent (penv, calls) e
+                        in
+                            (Rabble, calls)
+                        end
 
                       | ERecord xets =>
                         let
@@ -278,7 +286,6 @@ fun declOk' env (d, loc) =
                         in
                             (Rabble, calls)
                         end
-                      | EFold _ => (Rabble, calls)
 
                       | ECase (e, pes, _) =>
                         let

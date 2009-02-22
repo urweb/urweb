@@ -38,6 +38,9 @@ datatype kind' =
        | KTuple of kind list
        | KWild
 
+       | KFun of string * kind
+       | KVar of string
+
 withtype kind = kind' located
 
 datatype explicitness =
@@ -55,6 +58,9 @@ datatype con' =
        | CApp of con * con
        | CAbs of string * kind option * con
        | CDisjoint of con * con * con
+
+       | CKAbs of string * con
+       | TKFun of string * con
 
        | CName of string
 
@@ -119,12 +125,13 @@ datatype exp' =
        | ECAbs of explicitness * string * kind * exp
        | EDisjoint of con * con * exp
 
+       | EKAbs of string * exp
+
        | ERecord of (con * exp) list
        | EField of exp * con
        | EConcat of exp * exp
        | ECut of exp * con
        | ECutMulti of exp * con
-       | EFold
 
        | EWild
 

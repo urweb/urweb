@@ -27,11 +27,16 @@
 
 signature ELAB_ERR = sig
 
+    datatype kind_error =
+             UnboundKind of ErrorMsg.span * string
+
+    val kindError : ElabEnv.env -> kind_error -> unit
+
     datatype kunify_error =
              KOccursCheckFailed of Elab.kind * Elab.kind
            | KIncompatible of Elab.kind * Elab.kind
 
-    val kunifyError : kunify_error -> unit
+    val kunifyError : ElabEnv.env -> kunify_error -> unit
 
     datatype con_error =
              UnboundCon of ErrorMsg.span * string

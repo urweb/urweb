@@ -592,7 +592,6 @@ fun corifyExp st (e, loc) =
                                                    {field = corifyCon st field, rest = corifyCon st rest}), loc)
       | L.ECutMulti (e1, c, {rest}) => (L'.ECutMulti (corifyExp st e1, corifyCon st c,
                                                       {rest = corifyCon st rest}), loc)
-      | L.EFold k => (L'.EFold (corifyKind k), loc)
 
       | L.ECase (e, pes, {disc, result}) =>
         (L'.ECase (corifyExp st e,

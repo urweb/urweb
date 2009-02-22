@@ -27,6 +27,12 @@
 
 signature ELAB_OPS = sig
 
+    val liftKindInKind : int -> Elab.kind -> Elab.kind
+    val subKindInKind : int * Elab.kind -> Elab.kind -> Elab.kind
+
+    val liftKindInCon : int -> Elab.con -> Elab.con
+    val subKindInCon : int * Elab.kind -> Elab.con -> Elab.con
+
     val liftConInCon : int -> Elab.con -> Elab.con
     val subConInCon : int * Elab.con -> Elab.con -> Elab.con
     val subStrInSgn : int * int -> Elab.sgn -> Elab.sgn

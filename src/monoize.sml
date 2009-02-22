@@ -2183,7 +2183,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EConcat _ => poly ()
           | L.ECut _ => poly ()
           | L.ECutMulti _ => poly ()
-          | L.EFold _ => poly ()
 
           | L.ECase (e, pes, {disc, result}) =>
             let

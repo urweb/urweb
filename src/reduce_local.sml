@@ -107,8 +107,6 @@ fun exp env (all as (e, loc)) =
       | ECut (e, c, others) => (ECut (exp env e, c, others), loc)
       | ECutMulti (e, c, others) => (ECutMulti (exp env e, c, others), loc)
 
-      | EFold _ => all
-
       | ECase (e, pes, others) =>
         let
             fun patBinds (p, _) =

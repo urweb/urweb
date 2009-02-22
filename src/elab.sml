@@ -40,6 +40,9 @@ datatype kind' =
        | KError
        | KUnif of ErrorMsg.span * string * kind option ref
 
+       | KRel of int
+       | KFun of string * kind
+
 withtype kind = kind' located
 
 datatype explicitness =
@@ -61,6 +64,10 @@ datatype con' =
        | CApp of con * con
        | CAbs of string * kind * con
        | CDisjoint of auto_instantiate * con * con * con
+
+       | CKAbs of string * con
+       | CKApp of con * kind
+       | TKFun of string * con
 
        | CName of string
 
@@ -106,12 +113,14 @@ datatype exp' =
        | ECApp of exp * con
        | ECAbs of explicitness * string * kind * exp
 
+       | EKAbs of string * exp
+       | EKApp of exp * kind
+
        | ERecord of (con * exp * con) list
        | EField of exp * con * { field : con, rest : con }
        | EConcat of exp * con * exp * con
        | ECut of exp * con * { field : con, rest : con }
        | ECutMulti of exp * con * { rest : con }
-       | EFold of kind
 
        | ECase of exp * (pat * exp) list * { disc : con, result : con }
 

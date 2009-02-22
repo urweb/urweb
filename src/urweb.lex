@@ -247,7 +247,9 @@ notags = [^<{\n]+;
 <INITIAL> "}"         => (exitBrace ();
                           Tokens.RBRACE (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "-->"       => (Tokens.KARROW (pos yypos, pos yypos + size yytext));
 <INITIAL> "->"        => (Tokens.ARROW (pos yypos, pos yypos + size yytext));
+<INITIAL> "==>"       => (Tokens.DKARROW (pos yypos, pos yypos + size yytext));
 <INITIAL> "=>"        => (Tokens.DARROW (pos yypos, pos yypos + size yytext));
 <INITIAL> "++"        => (Tokens.PLUSPLUS (pos yypos, pos yypos + size yytext));
 <INITIAL> "--"        => (Tokens.MINUSMINUS (pos yypos, pos yypos + size yytext));
@@ -291,7 +293,6 @@ notags = [^<{\n]+;
 <INITIAL> "fun"       => (Tokens.FUN (pos yypos, pos yypos + size yytext));
 <INITIAL> "fn"        => (Tokens.FN (pos yypos, pos yypos + size yytext));
 <INITIAL> "map"       => (Tokens.MAP (pos yypos, pos yypos + size yytext));
-<INITIAL> "fold"      => (Tokens.FOLD (pos yypos, pos yypos + size yytext));
 <INITIAL> "case"      => (Tokens.CASE (pos yypos, pos yypos + size yytext));
 <INITIAL> "if"        => (Tokens.IF (pos yypos, pos yypos + size yytext));
 <INITIAL> "then"      => (Tokens.THEN (pos yypos, pos yypos + size yytext));

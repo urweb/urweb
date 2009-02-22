@@ -37,7 +37,7 @@ structure U = ElabUtil
 structure IS = IntBinarySet
 
 fun liftExpInExp by =
-    U.Exp.mapB {kind = fn k => k,
+    U.Exp.mapB {kind = fn _ => fn k => k,
                 con = fn _ => fn c => c,
                 exp = fn bound => fn e =>
                                      case e of
@@ -51,7 +51,7 @@ fun liftExpInExp by =
                         | (bound, _) => bound}
 
 val subExpInExp =
-    U.Exp.mapB {kind = fn k => k,
+    U.Exp.mapB {kind = fn _ => fn k => k,
                 con = fn _ => fn c => c,
                 exp = fn (xn, rep) => fn e =>
                                   case e of
@@ -65,7 +65,7 @@ val subExpInExp =
                         | ((xn, rep), U.Exp.RelC _) => (xn, E.liftConInExp 0 rep)
                         | (ctx, _) => ctx}
 
-val fvsCon = U.Con.foldB {kind = fn (_, st) => st,
+val fvsCon = U.Con.foldB {kind = fn (_, _, st) => st,
                           con = fn (cb, c, cvs) =>
                                    case c of
                                        CRel n =>
@@ -76,11 +76,11 @@ val fvsCon = U.Con.foldB {kind = fn (_, st) => st,
                                      | _ => cvs,
                           bind = fn (cb, b) =>
                                     case b of
-                                        U.Con.Rel _ => cb + 1
+                                        U.Con.RelC _ => cb + 1
                                       | _ => cb}
                          0 IS.empty
 
-fun fvsExp nr = U.Exp.foldB {kind = fn (_, st) => st,
+fun fvsExp nr = U.Exp.foldB {kind = fn (_, _, st) => st,
                              con = fn ((cb, eb), c, st as (cvs, evs)) =>
                                       case c of
                                           CRel n =>
@@ -124,7 +124,7 @@ fun positionOf (x : int) ls =
     end
 
 fun squishCon cfv =
-    U.Con.mapB {kind = fn k => k,
+    U.Con.mapB {kind = fn _ => fn k => k,
                 con = fn cb => fn c =>
                                   case c of
                                       CRel n =>
@@ -135,12 +135,12 @@ fun squishCon cfv =
                                     | _ => c,
                 bind = fn (cb, b) =>
                           case b of
-                              U.Con.Rel _ => cb + 1
+                              U.Con.RelC _ => cb + 1
                             | _ => cb}
                0
 
 fun squishExp (nr, cfv, efv) =
-    U.Exp.mapB {kind = fn k => k,
+    U.Exp.mapB {kind = fn _ => fn k => k,
                 con = fn (cb, eb) => fn c =>
                                         case c of
                                             CRel n =>
@@ -169,7 +169,7 @@ type state = {
      decls : (string * int * con * exp) list
 }
 
-fun kind (k, st) = (k, st)
+fun kind (_, k, st) = (k, st)
 
 fun exp ((ks, ts), e as old, st : state) =
     case e of

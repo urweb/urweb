@@ -30,17 +30,24 @@ signature ELAB_UTIL = sig
 val classifyDatatype : (string * int * 'a option) list -> Elab.datatype_kind
 
 structure Kind : sig
+    val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,
+                    bind : 'context * string -> 'context}
+                   -> ('context, Elab.kind, 'state, 'abort) Search.mapfolderB
     val mapfold : (Elab.kind', 'state, 'abort) Search.mapfolder
                   -> (Elab.kind, 'state, 'abort) Search.mapfolder
     val exists : (Elab.kind' -> bool) -> Elab.kind -> bool
+    val mapB : {kind : 'context -> Elab.kind' -> Elab.kind',
+                bind : 'context * string -> 'context}
+               -> 'context -> (Elab.kind -> Elab.kind)
 end
 
 structure Con : sig
     datatype binder =
-             Rel of string * Elab.kind
-           | Named of string * int * Elab.kind
+             RelK of string
+           | RelC of string * Elab.kind
+           | NamedC of string * int * Elab.kind
 
-    val mapfoldB : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+    val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
                     bind : 'context * binder -> 'context}
                    -> ('context, Elab.con, 'state, 'abort) Search.mapfolderB
@@ -48,7 +55,7 @@ structure Con : sig
                    con : (Elab.con', 'state, 'abort) Search.mapfolder}
                   -> (Elab.con, 'state, 'abort) Search.mapfolder
 
-    val mapB : {kind : Elab.kind' -> Elab.kind',
+    val mapB : {kind : 'context -> Elab.kind' -> Elab.kind',
                 con : 'context -> Elab.con' -> Elab.con',
                 bind : 'context * binder -> 'context}
                -> 'context -> (Elab.con -> Elab.con)
@@ -58,7 +65,7 @@ structure Con : sig
     val exists : {kind : Elab.kind' -> bool,
                   con : Elab.con' -> bool} -> Elab.con -> bool
 
-    val foldB : {kind : Elab.kind' * 'state -> 'state,
+    val foldB : {kind : 'context * Elab.kind' * 'state -> 'state,
                  con : 'context * Elab.con' * 'state -> 'state,
                  bind : 'context * binder -> 'context}
                 -> 'context -> 'state -> Elab.con -> 'state
@@ -66,12 +73,13 @@ end
 
 structure Exp : sig
     datatype binder =
-             RelC of string * Elab.kind
+             RelK of string
+           | RelC of string * Elab.kind
            | NamedC of string * int * Elab.kind
            | RelE of string * Elab.con
            | NamedE of string * Elab.con
 
-    val mapfoldB : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+    val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
                     exp : ('context, Elab.exp', 'state, 'abort) Search.mapfolderB,
                     bind : 'context * binder -> 'context}
@@ -80,7 +88,7 @@ structure Exp : sig
                    con : (Elab.con', 'state, 'abort) Search.mapfolder,
                    exp : (Elab.exp', 'state, 'abort) Search.mapfolder}
                   -> (Elab.exp, 'state, 'abort) Search.mapfolder
-    val mapB : {kind : Elab.kind' -> Elab.kind',
+    val mapB : {kind : 'context -> Elab.kind' -> Elab.kind',
                 con : 'context -> Elab.con' -> Elab.con',
                 exp : 'context -> Elab.exp' -> Elab.exp',
                 bind : 'context * binder -> 'context}
@@ -89,7 +97,7 @@ structure Exp : sig
                   con : Elab.con' -> bool,
                   exp : Elab.exp' -> bool} -> Elab.exp -> bool
 
-    val foldB : {kind : Elab.kind' * 'state -> 'state,
+    val foldB : {kind : 'context * Elab.kind' * 'state -> 'state,
                  con : 'context * Elab.con' * 'state -> 'state,
                  exp : 'context * Elab.exp' * 'state -> 'state,
                  bind : 'context * binder -> 'context}
@@ -98,12 +106,13 @@ end
 
 structure Sgn : sig
     datatype binder =
-             RelC of string * Elab.kind
+             RelK of string
+           | RelC of string * Elab.kind
            | NamedC of string * int * Elab.kind
            | Str of string * Elab.sgn
            | Sgn of string * Elab.sgn
 
-    val mapfoldB : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+    val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
                     sgn_item : ('context, Elab.sgn_item', 'state, 'abort) Search.mapfolderB,
                     sgn : ('context, Elab.sgn', 'state, 'abort) Search.mapfolderB,
@@ -127,14 +136,15 @@ end
 
 structure Decl : sig
     datatype binder =
-             RelC of string * Elab.kind
+             RelK of string
+           | RelC of string * Elab.kind
            | NamedC of string * int * Elab.kind
            | RelE of string * Elab.con
            | NamedE of string * Elab.con
            | Str of string * Elab.sgn
            | Sgn of string * Elab.sgn
 
-    val mapfoldB : {kind : (Elab.kind', 'state, 'abort) Search.mapfolder,
+    val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
                     exp : ('context, Elab.exp', 'state, 'abort) Search.mapfolderB,
                     sgn_item : ('context, Elab.sgn_item', 'state, 'abort) Search.mapfolderB,
@@ -168,7 +178,7 @@ structure Decl : sig
                   decl : Elab.decl' -> 'a option}
                  -> Elab.decl -> 'a option
 
-    val foldMapB : {kind : Elab.kind' * 'state -> Elab.kind' * 'state,
+    val foldMapB : {kind : 'context * Elab.kind' * 'state -> Elab.kind' * 'state,
                     con : 'context * Elab.con' * 'state -> Elab.con' * 'state,
                     exp : 'context * Elab.exp' * 'state -> Elab.exp' * 'state,
                     sgn_item : 'context * Elab.sgn_item' * 'state -> Elab.sgn_item' * 'state,

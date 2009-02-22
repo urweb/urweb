@@ -454,10 +454,6 @@ fun compare ((e1, _), (e2, _)) =
       | (ECutMulti _, _) => LESS
       | (_, ECutMulti _) => GREATER
 
-      | (EFold _, EFold _) => EQUAL
-      | (EFold _, _) => LESS
-      | (_, EFold _) => GREATER
-
       | (ECase (e1, pes1, _), ECase (e2, pes2, _)) =>
         join (compare (e1, e2),
               fn () => joinL (fn ((p1, e1), (p2, e2)) =>
@@ -609,10 +605,6 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                  S.map2 (mfc ctx rest,
                                       fn rest' =>
                                          (ECutMulti (e', c', {rest = rest'}), loc))))
-              | EFold k =>
-                S.map2 (mfk k,
-                         fn k' =>
-                            (EFold k', loc))
 
               | ECase (e, pes, {disc, result}) =>
                 S.bind2 (mfe ctx e,

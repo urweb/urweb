@@ -50,6 +50,13 @@ fun p_kind' par (k, _) =
                           p_list_sep (box [space, string "*", space]) p_kind ks,
                           string ")"]
 
+      | KVar x => string x
+      | KFun (x, k) => box [string x,
+                            space,
+                            string "-->",
+                            space,
+                            p_kind k]
+
 and p_kind k = p_kind' false k
 
 fun p_explicitness e =
@@ -156,6 +163,17 @@ fun p_con' par (c, _) =
       | CProj (c, n) => box [p_con c,
                              string ".",
                              string (Int.toString n)]
+
+      | CKAbs (x, c) => box [string x,
+                             space,
+                             string "==>",
+                             space,
+                             p_con c]
+      | TKFun (x, c) => box [string x,
+                             space,
+                             string "-->",
+                             space,
+                             p_con c]
         
 and p_con c = p_con' false c
 
@@ -273,8 +291,6 @@ fun p_exp' par (e, _) =
                                               string "---",
                                               space,
                                               p_con' true c])
-      | EFold => string "fold"
-
       | ECase (e, pes) => parenIf par (box [string "case",
                                             space,
                                             p_exp e,
@@ -299,6 +315,12 @@ fun p_exp' par (e, _) =
                              box [p_exp e],
                              newline,
                              string "end"]
+
+      | EKAbs (x, e) => box [string x,
+                             space,
+                             string "-->",
+                             space,
+                             p_exp e]
 
 and p_exp e = p_exp' false e
 

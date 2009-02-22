@@ -342,7 +342,6 @@ fun p_exp' par env (e, _) =
                               string "---",
                               space,
                               p_con' true env c])
-      | EFold _ => string "fold"
 
       | ECase (e, pes, {disc, result}) =>
         parenIf par (box [string "case",
