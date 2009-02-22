@@ -43,7 +43,7 @@ structure KM = BinaryMapFn(K)
 structure IM = IntBinaryMap
 structure IS = IntBinarySet
 
-val freeVars = U.Exp.foldB {kind = fn (_, xs) => xs,
+val freeVars = U.Exp.foldB {kind = fn (_, _, xs) => xs,
                             con = fn (_, _, xs) => xs,
                             exp = fn (bound, e, xs) =>
                                      case e of
@@ -80,7 +80,7 @@ fun positionOf (v : int, ls) =
     end
 
 fun squish fvs =
-    U.Exp.mapB {kind = fn k => k,
+    U.Exp.mapB {kind = fn _ => fn k => k,
                 con = fn _ => fn c => c,
                 exp = fn bound => fn e =>
                                      case e of
@@ -110,7 +110,6 @@ type state = {
      decls : (string * int * con * exp * string) list
 }
 
-fun id x = x
 fun default (_, x, st) = (x, st)
 
 fun specialize' file =
@@ -281,9 +280,9 @@ fun specialize' file =
                         end
             end
 
-        and specExp env = U.Exp.foldMapB {kind = id, con = default, exp = exp, bind = bind} env
+        and specExp env = U.Exp.foldMapB {kind = default, con = default, exp = exp, bind = bind} env
 
-        val specDecl = U.Decl.foldMapB {kind = id, con = default, exp = exp, decl = default, bind = bind}
+        val specDecl = U.Decl.foldMapB {kind = default, con = default, exp = exp, decl = default, bind = bind}
 
         fun doDecl (d, (st : state, changed)) =
             let

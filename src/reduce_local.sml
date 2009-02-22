@@ -85,8 +85,10 @@ fun exp env (all as (e, loc)) =
       | EAbs (x, dom, ran, e) => (EAbs (x, dom, ran, exp (Unknown :: env) e), loc)
 
       | ECApp (e, c) => (ECApp (exp env e, c), loc)
-
       | ECAbs (x, k, e) => (ECAbs (x, k, exp env e), loc)
+
+      | EKApp (e, k) => (EKApp (exp env e, k), loc)
+      | EKAbs (x, e) => (EKAbs (x, exp env e), loc)
 
       | ERecord xcs => (ERecord (map (fn (x, e, t) => (x, exp env e, t)) xcs), loc)
       | EField (e, c, others) =>

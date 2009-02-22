@@ -34,60 +34,104 @@ open Core
 structure IM = IntBinaryMap
 
 datatype env_item =
-         UnknownC
+         UnknownK
+       | KnownK of kind
+
+       | UnknownC
        | KnownC of con
 
        | UnknownE
        | KnownE of exp
 
-       | Lift of int * int
+       | Lift of int * int * int
 
 type env = env_item list
 
 fun ei2s ei =
     case ei of
-        UnknownC => "UC"
+        UnknownK => "UK"
+      | KnownK _ => "KK"
+      | UnknownC => "UC"
       | KnownC _ => "KC"
       | UnknownE => "UE"
       | KnownE _ => "KE"
-      | Lift (n1, n2) => "(" ^ Int.toString n1 ^ ", " ^ Int.toString n2 ^ ")"
+      | Lift (_, n1, n2) => "(" ^ Int.toString n1 ^ ", " ^ Int.toString n2 ^ ")"
 
 fun e2s env = String.concatWith " " (map ei2s env)
 
 val deKnown = List.filter (fn KnownC _ => false
                             | KnownE _ => false
+                            | KnownK _ => false
                             | _ => true)
 
-fun conAndExp (namedC, namedE) =
+fun kindConAndExp (namedC, namedE) =
     let
+        fun kind env (all as (k, loc)) =
+            case k of
+                KType => all
+              | KArrow (k1, k2) => (KArrow (kind env k1, kind env k2), loc)
+              | KName => all
+              | KRecord k => (KRecord (kind env k), loc)
+              | KUnit => all
+              | KTuple ks => (KTuple (map (kind env) ks), loc)
+
+              | KRel n =>
+                let
+                    fun find (n', env, nudge, lift) =
+                        case env of
+                            [] => raise Fail "Reduce.kind: KRel"
+                          | UnknownC :: rest => find (n', rest, nudge, lift)
+                          | KnownC _ :: rest => find (n', rest, nudge, lift)
+                          | UnknownE :: rest => find (n', rest, nudge, lift)
+                          | KnownE _ :: rest => find (n', rest, nudge, lift)
+                          | Lift (lift', _, _) :: rest => find (n', rest, nudge + lift', lift + lift')
+                          | UnknownK :: rest =>
+                            if n' = 0 then
+                                (KRel (n + nudge), loc)
+                            else
+                                find (n' - 1, rest, nudge, lift + 1)
+                          | KnownK k :: rest =>
+                            if n' = 0 then
+                                kind (Lift (lift, 0, 0) :: rest) k
+                            else
+                                find (n' - 1, rest, nudge - 1, lift)
+                in
+                    find (n, env, 0, 0)
+                end
+              | KFun (x, k) => (KFun (x, kind (UnknownK :: env) k), loc)
+
         fun con env (all as (c, loc)) =
             ((*Print.prefaces "con" [("c", CorePrint.p_con CoreEnv.empty all)];*)
             case c of
                 TFun (c1, c2) => (TFun (con env c1, con env c2), loc)
-              | TCFun (x, k, c2) => (TCFun (x, k, con (UnknownC :: env) c2), loc)
+              | TCFun (x, k, c2) => (TCFun (x, kind env k, con (UnknownC :: env) c2), loc)
+              | TKFun (x, c2) => (TKFun (x, con (UnknownK :: env) c2), loc)
               | TRecord c => (TRecord (con env c), loc)
 
               | CRel n =>
                 let
-                    fun find (n', env, nudge, lift) =
+                    fun find (n', env, nudge, liftK, liftC) =
                         case env of
                             [] => raise Fail "Reduce.con: CRel"
-                          | UnknownE :: rest => find (n', rest, nudge, lift)
-                          | KnownE _ :: rest => find (n', rest, nudge, lift)
-                          | Lift (lift', _) :: rest => find (n', rest, nudge + lift', lift + lift')
+                          | UnknownK :: rest => find (n', rest, nudge, liftK + 1, liftC)
+                          | KnownK _ :: rest => find (n', rest, nudge, liftK, liftC)
+                          | UnknownE :: rest => find (n', rest, nudge, liftK, liftC)
+                          | KnownE _ :: rest => find (n', rest, nudge, liftK, liftC)
+                          | Lift (liftK', liftC', _) :: rest => find (n', rest, nudge + liftC',
+                                                                      liftK + liftK', liftC + liftC')
                           | UnknownC :: rest =>
                             if n' = 0 then
                                 (CRel (n + nudge), loc)
                             else
-                                find (n' - 1, rest, nudge, lift + 1)
+                                find (n' - 1, rest, nudge, liftK, liftC + 1)
                           | KnownC c :: rest =>
                             if n' = 0 then
-                                con (Lift (lift, 0) :: rest) c
+                                con (Lift (liftK, liftC, 0) :: rest) c
                             else
-                                find (n' - 1, rest, nudge - 1, lift)
+                                find (n' - 1, rest, nudge - 1, liftK, liftC)
                 in
                     (*print (Int.toString n ^ ": " ^ e2s env ^ "\n");*)
-                    find (n, env, 0, 0)
+                    find (n, env, 0, 0, 0)
                 end
               | CNamed n =>
                 (case IM.find (namedC, n) of
@@ -105,20 +149,32 @@ fun conAndExp (namedC, namedE) =
 
                       | CApp ((CMap (dom, ran), _), f) =>
                         (case #1 c2 of
-                             CRecord (_, []) => (CRecord (ran, []), loc)
+                             CRecord (_, []) => (CRecord (kind env ran, []), loc)
                            | CRecord (_, (x, c) :: rest) =>
                              con (deKnown env)
                                  (CConcat ((CRecord (ran, [(x, (CApp (f, c), loc))]), loc),
-                                           (CApp (c1, (CRecord (dom, rest), loc)), loc)), loc)
+                                           (CApp (c1, (CRecord (kind env dom, rest), loc)), loc)), loc)
                            | _ => (CApp (c1, c2), loc))                           
 
                       | _ => (CApp (c1, c2), loc)
                 end
-              | CAbs (x, k, b) => (CAbs (x, k, con (UnknownC :: env) b), loc)
+              | CAbs (x, k, b) => (CAbs (x, kind env k, con (UnknownC :: env) b), loc)
+
+              | CKApp (c1, k) =>
+                let
+                    val c1 = con env c1
+                in
+                    case #1 c1 of
+                        CKAbs (_, b) =>
+                        con (KnownK k :: deKnown env) b
+
+                      | _ => (CKApp (c1, kind env k), loc)
+                end
+              | CKAbs (x, b) => (CKAbs (x, con (UnknownK :: env) b), loc)
 
               | CName _ => all
 
-              | CRecord (k, xcs) => (CRecord (k, map (fn (x, c) => (con env x, con env c)) xcs), loc)
+              | CRecord (k, xcs) => (CRecord (kind env k, map (fn (x, c) => (con env x, con env c)) xcs), loc)
               | CConcat (c1, c2) =>
                 let
                     val c1 = con env c1
@@ -126,10 +182,10 @@ fun conAndExp (namedC, namedE) =
                 in
                     case (#1 c1, #1 c2) of
                         (CRecord (k, xcs1), CRecord (_, xcs2)) =>
-                        (CRecord (k, xcs1 @ xcs2), loc)
+                        (CRecord (kind env k, xcs1 @ xcs2), loc)
                       | _ => (CConcat (c1, c2), loc)
                 end
-              | CMap _ => all
+              | CMap (dom, ran) => (CMap (kind env dom, kind env ran), loc)
 
               | CUnit => all
 
@@ -164,27 +220,30 @@ fun conAndExp (namedC, namedE) =
                 EPrim _ => all
               | ERel n =>
                 let
-                    fun find (n', env, nudge, liftC, liftE) =
+                    fun find (n', env, nudge, liftK, liftC, liftE) =
                         case env of
                             [] => raise Fail "Reduce.exp: ERel"
-                          | UnknownC :: rest => find (n', rest, nudge, liftC + 1, liftE)
-                          | KnownC _ :: rest => find (n', rest, nudge, liftC, liftE)
-                          | Lift (liftC', liftE') :: rest => find (n', rest, nudge + liftE',
-                                                                   liftC + liftC', liftE + liftE')
+                          | UnknownK :: rest => find (n', rest, nudge, liftK + 1, liftC, liftE)
+                          | KnownK _ :: rest => find (n', rest, nudge, liftK, liftC, liftE)
+                          | UnknownC :: rest => find (n', rest, nudge, liftK, liftC + 1, liftE)
+                          | KnownC _ :: rest => find (n', rest, nudge, liftK, liftC, liftE)
+                          | Lift (liftK', liftC', liftE') :: rest =>
+                            find (n', rest, nudge + liftE',
+                                  liftK + liftK', liftC + liftC', liftE + liftE')
                           | UnknownE :: rest =>
                             if n' = 0 then
                                 (ERel (n + nudge), loc)
                             else
-                                find (n' - 1, rest, nudge, liftC, liftE + 1)
+                                find (n' - 1, rest, nudge, liftK, liftC, liftE + 1)
                           | KnownE e :: rest =>
                             if n' = 0 then
                                 ((*print "SUBSTITUTING\n";*)
-                                exp (Lift (liftC, liftE) :: rest) e)
+                                exp (Lift (liftK, liftC, liftE) :: rest) e)
                             else
-                                find (n' - 1, rest, nudge - 1, liftC, liftE)
+                                find (n' - 1, rest, nudge - 1, liftK, liftC, liftE)
                 in
                     (*print (Int.toString n ^ ": " ^ e2s env ^ "\n");*)
-                    find (n, env, 0, 0, 0)
+                    find (n, env, 0, 0, 0, 0)
                 end
               | ENamed n =>
                 (case IM.find (namedE, n) of
@@ -217,7 +276,18 @@ fun conAndExp (namedC, namedE) =
                       | _ => (ECApp (e, c), loc)
                 end
 
-              | ECAbs (x, k, e) => (ECAbs (x, k, exp (UnknownC :: env) e), loc)
+              | ECAbs (x, k, e) => (ECAbs (x, kind env k, exp (UnknownC :: env) e), loc)
+
+              | EKApp (e, k) =>
+                let
+                    val e = exp env e
+                in
+                    case #1 e of
+                        EKAbs (_, b) => exp (KnownK k :: deKnown env) b
+                      | _ => (EKApp (e, kind env k), loc)
+                end
+
+              | EKAbs (x, e) => (EKAbs (x, exp (UnknownK :: env) e), loc)
 
               | ERecord xcs => (ERecord (map (fn (x, e, t) => (con env x, exp env e, con env t)) xcs), loc)
               | EField (e, c, {field, rest}) =>
@@ -353,11 +423,12 @@ fun conAndExp (namedC, namedE) =
 
               | EServerCall (n, es, e, t) => (EServerCall (n, map (exp env) es, exp env e, con env t), loc))
     in
-        {con = con, exp = exp}
+        {kind = kind, con = con, exp = exp}
     end
 
-fun con namedC env c = #con (conAndExp (namedC, IM.empty)) env c
-fun exp (namedC, namedE) env e = #exp (conAndExp (namedC, namedE)) env e
+fun kind namedC env k = #kind (kindConAndExp (namedC, IM.empty)) env k
+fun con namedC env c = #con (kindConAndExp (namedC, IM.empty)) env c
+fun exp (namedC, namedE) env e = #exp (kindConAndExp (namedC, namedE)) env e
 
 fun reduce file =
     let
@@ -365,6 +436,7 @@ fun reduce file =
             case #1 d of
                 DCon (x, n, k, c) =>
                 let
+                    val k = kind namedC [] k
                     val c = con namedC [] c
                 in
                     ((DCon (x, n, k, c), loc),

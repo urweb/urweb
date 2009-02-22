@@ -58,44 +58,68 @@ fun compare ((k1, _), (k2, _)) =
       | (_, KUnit) => GREATER
 
       | (KTuple ks1, KTuple ks2) => joinL compare (ks1, ks2)
+      | (KTuple _, _) => LESS
+      | (_, KTuple _) => GREATER
 
-fun mapfold f =
+      | (KRel n1, KRel n2) => Int.compare (n1, n2)
+      | (KRel _, _) => LESS
+      | (_, KRel _) => GREATER
+
+      | (KFun (_, k1), KFun (_, k2)) => compare (k1, k2)
+
+fun mapfoldB {kind = f, bind} =
     let
-        fun mfk k acc =
-            S.bindP (mfk' k acc, f)
+        fun mfk ctx k acc =
+            S.bindP (mfk' ctx k acc, f ctx)
 
-        and mfk' (kAll as (k, loc)) =
+        and mfk' ctx (kAll as (k, loc)) =
             case k of
                 KType => S.return2 kAll
 
               | KArrow (k1, k2) =>
-                S.bind2 (mfk k1,
+                S.bind2 (mfk ctx k1,
                       fn k1' =>
-                         S.map2 (mfk k2,
+                         S.map2 (mfk ctx k2,
                               fn k2' =>
                                  (KArrow (k1', k2'), loc)))
 
               | KName => S.return2 kAll
 
               | KRecord k =>
-                S.map2 (mfk k,
+                S.map2 (mfk ctx k,
                         fn k' =>
                            (KRecord k', loc))
 
               | KUnit => S.return2 kAll
 
               | KTuple ks =>
-                S.map2 (ListUtil.mapfold mfk ks,
+                S.map2 (ListUtil.mapfold (mfk ctx) ks,
                         fn ks' =>
                            (KTuple ks', loc))
+
+              | KRel _ => S.return2 kAll
+              | KFun (x, k) =>
+                S.map2 (mfk (bind (ctx, x)) k,
+                        fn k' =>
+                           (KFun (x, k'), loc))
     in
         mfk
     end
 
+fun mapfold fk =
+    mapfoldB {kind = fn () => fk,
+              bind = fn ((), _) => ()} ()
+
 fun map f k =
     case mapfold (fn k => fn () => S.Continue (f k, ())) k () of
-        S.Return () => raise Fail "Core_util.Kind.map"
+        S.Return () => raise Fail "CoreUtil.Kind.map"
       | S.Continue (k, ()) => k
+
+fun mapB {kind, bind} ctx k =
+    case mapfoldB {kind = fn ctx => fn k => fn () => S.Continue (kind ctx k, ()),
+                   bind = bind} ctx k () of
+        S.Continue (k, ()) => k
+      | S.Return _ => raise Fail "CoreUtil.Kind.mapB: Impossible"
 
 fun exists f k =
     case mapfold (fn k => fn () =>
@@ -194,14 +218,29 @@ fun compare ((c1, _), (c2, _)) =
 
       | (CProj (c1, n1), CProj (c2, n2)) => join (Int.compare (n1, n2),
                                                   fn () => compare (c1, c2))
+      | (CProj _, _) => LESS
+      | (_, CProj _) => GREATER
+
+      | (CKAbs (_, c1), CKAbs (_, c2)) => compare (c1, c2)
+      | (CKAbs _, _) => LESS
+      | (_, CKAbs _) => GREATER
+
+      | (CKApp (c1, k1), CKApp (c2, k2)) =>
+        join (compare (c1, c2),
+              fn () => Kind.compare (k1, k2))
+      | (CKApp _, _) => LESS
+      | (_, CKApp _) => GREATER
+
+      | (TKFun (_, c1), TKFun (_, c2)) => compare (c1, c2)
 
 datatype binder =
-         Rel of string * kind
-       | Named of string * int * kind * con option
+         RelK of string
+       | RelC of string * kind
+       | NamedC of string * int * kind * con option
 
 fun mapfoldB {kind = fk, con = fc, bind} =
     let
-        val mfk = Kind.mapfold fk
+        val mfk = Kind.mapfoldB {kind = fk, bind = fn (ctx, x) => bind (ctx, RelK x)}
 
         fun mfc ctx c acc =
             S.bindP (mfc' ctx c acc, fc ctx)
@@ -215,9 +254,9 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                               fn c2' =>
                                  (TFun (c1', c2'), loc)))
               | TCFun (x, k, c) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
-                         S.map2 (mfc (bind (ctx, Rel (x, k))) c,
+                         S.map2 (mfc (bind (ctx, RelC (x, k))) c,
                               fn c' =>
                                  (TCFun (x, k', c'), loc)))
               | TRecord c =>
@@ -235,16 +274,16 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                               fn c2' =>
                                  (CApp (c1', c2'), loc)))
               | CAbs (x, k, c) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
-                         S.map2 (mfc (bind (ctx, Rel (x, k))) c,
+                         S.map2 (mfc (bind (ctx, RelC (x, k))) c,
                               fn c' =>
                                  (CAbs (x, k', c'), loc)))
 
               | CName _ => S.return2 cAll
 
               | CRecord (k, xcs) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
                          S.map2 (ListUtil.mapfold (fn (x, c) =>
                                                       S.bind2 (mfc ctx x,
@@ -262,9 +301,9 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                               fn c2' =>
                                  (CConcat (c1', c2'), loc)))
               | CMap (k1, k2) =>
-                S.bind2 (mfk k1,
+                S.bind2 (mfk ctx k1,
                          fn k1' =>
-                            S.map2 (mfk k2,
+                            S.map2 (mfk ctx k2,
                                     fn k2' =>
                                        (CMap (k1', k2'), loc)))
 
@@ -279,12 +318,27 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                 S.map2 (mfc ctx c,
                         fn c' =>
                            (CProj (c', n), loc))
+
+              | CKAbs (x, c) =>
+                S.map2 (mfc (bind (ctx, RelK x)) c,
+                        fn c' =>
+                           (CKAbs (x, c'), loc))
+              | CKApp (c, k) =>
+                S.bind2 (mfc ctx c,
+                      fn c' =>
+                         S.map2 (mfk ctx k,
+                                 fn k' =>
+                                    (CKApp (c', k'), loc)))
+              | TKFun (x, c) =>
+                S.map2 (mfc (bind (ctx, RelK x)) c,
+                        fn c' =>
+                           (TKFun (x, c'), loc))
     in
         mfc
     end
 
 fun mapfold {kind = fk, con = fc} =
-    mapfoldB {kind = fk,
+    mapfoldB {kind = fn () => fk,
               con = fn () => fc,
               bind = fn ((), _) => ()} ()
 
@@ -295,7 +349,7 @@ fun map {kind, con} c =
       | S.Continue (c, ()) => c
 
 fun mapB {kind, con, bind} ctx c =
-    case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
+    case mapfoldB {kind = fn ctx => fn k => fn () => S.Continue (kind ctx k, ()),
                    con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
                    bind = bind} ctx c () of
         S.Continue (c, ()) => c
@@ -482,22 +536,34 @@ fun compare ((e1, _), (e2, _)) =
         join (Int.compare (n1, n2),
               fn () => join (joinL compare (es1, es2),
                              fn () => compare (e1, e2)))
+      | (EServerCall _, _) => LESS
+      | (_, EServerCall _) => GREATER
+
+      | (EKAbs (_, e1), EKAbs (_, e2)) => compare (e1, e2)
+      | (EKAbs _, _) => LESS
+      | (_, EKAbs _) => GREATER
+
+      | (EKApp (e1, k1), EKApp (e2, k2)) =>
+        join (compare (e1, e2),
+              fn () => Kind.compare (k1, k2))
 
 datatype binder =
-         RelC of string * kind
+         RelK of string
+       | RelC of string * kind
        | NamedC of string * int * kind * con option
        | RelE of string * con
        | NamedE of string * int * con * exp option * string
 
 fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
     let
-        val mfk = Kind.mapfold fk
+        val mfk = Kind.mapfoldB {kind = fk, bind = fn (ctx, x) => bind (ctx, RelK x)}
 
         fun bind' (ctx, b) =
             let
                 val b' = case b of
-                             Con.Rel x => RelC x
-                           | Con.Named x => NamedC x
+                             Con.RelK x => RelK x
+                           | Con.RelC x => RelC x
+                           | Con.NamedC x => NamedC x
             in
                 bind (ctx, b')
             end
@@ -548,7 +614,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                               fn c' =>
                                  (ECApp (e', c'), loc)))
               | ECAbs (x, k, e) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
                          S.map2 (mfe (bind (ctx, RelC (x, k))) e,
                               fn e' =>
@@ -660,6 +726,17 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                     S.map2 (mfc ctx t,
                                             fn t' =>
                                                (EServerCall (n, es', e', t'), loc))))
+
+              | EKAbs (x, e) =>
+                S.map2 (mfe (bind (ctx, RelK x)) e,
+                        fn e' =>
+                           (EKAbs (x, e'), loc))
+              | EKApp (e, k) =>
+                S.bind2 (mfe ctx e,
+                        fn e' =>
+                           S.map2 (mfk ctx k,
+                                   fn k' =>
+                                      (EKApp (e', k'), loc)))
                          
         and mfp ctx (pAll as (p, loc)) =
             case p of
@@ -704,13 +781,13 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
     end
 
 fun mapfold {kind = fk, con = fc, exp = fe} =
-    mapfoldB {kind = fk,
+    mapfoldB {kind = fn () => fk,
               con = fn () => fc,
               exp = fn () => fe,
               bind = fn ((), _) => ()} ()
 
 fun mapB {kind, con, exp, bind} ctx e =
-    case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
+    case mapfoldB {kind = fn ctx => fn k => fn () => S.Continue (kind ctx k, ()),
                    con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
                    exp = fn ctx => fn e => fn () => S.Continue (exp ctx e, ()),
                    bind = bind} ctx e () of
@@ -732,7 +809,7 @@ fun fold {kind, con, exp} s e =
       | S.Return _ => raise Fail "CoreUtil.Exp.fold: Impossible"
 
 fun foldB {kind, con, exp, bind} ctx s e =
-    case mapfoldB {kind = fn k => fn s => S.Continue (k, kind (k, s)),
+    case mapfoldB {kind = fn ctx => fn k => fn s => S.Continue (k, kind (ctx, k, s)),
                   con = fn ctx => fn c => fn s => S.Continue (c, con (ctx, c, s)),
                   exp = fn ctx => fn e => fn s => S.Continue (e, exp (ctx, e, s)),
                   bind = bind} ctx e s of
@@ -759,11 +836,11 @@ fun exists {kind, con, exp} k =
       | S.Continue _ => false
 
 fun existsB {kind, con, exp, bind} ctx k =
-    case mapfoldB {kind = fn k => fn () =>
-                                     if kind k then
-                                         S.Return ()
-                                     else
-                                         S.Continue (k, ()),
+    case mapfoldB {kind = fn ctx => fn k => fn () =>
+                                               if kind (ctx, k) then
+                                                   S.Return ()
+                                               else
+                                                   S.Continue (k, ()),
                    con = fn ctx => fn c => fn () =>
                                               if con (ctx, c) then
                                                   S.Return ()
@@ -786,7 +863,7 @@ fun foldMap {kind, con, exp} s e =
       | S.Return _ => raise Fail "CoreUtil.Exp.foldMap: Impossible"
 
 fun foldMapB {kind, con, exp, bind} ctx s e =
-    case mapfoldB {kind = fn k => fn s => S.Continue (kind (k, s)),
+    case mapfoldB {kind = fn ctx => fn k => fn s => S.Continue (kind (ctx, k, s)),
                    con = fn ctx => fn c => fn s => S.Continue (con (ctx, c, s)),
                    exp = fn ctx => fn e => fn s => S.Continue (exp (ctx, e, s)),
                    bind = bind} ctx e s of
@@ -801,13 +878,14 @@ datatype binder = datatype Exp.binder
 
 fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
     let
-        val mfk = Kind.mapfold fk
+        val mfk = Kind.mapfoldB {kind = fk, bind = fn (ctx, x) => bind (ctx, RelK x)}
 
         fun bind' (ctx, b) =
             let
                 val b' = case b of
-                             Con.Rel x => RelC x
-                           | Con.Named x => NamedC x
+                             Con.RelK x => RelK x
+                           | Con.RelC x => RelC x
+                           | Con.NamedC x => NamedC x
             in
                 bind (ctx, b')
             end
@@ -821,7 +899,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
         and mfd' ctx (dAll as (d, loc)) =
             case d of
                 DCon (x, n, k, c) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
                          S.map2 (mfc ctx c,
                               fn c' =>
@@ -877,7 +955,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
     end    
 
 fun mapfold {kind = fk, con = fc, exp = fe, decl = fd} =
-    mapfoldB {kind = fk,
+    mapfoldB {kind = fn () => fk,
               con = fn () => fc,
               exp = fn () => fe,
               decl = fn () => fd,
@@ -900,7 +978,7 @@ fun foldMap {kind, con, exp, decl} s d =
       | S.Return _ => raise Fail "CoreUtil.Decl.foldMap: Impossible"
 
 fun foldMapB {kind, con, exp, decl, bind} ctx s d =
-    case mapfoldB {kind = fn k => fn s => S.Continue (kind (k, s)),
+    case mapfoldB {kind = fn ctx => fn k => fn s => S.Continue (kind (ctx, k, s)),
                    con = fn ctx => fn c => fn s => S.Continue (con (ctx, c, s)),
                    exp = fn ctx => fn e => fn s => S.Continue (exp (ctx, e, s)),
                    decl = fn ctx => fn d => fn s => S.Continue (decl (ctx, d, s)),
@@ -1009,14 +1087,14 @@ fun mapfoldB (all as {bind, ...}) =
     end
 
 fun mapfold {kind = fk, con = fc, exp = fe, decl = fd} =
-    mapfoldB {kind = fk,
+    mapfoldB {kind = fn () => fk,
               con = fn () => fc,
               exp = fn () => fe,
               decl = fn () => fd,
               bind = fn ((), _) => ()} ()
 
 fun mapB {kind, con, exp, decl, bind} ctx ds =
-    case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
+    case mapfoldB {kind = fn ctx => fn k => fn () => S.Continue (kind ctx k, ()),
                    con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
                    exp = fn ctx => fn e => fn () => S.Continue (exp ctx e, ()),
                    decl = fn ctx => fn d => fn () => S.Continue (decl ctx d, ()),
@@ -1025,7 +1103,7 @@ fun mapB {kind, con, exp, decl, bind} ctx ds =
       | S.Return _ => raise Fail "CoreUtil.File.mapB: Impossible"
 
 fun map {kind, con, exp, decl} ds =
-    mapB {kind = kind,
+    mapB {kind = fn () => kind,
           con = fn () => con,
           exp = fn () => exp,
           decl = fn () => decl,

@@ -43,6 +43,9 @@ signature CORE_ENV = sig
     exception UnboundRel of int
     exception UnboundNamed of int
 
+    val pushKRel : env -> string -> env
+    val lookupKRel : env -> int -> string
+
     val pushCRel : env -> string -> Core.kind -> env
     val lookupCRel : env -> int -> string * Core.kind
 

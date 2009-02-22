@@ -39,7 +39,7 @@ val functionInside = U.Con.exists {kind = fn _ => false,
                                           | CFfi ("Basis", "transaction") => true
                                           | _ => false}
 
-val freeVars = U.Exp.foldB {kind = fn (_, xs) => xs,
+val freeVars = U.Exp.foldB {kind = fn (_, _, xs) => xs,
                             con = fn (_, _, xs) => xs,
                             exp = fn (bound, e, xs) =>
                                      case e of
@@ -70,7 +70,7 @@ fun positionOf (v : int, ls) =
     end
 
 fun squish fvs =
-    U.Exp.mapB {kind = fn k => k,
+    U.Exp.mapB {kind = fn _ => fn k => k,
                 con = fn _ => fn c => c,
                 exp = fn bound => fn e =>
                                      case e of
@@ -211,12 +211,13 @@ fun exp (env, e, st) =
 
 fun bind (env, b) =
     case b of
-        U.Decl.RelC (x, k) => E.pushCRel env x k
+        U.Decl.RelK x => E.pushKRel env x
+      | U.Decl.RelC (x, k) => E.pushCRel env x k
       | U.Decl.NamedC (x, n, k, co) => E.pushCNamed env x n k co
       | U.Decl.RelE (x, t) => E.pushERel env x t
       | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t eo s
 
-fun doDecl env = U.Decl.foldMapB {kind = fn x => x,
+fun doDecl env = U.Decl.foldMapB {kind = default,
                                   con = default,
                                   exp = exp,
                                   decl = default,

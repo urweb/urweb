@@ -444,10 +444,14 @@ fun corifyKind (k, loc) =
       | L.KUnit => (L'.KUnit, loc)
       | L.KTuple ks => (L'.KTuple (map corifyKind ks), loc)
 
+      | L.KRel n => (L'.KRel n, loc)
+      | L.KFun (x, k) => (L'.KFun (x, corifyKind k), loc)
+
 fun corifyCon st (c, loc) =
     case c of
         L.TFun (t1, t2) => (L'.TFun (corifyCon st t1, corifyCon st t2), loc)
       | L.TCFun (x, k, t) => (L'.TCFun (x, corifyKind k, corifyCon st t), loc)
+      | L.TKFun (x, t) => (L'.TKFun (x, corifyCon st t), loc)
       | L.TRecord c => (L'.TRecord (corifyCon st c), loc)
 
       | L.CRel n => (L'.CRel n, loc)
@@ -467,6 +471,9 @@ fun corifyCon st (c, loc) =
 
       | L.CApp (c1, c2) => (L'.CApp (corifyCon st c1, corifyCon st c2), loc)
       | L.CAbs (x, k, c) => (L'.CAbs (x, corifyKind k, corifyCon st c), loc)
+
+      | L.CKApp (c1, k) => (L'.CKApp (corifyCon st c1, corifyKind k), loc)
+      | L.CKAbs (x, c) => (L'.CKAbs (x, corifyCon st c), loc)
 
       | L.CName s => (L'.CName s, loc)
 
@@ -581,6 +588,8 @@ fun corifyExp st (e, loc) =
       | L.EAbs (x, dom, ran, e1) => (L'.EAbs (x, corifyCon st dom, corifyCon st ran, corifyExp st e1), loc)
       | L.ECApp (e1, c) => (L'.ECApp (corifyExp st e1, corifyCon st c), loc)
       | L.ECAbs (x, k, e1) => (L'.ECAbs (x, corifyKind k, corifyExp st e1), loc)
+      | L.EKApp (e1, k) => (L'.EKApp (corifyExp st e1, corifyKind k), loc)
+      | L.EKAbs (x, e1) => (L'.EKAbs (x, corifyExp st e1), loc)
 
       | L.ERecord xes => (L'.ERecord (map (fn (c, e, t) =>
                                               (corifyCon st c, corifyExp st e, corifyCon st t)) xes), loc)

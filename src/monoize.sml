@@ -211,6 +211,10 @@ fun monoType env =
 
                   | L.CTuple _ => poly ()
                   | L.CProj _ => poly ()
+
+                  | L.CKAbs _ => poly ()
+                  | L.CKApp _ => poly ()
+                  | L.TKFun _ => poly ()
             end
     in
         mt env IM.empty
@@ -2265,6 +2269,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EServerCall (call, ek, t), loc), fm)
             end
+
+          | L.EKAbs _ => poly ()
+          | L.EKApp _ => poly ()
     end
 
 fun monoDecl (env, fm) (all as (d, loc)) =

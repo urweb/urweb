@@ -28,7 +28,7 @@
 (* Pretty-printing Ur/Web internal language *)
 
 signature CORE_PRINT = sig
-    val p_kind : Core.kind Print.printer
+    val p_kind : CoreEnv.env -> Core.kind Print.printer
     val p_con : CoreEnv.env -> Core.con Print.printer
     val p_pat : CoreEnv.env -> Core.pat Print.printer
     val p_exp : CoreEnv.env -> Core.exp Print.printer
