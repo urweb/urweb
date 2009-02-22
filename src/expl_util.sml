@@ -33,38 +33,54 @@ structure S = Search
 
 structure Kind = struct
 
-fun mapfold f =
+fun mapfoldB {kind, bind} =
     let
-        fun mfk k acc =
-            S.bindP (mfk' k acc, f)
+        fun mfk ctx k acc =
+            S.bindP (mfk' ctx k acc, kind ctx)
 
-        and mfk' (kAll as (k, loc)) =
+        and mfk' ctx (kAll as (k, loc)) =
             case k of
                 KType => S.return2 kAll
 
               | KArrow (k1, k2) =>
-                S.bind2 (mfk k1,
+                S.bind2 (mfk ctx k1,
                       fn k1' =>
-                         S.map2 (mfk k2,
+                         S.map2 (mfk ctx k2,
                               fn k2' =>
                                  (KArrow (k1', k2'), loc)))
 
               | KName => S.return2 kAll
 
               | KRecord k =>
-                S.map2 (mfk k,
+                S.map2 (mfk ctx k,
                         fn k' =>
                            (KRecord k', loc))
 
               | KUnit => S.return2 kAll
 
               | KTuple ks =>
-                S.map2 (ListUtil.mapfold mfk ks,
+                S.map2 (ListUtil.mapfold (mfk ctx) ks,
                         fn ks' =>
                            (KTuple ks', loc))
+
+              | KRel _ => S.return2 kAll
+              | KFun (x, k) =>
+                S.map2 (mfk (bind (ctx, x)) k,
+                        fn k' =>
+                           (KFun (x, k'), loc))
     in
         mfk
     end
+
+fun mapfold fk =
+    mapfoldB {kind = fn () => fk,
+              bind = fn ((), _) => ()} ()
+
+fun mapB {kind, bind} ctx k =
+    case mapfoldB {kind = fn ctx => fn k => fn () => S.Continue (kind ctx k, ()),
+                   bind = bind} ctx k () of
+        S.Continue (k, ()) => k
+      | S.Return _ => raise Fail "ExplUtil.Kind.mapB: Impossible"
 
 fun exists f k =
     case mapfold (fn k => fn () =>
@@ -80,12 +96,13 @@ end
 structure Con = struct
 
 datatype binder =
-         Rel of string * Expl.kind
-       | Named of string * Expl.kind
+         RelK of string
+       | RelC of string * Expl.kind
+       | NamedC of string * Expl.kind
 
 fun mapfoldB {kind = fk, con = fc, bind} =
     let
-        val mfk = Kind.mapfold fk
+        val mfk = Kind.mapfoldB {kind = fk, bind = fn (ctx, x) => bind (ctx, RelK x)}
 
         fun mfc ctx c acc =
             S.bindP (mfc' ctx c acc, fc ctx)
@@ -99,9 +116,9 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                               fn c2' =>
                                  (TFun (c1', c2'), loc)))
               | TCFun (x, k, c) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
-                         S.map2 (mfc (bind (ctx, Rel (x, k))) c,
+                         S.map2 (mfc (bind (ctx, RelC (x, k))) c,
                               fn c' =>
                                  (TCFun (x, k', c'), loc)))
               | TRecord c =>
@@ -119,16 +136,16 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                               fn c2' =>
                                  (CApp (c1', c2'), loc)))
               | CAbs (x, k, c) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
-                         S.map2 (mfc (bind (ctx, Rel (x, k))) c,
+                         S.map2 (mfc (bind (ctx, RelC (x, k))) c,
                               fn c' =>
                                  (CAbs (x, k', c'), loc)))
 
               | CName _ => S.return2 cAll
 
               | CRecord (k, xcs) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
                          S.map2 (ListUtil.mapfold (fn (x, c) =>
                                                       S.bind2 (mfc ctx x,
@@ -146,9 +163,9 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                               fn c2' =>
                                  (CConcat (c1', c2'), loc)))
               | CMap (k1, k2) =>
-                S.bind2 (mfk k1,
+                S.bind2 (mfk ctx k1,
                          fn k1' =>
-                            S.map2 (mfk k2,
+                            S.map2 (mfk ctx k2,
                                     fn k2' =>
                                        (CMap (k1', k2'), loc)))
 
@@ -163,17 +180,32 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                 S.map2 (mfc ctx c,
                         fn c' =>
                            (CProj (c', n), loc))
+
+              | CKAbs (x, c) =>
+                S.map2 (mfc (bind (ctx, RelK x)) c,
+                        fn c' =>
+                           (CKAbs (x, c'), loc))
+              | CKApp (c, k) =>
+                S.bind2 (mfc ctx c,
+                      fn c' =>
+                         S.map2 (mfk ctx k,
+                                 fn k' =>
+                                    (CKApp (c', k'), loc)))
+              | TKFun (x, c) =>
+                S.map2 (mfc (bind (ctx, RelK x)) c,
+                        fn c' =>
+                           (TKFun (x, c'), loc))
     in
         mfc
     end
 
 fun mapfold {kind = fk, con = fc} =
-    mapfoldB {kind = fk,
+    mapfoldB {kind = fn () => fk,
               con = fn () => fc,
               bind = fn ((), _) => ()} ()
 
 fun mapB {kind, con, bind} ctx c =
-    case mapfoldB {kind = fn k => fn () => S.Continue (kind k, ()),
+    case mapfoldB {kind = fn ctx => fn k => fn () => S.Continue (kind ctx k, ()),
                    con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
                    bind = bind} ctx c () of
         S.Continue (c, ()) => c
@@ -204,20 +236,22 @@ end
 structure Exp = struct
 
 datatype binder =
-         RelC of string * Expl.kind
+         RelK of string
+       | RelC of string * Expl.kind
        | NamedC of string * Expl.kind
        | RelE of string * Expl.con
        | NamedE of string * Expl.con
 
 fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
     let
-        val mfk = Kind.mapfold fk
+        val mfk = Kind.mapfoldB {kind = fk, bind = fn (ctx, x) => bind (ctx, RelK x)}
 
         fun bind' (ctx, b) =
             let
                 val b' = case b of
-                             Con.Rel x => RelC x
-                           | Con.Named x => NamedC x
+                             Con.RelK x => RelK x
+                           | Con.RelC x => RelC x
+                           | Con.NamedC x => NamedC x
             in
                 bind (ctx, b')
             end
@@ -254,7 +288,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                               fn c' =>
                                  (ECApp (e', c'), loc)))
               | ECAbs (x, k, e) =>
-                S.bind2 (mfk k,
+                S.bind2 (mfk ctx k,
                       fn k' =>
                          S.map2 (mfe (bind (ctx, RelC (x, k))) e,
                               fn e' =>
@@ -338,12 +372,23 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                      S.map2 (mfe (bind (ctx, RelE (x, t))) e2,
                                           fn e2' =>
                                              (ELet (x, t', e1', e2'), loc))))
+
+              | EKAbs (x, e) =>
+                S.map2 (mfe (bind (ctx, RelK x)) e,
+                        fn e' =>
+                           (EKAbs (x, e'), loc))
+              | EKApp (e, k) =>
+                S.bind2 (mfe ctx e,
+                        fn e' =>
+                           S.map2 (mfk ctx k,
+                                   fn k' =>
+                                      (EKApp (e', k'), loc)))
     in
         mfe
     end
 
 fun mapfold {kind = fk, con = fc, exp = fe} =
-    mapfoldB {kind = fk,
+    mapfoldB {kind = fn () => fk,
               con = fn () => fc,
               exp = fn () => fe,
               bind = fn ((), _) => ()} ()
@@ -372,7 +417,8 @@ end
 structure Sgn = struct
 
 datatype binder =
-         RelC of string * Expl.kind
+         RelK of string
+       | RelC of string * Expl.kind
        | NamedC of string * Expl.kind
        | Str of string * Expl.sgn
        | Sgn of string * Expl.sgn
@@ -382,14 +428,15 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
         fun bind' (ctx, b) =
             let
                 val b' = case b of
-                             Con.Rel x => RelC x
-                           | Con.Named x => NamedC x
+                             Con.RelK x => RelK x
+                           | Con.RelC x => RelC x
+                           | Con.NamedC x => NamedC x
             in
                 bind (ctx, b')
             end
         val con = Con.mapfoldB {kind = kind, con = con, bind = bind'}
 
-        val kind = Kind.mapfold kind
+        val kind = Kind.mapfoldB {kind = kind, bind = fn (ctx, x) => bind (ctx, RelK x)}
 
         fun sgi ctx si acc =
             S.bindP (sgi' ctx si acc, sgn_item ctx)
@@ -397,11 +444,11 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
         and sgi' ctx (siAll as (si, loc)) =
             case si of
                 SgiConAbs (x, n, k) =>
-                S.map2 (kind k,
+                S.map2 (kind ctx k,
                      fn k' =>
                         (SgiConAbs (x, n, k'), loc))
               | SgiCon (x, n, k, c) =>
-                S.bind2 (kind k,
+                S.bind2 (kind ctx k,
                      fn k' =>
                         S.map2 (con ctx c,
                              fn c' =>
@@ -482,7 +529,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
     end
 
 fun mapfold {kind, con, sgn_item, sgn} =
-    mapfoldB {kind = kind,
+    mapfoldB {kind = fn () => kind,
               con = fn () => con,
               sgn_item = fn () => sgn_item,
               sgn = fn () => sgn,

@@ -42,6 +42,9 @@ signature EXPL_ENV = sig
            | Rel of int * 'a
            | Named of int * 'a
 
+    val pushKRel : env -> string -> env
+    val lookupKRel : env -> int -> string
+
     val pushCRel : env -> string -> Expl.kind -> env
     val lookupCRel : env -> int -> string * Expl.kind
 

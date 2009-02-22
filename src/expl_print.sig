@@ -26,7 +26,7 @@
  *)
 
 signature EXPL_PRINT = sig
-    val p_kind : Expl.kind Print.printer
+    val p_kind : ExplEnv.env -> Expl.kind Print.printer
     val p_con : ExplEnv.env -> Expl.con Print.printer
     val p_exp : ExplEnv.env -> Expl.exp Print.printer
     val p_decl : ExplEnv.env -> Expl.decl Print.printer

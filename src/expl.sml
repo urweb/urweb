@@ -37,6 +37,9 @@ datatype kind' =
        | KTuple of kind list
        | KRecord of kind
 
+       | KRel of int
+       | KFun of string * kind
+
 withtype kind = kind' located
 
 datatype con' =
@@ -49,6 +52,10 @@ datatype con' =
        | CModProj of int * string list * string
        | CApp of con * con
        | CAbs of string * kind * con
+
+       | CKAbs of string * con
+       | CKApp of con * kind
+       | TKFun of string * con
 
        | CName of string
 
@@ -87,6 +94,9 @@ datatype exp' =
        | EAbs of string * con * con * exp
        | ECApp of exp * con
        | ECAbs of string * kind * exp
+
+       | EKAbs of string * exp
+       | EKApp of exp * kind
 
        | ERecord of (con * exp * con) list
        | EField of exp * con * { field : con, rest : con }

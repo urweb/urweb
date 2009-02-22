@@ -38,22 +38,33 @@ structure E = ExplEnv
 
 val debug = ref false
 
-fun p_kind' par (k, _) =
+fun p_kind' par env (k, _) =
     case k of
         KType => string "Type"
-      | KArrow (k1, k2) => parenIf par (box [p_kind' true k1,
+      | KArrow (k1, k2) => parenIf par (box [p_kind' true env k1,
                                              space,
                                              string "->",
                                              space,
-                                             p_kind k2])
+                                             p_kind env k2])
       | KName => string "Name"
-      | KRecord k => box [string "{", p_kind k, string "}"]
+      | KRecord k => box [string "{", p_kind env k, string "}"]
       | KUnit => string "Unit"
       | KTuple ks => box [string "(",
-                          p_list_sep (box [space, string "*", space]) p_kind ks,
+                          p_list_sep (box [space, string "*", space]) (p_kind env) ks,
                           string ")"]
 
-and p_kind k = p_kind' false k
+      | KRel n => ((if !debug then
+                         string (E.lookupKRel env n ^ "_" ^ Int.toString n)
+                     else
+                         string (E.lookupKRel env n))
+                    handle E.UnboundRel _ => string ("UNBOUND_REL" ^ Int.toString n))
+      | KFun (x, k) => box [string x,
+                            space,
+                            string "-->",
+                            space,
+                            p_kind (E.pushKRel env x) k]
+
+and p_kind env = p_kind' false env
 
 fun p_con' par env (c, _) =
     case c of
@@ -66,7 +77,7 @@ fun p_con' par env (c, _) =
                                              space,
                                              string "::",
                                              space,
-                                             p_kind k,
+                                             p_kind env k,
                                              space,
                                              string "->",
                                              space,
@@ -116,7 +127,7 @@ fun p_con' par env (c, _) =
                                             space,
                                             string "::",
                                             space,
-                                            p_kind k,
+                                            p_kind env k,
                                             space,
                                             string "=>",
                                             space,
@@ -134,7 +145,7 @@ fun p_con' par env (c, _) =
                                               space,
                                               p_con env c]) xcs,
                               string "]::",
-                              p_kind k])
+                              p_kind env k])
         else
             parenIf par (box [string "[",
                               p_list (fn (x, c) =>
@@ -158,6 +169,21 @@ fun p_con' par env (c, _) =
       | CProj (c, n) => box [p_con env c,
                              string ".",
                              string (Int.toString n)]
+
+      | CKAbs (x, c) => box [string x,
+                             space,
+                             string "==>",
+                             space,
+                             p_con (E.pushKRel env x) c]
+      | CKApp (c, k) => box [p_con env c,
+                             string "[[",
+                             p_kind env k,
+                             string "]]"]
+      | TKFun (x, c) => box [string x,
+                             space,
+                             string "-->",
+                             space,
+                             p_con (E.pushKRel env x) c]
         
 and p_con env = p_con' false env
 
@@ -261,7 +287,7 @@ fun p_exp' par env (e, loc) =
                                              space,
                                              string "::",
                                              space,
-                                             p_kind k,
+                                             p_kind env k,
                                              space,
                                              string "=>",
                                              space,
@@ -397,6 +423,15 @@ fun p_exp' par env (e, loc) =
                                     newline,
                                     p_exp (E.pushERel env x t) e2]
 
+      | EKAbs (x, e) => box [string x,
+                             space,
+                             string "==>",
+                             space,
+                             p_exp (E.pushKRel env x) e]
+      | EKApp (e, k) => box [p_exp env e,
+                             string "[[",
+                             p_kind env k,
+                             string "]]"]
                                     
 
 and p_exp env = p_exp' false env
@@ -438,14 +473,14 @@ fun p_sgn_item env (sgi, _) =
                                     space,
                                     string "::",
                                     space,
-                                    p_kind k]
+                                    p_kind env k]
       | SgiCon (x, n, k, c) => box [string "con",
                                     space,
                                     p_named x n,
                                     space,
                                     string "::",
                                     space,
-                                    p_kind k,
+                                    p_kind env k,
                                     space,
                                     string "=",
                                     space,
@@ -559,7 +594,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                   space,
                                   string "::",
                                   space,
-                                  p_kind k,
+                                  p_kind env k,
                                   space,
                                   string "=",
                                   space,

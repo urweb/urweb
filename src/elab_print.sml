@@ -68,7 +68,7 @@ fun p_kind' par env (k, _) =
                             space,
                             p_kind (E.pushKRel env x) k]
 
-and p_kind k = p_kind' false k
+and p_kind env = p_kind' false env
 
 fun p_explicitness e =
     case e of

@@ -45,8 +45,32 @@ exception UnboundNamed of int
 
 exception SynUnif
 
+val liftKindInKind =
+    U.Kind.mapB {kind = fn bound => fn k =>
+                                       case k of
+                                           KRel xn =>
+                                           if xn < bound then
+                                               k
+                                           else
+                                               KRel (xn + 1)
+                                         | _ => k,
+                 bind = fn (bound, _) => bound + 1}
+
+val liftKindInCon =
+    U.Con.mapB {kind = fn bound => fn k =>
+                                      case k of
+                                          KRel xn =>
+                                          if xn < bound then
+                                              k
+                                          else
+                                              KRel (xn + 1)
+                                        | _ => k,
+                con = fn _ => fn c => c,
+                bind = fn (bound, U.Con.RelK _) => bound + 1
+                        | (bound, _) => bound}
+
 val liftConInCon =
-    U.Con.mapB {kind = fn k => k,
+    U.Con.mapB {kind = fn _ => fn k => k,
                 con = fn bound => fn c =>
                                      case c of
                                          CRel xn =>
@@ -56,7 +80,7 @@ val liftConInCon =
                                              CRel (xn + 1)
                                        (*| CUnif _ => raise SynUnif*)
                                        | _ => c,
-                bind = fn (bound, U.Con.Rel _) => bound + 1
+                bind = fn (bound, U.Con.RelC _) => bound + 1
                         | (bound, _) => bound}
 
 val lift = liftConInCon 0
@@ -74,77 +98,82 @@ datatype 'a var =
        | Named of int * 'a
 
 type env = {
-     renameC : kind var' SM.map,
+     relK : string list,
+
      relC : (string * kind) list,
      namedC : (string * kind * con option) IM.map,
 
-     renameE : con var' SM.map,
      relE : (string * con) list,
      namedE : (string * con) IM.map,
 
-     renameSgn : (int * sgn) SM.map,
      sgn : (string * sgn) IM.map,
 
-     renameStr : (int * sgn) SM.map,
      str : (string * sgn) IM.map
 }
 
 val namedCounter = ref 0
 
 val empty = {
-    renameC = SM.empty,
+    relK = [],
+
     relC = [],
     namedC = IM.empty,
 
-    renameE = SM.empty,
     relE = [],
     namedE = IM.empty,
 
-    renameSgn = SM.empty,
     sgn = IM.empty,
 
-    renameStr = SM.empty,
     str = IM.empty
 }
 
+fun pushKRel (env : env) x =
+    {relK = x :: #relK env,
+
+     relC = map (fn (x, k) => (x, liftKindInKind 0 k)) (#relC env),
+     namedC = #namedC env,
+
+     relE = map (fn (x, c) => (x, liftKindInCon 0 c)) (#relE env),
+     namedE = #namedE env,
+
+     sgn = #sgn env,
+
+     str = #str env
+    }
+
+fun lookupKRel (env : env) n =
+    (List.nth (#relK env, n))
+    handle Subscript => raise UnboundRel n
+
 fun pushCRel (env : env) x k =
-    let
-        val renameC = SM.map (fn Rel' (n, k) => Rel' (n+1, k)
-                               | x => x) (#renameC env)
-    in
-        {renameC = SM.insert (renameC, x, Rel' (0, k)),
-         relC = (x, k) :: #relC env,
-         namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
+    {relK = #relK env,
 
-         renameE = #renameE env,
-         relE = map (fn (x, c) => (x, lift c)) (#relE env),
-         namedE = IM.map (fn (x, c) => (x, lift c)) (#namedE env),
+     relC = (x, k) :: #relC env,
+     namedC = IM.map (fn (x, k, co) => (x, k, Option.map lift co)) (#namedC env),
 
-         renameSgn = #renameSgn env,
-         sgn = #sgn env,
+     relE = map (fn (x, c) => (x, lift c)) (#relE env),
+     namedE = IM.map (fn (x, c) => (x, lift c)) (#namedE env),
 
-         renameStr = #renameStr env,
-         str = #str env
-        }
-    end
+     sgn = #sgn env,
+
+     str = #str env
+    }
 
 fun lookupCRel (env : env) n =
     (List.nth (#relC env, n))
     handle Subscript => raise UnboundRel n
 
 fun pushCNamed (env : env) x n k co =
-    {renameC = SM.insert (#renameC env, x, Named' (n, k)),
+    {relK = #relK env,
+
      relC = #relC env,
      namedC = IM.insert (#namedC env, n, (x, k, co)),
 
-     renameE = #renameE env,
      relE = #relE env,
      namedE = #namedE env,
 
-     renameSgn = #renameSgn env,
      sgn = #sgn env,
      
-     renameStr = #renameStr env,
      str = #str env}
 
 fun lookupCNamed (env : env) n =
@@ -153,42 +182,33 @@ fun lookupCNamed (env : env) n =
       | SOME x => x
 
 fun pushERel (env : env) x t =
-    let
-        val renameE = SM.map (fn Rel' (n, t) => Rel' (n+1, t)
-                               | x => x) (#renameE env)
-    in
-        {renameC = #renameC env,
-         relC = #relC env,
-         namedC = #namedC env,
+    {relK = #relK env,
 
-         renameE = SM.insert (renameE, x, Rel' (0, t)),
-         relE = (x, t) :: #relE env,
-         namedE = #namedE env,
+     relC = #relC env,
+     namedC = #namedC env,
 
-         renameSgn = #renameSgn env,
-         sgn = #sgn env,
+     relE = (x, t) :: #relE env,
+     namedE = #namedE env,
 
-         renameStr = #renameStr env,
-         str = #str env}
-    end
+     sgn = #sgn env,
+
+     str = #str env}
 
 fun lookupERel (env : env) n =
     (List.nth (#relE env, n))
     handle Subscript => raise UnboundRel n
 
 fun pushENamed (env : env) x n t =
-    {renameC = #renameC env,
+    {relK = #relK env,
+
      relC = #relC env,
      namedC = #namedC env,
 
-     renameE = SM.insert (#renameE env, x, Named' (n, t)),
      relE = #relE env,
      namedE = IM.insert (#namedE env, n, (x, t)),
 
-     renameSgn = #renameSgn env,
      sgn = #sgn env,
      
-     renameStr = #renameStr env,
      str = #str env}
 
 fun lookupENamed (env : env) n =
@@ -197,18 +217,16 @@ fun lookupENamed (env : env) n =
       | SOME x => x
 
 fun pushSgnNamed (env : env) x n sgis =
-    {renameC = #renameC env,
+    {relK = #relK env,
+
      relC = #relC env,
      namedC = #namedC env,
 
-     renameE = #renameE env,
      relE = #relE env,
      namedE = #namedE env,
 
-     renameSgn = SM.insert (#renameSgn env, x, (n, sgis)),
      sgn = IM.insert (#sgn env, n, (x, sgis)),
      
-     renameStr = #renameStr env,
      str = #str env}
 
 fun lookupSgnNamed (env : env) n =
@@ -217,18 +235,16 @@ fun lookupSgnNamed (env : env) n =
       | SOME x => x
 
 fun pushStrNamed (env : env) x n sgis =
-    {renameC = #renameC env,
+    {relK = #relK env,
+
      relC = #relC env,
      namedC = #namedC env,
 
-     renameE = #renameE env,
      relE = #relE env,
      namedE = #namedE env,
 
-     renameSgn = #renameSgn env,
      sgn = #sgn env,
 
-     renameStr = SM.insert (#renameStr env, x, (n, sgis)),
      str = IM.insert (#str env, n, (x, sgis))}
 
 fun lookupStrNamed (env : env) n =

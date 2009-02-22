@@ -45,6 +45,9 @@ fun explifyKind (k, loc) =
       | L.KUnif (_, _, ref (SOME k)) => explifyKind k
       | L.KUnif _ => raise Fail ("explifyKind: KUnif at " ^ EM.spanToString loc)
 
+      | L.KRel n => (L'.KRel n, loc)
+      | L.KFun (x, k) => (L'.KFun (x, explifyKind k), loc)
+
 fun explifyCon (c, loc) =
     case c of
         L.TFun (t1, t2) => (L'.TFun (explifyCon t1, explifyCon t2), loc)
@@ -73,6 +76,10 @@ fun explifyCon (c, loc) =
       | L.CError => raise Fail ("explifyCon: CError at " ^ EM.spanToString loc)
       | L.CUnif (_, _, _, ref (SOME c)) => explifyCon c
       | L.CUnif _ => raise Fail ("explifyCon: CUnif at " ^ EM.spanToString loc)
+
+      | L.CKAbs (x, c) => (L'.CKAbs (x, explifyCon c), loc)
+      | L.CKApp (c, k) => (L'.CKApp (explifyCon c, explifyKind k), loc)
+      | L.TKFun (x, c) => (L'.TKFun (x, explifyCon c), loc)
 
 fun explifyPatCon pc =
     case pc of
@@ -122,6 +129,9 @@ fun explifyExp (e, loc) =
                       L.EDValRec _ => raise Fail "explifyExp: Local 'val rec' remains"
                     | L.EDVal (x, t, e') => (L'.ELet (x, explifyCon t, explifyExp e', e), loc))
         (explifyExp e) des
+
+      | L.EKAbs (x, e) => (L'.EKAbs (x, explifyExp e), loc)
+      | L.EKApp (e, k) => (L'.EKApp (explifyExp e, explifyKind k), loc)
 
 fun explifySgi (sgi, loc) =
     case sgi of

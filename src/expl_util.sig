@@ -28,17 +28,24 @@
 signature EXPL_UTIL = sig
 
 structure Kind : sig
+    val mapfoldB : {kind : ('context, Expl.kind', 'state, 'abort) Search.mapfolderB,
+                    bind : 'context * string -> 'context}
+                   -> ('context, Expl.kind, 'state, 'abort) Search.mapfolderB
     val mapfold : (Expl.kind', 'state, 'abort) Search.mapfolder
                   -> (Expl.kind, 'state, 'abort) Search.mapfolder
     val exists : (Expl.kind' -> bool) -> Expl.kind -> bool
+    val mapB : {kind : 'context -> Expl.kind' -> Expl.kind',
+                bind : 'context * string -> 'context}
+               -> 'context -> (Expl.kind -> Expl.kind)
 end
 
 structure Con : sig
     datatype binder =
-             Rel of string * Expl.kind
-           | Named of string * Expl.kind
+             RelK of string
+           | RelC of string * Expl.kind
+           | NamedC of string * Expl.kind
 
-    val mapfoldB : {kind : (Expl.kind', 'state, 'abort) Search.mapfolder,
+    val mapfoldB : {kind : ('context, Expl.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Expl.con', 'state, 'abort) Search.mapfolderB,
                     bind : 'context * binder -> 'context}
                    -> ('context, Expl.con, 'state, 'abort) Search.mapfolderB
@@ -46,7 +53,7 @@ structure Con : sig
                    con : (Expl.con', 'state, 'abort) Search.mapfolder}
                   -> (Expl.con, 'state, 'abort) Search.mapfolder
 
-    val mapB : {kind : Expl.kind' -> Expl.kind',
+    val mapB : {kind : 'context -> Expl.kind' -> Expl.kind',
                 con : 'context -> Expl.con' -> Expl.con',
                 bind : 'context * binder -> 'context}
                -> 'context -> (Expl.con -> Expl.con)
@@ -59,12 +66,13 @@ end
 
 structure Exp : sig
     datatype binder =
-             RelC of string * Expl.kind
+             RelK of string
+           | RelC of string * Expl.kind
            | NamedC of string * Expl.kind
            | RelE of string * Expl.con
            | NamedE of string * Expl.con
 
-    val mapfoldB : {kind : (Expl.kind', 'state, 'abort) Search.mapfolder,
+    val mapfoldB : {kind : ('context, Expl.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Expl.con', 'state, 'abort) Search.mapfolderB,
                     exp : ('context, Expl.exp', 'state, 'abort) Search.mapfolderB,
                     bind : 'context * binder -> 'context}
@@ -80,12 +88,13 @@ end
 
 structure Sgn : sig
     datatype binder =
-             RelC of string * Expl.kind
+             RelK of string
+           | RelC of string * Expl.kind
            | NamedC of string * Expl.kind
            | Sgn of string * Expl.sgn
            | Str of string * Expl.sgn
 
-    val mapfoldB : {kind : (Expl.kind', 'state, 'abort) Search.mapfolder,
+    val mapfoldB : {kind : ('context, Expl.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Expl.con', 'state, 'abort) Search.mapfolderB,
                     sgn_item : ('context, Expl.sgn_item', 'state, 'abort) Search.mapfolderB,
                     sgn : ('context, Expl.sgn', 'state, 'abort) Search.mapfolderB,
