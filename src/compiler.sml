@@ -409,7 +409,7 @@ val explify = {
     print = ExplPrint.p_file ExplEnv.empty
 }
 
-val toExplify = transform explify "explify" o toTermination
+val toExplify = transform explify "explify" o toUnnest
 
 val corify = {
     func = Corify.corify,
