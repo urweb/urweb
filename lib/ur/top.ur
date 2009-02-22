@@ -6,6 +6,19 @@ con folder = K ==> fn r :: {K} =>
                           -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
                       -> tf [] -> tf r
 
+structure Folder = struct
+    fun nil K (tf :: {K} -> Type)
+            (f : nm :: Name -> v :: K -> r :: {K} -> tf r
+                 -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
+            (i : tf []) = i
+
+    fun cons K (r ::: {K}) (nm :: Name) (v :: K) [[nm] ~ r] (fold : folder r)
+             (tf :: {K} -> Type)
+             (f : nm :: Name -> v :: K -> r :: {K} -> tf r
+                  -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
+             (i : tf []) = f [nm] [v] [r] (fold [tf] f i)
+end
+
 
 fun not b = if b then False else True
 

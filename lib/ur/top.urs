@@ -6,6 +6,12 @@ con folder = K ==> fn r :: {K} =>
                           -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
                       -> tf [] -> tf r
 
+structure Folder : sig
+    val nil : K --> folder (([]) :: {K})
+    val cons : K --> r ::: {K} -> nm :: Name -> v :: K
+               -> fn [[nm] ~ r] => folder r -> folder ([nm = v] ++ r)
+end
+
 
 val not : bool -> bool
 
