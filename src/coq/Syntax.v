@@ -54,7 +54,7 @@ Section vars.
   | CSingle : forall k, con KName -> con k -> con (KRecord k)
   | CConcat : forall k, con (KRecord k) -> con (KRecord k) -> con (KRecord k)
   | CMap : forall k1 k2, con (KArrow (KArrow k1 k2) (KArrow (KRecord k1) (KRecord k2)))
-  | CGuarded : forall k1 k2, con (KRecord k1) -> con (KRecord k1) -> con k2 -> con k2.
+  | TGuarded : forall k, con (KRecord k) -> con (KRecord k) -> con KType -> con KType.
 
   Variable dvar : forall k, con (KRecord k) -> con (KRecord k) -> Type.
 
@@ -91,11 +91,11 @@ Section vars.
       subs c2 c2'
       -> subs c3 c3'
       -> subs (fun x => CConcat (c2 x) (c3 x)) (CConcat c2' c3')
-    | S_CGuarded : forall k2 k3 (c2 c3 : _ -> con (KRecord k2)) (c4 : _ -> con k3) c2' c3' c4',
+    | S_TGuarded : forall k2 (c2 c3 : _ -> con (KRecord k2)) c4 c2' c3' c4',
       subs c2 c2'
       -> subs c3 c3'
       -> subs c4 c4'
-      -> subs (fun x => CGuarded (c2 x) (c3 x) (c4 x)) (CGuarded c2' c3' c4').
+      -> subs (fun x => TGuarded (c2 x) (c3 x) (c4 x)) (TGuarded c2' c3' c4').
   End subs.
 
   Inductive disj : forall k, con (KRecord k) -> con (KRecord k) -> Prop :=
@@ -157,13 +157,6 @@ Section vars.
     -> deq (CApp (CApp (CMap k1 k2) f) (CConcat (CSingle c1 c2) c3))
     (CConcat (CSingle c1 (CApp f c2)) (CApp (CApp (CMap k1 k2) f) c3))
 
-  | Eq_Guarded_Remove : forall k1 k2 (c1 c2 : con (KRecord k1)) (c : con k2),
-    disj c1 c2
-    -> deq (CGuarded c1 c2 c) c
-  | Eq_Guarded_Cong : forall k1 k2 (c1 c2 : con (KRecord k1)) (c c' : con k2),
-    (dvar c1 c2 -> deq c c')
-    -> deq (CGuarded c1 c2 c) (CGuarded c1 c2 c')
-
   | Eq_Map_Ident : forall k c,
     deq (CApp (CApp (CMap k k) (CAbs (fun x => CVar x))) c) c
   | Eq_Map_Dist : forall k1 k2 f c1 c2,
@@ -188,5 +181,6 @@ Section vars.
   | Proj : forall c t c', exp (TRecord (CConcat (CSingle c t) c')) -> exp t
   | Cut : forall c t c', disj (CSingle c t) c' -> exp (TRecord (CConcat (CSingle c t) c')) -> exp (TRecord c')
   | Concat : forall c1 c2, exp (TRecord c1) -> exp (TRecord c2) -> exp (TRecord (CConcat c1 c2))
-  | Guarded : forall k (c1 c2 : con (KRecord k)) c, (dvar c1 c2 -> exp c) -> exp (CGuarded c1 c2 c).
+  | Guarded : forall k (c1 c2 : con (KRecord k)) c, (dvar c1 c2 -> exp c) -> exp (TGuarded c1 c2 c)
+  | GuardedApp : forall k (c1 c2 : con (KRecord k)) t, exp (TGuarded c1 c2 t) -> disj c1 c2 -> exp t.
 End vars.

@@ -48,13 +48,11 @@ Fixpoint kDen (k : kind) : Type :=
     | KRecord k1 => row (kDen k1)
   end.
 
-Fixpoint kDefault (k : kind) : kDen k :=
-  match k return kDen k with
-    | KType => unit
-    | KName => defaultName
-    | KArrow _ k2 => fun _ => kDefault k2
-    | KRecord _ => fun _ => None
-  end.
+Definition disjoint T (r1 r2 : row T) :=
+  forall n, match r1 n, r2 n with
+              | Some _, Some _ => False
+              | _, _ => True
+            end.
 
 Fixpoint cDen k (c : con kDen k) {struct c} : kDen k :=
   match c in con _ k return kDen k with
@@ -75,13 +73,7 @@ Fixpoint cDen k (c : con kDen k) {struct c} : kDen k :=
                                    | None => None
                                    | Some T => Some (f T)
                                  end
-    | CGuarded _ _ c1 c2 c =>
-      if badName (fun n => match (cDen c1) n, (cDen c2) n with
-                            | Some _, Some _ => false
-                            | _, _ => true
-                          end)
-        then kDefault _
-        else cDen c
+    | TGuarded _ c1 c2 t => disjoint (cDen c1) (cDen c2) -> cDen t
   end.
 
 Theorem subs_correct : forall k1 (c1 : con kDen k1) k2 (c2 : _ -> con kDen k2) c2',
@@ -93,41 +85,14 @@ Theorem subs_correct : forall k1 (c1 : con kDen k1) k2 (c2 : _ -> con kDen k2) c
            end; intuition.
 Qed.
 
-Definition disjoint T (r1 r2 : row T) :=
-  forall n, match r1 n, r2 n with
-              | Some _, Some _ => False
-              | _, _ => True
-            end.
 Definition dvar k (c1 c2 : con kDen (KRecord k)) :=
   disjoint (cDen c1) (cDen c2).
-
-Theorem known_badName : forall T (r1 r2 : row T) T' (v1 v2 : T'),
-  disjoint r1 r2
-  -> (if badName (fun n => match r1 n, r2 n with
-                            | Some _, Some _ => false
-                            | _, _ => true
-                          end)
-    then v1
-    else v2) = v2.
-  intros; match goal with
-            | [ |- context[if ?E then _ else _] ] => destruct E
-          end; firstorder;
-  match goal with
-    | [ H : disjoint _ _, x : name |- _ ] =>
-      generalize (H x);
-        repeat match goal with
-                 | [ |- context[match ?E with None => _ | Some _ => _ end] ] => destruct E
-               end; tauto || congruence
-  end.
-Qed.
-
-Hint Rewrite known_badName using solve [ auto ] : Semantics.
 
 Scheme deq_mut := Minimality for deq Sort Prop
 with disj_mut := Minimality for disj Sort Prop.
 
 Ltac deq_disj_correct scm :=
-  let t := repeat progress (simpl; intuition; subst; autorewrite with Semantics) in
+  let t := repeat progress (simpl; intuition; subst) in
 
   let rec use_disjoint' notDone E :=
     match goal with
@@ -163,28 +128,6 @@ Ltac deq_disj_correct scm :=
               | [ |- context[if ?E then _ else _] ] => destruct E                  
             end; t).
 
-Lemma bool_disjoint : forall T (r1 r2 : row T),
-  (forall nm : name,
-    match r1 nm with
-      | Some _ => match r2 nm with
-                    | Some _ => false
-                    | None => true
-                  end
-      | None => true
-    end = true)
-  -> disjoint r1 r2.
-  intros; intro;
-    match goal with
-      | [ H : _, n : name |- _ ] => generalize (H n)
-    end;
-    repeat match goal with
-             | [ |- context[match ?E with Some _ => _ | None => _ end] ] => destruct E
-           end; tauto || discriminate.
-Qed.
-
-Implicit Arguments bool_disjoint [T r1 r2].
-
-Hint Resolve bool_disjoint.
 Hint Unfold dvar.
 
 Theorem deq_correct : forall k (c1 c2 : con kDen k),
@@ -224,8 +167,6 @@ Theorem cut_disjoint : forall n1 v r,
 Qed.
 
 Implicit Arguments cut_disjoint [v r].
-
-Set Printing All.
 
 Fixpoint eDen t (e : exp dvar tDen t) {struct e} : tDen t :=
   match e in exp _ _ t return tDen t with
@@ -286,13 +227,6 @@ Fixpoint eDen t (e : exp dvar tDen t) {struct e} : tDen t :=
         | _ => fun x => x
       end ((eDen e1) n)
 
-    | Guarded _ c1 c2 _ e1 =>
-      match badName (fun n => match (cDen c1) n, (cDen c2) n with
-                                | Some _, Some _ => false
-                                | _, _ => true
-                              end)
-      as BN return (if BN return Set then _ else _) with
-        | inleft _ => tt
-        | inright pf => eDen (e1 (bool_disjoint pf))
-      end
+    | Guarded _ _ _ _ e1 => fun pf => eDen (e1 pf)
+    | GuardedApp _ _ _ _ e1 Hdisj => (eDen e1) (disj_correct Hdisj)
   end.

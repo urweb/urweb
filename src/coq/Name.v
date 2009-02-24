@@ -25,47 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-Set Implicit Arguments.
+Require Import String.
 
-
-Fixpoint name' (n : nat) : Type :=
-  match n with
-    | O => Empty_set
-    | S n' => option (name' n')
-  end.
-
-Definition name'_eq_dec : forall n (x y : name' n), {x = y} + {x <> y}.
-  Hint Extern 1 (_ = _ -> False) => congruence.
-
-  induction n; simpl; intuition;
-    repeat match goal with
-             | [ x : Empty_set |- _ ] => destruct x
-             | [ x : option _ |- _ ] => destruct x
-           end; intuition;
-    match goal with
-      | [ IH : _, n1 : name' _, n2 : name' _ |- _ ] =>
-        destruct (IHn n1 n0); subst; intuition
-    end.
-Qed.
-
-Definition badName' n (P : name' n -> bool) :
-  {nm : _ | P nm = false} + {forall nm, P nm = true}.
-  Hint Constructors sig.
-  Hint Extern 1 (_ = true) =>
-    match goal with
-      | [ nm : option _ |- _ ] => destruct nm
-    end; auto.
-
-  induction n; simpl; intuition;
-    match goal with
-      | [ IH : forall P : _ -> _,_ |- _ ] =>
-        case_eq (P None);
-        destruct (IH (fun nm => P (Some nm))); firstorder eauto
-    end.
-Qed.
-
-Parameter numNames : nat.
-Definition name := name' (S numNames).
-Definition name_eq_dec : forall (x y : name), {x = y} + {x <> y} := @name'_eq_dec _.
-Definition badName : forall P : name -> bool, {nm : _ | P nm = false} + {forall nm, P nm = true} := @badName' _.
-Definition defaultName : name := None.
+Definition name := string.
+Definition name_eq_dec : forall x y : name, {x = y} + {x <> y} := string_dec.
