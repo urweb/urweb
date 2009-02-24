@@ -1,5 +1,6 @@
 functor Make (M : sig
                   con fs :: {Unit}
+                  val fl : folder fs
                   val names : $(mapUT string fs)
               end) = struct
 
@@ -8,7 +9,7 @@ functor Make (M : sig
        (fn (nm :: Name) (rest :: {Unit}) [[nm] ~ rest] name value => <xml>
          <li> {[name]} = {[value]}</li>
        </xml>)
-       [M.fs] M.names values}
+       [M.fs] M.fl M.names values}
     </body></xml>
 
     fun main () = return <xml><body>
@@ -20,7 +21,7 @@ functor Make (M : sig
                                    {useMore acc}
                                  </xml>)
                 <xml/>
-                [M.fs] M.names}
+                [M.fs] M.fl M.names}
         <submit action={handler}/>
       </form>
     </body></xml>

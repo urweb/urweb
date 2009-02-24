@@ -839,7 +839,7 @@
              in
                  unfold (r, c)
              end
-             handle _ => (TextIO.print "Guess failure!\n"; raise ex)
+             handle _ => raise ex
      in
          case (#1 c1, #1 c2) of
              (L'.CApp ((L'.CApp ((L'.CMap (dom, ran), _), f), _), r), _) =>
@@ -874,7 +874,28 @@
                                   ("c2All", p_con env c2All)];*)
 
          case (c1, c2) of
-             (L'.CUnit, L'.CUnit) => ()
+             (L'.CError, _) => ()
+           | (_, L'.CError) => ()
+
+           | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
+             if r1 = r2 then
+                 ()
+             else
+                 (unifyKinds env k1 k2;
+                  r1 := SOME c2All)
+
+           | (L'.CUnif (_, _, _, r), _) =>
+             if occursCon r c2All then
+                 err COccursCheckFailed
+             else
+                 r := SOME c2All
+           | (_, L'.CUnif (_, _, _, r)) =>
+             if occursCon r c1All then
+                 err COccursCheckFailed
+             else
+                 r := SOME c1All
+
+           | (L'.CUnit, L'.CUnit) => ()
 
            | (L'.TFun (d1, r1), L'.TFun (d2, r2)) =>
              (unifyCons' env d1 d2;
@@ -933,29 +954,63 @@
              ((ListPair.appEq (fn (c1, c2) => unifyCons' env c1 c2) (cs1, cs2))
               handle ListPair.UnequalLengths => err CIncompatible)
 
-           | (L'.CProj ((L'.CUnif (_, _, _, ref (SOME c1)), loc), n1), _) =>
-             unifyCons' env (L'.CProj (c1, n1), loc) c2All
-           | (_, L'.CProj ((L'.CUnif (_, _, _, ref (SOME c2)), loc), n2)) =>
-             unifyCons' env c1All (L'.CProj (c2, n2), loc)
-           | (L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n), _) =>
+           | (L'.CProj (c1, n1), _) =>
              let
-                 val us = map (fn k => cunif (loc, k)) ks
+                 fun trySnd () =
+                     case #1 (hnormCon env c2All) of
+                         L'.CProj (c2, n2) =>
+                         let
+                             fun tryNormal () =
+                                 if n1 = n2 then
+                                     unifyCons' env c1 c2
+                                 else
+                                     err CIncompatible
+                         in
+                             case #1 (hnormCon env c2) of
+                                 L'.CUnif (_, k, _, r) =>
+                                 (case #1 (hnormKind k) of
+                                      L'.KTuple ks =>
+                                      let
+                                          val loc = #2 c2
+                                          val us = map (fn k => cunif (loc, k)) ks
+                                      in
+                                          r := SOME (L'.CTuple us, loc);
+                                          unifyCons' env c1All (List.nth (us, n2 - 1))
+                                      end
+                                    | _ => tryNormal ())
+                            | _ => tryNormal ()
+                         end
+                       | _ => err CIncompatible
              in
-                 r := SOME (L'.CTuple us, loc);
-                 unifyCons' env (List.nth (us, n - 1)) c2All
+                 case #1 (hnormCon env c1) of
+                     L'.CUnif (_, k, _, r) =>
+                     (case #1 (hnormKind k) of
+                          L'.KTuple ks =>
+                          let
+                              val loc = #2 c1
+                              val us = map (fn k => cunif (loc, k)) ks
+                          in
+                              r := SOME (L'.CTuple us, loc);
+                              unifyCons' env (List.nth (us, n1 - 1)) c2All
+                          end
+                        | _ => trySnd ())
+                   | _ => trySnd ()
              end
-           | (_, L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n)) =>
-             let
-                 val us = map (fn k => cunif (loc, k)) ks
-             in
-                 r := SOME (L'.CTuple us, loc);
-                 unifyCons' env c1All (List.nth (us, n - 1))
-             end
-           | (L'.CProj (c1, n1), L'.CProj (c2, n2)) =>
-             if n1 = n2 then
-                 unifyCons' env c1 c2
-             else
-                 err CIncompatible
+
+           | (_, L'.CProj (c2, n2)) =>
+             (case #1 (hnormCon env c2) of
+                  L'.CUnif (_, k, _, r) =>
+                  (case #1 (hnormKind k) of
+                       L'.KTuple ks =>
+                       let
+                           val loc = #2 c2
+                           val us = map (fn k => cunif (loc, k)) ks
+                       in
+                           r := SOME (L'.CTuple us, loc);
+                           unifyCons' env c1All (List.nth (us, n2 - 1))
+                       end
+                     | _ => err CIncompatible)
+                | _ => err CIncompatible)
 
            | (L'.CMap (dom1, ran1), L'.CMap (dom2, ran2)) =>
              (unifyKinds env dom1 dom2;
@@ -969,31 +1024,10 @@
            | (L'.TKFun (x, c1), L'.TKFun (_, c2)) =>
              unifyCons' (E.pushKRel env x) c1 c2
 
-           | (L'.CError, _) => ()
-           | (_, L'.CError) => ()
-
            | (L'.CRecord _, _) => isRecord ()
            | (_, L'.CRecord _) => isRecord ()
            | (L'.CConcat _, _) => isRecord ()
            | (_, L'.CConcat _) => isRecord ()
-
-           | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
-             if r1 = r2 then
-                 ()
-             else
-                 (unifyKinds env k1 k2;
-                  r1 := SOME c2All)
-
-           | (L'.CUnif (_, _, _, r), _) =>
-             if occursCon r c2All then
-                 err COccursCheckFailed
-             else
-                 r := SOME c2All
-           | (_, L'.CUnif (_, _, _, r)) =>
-             if occursCon r c1All then
-                 err COccursCheckFailed
-             else
-                 r := SOME c1All
 
            | _ => err CIncompatible
      end

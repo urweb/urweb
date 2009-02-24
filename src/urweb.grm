@@ -961,6 +961,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
                                              val e = (EVar (["Basis"], "update", Infer), loc)
                                              val e = (ECApp (e, (CWild (KRecord (KType, loc), loc), loc)), loc)
+                                             val e = (EDisjointApp e, loc)
                                              val e = (EApp (e, (ERecord fsets, loc)), loc)
                                              val e = (EApp (e, texp), loc)
                                          in

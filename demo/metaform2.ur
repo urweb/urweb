@@ -1,5 +1,6 @@
 structure MM = Metaform.Make(struct
                                  val names = {X = "x", Y = "y"}
+                                 val fl = Folder.cons [#X] [()] ! (Folder.cons [#Y] [()] ! Folder.nil)
                              end)
 
 fun diversion () = return <xml><body>

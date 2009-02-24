@@ -31,4 +31,8 @@ open Crud.Make(struct
                                         Inject = _
                                        }
                               }
+
+                   val fl = Folder.cons [#Nam] [_] !
+                                        (Folder.cons [#Ready] [_] !
+                                                     Folder.nil)
                end)

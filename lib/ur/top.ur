@@ -74,7 +74,7 @@ fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
            (f : nm :: Name -> rest :: {Unit}
                 -> [[nm] ~ rest] =>
                       tf -> tr rest -> tr ([nm] ++ rest))
-           (i : tr []) (r ::: {Unit}) (fold : folder r)=
+           (i : tr []) (r :: {Unit}) (fold : folder r)=
     fold [fn r :: {Unit} => $(mapUT tf r) -> tr r]
          (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
                           [[nm] ~ rest] r =>
@@ -85,7 +85,7 @@ fun foldUR2 (tf1 :: Type) (tf2 :: Type) (tr :: {Unit} -> Type)
            (f : nm :: Name -> rest :: {Unit}
                 -> [[nm] ~ rest] =>
                       tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
-           (i : tr []) (r ::: {Unit}) (fold : folder r) =
+           (i : tr []) (r :: {Unit}) (fold : folder r) =
     fold [fn r :: {Unit} => $(mapUT tf1 r) -> $(mapUT tf2 r) -> tr r]
          (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
                           [[nm] ~ rest] r1 r2 =>
@@ -105,7 +105,7 @@ fun foldR K (tf :: K -> Type) (tr :: {K} -> Type)
            (f : nm :: Name -> t :: K -> rest :: {K}
                 -> [[nm] ~ rest] =>
                       tf t -> tr rest -> tr ([nm = t] ++ rest))
-           (i : tr []) (r ::: {K}) (fold : folder r) =
+           (i : tr []) (r :: {K}) (fold : folder r) =
     fold [fn r :: {K} => $(map tf r) -> tr r]
              (fn (nm :: Name) (t :: K) (rest :: {K}) (acc : _ -> tr rest)
                               [[nm] ~ rest] r =>
@@ -116,7 +116,7 @@ fun foldR2 K (tf1 :: K -> Type) (tf2 :: K -> Type) (tr :: {K} -> Type)
             (f : nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
                        tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
-            (i : tr []) (r ::: {K}) (fold : folder r) =
+            (i : tr []) (r :: {K}) (fold : folder r) =
     fold [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> tr r]
          (fn (nm :: Name) (t :: K) (rest :: {K})
                           (acc : _ -> _ -> tr rest) [[nm] ~ rest] r1 r2 =>
@@ -143,7 +143,7 @@ fun foldRX2 K (tf1 :: K -> Type) (tf2 :: K -> Type) (ctx :: {Unit})
            <xml/>
 
 fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
-           (q : sql_query tables exps) [tables ~ exps]
+           [tables ~ exps] (q : sql_query tables exps)
            (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
                 -> xml ctx [] []) =
     query q
@@ -151,7 +151,7 @@ fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
           <xml/>
 
 fun queryX' (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
-            (q : sql_query tables exps) [tables ~ exps]
+            [tables ~ exps] (q : sql_query tables exps)
             (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
                  -> transaction (xml ctx [] [])) =
     query q

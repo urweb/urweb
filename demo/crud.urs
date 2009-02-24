@@ -16,6 +16,8 @@ val bool : string -> colMeta (bool, bool)
 functor Make(M : sig
                  con cols :: {(Type * Type)}
                  constraint [Id] ~ cols
+                 val fl : folder cols
+
                  val tab : sql_table ([Id = int] ++ map fstTT cols)
 
                  val title : string

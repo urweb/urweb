@@ -9,4 +9,10 @@ open Crud.Make(struct
                                B = Crud.string "B",
                                C = Crud.float "C",
                                D = Crud.bool "D"}
+
+                   val fl = Folder.cons [#A] [_] !
+                                        (Folder.cons [#B] [_] !
+                                                     (Folder.cons [#C] [_] !
+                                                                  (Folder.cons [#D] [_] !
+                                                                               Folder.nil)))
                end)
