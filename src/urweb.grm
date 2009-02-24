@@ -187,7 +187,7 @@ fun tagIn bt =
  | CON | LTYPE | VAL | REC | AND | FUN | MAP | UNIT | KUNIT | CLASS
  | DATATYPE | OF
  | TYPE | NAME
- | ARROW | LARROW | DARROW | STAR | SEMI | KARROW | DKARROW
+ | ARROW | LARROW | DARROW | STAR | SEMI | KARROW | DKARROW | BANG
  | FN | PLUSPLUS | MINUSMINUS | MINUSMINUSMINUS | DOLLAR | TWIDDLE
  | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
@@ -710,6 +710,7 @@ ident  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLr
 eapps  : eterm                          (eterm)
        | eapps eterm                    (EApp (eapps, eterm), s (eappsleft, etermright))
        | eapps LBRACK cexp RBRACK       (ECApp (eapps, cexp), s (eappsleft, RBRACKright))
+       | eapps BANG                     (EDisjointApp eapps, s (eappsleft, BANGright))
 
 eexp   : eapps                          (eapps)
        | FN eargs DARROW eexp           (let

@@ -1025,7 +1025,7 @@
 
  val enD = map Disjoint
 
- fun elabHead env infer (e as (_, loc)) t =
+ fun elabHead (env, denv) infer (e as (_, loc)) t =
      let
          fun unravel (t, e) =
              case hnormCon env t of
@@ -1059,6 +1059,16 @@
                      else
                          (e, t, [])
                  end
+               | (L'.TDisjoint (r1, r2, t'), loc) =>
+                 if infer <> L.TypesOnly then
+                     let
+                         val gs = D.prove env denv (r1, r2, loc)
+                         val (e, t, gs') = unravel (t', e)
+                     in
+                         (e, t, enD gs @ gs')
+                     end
+                 else
+                     (e, t, [])
                | t => (e, t, [])
     in
         case infer of
@@ -1185,7 +1195,7 @@ fun c2s c =
       | Datatype _ => "Datatype"
       | Record _ => "Record"
 
-fun exhaustive (env, t, ps) =
+fun exhaustive (env, t, ps, loc) =
     let
         fun depth (p, _) =
             case p of
@@ -1364,7 +1374,8 @@ fun exhaustive (env, t, ps) =
                         end
                       | L'.CError => true
                       | c =>
-                        (prefaces "Not a datatype" [("c", p_con env (c, ErrorMsg.dummySpan))];
+                        (prefaces "Not a datatype" [("loc", PD.string (ErrorMsg.spanToString loc)),
+                                                    ("c", p_con env (c, ErrorMsg.dummySpan))];
                          raise Fail "isTotal: Not a datatype")
                 end
               | Record _ => List.all (fn c2 => coverageImp (c, c2)) (enumerateCases depth t)
@@ -1437,8 +1448,8 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                  E.NotBound =>
                  (expError env (UnboundExp (loc, s));
                   (eerror, cerror, []))
-               | E.Rel (n, t) => elabHead env infer (L'.ERel n, loc) t
-               | E.Named (n, t) => elabHead env infer (L'.ENamed n, loc) t)
+               | E.Rel (n, t) => elabHead (env, denv) infer (L'.ERel n, loc) t
+               | E.Named (n, t) => elabHead (env, denv) infer (L'.ENamed n, loc) t)
           | L.EVar (m1 :: ms, s, infer) =>
             (case E.lookupStr env m1 of
                  NONE => (expError env (UnboundStrInExp (loc, m1));
@@ -1457,7 +1468,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                           cerror)
                                | SOME t => t
                  in
-                     elabHead env infer (L'.EModProj (n, ms, s), loc) t
+                     elabHead (env, denv) infer (L'.EModProj (n, ms, s), loc) t
                  end)
 
           | L.EWild =>
@@ -1566,6 +1577,20 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 
                 (e', (L'.TDisjoint (c1', c2', t), loc), enD gs1 @ enD gs2 @ gs3)
             end
+          | L.EDisjointApp e =>
+            let
+                val (e', t, gs1) = elabExp (env, denv) e
+
+                val k1 = kunif loc
+                val c1 = cunif (loc, (L'.KRecord k1, loc))
+                val k2 = kunif loc
+                val c2 = cunif (loc, (L'.KRecord k2, loc))
+                val t' = cunif (loc, ktype)
+                val () = checkCon env e' t (L'.TDisjoint (c1, c2, t'), loc)
+                val gs2 = D.prove env denv (c1, c2, loc)
+            in
+                (e', t', enD gs2 @ gs1)
+            end
 
           | L.ERecord xes =>
             let
@@ -1617,11 +1642,10 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val ft = cunif (loc, ktype)
                 val rest = cunif (loc, ktype_record)
                 val first = (L'.CRecord (ktype, [(c', ft)]), loc)
-                            
+                val () = checkCon env e' et
+                                  (L'.TRecord (L'.CConcat (first, rest), loc), loc);
                 val gs3 = D.prove env denv (first, rest, loc)
             in
-                checkCon env e' et
-                         (L'.TRecord (L'.CConcat (first, rest), loc), loc);
                 ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ enD gs2 @ enD gs3)
             end
 
@@ -1633,10 +1657,11 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val r1 = cunif (loc, ktype_record)
                 val r2 = cunif (loc, ktype_record)
 
+                val () = checkCon env e1' e1t (L'.TRecord r1, loc)
+                val () = checkCon env e2' e2t (L'.TRecord r2, loc)
+
                 val gs3 = D.prove env denv (r1, r2, loc)
             in
-                checkCon env e1' e1t (L'.TRecord r1, loc);
-                checkCon env e2' e2t (L'.TRecord r2, loc);
                 ((L'.EConcat (e1', r1, e2', r2), loc),
                  (L'.TRecord ((L'.CConcat (r1, r2), loc)), loc),
                  gs1 @ gs2 @ enD gs3)
@@ -1649,11 +1674,12 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val ft = cunif (loc, ktype)
                 val rest = cunif (loc, ktype_record)
                 val first = (L'.CRecord (ktype, [(c', ft)]), loc)
+
+                val () = checkCon env e' et
+                                  (L'.TRecord (L'.CConcat (first, rest), loc), loc)
                             
                 val gs3 = D.prove env denv (first, rest, loc)
             in
-                checkCon env e' et
-                         (L'.TRecord (L'.CConcat (first, rest), loc), loc);
                 ((L'.ECut (e', c', {field = ft, rest = rest}), loc), (L'.TRecord rest, loc),
                  gs1 @ enD gs2 @ enD gs3)
             end
@@ -1663,11 +1689,12 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val (c', ck, gs2) = elabCon (env, denv) c
 
                 val rest = cunif (loc, ktype_record)
+
+                val () = checkCon env e' et
+                                  (L'.TRecord (L'.CConcat (c', rest), loc), loc)
                             
                 val gs3 = D.prove env denv (c', rest, loc)
             in
-                checkCon env e' et
-                         (L'.TRecord (L'.CConcat (c', rest), loc), loc);
                 ((L'.ECutMulti (e', c', {rest = rest}), loc), (L'.TRecord rest, loc),
                  gs1 @ enD gs2 @ enD gs3)
             end
@@ -1681,15 +1708,15 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                      let
                                          val ((p', pt), (env, _)) = elabPat (p, (env, SS.empty))
 
-                                         val (e', et, gs1) = elabExp (env, denv) e
+                                         val (e', et', gs1) = elabExp (env, denv) e
                                      in
                                          checkPatCon env p' pt et;
-                                         checkCon env e' et result;
+                                         checkCon env e' et' result;
                                          ((p', e'), gs1 @ gs)
                                      end)
                                  gs1 pes
             in
-                if exhaustive (env, et, map #1 pes') then
+                if exhaustive (env, et, map #1 pes', loc) then
                     ()
                 else
                     expError env (Inexhaustive loc);
@@ -1722,10 +1749,11 @@ and elabEdecl denv (dAll as (d, loc), (env, gs)) =
 
                     val (e', et, gs2) = elabExp (env, denv) e
 
+                    val () = checkCon env e' et c'
+
                     val c' = normClassConstraint env c'
                     val env' = E.pushERel env x c'
                 in
-                    checkCon env e' et c';
                     ((L'.EDVal (x, c', e'), loc), (env', enD gs1 @ gs2 @ gs))
                 end
               | L.EDValRec vis =>
@@ -2958,10 +2986,12 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                          | SOME c => elabCon (env, denv) c
 
                     val (e', et, gs2) = elabExp (env, denv) e
+
+                    val () = checkCon env e' et c'
+
                     val c = normClassConstraint env c'
                     val (env', n) = E.pushENamed env x c'
                 in
-                    checkCon env e' et c';
                     (*prefaces "DVal" [("x", Print.PD.string x),
                                      ("c'", p_con env c')];*)
                     ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ gs))

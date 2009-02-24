@@ -3,32 +3,32 @@
 con folder = K ==> fn r :: {K} =>
                       tf :: ({K} -> Type)
                       -> (nm :: Name -> v :: K -> r :: {K} -> tf r
-                          -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
+                          -> [[nm] ~ r] => tf ([nm = v] ++ r))
                       -> tf [] -> tf r
 
 structure Folder = struct
     fun nil K (tf :: {K} -> Type)
             (f : nm :: Name -> v :: K -> r :: {K} -> tf r
-                 -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
+                 -> [[nm] ~ r] => tf ([nm = v] ++ r))
             (i : tf []) = i
 
     fun cons K (r ::: {K}) (nm :: Name) (v :: K) [[nm] ~ r] (fold : folder r)
              (tf :: {K} -> Type)
              (f : nm :: Name -> v :: K -> r :: {K} -> tf r
-                  -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
-             (i : tf []) = f [nm] [v] [r] (fold [tf] f i)
+                  -> [[nm] ~ r] => tf ([nm = v] ++ r))
+             (i : tf []) = f [nm] [v] [r] (fold [tf] f i) !
 
     fun concat K (r1 ::: {K}) (r2 ::: {K}) [r1 ~ r2]
         (f1 : folder r1) (f2 : folder r2)
         (tf :: {K} -> Type)
         (f : nm :: Name -> v :: K -> r :: {K} -> tf r
-             -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
+             -> [[nm] ~ r] => tf ([nm = v] ++ r))
         (i : tf []) =
-        f1 [fn r1' [r1' ~ r2] => tf (r1' ++ r2)] 0
-           (*(fn (nm :: Name) (v :: K) (r1' :: {K}) (acc : fn [r1' ~ r2] => tf (r1' ++ r2))
+        f1 [fn r1' => [r1' ~ r2] => tf (r1' ++ r2)]
+           (fn (nm :: Name) (v :: K) (r1' :: {K}) (acc : [r1' ~ r2] => tf (r1' ++ r2))
                             [[nm] ~ r1'] [[nm = v] ++ r1' ~ r2] =>
-               f [nm] [v] [r1' ++ r2] acc)
-           (f2 [tf] f i)*)
+               f [nm] [v] [r1' ++ r2] acc !)
+           (fn [[] ~ r2] => f2 [tf] f i) !
 end
 
 
@@ -59,74 +59,74 @@ fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (_ : show t) (v : t) =
 
 fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
            (f : nm :: Name -> rest :: {Unit}
-                -> fn [[nm] ~ rest] =>
+                -> [[nm] ~ rest] =>
                       tf -> tr rest -> tr ([nm] ++ rest))
            (i : tr []) (r ::: {Unit}) (fold : folder r)=
     fold [fn r :: {Unit} => $(mapUT tf r) -> tr r]
          (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
                           [[nm] ~ rest] r =>
-             f [nm] [rest] r.nm (acc (r -- nm)))
+             f [nm] [rest] ! r.nm (acc (r -- nm)))
          (fn _ => i)
 
 fun foldUR2 (tf1 :: Type) (tf2 :: Type) (tr :: {Unit} -> Type)
            (f : nm :: Name -> rest :: {Unit}
-                -> fn [[nm] ~ rest] =>
+                -> [[nm] ~ rest] =>
                       tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
            (i : tr []) (r ::: {Unit}) (fold : folder r) =
     fold [fn r :: {Unit} => $(mapUT tf1 r) -> $(mapUT tf2 r) -> tr r]
          (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
                           [[nm] ~ rest] r1 r2 =>
-             f [nm] [rest] r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
+             f [nm] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
          (fn _ _ => i)
 
 fun foldURX2 (tf1 :: Type) (tf2 :: Type) (ctx :: {Unit})
            (f : nm :: Name -> rest :: {Unit}
-                -> fn [[nm] ~ rest] =>
+                -> [[nm] ~ rest] =>
                       tf1 -> tf2 -> xml ctx [] []) =
     foldUR2 [tf1] [tf2] [fn _ => xml ctx [] []]
             (fn (nm :: Name) (rest :: {Unit}) [[nm] ~ rest] v1 v2 acc =>
-                <xml>{f [nm] [rest] v1 v2}{acc}</xml>)
+                <xml>{f [nm] [rest] ! v1 v2}{acc}</xml>)
             <xml/>
 
 fun foldR K (tf :: K -> Type) (tr :: {K} -> Type)
            (f : nm :: Name -> t :: K -> rest :: {K}
-                -> fn [[nm] ~ rest] =>
+                -> [[nm] ~ rest] =>
                       tf t -> tr rest -> tr ([nm = t] ++ rest))
            (i : tr []) (r ::: {K}) (fold : folder r) =
     fold [fn r :: {K} => $(map tf r) -> tr r]
              (fn (nm :: Name) (t :: K) (rest :: {K}) (acc : _ -> tr rest)
                               [[nm] ~ rest] r =>
-                 f [nm] [t] [rest] r.nm (acc (r -- nm)))
+                 f [nm] [t] [rest] ! r.nm (acc (r -- nm)))
              (fn _ => i)
 
 fun foldR2 K (tf1 :: K -> Type) (tf2 :: K -> Type) (tr :: {K} -> Type)
             (f : nm :: Name -> t :: K -> rest :: {K}
-                 -> fn [[nm] ~ rest] =>
+                 -> [[nm] ~ rest] =>
                        tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
             (i : tr []) (r ::: {K}) (fold : folder r) =
     fold [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> tr r]
          (fn (nm :: Name) (t :: K) (rest :: {K})
                           (acc : _ -> _ -> tr rest) [[nm] ~ rest] r1 r2 =>
-             f [nm] [t] [rest] r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
+             f [nm] [t] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
          (fn _ _ => i)
 
 fun foldRX K (tf :: K -> Type) (ctx :: {Unit})
             (f : nm :: Name -> t :: K -> rest :: {K}
-                 -> fn [[nm] ~ rest] =>
+                 -> [[nm] ~ rest] =>
                        tf t -> xml ctx [] []) =
     foldR [tf] [fn _ => xml ctx [] []]
           (fn (nm :: Name) (t :: K) (rest :: {K}) [[nm] ~ rest] r acc =>
-              <xml>{f [nm] [t] [rest] r}{acc}</xml>)
+              <xml>{f [nm] [t] [rest] ! r}{acc}</xml>)
           <xml/>
 
 fun foldRX2 K (tf1 :: K -> Type) (tf2 :: K -> Type) (ctx :: {Unit})
              (f : nm :: Name -> t :: K -> rest :: {K}
-                  -> fn [[nm] ~ rest] =>
+                  -> [[nm] ~ rest] =>
                         tf1 t -> tf2 t -> xml ctx [] []) =
     foldR2 [tf1] [tf2] [fn _ => xml ctx [] []]
            (fn (nm :: Name) (t :: K) (rest :: {K}) [[nm] ~ rest]
                             r1 r2 acc =>
-               <xml>{f [nm] [t] [rest] r1 r2}{acc}</xml>)
+               <xml>{f [nm] [t] [rest] ! r1 r2}{acc}</xml>)
            <xml/>
 
 fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
@@ -148,13 +148,14 @@ fun queryX' (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
           <xml/>
 
 fun oneOrNoRows (tables ::: {{Type}}) (exps ::: {Type})
-                (q : sql_query tables exps) [tables ~ exps] =
+                [tables ~ exps]
+                (q : sql_query tables exps)  =
     query q
           (fn fs _ => return (Some fs))
           None
 
 fun oneRow (tables ::: {{Type}}) (exps ::: {Type})
-                (q : sql_query tables exps) [tables ~ exps] =
+                [tables ~ exps] (q : sql_query tables exps) =
     o <- oneOrNoRows q;
     return (case o of
                 None => error <xml>Query returned no rows</xml>

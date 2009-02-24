@@ -277,7 +277,7 @@ val sql_current_timestamp : sql_nfunc time
 (*** Executing queries *)
 
 val query : tables ::: {{Type}} -> exps ::: {Type}
-            -> fn [tables ~ exps] =>
+            -> [tables ~ exps] =>
                   state ::: Type
                   -> sql_query tables exps
                   -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
@@ -298,7 +298,7 @@ val insert : fields ::: {Type}
              -> dml
 
 val update : unchanged ::: {Type} -> changed :: {Type} ->
-             fn [changed ~ unchanged] =>
+             [changed ~ unchanged] =>
                 $(map (fn t :: Type => sql_exp [T = changed ++ unchanged] [] [] t) changed)
                 -> sql_table (changed ++ unchanged)
                 -> sql_exp [T = changed ++ unchanged] [] [] bool
@@ -326,23 +326,23 @@ val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type}
           -> ctxOuter ::: {Unit} -> ctxInner ::: {Unit}
           -> useOuter ::: {Type} -> useInner ::: {Type}
           -> bindOuter ::: {Type} -> bindInner ::: {Type}
-          -> fn [attrsGiven ~ attrsAbsent]
-                    [useOuter ~ useInner]
-                    [bindOuter ~ bindInner] =>
-                $attrsGiven
-                -> tag (attrsGiven ++ attrsAbsent)
-                       ctxOuter ctxInner useOuter bindOuter
-                -> xml ctxInner useInner bindInner
-                -> xml ctxOuter (useOuter ++ useInner) (bindOuter ++ bindInner)
+          -> [attrsGiven ~ attrsAbsent] =>
+             [useOuter ~ useInner] =>
+             [bindOuter ~ bindInner] =>
+           $attrsGiven
+           -> tag (attrsGiven ++ attrsAbsent)
+                  ctxOuter ctxInner useOuter bindOuter
+           -> xml ctxInner useInner bindInner
+           -> xml ctxOuter (useOuter ++ useInner) (bindOuter ++ bindInner)
 val join : ctx ::: {Unit} 
         -> use1 ::: {Type} -> bind1 ::: {Type} -> bind2 ::: {Type}
-        -> fn [use1 ~ bind1] [bind1 ~ bind2] =>
+        -> [use1 ~ bind1] => [bind1 ~ bind2] =>
               xml ctx use1 bind1
               -> xml ctx (use1 ++ bind1) bind2
               -> xml ctx use1 (bind1 ++ bind2)
 val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type}
               -> bind ::: {Type}
-              -> fn [use1 ~ use2] =>
+              -> [use1 ~ use2] =>
                     xml ctx use1 bind
                     -> xml ctx (use1 ++ use2) bind
 
@@ -370,11 +370,11 @@ val title : unit -> tag [] head [] [] []
 val body : unit -> tag [] html body [] []
 con bodyTag = fn (attrs :: {Type}) =>
                  ctx ::: {Unit} ->
-                 fn [[Body] ~ ctx] =>
+                 [[Body] ~ ctx] =>
                     unit -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
 con bodyTagStandalone = fn (attrs :: {Type}) =>
                            ctx ::: {Unit}
-                           -> fn [[Body] ~ ctx] =>
+                           -> [[Body] ~ ctx] =>
                                  unit -> tag attrs ([Body] ++ ctx) [] [] []
 
 val br : bodyTagStandalone []
@@ -399,12 +399,12 @@ val hr : bodyTag []
 val a : bodyTag [Link = transaction page, Onclick = transaction unit]
 
 val form : ctx ::: {Unit} -> bind ::: {Type}
-            -> fn [[Body] ~ ctx] =>
+            -> [[Body] ~ ctx] =>
                   xml form [] bind
                   -> xml ([Body] ++ ctx) [] []
 con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   ctx ::: {Unit}
-                  -> fn [[Form] ~ ctx] =>
+                  -> [[Form] ~ ctx] =>
                         nm :: Name -> unit
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
 val textbox : formTag string [] [Value = string, Size = int, Source = source string]
@@ -422,7 +422,7 @@ val select : formTag string select []
 val option : unit -> tag [Value = string, Selected = bool] select [] [] []
 
 val submit : ctx ::: {Unit} -> use ::: {Type}
-             -> fn [[Form] ~ ctx] =>
+             -> [[Form] ~ ctx] =>
                    unit
                    -> tag [Value = string, Action = $use -> transaction page]
                           ([Form] ++ ctx) ([Form] ++ ctx) use []
@@ -431,7 +431,7 @@ val submit : ctx ::: {Unit} -> use ::: {Type}
 
 con cformTag = fn (attrs :: {Type}) =>
                   ctx ::: {Unit}
-                  -> fn [[Body] ~ ctx] =>
+                  -> [[Body] ~ ctx] =>
                         unit -> tag attrs ([Body] ++ ctx) [] [] []
 
 val ctextbox : cformTag [Value = string, Size = int, Source = source string]
@@ -439,13 +439,13 @@ val button : cformTag [Value = string, Onclick = transaction unit]
 
 (*** Tables *)
 
-val tabl : other ::: {Unit} -> fn [other ~ [Body, Table]] =>
+val tabl : other ::: {Unit} -> [other ~ [Body, Table]] =>
                                   unit -> tag [Border = int] ([Body] ++ other) ([Body, Table] ++ other) [] []
-val tr : other ::: {Unit} -> fn [other ~ [Body, Table, Tr]] =>
+val tr : other ::: {Unit} -> [other ~ [Body, Table, Tr]] =>
                                 unit -> tag [] ([Body, Table] ++ other) ([Body, Tr] ++ other) [] []
-val th : other ::: {Unit} -> fn [other ~ [Body, Tr]] =>
+val th : other ::: {Unit} -> [other ~ [Body, Tr]] =>
                                 unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] []
-val td : other ::: {Unit} -> fn [other ~ [Body, Tr]] =>
+val td : other ::: {Unit} -> [other ~ [Body, Tr]] =>
                                 unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] []
 
 

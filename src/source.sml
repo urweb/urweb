@@ -124,6 +124,7 @@ datatype exp' =
        | ECApp of exp * con
        | ECAbs of explicitness * string * kind * exp
        | EDisjoint of con * con * exp
+       | EDisjointApp of exp
 
        | EKAbs of string * exp
 

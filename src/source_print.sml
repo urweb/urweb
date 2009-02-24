@@ -267,6 +267,9 @@ fun p_exp' par (e, _) =
                                                    string "=>",
                                                    space,
                                                    p_exp e])
+      | EDisjointApp e => parenIf par (box [p_exp e,
+                                            space,
+                                            string "!"])
 
       | ERecord xes => box [string "{",
                             p_list (fn (x, e) =>
