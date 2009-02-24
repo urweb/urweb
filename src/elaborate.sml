@@ -49,6 +49,7 @@
  structure SM = BinaryMapFn(SK)
 
  val basis_r = ref 0
+ val top_r = ref 0
 
  fun elabExplicitness e =
      case e of
@@ -1056,6 +1057,7 @@
  datatype constraint =
           Disjoint of D.goal
         | TypeClass of E.env * L'.con * L'.exp option ref * ErrorMsg.span
+        | Folder of E.env * L'.con * L'.exp option ref * ErrorMsg.span
 
  val enD = map Disjoint
 
@@ -1079,19 +1081,43 @@
                  in
                      unravel (t'', (L'.ECApp (e, u), loc))
                  end
-               | (L'.TFun (dom as (L'.CApp (cl, _), _), ran), _) =>
+               | (L'.TFun (dom, ran), _) =>
                  let
-                     val cl = hnormCon env cl
+                     fun default () = (e, t, [])
                  in
-                     if infer <> L.TypesOnly andalso E.isClass env cl then
+                     case #1 (hnormCon env dom) of
+                         L'.CApp (cl, x) =>
                          let
-                             val r = ref NONE
-                             val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
+                             val cl = hnormCon env cl
                          in
-                             (e, t, TypeClass (env, dom, r, loc) :: gs)
+                             if infer <> L.TypesOnly then
+                                 if E.isClass env cl then
+                                     let
+                                         val r = ref NONE
+                                         val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
+                                     in
+                                         (e, t, TypeClass (env, dom, r, loc) :: gs)
+                                     end
+                                 else
+                                     case hnormCon env cl of
+                                         (L'.CKApp (cl, _), _) =>
+                                         (case hnormCon env cl of
+                                              (L'.CModProj (top_n, [], "folder"), _) =>
+                                              if top_n = !top_r then
+                                                  let
+                                                      val r = ref NONE
+                                                      val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
+                                                  in
+                                                      (e, t, Folder (env, x, r, loc) :: gs)
+                                                  end
+                                              else
+                                                  default ()
+                                            | _ => default ())
+                                       | _ => default ()
+                             else
+                                 default ()
                          end
-                     else
-                         (e, t, [])
+                       | _ => default ()
                  end
                | (L'.TDisjoint (r1, r2, t'), loc) =>
                  if infer <> L.TypesOnly then
@@ -3508,11 +3534,13 @@ fun elabFile basis topStr topSgn env file =
                                       case E.resolveClass env c of
                                           SOME e => r := SOME e
                                         | NONE => expError env (Unresolvable (loc, c))
-                                  end) gs
+                                  end
+                                | Folder _ => raise Fail "Unresolved folder in top.ur") gs
 
         val () = subSgn env' topSgn' topSgn
 
         val (env', top_n) = E.pushStrNamed env' "Top" topSgn
+        val () = top_r := top_n
 
         val (ds', env') = dopen env' {str = top_n, strs = [], sgn = topSgn}
 
@@ -3560,6 +3588,33 @@ fun elabFile basis topStr topSgn env file =
                         case E.resolveClass env c of
                             SOME e => r := SOME e
                           | NONE => expError env (Unresolvable (loc, c))
+                    end
+                  | Folder (env, c, r, loc) =>
+                    let
+                        val c = hnormCon env c
+                    in
+                        case #1 c of
+                            L'.CRecord (k, xcs) =>
+                            let
+                                val e = (L'.EModProj (top_n, ["Folder"], "nil"), loc)
+                                val e = (L'.EKApp (e, k), loc)
+
+                                val (folder, _) = foldr (fn ((x, c), (folder, xcs)) =>
+                                                            let
+                                                                val e = (L'.EModProj (top_n, ["Folder"], "cons"), loc)
+                                                                val e = (L'.EKApp (e, k), loc)
+                                                                val e = (L'.ECApp (e, (L'.CRecord (k, xcs), loc)), loc)
+                                                                val e = (L'.ECApp (e, x), loc)
+                                                                val e = (L'.ECApp (e, c), loc)
+                                                                val e = (L'.EApp (e, folder), loc)
+                                                            in
+                                                                (e, (x, c) :: xcs)
+                                                            end)
+                                                        (e, []) xcs
+                            in
+                                r := SOME folder
+                            end
+                          | _ => expError env (Unresolvable (loc, c))
                     end) gs;
 
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
