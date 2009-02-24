@@ -7,6 +7,8 @@ con folder = K ==> fn r :: {K} =>
                       -> tf [] -> tf r
 
 structure Folder = struct
+    fun fold K (r ::: {K}) (fl : folder r) = fl
+
     fun nil K (tf :: {K} -> Type)
             (f : nm :: Name -> v :: K -> r :: {K} -> tf r
                  -> [[nm] ~ r] => tf ([nm = v] ++ r))

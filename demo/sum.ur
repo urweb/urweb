@@ -5,6 +5,6 @@ fun sum (fs ::: {Unit}) (fold : folder fs) (x : $(mapUT int fs)) =
 
 fun main () = return <xml><body>
   {[sum Folder.nil {}]}<br/>
-  {[sum (Folder.cons [#A] [()] (Folder.cons [#B] [()] Folder.nil)) {A = 0, B = 1}]}<br/>
-  {[sum (Folder.cons [#D] [()] (Folder.cons [#C] [()] (Folder.cons [#E] [()] Folder.nil))) {C = 2, D = 3, E = 4}]}
+  {[sum (Folder.cons [#A] [()] ! (Folder.cons [#B] [()] ! Folder.nil)) {A = 0, B = 1}]}<br/>
+  {[sum (Folder.cons [#D] [()] ! (Folder.cons [#C] [()] ! (Folder.cons [#E] [()] ! Folder.nil))) {C = 2, D = 3, E = 4}]}
 </body></xml>
