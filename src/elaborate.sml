@@ -1057,9 +1057,17 @@
  datatype constraint =
           Disjoint of D.goal
         | TypeClass of E.env * L'.con * L'.exp option ref * ErrorMsg.span
-        | Folder of E.env * L'.con * L'.exp option ref * ErrorMsg.span
 
  val enD = map Disjoint
+
+ fun isClassOrFolder env cl =
+     E.isClass env cl
+     orelse case hnormCon env cl of
+                (L'.CKApp (cl, _), _) =>
+                (case hnormCon env cl of
+                     (L'.CModProj (top_n, [], "folder"), _) => top_n = !top_r
+                   | _ => false)
+              | _ => false
 
  fun elabHead (env, denv) infer (e as (_, loc)) t =
      let
@@ -1091,7 +1099,7 @@
                              val cl = hnormCon env cl
                          in
                              if infer <> L.TypesOnly then
-                                 if E.isClass env cl then
+                                 if isClassOrFolder env cl then
                                      let
                                          val r = ref NONE
                                          val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
@@ -1099,21 +1107,7 @@
                                          (e, t, TypeClass (env, dom, r, loc) :: gs)
                                      end
                                  else
-                                     case hnormCon env cl of
-                                         (L'.CKApp (cl, _), _) =>
-                                         (case hnormCon env cl of
-                                              (L'.CModProj (top_n, [], "folder"), _) =>
-                                              if top_n = !top_r then
-                                                  let
-                                                      val r = ref NONE
-                                                      val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
-                                                  in
-                                                      (e, t, Folder (env, x, r, loc) :: gs)
-                                                  end
-                                              else
-                                                  default ()
-                                            | _ => default ())
-                                       | _ => default ()
+                                     default ()
                              else
                                  default ()
                          end
@@ -2849,11 +2843,10 @@ fun wildifyStr env (str, sgn) =
                                            in
                                                case #1 t of
                                                    L'.CApp (f, _) =>
-                                                   if E.isClass env' f then
+                                                   if isClassOrFolder env' f then
                                                        (neededC, constraints, SS.add (neededV, x))
                                                    else
                                                        default ()
-                                                       
                                                  | _ => default ()
                                            end
 
@@ -2863,18 +2856,19 @@ fun wildifyStr env (str, sgn) =
                                end)
                            (SM.empty, [], SS.empty, env) sgis
                                                               
-                 val (neededC, neededV) = foldl (fn ((d, _), needed as (neededC, neededV)) =>
-                                                    case d of
-                                                        L.DCon (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
-                                                                             handle NotFound =>
-                                                                                    needed)
-                                                      | L.DClass (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
-                                                                               handle NotFound => needed)
-                                                      | L.DVal (x, _, _) => ((neededC, SS.delete (neededV, x))
-                                                                             handle NotFound => needed)
-                                                      | L.DOpen _ => (SM.empty, SS.empty)
-                                                      | _ => needed)
-                                                (neededC, neededV) ds
+                 val (neededC, neededV) =
+                     foldl (fn ((d, _), needed as (neededC, neededV)) =>
+                               case d of
+                                   L.DCon (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
+                                                        handle NotFound =>
+                                                               needed)
+                                 | L.DClass (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
+                                                          handle NotFound => needed)
+                                 | L.DVal (x, _, _) => ((neededC, SS.delete (neededV, x))
+                                                        handle NotFound => needed)
+                                 | L.DOpen _ => (SM.empty, SS.empty)
+                                 | _ => needed)
+                           (neededC, neededV) ds
 
                  val ds' = List.mapPartial (fn (env', (c1, c2), loc) =>
                                                case (decompileCon env' c1, decompileCon env' c2) of
@@ -3534,8 +3528,7 @@ fun elabFile basis topStr topSgn env file =
                                       case E.resolveClass env c of
                                           SOME e => r := SOME e
                                         | NONE => expError env (Unresolvable (loc, c))
-                                  end
-                                | Folder _ => raise Fail "Unresolved folder in top.ur") gs
+                                  end) gs
 
         val () = subSgn env' topSgn' topSgn
 
@@ -3583,38 +3576,47 @@ fun elabFile basis topStr topSgn env file =
                                       ("Hnormed 2", p_con env (ElabOps.hnormCon env c2))]))
                   | TypeClass (env, c, r, loc) =>
                     let
+                        fun default () = expError env (Unresolvable (loc, c))
+
                         val c = normClassKey env c
                     in
                         case E.resolveClass env c of
                             SOME e => r := SOME e
-                          | NONE => expError env (Unresolvable (loc, c))
-                    end
-                  | Folder (env, c, r, loc) =>
-                    let
-                        val c = hnormCon env c
-                    in
-                        case #1 c of
-                            L'.CRecord (k, xcs) =>
-                            let
-                                val e = (L'.EModProj (top_n, ["Folder"], "nil"), loc)
-                                val e = (L'.EKApp (e, k), loc)
+                          | NONE =>
+                            case #1 (hnormCon env c) of
+                                L'.CApp (f, x) =>
+                                (case (#1 (hnormCon env f), #1 (hnormCon env x)) of
+                                     (L'.CKApp (f, _), L'.CRecord (k, xcs)) =>
+                                     (case #1 (hnormCon env f) of
+                                          L'.CModProj (top_n', [], "folder") =>
+                                          if top_n' = top_n then
+                                              let
+                                                  val e = (L'.EModProj (top_n, ["Folder"], "nil"), loc)
+                                                  val e = (L'.EKApp (e, k), loc)
 
-                                val (folder, _) = foldr (fn ((x, c), (folder, xcs)) =>
-                                                            let
-                                                                val e = (L'.EModProj (top_n, ["Folder"], "cons"), loc)
-                                                                val e = (L'.EKApp (e, k), loc)
-                                                                val e = (L'.ECApp (e, (L'.CRecord (k, xcs), loc)), loc)
-                                                                val e = (L'.ECApp (e, x), loc)
-                                                                val e = (L'.ECApp (e, c), loc)
-                                                                val e = (L'.EApp (e, folder), loc)
-                                                            in
-                                                                (e, (x, c) :: xcs)
-                                                            end)
-                                                        (e, []) xcs
-                            in
-                                r := SOME folder
-                            end
-                          | _ => expError env (Unresolvable (loc, c))
+                                                  val (folder, _) = foldr (fn ((x, c), (folder, xcs)) =>
+                                                                              let
+                                                                                  val e = (L'.EModProj (top_n, ["Folder"],
+                                                                                                        "cons"), loc)
+                                                                                  val e = (L'.EKApp (e, k), loc)
+                                                                                  val e = (L'.ECApp (e,
+                                                                                                     (L'.CRecord (k, xcs),
+                                                                                                      loc)), loc)
+                                                                                  val e = (L'.ECApp (e, x), loc)
+                                                                                  val e = (L'.ECApp (e, c), loc)
+                                                                                  val e = (L'.EApp (e, folder), loc)
+                                                                              in
+                                                                                  (e, (x, c) :: xcs)
+                                                                              end)
+                                                                          (e, []) xcs
+                                              in
+                                                  r := SOME folder
+                                              end
+                                          else
+                                              default ()
+                                        | _ => default ())
+                                   | _ => default ())
+                              | _ => default ()
                     end) gs;
 
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
