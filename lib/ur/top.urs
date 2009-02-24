@@ -12,6 +12,8 @@ structure Folder : sig
                -> [[nm] ~ r] => folder r -> folder ([nm = v] ++ r)
     val concat : K --> r1 ::: {K} -> r2 ::: {K}
                  -> [r1 ~ r2] => folder r1 -> folder r2 -> folder (r1 ++ r2)
+    val mp : K1 --> K2 --> f ::: (K1 -> K2) -> r ::: {K1}
+             -> folder r -> folder (map f r)
 end
 
 

@@ -29,6 +29,17 @@ structure Folder = struct
                             [[nm] ~ r1'] [[nm = v] ++ r1' ~ r2] =>
                f [nm] [v] [r1' ++ r2] acc !)
            (fn [[] ~ r2] => f2 [tf] f i) !
+
+    fun mp K1 K2 (f ::: K1 -> K2) (r ::: {K1})
+        (fold : folder r)
+        (tf :: {K2} -> Type)
+        (f : nm :: Name -> v :: K2 -> r :: {K2} -> tf r
+             -> [[nm] ~ r] => tf ([nm = v] ++ r))
+        (i : tf []) =
+        fold [fn r => tf (map f r)]
+        (fn (nm :: Name) (v :: K1) (rest :: {K1}) (acc : tf (map f rest)) [[nm] ~ rest] =>
+            f [nm] [f v] [map f rest] acc !)
+        i
 end
 
 
