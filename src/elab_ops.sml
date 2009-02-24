@@ -194,7 +194,7 @@ fun hnormCon env (cAll as (c, loc)) =
                           let
                               fun unconstraint c =
                                   case hnormCon env c of
-                                      (CDisjoint (_, _, _, c), _) => unconstraint c
+                                      (TDisjoint (_, _, c), _) => unconstraint c
                                     | c => c
 
                               fun tryDistributivity () =

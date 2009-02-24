@@ -34,11 +34,9 @@ signature DISJOINT = sig
 
     type goal = ErrorMsg.span * ElabEnv.env * env * Elab.con * Elab.con
 
-    val assert : ElabEnv.env -> env -> Elab.con * Elab.con -> env * goal list
+    val assert : ElabEnv.env -> env -> Elab.con * Elab.con -> env
 
     val prove : ElabEnv.env -> env -> Elab.con * Elab.con * ErrorMsg.span -> goal list
-
-    val hnormCon : ElabEnv.env * env -> Elab.con -> Elab.con * goal list
 
     val p_env : env -> unit
 

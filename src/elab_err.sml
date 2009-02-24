@@ -40,7 +40,7 @@ val simplCon = U.Con.mapB {kind = fn _ => fn k => k,
                            con = fn env => fn c =>
                                               let
                                                   val c = (c, ErrorMsg.dummySpan)
-                                                  val (c', _) = Disjoint.hnormCon (env, Disjoint.empty) c
+                                                  val c' = ElabOps.hnormCon env c
                                               in
                                                   (*prefaces "simpl" [("c", P.p_con env c),
                                                                     ("c'", P.p_con env c')];*)

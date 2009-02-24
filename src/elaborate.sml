@@ -208,7 +208,6 @@
        | _ => kAll
 
  open ElabOps
- val hnormCon = D.hnormCon
 
  fun elabConHead (c as (_, loc)) k =
      let
@@ -265,7 +264,7 @@
              checkKind env t' tk ktype;
              ((L'.TKFun (x, t'), loc), ktype, gs)
          end
-       | L.CDisjoint (c1, c2, c) =>
+       | L.TDisjoint (c1, c2, c) =>
          let
              val (c1', k1, gs1) = elabCon (env, denv) c1
              val (c2', k2, gs2) = elabCon (env, denv) c2
@@ -273,13 +272,13 @@
              val ku1 = kunif loc
              val ku2 = kunif loc
 
-             val (denv', gs3) = D.assert env denv (c1', c2')
+             val denv' = D.assert env denv (c1', c2')
              val (c', k, gs4) = elabCon (env, denv') c
          in
              checkKind env c1' k1 (L'.KRecord ku1, loc);
              checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-             ((L'.CDisjoint (L'.Instantiate, c1', c2', c'), loc), k, gs1 @ gs2 @ gs3 @ gs4)
+             ((L'.TDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs4)
          end
        | L.TRecord c =>
          let
@@ -515,6 +514,7 @@
          L'.TFun _ => ktype
        | L'.TCFun _ => ktype
        | L'.TRecord _ => ktype
+       | L'.TDisjoint _ => ktype
 
        | L'.CRel xn => #2 (E.lookupCRel env xn)
        | L'.CNamed xn => #2 (E.lookupCNamed env xn)
@@ -538,7 +538,7 @@
             | (L'.KError, _) => kerror
             | k => raise CUnify' (CKindof (k, c, "arrow")))
        | L'.CAbs (x, k, c) => (L'.KArrow (k, kindof (E.pushCRel env x k) c), loc)
-       | L'.CDisjoint (_, _, _, c) => kindof env c
+
 
        | L'.CName _ => kname
 
@@ -564,20 +564,6 @@
             | k => raise CUnify' (CKindof (k, c, "kapp")))
        | L'.TKFun _ => ktype
 
- fun deConstraintCon (env, denv) c =
-     let
-         val (c, gs) = hnormCon (env, denv) c
-     in
-         case #1 c of
-             L'.CDisjoint (_, _, _, c) =>
-             let
-                 val (c', gs') = deConstraintCon (env, denv) c
-             in
-                 (c', gs @ gs')
-             end
-           | _ => (c, gs)
-     end
-
  exception GuessFailure
 
  fun isUnitCon env (c, loc) =
@@ -585,6 +571,7 @@
          L'.TFun _ => false
        | L'.TCFun _ => false
        | L'.TRecord _ => false
+       | L'.TDisjoint _ => false
 
        | L'.CRel xn => #1 (#2 (E.lookupCRel env xn)) = L'.KUnit
        | L'.CNamed xn => #1 (#2 (E.lookupCNamed env xn)) = L'.KUnit
@@ -608,7 +595,6 @@
             | (L'.KError, _) => false
             | k => raise CUnify' (CKindof (k, c, "arrow")))*)
        | L'.CAbs _ => false
-       | L'.CDisjoint (_, _, _, c) => false(*isUnitCon env c*)
 
        | L'.CName _ => false
 
@@ -631,7 +617,7 @@
        | L'.CKApp _ => false
        | L'.TKFun _ => false
 
- fun unifyRecordCons (env, denv) (c1, c2) =
+ fun unifyRecordCons env (c1, c2) =
      let
          fun rkindof c =
              case hnormKind (kindof env c) of
@@ -642,55 +628,47 @@
          val k1 = rkindof c1
          val k2 = rkindof c2
 
-         val (r1, gs1) = recordSummary (env, denv) c1
-         val (r2, gs2) = recordSummary (env, denv) c2
+         val r1 = recordSummary env c1
+         val r2 = recordSummary env c2
      in
          unifyKinds env k1 k2;
-         unifySummaries (env, denv) (k1, r1, r2);
-         gs1 @ gs2
+         unifySummaries env (k1, r1, r2)
      end
 
- and recordSummary (env, denv) c =
+ and recordSummary env c =
      let
-         val (c, gs) = hnormCon (env, denv) c
+         val c = hnormCon env c
 
-         val (sum, gs') =
+         val sum =
              case c of
-                 (L'.CRecord (_, xcs), _) => ({fields = xcs, unifs = [], others = []}, [])
+                 (L'.CRecord (_, xcs), _) => {fields = xcs, unifs = [], others = []}
                | (L'.CConcat (c1, c2), _) =>
                  let
-                     val (s1, gs1) = recordSummary (env, denv) c1
-                     val (s2, gs2) = recordSummary (env, denv) c2
+                     val s1 = recordSummary env c1
+                     val s2 = recordSummary env c2
                  in
-                     ({fields = #fields s1 @ #fields s2,
-                       unifs = #unifs s1 @ #unifs s2,
-                       others = #others s1 @ #others s2},
-                      gs1 @ gs2)
+                     {fields = #fields s1 @ #fields s2,
+                      unifs = #unifs s1 @ #unifs s2,
+                      others = #others s1 @ #others s2}
                  end
-               | (L'.CUnif (_, _, _, ref (SOME c)), _) => recordSummary (env, denv) c
-               | c' as (L'.CUnif (_, _, _, r), _) => ({fields = [], unifs = [(c', r)], others = []}, [])
-               | c' => ({fields = [], unifs = [], others = [c']}, [])
+               | (L'.CUnif (_, _, _, ref (SOME c)), _) => recordSummary env c
+               | c' as (L'.CUnif (_, _, _, r), _) => {fields = [], unifs = [(c', r)], others = []}
+               | c' => {fields = [], unifs = [], others = [c']}
      in
-         (sum, gs @ gs')
+         sum
      end
 
- and consEq (env, denv) (c1, c2) =
-     let
-         val gs = unifyCons (env, denv) c1 c2
-     in
-         List.all (fn (loc, env, denv, c1, c2) =>
-                      case D.prove env denv (c1, c2, loc) of
-                          [] => true
-                        | _ => false) gs
-     end
+ and consEq env (c1, c2) =
+     (unifyCons env c1 c2;
+      true)
      handle CUnify _ => false
 
  and consNeq env (c1, c2) =
-     case (#1 (ElabOps.hnormCon env c1), #1 (ElabOps.hnormCon env c2)) of
+     case (#1 (hnormCon env c1), #1 (hnormCon env c2)) of
          (L'.CName x1, L'.CName x2) => x1 <> x2
        | _ => false
 
- and unifySummaries (env, denv) (k, s1 : record_summary, s2 : record_summary) =
+ and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
      let
          val loc = #2 k
          (*val () = eprefaces "Summaries" [("#1", p_summary env s1),
@@ -720,13 +698,13 @@
 
          val (fs1, fs2) = eatMatching (fn ((x1, c1), (x2, c2)) =>
                                           not (consNeq env (x1, x2))
-                                          andalso consEq (env, denv) (c1, c2)
-                                          andalso consEq (env, denv) (x1, x2))
+                                          andalso consEq env (c1, c2)
+                                          andalso consEq env (x1, x2))
                                       (#fields s1, #fields s2)
          (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
                                           ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
          val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
-         val (others1, others2) = eatMatching (consEq (env, denv)) (#others s1, #others s2)
+         val (others1, others2) = eatMatching (consEq env) (#others s1, #others s2)
          (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
@@ -763,14 +741,8 @@
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
          fun isGuessable (other, fs) =
-             let
-                 val gs = guessMap (env, denv) (other, (L'.CRecord (k, fs), loc), [], GuessFailure)
-             in
-                 List.all (fn (loc, env, denv, c1, c2) =>
-                              case D.prove env denv (c1, c2, loc) of
-                                  [] => true
-                                | _ => false) gs
-             end
+             (guessMap env (other, (L'.CRecord (k, fs), loc), GuessFailure);
+              true)
              handle GuessFailure => false
 
          val (fs1, fs2, others1, others2) =
@@ -827,58 +799,43 @@
                                        ("#2", p_summary env s2)]*)
      end
 
- and guessMap (env, denv) (c1, c2, gs, ex) =
+ and guessMap env (c1, c2, ex) =
      let
          val loc = #2 c1
 
          fun unfold (dom, ran, f, r, c) =
              let
                  fun unfold (r, c) =
-                     let
-                         val (c', gs1) = deConstraintCon (env, denv) c
-                     in
-                         case #1 c' of
-                             L'.CRecord (_, []) =>
-                             let
-                                 val gs2 = unifyCons (env, denv) r (L'.CRecord (dom, []), loc)
-                             in
-                                 gs1 @ gs2
-                             end
-                           | L'.CRecord (_, [(x, v)]) =>
-                             let
-                                 val v' = case dom of
-                                              (L'.KUnit, _) => (L'.CUnit, loc)
-                                            | _ => cunif (loc, dom)
-                                 val gs2 = unifyCons (env, denv) v (L'.CApp (f, v'), loc)
-
-                                 val gs3 = unifyCons (env, denv) r (L'.CRecord (dom, [(x, v')]), loc)
-                             in
-                                 gs1 @ gs2 @ gs3
-                             end
-                           | L'.CRecord (_, (x, v) :: rest) =>
-                             let
-                                 val r1 = cunif (loc, (L'.KRecord dom, loc))
-                                 val r2 = cunif (loc, (L'.KRecord dom, loc))
-
-                                 val gs2 = unfold (r1, (L'.CRecord (ran, [(x, v)]), loc))
-                                 val gs3 = unfold (r2, (L'.CRecord (ran, rest), loc))
-                                 val gs4 = unifyCons (env, denv) r (L'.CConcat (r1, r2), loc)
-                             in
-                                 gs1 @ gs2 @ gs3 @ gs4
-                             end
-                           | L'.CConcat (c1', c2') =>
-                             let
-                                 val r1 = cunif (loc, (L'.KRecord dom, loc))
-                                 val r2 = cunif (loc, (L'.KRecord dom, loc))
-
-                                 val gs2 = unfold (r1, c1')
-                                 val gs3 = unfold (r2, c2')
-                                 val gs4 = unifyCons (env, denv) r (L'.CConcat (r1, r2), loc)
-                             in
-                                 gs1 @ gs2 @ gs3 @ gs4
-                             end
-                           | _ => raise ex
-                     end
+                     case #1 c of
+                         L'.CRecord (_, []) => unifyCons env r (L'.CRecord (dom, []), loc)
+                       | L'.CRecord (_, [(x, v)]) =>
+                         let
+                             val v' = case dom of
+                                          (L'.KUnit, _) => (L'.CUnit, loc)
+                                        | _ => cunif (loc, dom)
+                         in
+                             unifyCons env v (L'.CApp (f, v'), loc);
+                             unifyCons env r (L'.CRecord (dom, [(x, v')]), loc)
+                         end
+                       | L'.CRecord (_, (x, v) :: rest) =>
+                         let
+                             val r1 = cunif (loc, (L'.KRecord dom, loc))
+                             val r2 = cunif (loc, (L'.KRecord dom, loc))
+                         in
+                             unfold (r1, (L'.CRecord (ran, [(x, v)]), loc));
+                             unfold (r2, (L'.CRecord (ran, rest), loc));
+                             unifyCons env r (L'.CConcat (r1, r2), loc)
+                         end
+                       | L'.CConcat (c1', c2') =>
+                         let
+                             val r1 = cunif (loc, (L'.KRecord dom, loc))
+                             val r2 = cunif (loc, (L'.KRecord dom, loc))
+                         in
+                             unfold (r1, c1');
+                             unfold (r2, c2');
+                             unifyCons env r (L'.CConcat (r1, r2), loc)
+                         end
+                       | _ => raise ex
              in
                  unfold (r, c)
              end
@@ -892,151 +849,128 @@
            | _ => raise ex
      end
 
- and unifyCons' (env, denv) c1 c2 =
-     case (#1 c1, #1 c2) of
-         (L'.CDisjoint (_, x1, y1, t1), L'.CDisjoint (_, x2, y2, t2)) =>
+ and unifyCons' env c1 c2 =
+     if isUnitCon env c1 andalso isUnitCon env c2 then
+         ()
+     else
          let
-             val gs1 = unifyCons' (env, denv) x1 x2
-             val gs2 = unifyCons' (env, denv) y1 y2
-             val (denv', gs3) = D.assert env denv (x1, y1)
-             val gs4 = unifyCons' (env, denv') t1 t2
+             (*val befor = Time.now ()
+              val old1 = c1
+              val old2 = c2*)
+             val c1 = hnormCon env c1
+             val c2 = hnormCon env c2
          in
-             gs1 @ gs2 @ gs3 @ gs4
+             unifyCons'' env c1 c2
+             handle ex => guessMap env (c1, c2, ex)
          end
-       | _ =>
-         if isUnitCon env c1 andalso isUnitCon env c2 then
-             []
-         else
-             let
-                 (*val befor = Time.now ()
-                 val old1 = c1
-                 val old2 = c2*)
-                 val (c1, gs1) = hnormCon (env, denv) c1
-                 val (c2, gs2) = hnormCon (env, denv) c2
-             in
-                 let
-                     (*val () = prefaces "unifyCons'" [("old1", p_con env old1),
-                                                     ("old2", p_con env old2),
-                                                     ("c1", p_con env c1),
-                                                     ("c2", p_con env c2)]*)
 
-                     val gs3 = unifyCons'' (env, denv) c1 c2
-                 in
-                     gs1 @ gs2 @ gs3
-                 end
-                 handle ex => guessMap (env, denv) (c1, c2, gs1 @ gs2, ex)
-             end
-
- and unifyCons'' (env, denv) (c1All as (c1, loc)) (c2All as (c2, _)) =
+ and unifyCons'' env (c1All as (c1, loc)) (c2All as (c2, _)) =
      let
          fun err f = raise CUnify' (f (c1All, c2All))
 
-         fun isRecord () = unifyRecordCons (env, denv) (c1All, c2All)
+         fun isRecord () = unifyRecordCons env (c1All, c2All)
      in
          (*eprefaces "unifyCons''" [("c1All", p_con env c1All),
                                   ("c2All", p_con env c2All)];*)
 
          case (c1, c2) of
-             (L'.CUnit, L'.CUnit) => []
+             (L'.CUnit, L'.CUnit) => ()
 
            | (L'.TFun (d1, r1), L'.TFun (d2, r2)) =>
-             unifyCons' (env, denv) d1 d2
-             @ unifyCons' (env, denv) r1 r2
+             (unifyCons' env d1 d2;
+             unifyCons' env r1 r2)
            | (L'.TCFun (expl1, x1, d1, r1), L'.TCFun (expl2, _, d2, r2)) =>
              if expl1 <> expl2 then
                  err CExplicitness
              else
                  (unifyKinds env d1 d2;
                   let
-                      val denv' = D.enter denv
                       (*val befor = Time.now ()*)
                       val env' = E.pushCRel env x1 d1
                   in
                       (*TextIO.print ("E.pushCRel: "
                                     ^ LargeReal.toString (Time.toReal (Time.- (Time.now (), befor)))
                                     ^ "\n");*)
-                      unifyCons' (env', denv') r1 r2
+                      unifyCons' env' r1 r2
                   end)
-           | (L'.TRecord r1, L'.TRecord r2) => unifyCons' (env, denv) r1 r2
+           | (L'.TRecord r1, L'.TRecord r2) => unifyCons' env r1 r2
+           | (L'.TDisjoint (c1, d1, e1), L'.TDisjoint (c2, d2, e2)) =>
+             (unifyCons' env c1 c2;
+              unifyCons' env d1 d2;
+              unifyCons' env e1 e2)
 
            | (L'.CRel n1, L'.CRel n2) =>
              if n1 = n2 then
-                 []
+                 ()
              else
                  err CIncompatible
            | (L'.CNamed n1, L'.CNamed n2) =>
              if n1 = n2 then
-                 []
+                 ()
              else
                  err CIncompatible
 
            | (L'.CApp (d1, r1), L'.CApp (d2, r2)) =>
-             (unifyCons' (env, denv) d1 d2;
-              unifyCons' (env, denv) r1 r2)
+             (unifyCons' env d1 d2;
+              unifyCons' env r1 r2)
            | (L'.CAbs (x1, k1, c1), L'.CAbs (_, k2, c2)) =>
              (unifyKinds env k1 k2;
-              unifyCons' (E.pushCRel env x1 k1, D.enter denv) c1 c2)
+              unifyCons' (E.pushCRel env x1 k1) c1 c2)
 
            | (L'.CName n1, L'.CName n2) =>
              if n1 = n2 then
-                 []
+                 ()
              else
                  err CIncompatible
 
            | (L'.CModProj (n1, ms1, x1), L'.CModProj (n2, ms2, x2)) =>
              if n1 = n2 andalso ms1 = ms2 andalso x1 = x2 then
-                 []
+                 ()
              else
                  err CIncompatible
 
            | (L'.CTuple cs1, L'.CTuple cs2) =>
-             ((ListPair.foldlEq (fn (c1, c2, gs) =>
-                                    let
-                                        val gs' = unifyCons' (env, denv) c1 c2
-                                    in
-                                        gs' @ gs
-                                    end) [] (cs1, cs2))
+             ((ListPair.appEq (fn (c1, c2) => unifyCons' env c1 c2) (cs1, cs2))
               handle ListPair.UnequalLengths => err CIncompatible)
 
            | (L'.CProj ((L'.CUnif (_, _, _, ref (SOME c1)), loc), n1), _) =>
-             unifyCons' (env, denv) (L'.CProj (c1, n1), loc) c2All
+             unifyCons' env (L'.CProj (c1, n1), loc) c2All
            | (_, L'.CProj ((L'.CUnif (_, _, _, ref (SOME c2)), loc), n2)) =>
-             unifyCons' (env, denv) c1All (L'.CProj (c2, n2), loc)
+             unifyCons' env c1All (L'.CProj (c2, n2), loc)
            | (L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n), _) =>
              let
                  val us = map (fn k => cunif (loc, k)) ks
              in
                  r := SOME (L'.CTuple us, loc);
-                 unifyCons' (env, denv) (List.nth (us, n - 1)) c2All
+                 unifyCons' env (List.nth (us, n - 1)) c2All
              end
            | (_, L'.CProj ((L'.CUnif (_, (L'.KTuple ks, _), _, r), loc), n)) =>
              let
                  val us = map (fn k => cunif (loc, k)) ks
              in
                  r := SOME (L'.CTuple us, loc);
-                 unifyCons' (env, denv) c1All (List.nth (us, n - 1))
+                 unifyCons' env c1All (List.nth (us, n - 1))
              end
            | (L'.CProj (c1, n1), L'.CProj (c2, n2)) =>
              if n1 = n2 then
-                 unifyCons' (env, denv) c1 c2
+                 unifyCons' env c1 c2
              else
                  err CIncompatible
 
            | (L'.CMap (dom1, ran1), L'.CMap (dom2, ran2)) =>
              (unifyKinds env dom1 dom2;
-              unifyKinds env ran1 ran2;
-              [])
+              unifyKinds env ran1 ran2)
 
            | (L'.CKAbs (x, c1), L'.CKAbs (_, c2)) =>
-             unifyCons' (E.pushKRel env x, denv) c1 c2
+             unifyCons' (E.pushKRel env x) c1 c2
            | (L'.CKApp (c1, k1), L'.CKApp (c2, k2)) =>
              (unifyKinds env k1 k2;
-              unifyCons' (env, denv) c1 c2)
+              unifyCons' env c1 c2)
            | (L'.TKFun (x, c1), L'.TKFun (_, c2)) =>
-             unifyCons' (E.pushKRel env x, denv) c1 c2
+             unifyCons' (E.pushKRel env x) c1 c2
 
-           | (L'.CError, _) => []
-           | (_, L'.CError) => []
+           | (L'.CError, _) => ()
+           | (_, L'.CError) => ()
 
            | (L'.CRecord _, _) => isRecord ()
            | (_, L'.CRecord _) => isRecord ()
@@ -1045,44 +979,39 @@
 
            | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
              if r1 = r2 then
-                 []
+                 ()
              else
                  (unifyKinds env k1 k2;
-                  r1 := SOME c2All;
-                  [])
+                  r1 := SOME c2All)
 
            | (L'.CUnif (_, _, _, r), _) =>
              if occursCon r c2All then
                  err COccursCheckFailed
              else
-                 (r := SOME c2All;
-                  [])
+                 r := SOME c2All
            | (_, L'.CUnif (_, _, _, r)) =>
              if occursCon r c1All then
                  err COccursCheckFailed
              else
-                 (r := SOME c1All;
-                  [])
+                 r := SOME c1All
 
            | _ => err CIncompatible
      end
 
- and unifyCons (env, denv) c1 c2 =
-     unifyCons' (env, denv) c1 c2
+ and unifyCons env c1 c2 =
+     unifyCons' env c1 c2
      handle CUnify' err => raise CUnify (c1, c2, err)
           | KUnify args => raise CUnify (c1, c2, CKind args)
 
- fun checkCon (env, denv) e c1 c2 =
-     unifyCons (env, denv) c1 c2
+ fun checkCon env e c1 c2 =
+     unifyCons env c1 c2
      handle CUnify (c1, c2, err) =>
-            (expError env (Unify (e, c1, c2, err));
-             [])
+            expError env (Unify (e, c1, c2, err))
 
- fun checkPatCon (env, denv) p c1 c2 =
-     unifyCons (env, denv) c1 c2
+ fun checkPatCon env p c1 c2 =
+     unifyCons env c1 c2
      handle CUnify (c1, c2, err) =>
-            (expError env (PatUnify (p, c1, c2, err));
-             [])
+            expError env (PatUnify (p, c1, c2, err))
 
  fun primType env p =
      case p of
@@ -1096,56 +1025,48 @@
 
  val enD = map Disjoint
 
- fun elabHead (env, denv) infer (e as (_, loc)) t =
+ fun elabHead env infer (e as (_, loc)) t =
      let
          fun unravel (t, e) =
-             let
-                 val (t, gs) = hnormCon (env, denv) t
-             in
-                 case t of
-                     (L'.TKFun (x, t'), _) =>
-                     let
-                         val u = kunif loc
+             case hnormCon env t of
+                 (L'.TKFun (x, t'), _) =>
+                 let
+                     val u = kunif loc
 
-                         val t'' = subKindInCon (0, u) t'
-                         val (e, t, gs') = unravel (t'', (L'.EKApp (e, u), loc))
-                     in
-                         (e, t, enD gs @ gs')
-                     end
-                   | (L'.TCFun (L'.Implicit, x, k, t'), _) =>
-                     let
-                         val u = cunif (loc, k)
+                     val t'' = subKindInCon (0, u) t'
+                 in
+                     unravel (t'', (L'.EKApp (e, u), loc))
+                 end
+               | (L'.TCFun (L'.Implicit, x, k, t'), _) =>
+                 let
+                     val u = cunif (loc, k)
 
-                         val t'' = subConInCon (0, u) t'
-                         val (e, t, gs') = unravel (t'', (L'.ECApp (e, u), loc))
-                     in
-                         (*prefaces "Unravel" [("t'", p_con env t'),
-                                             ("t''", p_con env t'')];*)
-                         (e, t, enD gs @ gs')
-                     end
-                   | (L'.TFun (dom as (L'.CApp (cl, _), _), ran), _) =>
-                     let
-                         val cl = #1 (hnormCon (env, denv) cl)
-                     in
-                         if infer <> L.TypesOnly andalso E.isClass env cl then
-                             let
-                                 val r = ref NONE
-                                 val (e, t, gs') = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
-                             in
-                                 (e, t, TypeClass (env, dom, r, loc) :: enD gs @ gs')
-                             end
-                         else
-                             (e, t, enD gs)
-                     end
-                  | _ => (e, t, enD gs)
-            end
+                     val t'' = subConInCon (0, u) t'
+                 in
+                     unravel (t'', (L'.ECApp (e, u), loc))
+                 end
+               | (L'.TFun (dom as (L'.CApp (cl, _), _), ran), _) =>
+                 let
+                     val cl = hnormCon env cl
+                 in
+                     if infer <> L.TypesOnly andalso E.isClass env cl then
+                         let
+                             val r = ref NONE
+                             val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
+                         in
+                             (e, t, TypeClass (env, dom, r, loc) :: gs)
+                         end
+                     else
+                         (e, t, [])
+                 end
+               | t => (e, t, [])
     in
         case infer of
             L.DontInfer => (e, t, [])
           | _ => unravel (t, e)
     end
 
-fun elabPat (pAll as (p, loc), (env, denv, bound)) =
+fun elabPat (pAll as (p, loc), (env, bound)) =
     let
         val perror = (L'.PWild, loc)
         val terror = (L'.CError, loc)
@@ -1169,7 +1090,7 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
                 end
               | (SOME p, SOME t) =>
                 let
-                    val ((p', pt), (env, bound)) = elabPat (p, (env, denv, bound))
+                    val ((p', pt), (env, bound)) = elabPat (p, (env, bound))
 
                     val k = (L'.KType, loc)
                     val unifs = map (fn _ => cunif (loc, k)) xs
@@ -1177,7 +1098,7 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
                     val t = ListUtil.foldli (fn (i, u, t) => subConInCon (nxs - i, u) t) t unifs
                     val dn = foldl (fn (u, dn) => (L'.CApp (dn, u), loc)) dn unifs
                 in
-                    ignore (checkPatCon (env, denv) p' pt t);
+                    ignore (checkPatCon env p' pt t);
                     (((L'.PCon (dk, pc, unifs, SOME p'), loc), dn),
                      (env, bound))
                 end
@@ -1226,7 +1147,7 @@ fun elabPat (pAll as (p, loc), (env, denv, bound)) =
                 val (xpts, (env, bound, _)) =
                     ListUtil.foldlMap (fn ((x, p), (env, bound, fbound)) =>
                                           let
-                                              val ((p', t), (env, bound)) = elabPat (p, (env, denv, bound))
+                                              val ((p', t), (env, bound)) = elabPat (p, (env, bound))
                                           in
                                               if SS.member (fbound, x) then
                                                   expError env (DuplicatePatField (loc, x))
@@ -1264,7 +1185,7 @@ fun c2s c =
       | Datatype _ => "Datatype"
       | Record _ => "Record"
 
-fun exhaustive (env, denv, t, ps) =
+fun exhaustive (env, t, ps) =
     let
         fun depth (p, _) =
             case p of
@@ -1331,7 +1252,7 @@ fun exhaustive (env, denv, t, ps) =
                                                  | SOME t => map (fn c => Datatype (IM.insert (IM.empty, n, c)))
                                                                  (enumerateCases (depth-1) t)) cons
                 in
-                    case #1 (#1 (hnormCon (env, denv) t)) of
+                    case #1 (hnormCon env t) of
                         L'.CNamed n =>
                         (let
                              val dt = E.lookupDatatype env n
@@ -1340,10 +1261,10 @@ fun exhaustive (env, denv, t, ps) =
                              dtype cons
                          end handle E.UnboundNamed _ => [Wild])
                       | L'.TRecord c =>
-                        (case #1 (#1 (hnormCon (env, denv) c)) of
+                        (case #1 (hnormCon env c) of
                              L'.CRecord (_, xts) =>
                              let
-                                 val xts = map (fn (x, t) => (#1 (hnormCon (env, denv) x), t)) xts
+                                 val xts = map (fn (x, t) => (hnormCon env x, t)) xts
 
                                  fun exponentiate fs =
                                      case fs of
@@ -1405,26 +1326,20 @@ fun exhaustive (env, denv, t, ps) =
 
         fun isTotal (c, t) =
             case c of
-                None => (false, [])
-              | Wild => (true, [])
+                None => false
+              | Wild => true
               | Datatype cm =>
                 let
-                    val ((t, _), gs) = hnormCon (env, denv) t
+                    val (t, _) = hnormCon env t
 
-                    fun dtype cons =
-                        foldl (fn ((_, n, to), (total, gs)) =>
-                                  case IM.find (cm, n) of
-                                      NONE => (false, gs)
-                                    | SOME c' =>
-                                      case to of
-                                          NONE => (total, gs)
-                                        | SOME t' =>
-                                          let
-                                              val (total, gs') = isTotal (c', t')
-                                          in
-                                              (total, gs' @ gs)
-                                          end)
-                              (true, gs) cons
+                    val dtype =
+                        List.all (fn (_, n, to) =>
+                                     case IM.find (cm, n) of
+                                         NONE => false
+                                       | SOME c' =>
+                                         case to of
+                                             NONE => true
+                                           | SOME t' => isTotal (c', t'))
 
                     fun unapp t =
                         case t of
@@ -1447,12 +1362,12 @@ fun exhaustive (env, denv, t, ps) =
                                 NONE => raise Fail "isTotal: Can't project datatype"
                               | SOME (_, cons) => dtype cons
                         end
-                      | L'.CError => (true, gs)
+                      | L'.CError => true
                       | c =>
                         (prefaces "Not a datatype" [("c", p_con env (c, ErrorMsg.dummySpan))];
                          raise Fail "isTotal: Not a datatype")
                 end
-              | Record _ => (List.all (fn c2 => coverageImp (c, c2)) (enumerateCases depth t), [])
+              | Record _ => List.all (fn c2 => coverageImp (c, c2)) (enumerateCases depth t)
     in
         isTotal (combinedCoverage ps, t)
     end
@@ -1476,7 +1391,7 @@ fun unmodCon env (c, loc) =
 
 fun normClassKey envs c =
     let
-        val c = ElabOps.hnormCon envs c
+        val c = hnormCon envs c
     in
         case #1 c of
             L'.CApp (c1, c2) =>
@@ -1501,18 +1416,6 @@ fun normClassConstraint env (c, loc) =
       | L'.CUnif (_, _, _, ref (SOME c)) => normClassConstraint env c
       | _ => (c, loc)
 
-
-val makeInstantiable =
-    let
-        fun kind k = k
-        fun con c =
-            case c of
-                L'.CDisjoint (L'.LeaveAlone, c1, c2, c) => L'.CDisjoint (L'.Instantiate, c1, c2, c)
-              | _ => c
-    in
-        U.Con.map {kind = kind, con = con}
-    end
-
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
         (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)];*)
@@ -1523,9 +1426,9 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
             let
                 val (e', et, gs1) = elabExp (env, denv) e
                 val (t', _, gs2) = elabCon (env, denv) t
-                val gs3 = checkCon (env, denv) e' et t'
             in
-                (e', t', gs1 @ enD gs2 @ enD gs3)
+                checkCon env e' et t';
+                (e', t', gs1 @ enD gs2)
             end
 
           | L.EPrim p => ((L'.EPrim p, loc), primType env p, [])
@@ -1534,8 +1437,8 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                  E.NotBound =>
                  (expError env (UnboundExp (loc, s));
                   (eerror, cerror, []))
-               | E.Rel (n, t) => elabHead (env, denv) infer (L'.ERel n, loc) t
-               | E.Named (n, t) => elabHead (env, denv) infer (L'.ENamed n, loc) t)
+               | E.Rel (n, t) => elabHead env infer (L'.ERel n, loc) t
+               | E.Named (n, t) => elabHead env infer (L'.ENamed n, loc) t)
           | L.EVar (m1 :: ms, s, infer) =>
             (case E.lookupStr env m1 of
                  NONE => (expError env (UnboundStrInExp (loc, m1));
@@ -1554,7 +1457,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                           cerror)
                                | SOME t => t
                  in
-                     elabHead (env, denv) infer (L'.EModProj (n, ms, s), loc) t
+                     elabHead env infer (L'.EModProj (n, ms, s), loc) t
                  end)
 
           | L.EWild =>
@@ -1573,13 +1476,10 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val dom = cunif (loc, ktype)
                 val ran = cunif (loc, ktype)
                 val t = (L'.TFun (dom, ran), dummy)
-
-                val gs3 = checkCon (env, denv) e1' t1 t
-                val gs4 = checkCon (env, denv) e2' t2 dom
-
-                val gs = gs1 @ gs2 @ enD gs3 @ enD gs4
             in
-                ((L'.EApp (e1', e2'), loc), ran, gs)
+                checkCon env e1' t1 t;
+                checkCon env e2' t2 dom;
+                ((L'.EApp (e1', e2'), loc), ran, gs1 @ gs2)
             end
           | L.EAbs (x, to, e) =>
             let
@@ -1604,7 +1504,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val (e', et, gs1) = elabExp (env, denv) e
                 val oldEt = et
                 val (c', ck, gs2) = elabCon (env, denv) c
-                val ((et', _), gs3) = hnormCon (env, denv) et
+                val (et', _) = hnormCon env et
             in
                 case et' of
                     L'.CError => (eerror, cerror, [])
@@ -1621,7 +1521,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                                ("eb", p_con (E.pushCRel env x k) eb),
                                                ("c", p_con env c'),
                                                ("eb'", p_con env eb')];*)
-                        ((L'.ECApp (e', c'), loc), eb', gs1 @ enD gs2 @ enD gs3)
+                        ((L'.ECApp (e', c'), loc), eb', gs1 @ enD gs2)
                     end
 
                   | _ =>
@@ -1658,13 +1558,13 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val ku1 = kunif loc
                 val ku2 = kunif loc
 
-                val (denv', gs3) = D.assert env denv (c1', c2')
-                val (e', t, gs4) = elabExp (env, denv') e
+                val denv' = D.assert env denv (c1', c2')
+                val (e', t, gs3) = elabExp (env, denv') e
             in
                 checkKind env c1' k1 (L'.KRecord ku1, loc);
                 checkKind env c2' k2 (L'.KRecord ku2, loc);
 
-                (e', (L'.CDisjoint (L'.LeaveAlone, c1', c2', t), loc), enD gs1 @ enD gs2 @ enD gs3 @ gs4)
+                (e', (L'.TDisjoint (c1', c2', t), loc), enD gs1 @ enD gs2 @ gs3)
             end
 
           | L.ERecord xes =>
@@ -1718,12 +1618,11 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val rest = cunif (loc, ktype_record)
                 val first = (L'.CRecord (ktype, [(c', ft)]), loc)
                             
-                val gs3 =
-                    checkCon (env, denv) e' et
-                             (L'.TRecord (L'.CConcat (first, rest), loc), loc)
-                val gs4 = D.prove env denv (first, rest, loc)
+                val gs3 = D.prove env denv (first, rest, loc)
             in
-                ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ enD gs2 @ enD gs3 @ enD gs4)
+                checkCon env e' et
+                         (L'.TRecord (L'.CConcat (first, rest), loc), loc);
+                ((L'.EField (e', c', {field = ft, rest = rest}), loc), ft, gs1 @ enD gs2 @ enD gs3)
             end
 
           | L.EConcat (e1, e2) =>
@@ -1734,13 +1633,13 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val r1 = cunif (loc, ktype_record)
                 val r2 = cunif (loc, ktype_record)
 
-                val gs3 = checkCon (env, denv) e1' e1t (L'.TRecord r1, loc)
-                val gs4 = checkCon (env, denv) e2' e2t (L'.TRecord r2, loc)
-                val gs5 = D.prove env denv (r1, r2, loc)
+                val gs3 = D.prove env denv (r1, r2, loc)
             in
+                checkCon env e1' e1t (L'.TRecord r1, loc);
+                checkCon env e2' e2t (L'.TRecord r2, loc);
                 ((L'.EConcat (e1', r1, e2', r2), loc),
                  (L'.TRecord ((L'.CConcat (r1, r2), loc)), loc),
-                 gs1 @ gs2 @ enD gs3 @ enD gs4 @ enD gs5)
+                 gs1 @ gs2 @ enD gs3)
             end
           | L.ECut (e, c) =>
             let
@@ -1751,13 +1650,12 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val rest = cunif (loc, ktype_record)
                 val first = (L'.CRecord (ktype, [(c', ft)]), loc)
                             
-                val gs3 =
-                    checkCon (env, denv) e' et
-                             (L'.TRecord (L'.CConcat (first, rest), loc), loc)
-                val gs4 = D.prove env denv (first, rest, loc)
+                val gs3 = D.prove env denv (first, rest, loc)
             in
+                checkCon env e' et
+                         (L'.TRecord (L'.CConcat (first, rest), loc), loc);
                 ((L'.ECut (e', c', {field = ft, rest = rest}), loc), (L'.TRecord rest, loc),
-                 gs1 @ enD gs2 @ enD gs3 @ enD gs4)
+                 gs1 @ enD gs2 @ enD gs3)
             end
           | L.ECutMulti (e, c) =>
             let
@@ -1766,13 +1664,12 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 
                 val rest = cunif (loc, ktype_record)
                             
-                val gs3 =
-                    checkCon (env, denv) e' et
-                             (L'.TRecord (L'.CConcat (c', rest), loc), loc)
-                val gs4 = D.prove env denv (c', rest, loc)
+                val gs3 = D.prove env denv (c', rest, loc)
             in
+                checkCon env e' et
+                         (L'.TRecord (L'.CConcat (c', rest), loc), loc);
                 ((L'.ECutMulti (e', c', {rest = rest}), loc), (L'.TRecord rest, loc),
-                 gs1 @ enD gs2 @ enD gs3 @ enD gs4)
+                 gs1 @ enD gs2 @ enD gs3)
             end
 
           | L.ECase (e, pes) =>
@@ -1782,24 +1679,22 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val (pes', gs) = ListUtil.foldlMap
                                  (fn ((p, e), gs) =>
                                      let
-                                         val ((p', pt), (env, _)) = elabPat (p, (env, denv, SS.empty))
+                                         val ((p', pt), (env, _)) = elabPat (p, (env, SS.empty))
 
-                                         val gs1 = checkPatCon (env, denv) p' pt et
-                                         val (e', et, gs2) = elabExp (env, denv) e
-                                         val gs3 = checkCon (env, denv) e' et result
+                                         val (e', et, gs1) = elabExp (env, denv) e
                                      in
-                                         ((p', e'), enD gs1 @ gs2 @ enD gs3 @ gs)
+                                         checkPatCon env p' pt et;
+                                         checkCon env e' et result;
+                                         ((p', e'), gs1 @ gs)
                                      end)
                                  gs1 pes
-
-                val (total, gs') = exhaustive (env, denv, et, map #1 pes')
             in
-                if total then
+                if exhaustive (env, et, map #1 pes') then
                     ()
                 else
                     expError env (Inexhaustive loc);
 
-                ((L'.ECase (e', pes', {disc = et, result = result}), loc), result, enD gs' @ gs)
+                ((L'.ECase (e', pes', {disc = et, result = result}), loc), result, gs)
             end
 
           | L.ELet (eds, e) =>
@@ -1815,7 +1710,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
         r
     end
 
-and elabEdecl denv (dAll as (d, loc), (env, gs : constraint list)) =
+and elabEdecl denv (dAll as (d, loc), (env, gs)) =
     let
         val r = 
             case d of
@@ -1826,12 +1721,12 @@ and elabEdecl denv (dAll as (d, loc), (env, gs : constraint list)) =
                                          | SOME c => elabCon (env, denv) c
 
                     val (e', et, gs2) = elabExp (env, denv) e
-                    val gs3 = checkCon (env, denv) e' et c'
+
                     val c' = normClassConstraint env c'
                     val env' = E.pushERel env x c'
-                    val c' = makeInstantiable c'
                 in
-                    ((L'.EDVal (x, c', e'), loc), (env', enD gs1 @ gs2 @ enD gs3 @ gs))
+                    checkCon env e' et c';
+                    ((L'.EDVal (x, c', e'), loc), (env', enD gs1 @ gs2 @ gs))
                 end
               | L.EDValRec vis =>
                 let
@@ -1858,16 +1753,13 @@ and elabEdecl denv (dAll as (d, loc), (env, gs : constraint list)) =
                     val (vis, gs) = ListUtil.foldlMap (fn ((x, c', e), gs) =>
                                                           let
                                                               val (e', et, gs1) = elabExp (env, denv) e
-                                                                                  
-                                                              val gs2 = checkCon (env, denv) e' et c'
-
-                                                              val c' = makeInstantiable c'
                                                           in
+                                                              checkCon env e' et c';
                                                               if allowable e then
                                                                   ()
                                                               else
                                                                   expError env (IllegalRec (x, e'));
-                                                              ((x, c', e'), gs1 @ enD gs2 @ gs)
+                                                              ((x, c', e'), gs1 @ gs)
                                                           end) gs vis
                 in
                     ((L'.EDValRec vis, loc), (env, gs))
@@ -1896,22 +1788,12 @@ fun dopenConstraints (loc, env, denv) {str, strs} =
                                   ((L'.StrVar n, loc), sgn) strs
                             
             val cso = E.projectConstraints env {sgn = sgn, str = st}
-
-            val denv = case cso of
-                           NONE => (strError env (UnboundStr (loc, str));
-                                    denv)
-                         | SOME cs => foldl (fn ((c1, c2), denv) =>
-                                                let
-                                                    val (denv, gs) = D.assert env denv (c1, c2)
-                                                in
-                                                    case gs of
-                                                        [] => ()
-                                                      | _ => raise Fail "dopenConstraints: Sub-constraints remain";
-
-                                                    denv
-                                                end) denv cs
         in
-            denv
+            case cso of
+                NONE => (strError env (UnboundStr (loc, str));
+                         denv)
+              | SOME cs => foldl (fn ((c1, c2), denv) =>
+                                     D.assert env denv (c1, c2)) denv cs
         end
 
 fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
@@ -1997,11 +1879,11 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
                                        | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                                   ((L'.StrVar n, loc), sgn) ms
              in
-                 case hnormCon (env, denv) (L'.CModProj (n, ms, s), loc) of
-                     ((L'.CModProj (n, ms, s), _), gs) =>
+                 case hnormCon env (L'.CModProj (n, ms, s), loc) of
+                     (L'.CModProj (n, ms, s), _) =>
                      (case E.projectDatatype env {sgn = sgn, str = str, field = s} of
                           NONE => (conError env (UnboundDatatype (loc, s));
-                                   ([], (env, denv, gs)))
+                                   ([], (env, denv, [])))
                         | SOME (xs, xncs) =>
                           let
                               val k = (L'.KType, loc)
@@ -2025,7 +1907,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
                                                       E.pushENamedAs env x n t
                                                   end) env xncs
                           in
-                              ([(L'.SgiDatatypeImp (x, n', n, ms, s, xs, xncs), loc)], (env, denv, gs))
+                              ([(L'.SgiDatatypeImp (x, n', n, ms, s, xs, xncs), loc)], (env, denv, []))
                           end)
                    | _ => (strError env (NotDatatype loc);
                            ([], (env, denv, [])))
@@ -2076,12 +1958,12 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             val (c1', k1, gs1) = elabCon (env, denv) c1
             val (c2', k2, gs2) = elabCon (env, denv) c2
 
-            val (denv, gs3) = D.assert env denv (c1', c2')
+            val denv = D.assert env denv (c1', c2')
         in
             checkKind env c1' k1 (L'.KRecord (kunif loc), loc);
             checkKind env c2' k2 (L'.KRecord (kunif loc), loc);
 
-            ([(L'.SgiConstraint (c1', c2'), loc)], (env, denv, gs1 @ gs2 @ gs3))
+            ([(L'.SgiConstraint (c1', c2'), loc)], (env, denv, gs1 @ gs2))
         end
 
       | L.SgiClassAbs (x, k) =>
@@ -2280,14 +2162,14 @@ fun selfifyAt env {str, sgn} =
           | SOME (str, strs) => selfify env {sgn = sgn, str = str, strs = strs}
     end
 
-fun dopen (env, denv) {str, strs, sgn} =
+fun dopen env {str, strs, sgn} =
     let
         val m = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
                 (L'.StrVar str, #2 sgn) strs
     in
         case #1 (hnormSgn env sgn) of
             L'.SgnConst sgis =>
-            ListUtil.foldlMap (fn ((sgi, loc), (env', denv')) =>
+            ListUtil.foldlMap (fn ((sgi, loc), env') =>
                                   let
                                       val d =
                                           case sgi of
@@ -2326,11 +2208,11 @@ fun dopen (env, denv) {str, strs, sgn} =
                                                   (L'.DCon (x, n, k', c), loc)
                                               end
                                   in
-                                      (d, (E.declBinds env' d, denv'))
+                                      (d, E.declBinds env' d)
                                   end)
-                              (env, denv) sgis
+                              env sgis
           | _ => (strError env (UnOpenable sgn);
-                  ([], (env, denv)))
+                  ([], env))
     end
 
 fun sgiOfDecl (d, loc) =
@@ -2351,15 +2233,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
 
-fun sgiBindsD (env, denv) (sgi, _) =
-    case sgi of
-        L'.SgiConstraint (c1, c2) =>
-        (case D.assert env denv (c1, c2) of
-             (denv, []) => denv
-           | _ => raise Fail "sgiBindsD: Sub-constraints remain")
-      | _ => denv
-
-fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
+fun subSgn env sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
                         ("sgn2", p_sgn env sgn2)];*)
     case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
@@ -2373,16 +2247,16 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                         ("sgis1", p_sgn env (L'.SgnConst sgis1, loc2)),
                                         ("sgis2", p_sgn env (L'.SgnConst sgis2, loc2))]*)
 
-            fun folder (sgi2All as (sgi, loc), (env, denv)) =
+            fun folder (sgi2All as (sgi, loc), env) =
                 let
                     (*val () = prefaces "folder" [("sgis1", p_sgn env (L'.SgnConst sgis1, loc2))]*)
 
                     fun seek p =
                         let
-                            fun seek (env, denv) ls =
+                            fun seek env ls =
                                 case ls of
                                     [] => (sgnError env (UnmatchedSgi sgi2All);
-                                           (env, denv))
+                                           env)
                                   | h :: t =>
                                     case p (env, h) of
                                         NONE =>
@@ -2400,11 +2274,11 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                               E.pushCNamedAs env x n k NONE
                                                         | _ => env
                                         in
-                                            seek (E.sgiBinds env h, sgiBindsD (env, denv) h) t
+                                            seek (E.sgiBinds env h) t
                                         end
                                       | SOME envs => envs
                         in
-                            seek (env, denv) sgis1
+                            seek env sgis1
                         end
                 in
                     case sgi of
@@ -2422,8 +2296,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                  SOME (if n1 = n2 then
                                                            env
                                                        else
-                                                           E.pushCNamedAs env x n2 k2 (SOME (L'.CNamed n1, loc2)),
-                                                       denv)
+                                                           E.pushCNamedAs env x n2 k2 (SOME (L'.CNamed n1, loc2)))
                                              end
                                          else
                                              NONE
@@ -2470,12 +2343,11 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                                    else
                                                                        E.pushCNamedAs env x n1 k1 (SOME c1)
                                                      in
-                                                         SOME (env, denv)
+                                                         SOME env
                                                      end
                                              in
-                                                 (case unifyCons (env, denv) c1 c2 of
-                                                      [] => good ()
-                                                    | _ => NONE)
+                                                 (unifyCons env c1 c2;
+                                                  good ())
                                                  handle CUnify (c1, c2, err) =>
                                                         (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
                                                          good ())
@@ -2497,7 +2369,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                          let
                                              fun mismatched ue =
                                                  (sgnError env (SgiMismatchedDatatypes (sgi1All, sgi2All, ue));
-                                                  SOME (env, denv))
+                                                  SOME env)
 
                                              val k = (L'.KType, loc)
                                              val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs1
@@ -2511,7 +2383,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                                    E.pushCNamedAs env x n2 k'
                                                                                   (SOME (L'.CNamed n1, loc))
                                                  in
-                                                     SOME (env, denv)
+                                                     SOME env
                                                  end
 
                                              val env = E.pushCNamedAs env x n1 k' NONE
@@ -2525,7 +2397,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                  orelse case (t1, t2) of
                                                             (NONE, NONE) => false
                                                           | (SOME t1, SOME t2) =>
-                                                            not (List.null (unifyCons (env, denv) t1 t2))
+                                                            (unifyCons env t1 t2; false)
                                                           | _ => true
                                          in
                                              (if xs1 <> xs2
@@ -2567,12 +2439,11 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                      val env = E.pushCNamedAs env x n1 k' (SOME t1)
                                                      val env = E.pushCNamedAs env x n2 k' (SOME t2)
                                                  in
-                                                     SOME (env, denv)
+                                                     SOME env
                                                  end
                                          in
-                                             (case unifyCons (env, denv) t1 t2 of
-                                                  [] => good ()
-                                                | _ => NONE)
+                                             (unifyCons env t1 t2;
+                                              good ())
                                              handle CUnify (c1, c2, err) =>
                                                     (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
                                                      good ())
@@ -2587,14 +2458,11 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                  case sgi1 of
                                      L'.SgiVal (x', n1, c1) =>
                                      if x = x' then
-                                         ((*prefaces "Pre" [("c1", p_con env c1),
-                                                          ("c2", p_con env c2)];*)
-                                          case unifyCons (env, denv) c1 c2 of
-                                              [] => SOME (env, denv)
-                                            | _ => NONE)
+                                         (unifyCons env c1 c2;
+                                          SOME env)
                                          handle CUnify (c1, c2, err) =>
                                                 (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
-                                                 SOME (env, denv))
+                                                 SOME env)
                                      else
                                          NONE
                                    | _ => NONE)
@@ -2605,7 +2473,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                      L'.SgiStr (x', n1, sgn1) =>
                                      if x = x' then
                                          let
-                                             val () = subSgn (env, denv) sgn1 sgn2
+                                             val () = subSgn env sgn1 sgn2
                                              val env = E.pushStrNamedAs env x n1 sgn1
                                              val env = if n1 = n2 then
                                                            env
@@ -2614,7 +2482,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                                             (selfifyAt env {str = (L'.StrVar n1, #2 sgn2),
                                                                                             sgn = sgn2})
                                          in
-                                             SOME (env, denv)
+                                             SOME env
                                          end
                                      else
                                          NONE
@@ -2626,8 +2494,8 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                      L'.SgiSgn (x', n1, sgn1) =>
                                      if x = x' then
                                          let
-                                             val () = subSgn (env, denv) sgn1 sgn2
-                                             val () = subSgn (env, denv) sgn2 sgn1
+                                             val () = subSgn env sgn1 sgn2
+                                             val () = subSgn env sgn2 sgn1
 
                                              val env = E.pushSgnNamedAs env x n2 sgn2
                                              val env = if n1 = n2 then
@@ -2635,7 +2503,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                        else
                                                            E.pushSgnNamedAs env x n1 sgn2
                                          in
-                                             SOME (env, denv)
+                                             SOME env
                                          end
                                      else
                                          NONE
@@ -2645,16 +2513,8 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                         seek (fn (env, sgi1All as (sgi1, _)) =>
                                  case sgi1 of
                                      L'.SgiConstraint (c1, d1) =>
-                                     if consEq (env, denv) (c1, c2) andalso consEq (env, denv) (d1, d2) then
-                                         let
-                                             val (denv, gs) = D.assert env denv (c2, d2)
-                                         in
-                                             case gs of
-                                                 [] => ()
-                                               | _ => raise Fail "subSgn: Sub-constraints remain";
-
-                                             SOME (env, denv)
-                                         end
+                                     if consEq env (c1, c2) andalso consEq env (d1, d2) then
+                                         SOME env
                                      else
                                          NONE
                                    | _ => NONE)
@@ -2675,8 +2535,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                  SOME (if n1 = n2 then
                                                            env
                                                        else
-                                                           E.pushCNamedAs env x n2 k (SOME (L'.CNamed n1, loc2)),
-                                                       denv)
+                                                           E.pushCNamedAs env x n2 k (SOME (L'.CNamed n1, loc2)))
                                              end
                                          else
                                              NONE
@@ -2706,12 +2565,11 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                                                    else
                                                                        E.pushCNamedAs env x n1 k (SOME c1)
                                                      in
-                                                         SOME (env, denv)
+                                                         SOME env
                                                      end
                                              in
-                                                 (case unifyCons (env, denv) c1 c2 of
-                                                      [] => good ()
-                                                    | _ => NONE)
+                                                 (unifyCons env c1 c2;
+                                                  good ())
                                                  handle CUnify (c1, c2, err) =>
                                                         (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
                                                          good ())
@@ -2725,7 +2583,7 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                                  end)
                 end
         in
-            ignore (foldl folder (env, denv) sgis2)
+            ignore (foldl folder env sgis2)
         end
 
       | (L'.SgnFun (m1, n1, dom1, ran1), L'.SgnFun (m2, n2, dom2, ran2)) =>
@@ -2736,8 +2594,8 @@ fun subSgn (env, denv) sgn1 (sgn2 as (_, loc2)) =
                 else
                     subStrInSgn (n2, n1) ran2
         in
-            subSgn (env, denv) dom2 dom1;
-            subSgn (E.pushStrNamedAs env m1 n1 dom2, denv) ran1 ran2
+            subSgn env dom2 dom1;
+            subSgn (E.pushStrNamedAs env m1 n1 dom2) ran1 ran2
         end
 
       | _ => sgnError env (SgnWrongForm (sgn1, sgn2)))
@@ -2759,7 +2617,7 @@ fun positive self =
               | CVar _ => true
               | CApp (c1, c2) => none c1 andalso none c2
               | CAbs _ => false
-              | CDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
+              | TDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
 
               | CKAbs _ => false
               | TKFun _ => false
@@ -2788,7 +2646,7 @@ fun positive self =
               | CVar _ => true
               | CApp (c1, c2) => pos c1 andalso none c2
               | CAbs _ => false
-              | CDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
+              | TDisjoint (c1, c2, c3) => none c1 andalso none c2 andalso none c3
 
               | CKAbs _ => false
               | TKFun _ => false
@@ -2971,7 +2829,7 @@ fun wildifyStr env (str, sgn) =
            | _ => str)
       | _ => str
 
-fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
+fun elabDecl (dAll as (d, loc), (env, denv, gs)) =
     let
         (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
         (*val befor = Time.now ()*)
@@ -3060,8 +2918,8 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                                       | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                                                 ((L'.StrVar n, loc), sgn) ms
                      in
-                         case hnormCon (env, denv) (L'.CModProj (n, ms, s), loc) of
-                             ((L'.CModProj (n, ms, s), _), gs') =>
+                         case hnormCon env (L'.CModProj (n, ms, s), loc) of
+                             (L'.CModProj (n, ms, s), _) =>
                              (case E.projectDatatype env {sgn = sgn, str = str, field = s} of
                                   NONE => (conError env (UnboundDatatype (loc, s));
                                            ([], (env, denv, gs)))
@@ -3087,7 +2945,7 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                                               E.pushENamedAs env x n t
                                                           end) env xncs
                                   in
-                                      ([(L'.DDatatypeImp (x, n', n, ms, s, xs, xncs), loc)], (env, denv, enD gs' @ gs))
+                                      ([(L'.DDatatypeImp (x, n', n, ms, s, xs, xncs), loc)], (env, denv, gs))
                                   end)
                            | _ => (strError env (NotDatatype loc);
                                    ([], (env, denv, [])))
@@ -3100,14 +2958,13 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                          | SOME c => elabCon (env, denv) c
 
                     val (e', et, gs2) = elabExp (env, denv) e
-                    val gs3 = checkCon (env, denv) e' et c'
                     val c = normClassConstraint env c'
                     val (env', n) = E.pushENamed env x c'
-                    val c' = makeInstantiable c'
                 in
+                    checkCon env e' et c';
                     (*prefaces "DVal" [("x", Print.PD.string x),
                                      ("c'", p_con env c')];*)
-                    ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ enD gs3 @ gs))
+                    ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ gs))
                 end
               | L.DValRec vis =>
                 let
@@ -3139,16 +2996,13 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                     val (vis, gs) = ListUtil.foldlMap (fn ((x, n, c', e), gs) =>
                                                           let
                                                               val (e', et, gs1) = elabExp (env, denv) e
-                                                                                  
-                                                              val gs2 = checkCon (env, denv) e' et c'
-
-                                                              val c' = makeInstantiable c'
                                                           in
+                                                              checkCon env e' et c';
                                                               if allowable e then
                                                                   ()
                                                               else
                                                                   expError env (IllegalRec (x, e'));
-                                                              ((x, n, c', e'), gs1 @ enD gs2 @ gs)
+                                                              ((x, n, c', e'), gs1 @ gs)
                                                           end) gs vis
                 in
                     ([(L'.DValRec vis, loc)], (env, denv, gs))
@@ -3184,7 +3038,7 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                 val str = wildifyStr env (str, formal)
                                 val (str', actual, gs2) = elabStr (env, denv) str
                             in
-                                subSgn (env, denv) (selfifyAt env {str = str', sgn = actual}) formal;
+                                subSgn env (selfifyAt env {str = str', sgn = actual}) formal;
                                 (str', formal, enD gs1 @ gs2)
                             end
 
@@ -3222,8 +3076,8 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                                     | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                                               ((L'.StrVar n, loc), sgn) ms
 
-                         val (ds, (env', denv')) = dopen (env, denv) {str = n, strs = ms, sgn = sgn}
-                         val denv' = dopenConstraints (loc, env', denv') {str = m, strs = ms}
+                         val (ds, env') = dopen env {str = n, strs = ms, sgn = sgn}
+                         val denv' = dopenConstraints (loc, env', denv) {str = m, strs = ms}
                      in
                          (ds, (env', denv', gs))
                      end)
@@ -3234,12 +3088,12 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                     val (c2', k2, gs2) = elabCon (env, denv) c2
                     val gs3 = D.prove env denv (c1', c2', loc)
 
-                    val (denv', gs4) = D.assert env denv (c1', c2')
+                    val denv' = D.assert env denv (c1', c2')
                 in
                     checkKind env c1' k1 (L'.KRecord (kunif loc), loc);
                     checkKind env c2' k2 (L'.KRecord (kunif loc), loc);
 
-                    ([(L'.DConstraint (c1', c2'), loc)], (env, denv', enD gs1 @ enD gs2 @ enD gs3 @ enD gs4 @ gs))
+                    ([(L'.DConstraint (c1', c2'), loc)], (env, denv', enD gs1 @ enD gs2 @ enD gs3 @ gs))
                 end
 
               | L.DOpenConstraints (m, ms) =>
@@ -3262,23 +3116,23 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                          L'.SgiVal (x, n, t) =>
                                          let
                                              fun doPage (makeRes, ran) =
-                                                 case hnormCon (env, denv) ran of
-                                                     ((L'.CApp (tf, arg), _), []) =>
-                                                     (case (hnormCon (env, denv) tf, hnormCon (env, denv) arg) of
-                                                          (((L'.CModProj (basis, [], "transaction"), _), []),
-                                                           ((L'.CApp (tf, arg3), _), [])) =>
+                                                 case hnormCon env ran of
+                                                     (L'.CApp (tf, arg), _) =>
+                                                     (case (hnormCon env tf, hnormCon env arg) of
+                                                          ((L'.CModProj (basis, [], "transaction"), _),
+                                                           (L'.CApp (tf, arg3), _)) =>
                                                           (case (basis = !basis_r,
-                                                                 hnormCon (env, denv) tf, hnormCon (env, denv) arg3) of
+                                                                 hnormCon env tf, hnormCon env arg3) of
                                                                (true,
-                                                                ((L'.CApp (tf, arg2), _), []),
-                                                                (((L'.CRecord (_, []), _), []))) =>
-                                                               (case (hnormCon (env, denv) tf) of
-                                                                    ((L'.CApp (tf, arg1), _), []) =>
-                                                                    (case (hnormCon (env, denv) tf,
-                                                                           hnormCon (env, denv) arg1,
-                                                                           hnormCon (env, denv) arg2) of
-                                                                         ((tf, []), (arg1, []),
-                                                                          ((L'.CRecord (_, []), _), [])) =>
+                                                                (L'.CApp (tf, arg2), _),
+                                                                ((L'.CRecord (_, []), _))) =>
+                                                               (case (hnormCon env tf) of
+                                                                    (L'.CApp (tf, arg1), _) =>
+                                                                    (case (hnormCon env tf,
+                                                                           hnormCon env arg1,
+                                                                           hnormCon env arg2) of
+                                                                         (tf, arg1,
+                                                                          (L'.CRecord (_, []), _)) =>
                                                                          let
                                                                              val t = (L'.CApp (tf, arg1), loc)
                                                                              val t = (L'.CApp (t, arg2), loc)
@@ -3296,10 +3150,10 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs : constraint list)) =
                                                         | _ => all)
                                                    | _ => all
                                          in
-                                             case hnormCon (env, denv) t of
-                                                 ((L'.TFun (dom, ran), _), []) =>
-                                                 (case hnormCon (env, denv) dom of
-                                                      ((L'.TRecord domR, _), []) =>
+                                             case hnormCon env t of
+                                                 (L'.TFun (dom, ran), _) =>
+                                                 (case hnormCon env dom of
+                                                      (L'.TRecord domR, _) =>
                                                       doPage (fn t => (L'.TFun ((L'.TRecord domR,
                                                                                  loc),
                                                                                 t), loc), ran)
@@ -3507,7 +3361,7 @@ and elabStr (env, denv) (str, loc) =
                     let
                         val (ran', gs) = elabSgn (env', denv) ran
                     in
-                        subSgn (env', denv) actual ran';
+                        subSgn env' actual ran';
                         (ran', gs)
                     end
         in
@@ -3528,7 +3382,7 @@ and elabStr (env, denv) (str, loc) =
             case #1 (hnormSgn env sgn1) of
                 L'.SgnError => (strerror, sgnerror, [])
               | L'.SgnFun (m, n, dom, ran) =>
-                (subSgn (env, denv) sgn2 dom;
+                (subSgn env sgn2 dom;
                  case #1 (hnormSgn env ran) of
                      L'.SgnError => (strerror, sgnerror, [])
                    | L'.SgnConst sgis =>
@@ -3554,7 +3408,7 @@ fun elabFile basis topStr topSgn env file =
         val (env', basis_n) = E.pushStrNamed env "Basis" sgn
         val () = basis_r := basis_n
 
-        val (ds, (env', _)) = dopen (env', D.empty) {str = basis_n, strs = [], sgn = sgn}
+        val (ds, env') = dopen env' {str = basis_n, strs = [], sgn = sgn}
 
         fun discoverC r x =
             case E.lookupC env' x of
@@ -3592,11 +3446,11 @@ fun elabFile basis topStr topSgn env file =
                                         | NONE => expError env (Unresolvable (loc, c))
                                   end) gs
 
-        val () = subSgn (env', D.empty) topSgn' topSgn
+        val () = subSgn env' topSgn' topSgn
 
         val (env', top_n) = E.pushStrNamed env' "Top" topSgn
 
-        val (ds', (env', _)) = dopen (env', D.empty) {str = top_n, strs = [], sgn = topSgn}
+        val (ds', env') = dopen env' {str = top_n, strs = [], sgn = topSgn}
 
         fun elabDecl' (d, (env, gs)) =
             let

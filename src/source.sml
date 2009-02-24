@@ -53,11 +53,11 @@ datatype con' =
        | TFun of con * con
        | TCFun of explicitness * string * kind * con
        | TRecord of con
+       | TDisjoint of con * con * con
 
        | CVar of string list * string
        | CApp of con * con
        | CAbs of string * kind option * con
-       | CDisjoint of con * con * con
 
        | CKAbs of string * con
        | TKFun of string * con

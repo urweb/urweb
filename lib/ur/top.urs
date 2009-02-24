@@ -10,6 +10,8 @@ structure Folder : sig
     val nil : K --> folder (([]) :: {K})
     val cons : K --> r ::: {K} -> nm :: Name -> v :: K
                -> fn [[nm] ~ r] => folder r -> folder ([nm = v] ++ r)
+    val concat : K --> r1 ::: {K} -> r2 ::: {K}
+                 -> fn [r1 ~ r2] => folder r1 -> folder r2 -> folder (r1 ++ r2)
 end
 
 

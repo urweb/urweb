@@ -594,6 +594,7 @@ cexp   : capps                          (capps)
        | cexp PLUSPLUS cexp             (CConcat (cexp1, cexp2), s (cexp1left, cexp1right))
 
        | FN cargs DARROW cexp           (#1 (cargs (cexp, (KWild, s (FNleft, cexpright)))))
+       | LBRACK cexp TWIDDLE cexp RBRACK DARROW cexp (TDisjoint (cexp1, cexp2, cexp3), s (LBRACKleft, cexp3right))
        | CSYMBOL DKARROW cexp           (CKAbs (CSYMBOL, cexp), s (CSYMBOLleft, cexpright))
 
        | LPAREN cexp RPAREN DCOLON kind (CAnnot (cexp, kind), s (LPARENleft, kindright))
@@ -657,13 +658,7 @@ cargp  : SYMBOL                         (fn (c, k) =>
                                                   ((CAbs (SYMBOL, SOME kind, c), loc),
                                                    (KArrow (kind, k), loc))
                                               end)
-       | LBRACK cexp TWIDDLE cexp RBRACK  (fn (c, k) =>
-                                            let
-                                                val loc = s (LBRACKleft, RBRACKright)
-                                            in
-                                                ((CDisjoint (cexp1, cexp2, c), loc),
-                                                 k)
-                                            end)
+
 
 path   : SYMBOL                         ([], SYMBOL)
        | CSYMBOL DOT path               (let val (ms, x) = path in (CSYMBOL :: ms, x) end)
@@ -849,14 +844,14 @@ eargp  : SYMBOL                         (fn (e, t) =>
                                                 val loc = s (LPARENleft, RPARENright)
                                             in
                                                 ((EDisjoint (cexp1, cexp2, e), loc),
-                                                 (CDisjoint (cexp1, cexp2, t), loc))
+                                                 (TDisjoint (cexp1, cexp2, t), loc))
                                             end)
        | LBRACK cexp TWIDDLE cexp RBRACK(fn (e, t) =>
                                             let
                                                 val loc = s (LBRACKleft, RBRACKright)
                                             in
                                                 ((EDisjoint (cexp1, cexp2, e), loc),
-                                                 (CDisjoint (cexp1, cexp2, t), loc))
+                                                 (TDisjoint (cexp1, cexp2, t), loc))
                                             end)
        | CSYMBOL                           (fn (e, t) =>
                                                let

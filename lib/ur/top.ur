@@ -17,6 +17,18 @@ structure Folder = struct
              (f : nm :: Name -> v :: K -> r :: {K} -> tf r
                   -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
              (i : tf []) = f [nm] [v] [r] (fold [tf] f i)
+
+    fun concat K (r1 ::: {K}) (r2 ::: {K}) [r1 ~ r2]
+        (f1 : folder r1) (f2 : folder r2)
+        (tf :: {K} -> Type)
+        (f : nm :: Name -> v :: K -> r :: {K} -> tf r
+             -> fn [[nm] ~ r] => tf ([nm = v] ++ r))
+        (i : tf []) =
+        f1 [fn r1' [r1' ~ r2] => tf (r1' ++ r2)] 0
+           (*(fn (nm :: Name) (v :: K) (r1' :: {K}) (acc : fn [r1' ~ r2] => tf (r1' ++ r2))
+                            [[nm] ~ r1'] [[nm = v] ++ r1' ~ r2] =>
+               f [nm] [v] [r1' ++ r2] acc)
+           (f2 [tf] f i)*)
 end
 
 

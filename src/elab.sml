@@ -49,21 +49,17 @@ datatype explicitness =
          Explicit
        | Implicit
 
-datatype auto_instantiate =
-         Instantiate
-       | LeaveAlone
-
 datatype con' =
          TFun of con * con
        | TCFun of explicitness * string * kind * con
        | TRecord of con
+       | TDisjoint of con * con * con
 
        | CRel of int
        | CNamed of int
        | CModProj of int * string list * string
        | CApp of con * con
        | CAbs of string * kind * con
-       | CDisjoint of auto_instantiate * con * con * con
 
        | CKAbs of string * con
        | CKApp of con * kind

@@ -161,70 +161,65 @@ fun prove1 denv (p1, p2) =
             NONE => false
           | SOME pset => PS.member (pset, p2)
 
-fun decomposeRow (env, denv) c =
+fun decomposeRow env c =
     let
         val loc = #2 c
 
         fun decomposeProj c =
             let
-                val (c, gs) = hnormCon (env, denv) c
+                val c = hnormCon env c
             in
                 case #1 c of
                     CProj (c, n) =>
                     let
-                        val (c', ns, gs') = decomposeProj c
+                        val (c', ns) = decomposeProj c
                     in
-                        (c', ns @ [n], gs @ gs')
+                        (c', ns @ [n])
                     end
-                  | _ => (c, [], gs)
+                  | _ => (c, [])
             end
 
-        fun decomposeName (c, (acc, gs)) =
+        fun decomposeName (c, acc) =
             let
-                val (cAll as (c, _), ns, gs') = decomposeProj c
-
-                val acc = case c of
-                              CName s => Piece (NameC s, ns) :: acc
-                            | CRel n => Piece (NameR n, ns) :: acc
-                            | CNamed n => Piece (NameN n, ns) :: acc
-                            | CModProj (m1, ms, x) => Piece (NameM (m1, ms, x), ns) :: acc
-                            | _ => Unknown cAll :: acc
+                val (cAll as (c, _), ns) = decomposeProj c
             in
-                (acc, gs' @ gs)
+                case c of
+                    CName s => Piece (NameC s, ns) :: acc
+                  | CRel n => Piece (NameR n, ns) :: acc
+                  | CNamed n => Piece (NameN n, ns) :: acc
+                  | CModProj (m1, ms, x) => Piece (NameM (m1, ms, x), ns) :: acc
+                  | _ => Unknown cAll :: acc
             end
 
-        fun decomposeRow' (c, (acc, gs)) =
+        fun decomposeRow' (c, acc) =
             let
                 fun default () =
                     let
-                        val (cAll as (c, _), ns, gs') = decomposeProj c
-                        val gs = gs' @ gs
+                        val (cAll as (c, _), ns) = decomposeProj c
                     in
                         case c of
-                            CRecord (_, xcs) => foldl (fn ((x, _), acc_gs) => decomposeName (x, acc_gs)) (acc, gs) xcs
-                          | CConcat (c1, c2) => decomposeRow' (c1, decomposeRow' (c2, (acc, gs)))
-                          | CRel n => (Piece (RowR n, ns) :: acc, gs)
-                          | CNamed n => (Piece (RowN n, ns) :: acc, gs)
-                          | CModProj (m1, ms, x) => (Piece (RowM (m1, ms, x), ns) :: acc, gs)
-                          | _ => (Unknown cAll :: acc, gs)
+                            CRecord (_, xcs) => foldl (fn ((x, _), acc) => decomposeName (x, acc)) acc xcs
+                          | CConcat (c1, c2) => decomposeRow' (c1, decomposeRow' (c2, acc))
+                          | CRel n => Piece (RowR n, ns) :: acc
+                          | CNamed n => Piece (RowN n, ns) :: acc
+                          | CModProj (m1, ms, x) => Piece (RowM (m1, ms, x), ns) :: acc
+                          | _ => Unknown cAll :: acc
                     end
             in
-                (*Print.prefaces "decomposeRow'" [("c", ElabPrint.p_con env c),
-                                                ("c'", ElabPrint.p_con env (#1 (hnormCon (env, denv) c)))];*)
-                case #1 (#1 (hnormCon (env, denv) c)) of
+                case #1 (hnormCon env c) of
                     CApp (
                     (CApp ((CMap _, _), _), _),
-                    r) => decomposeRow' (r, (acc, gs))
+                    r) => decomposeRow' (r, acc)
                   | _ => default ()
             end
     in
-        decomposeRow' (c, ([], []))
+        decomposeRow' (c, [])
     end
 
 and assert env denv (c1, c2) =
     let
-        val (ps1, gs1) = decomposeRow (env, denv) c1
-        val (ps2, gs2) = decomposeRow (env, denv) c2
+        val ps1 = decomposeRow env c1
+        val ps2 = decomposeRow env c2
 
         val unUnknown = List.mapPartial (fn Unknown _ => NONE | Piece p => SOME p)
         val ps1 = unUnknown ps1
@@ -248,13 +243,13 @@ and assert env denv (c1, c2) =
 
         val denv = foldl (assertPiece ps2) denv ps1
     in
-        (foldl (assertPiece ps1) denv ps2, gs1 @ gs2)
+        foldl (assertPiece ps1) denv ps2
     end
 
 and prove env denv (c1, c2, loc) =
     let
-        val (ps1, gs1) = decomposeRow (env, denv) c1
-        val (ps2, gs2) = decomposeRow (env, denv) c2
+        val ps1 = decomposeRow env c1
+        val ps2 = decomposeRow env c2
 
         val hasUnknown = List.exists (fn Unknown _ => true | _ => false)
         val unUnknown = List.mapPartial (fn Unknown _ => NONE | Piece p => SOME p)
@@ -265,7 +260,6 @@ and prove env denv (c1, c2, loc) =
             let
                 val ps1 = unUnknown ps1
                 val ps2 = unUnknown ps2
-
             in
                 (*print "Pieces1:\n";
                 app pp ps1;
@@ -278,24 +272,8 @@ and prove env denv (c1, c2, loc) =
                                         rem
                                     else
                                         (loc, env, denv, pieceToRow (p1, loc), pieceToRow (p2, loc)) :: rem) rem ps2)
-                      (gs1 @ gs2) ps1
+                      [] ps1
             end
-    end
-
-and hnormCon (env, denv) c =
-    let
-        val cAll as (c, loc) = ElabOps.hnormCon env c
-
-        fun doDisj (c1, c2, c) =
-            let
-                val (c, gs) = hnormCon (env, denv) c
-            in
-                (c, prove env denv (c1, c2, loc) @ gs)
-            end
-    in
-        case c of
-            CDisjoint (Instantiate, c1, c2, c) => doDisj (c1, c2, c)
-          | _ => (cAll, [])
     end
 
 end

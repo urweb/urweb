@@ -136,14 +136,14 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                          S.map2 (mfc (bind (ctx, RelC (x, k))) c,
                               fn c' =>
                                  (TCFun (e, x, k', c'), loc)))
-              | CDisjoint (ai, c1, c2, c3) =>
+              | TDisjoint (c1, c2, c3) =>
                 S.bind2 (mfc ctx c1,
                       fn c1' =>
                          S.bind2 (mfc ctx c2,
                               fn c2' =>
                                  S.map2 (mfc ctx c3,
                                          fn c3' =>
-                                            (CDisjoint (ai, c1', c2', c3'), loc))))
+                                            (TDisjoint (c1', c2', c3'), loc))))
               | TRecord c =>
                 S.map2 (mfc ctx c,
                         fn c' =>

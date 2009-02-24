@@ -98,6 +98,17 @@ fun p_con' par (c, _) =
                                          string "}"]
       | TRecord c => box [string "$",
                           p_con' true c]
+      | TDisjoint (c1, c2, c3) => parenIf par (box [string "[",
+                                                    p_con c1,
+                                                    space,
+                                                    string "~",
+                                                    space,
+                                                    p_con c2,
+                                                    string "]",
+                                                    space,
+                                                    string "=>",
+                                                    space,
+                                                    p_con c3])
 
       | CVar (ss, s) => p_list_sep (string ".") string (ss @ [s])
       | CApp (c1, c2) => parenIf par (box [p_con c1,
@@ -121,15 +132,7 @@ fun p_con' par (c, _) =
                                                  string "=>",
                                                  space,
                                                  p_con c])
-      | CDisjoint (c1, c2, c3) => parenIf par (box [p_con c1,
-                                                    space,
-                                                    string "~",
-                                                    space,
-                                                    p_con c2,
-                                                    space,
-                                                    string "=>",
-                                                    space,
-                                                    p_con c3])
+
 
       | CName s => box [string "#", string s]
 
