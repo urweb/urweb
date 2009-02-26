@@ -49,11 +49,11 @@ fun not b = if b then False else True
 
 con idT (t :: Type) = t
 con record (t :: {Type}) = $t
-con fstTT (t :: (Type * Type)) = t.1
-con sndTT (t :: (Type * Type)) = t.2
-con fstTTT (t :: (Type * Type * Type)) = t.1
-con sndTTT (t :: (Type * Type * Type)) = t.2
-con thdTTT (t :: (Type * Type * Type)) = t.3
+con fst = K1 ==> K2 ==> fn t :: (K1 * K2) => t.1
+con snd = K1 ==> K2 ==> fn t :: (K1 * K2) => t.2
+con fst3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.1
+con snd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.2
+con thd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.3
 
 con mapUT = fn f :: Type => map (fn _ :: Unit => f)
 

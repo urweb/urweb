@@ -18,7 +18,7 @@ functor Make(M : sig
                  constraint [Id] ~ cols
                  val fl : folder cols
 
-                 val tab : sql_table ([Id = int] ++ map fstTT cols)
+                 val tab : sql_table ([Id = int] ++ map fst cols)
 
                  val title : string
 

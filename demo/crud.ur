@@ -35,7 +35,7 @@ functor Make(M : sig
                  constraint [Id] ~ cols
                  val fl : folder cols
 
-                 val tab : sql_table ([Id = int] ++ map fstTT cols)
+                 val tab : sql_table ([Id = int] ++ map fst cols)
 
                  val title : string
 
@@ -49,10 +49,10 @@ functor Make(M : sig
 
     fun list () =
         rows <- queryX (SELECT * FROM tab AS T)
-                       (fn (fs : {T : $([Id = int] ++ map fstTT M.cols)}) => <xml>
+                       (fn (fs : {T : $([Id = int] ++ map fst M.cols)}) => <xml>
                          <tr>
                            <td>{[fs.T.Id]}</td>
-                           {foldRX2 [fstTT] [colMeta] [tr]
+                           {foldRX2 [fst] [colMeta] [tr]
                                     (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                      [[nm] ~ rest] v col => <xml>
                                                        <td>{col.Show v}</td>
@@ -81,9 +81,9 @@ functor Make(M : sig
           <br/><hr/><br/>
 
           <form>
-            {foldR [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map sndTT cols)]
+            {foldR [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map snd cols)]
                    (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
-                                    [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (map sndTT rest)) => <xml>
+                                    [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (map snd rest)) => <xml>
                                       <li> {cdata col.Nam}: {col.Widget [nm]}</li>
                                       {useMore acc}
                                     </xml>)
@@ -94,10 +94,10 @@ functor Make(M : sig
           </form>
         </xml>
 
-    and create (inputs : $(map sndTT M.cols)) =
+    and create (inputs : $(map snd M.cols)) =
         id <- nextval seq;
         dml (insert tab
-                    (foldR2 [sndTT] [colMeta]
+                    (foldR2 [snd] [colMeta]
                             [fn cols => $(map (fn t :: (Type * Type) =>
                                                   sql_exp [] [] [] t.1) cols)]
                             (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
@@ -114,12 +114,12 @@ functor Make(M : sig
 
     and upd (id : int) =
         let
-            fun save (inputs : $(map sndTT M.cols)) =
-                dml (update [map fstTT M.cols] !
-                            (foldR2 [sndTT] [colMeta]
+            fun save (inputs : $(map snd M.cols)) =
+                dml (update [map fst M.cols] !
+                            (foldR2 [snd] [colMeta]
                                     [fn cols => $(map (fn t :: (Type * Type) =>
                                                           sql_exp [T = [Id = int]
-                                                                           ++ map fstTT M.cols]
+                                                                           ++ map fst M.cols]
                                                                   [] [] t.1) cols)]
                                     (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                                      [[nm] ~ rest] =>
@@ -134,14 +134,14 @@ functor Make(M : sig
                   {ls}
                 </body></xml>
         in
-            fso <- oneOrNoRows (SELECT tab.{{map fstTT M.cols}} FROM tab WHERE tab.Id = {[id]});
-            case fso : (Basis.option {Tab : $(map fstTT M.cols)}) of
+            fso <- oneOrNoRows (SELECT tab.{{map fst M.cols}} FROM tab WHERE tab.Id = {[id]});
+            case fso : (Basis.option {Tab : $(map fst M.cols)}) of
                 None => return <xml><body>Not found!</body></xml>
               | Some fs => return <xml><body><form>
-                {foldR2 [fstTT] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map sndTT cols)]
+                {foldR2 [fst] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map snd cols)]
                         (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
                                          [[nm] ~ rest] (v : t.1) (col : colMeta t)
-                                         (acc : xml form [] (map sndTT rest)) =>
+                                         (acc : xml form [] (map snd rest)) =>
                             <xml>
                               <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
                               {useMore acc}
