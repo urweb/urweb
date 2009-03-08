@@ -544,14 +544,19 @@ fun cjrize ds =
                                           let
                                               val (dop, pop, sm) = cifyDecl (d, sm)
 
+                                              val dsF = case dop of
+                                                            SOME (L'.DDatatype (dk, x, n, _), loc) =>
+                                                            (L'.DDatatypeForward (dk, x, n), loc) :: dsF
+                                                          | _ => dsF
+
+                                              val dsF = map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm)
+                                                        @ dsF
+
                                               val (dsF, ds) = case dop of
                                                                   NONE => (dsF, ds)
                                                                 | SOME (d as (L'.DDatatype _, loc)) =>
                                                                   (d :: dsF, ds)
                                                                 | SOME d => (dsF, d :: ds)
-
-                                              val dsF = map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm)
-                                                        @ dsF
 
                                               val ps = case pop of
                                                            NONE => ps

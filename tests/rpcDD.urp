@@ -1,0 +1,5 @@
+debug
+sql rpcDD.sql
+database dbname=rpcdd
+
+rpcDD

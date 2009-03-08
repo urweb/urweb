@@ -1004,11 +1004,14 @@ fun urlify env t =
                              newline]
                     end
 
-              | TDatatype (Default, i, _) => box []
-                (*if IS.member (rf, i) then
-                    box [string "unurlify_",
+              | TDatatype (Default, i, _) =>
+                if IS.member (rf, i) then
+                    box [string "urlify_",
                          string (Int.toString i),
-                         string "()"]
+                         string "(it",
+                         string (Int.toString level), 
+                         string ");",
+                         newline]
                 else
                     let
                         val (x, xncs) = E.lookupDatatype env i
@@ -1017,87 +1020,72 @@ fun urlify env t =
 
                         fun doEm xncs =
                             case xncs of
-                                [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype "
-                                              ^ x ^ "\"), NULL)")
+                                [] => box [string ("uw_error(ctx, FATAL, \"Error urlifying datatype "
+                                                   ^ x ^ " (%d)\", it0->data);"),
+                                           newline]
                               | (x', n, to) :: rest =>
-                                box [string "((!strncmp(request, \"",
-                                     string x',
-                                     string "\", ",
-                                     string (Int.toString (size x')),
-                                     string ") && (request[",
-                                     string (Int.toString (size x')),
-                                     string "] == 0 || request[",
-                                     string (Int.toString (size x')),
-                                     string "] == '/')) ? ({",
-                                     newline,
-                                     string "struct",
+                                box [string "if",
                                      space,
-                                     string ("__uwd_" ^ ident x ^ "_" ^ Int.toString i),
-                                     space,
-                                     string "*tmp = uw_malloc(ctx, sizeof(struct __uwd_",
-                                     string x,
+                                     string "(it0->tag==__uwc_",
+                                     string (ident x'),
                                      string "_",
-                                     string (Int.toString i),
-                                     string "));",
-                                     newline,
-                                     string "tmp->tag",
-                                     space,
-                                     string "=",
-                                     space,
-                                     string ("__uwc_" ^ ident x' ^ "_" ^ Int.toString n),
-                                     string ";",
-                                     newline,
-                                     string "request",
-                                     space,
-                                     string "+=",
-                                     space,
-                                     string (Int.toString (size x')),
-                                     string ";",
-                                     newline,
-                                     string "if (request[0] == '/') ++request;",
+                                     string (Int.toString n),
+                                     string ") {",
                                      newline,
                                      case to of
-                                         NONE => box []
-                                       | SOME (t, _) => box [string "tmp->data.uw_",
-                                                             p_ident x',
-                                                             space,
-                                                             string "=",
-                                                             space,
-                                                             unurlify' rf t,
-                                                             string ";",
-                                                             newline],
-                                     string "tmp;",
+                                         NONE => box [string "uw_write(ctx, \"",
+                                                      string x',
+                                                      string "\");",
+                                                      newline]
+                                       | SOME t => box [string "uw_write(ctx, \"",
+                                                        string x',
+                                                        string "/\");",
+                                                        newline,
+                                                        p_typ env t,
+                                                        space,
+                                                        string "it1",
+                                                        space,
+                                                        string "=",
+                                                        space,
+                                                        string "it0->data.uw_",
+                                                        string x',
+                                                        string ";",
+                                                        newline,
+                                                        urlify' rf 1 t,
+                                                        newline],
+                                     string "} else {",
                                      newline,
-                                     string "})",
-                                     space,
-                                     string ":",
-                                     space,
-                                     doEm rest,
-                                     string ")"]
+                                     box [doEm rest,
+                                          newline],
+                                     string "}",
+                                     newline]
                     in
                         box [string "({",
                              space,
-                             p_typ env (t, ErrorMsg.dummySpan),
+                             string "void",
                              space,
-                             string "unurlify_",
+                             string "urlify_",
                              string (Int.toString i),
-                             string "(void) {",
+                             string "(",
+                             p_typ env t,
+                             space,
+                             string "it0) {",
                              newline,
-                             box [string "return",
-                                  space,
-                                  doEm xncs,
-                                  string ";",
+                             box [doEm xncs,
                                   newline],
+                             newline,
                              string "}",
                              newline,
-                             newline,
 
-                             string "unurlify_",
+                             string "urlify_",
                              string (Int.toString i),
-                             string "();",
+                             string "(it",
+                             string (Int.toString level),
+                             string ");",
                              newline,
-                             string "})"]
-                    end*)
+                             string "});",
+                             newline]
+                    end
 
               | TOption t => box []
                 (*box [string "(request[0] == '/' ? ++request : request, ",
@@ -1439,8 +1427,7 @@ fun p_exp' par env (e, loc) =
             val wontLeakStrings = notLeaky env true state
             val wontLeakAnything = notLeaky env false state
         in
-            box [string "(uw_begin_region(ctx), ",
-                 if wontLeakAnything then
+            box [if wontLeakAnything then
                      string "uw_begin_region(ctx), "
                  else
                      box [],
@@ -1448,6 +1435,18 @@ fun p_exp' par env (e, loc) =
                  newline,
                  string "PGconn *conn = uw_get_db(ctx);",
                  newline,
+                 p_typ env state,
+                 space,
+                 string "acc",
+                 space,
+                 string "=",
+                 space,
+                 p_exp env initial,
+                 string ";",
+                 newline,
+                 string "int n, i, dummy = (uw_begin_region(ctx), 0);",
+                 newline,
+                 
                  case prepared of
                      NONE => box [string "char *query = ",
                                   p_exp env query,
@@ -1481,17 +1480,7 @@ fun p_exp' par env (e, loc) =
                               newline,
                               newline]
                      end,
-                 string "int n, i;",
-                 newline,
-                 p_typ env state,
-                 space,
-                 string "acc",
-                 space,
-                 string "=",
-                 space,
-                 p_exp env initial,
-                 string ";",
-                 newline,
+
                  string "PGresult *res = ",
                  case prepared of
                      NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
@@ -1589,7 +1578,7 @@ fun p_exp' par env (e, loc) =
                      box [],
                  string "acc;",
                  newline,
-                 string "}))"]
+                 string "})"]
         end
 
       | EDml {dml, prepared} =>
