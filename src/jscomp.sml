@@ -64,6 +64,7 @@ type state = {
      script : string list,
      included : IS.set,
      injectors : int IM.map,
+     decoders : int IM.map,
      maxName : int
 }
 
@@ -251,13 +252,12 @@ fun process file =
                      SOME n' => ((EApp ((ENamed n', loc), e), loc), st)
                    | NONE =>
                      let
-                         val dk = ElabUtil.classifyDatatype cs
-
                          val n' = #maxName st
                          val st = {decls = #decls st,
                                    script = #script st,
                                    included = #included st,
                                    injectors = IM.insert (#injectors st, n, n'),
+                                   decoders = #decoders st,
                                    maxName = n' + 1}
 
                          val (pes, st) = ListUtil.foldlMap
@@ -275,7 +275,7 @@ fun process file =
                                                        case dk of
                                                            Option =>
                                                            if isNullable t then
-                                                               strcat loc [str loc "{_v:",
+                                                               strcat loc [str loc "{v:",
                                                                            e,
                                                                            str loc "}"]
                                                            else
@@ -298,6 +298,7 @@ fun process file =
                                    script = #script st,
                                    included = #included st,
                                    injectors = #injectors st,
+                                   decoders= #decoders st,
                                    maxName = #maxName st}
                      in
                          ((EApp ((ENamed n', loc), e), loc), st)
@@ -321,13 +322,13 @@ fun process file =
                 let
                     val (e', st) = unurlifyExp loc (t, st)
                     val (es, st) = ListUtil.foldlMap
-                                   (fn ((x, t), st) =>
-                                       let
-                                           val (e, st) = unurlifyExp loc (t, st)
-                                       in
-                                           (",_" ^ x ^ ":" ^ e, st)
-                                       end)
-                                   st xts
+                                       (fn ((x, t), st) =>
+                                           let
+                                               val (e, st) = unurlifyExp loc (t, st)
+                                           in
+                                               (",_" ^ x ^ ":" ^ e, st)
+                                           end)
+                                       st xts
                 in
                     (String.concat ("{_"
                                     :: x
@@ -343,79 +344,66 @@ fun process file =
 
               | TFfi ("Basis", "bool") => ("t[i++] == \"True\"", st)
 
-              | TOption t => raise Fail "!!" (*
+              | TOption t =>
                 let
-                    val (e', st) = quoteExp loc t ((ERel 0, loc), st)
+                    val (e, st) = unurlifyExp loc (t, st)
+                    val e = if isNullable t then
+                                "{v:" ^ e ^ "}"
+                            else
+                                e
                 in
-                    ((ECase (e,
-                             [((PNone t, loc),
-                               str loc "null"),
-                              ((PSome (t, (PVar ("x", t), loc)), loc),
-                               if isNullable t then
-                                   strcat loc [str loc "{v:", e', str loc "}"]
-                               else
-                                   e')],
-                             {disc = (TOption t, loc),
-                              result = (TFfi ("Basis", "string"), loc)}), loc),
-                     st)
-                end*)
+                    ("(uu=t[i++],uu==\"Some\"?" ^ e ^ ":null)", st)
+                end
 
-              | TDatatype (n, ref (dk, cs)) => raise Fail "!!" (*
-                (case IM.find (#injectors st, n) of
-                     SOME n' => ((EApp ((ENamed n', loc), e), loc), st)
+              | TDatatype (n, ref (dk, cs)) =>
+                (case IM.find (#decoders st, n) of
+                     SOME n' => ("(tmp=_n" ^ Int.toString n' ^ "(t,i),i=tmp._1,tmp._2)", st)
                    | NONE =>
                      let
-                         val dk = ElabUtil.classifyDatatype cs
-
                          val n' = #maxName st
                          val st = {decls = #decls st,
                                    script = #script st,
                                    included = #included st,
-                                   injectors = IM.insert (#injectors st, n, n'),
+                                   injectors = #injectors st,
+                                   decoders = IM.insert (#decoders st, n, n'),
                                    maxName = n' + 1}
 
-                         val (pes, st) = ListUtil.foldlMap
-                                             (fn ((_, cn, NONE), st) =>
-                                                 (((PCon (dk, PConVar cn, NONE), loc),
-                                                   case dk of
-                                                       Option => str loc "null"
-                                                     | _ => str loc (Int.toString cn)),
+                         val (e, st) = foldl (fn ((x, cn, NONE), (e, st)) =>
+                                                 ("x==\"" ^ x ^ "\"?"
+                                                   ^ (case dk of
+                                                          Option => "null"
+                                                        | _ => Int.toString cn)
+                                                  ^ ":" ^ e,
                                                   st)
-                                               | ((_, cn, SOME t), st) =>
+                                               | ((x, cn, SOME t), (e, st)) =>
                                                  let
-                                                     val (e, st) = quoteExp loc t ((ERel 0, loc), st)
+                                                     val (e', st) = unurlifyExp loc (t, st)
                                                  in
-                                                     (((PCon (dk, PConVar cn, SOME (PVar ("x", t), loc)), loc),
-                                                       case dk of
-                                                           Option =>
-                                                           if isNullable t then
-                                                               strcat loc [str loc "{_v:",
-                                                                           e,
-                                                                           str loc "}"]
-                                                           else
-                                                               e
-                                                         | _ => strcat loc [str loc ("{n:" ^ Int.toString cn
-                                                                                     ^ ",v:"),
-                                                                            e,
-                                                                            str loc "}"]),
+                                                     ("x==\"" ^ x ^ "\"?"
+                                                       ^ (case dk of
+                                                              Option =>
+                                                              if isNullable t then
+                                                                  "{v:" ^ e' ^ "}"
+                                                              else
+                                                                  e'
+                                                            | _ => "{n:" ^ Int.toString cn ^ ",v:" ^ e' ^ "}")
+                                                      ^ ":" ^ e,
                                                       st)
                                                  end)
-                                             st cs
+                                             ("pf()", st) cs
 
-                         val s = (TFfi ("Basis", "string"), loc)
-                         val body = (ECase ((ERel 0, loc), pes,
-                                            {disc = t, result = s}), loc)
-                         val body = (EAbs ("x", t, s, body), loc)
+                         val body = "function _n" ^ Int.toString n' ^ "(t,i){var x=t[i++];var r="
+                                    ^ e ^ ";return {_1:i,_2:r}}\n\n"
 
-                         val st = {decls = (DValRec [("jsify", n', (TFun (t, s), loc),
-                                                      body, "jsify")], loc) :: #decls st,
-                                   script = #script st,
+                         val st = {decls = #decls st,
+                                   script = body :: #script st,
                                    included = #included st,
                                    injectors = #injectors st,
+                                   decoders = #decoders st,
                                    maxName = #maxName st}
                      in
-                         ((EApp ((ENamed n', loc), e), loc), st)
-                     end)*)
+                         ("(tmp=_n" ^ Int.toString n' ^ "(t,i),i=tmp._1,tmp._2)", st)
+                     end)
 
               | _ => (EM.errorAt loc "Don't know how to unurlify type in JavaScript";
                       Print.prefaces "Can't unurlify" [("t", MonoPrint.p_typ MonoEnv.empty t)];
@@ -602,6 +590,7 @@ fun process file =
                                                           script = #script st,
                                                           included = IS.add (#included st, n),
                                                           injectors = #injectors st,
+                                                          decoders = #decoders st,
                                                           maxName = #maxName st}
 
                                                 val (e, st) = jsExp mode skip [] 0 (e, st)
@@ -613,6 +602,7 @@ fun process file =
                                                  script = sc :: #script st,
                                                  included = #included st,
                                                  injectors = #injectors st,
+                                                 decoders= #decoders st,
                                                  maxName = #maxName st}
                                             end
                             in
@@ -986,6 +976,7 @@ fun process file =
                   script = #script st,
                   included = #included st,
                   injectors = #injectors st,
+                  decoders = #decoders st,
                   maxName = #maxName st})
             end
 
@@ -994,6 +985,7 @@ fun process file =
                         script = [],
                         included = IS.empty,
                         injectors = IM.empty,
+                        decoders = IM.empty,
                         maxName = U.File.maxName file + 1}
                        file
 

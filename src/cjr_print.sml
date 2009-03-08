@@ -501,25 +501,32 @@ fun p_ensql t e =
 
 fun notLeaky env allowHeapAllocated =
     let
-        fun nl (t, _) =
+        fun nl ok (t, _) =
             case t of
                 TFun _ => false
               | TRecord n =>
                 let
                     val xts = E.lookupStruct env n
                 in
-                    List.all (fn (_, t) => nl t) xts
+                    List.all (fn (_, t) => nl ok t) xts
                 end
-              | TDatatype (dk, _, ref cons) =>
-                (allowHeapAllocated orelse dk = Enum)
-                andalso List.all (fn (_, _, to) => case to of
-                                                       NONE => true
-                                                     | SOME t => nl t) cons
+              | TDatatype (dk, n, ref cons) =>
+                IS.member (ok, n)
+                orelse
+                ((allowHeapAllocated orelse dk = Enum)
+                 andalso
+                 let
+                     val ok' = IS.add (ok, n)
+                 in
+                     List.all (fn (_, _, to) => case to of
+                                                    NONE => true
+                                                  | SOME t => nl ok' t) cons
+                 end)
               | TFfi ("Basis", "string") => false
               | TFfi _ => true
-              | TOption t => allowHeapAllocated andalso nl t
+              | TOption t => allowHeapAllocated andalso nl ok t
     in
-        nl
+        nl IS.empty
     end
 
 fun capitalize s =
@@ -896,33 +903,29 @@ fun urlify env t =
                     box (rev blocks)
                 end
 
-              | TDatatype (Enum, i, _) => box []
-                (*let
+              | TDatatype (Enum, i, _) =>
+                let
                     val (x, xncs) = E.lookupDatatype env i
 
                     fun doEm xncs =
                         case xncs of
-                            [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype "
-                                          ^ x ^ "\"), (enum __uwe_"
-                                          ^ x ^ "_" ^ Int.toString i ^ ")0)")
+                            [] => box [string ("uw_error(ctx, FATAL, \"Error urlifying datatype "
+                                               ^ x ^ "\");"),
+                                       newline]
                           | (x', n, to) :: rest =>
-                            box [string "((!strncmp(request, \"",
-                                 string x',
-                                 string "\", ",
-                                 string (Int.toString (size x')),
-                                 string ") && (request[",
-                                 string (Int.toString (size x')),
-                                 string "] == 0 || request[",
-                                 string (Int.toString (size x')),
-                                 string ("] == '/')) ? __uwc_" ^ ident x' ^ "_" ^ Int.toString n),
-                                 space,
-                                 string ":",
-                                 space,
-                                 doEm rest,
-                                 string ")"]
+                            box [string ("if (it" ^ Int.toString level
+                                         ^ "==__uwc_" ^ ident x' ^ "_" ^ Int.toString n ^ ") {"),
+                                 newline,
+                                 box [string ("uw_write(ctx, \"" ^ x' ^ "\");"),
+                                      newline],
+                                 string "} else {",
+                                 newline,
+                                 box [doEm rest,
+                                      newline],
+                                 string "}"]
                 in
                     doEm xncs
-                end*)
+                end
 
               | TDatatype (Option, i, xncs) => box []
                 (*if IS.member (rf, i) then
@@ -1453,7 +1456,7 @@ fun p_exp' par env (e, loc) =
             val tables = ListUtil.mapConcat (fn (x, xts) =>
                                                 map (fn (x', t) => ("__uwf_" ^ ident x ^ ".__uwf_" ^ ident x', t)) xts)
                                             tables
-                                                                                              
+
             val outputs = exps @ tables
             val outputs = ListMergeSort.sort (fn ((s1, _), (s2, _)) => String.compare (s1, s2) = GREATER) outputs
 
@@ -1837,9 +1840,9 @@ fun p_fun env (fx, n, args, ran, e) =
              space,
              string "{",
              newline,
-             box[string "return(",
-                 p_exp env' e,
-                 string ");"],
+             box [string "return(",
+                  p_exp env' e,
+                  string ");"],
              newline,
              string "}"]
     end
@@ -2164,8 +2167,8 @@ fun is_not_null t =
 fun p_file env (ds, ps) =
     let
         val (pds, env) = ListUtil.foldlMap (fn (d, env) =>
-                                             (p_decl env d,
-                                              E.declBinds env d))
+                                               (p_decl env d,
+                                                E.declBinds env d))
                              env ds
 
         val fields = foldl (fn ((ek, _, _, ts, _), fields) =>
