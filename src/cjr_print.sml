@@ -1087,42 +1087,36 @@ fun urlify env t =
                              newline]
                     end
 
-              | TOption t => box []
-                (*box [string "(request[0] == '/' ? ++request : request, ",
-                     string "((!strncmp(request, \"None\", 4) ",
-                     string "&& (request[4] == 0 || request[4] == '/')) ",
-                     string "? (request += 4, NULL) ",
-                     string ": ((!strncmp(request, \"Some\", 4) ",
-                     string "&& request[4] == '/') ",
-                     string "? (request += 5, ",
-                     if isUnboxable  t then
-                         unurlify' rf (#1 t)
+              | TOption t =>
+                box [string "if (it",
+                     string (Int.toString level),
+                     string ") {",
+                     if isUnboxable t then
+                         box [string "uw_write(ctx, \"Some/\");",
+                              newline,
+                              urlify' rf level t]
                      else
-                         box [string "({",
-                              newline,
-                              p_typ env t,
+                         box [p_typ env t,
                               space,
-                              string "*tmp",
-                              space,
-                              string "=",
-                              space,
-                              string "uw_malloc(ctx, sizeof(",
-                              p_typ env t,
-                              string "));",
-                              newline,
-                              string "*tmp",
+                              string "it",
+                              string (Int.toString (level + 1)),
                               space,
                               string "=",
                               space,
-                              unurlify' rf (#1 t),
+                              string "*it",
+                              string (Int.toString level),
                               string ";",
                               newline,
-                              string "tmp;",
+                              string "uw_write(ctx, \"Some/\");",
                               newline,
-                              string "})"],
-                     string ") :",
-                     space,
-                     string "(uw_error(ctx, FATAL, \"Error unurlifying option type\"), NULL))))"]*)
+                              urlify' rf (level + 1) t,
+                              string ";",
+                              newline],
+                     string "} else {",
+                     box [string "uw_write(ctx, \"None\");",
+                          newline],
+                     string "}",
+                     newline]
 
               | _ => (ErrorMsg.errorAt loc "Unable to choose a URL encoding function";
                       space)

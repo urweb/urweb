@@ -338,7 +338,7 @@ fun process file =
                                     @ ["}"]), st)
                 end
 
-              | TFfi ("Basis", "string") => ("decode(t[i++])", st)
+              | TFfi ("Basis", "string") => ("unescape(t[i++])", st)
               | TFfi ("Basis", "int") => ("parseInt(t[i++])", st)
               | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
 
