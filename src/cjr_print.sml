@@ -927,11 +927,14 @@ fun urlify env t =
                     doEm xncs
                 end
 
-              | TDatatype (Option, i, xncs) => box []
-                (*if IS.member (rf, i) then
-                    box [string "unurlify_",
+              | TDatatype (Option, i, xncs) =>
+                if IS.member (rf, i) then
+                    box [string "urlify_",
                          string (Int.toString i),
-                         string "()"]
+                         string "(it",
+                         string (Int.toString level),
+                         string ");",
+                         newline]
                 else
                     let
                         val (x, _) = E.lookupDatatype env i
@@ -942,91 +945,64 @@ fun urlify env t =
                                 (no_arg, has_arg, t)
                               | [(has_arg, _, SOME t), (no_arg, _, NONE)] =>
                                 (no_arg, has_arg, t)
-                              | _ => raise Fail "CjrPrint: unfooify misclassified Option datatype"
+                              | _ => raise Fail "CjrPrint: urlify misclassified Option datatype"
 
                         val rf = IS.add (rf, i)
                     in
                         box [string "({",
                              space,
+                             string "void",
+                             space,
+                             string "urlify_",
+                             string (Int.toString i),
+                             string "(",
                              p_typ env t,
                              space,
-                             string "*unurlify_",
-                             string (Int.toString i),
-                             string "(void) {",
+                             if isUnboxable t then
+                                 box []
+                             else
+                                 string "*",
+                             string "it0) {",
                              newline,
-                             box [string "return (request[0] == '/' ? ++request : request,",
-                                  newline,
-                                  string "((!strncmp(request, \"",
-                                  string no_arg,
-                                  string "\", ",
-                                  string (Int.toString (size no_arg)),
-                                  string ") && (request[",
-                                  string (Int.toString (size no_arg)),
-                                  string "] == 0 || request[",
-                                  string (Int.toString (size no_arg)),
-                                  string "] == '/')) ? (request",
-                                  space,
-                                  string "+=",
-                                  space,
-                                  string (Int.toString (size no_arg)),
-                                  string ", NULL) : ((!strncmp(request, \"",
-                                  string has_arg,
-                                  string "\", ",
-                                  string (Int.toString (size has_arg)),
-                                  string ") && (request[",
-                                  string (Int.toString (size has_arg)),
-                                  string "] == 0 || request[",
-                                  string (Int.toString (size has_arg)),
-                                  string "] == '/')) ? (request",
-                                  space,
-                                  string "+=",
-                                  space,
-                                  string (Int.toString (size has_arg)),
-                                  string ", (request[0] == '/' ? ++request : NULL), ",
-                                  newline,
-                                  
-                                  if isUnboxable  t then
-                                      unurlify' rf (#1 t)
+                             box [string "if (it0) {",
+                                  if isUnboxable t then
+                                      urlify' rf 0 t
                                   else
-                                      box [string "({",
-                                           newline,
-                                           p_typ env t,
+                                      box [p_typ env t,
                                            space,
-                                           string "*tmp",
+                                           string "it1",
                                            space,
                                            string "=",
                                            space,
-                                           string "uw_malloc(ctx, sizeof(",
-                                           p_typ env t,
-                                           string "));",
+                                           string "*it0;",
                                            newline,
-                                           string "*tmp",
-                                           space,
-                                           string "=",
-                                           space,
-                                           unurlify' rf (#1 t),
+                                           string "uw_write(ctx, \"",
+                                           string has_arg,
+                                           string "/\");",
+                                           newline,
+                                           urlify' rf 1 t,
                                            string ";",
-                                           newline,
-                                           string "tmp;",
-                                           newline,
-                                           string "})"],
-                                  string ")",
-                                  newline,
-                                  string ":",
-                                  space,
-                                  string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x
-                                          ^ "\"), NULL))));"),
+                                           newline],
+                                  string "} else {",
+                                  box [string "uw_write(ctx, \"",
+                                       string no_arg,
+                                       string "\");",
+                                       newline],
+                                  string "}",
                                   newline],
                              string "}",
                              newline,
                              newline,
 
-                             string "unurlify_",
+                             string "urlify_",
                              string (Int.toString i),
-                             string "();",
+                             string "(it",
+                             string (Int.toString level),
+                             string ");",
                              newline,
-                             string "})"]
-                    end*)
+                             string "});",
+                             newline]
+                    end
 
               | TDatatype (Default, i, _) => box []
                 (*if IS.member (rf, i) then
