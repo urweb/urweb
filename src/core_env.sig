@@ -65,5 +65,7 @@ signature CORE_ENV = sig
 
     val declBinds : env -> Core.decl -> env
     val patBinds : env -> Core.pat -> env
+
+    val patBindsN : Core.pat -> int
                                                  
 end

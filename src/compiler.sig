@@ -94,11 +94,13 @@ signature COMPILER = sig
     val toCore_untangle : (string, Core.file) transform
     val toShake1 : (string, Core.file) transform
     val toRpcify : (string, Core.file) transform
+    val toCore_untangle2 : (string, Core.file) transform
+    val toShake2 : (string, Core.file) transform
     val toTag : (string, Core.file) transform
     val toReduce : (string, Core.file) transform
     val toUnpoly : (string, Core.file) transform 
     val toSpecialize : (string, Core.file) transform 
-    val toShake2 : (string, Core.file) transform
+    val toShake3 : (string, Core.file) transform
     val toMonoize : (string, Mono.file) transform
     val toMono_opt1 : (string, Mono.file) transform
     val toUntangle : (string, Mono.file) transform

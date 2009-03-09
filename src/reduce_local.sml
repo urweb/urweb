@@ -51,7 +51,7 @@ fun exp env (all as (e, loc)) =
         let
             fun find (n', env, nudge, lift) =
                 case env of
-                    [] => raise Fail "ReduceLocal.exp: ERel"
+                    [] => (ERel (n + nudge), loc)
                   | Lift lift' :: rest => find (n', rest, nudge + lift', lift + lift')
                   | Unknown :: rest =>
                     if n' = 0 then
@@ -155,5 +155,7 @@ fun reduce file =
     in
         map doDecl file
     end
+
+val reduceExp = exp []
 
 end

@@ -1,0 +1,5 @@
+debug
+sql rpcM.sql
+database dbname=rpcm
+
+rpcM

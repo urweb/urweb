@@ -30,5 +30,6 @@
 signature REDUCE_LOCAL = sig
 
     val reduce : Core.file -> Core.file
+    val reduceExp : Core.exp -> Core.exp
     
 end

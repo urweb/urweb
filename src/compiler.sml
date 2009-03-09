@@ -453,12 +453,15 @@ val rpcify = {
 
 val toRpcify = transform rpcify "rpcify" o toShake1
 
+val toCore_untangle2 = transform core_untangle "core_untangle2" o toRpcify
+val toShake2 = transform shake "shake2" o toCore_untangle2
+
 val tag = {
     func = Tag.tag,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toTag = transform tag "tag" o toRpcify
+val toTag = transform tag "tag" o toCore_untangle2
 
 val reduce = {
     func = Reduce.reduce,
@@ -481,14 +484,14 @@ val specialize = {
 
 val toSpecialize = transform specialize "specialize" o toUnpoly
 
-val toShake2 = transform shake "shake2" o toSpecialize
+val toShake3 = transform shake "shake3" o toSpecialize
 
 val monoize = {
     func = Monoize.monoize CoreEnv.empty,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMonoize = transform monoize "monoize" o toShake2
+val toMonoize = transform monoize "monoize" o toShake3
 
 val mono_opt = {
     func = MonoOpt.optimize,
