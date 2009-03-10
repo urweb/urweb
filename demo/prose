@@ -205,3 +205,7 @@ listEdit.urp
 <p>The central data structure is the <tt>rlist</tt>, a list whose individual elements are sources, enabling fine-grained mutation.  Every rlist is either nil or is a cons cell made up of a source for a string data element, another source to serve as a scratchpad for GUI-based edits to the data element, and a final source that stores the remainder of the list.</p>
 
 <p>The main program provides operations to append to a list and to edit the data stored at any cell of the list.  Append is implemented by maintaining a source <tt>head</tt>, which points to the first list element; and a source <tt>tailP</tt>, which points to a <tt>source rlist</tt> where we should place the next appended node.</p>
+
+increment.urp
+
+<p>Here's an example where client-side code needs to run more code on the server.  We maintain a (server-side) SQL sequence.  When the user clicks a button, an AJAX request increments the remote sequence and gets the new value.</p>

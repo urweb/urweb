@@ -79,9 +79,9 @@ uw_Basis_string uw_Basis_unurlifyString(uw_context, char **);
 uw_Basis_bool uw_Basis_unurlifyBool(uw_context, char **);
 uw_Basis_time uw_Basis_unurlifyTime(uw_context, char **);
 
-uw_Basis_string uw_Basis_strcat(uw_context, uw_Basis_string, uw_Basis_string);
-uw_Basis_string uw_Basis_strdup(uw_context, uw_Basis_string);
-uw_Basis_string uw_Basis_maybe_strdup(uw_context, uw_Basis_string);
+uw_Basis_string uw_Basis_strcat(uw_context, const char *, const char *);
+uw_Basis_string uw_Basis_strdup(uw_context, const char *);
+uw_Basis_string uw_Basis_maybe_strdup(uw_context, const char *);
 
 uw_Basis_string uw_Basis_sqlifyInt(uw_context, uw_Basis_int);
 uw_Basis_string uw_Basis_sqlifyFloat(uw_context, uw_Basis_float);
