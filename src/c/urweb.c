@@ -382,11 +382,9 @@ void uw_write_script(uw_context ctx, uw_Basis_string s) {
   ctx->script_front += len;
 }
 
-char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
+const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
   if (ctx->script_front == ctx->script) {
-    char *r = uw_malloc(ctx, 1);
-    r[0] = 0;
-    return r;
+    return ctx->script_header;
   } else {
     char *r = uw_malloc(ctx, 41 + (ctx->script_front - ctx->script) + strlen(ctx->script_header));
 

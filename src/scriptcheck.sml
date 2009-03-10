@@ -38,8 +38,10 @@ structure IS = IntBinarySet
 val csBasis = SS.addList (SS.empty,
                           ["new_client_source",
                            "get_client_source",
-                           "set_client_source",
-                           "alert"])
+                           "set_client_source"])
+
+val scriptWords = ["<script",
+                   " onclick="]
 
 fun classify (ds, ps) =
     let
@@ -54,7 +56,7 @@ fun classify (ds, ps) =
             let
                 fun hasClient e =
                     case #1 e of
-                        EPrim (Prim.String s) => inString {needle = "<script", haystack = s}
+                        EPrim (Prim.String s) => List.exists (fn n => inString {needle = n, haystack = s}) scriptWords
                       | EPrim _ => false
                       | ERel _ => false
                       | ENamed n => IS.member (csids, n)
