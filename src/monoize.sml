@@ -1954,9 +1954,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                  loc)), loc), fm)
                               end
                             | SOME (_, src, _) =>
-                              (strcat [str "<script type=\"text/javascript\">inp(\"input\",",
+                              (strcat [str "<span><script type=\"text/javascript\">inp(\"input\",",
                                        (L'.EJavaScript (L'.Script, src, NONE), loc),
-                                       str ")</script>"],
+                                       str ")</script></span>"],
                                fm))
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to textbox tag"))
@@ -2030,9 +2030,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                               str ")"]
                              val sc = setAttrs sc
                          in
-                             (strcat [str "<script type=\"text/javascript\">",
+                             (strcat [str "<span><script type=\"text/javascript\">",
                                       sc,
-                                      str "</script>"],
+                                      str "</script></span>"],
                               fm)
                          end)
 

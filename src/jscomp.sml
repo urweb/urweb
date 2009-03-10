@@ -409,6 +409,12 @@ fun process file =
                       Print.prefaces "Can't unurlify" [("t", MonoPrint.p_typ MonoEnv.empty t)];
                       ("ERROR", st))
 
+        fun padWith (ch, s, len) =
+            if size s < len then
+                padWith (ch, String.str ch ^ s, len - 1)
+            else
+                s
+
         fun jsExp mode skip outer =
             let
                 val len = length outer
@@ -448,7 +454,16 @@ fun process file =
                                                             else
                                                                 "\\074"
                                                           | #"\\" => "\\\\"
-                                                          | ch => String.str ch) s
+                                                          | #"\n" => "\\n"
+                                                          | #"\r" => "\\r"
+                                                          | #"\t" => "\\t"
+                                                          | ch =>
+                                                            if Char.isPrint ch then
+                                                                String.str ch
+                                                            else
+                                                                "\\" ^ padWith (#"0",
+                                                                                Int.fmt StringCvt.OCT (ord ch),
+                                                                                3)) s
                                      ^ "\"")
                               | _ => str (Prim.toString p)
 
@@ -878,6 +893,15 @@ fun process file =
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
+                          | EJavaScript (_, e as (EAbs _, _), _) =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                            in
+                                (strcat [str "\"cr(\"+ca(",
+                                         e,
+                                         str ")+\")\""],
+                                 st)
+                            end
                           | EJavaScript (_, e, _) =>
                             let
                                 val (e, st) = jsE inner (e, st)

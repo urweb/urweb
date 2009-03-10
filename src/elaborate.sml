@@ -704,7 +704,16 @@
                                       (#fields s1, #fields s2)
          (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
                                           ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
+
          val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
+         fun eatMost unifs =
+             case unifs of
+                 (_, r) :: (rest as _ :: _) => (r := SOME (L'.CRecord (k, []), loc);
+                                                eatMost rest)
+               | _ => unifs
+         val unifs1 = eatMost unifs1
+         val unifs2 = eatMost unifs2
+
          val (others1, others2) = eatMatching (consEq env) (#others s1, #others s2)
          (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
@@ -761,7 +770,7 @@
                | _ => (fs1, fs2, others1, others2)
 
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
-                                            ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+                                          ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
          val clear = case (fs1, others1, fs2, others2) of
                           ([], [], [], []) => true
