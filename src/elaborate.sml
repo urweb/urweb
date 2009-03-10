@@ -706,13 +706,6 @@
                                           ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
 
          val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
-         fun eatMost unifs =
-             case unifs of
-                 (_, r) :: (rest as _ :: _) => (r := SOME (L'.CRecord (k, []), loc);
-                                                eatMost rest)
-               | _ => unifs
-         val unifs1 = eatMost unifs1
-         val unifs2 = eatMost unifs2
 
          val (others1, others2) = eatMatching (consEq env) (#others s1, #others s2)
          (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
@@ -887,6 +880,11 @@
              (L'.CError, _) => ()
            | (_, L'.CError) => ()
 
+           | (L'.CRecord _, _) => isRecord ()
+           | (_, L'.CRecord _) => isRecord ()
+           | (L'.CConcat _, _) => isRecord ()
+           | (_, L'.CConcat _) => isRecord ()
+
            | (L'.CUnif (_, k1, _, r1), L'.CUnif (_, k2, _, r2)) =>
              if r1 = r2 then
                  ()
@@ -1033,11 +1031,6 @@
               unifyCons' env c1 c2)
            | (L'.TKFun (x, c1), L'.TKFun (_, c2)) =>
              unifyCons' (E.pushKRel env x) c1 c2
-
-           | (L'.CRecord _, _) => isRecord ()
-           | (_, L'.CRecord _) => isRecord ()
-           | (L'.CConcat _, _) => isRecord ()
-           | (_, L'.CConcat _) => isRecord ()
 
            | _ => err CIncompatible
      end

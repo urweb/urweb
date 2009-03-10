@@ -197,3 +197,11 @@ react.urp
 <p>Most client-side JavaScript programs modify page contents imperatively, but Ur/Web is based on functional-reactive programming instead.  Programs allocate data sources and then describe the page as a pure function of those data sources.  When the sources change, the page changes automatically.</p>
 
 <p>Here's an example where a button modifies a data source that affects some text on the page.  The affected portion of the page is indicated with the pseudo-HTML tag <tt>dyn</tt>, whose <tt>signal</tt> attribute specifies one of these pure functions over mutable sources.  A source containing data of type <tt>t</tt> has type <tt>source t</tt> and is created with the <tt>source</tt> operation within the <tt>transaction</tt> monad.  Functions over sources are represented in the monad <tt>signal</tt>.  Like in Haskell, we overload monad notations, so that the same return and bind operators can be used to write signals and transactions.  The <tt>signal</tt> function coerces a source to a signal.</p>
+
+listEdit.urp
+
+<p>This is a more involved functional-reactive example, involving recursive data structures that contain sources.  We build a list editor similar to the one from the <tt>ListShop</tt> example, but with all editing happening on the client side.</p>
+
+<p>The central data structure is the <tt>rlist</tt>, a list whose individual elements are sources, enabling fine-grained mutation.  Every rlist is either nil or is a cons cell made up of a source for a string data element, another source to serve as a scratchpad for GUI-based edits to the data element, and a final source that stores the remainder of the list.</p>
+
+<p>The main program provides operations to append to a list and to edit the data stored at any cell of the list.  Append is implemented by maintaining a source <tt>head</tt>, which points to the first list element; and a source <tt>tailP</tt>, which points to a <tt>source rlist</tt> where we should place the next appended node.</p>
