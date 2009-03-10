@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -2130,7 +2130,7 @@ fun p_file env (ds, ps) =
                                                 E.declBinds env d))
                              env ds
 
-        val fields = foldl (fn ((ek, _, _, ts, _), fields) =>
+        val fields = foldl (fn ((ek, _, _, ts, _, _), fields) =>
                                case ek of
                                    Core.Link => fields
                                  | Core.Rpc => fields
@@ -2251,7 +2251,7 @@ fun p_file env (ds, ps) =
                              string "}"]
                 end
 
-        fun p_page (ek, s, n, ts, ran) =
+        fun p_page (ek, s, n, ts, ran, side) =
             let
                 val (ts, defInputs, inputsVar) =
                     case ek of
@@ -2346,6 +2346,12 @@ fun p_file env (ds, ps) =
                                     string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
                                     newline,
                                     string "uw_write(ctx, \"<html>\");",
+                                    newline,
+                                    string "uw_set_script_header(ctx, \"",
+                                    string (case side of
+                                                ServerAndClient => "<script src=\\\"/app.js\\\"></script>\\n"
+                                              | ServerOnly => ""),
+                                    string "\");",
                                     newline]),
                      box [string "{",
                           newline,

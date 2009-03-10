@@ -1924,9 +1924,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 case tag of
                     "body" => normal ("body", NONE,
-                                      SOME (L'.EStrcat ((L'.EPrim (Prim.String "<script src=\"/app.js\"></script>"), loc),
-                                                        (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]),
-                                                         loc)), loc))
+                                      SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
 
                   | "dyn" =>
                     (case attrs of

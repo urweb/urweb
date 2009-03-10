@@ -1,7 +1,7 @@
 functor Make (M : sig
                   con fs :: {Unit}
                   val fl : folder fs
-                  val names : $(mapUT string fs)
+                  val names : $(mapU string fs)
               end) = struct
 
     fun handler values = return <xml><body>
@@ -14,9 +14,9 @@ functor Make (M : sig
 
     fun main () = return <xml><body>
       <form>
-        {foldUR [string] [fn cols :: {Unit} => xml form [] (mapUT string cols)]
+        {foldUR [string] [fn cols :: {Unit} => xml form [] (mapU string cols)]
                 (fn (nm :: Name) (rest :: {Unit}) [[nm] ~ rest] name
-                                 (acc : xml form [] (mapUT string rest)) => <xml>
+                                 (acc : xml form [] (mapU string rest)) => <xml>
                                    <li> {[name]}: <textbox{nm}/></li>
                                    {useMore acc}
                                  </xml>)

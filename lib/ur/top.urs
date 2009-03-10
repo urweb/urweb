@@ -29,7 +29,7 @@ con fst3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.1
 con snd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.2
 con thd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.3
 
-con mapUT = fn f :: Type => map (fn _ :: Unit => f)
+con mapU = K ==> fn f :: K => map (fn _ :: Unit => f)
 
 con ex = fn tf :: (Type -> Type) =>
             res ::: Type -> (choice :: Type -> tf choice -> res) -> res
@@ -46,19 +46,19 @@ val foldUR : tf :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}
                  -> [[nm] ~ rest] =>
                        tf -> tr rest -> tr ([nm] ++ rest))
-             -> tr [] -> r :: {Unit} -> folder r -> $(mapUT tf r) -> tr r
+             -> tr [] -> r :: {Unit} -> folder r -> $(mapU tf r) -> tr r
 
 val foldUR2 : tf1 :: Type -> tf2 :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}
                  -> [[nm] ~ rest] =>
                        tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
-             -> tr [] -> r :: {Unit} -> folder r -> $(mapUT tf1 r) -> $(mapUT tf2 r) -> tr r
+             -> tr [] -> r :: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> tr r
 
 val foldURX2: tf1 :: Type -> tf2 :: Type -> ctx :: {Unit}
               -> (nm :: Name -> rest :: {Unit}
                   -> [[nm] ~ rest] =>
                         tf1 -> tf2 -> xml ctx [] [])
-              -> r :: {Unit} -> folder r -> $(mapUT tf1 r) -> $(mapUT tf2 r) -> xml ctx [] []
+              -> r :: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> xml ctx [] []
 
 val foldR : K --> tf :: (K -> Type) -> tr :: ({K} -> Type)
              -> (nm :: Name -> t :: K -> rest :: {K}

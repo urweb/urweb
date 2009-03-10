@@ -42,6 +42,8 @@ struct uw_context {
 
   cleanup *cleanup, *cleanup_front, *cleanup_back;
 
+  const char *script_header;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -71,6 +73,8 @@ uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, si
 
   ctx->cleanup_front = ctx->cleanup_back = ctx->cleanup = malloc(0);
 
+  ctx->script_header = "";
+  
   ctx->error_message[0] = 0;
 
   ctx->script_front = ctx->script = malloc(script_len);
@@ -235,6 +239,10 @@ char *uw_get_optional_input(uw_context ctx, int n) {
   return (ctx->inputs[n] == NULL ? "" : ctx->inputs[n]);
 }
 
+void uw_set_script_header(uw_context ctx, const char *s) {
+  ctx->script_header = s;
+}
+
 static void uw_check_heap(uw_context ctx, size_t extra) {
   if (ctx->heap_back - ctx->heap_front < extra) {
     size_t desired = ctx->heap_front - ctx->heap + extra, next;
@@ -380,9 +388,9 @@ char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
     r[0] = 0;
     return r;
   } else {
-    char *r = uw_malloc(ctx, 41 + (ctx->script_front - ctx->script));
+    char *r = uw_malloc(ctx, 41 + (ctx->script_front - ctx->script) + strlen(ctx->script_header));
 
-    sprintf(r, "<script>%s</script>", ctx->script);
+    sprintf(r, "%s<script>%s</script>", ctx->script_header, ctx->script);
     return r;
   }
 }

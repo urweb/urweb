@@ -113,6 +113,10 @@ datatype decl' =
 
 withtype decl = decl' located
 
-type file = decl list * (Core.export_kind * string * int * typ list * typ) list
+datatype sidedness =
+         ServerOnly
+       | ServerAndClient
+
+type file = decl list * (Core.export_kind * string * int * typ list * typ * sidedness) list
 
 end

@@ -55,7 +55,7 @@ con fst3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.1
 con snd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.2
 con thd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.3
 
-con mapUT = fn f :: Type => map (fn _ :: Unit => f)
+con mapU = K ==> fn f :: K => map (fn _ :: Unit => f)
 
 con ex = fn tf :: (Type -> Type) =>
             res ::: Type -> (choice :: Type -> tf choice -> res) -> res
@@ -75,7 +75,7 @@ fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
                 -> [[nm] ~ rest] =>
                       tf -> tr rest -> tr ([nm] ++ rest))
            (i : tr []) (r :: {Unit}) (fold : folder r)=
-    fold [fn r :: {Unit} => $(mapUT tf r) -> tr r]
+    fold [fn r :: {Unit} => $(mapU tf r) -> tr r]
          (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
                           [[nm] ~ rest] r =>
              f [nm] [rest] ! r.nm (acc (r -- nm)))
@@ -86,7 +86,7 @@ fun foldUR2 (tf1 :: Type) (tf2 :: Type) (tr :: {Unit} -> Type)
                 -> [[nm] ~ rest] =>
                       tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
            (i : tr []) (r :: {Unit}) (fold : folder r) =
-    fold [fn r :: {Unit} => $(mapUT tf1 r) -> $(mapUT tf2 r) -> tr r]
+    fold [fn r :: {Unit} => $(mapU tf1 r) -> $(mapU tf2 r) -> tr r]
          (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
                           [[nm] ~ rest] r1 r2 =>
              f [nm] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))

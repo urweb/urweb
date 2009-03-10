@@ -1,4 +1,4 @@
-<p><b>Ur/Web</b> is a domain-specific language for programming web applications backed by SQL databases.  It is (strongly) statically-typed (like ML and Haskell) and purely functional (like Haskell).  <b>Ur</b> is the base language, and the web-specific features of Ur/Web (mostly) come only in the form of special rules for parsing and optimization.  The Ur core looks a lot like <a href="http://sml.sourceforge.net/">Standard ML</a>, with a few <a href="http://www.haskell.org/">Haskell</a>-isms added, and kinder, gentler versions added of many features from dependently-typed languages like the logic behind <a href="http://coq.inria.fr/">Coq</a>.  The type system is much more expressive than in ML and Haskell, such that well-typed web applications cannot "go wrong," not just in handling single HTTP requests, but across their entire lifetimes of interacting with HTTP clients.  Beyond that, Ur is unusual is using ideas from dependent typing to enable very effective metaprogramming, or programming with explicit analysis of type structure.  Many common web application components can be built by Ur/Web functions that operate on types, where it seems impossible to achieve similar code re-use in more established languages.</p>
+<p><b>Ur/Web</b> is a domain-specific language for programming web applications backed by SQL databases.  It is (strongly) statically-typed (like ML and Haskell) and purely functional (like Haskell).  <b>Ur</b> is the base language, and the web-specific features of Ur/Web (mostly) come only in the form of special rules for parsing and optimization.  The Ur core looks a lot like <a href="http://sml.sourceforge.net/">Standard ML</a>, with a few <a href="http://www.haskell.org/">Haskell</a>-isms added, and kinder, gentler versions added of many features from dependently-typed languages like the logic behind <a href="http://coq.inria.fr/">Coq</a>.  The type system is much more expressive than in ML and Haskell, such that well-typed web applications cannot "go wrong," not just in handling single HTTP requests, but across their entire lifetimes of interacting with HTTP clients.  Beyond that, Ur is unusual in using ideas from dependent typing to enable very effective metaprogramming, or programming with explicit analysis of type structure.  Many common web application components can be built by Ur/Web functions that operate on types, where it seems impossible to achieve similar code re-use in more established statically-typed languages.</p>
 
 <p>This demo is built automatically from Ur/Web sources and supporting files.  If you unpack the Ur/Web source distribution, then the following steps will build you a local version of this demo:
 
@@ -92,9 +92,21 @@ ref.urp
 
 <p>The functor creates a new encapsulated SQL sequence and table on each call.  These local relations show up in the automatically-generated SQL file that should be run to prepare the database for use, but they are invisible from client code.  We could change the functor to create different SQL relations, without needing to change client code.</p>
 
+<p>Note that, in <tt>ref.ur</tt>, the <tt>inj</tt> components of functor arguments are omitted.  Since these arguments are type class witnesses, the compiler infers them automatically based on the choices of <tt>data</tt>.</p>
+
 tree.urp
 
 <p>Here we see how we can abstract over common patterns of SQL queries.  In particular, since standard SQL does not help much with queries over trees, we write a function for traversing an SQL tree, building an HTML representation, based on a user-provided function for rendering individual rows.</p>
+
+<p>The signature of <tt>TreeFun.Make</tt> tells us that, to instantiate the functor, we must provide</p>
+<ol>
+        <li> A primary key type <tt>key</tt></li>
+        <li> SQL field names <tt>id</tt> (for primary keys) and <tt>parent</tt> (for parent links)</li>
+        <li> A type-level record <tt>cols</tt> of field names besides <tt>id</tt> and <tt>parent</tt></li>
+        <li> "Proofs" that <tt>id</tt> is distinct from <tt>parent</tt> and that neither of <tt>id</tt> and <tt>parent</tt> appears in <tt>cols</tt></li>
+        <li> Witnesses that both <tt>key</tt> and <tt>option key</tt> belong to the type class <tt>sql_injectable</tt>, which indicates that they are fair game to use with SQL</li>
+        <li> An SQL table <tt>tab</tt>, containing a field <tt>id</tt> of type <tt>key</tt>, a field <tt>parent</tt> of type <tt>option key</tt>, and every field of <tt>cols</tt></li>
+</ol>
 
 sum.urp
 
@@ -102,9 +114,11 @@ sum.urp
 
 <p>Ur's support for analysis of types is based around extensible records, or <i>row types</i>.  In the definition of the <tt>sum</tt> function, we see the type parameter <tt>fs</tt> assigned the <i>kind</i> <tt>{Unit}</tt>, which stands for records of types of kind <tt>Unit</tt>.  The <tt>Unit</tt> kind has only one inhabitant, <tt>()</tt>.  The kind <tt>Type</tt> is for "normal" types.</p>
 
-<p>The unary <tt>$</tt> operator is used to build a record <tt>Type</tt> from a <tt>{Type}</tt> (that is, the kind of records of types).  The library function <tt>mapUT</tt> takes in a <tt>Type</tt> <i>t</i> and a <tt>{Unit}</tt> <i>r</i>, and it builds a <tt>{Type}</tt> as long as <i>r</i>, where every field is assigned value <i>t</i>.</p>
+<p>The <tt>sum</tt> function also takes an argument <tt>fl</tt> of type <tt>folder fs</tt>.  Folders represent permutations of the elements of type-level records.  We can use a folder to iterate over a type-level record in the order indicated by the permutation.</p>
 
-<p>Another library function <tt>foldUR</tt> is defined at the level of expressions, while <tt>mapUT</tt> is a type-level function.  <tt>foldUR</tt> takes 6 arguments, some of them types and some values.  Type arguments are distinguished by being written within brackets.  The arguments to <tt>foldUR</tt> respectively tell us:
+<p>The unary <tt>$</tt> operator is used to build a record <tt>Type</tt> from a <tt>{Type}</tt> (that is, the kind of records of types).  The library function <tt>mapU</tt> takes in a type <i>t</i> of kind <t>K</t> and a <tt>{Unit}</tt> <i>r</i>, and it builds a <tt>{K}</tt> as long as <i>r</i>, where every field is assigned value <i>t</i>.</p>
+
+<p>Another library function <tt>foldUR</tt> is defined at the level of expressions, while <tt>mapU</tt> is a type-level function.  <tt>foldUR</tt> takes 7 arguments, some of them types and some values.  Type arguments are distinguished by being written within brackets.  The arguments to <tt>foldUR</tt> respectively tell us:
 
 <ol>
 <li> The type we will assign to each record field</li>
@@ -112,6 +126,7 @@ sum.urp
 <li> A function that updates the accumulator based on the current record field name, the rest of the input record type, the current record field value, and the current accumulator</li>
 <li> The initial accumulator value</li>
 <li> The input record type</li>
+<li> A folder for that type</li>
 <li> The input record value</li>
 </ol>
 
@@ -119,7 +134,7 @@ An unusual part of the third argument is the syntax <tt>[t1 ~ t2]</tt> within a 
 
 <p>The general syntax for constant row types is <tt>[Name1 = t1, ..., NameN = tN]</tt>, and there is a shorthand version <tt>[Name1, ..., NameN]</tt> for records of <tt>Unit</tt>s.</p>
 
-<p>With <tt>sum</tt> defined, it is easy to make some sample calls.  The form of the code for <tt>main</tt> does not make it apparent, but the compiler must "reverse engineer" the appropriate <tt>{Unit}</tt> from the <tt>{Type}</tt> available from the context at each call to <tt>sum</tt>.</p>
+<p>With <tt>sum</tt> defined, it is easy to make some sample calls.  The form of the code for <tt>main</tt> does not make it apparent, but the compiler must "reverse engineer" the appropriate <tt>{Unit}</tt> from the <tt>{Type}</tt> available from the context at each call to <tt>sum</tt>.  The compiler also infers a <tt>folder</tt> for each call, guessing at the desired permutations by examining the orders in which field names are written in the code.</p>
 
 tcSum.urp
 
@@ -129,8 +144,8 @@ metaform1.urp
 
 <p>We can use metaprogramming with row types to build HTML forms (and their handlers) generically.  The functor <tt>Metaform.Make</tt> takes in a unit row <tt>fs</tt> and a value-level record <tt>names</tt> assigning string names to the fields of <tt>fs</tt>.  The functor implementation builds a form handler with a library function <tt>foldURX2</tt>, which runs over two value-level records in parallel, building an XML fragment.</p>
 
-<p>The form itself is generated using the more primitive <tt>foldUR</tt>.  We see the type <tt>xml form [] (mapUT string cols)</tt> as the result of the fold.  This is the type of XML fragments that are suitable for inclusion in forms, require no form fields to be defined on entry, and themselves define form fields whose names and types are given by <tt>mapUT string cols</tt>.  The <tt>useMore</tt> function "weakens" the type of an XML fragment, so that it "pretends" to require additional fields as input.  This weakening is necessary to accommodate the general typing rule for concatenating bits of XML.</tt>
-<p>The functor use in <tt>Metaform1</tt> is trivial.  The compiler infers the value of the structure member <tt>fs</tt> from the type of the value provided for <tt>names</tt>.</p>
+<p>The form itself is generated using the more primitive <tt>foldUR</tt>.  We see the type <tt>xml form [] (mapU string cols)</tt> as the result of the fold.  This is the type of XML fragments that are suitable for inclusion in forms, require no form fields to be defined on entry, and themselves define form fields whose names and types are given by <tt>mapU string cols</tt>.  The <tt>useMore</tt> function "weakens" the type of an XML fragment, so that it "pretends" to require additional fields as input.  This weakening is necessary to accommodate the general typing rule for concatenating bits of XML.</tt>
+<p>The functor use in <tt>Metaform1</tt> is trivial.  The compiler infers the values of the structure members <tt>fs</tt> and <tt>fl</tt> from the type of the value provided for <tt>names</tt>.</p>
 
 metaform2.urp
 
@@ -165,7 +180,7 @@ crud1.urp
 
 <p>Looking at <tt>crud1.ur</tt>, we see that a use of the functor is almost trivial.  Only the value components of the argument structure must be provided.  The column row type is inferred, and the disjointness constraint is proved automatically.</p>
 
-<p>We won't go into detail on the implementation of <tt>Crud.Make</tt>.  The types of the functions used there can be found in the signatures of the built-in <tt>Basis</tt> module and the <tt>Top</tt> module from the standard library.  The signature of the first and the signature and implementation of the second can be found in the <tt>lib</tt> directory of the Ur/Web distribution.</p>
+<p>We won't go into detail on the implementation of <tt>Crud.Make</tt>.  The types of the functions used there can be found in the signatures of the built-in <tt>Basis</tt> module and the <tt>Top</tt> module from the standard library.  The signature of the first and the signature and implementation of the second can be found in the <tt>lib/ur</tt> directory of the Ur/Web distribution.</p>
 
 crud2.urp
 

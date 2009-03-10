@@ -1,4 +1,3 @@
-debug
 database dbname=test
 sql tree.sql
 

@@ -80,6 +80,7 @@ signature COMPILER = sig
     val fuse : (Mono.file, Mono.file) phase
     val pathcheck : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
+    val scriptcheck : (Cjr.file, Cjr.file) phase
     val prepare : (Cjr.file, Cjr.file) phase
     val sqlify : (Mono.file, Cjr.file) phase
 
@@ -115,6 +116,7 @@ signature COMPILER = sig
     val toMono_shake2 : (string, Mono.file) transform
     val toPathcheck : (string, Mono.file) transform
     val toCjrize : (string, Cjr.file) transform
+    val toScriptcheck : (string, Cjr.file) transform
     val toPrepare : (string, Cjr.file) transform
     val toSqlify : (string, Cjr.file) transform
 

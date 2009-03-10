@@ -1,9 +1,9 @@
 structure IR = RefFun.Make(struct
-                               type t = int
+                               type data = int
                            end)
 
 structure SR = RefFun.Make(struct
-                               type t = string
+                               type data = string
                            end)
 
 fun main () =

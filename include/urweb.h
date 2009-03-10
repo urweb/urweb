@@ -39,6 +39,7 @@ void uw_write(uw_context, const char*);
 uw_Basis_int uw_Basis_new_client_source(uw_context, uw_Basis_string);
 uw_unit uw_Basis_set_client_source(uw_context, uw_Basis_int, uw_Basis_string);
 
+void uw_set_script_header(uw_context, const char*);
 char *uw_Basis_get_script(uw_context, uw_unit);
 
 char *uw_Basis_htmlifyInt(uw_context, uw_Basis_int);

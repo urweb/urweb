@@ -160,6 +160,9 @@ cjr_print.sml
 cjrize.sig
 cjrize.sml
 
+scriptcheck.sig
+scriptcheck.sml
+
 prepare.sig
 prepare.sml
 

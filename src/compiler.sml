@@ -558,12 +558,19 @@ val cjrize = {
 
 val toCjrize = transform cjrize "cjrize" o toPathcheck
 
+val scriptcheck = {
+    func = ScriptCheck.classify,
+    print = CjrPrint.p_file CjrEnv.empty
+}
+
+val toScriptcheck = transform scriptcheck "scriptcheck" o toCjrize
+
 val prepare = {
     func = Prepare.prepare,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toPrepare = transform prepare "prepare" o toCjrize
+val toPrepare = transform prepare "prepare" o toScriptcheck
 
 val sqlify = {
     func = Cjrize.cjrize,
