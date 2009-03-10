@@ -3,7 +3,7 @@
 con folder :: K --> {K} -> Type
 
 structure Folder : sig
-    val fold : K --> r ::: {K} -> folder r
+    val fold : K --> r :: {K} -> folder r
                -> tf :: ({K} -> Type)
                -> (nm :: Name -> v :: K -> r :: {K} -> tf r
                    -> [[nm] ~ r] => tf ([nm = v] ++ r))

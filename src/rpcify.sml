@@ -71,13 +71,16 @@ type state = {
 
 fun frob file =
     let
-        fun sideish (basis, ssids) =
-            U.Exp.exists {kind = fn _ => false,
-                          con = fn _ => false,
-                          exp = fn ENamed n => IS.member (ssids, n)
-                                 | EFfi ("Basis", x) => SS.member (basis, x)
-                                 | EFfiApp ("Basis", x, _) => SS.member (basis, x)
-                                 | _ => false}
+        fun sideish (basis, ssids) e =
+            case #1 e of
+                ERecord _ => false
+              | _ =>
+                U.Exp.exists {kind = fn _ => false,
+                              con = fn _ => false,
+                              exp = fn ENamed n => IS.member (ssids, n)
+                                     | EFfi ("Basis", x) => SS.member (basis, x)
+                                     | EFfiApp ("Basis", x, _) => SS.member (basis, x)
+                                     | _ => false} e
 
         fun whichIds basis =
             let
@@ -331,6 +334,10 @@ fun frob file =
                                                                                  CorePrint.p_exp CoreEnv.empty (e, loc))];
                                                           raise Fail "Rpcify: Undetected transaction function [2]")
                                                | SOME x => x
+                                                           
+                                         val () = Print.prefaces "Double true"
+                                                                 [("trans1", CorePrint.p_exp CoreEnv.empty trans1),
+                                                                  ("e", CorePrint.p_exp CoreEnv.empty e)]
 
                                          val n' = #maxName st
 

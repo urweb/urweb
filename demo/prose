@@ -213,3 +213,20 @@ increment.urp
 batch.urp
 
 <p>This example shows more of what is possible with mixed client/server code.  The application is an editor for a simple database table, where additions of new rows can be batched in the client, before a button is clicked to trigger a mass addition.</p>
+
+batchG.urp
+
+<p>We can redo the last example with a generic component, like we did in the <tt>Crud</tt> examples.  The module <tt>BatchFun</tt> is analogous to the <tt>Crud</tt> module.  It contains a functor that builds a batching editor, when given a suitable description of a table.</p>
+
+<p>The signature of the functor is the same as for <tt>Crud</tt>.  We change the definition of <tt>colMeta</tt> to reflect the different kinds of column metadata that we need.  Each column is still described by a pair of types, and the first element of each pair still gives the SQL type for a column.  Now, however, the second type in a pair gives a type of <i>local state</i> to be used in a reactive widget for inputing that column.</p>
+
+<p>The first three fields of a <tt>colMeta</tt> record are the same as for <tt>Crud</tt>.  The rest of the fields are:</p>
+<ol>
+        <li> <tt>NewState</tt>, which allocates some new widget local state</li>
+        <li> <tt>Widget</tt>, which produces a reactive widget from some state</li>
+        <li> <tt>ReadState</tt>, which reads the current value of some state to determine which SQL value it encodes</li>
+</ol>
+
+<p><tt>BatchFun.Make</tt> handles the plumbing of allocating the local state, using it to create widgets, and reading the state values when the user clicks "Batch it."</p>
+
+<p><tt>batchG.ur</tt> contains an example instantiation, which is just as easy to write as in the <tt>Crud1</tt> example.</p>

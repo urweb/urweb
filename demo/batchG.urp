@@ -1,0 +1,5 @@
+database dbname=test
+sql batchG.sql
+
+batchFun
+batchG
