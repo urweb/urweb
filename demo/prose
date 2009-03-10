@@ -185,3 +185,9 @@ crud1.urp
 crud2.urp
 
 <p>This example shows another application of <tt>Crud.Make</tt>.  We mix one standard column with one customized column.  We write an underscore for the <tt>Inject</tt> field of meta-data, since the type class facility can infer that witness.</p>
+
+alert.urp
+
+<p>Ur/Web makes it easy to write code whose execution should be distributed between the web server and client web browsers.  Server-side code is compiled to efficient native code, and client-side code is compiled to JavaScript.  Ur/Web programmers don't need to worry about these details, because the language and standard library provide a uniform ML-like interface for the whole process.</p>
+
+<p>Here's an example of a button that, when clicked, opens an alert dialog on the client.</p>
