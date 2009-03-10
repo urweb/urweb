@@ -44,6 +44,8 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "htmlifyString"), "eh"),
              (("Basis", "new_client_source"), "sc"),
              (("Basis", "set_client_source"), "sv"),
+             (("Basis", "stringToFloat_error"), "pfl"),
+             (("Basis", "stringToInt_error"), "pi"),
              (("Basis", "urlifyInt"), "ts"),
              (("Basis", "urlifyFloat"), "ts"),
              (("Basis", "urlifyString"), "escape")]
@@ -893,7 +895,7 @@ fun process file =
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
-                          | EJavaScript (_, e as (EAbs _, _), _) =>
+                          (*| EJavaScript (_, e as (EAbs _, _), _) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
@@ -901,7 +903,7 @@ fun process file =
                                          e,
                                          str ")+\")\""],
                                  st)
-                            end
+                            end*)
                           | EJavaScript (_, e, _) =>
                             let
                                 val (e, st) = jsE inner (e, st)

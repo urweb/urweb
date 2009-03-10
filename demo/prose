@@ -209,3 +209,7 @@ listEdit.urp
 increment.urp
 
 <p>Here's an example where client-side code needs to run more code on the server.  We maintain a (server-side) SQL sequence.  When the user clicks a button, an AJAX request increments the remote sequence and gets the new value.</p>
+
+batch.urp
+
+<p>This example shows more of what is possible with mixed client/server code.  The application is an editor for a simple database table, where additions of new rows can be batched in the client, before a button is clicked to trigger a mass addition.</p>
