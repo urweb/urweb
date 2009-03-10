@@ -895,15 +895,6 @@ fun process file =
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
-                          (*| EJavaScript (_, e as (EAbs _, _), _) =>
-                            let
-                                val (e, st) = jsE inner (e, st)
-                            in
-                                (strcat [str "\"cr(\"+ca(",
-                                         e,
-                                         str ")+\")\""],
-                                 st)
-                            end*)
                           | EJavaScript (_, e, _) =>
                             let
                                 val (e, st) = jsE inner (e, st)
@@ -982,9 +973,7 @@ fun process file =
                                               end
                                       in
                                           case e of
-                                              EJavaScript (m, orig as (EAbs (_, t, _, e), _), NONE) =>
-                                              doCode m 1 (t :: env) orig e
-                                            | EJavaScript (m, orig, NONE) =>
+                                              EJavaScript (m, orig, NONE) =>
                                               doCode m 0 env orig orig
                                             | _ => (e, st)
                                       end,

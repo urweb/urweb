@@ -188,6 +188,116 @@ fun frob file =
                     in
                         (e', st)
                     end
+
+                fun newCps (t1, t2, trans1, trans2, st) =
+                    let
+                        val loc = #2 trans1
+
+                        val (n, args) = getApp (trans1, [])
+
+                        fun makeCall n' =
+                            let
+                                val e = (ENamed n', loc)
+                                val e = (EApp (e, trans2), loc)
+                            in
+                                #1 (foldl (fn (arg, e) => (EApp (e, arg), loc)) e args)
+                            end
+                    in
+                        case IM.find (#cpsed_range st, n) of
+                            SOME kdom =>
+                            (case args of
+                                 [] => raise Fail "Rpcify: cps'd function lacks first argument"
+                               | ke :: args =>
+                                 let
+                                     val ke' = (EFfi ("Basis", "bind"), loc)
+                                     val ke' = (ECApp (ke', (CFfi ("Basis", "transaction"), loc)), loc)
+                                     val ke' = (ECApp (ke', kdom), loc)
+                                     val ke' = (ECApp (ke', t2), loc)
+                                     val ke' = (EApp (ke', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                                     val ke' = (EApp (ke', (EApp (E.liftExpInExp 0 ke, (ERel 0, loc)), loc)), loc)
+                                     val ke' = (EApp (ke', E.liftExpInExp 0 trans2), loc)
+                                     val ke' = (EAbs ("x", kdom,
+                                                      (CApp ((CFfi ("Basis", "transaction"), loc), t2), loc),
+                                                      ke'), loc)
+
+                                     val e' = (ENamed n, loc)
+                                     val e' = (EApp (e', ke'), loc)
+                                     val e' = foldl (fn (arg, e') => (EApp (e', arg), loc)) e' args
+                                     val (e', st) = doExp (e', st)
+                                 in
+                                     (#1 e', st)
+                                 end)
+                          | NONE =>
+                            case IM.find (#cpsed st, n) of
+                                SOME n' => (makeCall n', st)
+                              | NONE =>
+                                let
+                                    val (name, fargs, ran, e) =
+                                        case IM.find (tfuncs, n) of
+                                            NONE => (Print.prefaces "BAD" [("e",
+                                                                            CorePrint.p_exp CoreEnv.empty (e, loc))];
+                                                     raise Fail "Rpcify: Undetected transaction function [2]")
+                                          | SOME x => x
+                                                      
+                                    val n' = #maxName st
+
+                                    val st = {cpsed = IM.insert (#cpsed st, n, n'),
+                                              cpsed_range = IM.insert (#cpsed_range st, n', ran),
+                                              cps_decls = #cps_decls st,
+                                              exported = #exported st,
+                                              export_decls = #export_decls st,
+                                              maxName = n' + 1}
+
+                                    val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
+                                    val body = (EFfi ("Basis", "bind"), loc)
+                                    val body = (ECApp (body, (CFfi ("Basis", "transaction"), loc)), loc)
+                                    val body = (ECApp (body, t1), loc)
+                                    val body = (ECApp (body, unit), loc)
+                                    val body = (EApp (body, (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                                    val body = (EApp (body, e), loc)
+                                    val body = (EApp (body, (ERel (length args), loc)), loc)
+                                    val bt = (CApp ((CFfi ("Basis", "transaction"), loc), unit), loc)
+                                    val (body, bt) = foldr (fn ((x, t), (body, bt)) =>
+                                                               ((EAbs (x, t, bt, body), loc),
+                                                                (TFun (t, bt), loc)))
+                                                           (body, bt) fargs
+                                    val kt = (TFun (ran, (CApp ((CFfi ("Basis", "transaction"), loc),
+                                                                unit),
+                                                          loc)), loc)
+                                    val body = (EAbs ("k", kt, bt, body), loc)
+                                    val bt = (TFun (kt, bt), loc)
+
+                                    val (body, st) = doExp (body, st)
+
+                                    val vi = (name ^ "_cps",
+                                              n',
+                                              bt,
+                                              body,
+                                              "")
+
+                                    val st = {cpsed = #cpsed st,
+                                              cpsed_range = #cpsed_range st,
+                                              cps_decls = vi :: #cps_decls st,
+                                              exported = #exported st,
+                                              export_decls = #export_decls st,
+                                              maxName = #maxName st}
+                                in
+                                    (makeCall n', st)
+                                end
+                    end
+
+                fun dummyK loc =
+                    let
+                        val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
+                                   
+                        val k = (EFfi ("Basis", "return"), loc)
+                        val k = (ECApp (k, (CFfi ("Basis", "transaction"), loc)), loc)
+                        val k = (ECApp (k, unit), loc)
+                        val k = (EApp (k, (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                        val k = (EApp (k, (ERecord [], loc)), loc)
+                    in
+                        (EAbs ("_", unit, unit, k), loc)
+                    end
             in
                 case e of
                     EApp (
@@ -287,104 +397,26 @@ fun frob file =
                     (case (serverSide (#cpsed_range st) trans1, clientSide (#cpsed_range st) trans1,
                            serverSide (#cpsed_range st) trans2, clientSide (#cpsed_range st) trans2) of
                          (true, false, _, true) => newRpc (trans1, trans2, st)
-                       | (true, true, _, _) =>
-                         let
-                             val (n, args) = getApp (trans1, [])
+                       | (_, true, true, false) =>
+                         (case #1 trans2 of
+                              EAbs (x, dom, ran, trans2) =>
+                              let
+                                  val (trans2, st) = newRpc (trans2, dummyK loc, st)
+                                  val trans2 = (EAbs (x, dom, ran, (trans2, loc)), loc)
 
-                             fun makeCall n' =
-                                 let
-                                     val e = (ENamed n', loc)
-                                     val e = (EApp (e, trans2), loc)
-                                 in
-                                     #1 (foldl (fn (arg, e) => (EApp (e, arg), loc)) e args)
-                                 end
-                         in
-                             case IM.find (#cpsed_range st, n) of
-                                 SOME kdom =>
-                                 (case args of
-                                      [] => raise Fail "Rpcify: cps'd function lacks first argument"
-                                    | ke :: args =>
-                                      let
-                                          val ke' = (EFfi ("Basis", "bind"), loc)
-                                          val ke' = (ECApp (ke', (CFfi ("Basis", "transaction"), loc)), loc)
-                                          val ke' = (ECApp (ke', kdom), loc)
-                                          val ke' = (ECApp (ke', t2), loc)
-                                          val ke' = (EApp (ke', (EFfi ("Basis", "transaction_monad"), loc)), loc)
-                                          val ke' = (EApp (ke', (EApp (E.liftExpInExp 0 ke, (ERel 0, loc)), loc)), loc)
-                                          val ke' = (EApp (ke', E.liftExpInExp 0 trans2), loc)
-                                          val ke' = (EAbs ("x", kdom,
-                                                           (CApp ((CFfi ("Basis", "transaction"), loc), t2), loc),
-                                                           ke'), loc)
+                                  val e = (EFfi ("Basis", "bind"), loc)
+                                  val e = (ECApp (e, (CFfi ("Basis", "transaction"), loc)), loc)
+                                  val e = (ECApp (e, t1), loc)
+                                  val e = (ECApp (e, t2), loc)
+                                  val e = (EApp (e, (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                                  val e = (EApp (e, trans1), loc)
+                                  val e = EApp (e, trans2)
+                              in
+                                  (e, st)
+                              end
+                            | _ => (e, st))
+                       | (true, true, _, _) => newCps (t1, t2, trans1, trans2, st)
 
-                                          val e' = (ENamed n, loc)
-                                          val e' = (EApp (e', ke'), loc)
-                                          val e' = foldl (fn (arg, e') => (EApp (e', arg), loc)) e' args
-                                          val (e', st) = doExp (e', st)
-                                      in
-                                          (#1 e', st)
-                                      end)
-                               | NONE =>
-                                 case IM.find (#cpsed st, n) of
-                                     SOME n' => (makeCall n', st)
-                                   | NONE =>
-                                     let
-                                         val (name, fargs, ran, e) =
-                                             case IM.find (tfuncs, n) of
-                                                 NONE => (Print.prefaces "BAD" [("e",
-                                                                                 CorePrint.p_exp CoreEnv.empty (e, loc))];
-                                                          raise Fail "Rpcify: Undetected transaction function [2]")
-                                               | SOME x => x
-                                                           
-                                         val () = Print.prefaces "Double true"
-                                                                 [("trans1", CorePrint.p_exp CoreEnv.empty trans1),
-                                                                  ("e", CorePrint.p_exp CoreEnv.empty e)]
-
-                                         val n' = #maxName st
-
-                                         val st = {cpsed = IM.insert (#cpsed st, n, n'),
-                                                   cpsed_range = IM.insert (#cpsed_range st, n', ran),
-                                                   cps_decls = #cps_decls st,
-                                                   exported = #exported st,
-                                                   export_decls = #export_decls st,
-                                                   maxName = n' + 1}
-
-                                         val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
-                                         val body = (EFfi ("Basis", "bind"), loc)
-                                         val body = (ECApp (body, (CFfi ("Basis", "transaction"), loc)), loc)
-                                         val body = (ECApp (body, t1), loc)
-                                         val body = (ECApp (body, unit), loc)
-                                         val body = (EApp (body, (EFfi ("Basis", "transaction_monad"), loc)), loc)
-                                         val body = (EApp (body, e), loc)
-                                         val body = (EApp (body, (ERel (length args), loc)), loc)
-                                         val bt = (CApp ((CFfi ("Basis", "transaction"), loc), unit), loc)
-                                         val (body, bt) = foldr (fn ((x, t), (body, bt)) =>
-                                                                    ((EAbs (x, t, bt, body), loc),
-                                                                     (TFun (t, bt), loc)))
-                                                                (body, bt) fargs
-                                         val kt = (TFun (ran, (CApp ((CFfi ("Basis", "transaction"), loc),
-                                                                     unit),
-                                                               loc)), loc)
-                                         val body = (EAbs ("k", kt, bt, body), loc)
-                                         val bt = (TFun (kt, bt), loc)
-
-                                         val (body, st) = doExp (body, st)
-
-                                         val vi = (name ^ "_cps",
-                                                   n',
-                                                   bt,
-                                                   body,
-                                                   "")
-
-                                         val st = {cpsed = #cpsed st,
-                                                   cpsed_range = #cpsed_range st,
-                                                   cps_decls = vi :: #cps_decls st,
-                                                   exported = #exported st,
-                                                   export_decls = #export_decls st,
-                                                   maxName = #maxName st}
-                                     in
-                                         (makeCall n', st)
-                                     end
-                         end
                        | _ => (e, st))
 
                   | ERecord xes =>
@@ -401,22 +433,11 @@ fun frob file =
                         if List.exists (fn ((CName x, _), e, _) => candidate (x, e)
                                          | _ => false) xes then
                             let
-                                val unit = (TRecord (CRecord ((KType, loc), []), loc), loc)
-
-                                val k = (EFfi ("Basis", "return"), loc)
-                                val k = (ECApp (k, (CFfi ("Basis", "transaction"), loc)), loc)
-                                val k = (ECApp (k, unit), loc)
-                                val k = (EApp (k, (EFfi ("Basis", "transaction_monad"), loc)), loc)
-                                val k = (EApp (k, (ERecord [], loc)), loc)
-                                val k = (EAbs ("_", unit, unit, k), loc)
-
                                 val (xes, st) = ListUtil.foldlMap
                                                 (fn (y as (nm as (CName x, _), e, t), st) =>
                                                     if candidate (x, e) then
                                                         let
-                                                            val (n, args) = getApp (e, [])
-
-                                                            val (e, st) = newRpc (e, k, st)
+                                                            val (e, st) = newRpc (e, dummyK loc, st)
                                                         in
                                                             ((nm, (e, loc), t), st)
                                                         end

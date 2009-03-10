@@ -365,8 +365,6 @@ fun exp e =
 
       | EJavaScript (_, _, SOME (e, _)) => e
 
-      | EApp ((e1 as EServerCall _, _), (ERecord [], _)) => e1
-
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)
