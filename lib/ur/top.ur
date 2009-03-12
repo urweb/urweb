@@ -2,45 +2,49 @@
 
 con folder = K ==> fn r :: {K} =>
                       tf :: ({K} -> Type)
-                      -> (nm :: Name -> v :: K -> r :: {K} -> tf r
-                          -> [[nm] ~ r] => tf ([nm = v] ++ r))
+                      -> (nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
+                          tf r -> tf ([nm = v] ++ r))
                       -> tf [] -> tf r
 
-structure Folder = struct
-    fun fold K (r :: {K}) (fl : folder r) = fl
+fun fold K (tf :: {K} -> Type)
+         (f : (nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
+               tf r -> tf ([nm = v] ++ r)))
+         (i : tf []) (r :: {K}) (fl : folder r) = fl [tf] f i
 
+structure Folder = struct
     fun nil K (tf :: {K} -> Type)
-            (f : nm :: Name -> v :: K -> r :: {K} -> tf r
-                 -> [[nm] ~ r] => tf ([nm = v] ++ r))
+            (f : nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
+             tf r -> tf ([nm = v] ++ r))
             (i : tf []) = i
 
     fun cons K (r ::: {K}) (nm :: Name) (v :: K) [[nm] ~ r] (fold : folder r)
              (tf :: {K} -> Type)
-             (f : nm :: Name -> v :: K -> r :: {K} -> tf r
-                  -> [[nm] ~ r] => tf ([nm = v] ++ r))
-             (i : tf []) = f [nm] [v] [r] (fold [tf] f i) !
+             (f : nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
+              tf r -> tf ([nm = v] ++ r))
+             (i : tf []) = f [nm] [v] [r] ! (fold [tf] f i)
 
     fun concat K (r1 ::: {K}) (r2 ::: {K}) [r1 ~ r2]
         (f1 : folder r1) (f2 : folder r2)
         (tf :: {K} -> Type)
-        (f : nm :: Name -> v :: K -> r :: {K} -> tf r
-             -> [[nm] ~ r] => tf ([nm = v] ++ r))
+        (f : nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
+         tf r -> tf ([nm = v] ++ r))
         (i : tf []) =
         f1 [fn r1' => [r1' ~ r2] => tf (r1' ++ r2)]
-           (fn (nm :: Name) (v :: K) (r1' :: {K}) (acc : [r1' ~ r2] => tf (r1' ++ r2))
-                            [[nm] ~ r1'] [[nm = v] ++ r1' ~ r2] =>
-               f [nm] [v] [r1' ++ r2] acc !)
+           (fn (nm :: Name) (v :: K) (r1' :: {K}) [[nm] ~ r1']
+                            (acc : [r1' ~ r2] => tf (r1' ++ r2))
+                            [[nm = v] ++ r1' ~ r2] =>
+               f [nm] [v] [r1' ++ r2] ! acc)
            (fn [[] ~ r2] => f2 [tf] f i) !
 
     fun mp K1 K2 (f ::: K1 -> K2) (r ::: {K1})
         (fold : folder r)
         (tf :: {K2} -> Type)
-        (f : nm :: Name -> v :: K2 -> r :: {K2} -> tf r
-             -> [[nm] ~ r] => tf ([nm = v] ++ r))
+        (f : nm :: Name -> v :: K2 -> r :: {K2} -> [[nm] ~ r] =>
+         tf r -> tf ([nm = v] ++ r))
         (i : tf []) =
         fold [fn r => tf (map f r)]
-        (fn (nm :: Name) (v :: K1) (rest :: {K1}) (acc : tf (map f rest)) [[nm] ~ rest] =>
-            f [nm] [f v] [map f rest] acc !)
+        (fn (nm :: Name) (v :: K1) (rest :: {K1}) [[nm] ~ rest] (acc : tf (map f rest)) =>
+            f [nm] [f v] [map f rest] ! acc)
         i
 end
 
@@ -74,23 +78,21 @@ fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
            (f : nm :: Name -> rest :: {Unit}
                 -> [[nm] ~ rest] =>
                       tf -> tr rest -> tr ([nm] ++ rest))
-           (i : tr []) (r :: {Unit}) (fold : folder r)=
-    fold [fn r :: {Unit} => $(mapU tf r) -> tr r]
-         (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
-                          [[nm] ~ rest] r =>
-             f [nm] [rest] ! r.nm (acc (r -- nm)))
-         (fn _ => i)
+           (i : tr []) (r :: {Unit}) (fl : folder r)=
+    fl [fn r :: {Unit} => $(mapU tf r) -> tr r]
+       (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) [[nm] ~ rest] acc r =>
+           f [nm] [rest] ! r.nm (acc (r -- nm)))
+       (fn _ => i)
 
 fun foldUR2 (tf1 :: Type) (tf2 :: Type) (tr :: {Unit} -> Type)
            (f : nm :: Name -> rest :: {Unit}
                 -> [[nm] ~ rest] =>
                       tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
-           (i : tr []) (r :: {Unit}) (fold : folder r) =
-    fold [fn r :: {Unit} => $(mapU tf1 r) -> $(mapU tf2 r) -> tr r]
-         (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) acc
-                          [[nm] ~ rest] r1 r2 =>
-             f [nm] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
-         (fn _ _ => i)
+           (i : tr []) (r :: {Unit}) (fl : folder r) =
+    fl [fn r :: {Unit} => $(mapU tf1 r) -> $(mapU tf2 r) -> tr r]
+       (fn (nm :: Name) (t :: Unit) (rest :: {Unit}) [[nm] ~ rest] acc r1 r2 =>
+           f [nm] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
+       (fn _ _ => i)
 
 fun foldURX2 (tf1 :: Type) (tf2 :: Type) (ctx :: {Unit})
            (f : nm :: Name -> rest :: {Unit}
@@ -105,23 +107,22 @@ fun foldR K (tf :: K -> Type) (tr :: {K} -> Type)
            (f : nm :: Name -> t :: K -> rest :: {K}
                 -> [[nm] ~ rest] =>
                       tf t -> tr rest -> tr ([nm = t] ++ rest))
-           (i : tr []) (r :: {K}) (fold : folder r) =
-    fold [fn r :: {K} => $(map tf r) -> tr r]
-             (fn (nm :: Name) (t :: K) (rest :: {K}) (acc : _ -> tr rest)
-                              [[nm] ~ rest] r =>
-                 f [nm] [t] [rest] ! r.nm (acc (r -- nm)))
-             (fn _ => i)
+           (i : tr []) (r :: {K}) (fl : folder r) =
+    fl [fn r :: {K} => $(map tf r) -> tr r]
+       (fn (nm :: Name) (t :: K) (rest :: {K}) [[nm] ~ rest] (acc : _ -> tr rest) r =>
+           f [nm] [t] [rest] ! r.nm (acc (r -- nm)))
+       (fn _ => i)
 
 fun foldR2 K (tf1 :: K -> Type) (tf2 :: K -> Type) (tr :: {K} -> Type)
             (f : nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
                        tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
-            (i : tr []) (r :: {K}) (fold : folder r) =
-    fold [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> tr r]
-         (fn (nm :: Name) (t :: K) (rest :: {K})
-                          (acc : _ -> _ -> tr rest) [[nm] ~ rest] r1 r2 =>
-             f [nm] [t] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
-         (fn _ _ => i)
+            (i : tr []) (r :: {K}) (fl : folder r) =
+    fl [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> tr r]
+       (fn (nm :: Name) (t :: K) (rest :: {K}) [[nm] ~ rest] 
+                        (acc : _ -> _ -> tr rest) r1 r2 =>
+           f [nm] [t] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
+       (fn _ _ => i)
 
 fun foldRX K (tf :: K -> Type) (ctx :: {Unit})
             (f : nm :: Name -> t :: K -> rest :: {K}

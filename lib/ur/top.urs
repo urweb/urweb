@@ -2,13 +2,13 @@
 
 con folder :: K --> {K} -> Type
 
-structure Folder : sig
-    val fold : K --> r :: {K} -> folder r
-               -> tf :: ({K} -> Type)
-               -> (nm :: Name -> v :: K -> r :: {K} -> tf r
-                   -> [[nm] ~ r] => tf ([nm = v] ++ r))
-               -> tf [] -> tf r
+val fold : K --> tf :: ({K} -> Type)
+           -> (nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
+               tf r -> tf ([nm = v] ++ r))
+           -> tf []
+           -> r :: {K} -> folder r -> tf r
 
+structure Folder : sig
     val nil : K --> folder (([]) :: {K})
     val cons : K --> r ::: {K} -> nm :: Name -> v :: K
                -> [[nm] ~ r] => folder r -> folder ([nm = v] ++ r)
