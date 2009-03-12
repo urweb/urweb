@@ -1128,7 +1128,7 @@ $$\begin{array}{l}
 
 For a type-level record $\mt{r}$, a $\mt{folder} \; \mt{r}$ encodes a permutation of $\mt{r}$'s elements.  The $\mt{fold}$ function can be called on a $\mt{folder}$ to iterate over the elements of $\mt{r}$ in that order.  $\mt{fold}$ is parameterized on a type-level function to be used to calculate the type of each intermediate result of folding.  After processing a subset $\mt{r'}$ of $\mt{r}$'s entries, the type of the accumulator should be $\mt{tf} \; \mt{r'}$.  The next two expression arguments to $\mt{fold}$ are the usual step function and initial accumulator, familiar from fold functions over lists.  The final two arguments are the record to fold over and a $\mt{folder}$ for it.
 
-The Ur compiler treates $\mt{folder}$ like a constructor class, using built-in rules to infer $\mt{folder}$s for records with known structure.  The order in which field names are mentioned in source code is used as a hint about the permutation that the programmer would like.
+The Ur compiler treats $\mt{folder}$ like a constructor class, using built-in rules to infer $\mt{folder}$s for records with known structure.  The order in which field names are mentioned in source code is used as a hint about the permutation that the programmer would like.
 
 
 \section{The Ur/Web Standard Library}
@@ -1647,6 +1647,7 @@ Here the compiler repeats the earlier Shake phase.
 Programs are translated to a new intermediate language without polymorphism or non-$\mt{Type}$ constructors.  Error messages may pop up here if earlier phases failed to remove such features.
 
 This is the stage at which concrete names are generated for cookies, tables, and sequences.  They are named following the same convention as for links and actions, based on module path information saved from earlier stages.  Table and sequence names separate path elements with underscores instead of slashes, and they are prefixed by \texttt{uw\_}.
+
 \subsection{MonoOpt}
 
 Simple algebraic laws are applied to simplify the program, focusing especially on efficient imperative generation of HTML pages.
