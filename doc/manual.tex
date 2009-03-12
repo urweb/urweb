@@ -1449,6 +1449,34 @@ $$\begin{array}{l}
 \end{array}$$
 
 
+\subsection{Functional-Reactive Client-Side Programming}
+
+Ur/Web supports running code on web browsers, via automatic compilation to JavaScript.  Most approaches to this kind of coding involve imperative manipulation of the DOM tree representing an HTML document's structure.  Ur/Web follows the \emph{functional-reactive} approach instead.  Programs may allocate mutable \emph{sources} of arbitrary types, and an HTML page is effectively a pure function over the latest values of the sources.  The page is not mutated directly, but rather it changes automatically as the sources are mutated.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{source} :: \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{source} : \mt{t} ::: \mt{Type} \to \mt{t} \to \mt{transaction} \; (\mt{source} \; \mt{t}) \\
+  \mt{val} \; \mt{set} : \mt{t} ::: \mt{Type} \to \mt{source} \; \mt{t} \to \mt{t} \to \mt{transaction} \; \mt{unit} \\
+  \mt{val} \; \mt{get} : \mt{t} ::: \mt{Type} \to \mt{source} \; \mt{t} \to \mt{transaction} \; \mt{t}
+\end{array}$$
+
+Pure functions over sources are represented in a monad of \emph{signals}.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{signal} :: \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{signal\_monad} : \mt{monad} \; \mt{signal} \\
+  \mt{val} \; \mt{signal} : \mt{t} ::: \mt{Type} \to \mt{source} \; \mt{t} \to \mt{signal} \; \mt{t}
+\end{array}$$
+
+A reactive portion of an HTML page is injected with a $\mt{dyn}$ tag, which has a signal-valued attribute $\mt{Signal}$.
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{dyn} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use} ::: \{\mt{Type}\} \to \mt{bind} ::: \{\mt{Type}\} \to \mt{unit} \\
+  \hspace{.1in} \to \mt{tag} \; [\mt{Signal} = \mt{signal} \; (\mt{xml} \; \mt{ctx} \; \mt{use} \; \mt{bind})] \; \mt{ctx} \; [] \; \mt{use} \; \mt{bind}
+\end{array}$$
+
+Transactions can be run on the client by including them in attributes like the $\mt{OnClick}$ attribute of $\mt{button}$, and GUI widgets like $\mt{ctextbox}$ have $\mt{Source}$ attributes that can be used to connect them to sources, so that their values can be read by code running because of, e.g., an $\mt{OnClick}$ event.
+
 \section{Ur/Web Syntax Extensions}
 
 Ur/Web features some syntactic shorthands for building values using the functions from the last section.  This section sketches the grammar of those extensions.  We write spans of syntax inside brackets to indicate that they are optional.
