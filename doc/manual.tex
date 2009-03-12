@@ -665,6 +665,10 @@ $$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow e : \lambda [c_1 \sim 
   \Gamma \vdash c_1 :: \{\kappa\}
   & \Gamma \vdash c_2 :: \{\kappa'\}
   & \Gamma, c_1 \sim c_2 \vdash e : \tau
+}
+\quad \infer{\Gamma \vdash e \; ! : \tau}{
+  \Gamma \vdash e : [c_1 \sim c_2] \Rightarrow \tau
+  & \Gamma \vdash c_1 \sim c_2
 }$$
 
 \subsection{Pattern Typing}
