@@ -1573,6 +1573,8 @@ HTML forms are handled in a similar way.  The $\mt{action}$ attribute of a $\mt{
 
 For both links and actions, direct arguments and local variables mentioned implicitly via closures are automatically included in serialized form in URLs, in the order in which they appear in the source code.
 
+Ur/Web programs generally mix server- and client-side code in a fairly transparent way.  The one important restriction is that mixed client-server code must encapsulate all server-side pieces within named functions.  This is because execution of such pieces will be implemented by explicit calls to the remote web server, and it is useful to get the programmer's help in designing the interface to be used.  For example, this makes it easier to allow a client running an old version of an application to continue interacting with a server that has been upgraded to a new version, if the programmer took care to keep the interfaces of all of the old remote calls the same.  The functions implementing these services are assigned names in the same way as normal web entry points, by using module structure.
+
 
 \section{Compiler Phases}
 
