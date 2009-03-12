@@ -1610,6 +1610,14 @@ Remove unnecessary mutual recursion, splitting recursive groups into strongly-co
 
 Remove all definitions not needed to run the page handlers that are visible in the signature of the last module listed in the \texttt{.urp} file.
 
+\subsection{Rpcify}
+
+Pieces of code are determined to be client-side, server-side, neither, or both, by figuring out which standard library functions might be needed to execute them.  Calls to server-side functions (e.g., $\mt{query}$) within mixed client-server code are identified and replaced with explicit remote calls.  Some mixed functions may be converted to continuation-passing style to facilitate this transformation.
+
+\subsection{Untangle, Shake}
+
+Repeat these simplifications.
+
 \subsection{\label{tag}Tag}
 
 Assign a URL name to each link and form action.  It is important that these links and actions are written as applications of named functions, because such names are used to generate URL patterns.  A URL pattern has a name built from the full module path of the named function, followed by the function name, with all pieces separated by slashes.  The path of a functor application is based on the name given to the result, rather than the path of the functor itself.
