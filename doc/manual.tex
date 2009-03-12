@@ -1063,7 +1063,7 @@ The Ur/Web compiler uses \emph{heuristic type inference}, with no claims of comp
 
 Type-checkers for languages based on the Hindley-Milner type discipline, like ML and Haskell, take advantage of \emph{principal typing} properties, making complete type inference relatively straightforward.  Inference algorithms are traditionally implemented using type unification variables, at various points asserting equalities between types, in the process discovering the values of type variables.  The Ur/Web compiler uses the same basic strategy, but the complexity of the type system rules out easy completeness.
 
-Type-checking can require evaluating recursive functional programs, thanks to the type-level $\mt{fold}$ operator.  When a unification variable appears in such a type, the next step of computation can be undetermined.  The value of that variable might be determined later, but this would be ``too late'' for the unification problems generated at the first occurrence.  This is the essential source of incompleteness.
+Type-checking can require evaluating recursive functional programs, thanks to the type-level $\mt{map}$ operator.  When a unification variable appears in such a type, the next step of computation can be undetermined.  The value of that variable might be determined later, but this would be ``too late'' for the unification problems generated at the first occurrence.  This is the essential source of incompleteness.
 
 Nonetheless, the unification engine tends to do reasonably well.  Unlike in ML, polymorphism is never inferred in definitions; it must be indicated explicitly by writing out constructor-level parameters.  By writing these and other annotations, the programmer can generally get the type inference engine to do most of the type reconstruction work.
 
@@ -1071,23 +1071,23 @@ Nonetheless, the unification engine tends to do reasonably well.  Unlike in ML, 
 
 The type inference engine tries to take advantage of the algebraic rules governing type-level records, as shown in Section \ref{definitional}.  When two constructors of record kind are unified, they are reduced to normal forms, with like terms crossed off from each normal form until, hopefully, nothing remains.  This cannot be complete, with the inclusion of unification variables.  The type-checker can help you understand what goes wrong when the process fails, as it outputs the unmatched remainders of the two normal forms.
 
-\subsection{\label{typeclasses}Type Classes}
+\subsection{\label{typeclasses}Constructor Classes}
 
-Ur includes a type class facility inspired by Haskell's.  The current version is very rudimentary, only supporting instances for particular types built up from abstract types and datatypes and type-level application.
+Ur includes a constructor class facility inspired by Haskell's.  The current version is very rudimentary, only supporting instances for particular constructors built up from abstract constructors and datatypes and type-level application.
 
-Type classes are integrated with the module system.  A type class is just a constructor of kind $\mt{Type} \to \mt{Type}$.  By marking such a constructor $c$ as a type class, the programmer instructs the type inference engine to, in each scope, record all values of types $c \; \tau$ as \emph{instances}.  Any function argument whose type is of such a form is treated as implicit, to be determined by examining the current instance database.
+Constructor classes are integrated with the module system.  A constructor class of kind $\kappa$ is just a constructor of kind $\kappa \to \mt{Type}$.  By marking such a constructor $c$ as a constructor class, the programmer instructs the type inference engine to, in each scope, record all values of types $c \; c'$ as \emph{instances}.  Any function argument whose type is of such a form is treated as implicit, to be determined by examining the current instance database.
 
-The ``dictionary encoding'' often used in Haskell implementations is made explicit in Ur.  Type class instances are just properly-typed values, and they can also be considered as ``proofs'' of membership in the class.  In some cases, it is useful to pass these proofs around explicitly.  An underscore written where a proof is expected will also be inferred, if possible, from the current instance database.
+The ``dictionary encoding'' often used in Haskell implementations is made explicit in Ur.  Constructor class instances are just properly-typed values, and they can also be considered as ``proofs'' of membership in the class.  In some cases, it is useful to pass these proofs around explicitly.  An underscore written where a proof is expected will also be inferred, if possible, from the current instance database.
 
-Just as for types, type classes may be exported from modules, and they may be exported as concrete or abstract.  Concrete type classes have their ``real'' definitions exposed, so that client code may add new instances freely.  Abstract type classes are useful as ``predicates'' that can be used to enforce invariants, as we will see in some definitions of SQL syntax in the Ur/Web standard library.
+Just as for constructors, constructors classes may be exported from modules, and they may be exported as concrete or abstract.  Concrete constructor classes have their ``real'' definitions exposed, so that client code may add new instances freely.  Abstract constructor classes are useful as ``predicates'' that can be used to enforce invariants, as we will see in some definitions of SQL syntax in the Ur/Web standard library.
 
 \subsection{Reverse-Engineering Record Types}
 
-It's useful to write Ur functions and functors that take record constructors as inputs, but these constructors can grow quite long, even though their values are often implied by other arguments.  The compiler uses a simple heuristic to infer the values of unification variables that are folded over, yielding known results.  Often, as in the case of $\mt{map}$-like folds, the base and recursive cases of a fold produce constructors with different top-level structure.  Thus, if the result of the fold is known, examining its top-level structure reveals whether the record being folded over is empty or not.  If it's empty, we're done; if it's not empty, we replace a single unification variable with a new constructor formed from three new unification variables, as in $[\alpha = \beta] \rc \gamma$.  This process can often be repeated to determine a unification variable fully.
+It's useful to write Ur functions and functors that take record constructors as inputs, but these constructors can grow quite long, even though their values are often implied by other arguments.  The compiler uses a simple heuristic to infer the values of unification variables that are mapped over, yielding known results.  If the result is empty, we're done; if it's not empty, we replace a single unification variable with a new constructor formed from three new unification variables, as in $[\alpha = \beta] \rc \gamma$.  This process can often be repeated to determine a unification variable fully.
 
 \subsection{Implicit Arguments in Functor Applications}
 
-Constructor, constraint, and type class witness members of structures may be omitted, when those structures are used in contexts where their assigned signatures imply how to fill in those missing members.  This feature combines well with reverse-engineering to allow for uses of complicated meta-programming functors with little more code than would be necessary to invoke an untyped, ad-hoc code generator.
+Constructor, constraint, and constructor class witness members of structures may be omitted, when those structures are used in contexts where their assigned signatures imply how to fill in those missing members.  This feature combines well with reverse-engineering to allow for uses of complicated meta-programming functors with little more code than would be necessary to invoke an untyped, ad-hoc code generator.
 
 
 \section{The Ur Standard Library}
@@ -1284,7 +1284,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_mod} : \mt{sql\_binary} \; \mt{int} \; \mt{int} \; \mt{int}
 \end{array}$$
 
-Finally, we have aggregate functions.  The $\mt{COUNT(\ast)}$ syntax is handled specially, since it takes no real argument.  The other aggregate functions are placed into a general type family, using type classes to restrict usage to properly-typed arguments.  The key aspect of the $\mt{sql\_aggregate}$ function's type is the shift of aggregate-function-only fields into unrestricted fields.
+Finally, we have aggregate functions.  The $\mt{COUNT(\ast)}$ syntax is handled specially, since it takes no real argument.  The other aggregate functions are placed into a general type family, using constructor classes to restrict usage to properly-typed arguments.  The key aspect of the $\mt{sql\_aggregate}$ function's type is the shift of aggregate-function-only fields into unrestricted fields.
 
 $$\begin{array}{l}
   \mt{val} \; \mt{sql\_count} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{int}
