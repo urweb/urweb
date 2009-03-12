@@ -211,6 +211,7 @@ $$\begin{array}{rrcll}
   &&& \lambda x \; :: \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
   \\
   &&& X \Longrightarrow c & \textrm{type-level kind-polymorphic function abstraction} \\
+  &&& c [\kappa] & \textrm{type-level kind-polymorphic function application} \\
   \\
   &&& () & \textrm{type-level unit} \\
   &&& \#X & \textrm{field name} \\
@@ -230,6 +231,8 @@ $$\begin{array}{rrcll}
   \textrm{Qualified uncapitalized variables} & \hat{x} &::=& x & \textrm{not from a module} \\
   &&& M.x & \textrm{projection from a module} \\
 \end{array}$$
+
+We include both abstraction and application for kind polymorphism, but applications are only inferred internally; they may not be written explicitly in source programs.
 
 Modules of the module system are described by \emph{signatures}.
 $$\begin{array}{rrcll}
@@ -281,6 +284,7 @@ $$\begin{array}{rrcll}
   &&& \lambda x : \tau \Rightarrow e & \textrm{function abstraction} \\
   &&& e [c] & \textrm{polymorphic function application} \\
   &&& \lambda x \; ? \; \kappa \Rightarrow e & \textrm{polymorphic function abstraction} \\
+  &&& e [\kappa] & \textrm{kind-polymorphic function application} \\
   &&& X \Longrightarrow e & \textrm{kind-polymorphic function abstraction} \\
   \\
   &&& \{(c = e,)^*\} & \textrm{known-length record} \\
@@ -302,6 +306,8 @@ $$\begin{array}{rrcll}
   \textrm{Local declarations} & ed &::=& \cd{val} \; x : \tau = e & \textrm{non-recursive value} \\
   &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually-recursive values} \\
 \end{array}$$
+
+As with constructors, we include both abstraction and application for kind polymorphism, but applications are only inferred internally.
 
 \emph{Declarations} primarily bring new symbols into context.
 $$\begin{array}{rrcll}
@@ -374,6 +380,7 @@ In this section, we give a declarative presentation of Ur's typing rules and rel
 
 Since there is significant mutual recursion among the judgments, we introduce them all before beginning to give rules.  We use the same variety of contexts throughout this section, implicitly introducing new sorts of context entries as needed.
 \begin{itemize}
+\item $\Gamma \vdash \kappa$ expresses kind well-formedness.
 \item $\Gamma \vdash c :: \kappa$ assigns a kind to a constructor in a context.
 \item $\Gamma \vdash c \sim c$ proves the disjointness of two record constructors; that is, that they share no field names.  We overload the judgment to apply to pairs of field names as well.
 \item $\Gamma \vdash c \hookrightarrow C$ proves that record constructor $c$ decomposes into set $C$ of field names and record constructors.
@@ -388,7 +395,33 @@ Since there is significant mutual recursion among the judgments, we introduce th
 \item $\mt{selfify}(M, \overline{s})$ adds information to signature items $\overline{s}$ to reflect the fact that we are concerned with the particular module $M$.  This function is overloaded to work over individual signature items as well.
 \end{itemize}
 
+
+\subsection{Kind Well-Formedness}
+
+$$\infer{\Gamma \vdash \mt{Type}}{}
+\quad \infer{\Gamma \vdash \mt{Unit}}{}
+\quad \infer{\Gamma \vdash \mt{Name}}{}
+\quad \infer{\Gamma \vdash \kappa_1 \to \kappa_2}{
+  \Gamma \vdash \kappa_1
+  & \Gamma \vdash \kappa_2
+}
+\quad \infer{\Gamma \vdash \{\kappa\}}{
+  \Gamma \vdash \kappa
+}
+\quad \infer{\Gamma \vdash (\kappa_1 \times \ldots \times \kappa_n)}{
+  \forall i: \Gamma \vdash \kappa_i
+}$$
+
+$$\infer{\Gamma \vdash X}{
+  X \in \Gamma
+}
+\quad \infer{\Gamma \vdash X \longrightarrow \kappa}{
+  \Gamma, X \vdash \kappa
+}$$
+
 \subsection{Kinding}
+
+We write $[X \mapsto \kappa_1]\kappa_2$ for capture-avoiding substitution of $\kappa_1$ for $X$ in $\kappa_2$.
 
 $$\infer{\Gamma \vdash (c) :: \kappa :: \kappa}{
   \Gamma \vdash c :: \kappa
@@ -416,6 +449,9 @@ $$\infer{\Gamma \vdash \tau_1 \to \tau_2 :: \mt{Type}}{
 \quad \infer{\Gamma \vdash x \; ? \: \kappa \to \tau :: \mt{Type}}{
   \Gamma, x :: \kappa \vdash \tau :: \mt{Type}
 }
+\quad \infer{\Gamma \vdash X \longrightarrow \tau :: \mt{Type}}{
+  \Gamma, X \vdash \tau :: \mt{Type}
+}
 \quad \infer{\Gamma \vdash \$c :: \mt{Type}}{
   \Gamma \vdash c :: \{\mt{Type}\}
 }$$
@@ -426,6 +462,14 @@ $$\infer{\Gamma \vdash c_1 \; c_2 :: \kappa_2}{
 }
 \quad \infer{\Gamma \vdash \lambda x \; :: \; \kappa_1 \Rightarrow c :: \kappa_1 \to \kappa_2}{
   \Gamma, x :: \kappa_1 \vdash c :: \kappa_2
+}$$
+
+$$\infer{\Gamma \vdash c[\kappa'] :: [X \mapsto \kappa']\kappa}{
+  \Gamma \vdash c :: X \to \kappa
+  & \Gamma \vdash \kappa'
+}
+\quad \infer{\Gamma \vdash X \Longrightarrow c :: X \to \kappa}{
+  \Gamma, X \vdash c :: \kappa
 }$$
 
 $$\infer{\Gamma \vdash () :: \mt{Unit}}{}
@@ -442,7 +486,7 @@ $$\infer{\Gamma \vdash [\overline{c_i = c'_i}] :: \{\kappa\}}{
   & \Gamma \vdash c_1 \sim c_2
 }$$
 
-$$\infer{\Gamma \vdash \mt{fold} :: ((\mt{Name} \to \kappa_1 \to \kappa_2 \to \kappa_2) \to \kappa_2 \to \{\kappa_1\} \to \kappa_2}{}$$
+$$\infer{\Gamma \vdash \mt{map} :: (\kappa_1 \to \kappa_2) \to \{\kappa_1\} \to \{\kappa_2\}}{}$$
 
 $$\infer{\Gamma \vdash (\overline c) :: (\kappa_1 \times \ldots \times \kappa_n)}{
   \forall i: \Gamma \vdash c_i :: \kappa_i
@@ -451,15 +495,13 @@ $$\infer{\Gamma \vdash (\overline c) :: (\kappa_1 \times \ldots \times \kappa_n)
   \Gamma \vdash c :: (\kappa_1 \times \ldots \times \kappa_n)
 }$$
 
-$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow c :: \kappa}{
-  \Gamma \vdash c_1 :: \{\kappa'\}
+$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow \tau :: \mt{Type}}{
+  \Gamma \vdash c_1 :: \{\kappa\}
   & \Gamma \vdash c_2 :: \{\kappa'\}
-  & \Gamma, c_1 \sim c_2 \vdash c :: \kappa
+  & \Gamma, c_1 \sim c_2 \vdash \tau :: \mt{Type}
 }$$
 
 \subsection{Record Disjointness}
-
-We will use a keyword $\mt{map}$ as a shorthand, such that, for $f$ of kind $\kappa \to \kappa'$, $\mt{map} \; f$ stands for $\mt{fold} \; (\lambda (x_1 :: \mt{Name}) (x_2 :: \kappa) (x_3 :: \{\kappa'\}) \Rightarrow [x_1 = f \; x_2] \rc x_3) \; []$.
 
 $$\infer{\Gamma \vdash c_1 \sim c_2}{
   \Gamma \vdash c_1 \hookrightarrow C_1
@@ -494,7 +536,7 @@ $$\infer{\Gamma \vdash c \hookrightarrow \{c\}}{}
 
 \subsection{\label{definitional}Definitional Equality}
 
-We use $\mathcal C$ to stand for a one-hole context that, when filled, yields a constructor.  The notation $\mathcal C[c]$ plugs $c$ into $\mathcal C$.  We omit the standard definition of one-hole contexts.  We write $[x \mapsto c_1]c_2$ for capture-avoiding substitution of $c_1$ for $x$ in $c_2$.
+We use $\mathcal C$ to stand for a one-hole context that, when filled, yields a constructor.  The notation $\mathcal C[c]$ plugs $c$ into $\mathcal C$.  We omit the standard definition of one-hole contexts.  We write $[x \mapsto c_1]c_2$ for capture-avoiding substitution of $c_1$ for $x$ in $c_2$, with analogous notation for substituting a kind in a constructor.
 
 $$\infer{\Gamma \vdash c \equiv c}{}
 \quad \infer{\Gamma \vdash c_1 \equiv c_2}{
@@ -518,21 +560,20 @@ $$\infer{\Gamma \vdash x \equiv c}{
 \quad \infer{\Gamma \vdash (\overline c).i \equiv c_i}{}$$
 
 $$\infer{\Gamma \vdash (\lambda x :: \kappa \Rightarrow c) \; c' \equiv [x \mapsto c'] c}{}
-\quad \infer{\Gamma \vdash c_1 \rc c_2 \equiv c_2 \rc c_1}{}
+\quad \infer{\Gamma \vdash (X \Longrightarrow c) [\kappa] \equiv [X \mapsto \kappa] c}{}$$
+
+$$\infer{\Gamma \vdash c_1 \rc c_2 \equiv c_2 \rc c_1}{}
 \quad \infer{\Gamma \vdash c_1 \rc (c_2 \rc c_3) \equiv (c_1 \rc c_2) \rc c_3}{}$$
 
 $$\infer{\Gamma \vdash [] \rc c \equiv c}{}
 \quad \infer{\Gamma \vdash [\overline{c_1 = c'_1}] \rc [\overline{c_2 = c'_2}] \equiv [\overline{c_1 = c'_1}, \overline{c_2 = c'_2}]}{}$$
 
-$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow c \equiv c}{
-  \Gamma \vdash c_1 \sim c_2
-}
-\quad \infer{\Gamma \vdash \mt{fold} \; f \; i \; [] \equiv i}{}
-\quad \infer{\Gamma \vdash \mt{fold} \; f \; i \; ([c_1 = c_2] \rc c) \equiv f \; c_1 \; c_2 \; (\mt{fold} \; f \; i \; c)}{}$$
+$$\infer{\Gamma \vdash \mt{map} \; f \; [] \equiv []}{}
+\quad \infer{\Gamma \vdash \mt{map} \; f \; ([c_1 = c_2] \rc c) \equiv [c_1 = f \; c_2] \rc \mt{map} \; f \; c}{}$$
 
 $$\infer{\Gamma \vdash \mt{map} \; (\lambda x \Rightarrow x) \; c \equiv c}{}
-\quad \infer{\Gamma \vdash \mt{fold} \; f \; i \; (\mt{map} \; f' \; c)
-  \equiv \mt{fold} \; (\lambda (x_1 :: \mt{Name}) (x_2 :: \kappa) \Rightarrow f \; x_1 \; (f' \; x_2)) \; i \; c}{}$$
+\quad \infer{\Gamma \vdash \mt{map} \; f \; (\mt{map} \; f' \; c)
+  \equiv \mt{map} \; (\lambda x \Rightarrow f \; (f' \; x)) \; c}{}$$
 
 $$\infer{\Gamma \vdash \mt{map} \; f \; (c_1 \rc c_2) \equiv \mt{map} \; f \; c_1 \rc \mt{map} \; f \; c_2}{}$$
 
@@ -582,6 +623,14 @@ $$\infer{\Gamma \vdash e [c] : [x \mapsto c]\tau}{
   \Gamma, x :: \kappa \vdash e : \tau
 }$$
 
+$$\infer{\Gamma \vdash e [\kappa] : [X \mapsto \kappa]\tau}{
+  \Gamma \vdash e : X \longrightarrow \tau
+  & \Gamma \vdash \kappa
+}
+\quad \infer{\Gamma \vdash X \Longrightarrow e : X \longrightarrow \tau}{
+  \Gamma, X \vdash e : \tau
+}$$
+
 $$\infer{\Gamma \vdash \{\overline{c = e}\} : \{\overline{c : \tau}\}}{
   \forall i: \Gamma \vdash c_i :: \mt{Name}
   & \Gamma \vdash e_i : \tau_i
@@ -603,13 +652,6 @@ $$\infer{\Gamma \vdash e \rcut c : \$c'}{
   \Gamma \vdash e : \$(c \rc c')
 }$$
 
-$$\infer{\Gamma \vdash \mt{fold} : \begin{array}{c}
-    x_1 :: (\{\kappa\} \to \tau)
-    \to (x_2 :: \mt{Name} \to x_3 :: \kappa \to x_4 :: \{\kappa\} \to \lambda [[x_2] \sim x_4]
-    \Rightarrow x_1 \; x_4 \to x_1 \; ([x_2 = x_3] \rc x_4)) \\
-    \to x_1 \; [] \to x_5 :: \{\kappa\} \to x_1 \; x_5
-  \end{array}}{}$$
-
 $$\infer{\Gamma \vdash \mt{let} \; \overline{ed} \; \mt{in} \; e \; \mt{end} : \tau}{
   \Gamma \vdash \overline{ed} \leadsto \Gamma'
   & \Gamma' \vdash e : \tau
@@ -621,7 +663,7 @@ $$\infer{\Gamma \vdash \mt{let} \; \overline{ed} \; \mt{in} \; e \; \mt{end} : \
 
 $$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow e : \lambda [c_1 \sim c_2] \Rightarrow \tau}{
   \Gamma \vdash c_1 :: \{\kappa\}
-  & \Gamma \vdash c_2 :: \{\kappa\}
+  & \Gamma \vdash c_2 :: \{\kappa'\}
   & \Gamma, c_1 \sim c_2 \vdash e : \tau
 }$$
 
@@ -665,7 +707,7 @@ $$\infer{\Gamma \vdash \{\overline{x = p}\} \leadsto \Gamma_n; \{\overline{x = \
 
 We use an auxiliary judgment $\overline{y}; x; \Gamma \vdash \overline{dc} \leadsto \Gamma'$, expressing the enrichment of $\Gamma$ with the types of the datatype constructors $\overline{dc}$, when they are known to belong to datatype $x$ with type parameters $\overline{y}$.
 
-This is the first judgment where we deal with type classes, for the $\mt{class}$ declaration form.  We will omit their special handling in this formal specification.  Section \ref{typeclasses} gives an informal description of how type classes influence type inference.
+This is the first judgment where we deal with constructor classes, for the $\mt{class}$ declaration form.  We will omit their special handling in this formal specification.  Section \ref{typeclasses} gives an informal description of how constructor classes influence type inference.
 
 We presuppose the existence of a function $\mathcal O$, where $\mathcal O(M, \overline{s})$ implements the $\mt{open}$ declaration by producing a context with the appropriate entry for each available component of module $M$ with signature items $\overline{s}$.  Where possible, $\mathcal O$ uses ``transparent'' entries (e.g., an abstract type $M.x$ is mapped to $x :: \mt{Type} = M.x$), so that the relationship with $M$ is maintained.  A related function $\mathcal O_c$ builds a context containing the disjointness constraints found in $\overline s$.
 We write $\kappa_1^n \to \kappa$ as a shorthand, where $\kappa_1^0 \to \kappa = \kappa$ and $\kappa_1^{n+1} \to \kappa_2 = \kappa_1 \to (\kappa_1^n \to \kappa_2)$.  We write $\mt{len}(\overline{y})$ for the length of vector $\overline{y}$ of variables.
@@ -732,8 +774,8 @@ $$\infer{\Gamma \vdash \mt{cookie} \; x : \tau \leadsto \Gamma, x : \mt{Basis}.\
   \Gamma \vdash \tau :: \mt{Type}
 }$$
 
-$$\infer{\Gamma \vdash \mt{class} \; x = c \leadsto \Gamma, x :: \mt{Type} \to \mt{Type} = c}{
-  \Gamma \vdash c :: \mt{Type} \to \mt{Type}
+$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa \to \mt{Type} = c}{
+  \Gamma \vdash c :: \kappa \to \mt{Type}
 }$$
 
 $$\infer{\overline{y}; x; \Gamma \vdash \cdot \leadsto \Gamma}{}
@@ -789,10 +831,10 @@ $$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leadsto \Gamma, c_1 \sim
   & \Gamma \vdash c_2 :: \{\kappa\}
 }$$
 
-$$\infer{\Gamma \vdash \mt{class} \; x = c \leadsto \Gamma, x :: \mt{Type} \to \mt{Type} = c}{
-  \Gamma \vdash c :: \mt{Type} \to \mt{Type}
+$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa \to \mt{Type} = c}{
+  \Gamma \vdash c :: \kappa \to \mt{Type}
 }
-\quad \infer{\Gamma \vdash \mt{class} \; x \leadsto \Gamma, x :: \mt{Type} \to \mt{Type}}{}$$
+\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa \leadsto \Gamma, x :: \kappa \to \mt{Type}}{}$$
 
 \subsection{Signature Compatibility}
 
@@ -852,13 +894,13 @@ $$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leq \mt{con} \
   & \mt{proj}(M, \overline{s}, \mt{datatype} \; z) = (\overline{y}, \overline{dc})
 }$$
 
-$$\infer{\Gamma \vdash \mt{class} \; x \leq \mt{con} \; x :: \mt{Type} \to \mt{Type}}{}
-\quad \infer{\Gamma \vdash \mt{class} \; x = c \leq \mt{con} \; x :: \mt{Type} \to \mt{Type}}{}$$
+$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa \leq \mt{con} \; x :: \kappa \to \mt{Type}}{}
+\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leq \mt{con} \; x :: \kappa \to \mt{Type}}{}$$
 
 $$\infer{\Gamma \vdash \mt{con} \; x :: \kappa = c_1 \leq \mt{con} \; x :: \mt{\kappa} = c_2}{
   \Gamma \vdash c_1 \equiv c_2
 }
-\quad \infer{\Gamma \vdash \mt{class} \; x = c_1 \leq \mt{con} \; x :: \mt{Type} \to \mt{Type} = c_2}{
+\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa = c_1 \leq \mt{con} \; x :: \kappa \to \mt{Type} = c_2}{
   \Gamma \vdash c_1 \equiv c_2
 }$$
 
@@ -901,9 +943,9 @@ $$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leq \mt{constraint} \; c
   & \Gamma \vdash c_2 \equiv c'_2
 }$$
 
-$$\infer{\Gamma \vdash \mt{class} \; x \leq \mt{class} \; x}{}
-\quad \infer{\Gamma \vdash \mt{class} \; x = c \leq \mt{class} \; x}{}
-\quad \infer{\Gamma \vdash \mt{class} \; x = c_1 \leq \mt{class} \; x = c_2}{
+$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa \leq \mt{class} \; x :: \kappa}{}
+\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leq \mt{class} \; x :: \kappa}{}
+\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa = c_1 \leq \mt{class} \; x :: \kappa = c_2}{
   \Gamma \vdash c_1 \equiv c_2
 }$$
 
@@ -954,7 +996,7 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{sigOf}(\mt{table} \; x : c) &=& \mt{table} \; x : c \\
   \mt{sigOf}(\mt{sequence} \; x) &=& \mt{sequence} \; x \\
   \mt{sigOf}(\mt{cookie} \; x : \tau) &=& \mt{cookie} \; x : \tau \\
-  \mt{sigOf}(\mt{class} \; x = c) &=& \mt{class} \; x = c \\
+  \mt{sigOf}(\mt{class} \; x :: \kappa = c) &=& \mt{class} \; x :: \kappa = c \\
 \end{eqnarray*}
 \begin{eqnarray*}
   \mt{selfify}(M, \cdot) &=& \cdot \\
@@ -969,8 +1011,8 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{selfify}(M, \mt{signature} \; X = S) &=& \mt{signature} \; X = S \\
   \mt{selfify}(M, \mt{include} \; S) &=& \mt{include} \; S \\
   \mt{selfify}(M, \mt{constraint} \; c_1 \sim c_2) &=& \mt{constraint} \; c_1 \sim c_2 \\
-  \mt{selfify}(M, \mt{class} \; x) &=& \mt{class} \; x = M.x \\
-  \mt{selfify}(M, \mt{class} \; x = c) &=& \mt{class} \; x = c \\
+  \mt{selfify}(M, \mt{class} \; x :: \kappa) &=& \mt{class} \; x :: \kappa = M.x \\
+  \mt{selfify}(M, \mt{class} \; x :: \kappa = c) &=& \mt{class} \; x :: \kappa = c \\
 \end{eqnarray*}
 
 \subsection{Module Projection}
@@ -981,8 +1023,8 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{proj}(M, \mt{datatype} \; x \; \overline{y} = \overline{dc} \; \overline{s}, \mt{con} \; x) &=& \mt{Type}^{\mt{len}(\overline{y})} \to \mt{Type} \\
   \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z \; \overline{s}, \mt{con} \; x) &=& (\mt{Type}^{\mt{len}(\overline{y})} \to \mt{Type}, M'.z) \textrm{ (where $\Gamma \vdash M' : \mt{sig} \; \overline{s'} \; \mt{end}$} \\
   && \textrm{and $\mt{proj}(M', \overline{s'}, \mt{datatype} \; z) = (\overline{y}, \overline{dc})$)} \\
-  \mt{proj}(M, \mt{class} \; x \; \overline{s}, \mt{con} \; x) &=& \mt{Type} \to \mt{Type} \\
-  \mt{proj}(M, \mt{class} \; x = c \; \overline{s}, \mt{con} \; x) &=& (\mt{Type} \to \mt{Type}, c) \\
+  \mt{proj}(M, \mt{class} \; x :: \kappa \; \overline{s}, \mt{con} \; x) &=& \kappa \to \mt{Type} \\
+  \mt{proj}(M, \mt{class} \; x :: \kappa = c \; \overline{s}, \mt{con} \; x) &=& (\kappa \to \mt{Type}, c) \\
   \\
   \mt{proj}(M, \mt{datatype} \; x \; \overline{y} = \overline{dc} \; \overline{s}, \mt{datatype} \; x) &=& (\overline{y}, \overline{dc}) \\
   \mt{proj}(M, \mt{datatype} \; x = \mt{datatype} \; M'.z \; \overline{s}, \mt{con} \; x) &=& \mt{proj}(M', \overline{s'}, \mt{datatype} \; z) \textrm{ (where $\Gamma \vdash M' : \mt{sig} \; \overline{s'} \; \mt{end}$)} \\
@@ -1008,8 +1050,8 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{proj}(M, \mt{signature} \; X = S \; \overline{s}, V) &=& [X \mapsto M.X]\mt{proj}(M, \overline{s}, V) \\
   \mt{proj}(M, \mt{include} \; S \; \overline{s}, V) &=& \mt{proj}(M, \overline{s'} \; \overline{s}, V) \textrm{ (where $\Gamma \vdash S \equiv \mt{sig} \; \overline{s'} \; \mt{end}$)} \\
   \mt{proj}(M, \mt{constraint} \; c_1 \sim c_2 \; \overline{s}, V) &=& \mt{proj}(M, \overline{s}, V) \\
-  \mt{proj}(M, \mt{class} \; x \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
-  \mt{proj}(M, \mt{class} \; x = c \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{class} \; x :: \kappa \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
+  \mt{proj}(M, \mt{class} \; x :: \kappa = c \; \overline{s}, V) &=& [x \mapsto M.x]\mt{proj}(M, \overline{s}, V) \\
 \end{eqnarray*}
 
 
