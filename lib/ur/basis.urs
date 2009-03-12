@@ -128,12 +128,12 @@ val sql_query1 : tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}
                  -> selectedExps ::: {Type}
-                 -> {From : $(map (fn fields :: {Type} => sql_table fields) tables),
+                 -> {From : $(map sql_table tables),
                      Where : sql_exp tables [] [] bool,
                      GroupBy : sql_subset tables grouped,
                      Having : sql_exp grouped tables [] bool,
                      SelectFields : sql_subset grouped selectedFields,
-                     SelectExps : $(map (fn (t :: Type) => sql_exp grouped tables [] t) selectedExps) }
+                     SelectExps : $(map (sql_exp grouped tables []) selectedExps) }
                  -> sql_query1 tables selectedFields selectedExps
 
 type sql_relop 

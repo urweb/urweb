@@ -1129,14 +1129,27 @@ The Ur compiler treates $\mt{folder}$ like a constructor class, using built-in r
 
 \section{The Ur/Web Standard Library}
 
+\subsection{Monads}
+
+The Ur Basis defines the monad constructor class from Haskell.
+
+$$\begin{array}{l}
+  \mt{class} \; \mt{monad} :: \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{return} : \mt{m} ::: (\mt{Type} \to \mt{Type}) \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{monad} \; \mt{m} \\
+  \hspace{.1in} \to \mt{t} \to \mt{m} \; \mt{t} \\
+  \mt{val} \; \mt{bind} : \mt{m} ::: (\mt{Type} \to \mt{Type}) \to \mt{t1} ::: \mt{Type} \to \mt{t2} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{monad} \; \mt{m} \\
+  \hspace{.1in} \to \mt{m} \; \mt{t1} \to (\mt{t1} \to \mt{m} \; \mt{t2}) \\
+  \hspace{.1in} \to \mt{m} \; \mt{t2}
+\end{array}$$
+
 \subsection{Transactions}
 
 Ur is a pure language; we use Haskell's trick to support controlled side effects.  The standard library defines a monad $\mt{transaction}$, meant to stand for actions that may be undone cleanly.  By design, no other kinds of actions are supported.
 $$\begin{array}{l}
   \mt{con} \; \mt{transaction} :: \mt{Type} \to \mt{Type} \\
-  \\
-  \mt{val} \; \mt{return} : \mt{t} ::: \mt{Type} \to \mt{t} \to \mt{transaction} \; \mt{t} \\
-  \mt{val} \; \mt{bind} : \mt{t_1} ::: \mt{Type} \to \mt{t_2} ::: \mt{Type} \to \mt{transaction} \; \mt{t_1} \to (\mt{t_1} \to \mt{transaction} \; \mt{t_2}) \to \mt{transaction} \; \mt{t_2}
+  \mt{val} \; \mt{transaction\_monad} : \mt{monad} \; \mt{transaction}
 \end{array}$$
 
 \subsection{HTTP}
@@ -1175,7 +1188,7 @@ $$\begin{array}{l}
 Queries are used by folding over their results inside transactions.
 $$\begin{array}{l}
   \mt{val} \; \mt{query} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \lambda [\mt{tables} \sim \mt{exps}] \Rightarrow \mt{state} ::: \mt{Type} \to \mt{sql\_query} \; \mt{tables} \; \mt{exps} \\
-  \hspace{.1in} \to (\$(\mt{exps} \rc \mt{fold} \; (\lambda \mt{nm} \; (\mt{fields} :: \{\mt{Type}\}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \$\mt{fields}] \rc \mt{acc}) \; [] \; \mt{tables}) \\
+  \hspace{.1in} \to (\$(\mt{exps} \rc \mt{map} \; (\lambda \mt{fields} :: \{\mt{Type}\} \Rightarrow \$\mt{fields}) \; \mt{tables}) \\
   \hspace{.2in} \to \mt{state} \to \mt{transaction} \; \mt{state}) \\
   \hspace{.1in} \to \mt{state} \to \mt{transaction} \; \mt{state}
 \end{array}$$
@@ -1203,12 +1216,12 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{grouped} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \{\mt{From} : \$(\mt{fold} \; (\lambda \mt{nm} \; (\mt{fields} :: \{\mt{Type}\}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{sql\_table} \; \mt{fields}] \rc \mt{acc}) \; [] \; \mt{tables}), \\
+  \hspace{.1in} \to \{\mt{From} : \$(\mt{map} \; \mt{sql\_table} \; \mt{tables}), \\
   \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; \mt{tables} \; [] \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{GroupBy} : \mt{sql\_subset} \; \mt{tables} \; \mt{grouped}, \\
   \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{SelectFields} : \mt{sql\_subset} \; \mt{grouped} \; \mt{selectedFields}, \\
-  \hspace{.2in} \mt {SelectExps} : \$(\mt{fold} \; (\lambda \mt{nm} \; (\mt{t} :: \mt{Type}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; [] \; \mt{t}] \rc \mt{acc}) \; [] \; \mt{selectedExps}) \} \\
+  \hspace{.2in} \mt {SelectExps} : \$(\mt{map} \; (\mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; []) \; \mt{selectedExps}) \} \\
   \hspace{.1in} \to \mt{sql\_query1} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
 
@@ -1217,9 +1230,8 @@ $$\begin{array}{l}
   \mt{con} \; \mt{sql\_subset} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_subset} : \mt{keep\_drop} :: \{(\{\mt{Type}\} \times \{\mt{Type}\})\} \\
   \hspace{.1in} \to \mt{sql\_subset} \\
-  \hspace{.2in} (\mt{fold} \; (\lambda \mt{nm} \; (\mt{fields} :: (\{\mt{Type}\} \times \{\mt{Type}\})) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \; [\mt{fields}.1 \sim \mt{fields}.2] \Rightarrow \\
-  \hspace{.3in} [\mt{nm} = \mt{fields}.1 \rc \mt{fields}.2] \rc \mt{acc}) \; [] \; \mt{keep\_drop}) \\
-  \hspace{.2in} (\mt{fold} \; (\lambda \mt{nm} \; (\mt{fields} :: (\{\mt{Type}\} \times \{\mt{Type}\})) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{fields}.1] \rc \mt{acc}) \; [] \; \mt{keep\_drop}) \\
+  \hspace{.2in} (\mt{map} \; (\lambda \mt{fields} :: (\{\mt{Type}\} \times \{\mt{Type}\}) \Rightarrow \mt{fields}.1 \rc \mt{fields}.2)\; \mt{keep\_drop}) \\
+  \hspace{.2in} (\mt{map} \; (\lambda \mt{fields} :: (\{\mt{Type}\} \times \{\mt{Type}\}) \Rightarrow \mt{fields}.1) \; \mt{keep\_drop}) \\
 \mt{val} \; \mt{sql\_subset\_all} : \mt{tables} :: \{\{\mt{Type}\}\} \to \mt{sql\_subset} \; \mt{tables} \; \mt{tables}
 \end{array}$$
 
@@ -1363,13 +1375,13 @@ $$\begin{array}{l}
 Properly-typed records may be used to form $\mt{INSERT}$ commands.
 $$\begin{array}{l}
   \mt{val} \; \mt{insert} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \\
-  \hspace{.1in} \to \$(\mt{fold} \; (\lambda \mt{nm} \; (\mt{t} :: \mt{Type}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{sql\_exp} \; [] \; [] \; [] \; \mt{t}] \rc \mt{acc}) \; [] \; \mt{fields}) \to \mt{dml}
+  \hspace{.1in} \to \$(\mt{map} \; (\mt{sql\_exp} \; [] \; [] \; []) \; \mt{fields}) \to \mt{dml}
 \end{array}$$
 
 An $\mt{UPDATE}$ command is formed from a choice of which table fields to leave alone and which to change, along with an expression to use to compute the new value of each changed field and a $\mt{WHERE}$ clause.
 $$\begin{array}{l}
   \mt{val} \; \mt{update} : \mt{unchanged} ::: \{\mt{Type}\} \to \mt{changed} :: \{\mt{Type}\} \to \lambda [\mt{changed} \sim \mt{unchanged}] \\
-  \hspace{.1in} \Rightarrow \$(\mt{fold} \; (\lambda \mt{nm} \; (\mt{t} :: \mt{Type}) \; \mt{acc} \; [[\mt{nm}] \sim \mt{acc}] \Rightarrow [\mt{nm} = \mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{t}] \rc \mt{acc}) \; [] \; \mt{changed}) \\
+  \hspace{.1in} \Rightarrow \$(\mt{map} \; (\mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; []) \; \mt{changed}) \\
   \hspace{.1in} \to \mt{sql\_table} \; (\mt{changed} \rc \mt{unchanged}) \to \mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{bool} \to \mt{dml}
 \end{array}$$
 
