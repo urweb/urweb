@@ -248,8 +248,8 @@ $$\begin{array}{rrcll}
   &&& \mt{signature} \; X = S & \textrm{sub-signature} \\
   &&& \mt{include} \; S & \textrm{signature inclusion} \\
   &&& \mt{constraint} \; c \sim c & \textrm{record disjointness constraint} \\
-  &&& \mt{class} \; x & \textrm{abstract type class} \\
-  &&& \mt{class} \; x = c & \textrm{concrete type class} \\
+  &&& \mt{class} \; x :: \kappa & \textrm{abstract constructor class} \\
+  &&& \mt{class} \; x :: \kappa = c & \textrm{concrete constructor class} \\
   \\
   \textrm{Datatype constructors} & dc &::=& X & \textrm{nullary constructor} \\
   &&& X \; \mt{of} \; \tau & \textrm{unary constructor} \\
@@ -293,7 +293,8 @@ $$\begin{array}{rrcll}
   \\
   &&& \mt{case} \; e \; \mt{of} \; (p \Rightarrow e|)^+ & \textrm{pattern matching} \\
   \\
-  &&& \lambda [c \sim c] \Rightarrow e & \textrm{guarded expression} \\
+  &&& \lambda [c \sim c] \Rightarrow e & \textrm{guarded expression abstraction} \\
+  &&& e \; ! & \textrm{guarded expression application} \\
   \\
   &&& \_ & \textrm{wildcard} \\
   &&& (e) & \textrm{explicit precedence} \\
@@ -317,7 +318,7 @@ $$\begin{array}{rrcll}
   &&& \mt{table} \; x : c & \textrm{SQL table} \\
   &&& \mt{sequence} \; x & \textrm{SQL sequence} \\
   &&& \mt{cookie} \; x : \tau & \textrm{HTTP cookie} \\
-  &&& \mt{class} \; x = c & \textrm{concrete type class} \\
+  &&& \mt{class} \; x :: \kappa = c & \textrm{concrete constructor class} \\
   \\
   \textrm{Modules} & M &::=& \mt{struct} \; d^* \; \mt{end} & \textrm{constant} \\
   &&& X & \textrm{variable} \\
@@ -340,17 +341,17 @@ The notation $[c_1, \ldots, c_n]$ is shorthand for $[c_1 = (), \ldots, c_n = ()]
 
 A tuple type $(\tau_1, \ldots, \tau_n)$ expands to a record type $\{1 = \tau_1, \ldots, n = \tau_n\}$, with natural numbers as field names.  A tuple pattern $(p_1, \ldots, p_n)$ expands to a rigid record pattern $\{1 = p_1, \ldots, n = p_n\}$.  Positive natural numbers may be used in most places where field names would be allowed.
 
-In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid [c \sim c]$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.  
+In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid X$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.  
 
 For any signature item or declaration that defines some entity to be equal to $A$ with classification annotation $B$ (e.g., $\mt{val} \; x : B = A$), $B$ and the preceding colon (or similar punctuation) may be omitted, in which case it is filled in as a wildcard.
 
 A signature item or declaration $\mt{type} \; x$ or $\mt{type} \; x = \tau$ is elaborated into $\mt{con} \; x :: \mt{Type}$ or $\mt{con} \; x :: \mt{Type} = \tau$, respectively.
 
-A signature item or declaration $\mt{class} \; x = \lambda y :: \mt{Type} \Rightarrow c$ may be abbreviated $\mt{class} \; x \; y = c$.
+A signature item or declaration $\mt{class} \; x = \lambda y \Rightarrow c$ may be abbreviated $\mt{class} \; x \; y = c$.
 
-Handling of implicit and explicit constructor arguments may be tweaked with some prefixes to variable references.  An expression $@x$ is a version of $x$ where all implicit constructor arguments have been made explicit.  An expression $@@x$ achieves the same effect, additionally halting automatic resolution of type class instances.  The same syntax works for variables projected out of modules and for capitalized variables (datatype constructors).
+Handling of implicit and explicit constructor arguments may be tweaked with some prefixes to variable references.  An expression $@x$ is a version of $x$ where all implicit constructor arguments have been made explicit.  An expression $@@x$ achieves the same effect, additionally halting automatic resolution of type class instances and automatic proving of disjointness constraints.  The default is that any prefix of a variable's type consisting only of implicit polymorphism, type class instances, and disjointness obligations is resolved automatically, with the variable treated as having the type that starts after the last implicit element, with suitable unification variables substituted.  The same syntax works for variables projected out of modules and for capitalized variables (datatype constructors).
 
-At the expression level, an analogue is available of the composite $\lambda$ form for constructors.  We define the language of binders as $b ::= x \mid (x : \tau) \mid (x \; ? \; \kappa) \mid [c \sim c]$.  A lone variable $x$ as a binder stands for an expression variable of unspecified type.
+At the expression level, an analogue is available of the composite $\lambda$ form for constructors.  We define the language of binders as $b ::= x \mid (x : \tau) \mid (x \; ? \; \kappa) \mid X \mid [c \sim c]$.  A lone variable $x$ as a binder stands for an expression variable of unspecified type.
 
 A $\mt{val}$ or $\mt{val} \; \mt{rec}$ declaration may include expression binders before the equal sign, following the binder grammar from the last paragraph.  Such declarations are elaborated into versions that add additional $\lambda$s to the fronts of the righthand sides, as appropriate.  The keyword $\mt{fun}$ is a synonym for $\mt{val} \; \mt{rec}$.
 
