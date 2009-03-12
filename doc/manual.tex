@@ -29,13 +29,14 @@
 \item Return invalid HTML
 \item Contain dead intra-application links
 \item Have mismatches between HTML forms and the fields expected by their handlers
+\item Include client-side code that makes incorrect assumptions about the ``AJAX''-style services that the remote web server provides
 \item Attempt invalid SQL queries
-\item Use improper marshaling or unmarshaling in communication with SQL databases
+\item Use improper marshaling or unmarshaling in communication with SQL databases or between browsers and web servers
 \end{itemize}
 
 This type safety is just the foundation of the Ur/Web methodology.  It is also possible to use metaprogramming to build significant application pieces by analysis of type structure.  For instance, the demo includes an ML-style functor for building an admin interface for an arbitrary SQL table.  The type system guarantees that the admin interface sub-application that comes out will always be free of the above-listed bugs, no matter which well-typed table description is given as input.
 
-The Ur/Web compiler also produces very efficient object code that does not use garbage collection.  These compiled programs will often be even more efficient than what most programmers would bother to write in C.
+The Ur/Web compiler also produces very efficient object code that does not use garbage collection.  These compiled programs will often be even more efficient than what most programmers would bother to write in C.  The compiler also generates JavaScript versions of client-side code, with no need to write those parts of applications in a different language.
 
 \medskip
 
@@ -154,9 +155,11 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
   \begin{tabular}{rl}
     \textbf{\LaTeX} & \textbf{ASCII} \\
     $\to$ & \cd{->} \\
+    $\longrightarrow$ & \cd{-->} \\
     $\times$ & \cd{*} \\
     $\lambda$ & \cd{fn} \\
     $\Rightarrow$ & \cd{=>} \\
+    $\Longrightarrow$ & \cd{==>} \\
     $\neq$ & \cd{<>} \\
     $\leq$ & \cd{<=} \\
     $\geq$ & \cd{>=} \\
@@ -182,6 +185,8 @@ $$\begin{array}{rrcll}
   &&& \kappa \to \kappa & \textrm{type-level functions} \\
   &&& \{\kappa\} & \textrm{type-level records} \\
   &&& (\kappa\times^+) & \textrm{type-level tuples} \\
+  &&& X & \textrm{variable} \\
+  &&& X \longrightarrow k & \textrm{kind-polymorphic type-level function} \\
   &&& \_\_ & \textrm{wildcard} \\
   &&& (\kappa) & \textrm{explicit precedence} \\
 \end{array}$$
@@ -199,22 +204,25 @@ $$\begin{array}{rrcll}
   \\
   &&& \tau \to \tau & \textrm{function type} \\
   &&& x \; ? \; \kappa \to \tau & \textrm{polymorphic function type} \\
+  &&& X \longrightarrow \tau & \textrm{kind-polymorphic function type} \\
   &&& \$ c & \textrm{record type} \\
   \\
   &&& c \; c & \textrm{type-level function application} \\
   &&& \lambda x \; :: \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
+  \\
+  &&& X \Longrightarrow c & \textrm{type-level kind-polymorphic function abstraction} \\
   \\
   &&& () & \textrm{type-level unit} \\
   &&& \#X & \textrm{field name} \\
   \\
   &&& [(c = c)^*] & \textrm{known-length type-level record} \\
   &&& c \rc c & \textrm{type-level record concatenation} \\
-  &&& \mt{fold} & \textrm{type-level record fold} \\
+  &&& \mt{map} & \textrm{type-level record map} \\
   \\
   &&& (c,^+) & \textrm{type-level tuple} \\
   &&& c.n & \textrm{type-level tuple projection ($n \in \mathbb N^+$)} \\
   \\
-  &&& \lambda [c \sim c] \Rightarrow c & \textrm{guarded constructor} \\
+  &&& [c \sim c] \Rightarrow \tau & \textrm{guarded type} \\
   \\
   &&& \_ :: \kappa & \textrm{wildcard} \\
   &&& (c) & \textrm{explicit precedence} \\
@@ -273,13 +281,13 @@ $$\begin{array}{rrcll}
   &&& \lambda x : \tau \Rightarrow e & \textrm{function abstraction} \\
   &&& e [c] & \textrm{polymorphic function application} \\
   &&& \lambda x \; ? \; \kappa \Rightarrow e & \textrm{polymorphic function abstraction} \\
+  &&& X \Longrightarrow e & \textrm{kind-polymorphic function abstraction} \\
   \\
   &&& \{(c = e,)^*\} & \textrm{known-length record} \\
   &&& e.c & \textrm{record field projection} \\
   &&& e \rc e & \textrm{record concatenation} \\
   &&& e \rcut c & \textrm{removal of a single record field} \\
   &&& e \rcutM c & \textrm{removal of multiple record fields} \\
-  &&& \mt{fold} & \textrm{fold over fields of a type-level record} \\
   \\
   &&& \mt{let} \; ed^* \; \mt{in} \; e \; \mt{end} & \textrm{local definitions} \\
   \\
