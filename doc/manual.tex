@@ -1110,6 +1110,22 @@ $$\begin{array}{l}
   \mt{datatype} \; \mt{option} \; \mt{t} = \mt{None} \mid \mt{Some} \; \mt{of} \; \mt{t}
 \end{array}$$
 
+Another important generic Ur element comes at the beginning of \texttt{top.urs}.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{folder} :: \mt{K} \longrightarrow \{\mt{K}\} \to \mt{Type} \\
+  \\
+  \mt{val} \; \mt{fold} : \mt{K} \longrightarrow \mt{tf} :: (\{\mt{K}\} \to \mt{Type}) \\
+  \hspace{.1in} \to (\mt{nm} :: \mt{Name} \to \mt{v} :: \mt{K} \to \mt{r} :: \{\mt{K}\} \to [[\mt{nm}] \sim \mt{r}] \Rightarrow \\
+  \hspace{.2in} \mt{tf} \; \mt{r} \to \mt{tf} \; ([\mt{nm} = \mt{v}] \rc \mt{r})) \\
+  \hspace{.1in} \to \mt{tf} \; [] \\
+  \hspace{.1in} \to \mt{r} :: \{\mt{K}\} \to \mt{folder} \; \mt{r} \to \mt{tf} \; \mt{r}
+\end{array}$$
+
+For a type-level record $\mt{r}$, a $\mt{folder} \; \mt{r}$ encodes a permutation of $\mt{r}$'s elements.  The $\mt{fold}$ function can be called on a $\mt{folder}$ to iterate over the elements of $\mt{r}$ in that order.  $\mt{fold}$ is parameterized on a type-level function to be used to calculate the type of each intermediate result of folding.  After processing a subset $\mt{r'}$ of $\mt{r}$'s entries, the type of the accumulator should be $\mt{tf} \; \mt{r'}$.  The next two expression arguments to $\mt{fold}$ are the usual step function and initial accumulator, familiar from fold functions over lists.  The final two arguments are the record to fold over and a $\mt{folder}$ for it.
+
+The Ur compiler treates $\mt{folder}$ like a constructor class, using built-in rules to infer $\mt{folder}$s for records with known structure.  The order in which field names are mentioned in source code is used as a hint about the permutation that the programmer would like.
+
 
 \section{The Ur/Web Standard Library}
 
