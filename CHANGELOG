@@ -11,6 +11,7 @@
 - Generalize type classes to constructor classes
 - Initial compilation of client-side code to JavaScript
 - Initial support for mixed client- and server-side programming (i.e., "AJAX")
+- src/coq: Coq formalization of a core Ur-like calculus
 
 ========
 20081209
