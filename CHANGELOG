@@ -1,4 +1,18 @@
 ========
+20090312
+========
+
+- Replace type-level "fold" with "map"
+- Replace expression-level "fold" with folders, defined in Top and
+  supported by some special compiler inference
+- Replace guarded constructors with guarded types, introduced only by
+  guarded expression abstraction, and with a new explicit application form
+- Kind polymorphism
+- Generalize type classes to constructor classes
+- Initial compilation of client-side code to JavaScript
+- Initial support for mixed client- and server-side programming (i.e., "AJAX")
+
+========
 20081209
 ========
 
@@ -14,7 +28,8 @@
 - Fix bug that sometimes led to omission of initial "<html>" in pages
 - Take advantage of nested functions in some demos
 - "profile" option that may appear in .urp files, to enable gprof profiling
-- "-guided-demo" option that works like "-demo" but uses less screen space for prose
+- "-guided-demo" option that works like "-demo" but uses less screen space for
+  prose
 
 ========
 20081118
@@ -24,7 +39,8 @@
 - Primitive "time" type
 - Nullable SQL columns (via "option")
 - Cookies
-- Compiler: Specialization of functions to known arguments (especially of function type)
+- Compiler: Specialization of functions to known arguments (especially of
+  function type)
 
 ========
 20081028
