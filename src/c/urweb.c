@@ -23,15 +23,16 @@ typedef struct {
   void *arg;
 } cleanup;
 
+typedef struct {
+  char *start, *front, *back;
+} buf;
+
 struct uw_context {
   char *headers, *headers_end;
 
-  char *outHeaders, *outHeaders_front, *outHeaders_back;
-  char *page, *page_front, *page_back;
-  char *heap, *heap_front, *heap_back;
+  buf outHeaders, page, heap, script;
   char **inputs;
 
-  char *script, *script_front, *script_back;
   int source_count;
 
   void *db;
@@ -49,21 +50,20 @@ struct uw_context {
 
 extern int uw_inputs_len;
 
+static void buf_init(buf *b, size_t s) {
+  b->front = b->start = malloc(s);
+  b->back = b->front + s;
+}
+
 uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, size_t heap_len) {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->headers = ctx->headers_end = NULL;
 
-  ctx->outHeaders_front = ctx->outHeaders = malloc(outHeaders_len);
-  ctx->outHeaders_back = ctx->outHeaders_front + outHeaders_len;
-
-  ctx->heap_front = ctx->heap = malloc(heap_len);
-
-  ctx->page_front = ctx->page = malloc(page_len);
-  ctx->page_back = ctx->page_front + page_len;
-
-  ctx->heap_front = ctx->heap = malloc(heap_len);
-  ctx->heap_back = ctx->heap_front + heap_len;
+  buf_init(&ctx->outHeaders, outHeaders_len);
+  buf_init(&ctx->page, page_len);
+  buf_init(&ctx->heap, heap_len);
+  buf_init(&ctx->script, script_len);
 
   ctx->inputs = calloc(uw_inputs_len, sizeof(char *));
 
@@ -77,8 +77,6 @@ uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, si
   
   ctx->error_message[0] = 0;
 
-  ctx->script_front = ctx->script = malloc(script_len);
-  ctx->script_back = ctx->script_front + script_len;
   ctx->source_count = 0;
 
   return ctx;
@@ -92,21 +90,29 @@ void *uw_get_db(uw_context ctx) {
   return ctx->db;
 }
 
+static void buf_free(buf *b) {
+  free(b->front);
+}
+
 void uw_free(uw_context ctx) {
-  free(ctx->outHeaders);
-  free(ctx->script);
-  free(ctx->page);
-  free(ctx->heap);
+  buf_free(&ctx->outHeaders);
+  buf_free(&ctx->script);
+  buf_free(&ctx->page);
+  buf_free(&ctx->heap);
   free(ctx->inputs);
   free(ctx->cleanup);
   free(ctx);
 }
 
+static void buf_reset(buf *b) {
+  b->front = b->start;
+}
+
 void uw_reset_keep_error_message(uw_context ctx) {
-  ctx->outHeaders_front = ctx->outHeaders;
-  ctx->script_front = ctx->script;
-  ctx->page_front = ctx->page;
-  ctx->heap_front = ctx->heap;
+  buf_reset(&ctx->outHeaders);
+  buf_reset(&ctx->script);
+  buf_reset(&ctx->page);
+  buf_reset(&ctx->heap);
   ctx->regions = NULL;
   ctx->cleanup_front = ctx->cleanup;
   ctx->source_count = 0;
@@ -243,27 +249,31 @@ void uw_set_script_header(uw_context ctx, const char *s) {
   ctx->script_header = s;
 }
 
-static void uw_check_heap(uw_context ctx, size_t extra) {
-  if (ctx->heap_back - ctx->heap_front < extra) {
-    size_t desired = ctx->heap_front - ctx->heap + extra, next;
+static void buf_check(uw_context ctx, buf *b, size_t extra, const char *desc) {
+  if (b->back - b->front < extra) {
+    size_t desired = b->front - b->start + extra, next;
     char *new_heap;
 
-    next = ctx->heap_back - ctx->heap;
+    next = b->back - b->start;
     if (next == 0)
       next = 1;
     for (; next < desired; next *= 2);
 
-    new_heap = realloc(ctx->heap, next);
-    ctx->heap_front = new_heap + (ctx->heap_front - ctx->heap);
-    ctx->heap_back = new_heap + next;
+    new_heap = realloc(b->start, next);
+    b->front = new_heap + (b->front - b->start);
+    b->back = new_heap + next;
 
-    if (new_heap != ctx->heap) {
-      ctx->heap = new_heap;
-      uw_error(ctx, UNLIMITED_RETRY, "Couldn't allocate new heap chunk contiguously");
+    if (desc && new_heap != b->start) {
+      b->start = new_heap;
+      uw_error(ctx, UNLIMITED_RETRY, "Couldn't allocate new %s contiguously", desc);
     }
 
-    ctx->heap = new_heap;
+    b->start = new_heap;
   }
+}
+
+static void uw_check_heap(uw_context ctx, size_t extra) {
+  buf_check(ctx, &ctx->heap, extra, "heap chunk");
 }
 
 void *uw_malloc(uw_context ctx, size_t len) {
@@ -271,17 +281,17 @@ void *uw_malloc(uw_context ctx, size_t len) {
 
   uw_check_heap(ctx, len);
 
-  result = ctx->heap_front;
-  ctx->heap_front += len;
+  result = ctx->heap.front;
+  ctx->heap.front += len;
   return result;
 }
 
 void uw_begin_region(uw_context ctx) {
-  regions *r = (regions *) ctx->heap_front;
+  regions *r = (regions *) ctx->heap.front;
 
   uw_check_heap(ctx, sizeof(regions));
 
-  ctx->heap_front += sizeof(regions);
+  ctx->heap.front += sizeof(regions);
 
   r->next = ctx->regions;
   ctx->regions = r;
@@ -293,15 +303,23 @@ void uw_end_region(uw_context ctx) {
   if (r == NULL)
     uw_error(ctx, FATAL, "Region stack underflow");
 
-  ctx->heap_front = (char *) r;
+  ctx->heap.front = (char *) r;
   ctx->regions = r->next;
 }
 
+static size_t buf_used(buf *b) {
+  return b->front - b->start;
+}
+
+static size_t buf_avail(buf *b) {
+  return b->back - b->start;
+}
+
 void uw_memstats(uw_context ctx) {
-  printf("Headers: %d/%d\n", ctx->outHeaders_front - ctx->outHeaders, ctx->outHeaders_back - ctx->outHeaders);
-  printf("Script: %d/%d\n", ctx->script_front - ctx->script, ctx->script_back - ctx->script);
-  printf("Page: %d/%d\n", ctx->page_front - ctx->page, ctx->page_back - ctx->page);
-  printf("Heap: %d/%d\n", ctx->heap_front - ctx->heap, ctx->heap_back - ctx->heap);
+  printf("Headers: %d/%d\n", buf_used(&ctx->outHeaders), buf_avail(&ctx->outHeaders));
+  printf("Script: %d/%d\n", buf_used(&ctx->script), buf_avail(&ctx->script));
+  printf("Page: %d/%d\n", buf_used(&ctx->page), buf_avail(&ctx->page));
+  printf("Heap: %d/%d\n", buf_used(&ctx->heap), buf_avail(&ctx->heap));
 }
 
 int uw_really_send(int sock, const void *buf, size_t len) {
@@ -319,7 +337,7 @@ int uw_really_send(int sock, const void *buf, size_t len) {
 }
 
 int uw_send(uw_context ctx, int sock) {
-  int n = uw_really_send(sock, ctx->outHeaders, ctx->outHeaders_front - ctx->outHeaders);
+  int n = uw_really_send(sock, ctx->outHeaders.start, ctx->outHeaders.front - ctx->outHeaders.start);
 
   if (n < 0)
     return n;
@@ -329,66 +347,40 @@ int uw_send(uw_context ctx, int sock) {
   if (n < 0)
     return n;
 
-  return uw_really_send(sock, ctx->page, ctx->page_front - ctx->page);
+  return uw_really_send(sock, ctx->page.start, ctx->page.front - ctx->page.start);
 }
 
 static void uw_check_headers(uw_context ctx, size_t extra) {
-  size_t desired = ctx->outHeaders_front - ctx->outHeaders + extra, next;
-  char *new_outHeaders;
-
-  next = ctx->outHeaders_back - ctx->outHeaders;
-  if (next < desired) {
-    if (next == 0)
-      next = 1;
-    for (; next < desired; next *= 2);
-
-    new_outHeaders = realloc(ctx->outHeaders, next);
-    ctx->outHeaders_front = new_outHeaders + (ctx->outHeaders_front - ctx->outHeaders);
-    ctx->outHeaders_back = new_outHeaders + next;
-    ctx->outHeaders = new_outHeaders;
-  }
+  buf_check(ctx, &ctx->outHeaders, extra, NULL);
 }
 
 void uw_write_header(uw_context ctx, uw_Basis_string s) {
   int len = strlen(s);
 
   uw_check_headers(ctx, len + 1);
-  strcpy(ctx->outHeaders_front, s);
-  ctx->outHeaders_front += len;
+  strcpy(ctx->outHeaders.front, s);
+  ctx->outHeaders.front += len;
 }
 
 static void uw_check_script(uw_context ctx, size_t extra) {
-  size_t desired = ctx->script_front - ctx->script + extra, next;
-  char *new_script;
-
-  next = ctx->script_back - ctx->script;
-  if (next < desired) {
-    if (next == 0)
-      next = 1;
-    for (; next < desired; next *= 2);
-
-    new_script = realloc(ctx->script, next);
-    ctx->script_front = new_script + (ctx->script_front - ctx->script);
-    ctx->script_back = new_script + next;
-    ctx->script = new_script;
-  }
+  buf_check(ctx, &ctx->script, extra, NULL);
 }
 
 void uw_write_script(uw_context ctx, uw_Basis_string s) {
   int len = strlen(s);
 
   uw_check_script(ctx, len + 1);
-  strcpy(ctx->script_front, s);
-  ctx->script_front += len;
+  strcpy(ctx->script.front, s);
+  ctx->script.front += len;
 }
 
 const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
-  if (ctx->script_front == ctx->script) {
+  if (ctx->script.front == ctx->script.start) {
     return ctx->script_header;
   } else {
-    char *r = uw_malloc(ctx, 41 + (ctx->script_front - ctx->script) + strlen(ctx->script_header));
+    char *r = uw_malloc(ctx, 41 + (ctx->script.front - ctx->script.start) + strlen(ctx->script_header));
 
-    sprintf(r, "%s<script>%s</script>", ctx->script_header, ctx->script);
+    sprintf(r, "%s<script>%s</script>", ctx->script_header, ctx->script.start);
     return r;
   }
 }
@@ -398,7 +390,7 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
 
   uw_check_heap(ctx, strlen(s) * 4 + 2);
 
-  r = s2 = ctx->heap_front;
+  r = s2 = ctx->heap.front;
   *s2++ = '"';
 
   for (; *s; s++) {
@@ -424,7 +416,7 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   }
 
   strcpy(s2, "\"");
-  ctx->heap_front = s2 + 1;
+  ctx->heap.front = s2 + 1;
   return r;
 }
 
@@ -433,7 +425,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
 
   uw_check_script(ctx, strlen(s) * 4 + 2);
 
-  r = s2 = ctx->script_front;
+  r = s2 = ctx->script.front;
   *s2++ = '"';
 
   for (; *s; s++) {
@@ -459,7 +451,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
   }
 
   strcpy(s2, "\"");
-  ctx->script_front = s2 + 1;
+  ctx->script.front = s2 + 1;
   return r;
 }
 
@@ -468,12 +460,12 @@ uw_Basis_int uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
   size_t s_len = strlen(s);
 
   uw_check_script(ctx, 12 + INTS_MAX + s_len);
-  sprintf(ctx->script_front, "var s%d=sc(%n", ctx->source_count, &len);
-  ctx->script_front += len;
-  strcpy(ctx->script_front, s);
-  ctx->script_front += s_len;
-  strcpy(ctx->script_front, ");");
-  ctx->script_front += 2;
+  sprintf(ctx->script.front, "var s%d=sc(%n", ctx->source_count, &len);
+  ctx->script.front += len;
+  strcpy(ctx->script.front, s);
+  ctx->script.front += s_len;
+  strcpy(ctx->script.front, ");");
+  ctx->script.front += 2;
 
   return ctx->source_count++;
 }
@@ -483,35 +475,22 @@ uw_unit uw_Basis_set_client_source(uw_context ctx, uw_Basis_int n, uw_Basis_stri
   size_t s_len = strlen(s);
 
   uw_check_script(ctx, 6 + INTS_MAX + s_len);
-  sprintf(ctx->script_front, "s%d.v=%n", (int)n, &len);
-  ctx->script_front += len;
-  strcpy(ctx->script_front, s);
-  ctx->script_front += s_len;
-  strcpy(ctx->script_front, ";");
-  ctx->script_front++;
+  sprintf(ctx->script.front, "s%d.v=%n", (int)n, &len);
+  ctx->script.front += len;
+  strcpy(ctx->script.front, s);
+  ctx->script.front += s_len;
+  strcpy(ctx->script.front, ";");
+  ctx->script.front++;
 
   return uw_unit_v;
 }
 
 static void uw_check(uw_context ctx, size_t extra) {
-  size_t desired = ctx->page_front - ctx->page + extra, next;
-  char *new_page;
-
-  next = ctx->page_back - ctx->page;
-  if (next < desired) {
-    if (next == 0)
-      next = 1;
-    for (; next < desired; next *= 2);
-
-    new_page = realloc(ctx->page, next);
-    ctx->page_front = new_page + (ctx->page_front - ctx->page);
-    ctx->page_back = new_page + next;
-    ctx->page = new_page;
-  }
+  buf_check(ctx, &ctx->page, extra, NULL);
 }
 
 static void uw_writec_unsafe(uw_context ctx, char c) {
-  *(ctx->page_front)++ = c;
+  *(ctx->page.front)++ = c;
 }
 
 void uw_writec(uw_context ctx, char c) {
@@ -521,24 +500,23 @@ void uw_writec(uw_context ctx, char c) {
 
 static void uw_write_unsafe(uw_context ctx, const char* s) {
   int len = strlen(s);
-  memcpy(ctx->page_front, s, len);
-  ctx->page_front += len;
+  memcpy(ctx->page.front, s, len);
+  ctx->page.front += len;
 }
 
 void uw_write(uw_context ctx, const char* s) {
   uw_check(ctx, strlen(s) + 1);
   uw_write_unsafe(ctx, s);
-  *ctx->page_front = 0;
+  *ctx->page.front = 0;
 }
-
 
 char *uw_Basis_attrifyInt(uw_context ctx, uw_Basis_int n) {
   char *result;
   int len;
   uw_check_heap(ctx, INTS_MAX);
-  result = ctx->heap_front;
+  result = ctx->heap.front;
   sprintf(result, "%lld%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return result;
 }
 
@@ -546,9 +524,9 @@ char *uw_Basis_attrifyFloat(uw_context ctx, uw_Basis_float n) {
   char *result;
   int len;
   uw_check_heap(ctx, FLOATS_MAX);
-  result = ctx->heap_front;
+  result = ctx->heap.front;
   sprintf(result, "%g%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return result;
 }
 
@@ -557,7 +535,7 @@ char *uw_Basis_attrifyString(uw_context ctx, uw_Basis_string s) {
   char *result, *p;
   uw_check_heap(ctx, len * 6 + 1);
 
-  result = p = ctx->heap_front;
+  result = p = ctx->heap.front;
 
   for (; *s; s++) {
     char c = *s;
@@ -579,15 +557,15 @@ char *uw_Basis_attrifyString(uw_context ctx, uw_Basis_string s) {
   }
 
   *p++ = 0;
-  ctx->heap_front = p;
+  ctx->heap.front = p;
   return result;
 }
 
 static void uw_Basis_attrifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
   int len;
 
-  sprintf(ctx->page_front, "%lld%n", n, &len);
-  ctx->page_front += len;
+  sprintf(ctx->page.front, "%lld%n", n, &len);
+  ctx->page.front += len;
 }
 
 uw_unit uw_Basis_attrifyInt_w(uw_context ctx, uw_Basis_int n) {
@@ -601,8 +579,8 @@ uw_unit uw_Basis_attrifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
   uw_check(ctx, FLOATS_MAX);
-  sprintf(ctx->page_front, "%g%n", n, &len);
-  ctx->page_front += len;
+  sprintf(ctx->page.front, "%g%n", n, &len);
+  ctx->page.front += len;
 
   return uw_unit_v;
 }
@@ -635,9 +613,9 @@ char *uw_Basis_urlifyInt(uw_context ctx, uw_Basis_int n) {
   char *r;
 
   uw_check_heap(ctx, INTS_MAX);
-  r = ctx->heap_front;
+  r = ctx->heap.front;
   sprintf(r, "%lld%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return r;
 }
 
@@ -646,9 +624,9 @@ char *uw_Basis_urlifyFloat(uw_context ctx, uw_Basis_float n) {
   char *r;
 
   uw_check_heap(ctx, FLOATS_MAX);
-  r = ctx->heap_front;
+  r = ctx->heap.front;
   sprintf(r, "%g%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return r;
 }
 
@@ -657,7 +635,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
 
   uw_check_heap(ctx, strlen(s) * 3 + 1);
 
-  for (r = p = ctx->heap_front; *s; s++) {
+  for (r = p = ctx->heap.front; *s; s++) {
     char c = *s;
 
     if (c == ' ')
@@ -671,7 +649,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
   }
 
   *p++ = 0;
-  ctx->heap_front = p;
+  ctx->heap.front = p;
   return r;
 }
 
@@ -685,8 +663,8 @@ char *uw_Basis_urlifyBool(uw_context ctx, uw_Basis_bool b) {
 static void uw_Basis_urlifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
   int len;
 
-  sprintf(ctx->page_front, "%lld%n", n, &len);
-  ctx->page_front += len;
+  sprintf(ctx->page.front, "%lld%n", n, &len);
+  ctx->page.front += len;
 }
 
 uw_unit uw_Basis_urlifyInt_w(uw_context ctx, uw_Basis_int n) {
@@ -700,8 +678,8 @@ uw_unit uw_Basis_urlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
   uw_check(ctx, FLOATS_MAX);
-  sprintf(ctx->page_front, "%g%n", n, &len);
-  ctx->page_front += len;
+  sprintf(ctx->page.front, "%g%n", n, &len);
+  ctx->page.front += len;
 
   return uw_unit_v;
 }
@@ -721,8 +699,8 @@ uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
     else if (isalnum(c))
       uw_writec_unsafe(ctx, c);
     else {
-      sprintf(ctx->page_front, "%%%02X", c);
-      ctx->page_front += 3;
+      sprintf(ctx->page.front, "%%%02X", c);
+      ctx->page.front += 3;
     }
   }
 
@@ -822,8 +800,8 @@ uw_Basis_string uw_Basis_unurlifyString(uw_context ctx, char **s) {
   len = strlen(*s);
   uw_check_heap(ctx, len + 1);
 
-  r = ctx->heap_front;
-  ctx->heap_front = uw_unurlifyString_to(ctx, ctx->heap_front, *s);
+  r = ctx->heap.front;
+  ctx->heap.front = uw_unurlifyString_to(ctx, ctx->heap.front, *s);
   *s = new_s;
   return r;
 }
@@ -834,9 +812,9 @@ char *uw_Basis_htmlifyInt(uw_context ctx, uw_Basis_int n) {
   char *r;
 
   uw_check_heap(ctx, INTS_MAX);
-  r = ctx->heap_front;
+  r = ctx->heap.front;
   sprintf(r, "%lld%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return r;
 }
 
@@ -844,8 +822,8 @@ uw_unit uw_Basis_htmlifyInt_w(uw_context ctx, uw_Basis_int n) {
   int len;
 
   uw_check(ctx, INTS_MAX);
-  sprintf(ctx->page_front, "%lld%n", n, &len);
-  ctx->page_front += len;
+  sprintf(ctx->page.front, "%lld%n", n, &len);
+  ctx->page.front += len;
   
   return uw_unit_v;
 }
@@ -855,9 +833,9 @@ char *uw_Basis_htmlifyFloat(uw_context ctx, uw_Basis_float n) {
   char *r;
 
   uw_check_heap(ctx, FLOATS_MAX);
-  r = ctx->heap_front;
+  r = ctx->heap.front;
   sprintf(r, "%g%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return r;
 }
 
@@ -865,8 +843,8 @@ uw_unit uw_Basis_htmlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   int len;
 
   uw_check(ctx, FLOATS_MAX);
-  sprintf(ctx->page_front, "%g%n", n, &len);
-  ctx->page_front += len;
+  sprintf(ctx->page.front, "%g%n", n, &len);
+  ctx->page.front += len;
 
   return uw_unit_v;
 }
@@ -876,7 +854,7 @@ char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
 
   uw_check_heap(ctx, strlen(s) * 5 + 1);
 
-  for (r = s2 = ctx->heap_front; *s; s++) {
+  for (r = s2 = ctx->heap.front; *s; s++) {
     char c = *s;
 
     switch (c) {
@@ -900,7 +878,7 @@ char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
   }
 
   *s2++ = 0;
-  ctx->heap_front = s2;
+  ctx->heap.front = s2;
   return r;
 }
 
@@ -941,12 +919,12 @@ uw_Basis_string uw_Basis_htmlifyBool(uw_context ctx, uw_Basis_bool b) {
 uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
   if (b == uw_Basis_False) {
     uw_check(ctx, 6);
-    strcpy(ctx->page_front, "False");
-    ctx->page_front += 5;
+    strcpy(ctx->page.front, "False");
+    ctx->page.front += 5;
   } else {
     uw_check(ctx, 5);
-    strcpy(ctx->page_front, "True");
-    ctx->page_front += 4;
+    strcpy(ctx->page.front, "True");
+    ctx->page.front += 4;
   }
 
   return uw_unit_v;
@@ -962,9 +940,9 @@ uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
 
   if (localtime_r(&t, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
-    r = ctx->heap_front;
+    r = ctx->heap.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
-    ctx->heap_front += len+1;
+    ctx->heap.front += len+1;
     return r;
   } else
     return "<i>Invalid time</i>";
@@ -977,13 +955,13 @@ uw_unit uw_Basis_htmlifyTime_w(uw_context ctx, uw_Basis_time t) {
 
   if (localtime_r(&t, &stm)) {
     uw_check(ctx, TIMES_MAX);
-    r = ctx->page_front;
+    r = ctx->page.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
-    ctx->page_front += len;
+    ctx->page.front += len;
   } else {
     uw_check(ctx, 20);
-    strcpy(ctx->page_front, "<i>Invalid time</i>");
-    ctx->page_front += 19;
+    strcpy(ctx->page.front, "<i>Invalid time</i>");
+    ctx->page.front += 19;
   }
 
   return uw_unit_v;
@@ -995,11 +973,11 @@ uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_str
 
   uw_check_heap(ctx, len);
 
-  s = ctx->heap_front;
+  s = ctx->heap.front;
 
   strcpy(s, s1);
   strcat(s, s2);
-  ctx->heap_front += len;
+  ctx->heap.front += len;
 
   return s;
 }
@@ -1010,10 +988,10 @@ uw_Basis_string uw_Basis_strdup(uw_context ctx, uw_Basis_string s1) {
 
   uw_check_heap(ctx, len);
 
-  s = ctx->heap_front;
+  s = ctx->heap.front;
 
   strcpy(s, s1);
-  ctx->heap_front += len;
+  ctx->heap.front += len;
 
   return s;
 }
@@ -1031,9 +1009,9 @@ char *uw_Basis_sqlifyInt(uw_context ctx, uw_Basis_int n) {
   char *r;
 
   uw_check_heap(ctx, INTS_MAX + 6);
-  r = ctx->heap_front;
+  r = ctx->heap.front;
   sprintf(r, "%lld::int8%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return r;
 }
 
@@ -1049,9 +1027,9 @@ char *uw_Basis_sqlifyFloat(uw_context ctx, uw_Basis_float n) {
   char *r;
 
   uw_check_heap(ctx, FLOATS_MAX + 8);
-  r = ctx->heap_front;
+  r = ctx->heap.front;
   sprintf(r, "%g::float8%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return r;
 }
 
@@ -1068,7 +1046,7 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
 
   uw_check_heap(ctx, strlen(s) * 2 + 10);
 
-  r = s2 = ctx->heap_front;
+  r = s2 = ctx->heap.front;
   *s2++ = 'E';
   *s2++ = '\'';
 
@@ -1095,7 +1073,7 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
   }
 
   strcpy(s2, "'::text");
-  ctx->heap_front = s2 + 8;
+  ctx->heap.front = s2 + 8;
   return r;
 }
 
@@ -1127,9 +1105,9 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
 
   if (localtime_r(&t, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
-    r = ctx->heap_front;
+    r = ctx->heap.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
-    ctx->heap_front += len+1;
+    ctx->heap.front += len+1;
     return r;
   } else
     return "<Invalid time>";
@@ -1157,9 +1135,9 @@ uw_Basis_string uw_Basis_intToString(uw_context ctx, uw_Basis_int n) {
   char *r;
 
   uw_check_heap(ctx, INTS_MAX);
-  r = ctx->heap_front;
+  r = ctx->heap.front;
   sprintf(r, "%lld%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return r;
 }
 
@@ -1168,9 +1146,9 @@ uw_Basis_string uw_Basis_floatToString(uw_context ctx, uw_Basis_float n) {
   char *r;
 
   uw_check_heap(ctx, FLOATS_MAX);
-  r = ctx->heap_front;
+  r = ctx->heap.front;
   sprintf(r, "%g%n", n, &len);
-  ctx->heap_front += len+1;
+  ctx->heap.front += len+1;
   return r;
 }
 
@@ -1188,9 +1166,9 @@ uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
 
   if (localtime_r(&t, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
-    r = ctx->heap_front;
+    r = ctx->heap.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
-    ctx->heap_front += len+1;
+    ctx->heap.front += len+1;
     return r;
   } else
     return "<Invalid time>";
@@ -1337,7 +1315,7 @@ uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
 
 uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   int len = strlen(c);
-  char *s = ctx->headers, *p = ctx->outHeaders;
+  char *s = ctx->headers, *p = ctx->outHeaders.start;
 
   while (p = strstr(p, "\nSet-Cookie: ")) {
     char *p2;
