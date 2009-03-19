@@ -6,6 +6,11 @@ int uw_really_send(int sock, void *buf, ssize_t len);
 
 extern uw_unit uw_unit_v;
 
+void uw_global_init(void);
+
+void uw_client_connect(size_t id, int pass, int sock);
+void uw_prune_clients(time_t timeout);
+
 uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, size_t heap_len);
 void uw_set_db(uw_context, void*);
 void *uw_get_db(uw_context);
@@ -41,6 +46,7 @@ uw_unit uw_Basis_set_client_source(uw_context, uw_Basis_int, uw_Basis_string);
 
 void uw_set_script_header(uw_context, const char*);
 const char *uw_Basis_get_script(uw_context, uw_unit);
+const char *uw_Basis_get_listener(uw_context, uw_unit);
 
 char *uw_Basis_htmlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);

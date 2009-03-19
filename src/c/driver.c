@@ -106,7 +106,7 @@ static void *worker(void *data) {
 
   while (1) {
     char buf[uw_bufsize+1], *back = buf, *s;
-    int sock;
+    int sock, dont_close = 0;
 
     pthread_mutex_lock(&queue_mutex);
     while (empty())
@@ -138,6 +138,7 @@ static void *worker(void *data) {
       if (s = strstr(buf, "\r\n\r\n")) {
         failure_kind fk;
         char *cmd, *path, *headers, path_copy[uw_bufsize+1], *inputs;
+        int id, pass;
 
         s[2] = 0;
 
@@ -165,6 +166,12 @@ static void *worker(void *data) {
         path = s;
         if (!strsep(&s, " ")) {
           fprintf(stderr, "No second space in HTTP command\n");
+          break;
+        }
+
+        if (sscanf(path, "/.msgs/%d/%d", &id, &pass) == 2) {
+          uw_client_connect(id, pass, sock);
+          dont_close = 1;
           break;
         }
 
@@ -286,8 +293,16 @@ static void *worker(void *data) {
       }
     }
 
-    close(sock);
+    if (!dont_close)
+      close(sock);
     uw_reset(ctx);
+  }
+}
+
+static void *client_pruner(void *data) {
+  while (1) {
+    uw_prune_clients(5);
+    sleep(5);
   }
 }
 
@@ -377,7 +392,19 @@ int main(int argc, char *argv[]) {
 
   sin_size = sizeof their_addr;
 
+  uw_global_init();
+
   printf("Listening on port %d....\n", uw_port);
+
+  {
+    pthread_t thread;
+    int name;
+
+    if (pthread_create(&thread, NULL, client_pruner, &name)) {
+      fprintf(stderr, "Error creating pruner thread\n");
+      return 1;
+    }
+  }
 
   for (i = 0; i < nthreads; ++i) {
     pthread_t thread;    

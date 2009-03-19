@@ -1924,7 +1924,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     end
             in
                 case tag of
-                    "body" => normal ("body", NONE,
+                    "body" => normal ("body",
+                                      SOME (L'.EFfiApp ("Basis", "get_listener", [(L'.ERecord [], loc)]), loc),
                                       SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
 
                   | "dyn" =>

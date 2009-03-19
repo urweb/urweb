@@ -2355,6 +2355,9 @@ fun p_file env (ds, ps) =
                                                                    ^ "\\\"></script>\\n"
                                               | ServerOnly => ""),
                                     string "\");",
+                                    string "uw_set_url_prefix(ctx, \"",
+                                    string (!Monoize.urlPrefix),
+                                    string "\");",
                                     newline]),
                      box [string "{",
                           newline,
