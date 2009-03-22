@@ -342,6 +342,7 @@ static void uw_channel_send(channel *ch, const char *msg) {
     pthread_mutex_lock(&c->data.used.lock);
 
     if (c->data.used.sock != -1) {
+      printf("Immediate send\n");
       uw_really_send(c->data.used.sock, begin_msgs, sizeof(begin_msgs) - 1);
       uw_really_send(c->data.used.sock, pre, preLen);
       uw_really_send(c->data.used.sock, msg, len);
@@ -349,6 +350,7 @@ static void uw_channel_send(channel *ch, const char *msg) {
       close(c->data.used.sock);
       c->data.used.sock = -1;
     } else {
+      printf("Delayed send\n");
       buf_append(&c->data.used.msgs, pre, preLen);
       buf_append(&c->data.used.msgs, msg, len);
       buf_append(&c->data.used.msgs, "\n", 1);
