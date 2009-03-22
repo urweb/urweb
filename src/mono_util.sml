@@ -358,6 +358,14 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                      S.map2 (mft t,
                                           fn t' =>
                                              (EServerCall (s', ek', t'), loc))))
+              | ERecv (s, ek, t) =>
+                S.bind2 (mfe ctx s,
+                         fn s' =>
+                            S.bind2 (mfe ctx ek,
+                                  fn ek' =>
+                                     S.map2 (mft t,
+                                          fn t' =>
+                                             (ERecv (s', ek', t'), loc))))
     in
         mfe
     end

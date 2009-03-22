@@ -313,6 +313,11 @@ fun p_exp' par env (e, _) =
                                           string ")[",
                                           p_exp env e,
                                           string "]"]
+      | ERecv (n, e, _) => box [string "Recv(",
+                                p_exp env n,
+                                string ")[",
+                                p_exp env e,
+                                string "]"]
 
 and p_exp env = p_exp' false env
 

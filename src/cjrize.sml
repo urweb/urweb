@@ -430,6 +430,7 @@ fun cifyExp (eAll as (e, loc), sm) =
       | L.ESignalSource _ => raise Fail "Cjrize: ESignalSource remains"
 
       | L.EServerCall _ => raise Fail "Cjrize EServerCall"
+      | L.ERecv _ => raise Fail "Cjrize ERecv"
 
 fun cifyDecl ((d, loc), sm) =
     case d of

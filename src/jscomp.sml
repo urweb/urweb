@@ -49,7 +49,8 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "urlifyInt"), "ts"),
              (("Basis", "urlifyFloat"), "ts"),
              (("Basis", "urlifyString"), "escape"),
-             (("Basis", "urlifyChannel"), "ts")]
+             (("Basis", "urlifyChannel"), "ts"),
+             (("Basis", "recv"), "rv")]
 
 structure FM = BinaryMapFn(struct
                            type ord_key = string * string
@@ -106,6 +107,7 @@ fun varDepth (e, _) =
       | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
       | ESignalSource e => varDepth e
       | EServerCall (e, ek, _) => Int.max (varDepth e, varDepth ek)
+      | ERecv (e, ek, _) => Int.max (varDepth e, varDepth ek)
 
 fun closedUpto d =
     let
@@ -147,6 +149,7 @@ fun closedUpto d =
               | ESignalBind (e1, e2) => cu inner e1 andalso cu inner e2
               | ESignalSource e => cu inner e
               | EServerCall (e, ek, _) => cu inner e andalso cu inner ek
+              | ERecv (e, ek, _) => cu inner e andalso cu inner ek
     in
         cu 0
     end
@@ -342,7 +345,7 @@ fun process file =
                                     @ ["}"]), st)
                 end
 
-              | TFfi ("Basis", "string") => ("unescape(t[i++])", st)
+              | TFfi ("Basis", "string") => ("unesc(t[i++])", st)
               | TFfi ("Basis", "int") => ("parseInt(t[i++])", st)
               | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
 
@@ -945,6 +948,21 @@ fun process file =
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
                                 (strcat [str ("rc(\"" ^ !Monoize.urlPrefix ^ "\"+"),
+                                         e,
+                                         str (", function(s){var t=s.split(\"/\");var i=0;return "
+                                              ^ unurl ^ "},"),
+                                         ek,
+                                         str ")"],
+                                 st)
+                            end
+
+                          | ERecv (e, ek, t) =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                                val (ek, st) = jsE inner (ek, st)
+                                val (unurl, st) = unurlifyExp loc (t, st)
+                            in
+                                (strcat [str "rv(",
                                          e,
                                          str (", function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ unurl ^ "},"),

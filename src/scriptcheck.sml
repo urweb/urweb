@@ -41,10 +41,12 @@ val csBasis = SS.addList (SS.empty,
                            "set_client_source",
                            "new_channel",
                            "subscribe",
+                           "send",
                            "recv"])
 
 val scriptWords = ["<script",
-                   " onclick="]
+                   " onclick=",
+                   " onload="]
 
 fun classify (ds, ps) =
     let

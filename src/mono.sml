@@ -110,6 +110,7 @@ datatype exp' =
        | ESignalSource of exp
 
        | EServerCall of exp * exp * typ
+       | ERecv of exp * exp * typ
 
 withtype exp = exp' located
 

@@ -1,9 +1,18 @@
 fun main () : transaction page =
     ch <- channel;
     let
-        fun onload () =
+        fun make () =
             subscribe ch;
             send ch "Hello world!"
+
+        fun echo () =
+            msg <- recv ch;
+            alert(msg);
+            echo ()
+
+        fun onload () =
+            make ();
+            echo ()
 
         fun haveAnother () =
             send ch "Here's another."
