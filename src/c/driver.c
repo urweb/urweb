@@ -138,7 +138,6 @@ static void *worker(void *data) {
       if (s = strstr(buf, "\r\n\r\n")) {
         failure_kind fk;
         char *cmd, *path, *headers, path_copy[uw_bufsize+1], *inputs;
-        int id, pass;
 
         s[2] = 0;
 
@@ -169,9 +168,18 @@ static void *worker(void *data) {
           break;
         }
 
-        if (sscanf(path, "/.msgs/%d/%d", &id, &pass) == 2) {
-          uw_client_connect(id, pass, sock);
-          dont_close = 1;
+        uw_set_headers(ctx, headers);
+
+        if (!strcmp(path, "/.msgs")) {
+          char *id = uw_Basis_requestHeader(ctx, "UrWeb-Client");
+          char *pass = uw_Basis_requestHeader(ctx, "UrWeb-Pass");
+
+          if (id && pass) {
+            size_t idn = atoi(id);
+            uw_client_connect(idn, atoi(pass), sock);
+            dont_close = 1;
+            fprintf(stderr, "Processed request for messages by client %d\n\n", (int)idn);
+          }
           break;
         }
 
@@ -196,8 +204,6 @@ static void *worker(void *data) {
         }
 
         printf("Serving URI %s....\n", path);
-
-        uw_set_headers(ctx, headers);
 
         while (1) {
           if (uw_db_begin(ctx)) {

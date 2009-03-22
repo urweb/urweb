@@ -38,7 +38,10 @@ structure IS = IntBinarySet
 val csBasis = SS.addList (SS.empty,
                           ["new_client_source",
                            "get_client_source",
-                           "set_client_source"])
+                           "set_client_source",
+                           "new_channel",
+                           "subscribe",
+                           "recv"])
 
 val scriptWords = ["<script",
                    " onclick="]

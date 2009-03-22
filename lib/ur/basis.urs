@@ -367,7 +367,7 @@ val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> unit
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
 
-val body : unit -> tag [] html body [] []
+val body : unit -> tag [Onload = transaction unit] html body [] []
 con bodyTag = fn (attrs :: {Type}) =>
                  ctx ::: {Unit} ->
                  [[Body] ~ ctx] =>
@@ -452,3 +452,11 @@ val td : other ::: {Unit} -> [other ~ [Body, Tr]] =>
 (** Aborting *)
 
 val error : t ::: Type -> xml [Body] [] [] -> t
+
+
+(** Channels *)
+
+con channel :: Type -> Type
+val channel : t ::: Type -> transaction (channel t)
+val subscribe : t ::: Type -> channel t -> transaction unit
+val send : t ::: Type -> channel t -> t -> transaction unit

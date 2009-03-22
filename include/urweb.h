@@ -46,13 +46,14 @@ uw_unit uw_Basis_set_client_source(uw_context, uw_Basis_int, uw_Basis_string);
 
 void uw_set_script_header(uw_context, const char*);
 const char *uw_Basis_get_script(uw_context, uw_unit);
-const char *uw_Basis_get_listener(uw_context, uw_unit);
+const char *uw_Basis_get_listener(uw_context, uw_Basis_string);
 
 char *uw_Basis_htmlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_htmlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_htmlifyBool(uw_context, uw_Basis_bool);
 char *uw_Basis_htmlifyTime(uw_context, uw_Basis_time);
+char *uw_Basis_htmlifyChannel(uw_context, uw_Basis_channel);
 
 uw_unit uw_Basis_htmlifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_htmlifyFloat_w(uw_context, uw_Basis_float);
@@ -84,6 +85,7 @@ uw_Basis_float uw_Basis_unurlifyFloat(uw_context, char **);
 uw_Basis_string uw_Basis_unurlifyString(uw_context, char **);
 uw_Basis_bool uw_Basis_unurlifyBool(uw_context, char **);
 uw_Basis_time uw_Basis_unurlifyTime(uw_context, char **);
+uw_Basis_channel uw_Basis_unurlifyChannel(uw_context, char **);
 
 uw_Basis_string uw_Basis_strcat(uw_context, const char *, const char *);
 uw_Basis_string uw_Basis_strdup(uw_context, const char *);
@@ -126,3 +128,7 @@ void uw_write_header(uw_context, uw_Basis_string);
 
 uw_Basis_string uw_Basis_get_cookie(uw_context, uw_Basis_string c);
 uw_unit uw_Basis_set_cookie(uw_context, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v);
+
+uw_Basis_channel uw_Basis_new_channel(uw_context, uw_unit);
+uw_unit uw_Basis_subscribe(uw_context, uw_Basis_channel);
+uw_unit uw_Basis_send(uw_context, uw_Basis_channel, uw_Basis_string);

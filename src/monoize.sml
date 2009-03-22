@@ -180,6 +180,9 @@ fun monoType env =
                   | L.CApp ((L.CFfi ("Basis", "sql_nfunc"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
 
+                  | L.CApp ((L.CFfi ("Basis", "channel"), _), _) =>
+                    (L'.TFfi ("Basis", "channel"), loc)
+
                   | L.CRel _ => poly ()
                   | L.CNamed n =>
                     (case IM.find (dtmap, n) of
@@ -1081,6 +1084,34 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end            
 
+          | L.ECApp ((L.EFfi ("Basis", "channel"), _), t) =>
+                ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "channel"), loc),
+                           (L'.EFfiApp ("Basis", "new_channel", [(L'.ERecord [], loc)]), loc)), loc),
+                 fm)
+          | L.ECApp ((L.EFfi ("Basis", "subscribe"), _), t) =>
+            ((L'.EAbs ("ch", (L'.TFfi ("Basis", "channel"), loc),
+                       (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc),
+                       (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                                 (L'.EFfiApp ("Basis", "subscribe",
+                                              [(L'.ERel 1, loc)]),
+                                  loc)), loc)), loc),
+             fm)
+          | L.ECApp ((L.EFfi ("Basis", "send"), _), t) =>
+            let
+                val t = monoType env t
+                val (e, fm) = urlifyExp env fm ((L'.ERel 1, loc), t)
+            in
+                ((L'.EAbs ("ch", (L'.TFfi ("Basis", "channel"), loc),
+                           (L'.TFun (t, (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc)), loc),
+                           (L'.EAbs ("v", t, (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc),
+                                     (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                                               (L'.EFfiApp ("Basis", "send",
+                                                            [(L'.ERel 2, loc),
+                                                             e]),
+                                                loc)), loc)), loc)), loc),
+                 fm)
+            end
+
           | L.EFfiApp ("Basis", "dml", [e]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
@@ -1781,6 +1812,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                 L'.ERecord xes => xes
                               | _ => raise Fail "Non-record attributes!"
 
+                fun findOnload (attrs, acc) =
+                    case attrs of
+                        [] => (NONE, acc)
+                      | ("Onload", e, _) :: rest => (SOME e, List.revAppend (acc, rest))
+                      | x :: rest => findOnload (rest, x :: acc)
+
+                val (onload, attrs) = findOnload (attrs, [])
+
                 fun lowercaseFirst "" = ""
                   | lowercaseFirst s = String.str (Char.toLower (String.sub (s, 0)))
                                        ^ String.extract (s, 1, NONE)
@@ -1924,9 +1963,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     end
             in
                 case tag of
-                    "body" => normal ("body",
-                                      SOME (L'.EFfiApp ("Basis", "get_listener", [(L'.ERecord [], loc)]), loc),
-                                      SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
+                    "body" =>
+                    let
+                        val onload = case onload of
+                                         NONE => (L'.EPrim (Prim.String ""), loc)
+                                       | SOME e =>
+                                         let
+                                             val e = (L'.EApp (e, (L'.ERecord [], loc)), loc)
+                                         in
+                                             (L'.EJavaScript (L'.Attribute, e, NONE), loc)
+                                      end
+                    in
+                        normal ("body",
+                                SOME (L'.EFfiApp ("Basis", "get_listener", [onload]), loc),
+                                SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
+                    end
 
                   | "dyn" =>
                     (case attrs of

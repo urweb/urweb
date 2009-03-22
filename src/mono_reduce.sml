@@ -57,6 +57,9 @@ fun impure (e, _) =
       | EFfiApp ("Basis", "new_client_source", _) => true
       | EFfiApp ("Basis", "set_client_source", _) => true
       | EFfiApp ("Basis", "alert", _) => true
+      | EFfiApp ("Basis", "new_channel", _) => true
+      | EFfiApp ("Basis", "subscribe", _) => true
+      | EFfiApp ("Basis", "send", _) => true
       | EFfiApp _ => false
       | EApp ((EFfi _, _), _) => false
       | EApp _ => true
@@ -256,6 +259,8 @@ fun reduce file =
 
         fun summarize d (e, _) =
             let
+                fun ffi es = List.concat (map (summarize d) es) @ [Unsure]
+
                 val s =
                     case e of
                         EPrim _ => []
@@ -266,10 +271,13 @@ fun reduce file =
                       | ENone _ => []
                       | ESome (_, e) => summarize d e
                       | EFfi _ => []
-                      | EFfiApp ("Basis", "set_cookie", es) => List.concat (map (summarize d) es) @ [Unsure]
-                      | EFfiApp ("Basis", "new_client_source", es) => List.concat (map (summarize d) es) @ [Unsure]
-                      | EFfiApp ("Basis", "set_client_source", es) => List.concat (map (summarize d) es) @ [Unsure]
-                      | EFfiApp ("Basis", "alert", es) => List.concat (map (summarize d) es) @ [Unsure]
+                      | EFfiApp ("Basis", "set_cookie", es) => ffi es
+                      | EFfiApp ("Basis", "new_client_source", es) => ffi es
+                      | EFfiApp ("Basis", "set_client_source", es) => ffi es
+                      | EFfiApp ("Basis", "alert", es) => ffi es
+                      | EFfiApp ("Basis", "new_channel", es) => ffi es
+                      | EFfiApp ("Basis", "subscribe", es) => ffi es
+                      | EFfiApp ("Basis", "send", es) => ffi es
                       | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
                       | EApp ((EFfi _, _), e) => summarize d e
                       | EApp _ =>

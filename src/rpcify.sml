@@ -50,7 +50,10 @@ val ssBasis = SS.addList (SS.empty,
                           ["requestHeader",
                            "query",
                            "dml",
-                           "nextval"])
+                           "nextval",
+                           "new_channel",
+                           "subscribe",
+                           "send"])
 
 val csBasis = SS.addList (SS.empty,
                           ["source",

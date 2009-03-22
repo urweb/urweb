@@ -48,7 +48,8 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "stringToInt_error"), "pi"),
              (("Basis", "urlifyInt"), "ts"),
              (("Basis", "urlifyFloat"), "ts"),
-             (("Basis", "urlifyString"), "escape")]
+             (("Basis", "urlifyString"), "escape"),
+             (("Basis", "urlifyChannel"), "ts")]
 
 structure FM = BinaryMapFn(struct
                            type ord_key = string * string
@@ -216,6 +217,7 @@ fun process file =
               | TFfi ("Basis", "string") => ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
               | TFfi ("Basis", "int") => ((EFfiApp ("Basis", "htmlifyInt", [e]), loc), st)
               | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [e]), loc), st)
+              | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "htmlifyChannel", [e]), loc), st)
 
               | TFfi ("Basis", "bool") => ((ECase (e,
                                                    [((PCon (Enum, PConFfi {mod = "Basis",

@@ -17,6 +17,7 @@ typedef struct uw_context *uw_context;
 
 typedef uw_Basis_string uw_Basis_xhtml;
 typedef uw_Basis_string uw_Basis_page;
+typedef size_t uw_Basis_channel;
 
 
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY } failure_kind;
@@ -25,3 +26,4 @@ typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY } failure_kind;
 #define INTS_MAX 50
 #define FLOATS_MAX 100
 #define TIMES_MAX 100
+
