@@ -1,3 +1,4 @@
 debug
+timeout 10
 
 channel

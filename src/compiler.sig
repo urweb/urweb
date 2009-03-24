@@ -36,7 +36,8 @@ signature COMPILER = sig
          exe : string,
          sql : string option,
          debug : bool,
-         profile : bool
+         profile : bool,
+         timeout : int
     }
     val compile : string -> unit
     val compileC : {cname : string, oname : string, ename : string, libs : string, profile : bool} -> unit

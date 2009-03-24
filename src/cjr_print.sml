@@ -1124,6 +1124,8 @@ fun urlify env t =
         urlify' IS.empty 0 t
     end
 
+val timeout = ref 0
+
 fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t_GCC p
@@ -2686,6 +2688,10 @@ fun p_file env (ds, ps) =
              newline,
              string "int uw_inputs_len = ",
              string (Int.toString (SM.foldl Int.max 0 fnums + 1)),
+             string ";",
+             newline,
+             string "int uw_timeout = ",
+             string (Int.toString (!timeout)),
              string ";",
              newline,
              newline,

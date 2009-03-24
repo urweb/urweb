@@ -220,10 +220,8 @@ void uw_client_connect(size_t id, int pass, int sock) {
   }
 
   if (c->data.used.sock != -1) {
-    pthread_mutex_unlock(&c->data.used.lock);
-    close(sock);
-    fprintf(stderr, "Duplicate client connection (%d)\n", (int)id);
-    return;
+    close(c->data.used.sock);
+    c->data.used.sock = -1;
   }
 
   c->data.used.last_contact = time(NULL);
@@ -288,11 +286,13 @@ static void uw_free_client(client *c) {
   }
 }
 
-void uw_prune_clients(time_t timeout) {
+extern int uw_timeout;
+
+void uw_prune_clients() {
   size_t i;
   time_t cutoff;
 
-  cutoff = time(NULL) - timeout;
+  cutoff = time(NULL) - uw_timeout;
 
   pthread_mutex_lock(&clients_mutex);
 
@@ -507,6 +507,8 @@ struct uw_context {
   size_t n_deltas;
   channel_delta *deltas;
 
+  int timeout;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -540,6 +542,8 @@ uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, si
 
   ctx->n_deltas = 0;
   ctx->deltas = malloc(0);
+
+  ctx->timeout = uw_timeout;
 
   return ctx;
 }
@@ -834,10 +838,15 @@ const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
     int pass;
     client *c = uw_new_client(&pass);
 
-    char *r = uw_malloc(ctx, strlen(ctx->script_header) + 56 + 2 * INTS_MAX + buf_used(&ctx->script)
+    char *r = uw_malloc(ctx, strlen(ctx->script_header) + 65 + 3 * INTS_MAX + buf_used(&ctx->script)
                         + strlen(ctx->url_prefix));
-    sprintf(r, "%s<script>client_id=%d;client_pass=%d;url_prefix=\"%s\";%s</script>",
-            ctx->script_header, (int)c->id, c->data.used.pass, ctx->url_prefix, ctx->script.start);
+    sprintf(r, "%s<script>client_id=%d;client_pass=%d;url_prefix=\"%s\";timeout=%d;%s</script>",
+            ctx->script_header,
+            (int)c->id,
+            c->data.used.pass,
+            ctx->url_prefix,
+            ctx->timeout,
+            ctx->script.start);
     return r;
   }
 }

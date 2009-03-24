@@ -93,6 +93,7 @@ fun make {prefix, dirname, guided} =
             sql = SOME (OS.Path.joinDirFile {dir = dirname,
                                              file = "demo.sql"}),
             debug = false,
+            timeout = Int.max (#timeout combined, #timeout urp),
             profile = false
         }
 

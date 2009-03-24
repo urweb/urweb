@@ -42,7 +42,8 @@ type job = {
      exe : string,
      sql : string option,
      debug : bool,
-     profile : bool
+     profile : bool,
+     timeout : int
 }
 
 type ('src, 'dst) phase = {
@@ -200,7 +201,7 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}    
 
-fun p_job {prefix, database, exe, sql, sources, debug, profile} =
+fun p_job {prefix, database, exe, sql, sources, debug, profile, timeout} =
     let
         open Print.PD
         open Print
@@ -223,6 +224,10 @@ fun p_job {prefix, database, exe, sql, sources, debug, profile} =
              case sql of
                  NONE => string "No SQL file."
                | SOME sql => string ("SQL fle: " ^ sql),
+             newline,
+             string "Timeout: ",
+             string (Int.toString timeout),
+             newline,
              string "Sources:",
              p_list string sources,
              newline]
@@ -265,7 +270,7 @@ val parseUrp = {
                               readSources acc
                           end
 
-                  fun finish (prefix, database, exe, sql, debug, profile, sources) =
+                  fun finish (prefix, database, exe, sql, debug, profile, timeout, sources) =
                       {prefix = Option.getOpt (prefix, "/"),
                        database = database,
                        exe = Option.getOpt (exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
@@ -273,12 +278,13 @@ val parseUrp = {
                        sql = sql,
                        debug = debug,
                        profile = profile,
+                       timeout = Option.getOpt (timeout, 60),
                        sources = sources}
 
-                  fun read (prefix, database, exe, sql, debug, profile) =
+                  fun read (prefix, database, exe, sql, debug, profile, timeout) =
                       case TextIO.inputLine inf of
-                          NONE => finish (prefix, database, exe, sql, debug, profile, [])
-                        | SOME "\n" => finish (prefix, database, exe, sql, debug, profile, readSources [])
+                          NONE => finish (prefix, database, exe, sql, debug, profile, timeout, [])
+                        | SOME "\n" => finish (prefix, database, exe, sql, debug, profile, timeout, readSources [])
                         | SOME line =>
                           let
                               val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
@@ -290,32 +296,38 @@ val parseUrp = {
                                   (case prefix of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
-                                   read (SOME arg, database, exe, sql, debug, profile))
+                                   read (SOME arg, database, exe, sql, debug, profile, timeout))
                                 | "database" =>
                                   (case database of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
-                                   read (prefix, SOME arg, exe, sql, debug, profile))
+                                   read (prefix, SOME arg, exe, sql, debug, profile, timeout))
                                 | "exe" =>
                                   (case exe of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'exe' directive";
-                                   read (prefix, database, SOME (relify arg), sql, debug, profile))
+                                   read (prefix, database, SOME (relify arg), sql, debug, profile, timeout))
                                 | "sql" =>
                                   (case sql of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'sql' directive";
-                                   read (prefix, database, exe, SOME (relify arg), debug, profile))
-                                | "debug" => read (prefix, database, exe, sql, true, profile)
-                                | "profile" => read (prefix, database, exe, sql, debug, true)
+                                   read (prefix, database, exe, SOME (relify arg), debug, profile, timeout))
+                                | "debug" => read (prefix, database, exe, sql, true, profile, timeout)
+                                | "profile" => read (prefix, database, exe, sql, debug, true, timeout)
+                                | "timeout" =>
+                                  (case timeout of
+                                       NONE => ()
+                                     | SOME _ => ErrorMsg.error "Duplicate 'timeout' directive";
+                                   read (prefix, database, exe, sql, debug, profile, SOME (valOf (Int.fromString arg))))
                                 | _ => (ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
-                                        read (prefix, database, exe, sql, debug, profile))
+                                        read (prefix, database, exe, sql, debug, profile, timeout))
                           end
 
-                  val job = read (NONE, NONE, NONE, NONE, false, false)
+                  val job = read (NONE, NONE, NONE, NONE, false, false, NONE)
               in
                   TextIO.closeIn inf;
                   Monoize.urlPrefix := #prefix job;
+                  CjrPrint.timeout := #timeout job;
                   job
               end,
     print = p_job
@@ -598,7 +610,7 @@ fun compileC {cname, oname, ename, libs, profile} =
         else if not (OS.Process.isSuccess (OS.Process.system link)) then
             print "C linking failed\n"
         else
-            print "Success\n"
+            ()
     end
 
 fun compile job =
