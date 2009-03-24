@@ -53,12 +53,8 @@ static pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 
 #define MAX_RETRIES 5
 
-int uw_db_begin(uw_context);
-int uw_db_commit(uw_context);
-int uw_db_rollback(uw_context);
-
 static int try_rollback(uw_context ctx) {
-  int r = uw_db_rollback(ctx);
+  int r = uw_rollback(ctx);
 
   if (r) {
     printf("Error running SQL ROLLBACK\n");
@@ -206,36 +202,12 @@ static void *worker(void *data) {
         printf("Serving URI %s....\n", path);
 
         while (1) {
-          if (uw_db_begin(ctx)) {
-            printf("Error running SQL BEGIN\n");
-            if (retries_left)
-              --retries_left;
-            else {
-              fk = FATAL;
-              uw_reset(ctx);
-              uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-              uw_write_header(ctx, "Content-type: text/plain\r\n\r\n");
-              uw_write(ctx, "Error running SQL BEGIN\n");
-
-              break;
-            }
-          }
-
           uw_write_header(ctx, "HTTP/1.1 200 OK\r\n");
 
           strcpy(path_copy, path);
           fk = uw_begin(ctx, path_copy);
           if (fk == SUCCESS) {
-            if (uw_db_commit(ctx)) {
-              fk = FATAL;
-
-              printf("Error running SQL COMMIT\n");
-              uw_reset(ctx);
-              uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
-              uw_write_header(ctx, "Content-type: text/plain\r\n");
-              uw_write(ctx, "Error running SQL COMMIT\n");
-            }
-
+            uw_commit(ctx);
             break;
           } else if (fk == BOUNDED_RETRY) {
             if (retries_left) {

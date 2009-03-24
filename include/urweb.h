@@ -22,6 +22,8 @@ void uw_reset_keep_error_message(uw_context);
 failure_kind uw_begin_init(uw_context);
 void uw_set_headers(uw_context, char *headers);
 failure_kind uw_begin(uw_context, char *path);
+void uw_commit(uw_context);
+int uw_rollback(uw_context);
 
 __attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *fmt, ...);
 char *uw_error_message(uw_context);
