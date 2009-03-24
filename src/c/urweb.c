@@ -77,15 +77,21 @@ static size_t buf_avail(buf *b) {
 }
 
 static void buf_append(buf *b, const char *s, size_t len) {
-  buf_check(b, len);
+  buf_check(b, len+1);
   memcpy(b->front, s, len);
   b->front += len;
+  *b->front = 0;
 }
 
 
-// Persistent client state
+// Persistent state types
 
 typedef enum { UNUSED, USED } usage;
+
+typedef struct channel_list {
+  struct channel *data;
+  struct channel_list *next;
+} channel_list;
 
 typedef struct client {
   size_t id;
@@ -99,9 +105,31 @@ typedef struct client {
       int sock;
       time_t last_contact;
       unsigned refcount;
+      channel_list *channels;
     } used;
   } data;
 } client;
+
+typedef struct client_list {
+  client *data;
+  struct client_list *next;
+} client_list;
+
+typedef struct channel {
+  size_t id;
+  usage mode;
+  union {
+    struct channel *next;
+    struct {
+      pthread_mutex_t lock;
+      client_list *clients;
+      unsigned refcount;
+    } used;
+  } data;
+} channel;
+
+
+// Persistent client state
 
 static client **clients, *clients_free;
 static size_t n_clients;
@@ -130,8 +158,9 @@ static client *uw_new_client() {
   c->data.used.pass = rand();
   c->data.used.sock = -1;
   c->data.used.last_contact = time(NULL);
-  c->data.used.refcount = 0;
   buf_init(&c->data.used.msgs, 0);
+  c->data.used.refcount = 0;
+  c->data.used.channels = NULL;
 
   pthread_mutex_unlock(&clients_mutex);
 
@@ -210,17 +239,53 @@ void uw_client_connect(size_t id, int pass, int sock) {
   pthread_mutex_unlock(&c->data.used.lock);
 }
 
+
 static void uw_free_client(client *c) {
+  channel_list *chs;
+
   printf("Freeing client %d\n", c->id);
 
-  if (c->mode == USED && c->data.used.sock != -1)
-    close(c->data.used.sock);
+  if (c->mode == USED) {
+    pthread_mutex_lock(&c->data.used.lock);
 
-  pthread_mutex_destroy(&c->data.used.lock);
-  buf_free(&c->data.used.msgs);
-  c->mode = UNUSED;
-  c->data.next = clients_free;
-  clients_free = c;
+    for (chs = c->data.used.channels; chs; ) {
+      client_list *prev, *cs;
+      
+      channel *ch = chs->data;
+      channel_list *tmp = chs->next;
+      free(chs);
+      chs = tmp;
+
+      pthread_mutex_lock(&ch->data.used.lock);
+      for (prev = NULL, cs = ch->data.used.clients; cs; ) {
+        if (cs->data == c) {
+          client_list *tmp = cs->next;
+          free(cs);
+          cs = tmp;
+          if (prev)
+            prev->next = cs;
+          else
+            ch->data.used.clients = cs;
+        }
+        else {
+          prev = cs;
+          cs = cs->next;
+        }
+      }
+      pthread_mutex_unlock(&ch->data.used.lock);
+    }
+
+    if (c->data.used.sock != -1)
+      close(c->data.used.sock);
+
+    pthread_mutex_unlock(&c->data.used.lock);
+    pthread_mutex_destroy(&c->data.used.lock);
+    buf_free(&c->data.used.msgs);
+    c->mode = UNUSED;
+
+    c->data.next = clients_free;
+    clients_free = c;
+  }
 }
 
 void uw_prune_clients(time_t timeout) {
@@ -243,23 +308,6 @@ void uw_prune_clients(time_t timeout) {
 
 // Persistent channel state
 
-typedef struct client_list {
-  client *data;
-  struct client_list *next;
-} client_list;
-
-typedef struct channel {
-  size_t id;
-  usage mode;
-  union {
-    struct channel *next;
-    struct {
-      pthread_mutex_t lock;
-      client_list *clients;
-      unsigned refcount;
-    } used;
-  } data;
-} channel;
 
 static channel **channels, *channels_free;
 static size_t n_channels;
