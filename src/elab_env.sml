@@ -182,6 +182,7 @@ fun compare x =
                              fn () => String.compare (x1, x2)))
 end
 
+structure CS = BinarySetFn(CK)
 structure CM = BinaryMapFn(CK)
 
 datatype class_key =
@@ -697,8 +698,8 @@ fun rule_in c =
                         case #1 c of
                             TFun (hyp, c) =>
                             (case class_pair_in hyp of
-                                 NONE => NONE
-                               | SOME p => clauses (c, p :: hyps))
+                                 SOME (p as (_, CkRel _)) => clauses (c, p :: hyps)
+                               | _ => NONE)
                           | _ =>
                             case class_pair_in c of
                                 NONE => NONE
@@ -730,6 +731,32 @@ fun rule_in c =
           | _ => quantifiers (c, 0)
     end
 
+fun inclusion (classes : class CM.map, init, inclusions, f, e : exp) =
+    let
+        fun search (f, fs) =
+            if f = init then
+                NONE
+            else if CS.member (fs, f) then
+                SOME fs
+            else
+                let
+                    val fs = CS.add (fs, f)
+                in
+                    case CM.find (classes, f) of
+                        NONE => SOME fs
+                      | SOME {inclusions = fs', ...} =>
+                        CM.foldli (fn (f', _, fs) =>
+                                      case fs of
+                                          NONE => NONE
+                                        | SOME fs => search (f', fs)) (SOME fs) fs'
+                end
+    in
+        case search (f, CS.empty) of
+            SOME _ => CM.insert (inclusions, f, e)
+          | NONE => (ErrorMsg.errorAt (#2 e) "Type class inclusion would create a cycle";
+                     inclusions)
+    end
+
 fun pushENamedAs (env : env) x n t =
     let
         val classes = #classes env
@@ -749,7 +776,7 @@ fun pushENamedAs (env : env) x n t =
                                            inclusions = #inclusions class}
                                         | Inclusion f' =>
                                           {ground = #ground class,
-                                           inclusions = CM.insert (#inclusions class, f', e)}
+                                           inclusions = inclusion (classes, f, #inclusions class, f', e)}
                               in
                                   CM.insert (classes, f, class)
                               end
@@ -1113,7 +1140,8 @@ fun enrichClasses env classes (m1, ms) sgn =
                                                                         inclusions = #inclusions class}
                                                                      | Inclusion f' =>
                                                                        {ground = #ground class,
-                                                                        inclusions = CM.insert (#inclusions class,
+                                                                        inclusions = inclusion (classes, cn,
+                                                                                                #inclusions class,
                                                                                                 globalizeN f', e)}
                                                            in
                                                                CM.insert (classes, cn, class)
@@ -1146,7 +1174,8 @@ fun enrichClasses env classes (m1, ms) sgn =
                                                                         inclusions = #inclusions class}
                                                                      | Inclusion f' =>
                                                                        {ground = #ground class,
-                                                                        inclusions = CM.insert (#inclusions class,
+                                                                        inclusions = inclusion (classes, cn,
+                                                                                                #inclusions class,
                                                                                                 globalizeN f', e)}
                                                            in
                                                                CM.insert (classes, cn, class)
