@@ -189,17 +189,17 @@ val sql_exp : tabs ::: {{Type}} -> agg ::: {{Type}} -> t ::: Type -> rest ::: {T
               -> nm :: Name
               -> sql_exp tabs agg ([nm = t] ++ rest) t
 
+class sql_injectable_prim
+val sql_bool : sql_injectable_prim bool
+val sql_int : sql_injectable_prim int
+val sql_float : sql_injectable_prim float
+val sql_string : sql_injectable_prim string
+val sql_time : sql_injectable_prim time
+
 class sql_injectable
-val sql_bool : sql_injectable bool
-val sql_int : sql_injectable int
-val sql_float : sql_injectable float
-val sql_string : sql_injectable string
-val sql_time : sql_injectable time
-val sql_option_bool : sql_injectable (option bool)
-val sql_option_int : sql_injectable (option int)
-val sql_option_float : sql_injectable (option float)
-val sql_option_string : sql_injectable (option string)
-val sql_option_time : sql_injectable (option time)
+val sql_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable t
+val sql_option_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable (option t)
+
 val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type
                  -> sql_injectable t -> t -> sql_exp tables agg exps t

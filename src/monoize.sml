@@ -163,6 +163,8 @@ fun monoType env =
                   | L.CFfi ("Basis", "sql_offset") =>
                     (L'.TFfi ("Basis", "string"), loc)
 
+                  | L.CApp ((L.CFfi ("Basis", "sql_injectable_prim"), _), t) =>
+                    (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_injectable"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_unary"), _), _), _), _) =>
@@ -1423,26 +1425,34 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyTime", [(L'.ERel 0, loc)]), loc)), loc),
              fm)
-          | L.EFfi ("Basis", "sql_option_int") =>
-            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "int"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyIntN", [(L'.ERel 0, loc)]), loc)), loc),
-             fm)
-          | L.EFfi ("Basis", "sql_option_float") =>
-            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "float"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyFloatN", [(L'.ERel 0, loc)]), loc)), loc),
-             fm)
-          | L.EFfi ("Basis", "sql_option_bool") =>
-            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "bool"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyBoolN", [(L'.ERel 0, loc)]), loc)), loc),
-             fm)
-          | L.EFfi ("Basis", "sql_option_string") =>
-            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "string"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyStringN", [(L'.ERel 0, loc)]), loc)), loc),
-             fm)
-          | L.EFfi ("Basis", "sql_option_time") =>
-            ((L'.EAbs ("x", (L'.TOption (L'.TFfi ("Basis", "time"), loc), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyTimeN", [(L'.ERel 0, loc)]), loc)), loc),
-             fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_prim"), _), t) =>
+            let
+                val t = monoType env t
+                val tf = (L'.TFun (t, (L'.TFfi ("Basis", "string"), loc)), loc)
+            in
+                ((L'.EAbs ("f", tf, tf, (L'.ERel 0, loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "sql_option_prim"), _), t) =>
+            let
+                val t = monoType env t
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("f",
+                           (L'.TFun (t, s), loc),
+                           (L'.TFun ((L'.TOption t, loc), s), loc),
+                           (L'.EAbs ("x",
+                                     (L'.TOption t, loc),
+                                     s,
+                                     (L'.ECase ((L'.ERel 0, loc),
+                                                [((L'.PNone t, loc),
+                                                  (L'.EPrim (Prim.String "NULL"), loc)),
+                                                 ((L'.PSome (t, (L'.PVar ("y", t), loc)), loc),
+                                                  (L'.EApp ((L'.ERel 2, loc), (L'.ERel 0, loc)), loc))],
+                                                {disc = (L'.TOption t, loc),
+                                                 result = s}), loc)), loc)), loc),
+                 fm)
+            end
 
           | L.ECApp ((L.EFfi ("Basis", "sql_subset"), _), _) =>
             ((L'.ERecord [], loc), fm)
