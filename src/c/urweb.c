@@ -999,6 +999,16 @@ char *uw_Basis_attrifyInt(uw_context ctx, uw_Basis_int n) {
   return result;
 }
 
+char *uw_Basis_attrifyChannel(uw_context ctx, uw_Basis_channel n) {
+  char *result;
+  int len;
+  uw_check_heap(ctx, INTS_MAX);
+  result = ctx->heap.front;
+  sprintf(result, "%lld%n", (long long)n, &len);
+  ctx->heap.front += len+1;
+  return result;
+}
+
 char *uw_Basis_attrifyFloat(uw_context ctx, uw_Basis_float n) {
   char *result;
   int len;
@@ -1502,6 +1512,17 @@ char *uw_Basis_sqlifyInt(uw_context ctx, uw_Basis_int n) {
   return r;
 }
 
+char *uw_Basis_sqlifyChannel(uw_context ctx, uw_Basis_channel n) {
+  int len;
+  char *r;
+
+  uw_check_heap(ctx, INTS_MAX + 6);
+  r = ctx->heap.front;
+  sprintf(r, "%lld::int4%n", (long long)n, &len);
+  ctx->heap.front += len+1;
+  return r;
+}
+
 char *uw_Basis_sqlifyIntN(uw_context ctx, uw_Basis_int *n) {
   if (n == NULL)
     return "NULL";
@@ -1673,6 +1694,18 @@ uw_Basis_int *uw_Basis_stringToInt(uw_context ctx, uw_Basis_string s) {
     return NULL;
 }
 
+uw_Basis_channel *uw_Basis_stringToChannel(uw_context ctx, uw_Basis_string s) {
+  char *endptr;
+  uw_Basis_channel n = strtoll(s, &endptr, 10);
+
+  if (*s != '\0' && *endptr == '\0') {
+    uw_Basis_channel *r = uw_malloc(ctx, sizeof(uw_Basis_channel));
+    *r = n;
+    return r;
+  } else
+    return NULL;
+}
+
 uw_Basis_float *uw_Basis_stringToFloat(uw_context ctx, uw_Basis_string s) {
   char *endptr;
   uw_Basis_float n = strtod(s, &endptr);
@@ -1738,6 +1771,16 @@ uw_Basis_int uw_Basis_stringToInt_error(uw_context ctx, uw_Basis_string s) {
     return n;
   else
     uw_error(ctx, FATAL, "Can't parse int: %s", s);
+}
+
+uw_Basis_channel uw_Basis_stringToChannel_error(uw_context ctx, uw_Basis_string s) {
+  char *endptr;
+  uw_Basis_channel n = strtoll(s, &endptr, 10);
+
+  if (*s != '\0' && *endptr == '\0')
+    return n;
+  else
+    uw_error(ctx, FATAL, "Can't parse channel int: %s", s);
 }
 
 uw_Basis_float uw_Basis_stringToFloat_error(uw_context ctx, uw_Basis_string s) {

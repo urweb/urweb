@@ -47,17 +47,15 @@ fun prepString (e, ss, n) =
         SOME ("$" ^ Int.toString (n + 1) ^ "::bool" :: ss, n + 1)
       | EFfiApp ("Basis", "sqlifyTime", [e]) =>
         SOME ("$" ^ Int.toString (n + 1) ^ "::timestamp" :: ss, n + 1)
+      | EFfiApp ("Basis", "sqlifyChannel", [e]) =>
+        SOME ("$" ^ Int.toString (n + 1) ^ "::int4" :: ss, n + 1)
 
-      | EFfiApp ("Basis", "sqlifyIntN", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::int8" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyFloatN", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::float8" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyStringN", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::text" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyBoolN", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::bool" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyTimeN", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::timestamp" :: ss, n + 1)
+      | ECase (e,
+               [((PNone _, _),
+                 (EPrim (Prim.String "NULL"), _)),
+                ((PSome (_, (PVar _, _)), _),
+                 (EFfiApp (m, x, [(ERel 0, _)]), _))],
+               _) => prepString ((EFfiApp (m, x, [e]), #2 e), ss, n)
 
       | ECase (e,
                [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),

@@ -165,6 +165,8 @@ fun monoType env =
 
                   | L.CApp ((L.CFfi ("Basis", "sql_injectable_prim"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_injectable_nullable"), _), t) =>
+                    (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_injectable"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_unary"), _), _), _), _) =>
@@ -1425,6 +1427,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyTime", [(L'.ERel 0, loc)]), loc)), loc),
              fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_channel"), _), _) =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "channel"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyChannel", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_prim"), _), t) =>
             let
                 val t = monoType env t
@@ -1434,6 +1440,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
           | L.ECApp ((L.EFfi ("Basis", "sql_option_prim"), _), t) =>
+            let
+                val t = monoType env t
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("f",
+                           (L'.TFun (t, s), loc),
+                           (L'.TFun ((L'.TOption t, loc), s), loc),
+                           (L'.EAbs ("x",
+                                     (L'.TOption t, loc),
+                                     s,
+                                     (L'.ECase ((L'.ERel 0, loc),
+                                                [((L'.PNone t, loc),
+                                                  (L'.EPrim (Prim.String "NULL"), loc)),
+                                                 ((L'.PSome (t, (L'.PVar ("y", t), loc)), loc),
+                                                  (L'.EApp ((L'.ERel 2, loc), (L'.ERel 0, loc)), loc))],
+                                                {disc = (L'.TOption t, loc),
+                                                 result = s}), loc)), loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "sql_nullable"), _), t) =>
             let
                 val t = monoType env t
                 val s = (L'.TFfi ("Basis", "string"), loc)

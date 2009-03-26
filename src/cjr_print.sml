@@ -403,6 +403,7 @@ fun p_unsql wontLeakStrings env (tAll as (t, loc)) e =
             box [string "uw_Basis_strdup(ctx, ", e, string ")"]
       | TFfi ("Basis", "bool") => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "time") => box [string "uw_Basis_stringToTime_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "channel") => box [string "uw_Basis_stringToChannel_error(ctx, ", e, string ")"]
 
       | _ => (ErrorMsg.errorAt loc "Don't know how to unmarshal type from SQL";
               Print.eprefaces' [("Type", p_typ env tAll)];
@@ -445,6 +446,7 @@ datatype sql_type =
        | String
        | Bool
        | Time
+       | Channel
        | Nullable of sql_type
 
 fun p_sql_type' t =
@@ -454,6 +456,7 @@ fun p_sql_type' t =
       | String => "uw_Basis_string"
       | Bool => "uw_Basis_bool"
       | Time => "uw_Basis_time"
+      | Channel => "uw_Basis_channel"
       | Nullable String => "uw_Basis_string"
       | Nullable t => p_sql_type' t ^ "*"
 
@@ -469,12 +472,14 @@ fun getPargs (e, _) =
       | EFfiApp ("Basis", "sqlifyString", [e]) => [(e, String)]
       | EFfiApp ("Basis", "sqlifyBool", [e]) => [(e, Bool)]
       | EFfiApp ("Basis", "sqlifyTime", [e]) => [(e, Time)]
+      | EFfiApp ("Basis", "sqlifyChannel", [e]) => [(e, Channel)]
 
-      | EFfiApp ("Basis", "sqlifyIntN", [e]) => [(e, Nullable Int)]
-      | EFfiApp ("Basis", "sqlifyFloatN", [e]) => [(e, Nullable Float)]
-      | EFfiApp ("Basis", "sqlifyStringN", [e]) => [(e, Nullable String)]
-      | EFfiApp ("Basis", "sqlifyBoolN", [e]) => [(e, Nullable Bool)]
-      | EFfiApp ("Basis", "sqlifyTimeN", [e]) => [(e, Nullable Time)]
+      | ECase (e,
+               [((PNone _, _),
+                 (EPrim (Prim.String "NULL"), _)),
+                ((PSome (_, (PVar _, _)), _),
+                 (EFfiApp (m, x, [(ERel 0, _)]), _))],
+               _) => map (fn (x, y) => (x, Nullable y)) (getPargs (EFfiApp (m, x, [e]), #2 e))
 
       | ECase (e,
                [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
@@ -492,6 +497,7 @@ fun p_ensql t e =
       | String => e
       | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
       | Time => box [string "uw_Basis_sqlifyTime(ctx, ", e, string ")"]
+      | Channel => box [string "uw_Basis_attrifyChannel(ctx, ", e, string ")"]
       | Nullable String => e
       | Nullable t => box [string "(",
                            e,
@@ -2102,6 +2108,7 @@ fun p_sqltype'' env (tAll as (t, loc)) =
       | TFfi ("Basis", "string") => "text"
       | TFfi ("Basis", "bool") => "bool"
       | TFfi ("Basis", "time") => "timestamp"
+      | TFfi ("Basis", "channel") => "int4"
       | _ => (ErrorMsg.errorAt loc "Don't know SQL equivalent of type";
               Print.eprefaces' [("Type", p_typ env tAll)];
               "ERROR")

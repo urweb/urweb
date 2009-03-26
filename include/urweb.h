@@ -66,6 +66,7 @@ uw_unit uw_Basis_htmlifyTime_w(uw_context, uw_Basis_time);
 char *uw_Basis_attrifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_attrifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_attrifyString(uw_context, uw_Basis_string);
+char *uw_Basis_attrifyChannel(uw_context, uw_Basis_channel);
 
 uw_unit uw_Basis_attrifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_attrifyFloat_w(uw_context, uw_Basis_float);
@@ -98,6 +99,7 @@ uw_Basis_string uw_Basis_sqlifyFloat(uw_context, uw_Basis_float);
 uw_Basis_string uw_Basis_sqlifyString(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_sqlifyBool(uw_context, uw_Basis_bool);
 uw_Basis_string uw_Basis_sqlifyTime(uw_context, uw_Basis_time);
+uw_Basis_string uw_Basis_sqlifyChannel(uw_context, uw_Basis_channel);
 
 uw_Basis_string uw_Basis_sqlifyIntN(uw_context, uw_Basis_int*);
 uw_Basis_string uw_Basis_sqlifyFloatN(uw_context, uw_Basis_float*);
@@ -118,11 +120,13 @@ uw_Basis_int *uw_Basis_stringToInt(uw_context, uw_Basis_string);
 uw_Basis_float *uw_Basis_stringToFloat(uw_context, uw_Basis_string);
 uw_Basis_bool *uw_Basis_stringToBool(uw_context, uw_Basis_string);
 uw_Basis_time *uw_Basis_stringToTime(uw_context, uw_Basis_string);
+uw_Basis_channel *uw_Basis_stringToChannel(uw_context, uw_Basis_string);
 
 uw_Basis_int uw_Basis_stringToInt_error(uw_context, uw_Basis_string);
 uw_Basis_float uw_Basis_stringToFloat_error(uw_context, uw_Basis_string);
 uw_Basis_bool uw_Basis_stringToBool_error(uw_context, uw_Basis_string);
 uw_Basis_time uw_Basis_stringToTime_error(uw_context, uw_Basis_string);
+uw_Basis_channel uw_Basis_stringToChannel_error(uw_context, uw_Basis_string);
 
 uw_Basis_string uw_Basis_requestHeader(uw_context, uw_Basis_string);
 

@@ -107,6 +107,15 @@ val setCookie : t ::: Type -> http_cookie t -> t -> transaction unit
 val alert : string -> transaction unit
 
 
+(** Channels *)
+
+con channel :: Type -> Type
+val channel : t ::: Type -> transaction (channel t)
+val subscribe : t ::: Type -> channel t -> transaction unit
+val send : t ::: Type -> channel t -> t -> transaction unit
+val recv : t ::: Type -> channel t -> transaction t
+
+
 (** SQL *)
 
 con sql_table :: {Type} -> Type
@@ -196,9 +205,13 @@ val sql_float : sql_injectable_prim float
 val sql_string : sql_injectable_prim string
 val sql_time : sql_injectable_prim time
 
+class sql_injectable_nullable
+val sql_channel : t ::: Type -> sql_injectable_nullable (channel t)
+
 class sql_injectable
 val sql_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable t
 val sql_option_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable (option t)
+val sql_nullable : t ::: Type -> sql_injectable_nullable t -> sql_injectable (option t)
 
 val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type
@@ -454,10 +467,3 @@ val td : other ::: {Unit} -> [other ~ [Body, Tr]] =>
 val error : t ::: Type -> xml [Body] [] [] -> t
 
 
-(** Channels *)
-
-con channel :: Type -> Type
-val channel : t ::: Type -> transaction (channel t)
-val subscribe : t ::: Type -> channel t -> transaction unit
-val send : t ::: Type -> channel t -> t -> transaction unit
-val recv : t ::: Type -> channel t -> transaction t
