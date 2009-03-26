@@ -1871,7 +1871,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         [] => (NONE, acc)
                       | ("Onload", e, _) :: rest => (SOME e, List.revAppend (acc, rest))
                       | x :: rest => findOnload (rest, x :: acc)
-
+                                     
                 val (onload, attrs) = findOnload (attrs, [])
 
                 fun lowercaseFirst "" = ""
@@ -1972,8 +1972,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             let
                                 val (xml, fm) = monoExp (env, st, fm) xml
                                 val xml = case extraInner of
-                                              NONE => xml
-                                            | SOME ei => (L'.EStrcat (ei, xml), loc)
+                                                   NONE => xml
+                                                 | SOME ei => (L'.EStrcat (ei, xml), loc)
                             in
                                 ((L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
                                               (L'.EStrcat (xml,
@@ -2017,8 +2017,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     end
             in
                 case tag of
-                    "body" =>
-                    let
+                    "body" => let
                         val onload = case onload of
                                          NONE => (L'.EPrim (Prim.String ""), loc)
                                        | SOME e =>
@@ -2026,10 +2025,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                              val e = (L'.EApp (e, (L'.ERecord [], loc)), loc)
                                          in
                                              (L'.EJavaScript (L'.Attribute, e, NONE), loc)
-                                      end
+                                         end
                     in
                         normal ("body",
-                                SOME (L'.EFfiApp ("Basis", "get_listener", [onload]), loc),
+                                SOME (L'.EFfiApp ("Basis", "get_settings", [onload]), loc),
                                 SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
                     end
 

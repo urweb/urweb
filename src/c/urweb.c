@@ -229,6 +229,7 @@ void uw_client_connect(size_t id, int pass, int sock) {
   if (buf_used(&c->data.used.msgs) > 0) {
     uw_really_send(sock, begin_msgs, sizeof(begin_msgs) - 1);
     uw_really_send(sock, c->data.used.msgs.start, buf_used(&c->data.used.msgs));
+    buf_reset(&c->data.used.msgs);
     close(sock);
   }
   else
@@ -382,10 +383,17 @@ static void uw_release_channel(channel *ch) {
 }
 
 static void uw_subscribe(channel *ch, client *c) {
-  client_list *cs = malloc(sizeof(client_list));
+  client_list *cs;
 
   pthread_mutex_lock(&ch->data.used.lock);
 
+  for (cs = ch->data.used.clients; cs; cs = cs->next)
+    if (cs->data == c) {
+      pthread_mutex_unlock(&ch->data.used.lock);
+      return;
+    }
+
+  cs = malloc(sizeof(client_list));
   cs->data = c;
   cs->next = ch->data.used.clients;
   ch->data.used.clients = cs;
@@ -838,29 +846,29 @@ const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
     int pass;
     client *c = uw_new_client(&pass);
 
-    char *r = uw_malloc(ctx, strlen(ctx->script_header) + 65 + 3 * INTS_MAX + buf_used(&ctx->script)
-                        + strlen(ctx->url_prefix));
-    sprintf(r, "%s<script>client_id=%d;client_pass=%d;url_prefix=\"%s\";timeout=%d;%s</script>",
+    char *r = uw_malloc(ctx, strlen(ctx->script_header) + 18 + buf_used(&ctx->script));
+    sprintf(r, "%s<script>%s</script>",
             ctx->script_header,
-            (int)c->id,
-            c->data.used.pass,
-            ctx->url_prefix,
-            ctx->timeout,
             ctx->script.start);
     return r;
   }
 }
 
-const char *uw_Basis_get_listener(uw_context ctx, uw_Basis_string onload) {
+const char *uw_Basis_get_settings(uw_context ctx, uw_Basis_string onload) {
   if (ctx->script_header[0] == 0)
     return "";
-  else if (onload[0] == 0)
-    return " onload='listener()'";
   else {
-    uw_Basis_string s = uw_malloc(ctx, strlen(onload) + 22);
+    int pass;
+    client *c = uw_new_client(&pass);
 
-    sprintf(s, " onload='listener();%s'", onload);
-    return s;
+    char *r = uw_malloc(ctx, 41 + 3 * INTS_MAX + strlen(ctx->url_prefix) + strlen(onload));
+    sprintf(r, " onload='client_id=%d;client_pass=%d;url_prefix=\"%s\";timeout=%d;%s'",
+            (int)c->id,
+            c->data.used.pass,
+            ctx->url_prefix,
+            ctx->timeout,
+            onload);
+    return r;
   }
 }
 
@@ -1108,6 +1116,17 @@ char *uw_Basis_urlifyInt(uw_context ctx, uw_Basis_int n) {
   return r;
 }
 
+char *uw_Basis_urlifyChannel(uw_context ctx, uw_Basis_channel n) {
+  int len;
+  char *r;
+
+  uw_check_heap(ctx, INTS_MAX);
+  r = ctx->heap.front;
+  sprintf(r, "%lld%n", (long long)n, &len);
+  ctx->heap.front += len+1;
+  return r;
+}
+
 char *uw_Basis_urlifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;
   char *r;
@@ -1159,6 +1178,16 @@ static void uw_Basis_urlifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
 uw_unit uw_Basis_urlifyInt_w(uw_context ctx, uw_Basis_int n) {
   uw_check(ctx, INTS_MAX);
   uw_Basis_urlifyInt_w_unsafe(ctx, n);
+
+  return uw_unit_v;
+}
+
+uw_unit uw_Basis_urlifyChannel_w(uw_context ctx, uw_Basis_channel n) {
+  int len;
+
+  uw_check(ctx, INTS_MAX);
+  sprintf(ctx->page.front, "%lld%n", (long long)n, &len);
+  ctx->page.front += len;
 
   return uw_unit_v;
 }
@@ -1916,6 +1945,9 @@ static channel_delta *allocate_delta(uw_context ctx, channel *ch) {
     ++ctx->n_deltas;
     ctx->deltas = realloc(ctx->deltas, sizeof(channel_delta) * ctx->n_deltas);
     cd = &ctx->deltas[ctx->n_deltas-1];
+    cd->n_subscribed = 0;
+    cd->subscribed = malloc(0);
+    buf_init(&cd->msgs, 0);
   }
    
   cd->mode = USED;
@@ -1958,7 +1990,7 @@ uw_unit uw_Basis_subscribe(uw_context ctx, uw_Basis_channel chn) {
     } else if (c->data.used.pass != pass) {
       uw_release_channel(ch);
       uw_release_client(c);
-      uw_error(ctx, FATAL, "Wrong client password in subscription request");
+      uw_error(ctx, FATAL, "Wrong client password (%d) in subscription request", pass);
     } else {
       size_t i;
       channel_delta *cd = allocate_delta(ctx, ch);

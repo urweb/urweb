@@ -51,13 +51,12 @@ val ssBasis = SS.addList (SS.empty,
                            "query",
                            "dml",
                            "nextval",
-                           "new_channel",
+                           "channel",
                            "subscribe",
                            "send"])
 
 val csBasis = SS.addList (SS.empty,
-                          ["source",
-                           "get",
+                          ["get",
                            "set",
                            "alert",
                            "recv"])
@@ -76,15 +75,16 @@ type state = {
 fun frob file =
     let
         fun sideish (basis, ssids) e =
-            case #1 e of
-                ERecord _ => false
-              | _ =>
-                U.Exp.exists {kind = fn _ => false,
-                              con = fn _ => false,
-                              exp = fn ENamed n => IS.member (ssids, n)
-                                     | EFfi ("Basis", x) => SS.member (basis, x)
-                                     | EFfiApp ("Basis", x, _) => SS.member (basis, x)
-                                     | _ => false} e
+            U.Exp.exists {kind = fn _ => false,
+                          con = fn _ => false,
+                          exp = fn ENamed n => IS.member (ssids, n)
+                                 | EFfi ("Basis", x) => SS.member (basis, x)
+                                 | EFfiApp ("Basis", x, _) => SS.member (basis, x)
+                                 | _ => false}
+                         (U.Exp.map {kind = fn x => x,
+                                     con = fn x => x,
+                                     exp = fn ERecord _ => ERecord []
+                                            | x => x} e)
 
         fun whichIds basis =
             let
@@ -156,7 +156,7 @@ fun frob file =
                             ENamed n => (n, args)
                           | EApp (e1, e2) => getApp (e1, e2 :: args)
                           | _ => (ErrorMsg.errorAt loc "Mixed client/server code doesn't use a named function for server part";
-                                  Print.prefaces "Bad" [("e", CorePrint.p_exp CoreEnv.empty (e, ErrorMsg.dummySpan))];
+                                  (*Print.prefaces "Bad" [("e", CorePrint.p_exp CoreEnv.empty (e, ErrorMsg.dummySpan))];*)
                                   (0, []))
                     end
 
@@ -184,7 +184,7 @@ fun frob file =
 
                         val ran =
                             case IM.find (tfuncs, n) of
-                                NONE => (Print.prefaces "BAD" [("e", CorePrint.p_exp CoreEnv.empty (e, loc))];
+                                NONE => ((*Print.prefaces "BAD" [("e", CorePrint.p_exp CoreEnv.empty (e, loc))];*)
                                          raise Fail ("Rpcify: Undetected transaction function " ^ Int.toString n))
                               | SOME (_, _, ran, _) => ran
 

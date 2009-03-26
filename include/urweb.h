@@ -47,8 +47,8 @@ uw_Basis_int uw_Basis_new_client_source(uw_context, uw_Basis_string);
 uw_unit uw_Basis_set_client_source(uw_context, uw_Basis_int, uw_Basis_string);
 
 void uw_set_script_header(uw_context, const char*);
+const char *uw_Basis_get_settings(uw_context, uw_Basis_string);
 const char *uw_Basis_get_script(uw_context, uw_unit);
-const char *uw_Basis_get_listener(uw_context, uw_Basis_string);
 
 char *uw_Basis_htmlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);
@@ -77,11 +77,13 @@ char *uw_Basis_urlifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_urlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_urlifyBool(uw_context, uw_Basis_bool);
 char *uw_Basis_urlifyTime(uw_context, uw_Basis_time);
+char *uw_Basis_urlifyChannel(uw_context, uw_Basis_channel);
 
 uw_unit uw_Basis_urlifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_urlifyFloat_w(uw_context, uw_Basis_float);
 uw_unit uw_Basis_urlifyString_w(uw_context, uw_Basis_string);
 uw_unit uw_Basis_urlifyBool_w(uw_context, uw_Basis_bool);
+uw_unit uw_Basis_urlifyChannel_w(uw_context, uw_Basis_channel);
 
 uw_Basis_int uw_Basis_unurlifyInt(uw_context, char **);
 uw_Basis_float uw_Basis_unurlifyFloat(uw_context, char **);

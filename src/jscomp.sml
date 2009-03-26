@@ -48,7 +48,7 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "stringToInt_error"), "pi"),
              (("Basis", "urlifyInt"), "ts"),
              (("Basis", "urlifyFloat"), "ts"),
-             (("Basis", "urlifyString"), "escape"),
+             (("Basis", "urlifyString"), "uf"),
              (("Basis", "urlifyChannel"), "ts"),
              (("Basis", "recv"), "rv")]
 
@@ -345,9 +345,10 @@ fun process file =
                                     @ ["}"]), st)
                 end
 
-              | TFfi ("Basis", "string") => ("unesc(t[i++])", st)
+              | TFfi ("Basis", "string") => ("uu(t[i++])", st)
               | TFfi ("Basis", "int") => ("parseInt(t[i++])", st)
               | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
+              | TFfi ("Basis", "channel") => ("parseInt(t[i++])", st)
 
               | TFfi ("Basis", "bool") => ("t[i++] == \"True\"", st)
 
@@ -806,14 +807,14 @@ fun process file =
                             end
 
                           | ECase (e', pes, {result, ...}) =>
-                            if closedUpto inner e andalso List.all (fn (_, e) => closedUpto inner e) pes then
+                            (*if closedUpto inner e andalso List.all (fn (_, e) => closedUpto inner e) pes then
                                 let
                                     val (e', st) = quoteExp result ((ERel 0, loc), st)
                                 in
                                     ((ELet ("js", result, e, e'), loc),
                                      st)
                                 end
-                            else
+                            else*)
                                 let
                                     val plen = length pes
 
