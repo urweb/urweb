@@ -1480,6 +1480,14 @@ fun normClassConstraint env (c, loc) =
         in
             (L'.CApp (f, x), loc)
         end
+      | L'.TFun (c1, c2) =>
+        let
+            val c1 = normClassConstraint env c1
+            val c2 = normClassConstraint env c2
+        in
+            (L'.TFun (c1, c2), loc)
+        end
+      | L'.TCFun (expl, x, k, c1) => (L'.TCFun (expl, x, k, normClassConstraint env c1), loc)
       | L'.CUnif (_, _, _, ref (SOME c)) => normClassConstraint env c
       | _ => (c, loc)
 
@@ -3045,7 +3053,7 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs)) =
 
                     val () = checkCon env e' et c'
 
-                    val c = normClassConstraint env c'
+                    val c' = normClassConstraint env c'
                     val (env', n) = E.pushENamed env x c'
                 in
                     (*prefaces "DVal" [("x", Print.PD.string x),
@@ -3068,6 +3076,7 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                                 val (c', _, gs1) = case co of
                                                                        NONE => (cunif (loc, ktype), ktype, [])
                                                                      | SOME c => elabCon (env, denv) c
+                                                val c' = normClassConstraint env c'
                                             in
                                                 ((x, c', e), enD gs1 @ gs)
                                             end) gs vis
