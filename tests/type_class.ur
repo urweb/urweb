@@ -9,6 +9,11 @@ structure M : sig
 
     val option_default : t ::: Type -> default t -> default (option t)
     val pair_default : a ::: Type -> b ::: Type -> default a -> default b -> default (pair a b)
+
+    class awesome
+    val awesome_default : t ::: Type -> awesome t -> default t
+
+    val float_awesome : awesome float
 end = struct
     class default t = t
     fun get (t ::: Type) (x : t) = x
@@ -18,6 +23,11 @@ end = struct
 
     fun option_default (t ::: Type) (x : t) = Some x
     fun pair_default (a ::: Type) (b ::: Type) (x : a) (y : b) = Pair (x, y)
+
+    class awesome t = t
+    fun awesome_default (t ::: Type) (x : t) = x
+
+    val float_awesome = 1.23
 end
 
 open M
@@ -27,6 +37,7 @@ val hi : string = default
 val zero : int = default
 val some_zero : option int = default
 val hi_zero : pair string int = default
+val ott : float = default
 
 fun frob (t ::: Type) (_ : default t) : t = default
 val hi_again : string = frob
@@ -44,5 +55,5 @@ fun show_pair (a ::: Type) (b ::: Type) (_ : show a) (_ : show b) : show (pair a
                    Pair (y, z) => "(" ^ show y ^ "," ^ show z ^ ")")
 
 fun main () : transaction page = return <xml><body>
-  {[hi_again]}, {[zero_again]}, {[some_zero]}, {[hi_zero]}
+  {[hi_again]}, {[zero_again]}, {[some_zero]}, {[hi_zero]}, {[ott]}
 </body></xml>
