@@ -25,7 +25,15 @@ fun chat id =
     logTail <- source logHead;
 
     let
-        fun join () = subscribe ch
+        fun getCh () =
+            r <- oneRow (SELECT t.Chan FROM t WHERE t.Id = {[id]});
+            case r.T.Chan of
+                None => error <xml>Channel disappeared</xml>
+              | Some ch => return ch
+
+        fun join () =
+            ch <- getCh ();
+            subscribe ch
 
         fun onload () =
             let
@@ -42,6 +50,7 @@ fun chat id =
             end
 
         fun speak line =
+            ch <- getCh ();
             send ch line
 
         fun doSpeak () =

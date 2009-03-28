@@ -475,12 +475,19 @@ val tag = {
 
 val toTag = transform tag "tag" o toCore_untangle2
 
+val marshalcheck = {
+    func = (fn file => (MarshalCheck.check file; file)),
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toMarshalcheck = transform marshalcheck "marshalcheck" o toTag
+
 val reduce = {
     func = Reduce.reduce,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toReduce = transform reduce "reduce" o toTag
+val toReduce = transform reduce "reduce" o toMarshalcheck
 
 val unpoly = {
     func = Unpoly.unpoly,

@@ -68,12 +68,12 @@ structure Con : sig
                -> 'context -> (Core.con -> Core.con)
 
     val fold : {kind : Core.kind' * 'state -> 'state,
-               con : Core.con' * 'state -> 'state}
-              -> 'state -> Core.con -> 'state
-
+                con : Core.con' * 'state -> 'state}
+               -> 'state -> Core.con -> 'state
+                                        
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool} -> Core.con -> bool
-
+                                                          
     val foldMap : {kind : Core.kind' * 'state -> Core.kind' * 'state,
                    con : Core.con' * 'state -> Core.con' * 'state}
                   -> 'state -> Core.con -> Core.con * 'state
