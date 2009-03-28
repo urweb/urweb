@@ -861,8 +861,8 @@ const char *uw_Basis_get_settings(uw_context ctx, uw_Basis_string onload) {
     int pass;
     client *c = uw_new_client(&pass);
 
-    char *r = uw_malloc(ctx, 41 + 3 * INTS_MAX + strlen(ctx->url_prefix) + strlen(onload));
-    sprintf(r, " onload='client_id=%d;client_pass=%d;url_prefix=\"%s\";timeout=%d;%s'",
+    char *r = uw_malloc(ctx, 52 + 3 * INTS_MAX + strlen(ctx->url_prefix) + strlen(onload));
+    sprintf(r, " onload='client_id=%d;client_pass=%d;url_prefix=\"%s\";timeout=%d;listener();%s'",
             (int)c->id,
             c->data.used.pass,
             ctx->url_prefix,
