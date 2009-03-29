@@ -207,15 +207,12 @@ val sql_int : sql_injectable_prim int
 val sql_float : sql_injectable_prim float
 val sql_string : sql_injectable_prim string
 val sql_time : sql_injectable_prim time
-
-class sql_injectable_nullable
-val sql_channel : t ::: Type -> sql_injectable_nullable (channel t)
-val sql_client : sql_injectable_nullable client
+val sql_channel : t ::: Type -> sql_injectable_prim (channel t)
+val sql_client : sql_injectable_prim client
 
 class sql_injectable
 val sql_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable t
 val sql_option_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable (option t)
-val sql_nullable : t ::: Type -> sql_injectable_nullable t -> sql_injectable (option t)
 
 val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type

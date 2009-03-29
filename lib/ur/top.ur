@@ -200,7 +200,7 @@ fun eqNullable' (tables ::: {{Type}}) (agg ::: {{Type}}) (exps ::: {Type})
 
 functor Broadcast(M : sig type t end) = struct
     sequence s
-    table t : {Id : int, Client : option client, Channel : option (channel M.t)}
+    table t : {Id : int, Client : client, Channel : channel M.t}
 
     type topic = int
 
@@ -208,27 +208,17 @@ functor Broadcast(M : sig type t end) = struct
 
     val create = nextval s
 
-    val cleanup =
-        dml (DELETE FROM t WHERE Client IS NULL)
-
     fun subscribe id =
         cli <- self;
-        cleanup;
-        ro <- oneOrNoRows (SELECT t.Channel FROM t WHERE t.Id = {[id]} AND t.Client = {[Some cli]});
+        ro <- oneOrNoRows (SELECT t.Channel FROM t WHERE t.Id = {[id]} AND t.Client = {[cli]});
         case ro of
             None =>
             ch <- channel;
-            dml (INSERT INTO t (Id, Client, Channel) VALUES ({[id]}, {[Some cli]}, {[Some ch]}));
+            dml (INSERT INTO t (Id, Client, Channel) VALUES ({[id]}, {[cli]}, {[ch]}));
             return ch
-          | Some r =>
-            case r.T.Channel of
-                None => error <xml>Broadcast.subscribe: Got null result</xml>
-              | Some ch => return ch
+          | Some r => return r.T.Channel
 
     fun send id msg =
-        cleanup;
         queryI (SELECT t.Channel FROM t WHERE t.Id = {[id]})
-        (fn r => case r.T.Channel of
-                     None => error <xml>Broadcast.send: Got null result</xml>
-                   | Some ch => Basis.send ch msg)
+        (fn r => Basis.send r.T.Channel msg)
 end

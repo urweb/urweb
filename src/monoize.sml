@@ -165,8 +165,6 @@ fun monoType env =
 
                   | L.CApp ((L.CFfi ("Basis", "sql_injectable_prim"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
-                  | L.CApp ((L.CFfi ("Basis", "sql_injectable_nullable"), _), t) =>
-                    (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_injectable"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_unary"), _), _), _), _) =>
@@ -248,6 +246,8 @@ structure Fm :> sig
     val lookup : t -> foo_kind -> int -> (int -> t -> L'.decl * t) -> t * int
     val enter : t -> t
     val decls : t -> L'.decl list
+
+    val freshName : t -> int * t
 end = struct
 
 structure M = BinaryMapFn(struct
@@ -274,6 +274,7 @@ fun empty count = {
 }
 
 fun enter ({count, map, ...} : t) = {count = count, map = map, decls = []}
+fun freshName {count, map, decls} = (count, {count = count + 1, map = map, decls = decls})
 fun decls ({decls, ...} : t) = decls
 
 fun lookup (t as {count, map, decls}) k n thunk =
@@ -1455,26 +1456,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                  result = s}), loc)), loc)), loc),
                  fm)
             end
-          | L.ECApp ((L.EFfi ("Basis", "sql_nullable"), _), t) =>
-            let
-                val t = monoType env t
-                val s = (L'.TFfi ("Basis", "string"), loc)
-            in
-                ((L'.EAbs ("f",
-                           (L'.TFun (t, s), loc),
-                           (L'.TFun ((L'.TOption t, loc), s), loc),
-                           (L'.EAbs ("x",
-                                     (L'.TOption t, loc),
-                                     s,
-                                     (L'.ECase ((L'.ERel 0, loc),
-                                                [((L'.PNone t, loc),
-                                                  (L'.EPrim (Prim.String "NULL"), loc)),
-                                                 ((L'.PSome (t, (L'.PVar ("y", t), loc)), loc),
-                                                  (L'.EApp ((L'.ERel 2, loc), (L'.ERel 0, loc)), loc))],
-                                                {disc = (L'.TOption t, loc),
-                                                 result = s}), loc)), loc)), loc),
-                 fm)
-            end
 
           | L.ECApp ((L.EFfi ("Basis", "sql_subset"), _), _) =>
             ((L'.ERecord [], loc), fm)
@@ -2464,7 +2445,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                       [(L'.DSequence s, loc),
                        (L'.DVal (x, n, t', e, s), loc)])
             end
-          | L.DDatabase s => SOME (env, fm, [(L'.DDatabase s, loc)])
+          | L.DDatabase _ => NONE
           | L.DCookie (x, n, t, s) =>
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
@@ -2477,7 +2458,9 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             end
     end
 
-fun monoize env ds =
+datatype expungable = Client | Channel
+
+fun monoize env file =
     let
         val p = !urlPrefix
         val () =
@@ -2488,14 +2471,100 @@ fun monoize env ds =
             else
                 ()
 
+        val loc = E.dummySpan
+        val client = (L'.TFfi ("Basis", "client"), loc)
+        val unit = (L'.TRecord [], loc)
+        fun expunger () =
+            let
+                val target = (L'.EFfiApp ("Basis", "sqlifyClient", [(L'.ERel 0, loc)]), loc)
+
+                fun doTable (tab, xts, e) =
+                    case xts of
+                        L.CRecord (_, xts) =>
+                        let
+                            val (nullable, notNullable) =
+                                foldl (fn ((x, t), st as (nullable, notNullable)) =>
+                                          case #1 x of
+                                              L.CName x =>
+                                              (case #1 t of
+                                                   L.CFfi ("Basis", "client") =>
+                                                   (nullable, (x, Client) :: notNullable)
+                                                 | L.CApp ((L.CFfi ("Basis", "option"), _),
+                                                           (L.CFfi ("Basis", "client"), _)) =>
+                                                   ((x, Client) :: nullable, notNullable)
+                                                 | L.CApp ((L.CFfi ("Basis", "channel"), _), _) =>
+                                                   (nullable, (x, Channel) :: notNullable)
+                                                 | L.CApp ((L.CFfi ("Basis", "option"), _),
+                                                           (L.CApp ((L.CFfi ("Basis", "channel"), _), _), _)) =>
+                                                   ((x, Channel) :: nullable, notNullable)
+                                                 | _ => st)
+                                            | _ => st) ([], []) xts
+
+                            val e =
+                                case notNullable of
+                                    [] => e
+                                  | eb :: ebs =>
+                                    let
+                                        fun cond (x, v) =
+                                            (L'.EStrcat ((L'.EPrim (Prim.String ("uw_" ^ x
+                                                                                 ^ (case v of
+                                                                                        Client => ""
+                                                                                      | Channel => " >> 32")
+                                                                                 ^ " = ")), loc),
+                                                         target), loc)
+                                    in
+                                        (L'.ESeq (
+                                         (L'.EDml (foldl
+                                                       (fn (eb, s) =>
+                                                           (L'.EStrcat (s,
+                                                                        (L'.EStrcat ((L'.EPrim (Prim.String " AND "),
+                                                                                      loc),
+                                                                                     cond eb), loc)), loc))
+                                                       (L'.EStrcat ((L'.EPrim (Prim.String ("DELETE FROM uw_"
+                                                                                            ^ tab
+                                                                                            ^ " WHERE ")), loc),
+                                                                    cond eb), loc)
+                                                       ebs), loc),
+                                         e), loc)
+                                    end
+                        in
+                            e
+                        end
+                      | _ => e
+
+                val e = (L'.ERecord [], loc)
+            in
+                foldl (fn ((d, _), e) =>
+                          case d of
+                              L.DTable (_, _, xts, tab) => doTable (tab, #1 xts, e)
+                            | _ => e) e file
+            end
+
         val (_, _, ds) = List.foldl (fn (d, (env, fm, ds)) =>
-                                     case monoDecl (env, fm) d of
-                                         NONE => (env, fm, ds)
-                                       | SOME (env, fm, ds') =>
-                                         (env,
-                                          Fm.enter fm,
-                                          ds' @ Fm.decls fm @ ds))
-                                    (env, Fm.empty (CoreUtil.File.maxName ds + 1), []) ds
+                                        case #1 d of
+                                            L.DDatabase s =>
+                                            let
+                                                val (n, fm) = Fm.freshName fm
+
+
+                                                val d = L'.DVal ("expunger",
+                                                                 n,
+                                                                 (L'.TFun (client, unit), loc),
+                                                                 (L'.EAbs ("cli", client, unit, expunger ()), loc),
+                                                                 "expunger")
+                                            in
+                                                (env, Fm.enter fm, (L'.DDatabase (s, n), loc)
+                                                                   :: (d, loc)
+                                                                   :: ds)
+                                            end
+                                          | _ =>
+                                            case monoDecl (env, fm) d of
+                                                NONE => (env, fm, ds)
+                                              | SOME (env, fm, ds') =>
+                                                (env,
+                                                 Fm.enter fm,
+                                                 ds' @ Fm.decls fm @ ds))
+                                    (env, Fm.empty (CoreUtil.File.maxName file + 1), []) file
     in
         rev ds
     end

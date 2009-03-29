@@ -106,7 +106,7 @@ datatype decl' =
 
        | DTable of string * (string * typ) list
        | DSequence of string
-       | DDatabase of string
+       | DDatabase of string * int
        | DPreparedStatements of (string * int) list
 
        | DJavaScript of string

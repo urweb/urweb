@@ -9,7 +9,7 @@ extern uw_unit uw_unit_v;
 void uw_global_init(void);
 
 void uw_client_connect(unsigned id, int pass, int sock);
-void uw_prune_clients(time_t timeout);
+void uw_prune_clients(uw_context);
 
 uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, size_t heap_len);
 void uw_set_db(uw_context, void*);

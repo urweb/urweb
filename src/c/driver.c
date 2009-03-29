@@ -278,8 +278,11 @@ static void *worker(void *data) {
 }
 
 static void *client_pruner(void *data) {
+  uw_context ctx = uw_init(0, 0, 0, 0);
+  uw_db_init(ctx);
+
   while (1) {
-    uw_prune_clients(5);
+    uw_prune_clients(ctx);
     sleep(5);
   }
 }

@@ -208,41 +208,13 @@ void uw_client_connect(unsigned id, int pass, int sock) {
 }
 
 static void free_client(client *c) {
-  printf("Freeing client %d\n", c->id);
+  printf("Freeing client %u\n", c->id);
 
   c->mode = UNUSED;
   c->pass = -1;
 
   c->next = clients_free;
   clients_free = c;
-}
-
-extern int uw_timeout;
-
-void uw_prune_clients() {
-  client *c, *next, *prev = NULL;
-  time_t cutoff;
-
-  cutoff = time(NULL) - uw_timeout;
-
-  pthread_mutex_lock(&clients_mutex);
-
-  for (c = clients_used; c; c = next) {
-    next = c->next;
-    pthread_mutex_lock(&c->lock);
-    if (c->last_contact < cutoff) {
-      if (prev)
-        prev->next = next;
-      else
-        clients_used = next;
-      free_client(c);
-    }
-    else
-      prev = c;
-    pthread_mutex_unlock(&c->lock);
-  }
-
-  pthread_mutex_unlock(&clients_mutex);
 }
 
 static uw_Basis_channel new_channel(client *c) {
@@ -322,7 +294,7 @@ struct uw_context {
   char error_message[ERROR_BUF_LEN];
 };
 
-extern int uw_inputs_len;
+extern int uw_inputs_len, uw_timeout;
 
 uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, size_t heap_len) {
   uw_context ctx = malloc(sizeof(struct uw_context));
@@ -1887,4 +1859,54 @@ int uw_rollback(uw_context ctx) {
     pthread_mutex_unlock(&ctx->client->lock);
 
   return uw_db_rollback(ctx);
+}
+
+
+// "Garbage collection"
+
+void uw_expunger(uw_context ctx, uw_Basis_client cli);
+
+static failure_kind uw_expunge(uw_context ctx, uw_Basis_client cli) {
+  int r = setjmp(ctx->jmp_buf);
+
+  if (r == 0)
+    uw_expunger(ctx, cli);
+
+  return r;
+}
+
+void uw_prune_clients(uw_context ctx) {
+  client *c, *next, *prev = NULL;
+  time_t cutoff;
+
+  cutoff = time(NULL) - uw_timeout;
+
+  pthread_mutex_lock(&clients_mutex);
+
+  for (c = clients_used; c; c = next) {
+    next = c->next;
+    pthread_mutex_lock(&c->lock);
+    if (c->last_contact < cutoff) {
+      failure_kind fk = UNLIMITED_RETRY;
+      if (prev)
+        prev->next = next;
+      else
+        clients_used = next;
+      while (fk == UNLIMITED_RETRY) {
+        uw_reset(ctx);
+        fk = uw_expunge(ctx, c->id);
+        if (fk == SUCCESS) {
+          free_client(c);
+          break;
+        }
+      }
+      if (fk != SUCCESS)
+        printf("Expunge blocked by error: %s\n", uw_error_message(ctx));
+    }
+    else
+      prev = c;
+    pthread_mutex_unlock(&c->lock);
+  }
+
+  pthread_mutex_unlock(&clients_mutex);
 }
