@@ -404,6 +404,7 @@ fun p_unsql wontLeakStrings env (tAll as (t, loc)) e =
       | TFfi ("Basis", "bool") => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "time") => box [string "uw_Basis_stringToTime_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "channel") => box [string "uw_Basis_stringToChannel_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "client") => box [string "uw_Basis_stringToClient_error(ctx, ", e, string ")"]
 
       | _ => (ErrorMsg.errorAt loc "Don't know how to unmarshal type from SQL";
               Print.eprefaces' [("Type", p_typ env tAll)];
@@ -447,6 +448,7 @@ datatype sql_type =
        | Bool
        | Time
        | Channel
+       | Client
        | Nullable of sql_type
 
 fun p_sql_type' t =
@@ -457,6 +459,7 @@ fun p_sql_type' t =
       | Bool => "uw_Basis_bool"
       | Time => "uw_Basis_time"
       | Channel => "uw_Basis_channel"
+      | Client => "uw_Basis_client"
       | Nullable String => "uw_Basis_string"
       | Nullable t => p_sql_type' t ^ "*"
 
@@ -473,6 +476,7 @@ fun getPargs (e, _) =
       | EFfiApp ("Basis", "sqlifyBool", [e]) => [(e, Bool)]
       | EFfiApp ("Basis", "sqlifyTime", [e]) => [(e, Time)]
       | EFfiApp ("Basis", "sqlifyChannel", [e]) => [(e, Channel)]
+      | EFfiApp ("Basis", "sqlifyClient", [e]) => [(e, Client)]
 
       | ECase (e,
                [((PNone _, _),
@@ -496,8 +500,9 @@ fun p_ensql t e =
       | Float => box [string "uw_Basis_attrifyFloat(ctx, ", e, string ")"]
       | String => e
       | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
-      | Time => box [string "uw_Basis_sqlifyTime(ctx, ", e, string ")"]
+      | Time => box [string "uw_Basis_attrifyTime(ctx, ", e, string ")"]
       | Channel => box [string "uw_Basis_attrifyChannel(ctx, ", e, string ")"]
+      | Client => box [string "uw_Basis_attrifyClient(ctx, ", e, string ")"]
       | Nullable String => e
       | Nullable t => box [string "(",
                            e,
@@ -1982,7 +1987,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                             newline,
                             string "PGconn *conn = uw_get_db(ctx);",
                             newline,
-                            string "PGresult *res = PQexec(conn, \"BEGIN\");",
+                            string "PGresult *res = PQexec(conn, \"BEGIN ISOLATION LEVEL SERIALIZABLE\");",
                             newline,
                             newline,
                             string "if (res == NULL) return 1;",
@@ -2108,7 +2113,8 @@ fun p_sqltype'' env (tAll as (t, loc)) =
       | TFfi ("Basis", "string") => "text"
       | TFfi ("Basis", "bool") => "bool"
       | TFfi ("Basis", "time") => "timestamp"
-      | TFfi ("Basis", "channel") => "int4"
+      | TFfi ("Basis", "channel") => "int8"
+      | TFfi ("Basis", "client") => "int4"
       | _ => (ErrorMsg.errorAt loc "Don't know SQL equivalent of type";
               Print.eprefaces' [("Type", p_typ env tAll)];
               "ERROR")
@@ -2368,6 +2374,8 @@ fun p_file env (ds, ps) =
                                     string (!Monoize.urlPrefix),
                                     string "\");",
                                     newline]),
+                     string "uw_login(ctx);",
+                     newline,
                      box [string "{",
                           newline,
                           box (ListUtil.mapi (fn (i, t) => box [p_typ env t,

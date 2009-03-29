@@ -48,6 +48,8 @@ fun prepString (e, ss, n) =
       | EFfiApp ("Basis", "sqlifyTime", [e]) =>
         SOME ("$" ^ Int.toString (n + 1) ^ "::timestamp" :: ss, n + 1)
       | EFfiApp ("Basis", "sqlifyChannel", [e]) =>
+        SOME ("$" ^ Int.toString (n + 1) ^ "::int8" :: ss, n + 1)
+      | EFfiApp ("Basis", "sqlifyClient", [e]) =>
         SOME ("$" ^ Int.toString (n + 1) ^ "::int4" :: ss, n + 1)
 
       | ECase (e,

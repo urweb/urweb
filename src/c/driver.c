@@ -171,10 +171,10 @@ static void *worker(void *data) {
           char *pass = uw_Basis_requestHeader(ctx, "UrWeb-Pass");
 
           if (id && pass) {
-            size_t idn = atoi(id);
+            unsigned idn = atoi(id);
             uw_client_connect(idn, atoi(pass), sock);
             dont_close = 1;
-            fprintf(stderr, "Processed request for messages by client %d\n\n", (int)idn);
+            fprintf(stderr, "Processed request for messages by client %u\n\n", idn);
           }
           break;
         }
@@ -217,6 +217,8 @@ static void *worker(void *data) {
             else {
               printf("Fatal error (out of retries): %s\n", uw_error_message(ctx));
 
+              try_rollback(ctx);
+
               uw_reset_keep_error_message(ctx);
               uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
               uw_write_header(ctx, "Content-type: text/plain\r\n");
@@ -224,14 +226,14 @@ static void *worker(void *data) {
               uw_write(ctx, uw_error_message(ctx));
               uw_write(ctx, "\n");
 
-              try_rollback(ctx);
-
               break;
             }
           } else if (fk == UNLIMITED_RETRY)
             printf("Error triggers unlimited retry: %s\n", uw_error_message(ctx));
           else if (fk == FATAL) {
             printf("Fatal error: %s\n", uw_error_message(ctx));
+
+            try_rollback(ctx);
 
             uw_reset_keep_error_message(ctx);
             uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\r\n");
@@ -241,26 +243,24 @@ static void *worker(void *data) {
             uw_write(ctx, uw_error_message(ctx));
             uw_write(ctx, "\n</body></html>");
 
-            try_rollback(ctx);
-
             break;
           } else {
             printf("Unknown uw_handle return code!\n");
+
+            try_rollback(ctx);
 
             uw_reset_keep_request(ctx);
             uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
             uw_write_header(ctx, "Content-type: text/plain\r\n");
             uw_write(ctx, "Unknown uw_handle return code!\n");
 
-            try_rollback(ctx);
-
             break;
           }
 
-          uw_reset_keep_request(ctx);
-
           if (try_rollback(ctx))
             break;
+
+          uw_reset_keep_request(ctx);
         }
 
         uw_send(ctx, sock);

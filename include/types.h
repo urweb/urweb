@@ -17,7 +17,11 @@ typedef struct uw_context *uw_context;
 
 typedef uw_Basis_string uw_Basis_xhtml;
 typedef uw_Basis_string uw_Basis_page;
-typedef size_t uw_Basis_channel;
+
+typedef unsigned uw_Basis_client;
+typedef struct {
+  unsigned cli, chn;
+} uw_Basis_channel;
 
 
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY } failure_kind;

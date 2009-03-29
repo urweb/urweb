@@ -49,7 +49,6 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "urlifyInt"), "ts"),
              (("Basis", "urlifyFloat"), "ts"),
              (("Basis", "urlifyString"), "uf"),
-             (("Basis", "urlifyChannel"), "ts"),
              (("Basis", "recv"), "rv")]
 
 structure FM = BinaryMapFn(struct
@@ -220,7 +219,7 @@ fun process file =
               | TFfi ("Basis", "string") => ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
               | TFfi ("Basis", "int") => ((EFfiApp ("Basis", "htmlifyInt", [e]), loc), st)
               | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [e]), loc), st)
-              | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "htmlifyChannel", [e]), loc), st)
+              | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "jsifyChannel", [e]), loc), st)
 
               | TFfi ("Basis", "bool") => ((ECase (e,
                                                    [((PCon (Enum, PConFfi {mod = "Basis",
@@ -348,7 +347,7 @@ fun process file =
               | TFfi ("Basis", "string") => ("uu(t[i++])", st)
               | TFfi ("Basis", "int") => ("parseInt(t[i++])", st)
               | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
-              | TFfi ("Basis", "channel") => ("parseInt(t[i++])", st)
+              | TFfi ("Basis", "channel") => ("(t[i++].length > 0 ? parseInt(t[i]) : null)", st)
 
               | TFfi ("Basis", "bool") => ("t[i++] == \"True\"", st)
 

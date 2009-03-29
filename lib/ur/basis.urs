@@ -115,6 +115,9 @@ val subscribe : t ::: Type -> channel t -> transaction unit
 val send : t ::: Type -> channel t -> t -> transaction unit
 val recv : t ::: Type -> channel t -> transaction t
 
+type client
+val self : transaction client
+
 
 (** SQL *)
 
@@ -207,6 +210,7 @@ val sql_time : sql_injectable_prim time
 
 class sql_injectable_nullable
 val sql_channel : t ::: Type -> sql_injectable_nullable (channel t)
+val sql_client : sql_injectable_nullable client
 
 class sql_injectable
 val sql_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable t

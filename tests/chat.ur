@@ -9,32 +9,22 @@ and renderS logS =
     log <- signal logS;
     return (render log)
 
+structure Room = Broadcast(struct
+                               type t = string
+                           end)
+
 sequence s
-table t : { Id : int, Title : string, Chan : option (channel string) }
+table t : { Id : int, Title : string, Room : Room.topic }
 
 fun chat id =
-    r <- oneRow (SELECT t.Title, t.Chan FROM t WHERE t.Id = {[id]});
-    ch <- (case r.T.Chan of
-               None => (ch <- channel;
-                        dml (UPDATE t SET Chan = {[Some ch]} WHERE Id = {[id]});
-                        return ch)
-             | Some ch => return ch);
+    r <- oneRow (SELECT t.Title, t.Room FROM t WHERE t.Id = {[id]});
+    ch <- Room.subscribe r.T.Room;
 
     newLine <- source "";
     logHead <- source End;
     logTail <- source logHead;
 
     let
-        fun getCh () =
-            r <- oneRow (SELECT t.Chan FROM t WHERE t.Id = {[id]});
-            case r.T.Chan of
-                None => error <xml>Channel disappeared</xml>
-              | Some ch => return ch
-
-        fun join () =
-            ch <- getCh ();
-            subscribe ch
-
         fun onload () =
             let
                 fun listener () =
@@ -45,13 +35,16 @@ fun chat id =
                     set logTail newTail;
                     listener ()
             in
-                join ();
                 listener ()
             end
 
+        fun getRoom () =
+            r <- oneRow (SELECT t.Room FROM t WHERE t.Id = {[id]});
+            return r.T.Room
+
         fun speak line =
-            ch <- getCh ();
-            send ch line
+            room <- getRoom ();
+            Room.send room line
 
         fun doSpeak () =
             line <- get newLine;
@@ -84,7 +77,8 @@ and main () : transaction page =
     let
         fun create r =
             id <- nextval s;
-            dml (INSERT INTO t (Id, Title, Chan) VALUES ({[id]}, {[r.Title]}, NULL));
+            room <- Room.create;
+            dml (INSERT INTO t (Id, Title, Room) VALUES ({[id]}, {[r.Title]}, {[room]}));
             main ()
     in
         ls <- list ();

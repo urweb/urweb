@@ -1110,14 +1110,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "channel"), loc),
                            (L'.EFfiApp ("Basis", "new_channel", [(L'.ERecord [], loc)]), loc)), loc),
                  fm)
-          | L.ECApp ((L.EFfi ("Basis", "subscribe"), _), t) =>
-            ((L'.EAbs ("ch", (L'.TFfi ("Basis", "channel"), loc),
-                       (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc),
-                       (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
-                                 (L'.EFfiApp ("Basis", "subscribe",
-                                              [(L'.ERel 1, loc)]),
-                                  loc)), loc)), loc),
-             fm)
           | L.ECApp ((L.EFfi ("Basis", "send"), _), t) =>
             let
                 val t = monoType env t
@@ -1430,6 +1422,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp ((L.EFfi ("Basis", "sql_channel"), _), _) =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "channel"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyChannel", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_client") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "client"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyClient", [(L'.ERel 0, loc)]), loc)), loc),
              fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_prim"), _), t) =>
             let

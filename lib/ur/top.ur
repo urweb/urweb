@@ -143,6 +143,14 @@ fun foldRX2 K (tf1 :: K -> Type) (tf2 :: K -> Type) (ctx :: {Unit})
                <xml>{f [nm] [t] [rest] ! r1 r2}{acc}</xml>)
            <xml/>
 
+fun queryI (tables ::: {{Type}}) (exps ::: {Type})
+           [tables ~ exps] (q : sql_query tables exps)
+           (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
+                -> transaction unit) =
+    query q
+          (fn fs _ => f fs)
+          ()
+
 fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
            [tables ~ exps] (q : sql_query tables exps)
            (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
@@ -188,3 +196,39 @@ fun eqNullable' (tables ::: {{Type}}) (agg ::: {{Type}}) (exps ::: {Type})
     case e2 of
         None => (SQL {e1} IS NULL)
       | Some _ => sql_binary sql_eq e1 (sql_inject e2)
+
+
+functor Broadcast(M : sig type t end) = struct
+    sequence s
+    table t : {Id : int, Client : option client, Channel : option (channel M.t)}
+
+    type topic = int
+
+    val inj : sql_injectable topic = _
+
+    val create = nextval s
+
+    val cleanup =
+        dml (DELETE FROM t WHERE Client IS NULL)
+
+    fun subscribe id =
+        cli <- self;
+        cleanup;
+        ro <- oneOrNoRows (SELECT t.Channel FROM t WHERE t.Id = {[id]} AND t.Client = {[Some cli]});
+        case ro of
+            None =>
+            ch <- channel;
+            dml (INSERT INTO t (Id, Client, Channel) VALUES ({[id]}, {[Some cli]}, {[Some ch]}));
+            return ch
+          | Some r =>
+            case r.T.Channel of
+                None => error <xml>Broadcast.subscribe: Got null result</xml>
+              | Some ch => return ch
+
+    fun send id msg =
+        cleanup;
+        queryI (SELECT t.Channel FROM t WHERE t.Id = {[id]})
+        (fn r => case r.T.Channel of
+                     None => error <xml>Broadcast.send: Got null result</xml>
+                   | Some ch => Basis.send ch msg)
+end

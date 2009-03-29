@@ -87,6 +87,13 @@ val foldRX2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> ctx :: {Unit}
               -> r :: {K} -> folder r
               -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] []
 
+val queryI : tables ::: {{Type}} -> exps ::: {Type}
+             -> [tables ~ exps] =>
+             sql_query tables exps
+             -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
+                 -> transaction unit)
+             -> transaction unit
+
 val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
              -> [tables ~ exps] =>
              sql_query tables exps
@@ -127,3 +134,14 @@ val eqNullable' : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                   -> sql_exp tables agg exps (option t)
                   -> option t
                   -> sql_exp tables agg exps bool
+
+
+functor Broadcast(M : sig type t end) : sig
+    type topic
+
+    val inj : sql_injectable topic
+
+    val create : transaction topic
+    val subscribe : topic -> transaction (channel M.t)
+    val send : topic -> M.t -> transaction unit
+end
