@@ -1869,8 +1869,13 @@ void uw_expunger(uw_context ctx, uw_Basis_client cli);
 static failure_kind uw_expunge(uw_context ctx, uw_Basis_client cli) {
   int r = setjmp(ctx->jmp_buf);
 
-  if (r == 0)
+  if (r == 0) {
+    if (uw_db_begin(ctx))
+      uw_error(ctx, FATAL, "Error running SQL BEGIN");
     uw_expunger(ctx, cli);
+    if (uw_db_commit(ctx))
+      uw_error(ctx, FATAL, "Error running SQL COMMIT");
+  }
 
   return r;
 }
@@ -1892,16 +1897,20 @@ void uw_prune_clients(uw_context ctx) {
         prev->next = next;
       else
         clients_used = next;
+      uw_reset(ctx);
       while (fk == UNLIMITED_RETRY) {
-        uw_reset(ctx);
         fk = uw_expunge(ctx, c->id);
-        if (fk == SUCCESS) {
-          free_client(c);
-          break;
+        if (fk == UNLIMITED_RETRY) {
+          uw_db_rollback(ctx);
+          printf("Unlimited retry during expunge: %s\n", uw_error_message(ctx));
         }
       }
-      if (fk != SUCCESS)
+      if (fk == SUCCESS)
+        free_client(c);
+      else {
+        uw_db_rollback(ctx);
         printf("Expunge blocked by error: %s\n", uw_error_message(ctx));
+      }
     }
     else
       prev = c;

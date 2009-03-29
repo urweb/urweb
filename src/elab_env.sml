@@ -190,6 +190,7 @@ datatype class_key =
        | CkRel of int
        | CkProj of int * string list * string
        | CkApp of class_key * class_key
+       | CkOther of con
 
 fun ck2s ck =
     case ck of
@@ -197,6 +198,7 @@ fun ck2s ck =
       | CkRel n => "Rel(" ^ Int.toString n ^ ")"
       | CkProj (m, ms, x) => "Proj(" ^ Int.toString m ^ "," ^ String.concatWith "," ms ^ "," ^ x ^ ")"
       | CkApp (ck1, ck2) => "App(" ^ ck2s ck1 ^ ", " ^ ck2s ck2 ^ ")"
+      | CkOther _ => "Other"
 
 type class_key_n = class_key * int
 
@@ -227,6 +229,10 @@ fun compare' x =
       | (CkApp (f1, x1), CkApp (f2, x2)) =>
         join (compare' (f1, f2),
               fn () => compare' (x1, x2))
+      | (CkApp _, _) => LESS
+      | (_, CkApp _) => GREATER
+
+      | (CkOther _, CkOther _) => EQUAL
 fun compare ((k1, n1), (k2, n2)) =
     join (Int.compare (n1, n2),
        fn () => compare' (k1, k2))
@@ -309,6 +315,7 @@ fun liftClassKey' ck =
       | CkRel n => CkRel (n + 1)
       | CkProj _ => ck
       | CkApp (ck1, ck2) => CkApp (liftClassKey' ck1, liftClassKey' ck2)
+      | CkOther c => CkOther (lift c)
 
 fun liftClassKey (ck, n) = (liftClassKey' ck, n)
 
@@ -513,17 +520,14 @@ fun isClass (env : env) c =
         find (class_name_in c)
     end
 
-fun class_key_in (c, _) =
+fun class_key_in (all as (c, _)) =
     case c of
-        CRel n => SOME (CkRel n)
-      | CNamed n => SOME (CkNamed n)
-      | CModProj x => SOME (CkProj x)
+        CRel n => CkRel n
+      | CNamed n => CkNamed n
+      | CModProj x => CkProj x
       | CUnif (_, _, _, ref (SOME c)) => class_key_in c
-      | CApp (c1, c2) =>
-        (case (class_key_in c1, class_key_in c2) of
-             (SOME k1, SOME k2) => SOME (CkApp (k1, k2))
-           | _ => NONE)
-      | _ => NONE
+      | CApp (c1, c2) => CkApp (class_key_in c1, class_key_in c2)
+      | _ => CkOther all
 
 fun class_key_out loc =
     let
@@ -533,6 +537,7 @@ fun class_key_out loc =
               | CkNamed n => (CNamed n, loc)
               | CkProj x => (CModProj x, loc)
               | CkApp (k1, k2) => (CApp (cko k1, cko k2), loc)
+              | CkOther c => c
     in
         cko
     end
@@ -540,8 +545,8 @@ fun class_key_out loc =
 fun class_pair_in (c, _) =
     case c of
         CApp (f, x) =>
-        (case (class_name_in f, class_key_in x) of
-             (SOME f, SOME x) => SOME (f, x)
+        (case class_name_in f of
+             SOME f => SOME (f, class_key_in x)
            | _ => NONE)
       | CUnif (_, _, _, ref (SOME c)) => class_pair_in c
       | _ => NONE
@@ -550,13 +555,17 @@ fun sub_class_key (n, c) =
     let
         fun csk k =
             case k of
-                CkRel n' => if n' = n then
-                                c
-                            else
-                                k
-              | CkNamed _ => k
-              | CkProj _ => k
-              | CkApp (k1, k2) => CkApp (csk k1, csk k2)
+                CkRel n' => SOME (if n' = n then
+                                      c
+                                  else
+                                      k)
+              | CkNamed _ => SOME k
+              | CkProj _ => SOME k
+              | CkApp (k1, k2) =>
+                (case (csk k1, csk k2) of
+                     (SOME k1, SOME k2) => SOME (CkApp (k1, k2))
+                   | _ => NONE)
+              | CkOther _ => NONE
     in
         csk
     end
@@ -604,12 +613,17 @@ fun resolveClass (env : env) c =
                                     val es = map (fn (cn, ck) =>
                                                      let
                                                          val ck = ListUtil.foldli (fn (i, arg, ck) =>
-                                                                                      sub_class_key (len - i - 1,
-                                                                                                     arg)
-                                                                                                    ck)
-                                                                                  ck args
+                                                                                      case ck of
+                                                                                          NONE => NONE
+                                                                                        | SOME ck =>
+                                                                                          sub_class_key (len - i - 1,
+                                                                                                         arg)
+                                                                                                        ck)
+                                                                                  (SOME ck) args
                                                      in
-                                                         doPair (cn, ck)
+                                                         case ck of
+                                                             NONE => NONE
+                                                           | SOME ck => doPair (cn, ck)
                                                      end) cs
                                 in
                                     if List.exists (not o Option.isSome) es then
@@ -687,6 +701,12 @@ datatype rule =
          Normal of int * (class_name * class_key) list * class_key
        | Inclusion of class_name
 
+fun containsOther k =
+    case k of
+        CkOther _ => true
+      | CkApp (k1, k2) => containsOther k1 orelse containsOther k2
+      | _ => false
+
 fun rule_in c =
     let
         fun quantifiers (c, nvars) =
@@ -707,7 +727,11 @@ fun rule_in c =
                                 let
                                     fun dearg (ck, i) =
                                         if i >= nvars then
-                                            SOME (cn, Normal (nvars, hyps, ck))
+                                            if containsOther ck
+                                               orelse List.exists (fn (_, k) => containsOther k) hyps then
+                                                NONE
+                                            else
+                                                SOME (cn, Normal (nvars, hyps, ck))
                                         else case ck of
                                                  CkApp (ck, CkRel i') =>
                                                  if i' = i then

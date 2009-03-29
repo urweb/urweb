@@ -2760,6 +2760,8 @@ fun p_file env (ds, ps) =
                       string "int uw_db_commit(uw_context ctx) { return 0; };",
                       newline,
                       string "int uw_db_rollback(uw_context ctx) { return 0; };",
+                      newline,
+                      string "void uw_expunger(uw_context ctx, uw_Basis_client cli) { };",
                       newline]]
     end
 

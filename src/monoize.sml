@@ -2500,33 +2500,44 @@ fun monoize env file =
                                                  | _ => st)
                                             | _ => st) ([], []) xts
 
+                            fun cond (x, v) =
+                                (L'.EStrcat ((L'.EPrim (Prim.String ("uw_" ^ x
+                                                                     ^ (case v of
+                                                                            Client => ""
+                                                                          | Channel => " >> 32")
+                                                                     ^ " = ")), loc),
+                                             target), loc)
+
+                            val e =
+                                foldl (fn ((x, v), e) =>
+                                          (L'.ESeq (
+                                           (L'.EDml (L'.EStrcat (
+                                                     (L'.EPrim (Prim.String ("UPDATE uw_"
+                                                                             ^ tab
+                                                                             ^ " SET uw_"
+                                                                             ^ x
+                                                                             ^ " = NULL WHERE ")), loc),
+                                                     cond (x, v)), loc), loc),
+                                           e), loc))
+                                      e nullable
+
                             val e =
                                 case notNullable of
                                     [] => e
                                   | eb :: ebs =>
-                                    let
-                                        fun cond (x, v) =
-                                            (L'.EStrcat ((L'.EPrim (Prim.String ("uw_" ^ x
-                                                                                 ^ (case v of
-                                                                                        Client => ""
-                                                                                      | Channel => " >> 32")
-                                                                                 ^ " = ")), loc),
-                                                         target), loc)
-                                    in
-                                        (L'.ESeq (
-                                         (L'.EDml (foldl
-                                                       (fn (eb, s) =>
-                                                           (L'.EStrcat (s,
-                                                                        (L'.EStrcat ((L'.EPrim (Prim.String " AND "),
-                                                                                      loc),
-                                                                                     cond eb), loc)), loc))
-                                                       (L'.EStrcat ((L'.EPrim (Prim.String ("DELETE FROM uw_"
-                                                                                            ^ tab
-                                                                                            ^ " WHERE ")), loc),
-                                                                    cond eb), loc)
-                                                       ebs), loc),
-                                         e), loc)
-                                    end
+                                    (L'.ESeq (
+                                     (L'.EDml (foldl
+                                                   (fn (eb, s) =>
+                                                       (L'.EStrcat (s,
+                                                                    (L'.EStrcat ((L'.EPrim (Prim.String " AND "),
+                                                                                  loc),
+                                                                                 cond eb), loc)), loc))
+                                                   (L'.EStrcat ((L'.EPrim (Prim.String ("DELETE FROM uw_"
+                                                                                        ^ tab
+                                                                                        ^ " WHERE ")), loc),
+                                                                cond eb), loc)
+                                                   ebs), loc),
+                                     e), loc)
                         in
                             e
                         end

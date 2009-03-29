@@ -1,0 +1,6 @@
+debug
+database dbname=whiteout
+sql whiteout.sql
+timeout 5
+
+whiteout
