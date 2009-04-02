@@ -99,6 +99,7 @@ typedef struct client {
   int sock;
   time_t last_contact;
   unsigned n_channels;
+  unsigned refcount;
 } client;
 
 
@@ -135,6 +136,7 @@ static client *new_client() {
   c->last_contact = time(NULL);
   buf_reset(&c->msgs);
   c->n_channels = 0;
+  c->refcount = 0;
   pthread_mutex_unlock(&c->lock);
 
   c->next = clients_used;
@@ -143,6 +145,18 @@ static client *new_client() {
   pthread_mutex_unlock(&clients_mutex);
 
   return c;
+}
+
+static void use_client(client *c) {
+  pthread_mutex_lock(&c->lock);
+  ++c->refcount;
+  pthread_mutex_unlock(&c->lock);
+}
+
+static void release_client(client *c) {
+  pthread_mutex_lock(&c->lock);
+  --c->refcount;
+  pthread_mutex_unlock(&c->lock);
 }
 
 static const char begin_msgs[] = "HTTP/1.1 200 OK\r\nContent-type: text/plain\r\n\r\n";
@@ -222,9 +236,8 @@ static uw_Basis_channel new_channel(client *c) {
   return ch;
 }
 
-static void client_send(int already_locked, client *c, buf *msg) {
-  if (!already_locked)
-    pthread_mutex_lock(&c->lock);
+static void client_send(client *c, buf *msg) {
+  pthread_mutex_lock(&c->lock);
 
   if (c->sock != -1) {
     uw_really_send(c->sock, begin_msgs, sizeof(begin_msgs) - 1);
@@ -234,8 +247,7 @@ static void client_send(int already_locked, client *c, buf *msg) {
   } else
     buf_append(&c->msgs, msg->start, buf_used(msg));
 
-  if (!already_locked)
-    pthread_mutex_unlock(&c->lock);
+  pthread_mutex_unlock(&c->lock);
 }
 
 
@@ -472,7 +484,7 @@ void uw_login(uw_context ctx) {
       if (c == NULL)
         uw_error(ctx, FATAL, "Unknown client ID in HTTP headers (%s, %s)", id_s, pass_s);
       else {
-        pthread_mutex_lock(&c->lock);
+        use_client(c);
         ctx->client = c;
 
         if (c->mode != USED)
@@ -482,7 +494,7 @@ void uw_login(uw_context ctx) {
       }
     } else {
       client *c = new_client();
-      pthread_mutex_lock(&c->lock);
+      use_client(c);
       ctx->client = c;
     }  
   }
@@ -1847,16 +1859,16 @@ void uw_commit(uw_context ctx) {
 
     assert (c != NULL && c->mode == USED);
 
-    client_send(c == ctx->client, c, &d->msgs);
+    client_send(c, &d->msgs);
   }
 
   if (ctx->client)
-    pthread_mutex_unlock(&ctx->client->lock);
+    release_client(ctx->client);
 }
 
 int uw_rollback(uw_context ctx) {
   if (ctx->client)
-    pthread_mutex_unlock(&ctx->client->lock);
+    release_client(ctx->client);
 
   return uw_db_rollback(ctx);
 }
@@ -1891,7 +1903,7 @@ void uw_prune_clients(uw_context ctx) {
   for (c = clients_used; c; c = next) {
     next = c->next;
     pthread_mutex_lock(&c->lock);
-    if (c->last_contact < cutoff) {
+    if (c->last_contact < cutoff && c->refcount == 0) {
       failure_kind fk = UNLIMITED_RETRY;
       if (prev)
         prev->next = next;
