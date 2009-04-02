@@ -94,7 +94,7 @@ typedef struct client {
   usage mode;
   int pass;
   struct client *next;
-  pthread_mutex_t lock;
+  pthread_mutex_t lock, pull_lock;
   buf msgs;
   int sock;
   time_t last_contact;
@@ -125,6 +125,7 @@ static client *new_client() {
     c = malloc(sizeof(client));
     c->id = n_clients-1;
     pthread_mutex_init(&c->lock, NULL);
+    pthread_mutex_init(&c->pull_lock, NULL);
     buf_init(&c->msgs, 0);
     clients[n_clients-1] = c;
   }
@@ -151,12 +152,15 @@ static void use_client(client *c) {
   pthread_mutex_lock(&c->lock);
   ++c->refcount;
   pthread_mutex_unlock(&c->lock);
+  pthread_mutex_lock(&c->pull_lock);
 }
 
 static void release_client(client *c) {
+  pthread_mutex_unlock(&c->pull_lock);
   pthread_mutex_lock(&c->lock);
   --c->refcount;
   pthread_mutex_unlock(&c->lock);
+
 }
 
 static const char begin_msgs[] = "HTTP/1.1 200 OK\r\nContent-type: text/plain\r\n\r\n";
