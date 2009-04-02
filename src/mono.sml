@@ -122,7 +122,7 @@ datatype decl' =
 
        | DTable of string * (string * typ) list
        | DSequence of string
-       | DDatabase of string * int
+       | DDatabase of {name : string, expunge : int, initialize : int}
 
        | DJavaScript of string
 

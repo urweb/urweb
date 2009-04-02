@@ -308,15 +308,15 @@ struct uw_context {
 
 extern int uw_inputs_len, uw_timeout;
 
-uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, size_t heap_len) {
+uw_context uw_init() {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->headers = ctx->headers_end = NULL;
 
-  buf_init(&ctx->outHeaders, outHeaders_len);
-  buf_init(&ctx->page, page_len);
-  buf_init(&ctx->heap, heap_len);
-  buf_init(&ctx->script, script_len);
+  buf_init(&ctx->outHeaders, 0);
+  buf_init(&ctx->page, 0);
+  buf_init(&ctx->heap, 0);
+  buf_init(&ctx->script, 0);
   ctx->script.start[0] = 0;
 
   ctx->inputs = calloc(uw_inputs_len, sizeof(char *));
@@ -1930,4 +1930,20 @@ void uw_prune_clients(uw_context ctx) {
   }
 
   pthread_mutex_unlock(&clients_mutex);
+}
+
+void uw_initializer(uw_context ctx);
+
+failure_kind uw_initialize(uw_context ctx) {
+  int r = setjmp(ctx->jmp_buf);
+
+  if (r == 0) {
+    if (uw_db_begin(ctx))
+      uw_error(ctx, FATAL, "Error running SQL BEGIN");
+    uw_initializer(ctx);
+    if (uw_db_commit(ctx))
+      uw_error(ctx, FATAL, "Error running SQL COMMIT");
+  }
+
+  return r;
 }

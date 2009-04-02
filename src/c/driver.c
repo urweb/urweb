@@ -69,7 +69,7 @@ static int try_rollback(uw_context ctx) {
 
 static void *worker(void *data) {
   int me = *(int *)data, retries_left = MAX_RETRIES;
-  uw_context ctx = uw_init(0, 0, 1024, 0);
+  uw_context ctx = uw_init();
   
   while (1) {
     failure_kind fk = uw_begin_init(ctx);
@@ -278,7 +278,7 @@ static void *worker(void *data) {
 }
 
 static void *client_pruner(void *data) {
-  uw_context ctx = uw_init(0, 0, 0, 0);
+  uw_context ctx = uw_init();
   uw_db_init(ctx);
 
   while (1) {
@@ -294,6 +294,19 @@ static void help(char *cmd) {
 static void sigint(int signum) {
   printf("Exiting....\n");
   exit(0);
+}
+
+static void initialize() {
+  uw_context ctx = uw_init();
+
+  uw_db_init(ctx);
+  if (uw_initialize(ctx) != SUCCESS) {
+    printf("Failed to initialize database!\n");
+    uw_db_rollback(ctx);
+    exit(1);
+  }
+
+  uw_free(ctx);
 }
 
 int main(int argc, char *argv[]) {
@@ -341,6 +354,8 @@ int main(int argc, char *argv[]) {
       return 1;
     }
   }
+
+  initialize();
 
   names = calloc(nthreads, sizeof(int));
 

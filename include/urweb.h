@@ -10,8 +10,9 @@ void uw_global_init(void);
 
 void uw_client_connect(unsigned id, int pass, int sock);
 void uw_prune_clients(uw_context);
+failure_kind uw_initialize(uw_context);
 
-uw_context uw_init(size_t outHeaders_len, size_t script_len, size_t page_len, size_t heap_len);
+uw_context uw_init(void);
 void uw_set_db(uw_context, void*);
 void *uw_get_db(uw_context);
 void uw_free(uw_context);

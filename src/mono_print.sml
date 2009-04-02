@@ -413,13 +413,16 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DSequence s => box [string "(* SQL sequence ",
                             string s,
                             string "*)"]
-      | DDatabase (s, n) => box [string "database",
-                                 space,
-                                 string s,
-                                 space,
-                                 string "(",
-                                 p_enamed env n,
-                                 string ")"]
+      | DDatabase {name, expunge, initialize} => box [string "database",
+                                                      space,
+                                                      string name,
+                                                      space,
+                                                      string "(",
+                                                      p_enamed env expunge,
+                                                      string ",",
+                                                      space,
+                                                      p_enamed env initialize,
+                                                      string ")"]
       | DJavaScript s => box [string "JavaScript(",
                               string s,
                               string ")"]

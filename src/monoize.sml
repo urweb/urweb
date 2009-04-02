@@ -2474,6 +2474,25 @@ fun monoize env file =
         val loc = E.dummySpan
         val client = (L'.TFfi ("Basis", "client"), loc)
         val unit = (L'.TRecord [], loc)
+
+        fun calcClientish xts =
+            foldl (fn ((x : L.con, t : L.con), st as (nullable, notNullable)) =>
+                      case #1 x of
+                          L.CName x =>
+                          (case #1 t of
+                               L.CFfi ("Basis", "client") =>
+                               (nullable, (x, Client) :: notNullable)
+                             | L.CApp ((L.CFfi ("Basis", "option"), _),
+                                       (L.CFfi ("Basis", "client"), _)) =>
+                               ((x, Client) :: nullable, notNullable)
+                             | L.CApp ((L.CFfi ("Basis", "channel"), _), _) =>
+                               (nullable, (x, Channel) :: notNullable)
+                             | L.CApp ((L.CFfi ("Basis", "option"), _),
+                                       (L.CApp ((L.CFfi ("Basis", "channel"), _), _), _)) =>
+                               ((x, Channel) :: nullable, notNullable)
+                             | _ => st)
+                        | _ => st) ([], []) xts
+
         fun expunger () =
             let
                 val target = (L'.EFfiApp ("Basis", "sqlifyClient", [(L'.ERel 0, loc)]), loc)
@@ -2482,23 +2501,7 @@ fun monoize env file =
                     case xts of
                         L.CRecord (_, xts) =>
                         let
-                            val (nullable, notNullable) =
-                                foldl (fn ((x, t), st as (nullable, notNullable)) =>
-                                          case #1 x of
-                                              L.CName x =>
-                                              (case #1 t of
-                                                   L.CFfi ("Basis", "client") =>
-                                                   (nullable, (x, Client) :: notNullable)
-                                                 | L.CApp ((L.CFfi ("Basis", "option"), _),
-                                                           (L.CFfi ("Basis", "client"), _)) =>
-                                                   ((x, Client) :: nullable, notNullable)
-                                                 | L.CApp ((L.CFfi ("Basis", "channel"), _), _) =>
-                                                   (nullable, (x, Channel) :: notNullable)
-                                                 | L.CApp ((L.CFfi ("Basis", "option"), _),
-                                                           (L.CApp ((L.CFfi ("Basis", "channel"), _), _), _)) =>
-                                                   ((x, Channel) :: nullable, notNullable)
-                                                 | _ => st)
-                                            | _ => st) ([], []) xts
+                            val (nullable, notNullable) = calcClientish xts
 
                             fun cond (x, v) =
                                 (L'.EStrcat ((L'.EPrim (Prim.String ("uw_" ^ x
@@ -2529,7 +2532,7 @@ fun monoize env file =
                                      (L'.EDml (foldl
                                                    (fn (eb, s) =>
                                                        (L'.EStrcat (s,
-                                                                    (L'.EStrcat ((L'.EPrim (Prim.String " AND "),
+                                                                    (L'.EStrcat ((L'.EPrim (Prim.String " OR "),
                                                                                   loc),
                                                                                  cond eb), loc)), loc))
                                                    (L'.EStrcat ((L'.EPrim (Prim.String ("DELETE FROM uw_"
@@ -2551,21 +2554,74 @@ fun monoize env file =
                             | _ => e) e file
             end
 
+        fun initializer () =
+            let
+                fun doTable (tab, xts, e) =
+                    case xts of
+                        L.CRecord (_, xts) =>
+                        let
+                            val (nullable, notNullable) = calcClientish xts
+
+                            val e =
+                                case nullable of
+                                    [] => e
+                                  | (x, _) :: ebs =>
+                                    (L'.ESeq (
+                                     (L'.EDml (L'.EPrim (Prim.String
+                                                             (foldl (fn ((x, _), s) =>
+                                                                        s ^ ", uw_" ^ x ^ " = NULL")
+                                                                    ("UPDATE uw_"
+                                                                     ^ tab
+                                                                     ^ " SET uw_"
+                                                                     ^ x
+                                                                     ^ " = NULL")
+                                                                    ebs)), loc), loc),
+                                     e), loc)
+
+                            val e =
+                                case notNullable of
+                                    [] => e
+                                  | eb :: ebs =>
+                                    (L'.ESeq (
+                                     (L'.EDml (L'.EPrim (Prim.String ("DELETE FROM uw_"
+                                                                      ^ tab)), loc), loc),
+                                     e), loc)
+                        in
+                            e
+                        end
+                      | _ => e
+
+                val e = (L'.ERecord [], loc)
+            in
+                foldl (fn ((d, _), e) =>
+                          case d of
+                              L.DTable (_, _, xts, tab) => doTable (tab, #1 xts, e)
+                            | _ => e) e file
+            end
+
         val (_, _, ds) = List.foldl (fn (d, (env, fm, ds)) =>
                                         case #1 d of
                                             L.DDatabase s =>
                                             let
-                                                val (n, fm) = Fm.freshName fm
-
-
-                                                val d = L'.DVal ("expunger",
-                                                                 n,
-                                                                 (L'.TFun (client, unit), loc),
-                                                                 (L'.EAbs ("cli", client, unit, expunger ()), loc),
-                                                                 "expunger")
+                                                val (nExp, fm) = Fm.freshName fm
+                                                val (nIni, fm) = Fm.freshName fm
+                                                                 
+                                                val dExp = L'.DVal ("expunger",
+                                                                    nExp,
+                                                                    (L'.TFun (client, unit), loc),
+                                                                    (L'.EAbs ("cli", client, unit, expunger ()), loc),
+                                                                    "expunger")
+                                                val dIni = L'.DVal ("initializer",
+                                                                    nIni,
+                                                                    (L'.TFun (unit, unit), loc),
+                                                                    (L'.EAbs ("_", unit, unit, initializer ()), loc),
+                                                                    "initializer")
                                             in
-                                                (env, Fm.enter fm, (L'.DDatabase (s, n), loc)
-                                                                   :: (d, loc)
+                                                (env, Fm.enter fm, (L'.DDatabase {name = s,
+                                                                                  expunge = nExp,
+                                                                                  initialize = nIni}, loc)
+                                                                   :: (dExp, loc)
+                                                                   :: (dIni, loc)
                                                                    :: ds)
                                             end
                                           | _ =>

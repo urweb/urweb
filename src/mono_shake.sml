@@ -45,7 +45,7 @@ fun shake file =
     let
         val page_es = List.foldl
                           (fn ((DExport (_, _, n, _, _), _), page_es) => n :: page_es
-                            | ((DDatabase (_, n), _), page_es) => n :: page_es
+                            | ((DDatabase {expunge = n1, initialize = n2, ...}, _), page_es) => n1 :: n2 :: page_es
                             | (_, page_es) => page_es) [] file
 
         val (cdef, edef) = foldl (fn ((DDatatype (_, n, xncs), _), (cdef, edef)) =>
