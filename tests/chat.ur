@@ -48,6 +48,7 @@ fun chat id =
 
         fun doSpeak () =
             line <- get newLine;
+            set newLine "";
             speak line
     in
         return <xml><body onload={onload ()}>
