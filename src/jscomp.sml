@@ -49,7 +49,8 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "urlifyInt"), "ts"),
              (("Basis", "urlifyFloat"), "ts"),
              (("Basis", "urlifyString"), "uf"),
-             (("Basis", "recv"), "rv")]
+             (("Basis", "recv"), "rv"),
+             (("Basis", "strcat"), "cat")]
 
 structure FM = BinaryMapFn(struct
                            type ord_key = string * string

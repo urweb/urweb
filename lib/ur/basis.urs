@@ -375,8 +375,8 @@ con form = [Body, Form]
 con tabl = [Body, Table]
 con tr = [Body, Tr]
 
-val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> unit
-          -> tag [Signal = signal (xml ctx use bind)] ctx [] use bind
+val dyn : use ::: {Type} -> bind ::: {Type} -> unit
+          -> tag [Signal = signal (xml body use bind)] body [] use bind
 
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
@@ -392,6 +392,8 @@ con bodyTagStandalone = fn (attrs :: {Type}) =>
                                  unit -> tag attrs ([Body] ++ ctx) [] [] []
 
 val br : bodyTagStandalone []
+
+val span : bodyTag []
 
 val p : bodyTag []
 val b : bodyTag []
