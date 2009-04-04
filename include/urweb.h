@@ -52,6 +52,8 @@ void uw_set_script_header(uw_context, const char*);
 const char *uw_Basis_get_settings(uw_context, uw_Basis_string);
 const char *uw_Basis_get_script(uw_context, uw_unit);
 
+void uw_set_needs_push(uw_context, int);
+
 char *uw_Basis_htmlifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_htmlifyString(uw_context, uw_Basis_string);

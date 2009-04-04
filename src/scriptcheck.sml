@@ -35,18 +35,20 @@ structure SS = BinarySetFn(struct
                            end)
 structure IS = IntBinarySet
 
-val csBasis = SS.addList (SS.empty,
-                          ["new_client_source",
-                           "get_client_source",
-                           "set_client_source",
-                           "new_channel",
-                           "subscribe",
-                           "send",
-                           "recv"])
+val pullBasis = SS.addList (SS.empty,
+                            ["new_client_source",
+                             "get_client_source",
+                             "set_client_source"])
 
+val pushBasis = SS.addList (SS.empty,
+                            ["new_channel",
+                             "self"])
+                
 val scriptWords = ["<script",
                    " onclick=",
                    " onload="]
+
+val pushWords = ["rv("]
 
 fun classify (ds, ps) =
     let
@@ -57,11 +59,11 @@ fun classify (ds, ps) =
                 not (Substring.isEmpty suffix)
             end
 
-        fun hasClient csids =
+        fun hasClient {basis, words} csids =
             let
                 fun hasClient e =
                     case #1 e of
-                        EPrim (Prim.String s) => List.exists (fn n => inString {needle = n, haystack = s}) scriptWords
+                        EPrim (Prim.String s) => List.exists (fn n => inString {needle = n, haystack = s}) words
                       | EPrim _ => false
                       | ERel _ => false
                       | ENamed n => IS.member (csids, n)
@@ -69,9 +71,9 @@ fun classify (ds, ps) =
                       | ECon (_, _, SOME e) => hasClient e
                       | ENone _ => false
                       | ESome (_, e) => hasClient e
-                      | EFfi ("Basis", x) => SS.member (csBasis, x)
+                      | EFfi ("Basis", x) => SS.member (basis, x)
                       | EFfi _ => false
-                      | EFfiApp ("Basis", x, es) => SS.member (csBasis, x)
+                      | EFfiApp ("Basis", x, es) => SS.member (basis, x)
                                                     orelse List.exists hasClient es
                       | EFfiApp (_, _, es) => List.exists hasClient es
                       | EApp (e, es) => hasClient e orelse List.exists hasClient es
@@ -93,33 +95,49 @@ fun classify (ds, ps) =
                 hasClient
             end
 
-        fun decl ((d, _), csids) =
+        fun decl ((d, _), (pull_ids, push_ids)) =
             let
-                val hasClient = hasClient csids
+                val hasClientPull = hasClient {basis = pullBasis, words = scriptWords} pull_ids
+                val hasClientPush = hasClient {basis = pushBasis, words = pushWords} push_ids
             in
                 case d of
-                    DVal (_, n, _, e) => if hasClient e then
-                                             IS.add (csids, n)
-                                         else
-                                             csids
-                  | DFun (_, n, _, _, e) => if hasClient e then
-                                                IS.add (csids, n)
-                                            else
-                                                csids
-                  | DFunRec xes => if List.exists (fn (_, _, _, _, e) => hasClient e) xes then
-                                       foldl (fn ((_, n, _, _, _), csids) => IS.add (csids, n))
-                                             csids xes
-                                   else
-                                       csids
-                  | _ => csids
+                    DVal (_, n, _, e) => (if hasClientPull e then
+                                             IS.add (pull_ids, n)
+                                          else
+                                              pull_ids,
+                                          if hasClientPush e then
+                                              IS.add (push_ids, n)
+                                          else
+                                              push_ids)
+                  | DFun (_, n, _, _, e) => (if hasClientPull e then
+                                                 IS.add (pull_ids, n)
+                                             else
+                                                 pull_ids,
+                                             if hasClientPush e then
+                                                 IS.add (push_ids, n)
+                                             else
+                                                 push_ids)
+                  | DFunRec xes => (if List.exists (fn (_, _, _, _, e) => hasClientPull e) xes then
+                                       foldl (fn ((_, n, _, _, _), pull_ids) => IS.add (pull_ids, n))
+                                             pull_ids xes
+                                    else
+                                        pull_ids,
+                                    if List.exists (fn (_, _, _, _, e) => hasClientPush e) xes then
+                                        foldl (fn ((_, n, _, _, _), push_ids) => IS.add (push_ids, n))
+                                              push_ids xes
+                                    else
+                                        push_ids)
+                  | _ => (pull_ids, push_ids)
             end
 
-        val csids = foldl decl IS.empty ds
+        val (pull_ids, push_ids) = foldl decl (IS.empty, IS.empty) ds
 
         val ps = map (fn (ek, x, n, ts, t, _) =>
                          (ek, x, n, ts, t,
-                          if IS.member (csids, n) then
-                              ServerAndClient
+                          if IS.member (push_ids, n) then
+                              ServerAndPullAndPush
+                          else if IS.member (pull_ids, n) then
+                              ServerAndPull
                           else
                               ServerOnly)) ps
     in

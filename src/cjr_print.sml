@@ -2391,12 +2391,19 @@ fun p_file env (ds, ps) =
                                     newline,
                                     string "uw_set_script_header(ctx, \"",
                                     string (case side of
-                                                ServerAndClient => "<script src=\\\""
-                                                                   ^ OS.Path.joinDirFile {dir = !Monoize.urlPrefix,
-                                                                                          file = "app.js"}
-                                                                   ^ "\\\"></script>\\n"
-                                              | ServerOnly => ""),
+                                                ServerOnly => ""
+                                              | _ => "<script src=\\\""
+                                                     ^ OS.Path.joinDirFile {dir = !Monoize.urlPrefix,
+                                                                            file = "app.js"}
+                                                     ^ "\\\"></script>\\n"),
                                     string "\");",
+                                    newline,
+                                    string "uw_set_needs_push(ctx, ",
+                                    string (case side of
+                                                ServerAndPullAndPush => "1"
+                                              | _ => "0"),
+                                    string ");",
+                                    newline,
                                     string "uw_set_url_prefix(ctx, \"",
                                     string (!Monoize.urlPrefix),
                                     string "\");",

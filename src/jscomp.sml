@@ -850,7 +850,7 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str "(", e1, str "+", e2, str ")"], st)
+                                (strcat [str "cat(", e1, str ",", e2, str ")"], st)
                             end
 
                           | EError (e, _) =>
@@ -891,9 +891,9 @@ fun process file =
 
                           | EJavaScript (Source _, _, SOME _) => (e, st)
                           | EJavaScript (_, _, SOME e) =>
-                            (strcat [str "function(){return ",
+                            (strcat [str "cs(function(){return ",
                                      e,
-                                     str "}"],
+                                     str "})"],
                              st)
 
                           | EClosure _ => unsupported "EClosure"
@@ -905,9 +905,9 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "function(){return ",
+                                (strcat [str "cs(function(){return ",
                                          e,
-                                         str "}"],
+                                         str "})"],
                                  st)
                             end
 

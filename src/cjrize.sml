@@ -520,7 +520,7 @@ fun cifyDecl ((d, loc), sm) =
             val (ts, sm) = ListUtil.foldlMap cifyTyp sm ts
             val (t, sm) = cifyTyp (t, sm)
         in
-            (NONE, SOME (ek, "/" ^ s, n, ts, t, L'.ServerAndClient), sm)
+            (NONE, SOME (ek, "/" ^ s, n, ts, t, L'.ServerAndPullAndPush), sm)
         end
 
       | L.DTable (s, xts) =>

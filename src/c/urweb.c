@@ -300,6 +300,8 @@ struct uw_context {
 
   const char *script_header, *url_prefix;
 
+  int needs_push;
+
   size_t n_deltas, used_deltas;
   delta *deltas;
 
@@ -333,6 +335,7 @@ uw_context uw_init() {
 
   ctx->script_header = "";
   ctx->url_prefix = "/";
+  ctx->needs_push = 0;
   
   ctx->error_message[0] = 0;
 
@@ -476,7 +479,7 @@ uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
 }
 
 void uw_login(uw_context ctx) {
-  if (ctx->script_header[0]) {
+  if (ctx->needs_push) {
     char *id_s, *pass_s;
 
     if ((id_s = uw_Basis_requestHeader(ctx, "UrWeb-Client"))
@@ -576,6 +579,10 @@ void uw_set_script_header(uw_context ctx, const char *s) {
 
 void uw_set_url_prefix(uw_context ctx, const char *s) {
   ctx->url_prefix = s;
+}
+
+void uw_set_needs_push(uw_context ctx, int n) {
+  ctx->needs_push = n;
 }
 
 

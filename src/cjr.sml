@@ -115,7 +115,8 @@ withtype decl = decl' located
 
 datatype sidedness =
          ServerOnly
-       | ServerAndClient
+       | ServerAndPull
+       | ServerAndPullAndPush
 
 type file = decl list * (Core.export_kind * string * int * typ list * typ * sidedness) list
 
