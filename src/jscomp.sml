@@ -891,9 +891,9 @@ fun process file =
 
                           | EJavaScript (Source _, _, SOME _) => (e, st)
                           | EJavaScript (_, _, SOME e) =>
-                            (strcat [str "\"cr(\"+ca(function(){return ",
+                            (strcat [str "function(){return ",
                                      e,
-                                     str "})+\")\""],
+                                     str "}"],
                              st)
 
                           | EClosure _ => unsupported "EClosure"
@@ -905,9 +905,9 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "\"cr(\"+ca(function(){return ",
+                                (strcat [str "function(){return ",
                                          e,
-                                         str "})+\")\""],
+                                         str "}"],
                                  st)
                             end
 

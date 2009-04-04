@@ -475,19 +475,12 @@ val tag = {
 
 val toTag = transform tag "tag" o toCore_untangle2
 
-val marshalcheck = {
-    func = (fn file => (MarshalCheck.check file; file)),
-    print = CorePrint.p_file CoreEnv.empty
-}
-
-val toMarshalcheck = transform marshalcheck "marshalcheck" o toTag
-
 val reduce = {
     func = Reduce.reduce,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toReduce = transform reduce "reduce" o toMarshalcheck
+val toReduce = transform reduce "reduce" o toTag
 
 val unpoly = {
     func = Unpoly.unpoly,
@@ -505,12 +498,19 @@ val toSpecialize = transform specialize "specialize" o toUnpoly
 
 val toShake3 = transform shake "shake3" o toSpecialize
 
+val marshalcheck = {
+    func = (fn file => (MarshalCheck.check file; file)),
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toMarshalcheck = transform marshalcheck "marshalcheck" o toShake3
+
 val monoize = {
     func = Monoize.monoize CoreEnv.empty,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMonoize = transform monoize "monoize" o toShake3
+val toMonoize = transform monoize "monoize" o toMarshalcheck
 
 val mono_opt = {
     func = MonoOpt.optimize,

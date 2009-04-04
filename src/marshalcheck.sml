@@ -58,7 +58,8 @@ val clientToServer = [("Basis", "int"),
                       ("Basis", "string"),
                       ("Basis", "time"),
                       ("Basis", "unit"),
-                      ("Basis", "option")]
+                      ("Basis", "option"),
+                      ("Basis", "bool")]
 
 val clientToServer = PS.addList (PS.empty, clientToServer)
 
