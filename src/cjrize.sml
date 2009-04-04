@@ -431,6 +431,7 @@ fun cifyExp (eAll as (e, loc), sm) =
 
       | L.EServerCall _ => raise Fail "Cjrize EServerCall"
       | L.ERecv _ => raise Fail "Cjrize ERecv"
+      | L.ESleep _ => raise Fail "Cjrize ESleep"
 
 fun cifyDecl ((d, loc), sm) =
     case d of

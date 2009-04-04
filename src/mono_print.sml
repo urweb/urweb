@@ -318,6 +318,11 @@ fun p_exp' par env (e, _) =
                                 string ")[",
                                 p_exp env e,
                                 string "]"]
+      | ESleep (n, e) => box [string "Sleep(",
+                              p_exp env n,
+                              string ")[",
+                              p_exp env e,
+                              string "]"]
 
 and p_exp env = p_exp' false env
 

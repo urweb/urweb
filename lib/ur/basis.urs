@@ -106,6 +106,7 @@ val setCookie : t ::: Type -> http_cookie t -> t -> transaction unit
 
 val alert : string -> transaction unit
 val spawn : transaction unit -> transaction unit
+val sleep : int -> transaction unit
 
 
 (** Channels *)

@@ -693,10 +693,20 @@ const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
   if (ctx->script_header[0] == 0)
     return "";
   else {
-    char *r = uw_malloc(ctx, strlen(ctx->script_header) + 18 + buf_used(&ctx->script));
-    sprintf(r, "%s<script>%s</script>",
+    char *r = uw_malloc(ctx, strlen(ctx->script_header) + 42 + buf_used(&ctx->script));
+    sprintf(r, "%s<script type=\"text/javascript\">%s</script>",
             ctx->script_header,
             ctx->script.start);
+    return r;
+  }
+}
+
+uw_Basis_string uw_Basis_maybe_onload(uw_context ctx, uw_Basis_string s) {
+  if (s[0] == 0)
+    return "";
+  else {
+    char *r = uw_malloc(ctx, 11 + strlen(s));
+    sprintf(r, " onload='%s'", s);
     return r;
   }
 }

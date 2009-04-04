@@ -88,6 +88,7 @@ fun impure (e, _) =
       | ESignalSource e => impure e
       | EServerCall _ => true
       | ERecv _ => true
+      | ESleep _ => true
 
 
 val liftExpInExp = Monoize.liftExpInExp
@@ -361,6 +362,7 @@ fun reduce file =
 
                       | EServerCall (e, ek, _) => summarize d e @ summarize d ek @ [Unsure]
                       | ERecv (e, ek, _) => summarize d e @ summarize d ek @ [Unsure]
+                      | ESleep (e, ek) => summarize d e @ summarize d ek @ [Unsure]
             in
                 (*Print.prefaces "Summarize"
                                [("e", MonoPrint.p_exp MonoEnv.empty (e, ErrorMsg.dummySpan)),

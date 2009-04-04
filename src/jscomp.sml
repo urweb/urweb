@@ -110,6 +110,7 @@ fun varDepth (e, _) =
       | ESignalSource e => varDepth e
       | EServerCall (e, ek, _) => Int.max (varDepth e, varDepth ek)
       | ERecv (e, ek, _) => Int.max (varDepth e, varDepth ek)
+      | ESleep (e, ek) => Int.max (varDepth e, varDepth ek)
 
 fun closedUpto d =
     let
@@ -152,6 +153,7 @@ fun closedUpto d =
               | ESignalSource e => cu inner e
               | EServerCall (e, ek, _) => cu inner e andalso cu inner ek
               | ERecv (e, ek, _) => cu inner e andalso cu inner ek
+              | ESleep (e, ek) => cu inner e andalso cu inner ek
     in
         cu 0
     end
@@ -970,6 +972,19 @@ fun process file =
                                          str (", function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ unurl ^ "},"),
                                          ek,
+                                         str ")"],
+                                 st)
+                            end
+
+                          | ESleep (e, ek) =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                                val (ek, st) = jsE inner (ek, st)
+                            in
+                                (strcat [str "window.setTimeout(",
+                                         ek,
+                                         str ", ",
+                                         e,
                                          str ")"],
                                  st)
                             end

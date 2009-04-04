@@ -111,6 +111,7 @@ datatype exp' =
 
        | EServerCall of exp * exp * typ
        | ERecv of exp * exp * typ
+       | ESleep of exp * exp
 
 withtype exp = exp' located
 

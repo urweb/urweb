@@ -45,8 +45,7 @@ val pushBasis = SS.addList (SS.empty,
                              "self"])
                 
 val scriptWords = ["<script",
-                   " onclick=",
-                   " onload="]
+                   " onclick='"]
 
 val pushWords = ["rv("]
 
@@ -59,8 +58,15 @@ fun classify (ds, ps) =
                 not (Substring.isEmpty suffix)
             end
 
-        fun hasClient {basis, words} csids =
+        fun hasClient {basis, words, onload} csids =
             let
+                fun realOnload ss =
+                    case ss of
+                        [] => false
+                      | (EFfiApp ("Basis", "get_settings", _), _) :: ss => realOnload ss
+                      | (EPrim (Prim.String s), _) :: ss => not (String.isPrefix "'" s)
+                      | _ => true
+
                 fun hasClient e =
                     case #1 e of
                         EPrim (Prim.String s) => List.exists (fn n => inString {needle = n, haystack = s}) words
@@ -73,6 +79,11 @@ fun classify (ds, ps) =
                       | ESome (_, e) => hasClient e
                       | EFfi ("Basis", x) => SS.member (basis, x)
                       | EFfi _ => false
+                      | EFfiApp ("Basis", "strcat", all as ((EPrim (Prim.String s1), _) :: ss)) =>
+                        if onload andalso String.isSuffix " onload='" s1 then
+                            realOnload ss orelse List.exists hasClient all
+                        else
+                            List.exists hasClient all
                       | EFfiApp ("Basis", x, es) => SS.member (basis, x)
                                                     orelse List.exists hasClient es
                       | EFfiApp (_, _, es) => List.exists hasClient es
@@ -97,8 +108,8 @@ fun classify (ds, ps) =
 
         fun decl ((d, _), (pull_ids, push_ids)) =
             let
-                val hasClientPull = hasClient {basis = pullBasis, words = scriptWords} pull_ids
-                val hasClientPush = hasClient {basis = pushBasis, words = pushWords} push_ids
+                val hasClientPull = hasClient {basis = pullBasis, words = scriptWords, onload = true} pull_ids
+                val hasClientPush = hasClient {basis = pushBasis, words = pushWords, onload = false} push_ids
             in
                 case d of
                     DVal (_, n, _, e) => (if hasClientPull e then
