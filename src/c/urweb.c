@@ -701,17 +701,16 @@ const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
   }
 }
 
-const char *uw_Basis_get_settings(uw_context ctx, uw_Basis_string onload) {
+const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
   if (ctx->client == NULL)
     return "";
   else {
-    char *r = uw_malloc(ctx, 52 + 3 * INTS_MAX + strlen(ctx->url_prefix) + strlen(onload));
-    sprintf(r, " onload='client_id=%u;client_pass=%d;url_prefix=\"%s\";timeout=%d;listener();%s'",
+    char *r = uw_malloc(ctx, 59 + 3 * INTS_MAX + strlen(ctx->url_prefix));
+    sprintf(r, "client_id=%u;client_pass=%d;url_prefix=\"%s\";timeout=%d;listener();",
             ctx->client->id,
             ctx->client->pass,
             ctx->url_prefix,
-            ctx->timeout,
-            onload);
+            ctx->timeout);
     return r;
   }
 }

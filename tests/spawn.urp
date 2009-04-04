@@ -1,0 +1,5 @@
+debug
+database dbname=spawn
+sql spawn.sql
+
+spawn

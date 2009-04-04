@@ -61,6 +61,7 @@ fun impure (e, _) =
       | EFfiApp ("Basis", "new_channel", _) => true
       | EFfiApp ("Basis", "subscribe", _) => true
       | EFfiApp ("Basis", "send", _) => true
+      | EFfiApp ("Basis", "recv", _) => true
       | EFfiApp _ => false
       | EApp ((EFfi _, _), _) => false
       | EApp _ => true
@@ -281,11 +282,12 @@ fun reduce file =
                       | EFfiApp ("Basis", "new_channel", es) => ffi es
                       | EFfiApp ("Basis", "subscribe", es) => ffi es
                       | EFfiApp ("Basis", "send", es) => ffi es
+                      | EFfiApp ("Basis", "recv", es) => ffi es
                       | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
                       | EApp ((EFfi _, _), e) => summarize d e
                       | EApp _ =>
                         let
-                            fun unravel (e, ls) =
+                            fun unravel (e, passed, ls) =
                                 case e of
                                     ENamed n =>
                                     let
@@ -294,10 +296,10 @@ fun reduce file =
                                         case IM.find (absCounts, n) of
                                             NONE => [Unsure]
                                           | SOME len =>
-                                            if length ls < len then
+                                            if passed < len then
                                                 ls
                                             else
-                                                [Unsure]
+                                                ls @ [Unsure]
                                     end
                                   | ERel n => List.revAppend (ls,
                                                               if n = d then
@@ -305,10 +307,10 @@ fun reduce file =
                                                               else
                                                                   [Unsure])
                                   | EApp (f, x) =>
-                                    unravel (#1 f, summarize d x @ ls)
+                                    unravel (#1 f, passed + 1, summarize d x @ ls)
                                   | _ => [Unsure]
                         in
-                            unravel (e, [])
+                            unravel (e, 0, [])
                         end
 
                       | EAbs (_, _, _, e) => List.filter (fn UseRel => true
@@ -386,8 +388,8 @@ fun reduce file =
 
                       | EApp ((EAbs (x, t, _, e1), loc), e2) =>
                         ((*Print.prefaces "Considering" [("e1", MonoPrint.p_exp (E.pushERel env x t NONE) e1),
-                                                         ("e2", MonoPrint.p_exp env e2),
-                                                         ("sub", MonoPrint.p_exp env (reduceExp env (subExpInExp (0, e2) e1)))];*)
+                                                       ("e2", MonoPrint.p_exp env e2),
+                                                       ("sub", MonoPrint.p_exp env (reduceExp env (subExpInExp (0, e2) e1)))];*)
                          if impure e2 then
                              #1 (reduceExp env (ELet (x, t, e2, e1), loc))
                          else

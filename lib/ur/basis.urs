@@ -105,6 +105,7 @@ val setCookie : t ::: Type -> http_cookie t -> t -> transaction unit
 (** JavaScript-y gadgets *)
 
 val alert : string -> transaction unit
+val spawn : transaction unit -> transaction unit
 
 
 (** Channels *)

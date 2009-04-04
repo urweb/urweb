@@ -1043,6 +1043,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.EFfiApp ("Basis", "spawn", [e]) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                ((L'.EApp (e, (L'.ERecord [], loc)), loc), fm)
+            end
+
           | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "return"), _), _), _), t), _),
                     (L.EFfi ("Basis", "signal_monad"), _)) =>
             let
@@ -2005,7 +2012,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          end
                     in
                         normal ("body",
-                                SOME (L'.EFfiApp ("Basis", "get_settings", [onload]), loc),
+                                SOME (L'.EStrcat ((L'.EPrim (Prim.String " onload='"), loc),
+                                                  (L'.EStrcat ((L'.EFfiApp ("Basis", "get_settings",
+                                                                            [(L'.ERecord [], loc)]), loc),
+                                                               (L'.EStrcat (onload,
+                                                                            (L'.EPrim (Prim.String "'"),
+                                                                             loc)), loc)), loc)), loc),
                                 SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
                     end
 
