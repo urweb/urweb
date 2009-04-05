@@ -59,7 +59,9 @@ val csBasis = SS.addList (SS.empty,
                           ["get",
                            "set",
                            "alert",
-                           "recv"])
+                           "recv",
+                           "sleep",
+                           "spawn"])
 
 type state = {
      cpsed : int IM.map,

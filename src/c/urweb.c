@@ -322,7 +322,7 @@ uw_context uw_init() {
   buf_init(&ctx->outHeaders, 0);
   buf_init(&ctx->page, 0);
   buf_init(&ctx->heap, 0);
-  buf_init(&ctx->script, 0);
+  buf_init(&ctx->script, 1);
   ctx->script.start[0] = 0;
 
   ctx->inputs = calloc(uw_inputs_len, sizeof(char *));

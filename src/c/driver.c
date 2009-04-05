@@ -67,15 +67,14 @@ static int try_rollback(uw_context ctx) {
   return r;
 }
 
-static void *worker(void *data) {
-  int me = *(int *)data, retries_left = MAX_RETRIES;
+static uw_context new_context() {
   uw_context ctx = uw_init();
-  
+  int retries_left = MAX_RETRIES;
+
   while (1) {
     failure_kind fk = uw_begin_init(ctx);
 
     if (fk == SUCCESS) {
-      uw_db_init(ctx);
       printf("Database connection initialized.\n");
       break;
     } else if (fk == BOUNDED_RETRY) {
@@ -94,11 +93,18 @@ static void *worker(void *data) {
       uw_free(ctx);
       return NULL;
     } else {
-      printf("Unknown uw_handle return code!\n");
+      printf("Unknown uw_begin_init return code!\n");
       uw_free(ctx);
       return NULL;
     }
   }
+
+  return ctx;
+}
+
+static void *worker(void *data) {
+  int me = *(int *)data, retries_left = MAX_RETRIES;
+  uw_context ctx = new_context();
 
   while (1) {
     char buf[uw_bufsize+1], *back = buf, *s;
@@ -278,8 +284,10 @@ static void *worker(void *data) {
 }
 
 static void *client_pruner(void *data) {
-  uw_context ctx = uw_init();
-  uw_db_init(ctx);
+  uw_context ctx = new_context();
+
+  if (!ctx)
+    exit(1);
 
   while (1) {
     uw_prune_clients(ctx);
@@ -297,9 +305,11 @@ static void sigint(int signum) {
 }
 
 static void initialize() {
-  uw_context ctx = uw_init();
+  uw_context ctx = new_context();
 
-  uw_db_init(ctx);
+  if (!ctx)
+    exit(1);
+
   if (uw_initialize(ctx) != SUCCESS) {
     printf("Failed to initialize database!\n");
     uw_db_rollback(ctx);
