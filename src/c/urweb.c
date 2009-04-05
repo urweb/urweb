@@ -692,6 +692,8 @@ void uw_write_script(uw_context ctx, uw_Basis_string s) {
 const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
   if (ctx->script_header[0] == 0)
     return "";
+  else if (buf_used(&ctx->script) == 0)
+    return ctx->script_header;
   else {
     char *r = uw_malloc(ctx, strlen(ctx->script_header) + 42 + buf_used(&ctx->script));
     sprintf(r, "%s<script type=\"text/javascript\">%s</script>",
