@@ -1,4 +1,14 @@
 ========
+20090405
+========
+
+- Asynchronous message-passing and the associated server-side client
+  bookkeeping
+- Reimplement parts of the client-side runtime system to avoid space leaks
+- spawn and sleep
+- Expand the constructor class instance rule format
+
+========
 20090312
 ========
 
