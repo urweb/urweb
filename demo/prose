@@ -256,3 +256,11 @@ roundTrip.urp
 <p>The <tt>main</tt> function begins by retrieving the current client ID, allocating a new channel, and associating that channel with the current client in the database.  Next, we allocate a buffer and return the page, which in its <tt>onload</tt> attribute starts two loops running in parallel.  In contrast to in the last example, here we only use <tt>spawn</tt> with the call to the first loop, since every client-side event handler is implicitly started in a new thread.</tt>
 
 <p>The first loop, <tt>receiver</tt>, repeatedly reads messages from the channel and writes them to the buffer.  The second loop, <tt>sender</tt>, periodically sends messages to the channel.  Client code can't send messages directly.  Instead, we must use server-side functions to do the sending.  Clients aren't trusted to pass channels to the server, so our server-side function <tt>writeBack</tt> instead keys off of the client ID, looking up the corresponding channel in the database.</p>
+
+chat.urp
+
+<p>This example provides a simple anonymous online chatting system, with multiple named channels.</p>
+
+<p>First, we build another useful component.  Recall that each channel has an owning client, who has the exclusive ability to read messages sent to it.  On top of that functionality, we can build a kind of broadcast channel that accepts multiple subscribers.  The <tt>Broadcast</tt> module contains a functor with such an implementation.  We instantiate the functor with the type of data we want to send over the channel.  The functor output gives us an abstract type of "topics," which are subscribable IDs.  When a client subscribes to a topic, it is handed a channel that it can use to read new messages on that topic.  We also have an operation to count the number of subscribers to a topic.  This number shouldn't be treated as too precise, since some clients that have surfed away from the application may still be considered subscribed until a timeout period elapses.</p>
+
+<p>The main <tt>Chat</tt> application includes some standard management of a table of named channels.  All of the interesting client-server work is done with the <tt>recv</tt> function and with the functions provided by <tt>Broadcast</tt>.</p>

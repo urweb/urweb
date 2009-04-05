@@ -1,0 +1,6 @@
+database dbname=test
+sql chat.sql
+
+broadcast
+buffer
+chat
