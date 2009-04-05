@@ -364,7 +364,7 @@ fun process file =
                             else
                                 e
                 in
-                    ("(uu=t[i++],uu==\"Some\"?" ^ e ^ ":null)", st)
+                    ("(t[i++]==\"Some\"?" ^ e ^ ":null)", st)
                 end
 
               | TDatatype (n, ref (dk, cs)) =>
@@ -861,7 +861,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "alert(\"ERROR: \"+", e, str ")"],
+                                (strcat [str "alert(cat(\"ERROR: \",", e, str "))"],
                                  st)
                             end
 
@@ -952,9 +952,9 @@ fun process file =
                                 val (ek, st) = jsE inner (ek, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str ("rc(\"" ^ !Monoize.urlPrefix ^ "\"+"),
+                                (strcat [str ("rc(cat(\"" ^ !Monoize.urlPrefix ^ "\","),
                                          e,
-                                         str (", function(s){var t=s.split(\"/\");var i=0;return "
+                                         str ("), function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ unurl ^ "},"),
                                          ek,
                                          str ")"],

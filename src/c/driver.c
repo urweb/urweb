@@ -182,6 +182,9 @@ static void *worker(void *data) {
             dont_close = 1;
             fprintf(stderr, "Processed request for messages by client %u\n\n", idn);
           }
+          else {
+            fprintf(stderr, "Missing fields in .msgs request: %s, %s\n\n", id, pass);
+          }
           break;
         }
 
