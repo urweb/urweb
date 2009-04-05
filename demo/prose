@@ -234,3 +234,15 @@ batchG.urp
 <p><tt>BatchFun.Make</tt> handles the plumbing of allocating the local state, using it to create widgets, and reading the state values when the user clicks "Batch it."</p>
 
 <p><tt>batchG.ur</tt> contains an example instantiation, which is just as easy to write as in the <tt>Crud1</tt> example.</p>
+
+threads.urp
+
+<p>Ur/Web makes it easy to write multi-threaded client-side code.  This example demonstrates two threads writing to a page at once.</p>
+
+<p>First, we define a useful component for sections of pages that can have lines of text added to them dynamically.  This is the <tt>Buffer</tt> module.  It contains an abstract type of writable regions, along with functions to create a region, retrieve a signal representing its HTML rendering, and add a new line to it.</p>
+
+<p>The entry point to the main module <tt>Threads</tt> begins by creating a buffer.  The function <tt>loop</tt> implements writing to that buffer periodically, incrementing a counter each time.  The arguments to <tt>loop</tt> specify a prefix for the messages and the number of milliseconds to wait between writes.</p>
+
+<p>We specify some client-side code to run on page load using the <tt>onload</tt> attribute of <tt>&lt;body&gt;</tt>.  The <tt>onload</tt> code in this example spawns two separate threads running the <tt>loop</tt> code with different prefixes, update intervals, and starting counters.</p>
+
+<p>Old hands at concurrent programming may be worried at the lack of synchronization in this program.  Ur/Web uses <i>cooperative multi-threading</i>, not the more common <i>preemptive</i> multi-threading.  Only one thread runs at a time, and only particular function calls can trigger context switches.  In this example, <tt>sleep</tt> is the only such function that appears.</p>
