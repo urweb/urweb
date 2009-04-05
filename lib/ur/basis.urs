@@ -113,7 +113,6 @@ val sleep : int -> transaction unit
 
 con channel :: Type -> Type
 val channel : t ::: Type -> transaction (channel t)
-val subscribe : t ::: Type -> channel t -> transaction unit
 val send : t ::: Type -> channel t -> t -> transaction unit
 val recv : t ::: Type -> channel t -> transaction t
 

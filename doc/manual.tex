@@ -129,6 +129,9 @@ For each entry \texttt{M} in the module list, the file \texttt{M.urs} is include
 
 A few other named directives are supported.  \texttt{prefix PREFIX} sets the prefix included before every URI within the generated application; the default is \texttt{/}.  \texttt{exe FILENAME} sets the filename to which to write the output executable; the default for file \texttt{P.urp} is \texttt{P.exe}.  \texttt{debug} saves some intermediate C files, which is mostly useful to help in debugging the compiler itself.  \texttt{profile} generates an executable that may be used with gprof.
 
+\texttt{timeout N} sets to \texttt{N} seconds the amount of time that the generated server will wait after the last contact from a client before determining that that client has exited the application.  Clients that remain active will take the timeout setting into account in determining how often to ping the server, so it only makes sense to set a high timeout to cope with browser and network delays and failures.  Higher timeouts can lead to more unnecessary client information taking up memory on the server.  The timeout goes unused by any page that doesn't involve the \texttt{recv} function, since the server only needs to store per-client information for clients that receive asynchronous messages.
+
+
 \subsection{Building an Application}
 
 To compile project \texttt{P.urp}, simply run
@@ -1453,9 +1456,30 @@ $$\begin{array}{l}
 \end{array}$$
 
 
-\subsection{Functional-Reactive Client-Side Programming}
+\subsection{Client-Side Programming}
 
-Ur/Web supports running code on web browsers, via automatic compilation to JavaScript.  Most approaches to this kind of coding involve imperative manipulation of the DOM tree representing an HTML document's structure.  Ur/Web follows the \emph{functional-reactive} approach instead.  Programs may allocate mutable \emph{sources} of arbitrary types, and an HTML page is effectively a pure function over the latest values of the sources.  The page is not mutated directly, but rather it changes automatically as the sources are mutated.
+Ur/Web supports running code on web browsers, via automatic compilation to JavaScript.
+
+\subsubsection{The Basics}
+
+Clients can open alert dialog boxes, in the usual annoying JavaScript way.
+$$\begin{array}{l}
+  \mt{val} \; \mt{alert} : \mt{string} \to \mt{transaction} \; \mt{unit}
+\end{array}$$
+
+Any transaction may be run in a new thread with the $\mt{spawn}$ function.
+$$\begin{array}{l}
+  \mt{val} \; \mt{spawn} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit}
+\end{array}$$
+
+The current thread can be paused for at least a specified number of milliseconds.
+$$\begin{array}{l}
+  \mt{val} \; \mt{sleep} : \mt{int} \to \mt{transaction} \; \mt{unit}
+\end{array}$$
+
+\subsubsection{Functional-Reactive Page Generation}
+
+Most approaches to ``AJAX''-style coding involve imperative manipulation of the DOM tree representing an HTML document's structure.  Ur/Web follows the \emph{functional-reactive} approach instead.  Programs may allocate mutable \emph{sources} of arbitrary types, and an HTML page is effectively a pure function over the latest values of the sources.  The page is not mutated directly, but rather it changes automatically as the sources are mutated.
 
 $$\begin{array}{l}
   \mt{con} \; \mt{source} :: \mt{Type} \to \mt{Type} \\
@@ -1475,11 +1499,34 @@ $$\begin{array}{l}
 A reactive portion of an HTML page is injected with a $\mt{dyn}$ tag, which has a signal-valued attribute $\mt{Signal}$.
 
 $$\begin{array}{l}
-  \mt{val} \; \mt{dyn} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use} ::: \{\mt{Type}\} \to \mt{bind} ::: \{\mt{Type}\} \to \mt{unit} \\
-  \hspace{.1in} \to \mt{tag} \; [\mt{Signal} = \mt{signal} \; (\mt{xml} \; \mt{ctx} \; \mt{use} \; \mt{bind})] \; \mt{ctx} \; [] \; \mt{use} \; \mt{bind}
+  \mt{val} \; \mt{dyn} : \mt{use} ::: \{\mt{Type}\} \to \mt{bind} ::: \{\mt{Type}\} \to \mt{unit} \\
+  \hspace{.1in} \to \mt{tag} \; [\mt{Signal} = \mt{signal} \; (\mt{xml} \; \mt{body} \; \mt{use} \; \mt{bind})] \; \mt{body} \; [] \; \mt{use} \; \mt{bind}
 \end{array}$$
 
-Transactions can be run on the client by including them in attributes like the $\mt{OnClick}$ attribute of $\mt{button}$, and GUI widgets like $\mt{ctextbox}$ have $\mt{Source}$ attributes that can be used to connect them to sources, so that their values can be read by code running because of, e.g., an $\mt{OnClick}$ event.
+Transactions can be run on the client by including them in attributes like the $\mt{Onclick}$ attribute of $\mt{button}$, and GUI widgets like $\mt{ctextbox}$ have $\mt{Source}$ attributes that can be used to connect them to sources, so that their values can be read by code running because of, e.g., an $\mt{Onclick}$ event.
+
+\subsubsection{Asynchronous Message-Passing}
+
+To support asynchronous, ``server push'' delivery of messages to clients, any client that might need to receive an asynchronous message is assigned a unique ID.  These IDs may be retrieved both on the client and on the server, during execution of code related to a client.
+
+$$\begin{array}{l}
+  \mt{type} \; \mt{client} \\
+  \mt{val} \; \mt{self} : \mt{transaction} \; \mt{client}
+\end{array}$$
+
+\emph{Channels} are the means of message-passing.  Each channel is created in the context of a client and belongs to that client; no other client may receive the channel's messages.  Each channel type includes the type of values that may be sent over the channel.  Sending and receiving are asynchronous, in the sense that a client need not be ready to receive a message right away.  Rather, sent messages may queue up, waiting to be processed.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{channel} :: \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{channel} : \mt{t} ::: \mt{Type} \to \mt{transaction} \; (\mt{channel} \; \mt{t}) \\
+  \mt{val} \; \mt{send} : \mt{t} ::: \mt{Type} \to \mt{channel} \; \mt{t} \to \mt{t} \to \mt{transaction} \; \mt{unit} \\
+  \mt{val} \; \mt{recv} : \mt{t} ::: \mt{Type} \to \mt{channel} \; \mt{t} \to \mt{transaction} \; \mt{t}
+\end{array}$$
+
+The $\mt{channel}$ and $\mt{send}$ operations may only be executed on the server, and $\mt{recv}$ may only be executed on a client.  Neither clients nor channels may be passed as arguments from clients to server-side functions, so persistent channels can only be maintained by storing them in the database and looking them up using the current client ID or some application-specific value as a key.
+
+Clients and channels live only as long as the web browser page views that they are associated with.  When a user surfs away, his client and its channels will be garbage-collected, after that user is not heard from for the timeout period.  Garbage collection deletes any database row that contains a client or channel directly.  Any reference to one of these types inside an $\mt{option}$ is set to $\mt{None}$ instead.  Both kinds of handling have the flavor of weak pointers, and that is a useful way to think about clients and channels in the database.
+
 
 \section{Ur/Web Syntax Extensions}
 
