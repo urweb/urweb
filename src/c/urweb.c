@@ -346,6 +346,10 @@ uw_context uw_init() {
 
   ctx->timeout = uw_timeout;
 
+  ctx->client = NULL;
+
+  ctx->error_message[0] = 0;
+
   return ctx;
 }
 
@@ -1872,7 +1876,7 @@ int uw_db_rollback(uw_context);
 void uw_commit(uw_context ctx) {
   unsigned i;
 
-  if (uw_db_commit(ctx))
+  if (uw_db_commit(ctx)) 
     uw_error(ctx, FATAL, "Error running SQL COMMIT");
 
   for (i = 0; i < ctx->used_deltas; ++i) {

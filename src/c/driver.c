@@ -306,12 +306,19 @@ static void sigint(int signum) {
 
 static void initialize() {
   uw_context ctx = new_context();
+  failure_kind fk;
 
   if (!ctx)
     exit(1);
 
-  if (uw_initialize(ctx) != SUCCESS) {
-    printf("Failed to initialize database!\n");
+  for (fk = uw_initialize(ctx); fk == UNLIMITED_RETRY; fk = uw_initialize(ctx)) {
+    printf("Unlimited retry during init: %s\n", uw_error_message(ctx));
+    uw_db_rollback(ctx);
+    uw_reset(ctx);
+  }
+
+  if (fk != SUCCESS) {
+    printf("Failed to initialize database!  %s\n", uw_error_message(ctx));
     uw_db_rollback(ctx);
     exit(1);
   }
