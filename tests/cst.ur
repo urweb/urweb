@@ -1,4 +1,6 @@
 table t : {A : int, B : int}
+  PRIMARY KEY B,
+
   CONSTRAINT UniA UNIQUE A,
   CONSTRAINT UniB UNIQUE B,
   CONSTRAINT UniBoth UNIQUE (A, B),

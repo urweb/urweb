@@ -766,11 +766,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                    bind (ctx, Str (x, sgn))
                                                  | DConstraint _ => ctx
                                                  | DExport _ => ctx
-                                                 | DTable (tn, x, n, c, _, cc) =>
+                                                 | DTable (tn, x, n, c, _, pc, _, cc) =>
                                                    let
                                                        val ct = (CModProj (n, [], "sql_table"), loc)
                                                        val ct = (CApp (ct, c), loc)
-                                                       val ct = (CApp (ct, cc), loc)
+                                                       val ct = (CApp (ct, (CConcat (pc, cc), loc)), loc)
                                                    in
                                                        bind (ctx, NamedE (x, ct))
                                                    end
@@ -869,14 +869,18 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                     fn str' =>
                                        (DExport (en, sgn', str'), loc)))
 
-              | DTable (tn, x, n, c, e, cc) =>
+              | DTable (tn, x, n, c, pe, pc, ce, cc) =>
                 S.bind2 (mfc ctx c,
                         fn c' =>
-                           S.bind2 (mfe ctx e,
-                                   fn e' =>
-                                      S.map2 (mfc ctx cc,
-                                              fn cc' =>
-                                                 (DTable (tn, x, n, c', e', cc'), loc))))
+                           S.bind2 (mfe ctx pe,
+                                   fn pe' =>
+                                      S.bind2 (mfc ctx pc,
+                                            fn pc' =>
+                                               S.bind2 (mfe ctx ce,
+                                                     fn ce' =>
+                                                        S.map2 (mfc ctx cc,
+                                                              fn cc' =>
+                                                                 (DTable (tn, x, n, c', pe', pc', ce', cc'), loc))))))
               | DSequence _ => S.return2 dAll
 
               | DClass (x, n, k, c) =>
@@ -1027,7 +1031,7 @@ and maxNameDecl (d, _) =
       | DConstraint _ => 0
       | DClass (_, n, _, _) => n
       | DExport _ => 0
-      | DTable (n1, _, n2, _, _, _) => Int.max (n1, n2)
+      | DTable (n1, _, n2, _, _, _, _, _) => Int.max (n1, n2)
       | DSequence (n1, _, n2) => Int.max (n1, n2)
       | DDatabase _ => 0
       | DCookie (n1, _, n2, _) => Int.max (n1, n2)

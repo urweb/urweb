@@ -2027,7 +2027,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             ([(L'.SgiVal (x, n, c'), loc)], (env', denv, gs' @ gs))
         end
 
-      | L.SgiTable (x, c, e) =>
+      | L.SgiTable (x, c, pe, ce) =>
         let
             val cstK = (L'.KRecord (L'.KRecord (L'.KUnit, loc), loc), loc)
             val x' = x ^ "_hidden_constraints"
@@ -2035,28 +2035,38 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             val hidden = (L'.CNamed hidden_n, loc)
 
             val (c', ck, gs') = elabCon (env, denv) c
+            val pkey = cunif (loc, cstK)
             val visible = cunif (loc, cstK)
             val uniques = (L'.CConcat (visible, hidden), loc)
 
             val ct = tableOf ()
             val ct = (L'.CApp (ct, c'), loc)
-            val ct = (L'.CApp (ct, uniques), loc)
+            val ct = (L'.CApp (ct, (L'.CConcat (pkey, uniques), loc)), loc)
+
+            val (pe', pet, gs'') = elabExp (env', denv) pe
+            val gs'' = List.mapPartial (fn Disjoint x => SOME x
+                                          | _ => NONE) gs''
+
+            val pst = (L'.CModProj (!basis_r, [], "primary_key"), loc)
+            val pst = (L'.CApp (pst, c'), loc)
+            val pst = (L'.CApp (pst, pkey), loc)
 
             val (env', n) = E.pushENamed env' x ct
 
-            val (e', et, gs'') = elabExp (env, denv) e
-            val gs'' = List.mapPartial (fn Disjoint x => SOME x
-                                         | _ => NONE) gs''
+            val (ce', cet, gs''') = elabExp (env', denv) ce
+            val gs''' = List.mapPartial (fn Disjoint x => SOME x
+                                         | _ => NONE) gs'''
 
             val cst = (L'.CModProj (!basis_r, [], "sql_constraints"), loc)
             val cst = (L'.CApp (cst, c'), loc)
             val cst = (L'.CApp (cst, visible), loc)
         in
             checkKind env c' ck (L'.KRecord (L'.KType, loc), loc);
-            checkCon env' e' et cst;
+            checkCon env' pe' pet pst;
+            checkCon env' ce' cet cst;
 
             ([(L'.SgiConAbs (x', hidden_n, cstK), loc),
-              (L'.SgiVal (x, n, ct), loc)], (env', denv, gs'' @ gs' @ gs))
+              (L'.SgiVal (x, n, ct), loc)], (env', denv, gs''' @ gs'' @ gs' @ gs))
         end
 
       | L.SgiStr (x, sgn) =>
@@ -2360,8 +2370,9 @@ and sgiOfDecl (d, loc) =
       | L'.DFfiStr (x, n, sgn) => [(L'.SgiStr (x, n, sgn), loc)]
       | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
       | L'.DExport _ => []
-      | L'.DTable (tn, x, n, c, _, cc) =>
-        [(L'.SgiVal (x, n, (L'.CApp ((L'.CApp (tableOf (), c), loc), cc), loc)), loc)]
+      | L'.DTable (tn, x, n, c, _, pc, _, cc) =>
+        [(L'.SgiVal (x, n, (L'.CApp ((L'.CApp (tableOf (), c), loc),
+                                     (L'.CConcat (pc, cc), loc)), loc)), loc)]
       | L'.DSequence (tn, x, n) => [(L'.SgiVal (x, n, sequenceOf ()), loc)]
       | L'.DClass (x, n, k, c) => [(L'.SgiClass (x, n, k, c), loc)]
       | L'.DDatabase _ => []
@@ -3307,25 +3318,35 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     ([(L'.DExport (E.newNamed (), sgn, str'), loc)], (env, denv, gs' @ gs))
                 end
 
-              | L.DTable (x, c, e) =>
+              | L.DTable (x, c, pe, ce) =>
                 let
+                    val cstK = (L'.KRecord (L'.KRecord (L'.KUnit, loc), loc), loc)
+
                     val (c', k, gs') = elabCon (env, denv) c
-                    val uniques = cunif (loc, (L'.KRecord (L'.KRecord (L'.KUnit, loc), loc), loc))
+                    val pkey = cunif (loc, cstK)
+                    val uniques = cunif (loc, cstK)
 
                     val ct = tableOf ()
                     val ct = (L'.CApp (ct, c'), loc)
-                    val ct = (L'.CApp (ct, uniques), loc)
+                    val ct = (L'.CApp (ct, (L'.CConcat (pkey, uniques), loc)), loc)
 
                     val (env, n) = E.pushENamed env x ct
-                    val (e', et, gs'') = elabExp (env, denv) e
+                    val (pe', pet, gs'') = elabExp (env, denv) pe
+                    val (ce', cet, gs''') = elabExp (env, denv) ce
+
+                    val pst = (L'.CModProj (!basis_r, [], "primary_key"), loc)
+                    val pst = (L'.CApp (pst, c'), loc)
+                    val pst = (L'.CApp (pst, pkey), loc)
 
                     val cst = (L'.CModProj (!basis_r, [], "sql_constraints"), loc)
                     val cst = (L'.CApp (cst, c'), loc)
                     val cst = (L'.CApp (cst, uniques), loc)
                 in
                     checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
-                    checkCon env e' et cst;
-                    ([(L'.DTable (!basis_r, x, n, c', e', uniques), loc)], (env, denv, gs'' @ enD gs' @ gs))
+                    checkCon env pe' pet pst;
+                    checkCon env ce' cet cst;
+                    ([(L'.DTable (!basis_r, x, n, c', pe', pkey, ce', uniques), loc)],
+                     (env, denv, gs''' @ gs'' @ enD gs' @ gs))
                 end
               | L.DSequence x =>
                 let

@@ -933,14 +933,18 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                             (DValRec vis', loc))
                 end
               | DExport _ => S.return2 dAll
-              | DTable (x, n, c, s, e, cc) =>
+              | DTable (x, n, c, s, pe, pc, ce, cc) =>
                 S.bind2 (mfc ctx c,
                      fn c' =>
-                        S.bind2 (mfe ctx e,
-                                fn e' =>
-                                   S.map2 (mfc ctx cc,
-                                           fn cc' =>
-                                              (DTable (x, n, c', s, e', cc'), loc))))
+                        S.bind2 (mfe ctx pe,
+                                fn pe' =>
+                                   S.bind2 (mfc ctx pc,
+                                           fn pc' =>
+                                              S.bind2 (mfe ctx ce,
+                                                    fn ce' =>
+                                                       S.map2 (mfc ctx cc,
+                                                            fn cc' =>
+                                                               (DTable (x, n, c', s, pe', pc', ce', cc'), loc))))))
               | DSequence _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll
               | DCookie (x, n, c, s) =>
@@ -1062,11 +1066,11 @@ fun mapfoldB (all as {bind, ...}) =
                                         foldl (fn ((x, n, t, e, s), ctx) => bind (ctx, NamedE (x, n, t, NONE, s)))
                                         ctx vis
                                       | DExport _ => ctx
-                                      | DTable (x, n, c, s, _, cc) =>
+                                      | DTable (x, n, c, s, _, pc, _, cc) =>
                                         let
                                             val loc = #2 d'
                                             val ct = (CFfi ("Basis", "sql_table"), loc)
-                                            val ct = (CApp (ct, c), loc)
+                                            val ct = (CApp (ct, (CConcat (pc, cc), loc)), loc)
                                             val ct = (CApp (ct, cc), loc)
                                         in
                                             bind (ctx, NamedE (x, n, ct, NONE, s))
@@ -1141,7 +1145,7 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DVal (_, n, _, _, _) => Int.max (n, count)
                           | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
                           | DExport _ => count
-                          | DTable (_, n, _, _, _, _) => Int.max (n, count)
+                          | DTable (_, n, _, _, _, _, _, _) => Int.max (n, count)
                           | DSequence (_, n, _) => Int.max (n, count)
                           | DDatabase _ => count
                           | DCookie (_, n, _, _) => Int.max (n, count)) 0

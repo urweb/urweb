@@ -208,7 +208,7 @@ fun tagIn bt =
  | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
- | CCONSTRAINT | UNIQUE
+ | CCONSTRAINT | UNIQUE | PRIMARY | KEY
 
 %nonterm
    file of decl list
@@ -222,6 +222,9 @@ fun tagIn bt =
  | barOpt of unit
  | dcons of (string * con option) list
  | dcon of string * con option
+
+ | pkopt of exp
+ | commaOpt of unit
 
  | cst of exp
  | csts of exp
@@ -418,7 +421,8 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                            | m :: ms => [(DOpenConstraints (m, ms), s (OPENleft, mpathright))])
        | CONSTRAINT cterm TWIDDLE cterm ([(DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))])
        | EXPORT spath                   ([(DExport spath, s (EXPORTleft, spathright))])
-       | TABLE SYMBOL COLON cterm cstopt([(DTable (SYMBOL, entable cterm, cstopt), s (TABLEleft, cstoptright))])
+       | TABLE SYMBOL COLON cterm pkopt commaOpt cstopt([(DTable (SYMBOL, entable cterm, pkopt, cstopt),
+                                                 s (TABLEleft, cstoptright))])
        | SEQUENCE SYMBOL                ([(DSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))])
        | CLASS SYMBOL EQ cexp           (let
                                              val loc = s (CLASSleft, cexpright)
@@ -513,6 +517,27 @@ tnames : tnameW                         (tnameW, [])
 tnames': tnameW                         (tnameW, [])
        | tnameW COMMA tnames'           (#1 tnames', tnameW :: #2 tnames')
 
+commaOpt:                               ()
+        | COMMA                         ()
+
+pkopt  :                                (EVar (["Basis"], "no_primary_key", Infer), ErrorMsg.dummySpan)
+       | PRIMARY KEY tnames             (let
+                                             val loc = s (PRIMARYleft, tnamesright)
+
+                                             val e = (EVar (["Basis"], "primary_key", Infer), loc)
+                                             val e = (ECApp (e, #1 (#1 tnames)), loc)
+                                             val e = (ECApp (e, (CRecord (#2 tnames), loc)), loc)
+                                             val e = (EDisjointApp e, loc)
+                                             val e = (EDisjointApp e, loc)
+
+                                             val witness = map (fn (c, _) =>
+                                                                   (c, (EWild, loc)))
+                                                           (#1 tnames :: #2 tnames)
+                                             val witness = (ERecord witness, loc)
+                                         in
+                                             (EApp (e, witness), loc)
+                                         end)
+
 valis  : vali                           ([vali])
        | vali AND valis                 (vali :: valis)
 
@@ -554,11 +579,11 @@ sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, 
                                           s (FUNCTORleft, sgn2right)))
        | INCLUDE sgn                    ((SgiInclude sgn, s (INCLUDEleft, sgnright)))
        | CONSTRAINT cterm TWIDDLE cterm ((SgiConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright)))
-       | TABLE SYMBOL COLON cterm cstopt(let
-                                             val loc = s (TABLEleft, ctermright)
-                                         in
-                                             (SgiTable (SYMBOL, entable cterm, cstopt), loc)
-                                         end)
+       | TABLE SYMBOL COLON cterm pkopt commaOpt cstopt (let
+                                                    val loc = s (TABLEleft, ctermright)
+                                                in
+                                                    (SgiTable (SYMBOL, entable cterm, pkopt, cstopt), loc)
+                                                end)
        | SEQUENCE SYMBOL                (let
                                              val loc = s (SEQUENCEleft, SYMBOLright)
                                              val t = (CVar (["Basis"], "sql_sequence"), loc)

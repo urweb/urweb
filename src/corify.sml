@@ -976,12 +976,14 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
              end
            | _ => raise Fail "Non-const signature for 'export'")
 
-      | L.DTable (_, x, n, c, e, cc) =>
+      | L.DTable (_, x, n, c, pe, pc, ce, cc) =>
         let
             val (st, n) = St.bindVal st x n
             val s = relify (doRestify (mods, x))
         in
-            ([(L'.DTable (x, n, corifyCon st c, s, corifyExp st e, corifyCon st cc), loc)], st)
+            ([(L'.DTable (x, n, corifyCon st c, s,
+                          corifyExp st pe, corifyCon st pc,
+                          corifyExp st ce, corifyCon st cc), loc)], st)
         end
       | L.DSequence (_, x, n) =>
         let
@@ -1052,7 +1054,7 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DStr (_, n', _, str) => Int.max (n, Int.max (n', maxNameStr str))
                              | L.DFfiStr (_, n', _) => Int.max (n, n')
                              | L.DExport _ => n
-                             | L.DTable (_, _, n', _, _, _) => Int.max (n, n')
+                             | L.DTable (_, _, n', _, _, _, _, _) => Int.max (n, n')
                              | L.DSequence (_, _, n') => Int.max (n, n')
                              | L.DDatabase _ => n
                              | L.DCookie (_, _, n', _) => Int.max (n, n'))

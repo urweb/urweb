@@ -1941,19 +1941,25 @@ fun p_decl env (dAll as (d, _) : decl) =
                  p_list_sep newline (p_fun env) vis,
                  newline]
         end
-      | DTable (x, _, csts) => box [string "/* SQL table ",
-                                    string x,
-                                    space,
-                                    string "constraints",
-                                    space,
-                                    p_list (fn (x, v) => box [string x,
-                                                              space,
-                                                              string ":",
-                                                              space,
-                                                              string v]) csts,
-                                    space,
-                                    string " */",
-                                    newline]
+      | DTable (x, _, pk, csts) => box [string "/* SQL table ",
+                                        string x,
+                                        space,
+                                        case pk of
+                                            "" => box []
+                                          | _ => box [string "keys",
+                                                      space,
+                                                      string pk,
+                                                      space],
+                                        string "constraints",
+                                        space,
+                                        p_list (fn (x, v) => box [string x,
+                                                                  space,
+                                                                  string ":",
+                                                                  space,
+                                                                  string v]) csts,
+                                        space,
+                                        string " */",
+                                        newline]
       | DSequence x => box [string "/* SQL sequence ",
                             string x,
                             string " */",
@@ -2467,7 +2473,7 @@ fun p_file env (ds, ps) =
 
         val pds' = map p_page ps
 
-        val tables = List.mapPartial (fn (DTable (s, xts, _), _) => SOME (s, xts)
+        val tables = List.mapPartial (fn (DTable (s, xts, _, _), _) => SOME (s, xts)
                                        | _ => NONE) ds
         val sequences = List.mapPartial (fn (DSequence s, _) => SOME s
                                           | _ => NONE) ds
@@ -2811,7 +2817,7 @@ fun p_sql env (ds, _) =
                        (fn (dAll as (d, _), env) =>
                            let
                                val pp = case d of
-                                            DTable (s, xts, csts) =>
+                                            DTable (s, xts, pk, csts) =>
                                             box [string "CREATE TABLE ",
                                                  string s,
                                                  string "(",
@@ -2820,10 +2826,23 @@ fun p_sql env (ds, _) =
                                                                  string (CharVector.map Char.toLower x),
                                                                  space,
                                                                  p_sqltype env (t, ErrorMsg.dummySpan)]) xts,
-                                                 case csts of
-                                                     [] => box []
-                                                   | _ => box [string ","],
+                                                 case (pk, csts) of
+                                                     ("", []) => box []
+                                                   | _ => string ",",
                                                  cut,
+                                                 case pk of
+                                                     "" => box []
+                                                   | _ => box [string "PRIMARY",
+                                                               space,
+                                                               string "KEY",
+                                                               space,
+                                                               string "(",
+                                                               string pk,
+                                                               string ")",
+                                                               case csts of
+                                                                   [] => box []
+                                                                 | _ => string ",",
+                                                               newline],
                                                  p_list_sep (box [string ",", newline])
                                                             (fn (x, c) =>
                                                                 box [string "CONSTRAINT",

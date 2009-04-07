@@ -126,6 +126,27 @@ con sql_table :: {Type} -> {{Unit}} -> Type
 
 (*** Constraints *)
 
+(**** Primary keys *)
+
+class sql_injectable_prim
+val sql_bool : sql_injectable_prim bool
+val sql_int : sql_injectable_prim int
+val sql_float : sql_injectable_prim float
+val sql_string : sql_injectable_prim string
+val sql_time : sql_injectable_prim time
+val sql_channel : t ::: Type -> sql_injectable_prim (channel t)
+val sql_client : sql_injectable_prim client
+
+con primary_key :: {Type} -> {{Unit}} -> Type
+val no_primary_key : fs ::: {Type} -> primary_key fs []
+val primary_key : rest ::: {Type} -> t ::: Type -> key1 :: Name -> keys :: {Type}
+                  -> [[key1] ~ keys] => [[key1 = t] ++ keys ~ rest]
+    => $([key1 = sql_injectable_prim t] ++ map sql_injectable_prim keys)
+       -> primary_key ([key1 = t] ++ keys ++ rest)
+          [Pkey = [key1] ++ map (fn _ => ()) keys]
+
+(**** Other constraints *)
+
 con sql_constraints :: {Type} -> {{Unit}} -> Type
 (* Arguments: column types, uniqueness implications of constraints *)
 
@@ -223,15 +244,6 @@ val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type}
 val sql_exp : tabs ::: {{Type}} -> agg ::: {{Type}} -> t ::: Type -> rest ::: {Type}
               -> nm :: Name
               -> sql_exp tabs agg ([nm = t] ++ rest) t
-
-class sql_injectable_prim
-val sql_bool : sql_injectable_prim bool
-val sql_int : sql_injectable_prim int
-val sql_float : sql_injectable_prim float
-val sql_string : sql_injectable_prim string
-val sql_time : sql_injectable_prim time
-val sql_channel : t ::: Type -> sql_injectable_prim (channel t)
-val sql_client : sql_injectable_prim client
 
 class sql_injectable
 val sql_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable t

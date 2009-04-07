@@ -88,7 +88,7 @@ datatype sgn_item' =
        | SgiDatatype of string * string list * (string * con option) list
        | SgiDatatypeImp of string * string list * string
        | SgiVal of string * con
-       | SgiTable of string * con * exp
+       | SgiTable of string * con * exp * exp
        | SgiStr of string * sgn
        | SgiSgn of string * sgn
        | SgiInclude of sgn
@@ -146,8 +146,6 @@ and pat = pat' located
 and exp = exp' located
 and edecl = edecl' located
 
-
-
 datatype decl' =
          DCon of string * kind option * con
        | DDatatype of string * string list * (string * con option) list
@@ -161,7 +159,7 @@ datatype decl' =
        | DConstraint of con * con
        | DOpenConstraints of string * string list
        | DExport of str
-       | DTable of string * con * exp
+       | DTable of string * con * exp * exp
        | DSequence of string
        | DClass of string * kind * con
        | DDatabase of string

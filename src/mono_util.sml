@@ -465,10 +465,12 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                            S.map2 (mft t,
                                    fn t' =>
                                       (DExport (ek, s, n, ts', t'), loc)))
-              | DTable (s, xts, e) =>
-                S.map2 (mfe ctx e,
-                        fn e' =>
-                           (DTable (s, xts, e'), loc))
+              | DTable (s, xts, pe, ce) =>
+                S.bind2 (mfe ctx pe,
+                      fn pe' =>
+                         S.map2 (mfe ctx ce,
+                              fn ce' =>
+                                 (DTable (s, xts, pe', ce'), loc)))
               | DSequence _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll
               | DJavaScript _ => S.return2 dAll

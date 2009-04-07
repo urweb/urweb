@@ -55,7 +55,7 @@ fun checkDecl ((d, loc), (funcs, rels)) =
         case d of
             DExport (_, s, _, _, _) => doFunc s
             
-          | DTable (s, _, e) =>
+          | DTable (s, _, pe, ce) =>
             let
                 fun constraints (e, rels) =
                     case #1 e of
@@ -71,8 +71,22 @@ fun checkDecl ((d, loc), (funcs, rels)) =
                         end
                       | EStrcat (e1, e2) => constraints (e2, constraints (e1, rels))
                       | _ => rels
+
+                val rels = #2 (doRel s)
+                val rels = case #1 pe of
+                               EPrim (Prim.String "") => rels
+                             | _ =>
+                               let
+                                   val s' = s ^ "_Pkey"
+                               in
+                                   if SS.member (rels, s') then
+                                       E.errorAt loc ("Duplicate primary key constraint path " ^ s')
+                                   else
+                                       ();
+                                   SS.add (rels, s')
+                               end
             in
-                (funcs, constraints (e, #2 (doRel s)))
+                (funcs, constraints (ce, rels))
             end
           | DSequence s => doRel s
 

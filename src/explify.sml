@@ -178,7 +178,10 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DFfiStr (x, n, sgn) => SOME (L'.DFfiStr (x, n, explifySgn sgn), loc)
       | L.DConstraint (c1, c2) => NONE
       | L.DExport (en, sgn, str) => SOME (L'.DExport (en, explifySgn sgn, explifyStr str), loc)
-      | L.DTable (nt, x, n, c, e, cc) => SOME (L'.DTable (nt, x, n, explifyCon c, explifyExp e, explifyCon cc), loc)
+      | L.DTable (nt, x, n, c, pe, pc, ce, cc) =>
+        SOME (L'.DTable (nt, x, n, explifyCon c,
+                         explifyExp pe, explifyCon pc,
+                         explifyExp ce, explifyCon cc), loc)
       | L.DSequence (nt, x, n) => SOME (L'.DSequence (nt, x, n), loc)
       | L.DClass (x, n, k, c) => SOME (L'.DCon (x, n,
                                                 (L'.KArrow (explifyKind k, (L'.KType, loc)), loc), explifyCon c), loc)

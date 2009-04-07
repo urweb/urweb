@@ -367,6 +367,8 @@ notags = [^<{\n]+;
 
 <INITIAL> "CONSTRAINT"=> (Tokens.CCONSTRAINT (pos yypos, pos yypos + size yytext));
 <INITIAL> "UNIQUE"    => (Tokens.UNIQUE (pos yypos, pos yypos + size yytext));
+<INITIAL> "PRIMARY"   => (Tokens.PRIMARY (pos yypos, pos yypos + size yytext));
+<INITIAL> "KEY"       => (Tokens.KEY (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "CURRENT_TIMESTAMP" => (Tokens.CURRENT_TIMESTAMP (pos yypos, pos yypos + size yytext));
 

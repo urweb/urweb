@@ -130,7 +130,7 @@ datatype decl' =
        | DVal of string * int * con * exp * string
        | DValRec of (string * int * con * exp * string) list
        | DExport of export_kind * int
-       | DTable of string * int * con * string * exp * con
+       | DTable of string * int * con * string * exp * con * exp * con
        | DSequence of string * int * string
        | DDatabase of string
        | DCookie of string * int * con * string

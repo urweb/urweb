@@ -149,6 +149,8 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_exp"), _), _), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "primary_key"), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_constraints"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "sql_constraints"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_constraint"), _), _), _), _) =>
@@ -1156,6 +1158,25 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                             [(L'.ERel 2, loc),
                                                              e]),
                                                 loc)), loc)), loc)), loc),
+                 fm)
+            end
+
+          | L.ECApp ((L.EFfi ("Basis", "no_primary_key"), _), _) =>
+            ((L'.EPrim (Prim.String ""), loc),
+             fm)
+          | L.ECApp (
+            (L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "primary_key"), _), _), _), t), _),
+                      nm), _),
+            (L.CRecord (_, unique), _)) =>
+            let
+                val unique = (nm, t) :: unique
+                val witnesses = (L'.TRecord (map (fn (nm, _) => (monoName env nm, (L'.TRecord [], loc))) unique), loc)
+            in
+                ((L'.EAbs ("_", witnesses, (L'.TFfi ("Basis", "string"), loc),
+                           (L'.EPrim (Prim.String
+                                          (String.concatWith ", "
+                                                             (map (fn (x, _) => "uw_" ^ monoName env x) unique))),
+                            loc)), loc),
                  fm)
             end
 
@@ -2499,7 +2520,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (env, fm, [(L'.DExport (ek, s, n, ts, ran), loc)])
             end
-          | L.DTable (x, n, (L.CRecord (_, xts), _), s, e, _) =>
+          | L.DTable (x, n, (L.CRecord (_, xts), _), s, pe, _, ce, _) =>
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
@@ -2508,11 +2529,12 @@ fun monoDecl (env, fm) (all as (d, loc)) =
 
                 val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
 
-                val (e, fm) = monoExp (env, St.empty, fm) e
+                val (pe, fm) = monoExp (env, St.empty, fm) pe
+                val (ce, fm) = monoExp (env, St.empty, fm) ce
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
-                      [(L'.DTable (s, xts, e), loc),
+                      [(L'.DTable (s, xts, pe, ce), loc),
                        (L'.DVal (x, n, t', e_name, s), loc)])
             end
           | L.DTable _ => poly ()
@@ -2633,7 +2655,7 @@ fun monoize env file =
             in
                 foldl (fn ((d, _), e) =>
                           case d of
-                              L.DTable (_, _, xts, tab, _, _) => doTable (tab, #1 xts, e)
+                              L.DTable (_, _, xts, tab, _, _, _, _) => doTable (tab, #1 xts, e)
                             | _ => e) e file
             end
 
@@ -2678,7 +2700,7 @@ fun monoize env file =
             in
                 foldl (fn ((d, _), e) =>
                           case d of
-                              L.DTable (_, _, xts, tab, _, _) => doTable (tab, #1 xts, e)
+                              L.DTable (_, _, xts, tab, _, _, _, _) => doTable (tab, #1 xts, e)
                             | _ => e) e file
             end
 

@@ -298,11 +298,11 @@ fun declBinds env (d, loc) =
       | DStr (x, n, sgn, _) => pushStrNamed env x n sgn
       | DFfiStr (x, n, sgn) => pushStrNamed env x n sgn
       | DExport _ => env
-      | DTable (tn, x, n, c, _, cc) =>
+      | DTable (tn, x, n, c, _, pc, _, cc) =>
         let
             val ct = (CModProj (tn, [], "sql_table"), loc)
             val ct = (CApp (ct, c), loc)
-            val ct = (CApp (ct, cc), loc)
+            val ct = (CApp (ct, (CConcat (pc, cc), loc)), loc)
         in
             pushENamed env x n ct
         end

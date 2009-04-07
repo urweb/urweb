@@ -104,7 +104,7 @@ datatype decl' =
        | DFun of string * int * (string * typ) list * typ * exp
        | DFunRec of (string * int * (string * typ) list * typ * exp) list
 
-       | DTable of string * (string * typ) list * (string * string) list
+       | DTable of string * (string * typ) list * string * (string * string) list
        | DSequence of string
        | DDatabase of {name : string, expunge : int, initialize : int}
        | DPreparedStatements of (string * int) list
