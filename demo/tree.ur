@@ -1,5 +1,6 @@
 sequence s
 table t : { Id : int, Parent : option int, Nam : string }
+  PRIMARY KEY Id
 
 open TreeFun.Make(struct
                       val tab = t

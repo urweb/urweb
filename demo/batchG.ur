@@ -1,4 +1,5 @@
 table t : {Id : int, A : string, B : float}
+  PRIMARY KEY Id
 
 open BatchFun.Make(struct
                        val tab = t

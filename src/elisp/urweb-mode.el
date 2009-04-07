@@ -147,7 +147,8 @@ See doc for the variable `urweb-mode-info'."
   (urweb-syms-re "SELECT" "FROM" "AS" "WHERE" "SQL" "GROUP" "ORDER" "BY"
                  "HAVING" "LIMIT" "OFFSET" "ALL" "UNION" "INTERSECT" "EXCEPT"
                  "TRUE" "FALSE" "AND" "OR" "NOT" "COUNT" "AVG" "SUM" "MIN" "MAX"
-                 "ASC" "DESC" "INSERT" "INTO" "VALUES" "UPDATE" "SET" "DELETE")
+                 "ASC" "DESC" "INSERT" "INTO" "VALUES" "UPDATE" "SET" "DELETE"
+                 "PRIMARY" "KEY" "CONSTRAINT" "UNIQUE")
   "A regexp that matches SQL keywords.")
 
 (defconst urweb-lident-regexp "\\<[a-z_][A-Za-z0-9_']*\\>"

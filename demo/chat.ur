@@ -4,6 +4,7 @@ structure Room = Broadcast.Make(struct
 
 sequence s
 table t : { Id : int, Title : string, Room : Room.topic }
+  PRIMARY KEY Id
 
 fun chat id =
     r <- oneRow (SELECT t.Title, t.Room FROM t WHERE t.Id = {[id]});

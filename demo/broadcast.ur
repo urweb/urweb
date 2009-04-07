@@ -1,6 +1,7 @@
 functor Make(M : sig type t end) = struct
     sequence s
     table t : {Id : int, Client : client, Channel : channel M.t}
+      PRIMARY KEY Id
 
     type topic = int
 

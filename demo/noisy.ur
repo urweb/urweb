@@ -1,6 +1,7 @@
 datatype list t = Nil | Cons of t * list t
 
 table t : { Id : int, A : string }
+  PRIMARY KEY Id
 
 fun add id s =
     dml (INSERT INTO t (Id, A) VALUES ({[id]}, {[s]}))

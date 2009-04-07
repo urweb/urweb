@@ -1,4 +1,5 @@
 table channels : { Client : client, Channel : channel (string * int * float) }
+  PRIMARY KEY Client
 
 fun writeBack v =
     me <- self;

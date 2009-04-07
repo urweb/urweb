@@ -1,6 +1,7 @@
 datatype list t = Nil | Cons of t * list t
 
 table t : {Id : int, A : string}
+  PRIMARY KEY Id
 
 fun allRows () =
     query (SELECT * FROM t)

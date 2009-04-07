@@ -1,4 +1,5 @@
 table t1 : {Id : int, A : int, B : string, C : float, D : bool}
+  PRIMARY KEY Id
 
 open Crud.Make(struct
                    val tab = t1

@@ -7,6 +7,7 @@ functor Make(M : sig
 
     sequence s
     table t : { Id : int, Data : M.data }
+      PRIMARY KEY Id
 
     fun new d =
         id <- nextval s;

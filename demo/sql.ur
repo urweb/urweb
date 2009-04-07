@@ -1,4 +1,5 @@
 table t : { A : int, B : float, C : string, D : bool }
+  PRIMARY KEY A
 
 fun list () =
     rows <- queryX (SELECT * FROM t)
