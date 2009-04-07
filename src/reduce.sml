@@ -461,8 +461,9 @@ fun reduce file =
                 ((DValRec (map (fn (x, n, t, e, s) => (x, n, con namedC [] t, exp (namedC, namedE) [] e, s)) vis), loc),
                  st)
               | DExport _ => (d, st)
-              | DTable (s, n, c, s', e) => ((DTable (s, n, con namedC [] c, s',
-                                                     exp (namedC, namedE) [] e), loc), st)
+              | DTable (s, n, c, s', e, cc) => ((DTable (s, n, con namedC [] c, s',
+                                                         exp (namedC, namedE) [] e,
+                                                         con namedC [] cc), loc), st)
               | DSequence _ => (d, st)
               | DDatabase _ => (d, st)
               | DCookie (s, n, c, s') => ((DCookie (s, n, con namedC [] c, s'), loc), st)

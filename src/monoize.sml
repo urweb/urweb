@@ -139,7 +139,7 @@ fun monoType env =
                     (L'.TSignal (mt env dtmap t), loc)
                   | L.CApp ((L.CFfi ("Basis", "http_cookie"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
-                  | L.CApp ((L.CFfi ("Basis", "sql_table"), _), _) =>
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_table"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "sql_sequence") =>
                     (L'.TFfi ("Basis", "string"), loc)
@@ -151,7 +151,7 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_constraints"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "sql_constraints"), loc)
-                  | L.CApp ((L.CFfi ("Basis", "sql_constraint"), _), _) =>
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_constraint"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_subset"), _), _), _), _) =>
@@ -1162,13 +1162,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp ((L.EFfi ("Basis", "no_constraint"), _), _) =>
             ((L'.ERecord [], loc),
              fm)
-          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "one_constraint"), _), _), _), (L.CName name, _)) =>
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "one_constraint"), _), _), _), _), _), (L.CName name, _)) =>
             ((L'.EAbs ("c",
                        (L'.TFfi ("Basis", "string"), loc),
                        (L'.TFfi ("Basis", "sql_constraints"), loc),
                        (L'.ERecord [(name, (L'.ERel 0, loc), (L'.TFfi ("Basis", "string"), loc))], loc)), loc),
              fm)
-          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "join_constraints"), _), _), _), _), _), _) =>
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.EFfi ("Basis", "join_constraints"), _),
+              _), _),
+             _), _),
+            _) =>
             let
                 val constraints = (L'.TFfi ("Basis", "sql_constraints"), loc)
             in
@@ -1178,12 +1184,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "unique"), _), _), _),
-                     (L.CRecord (_, unique), _)) =>
-            ((L'.EPrim (Prim.String ("UNIQUE ("
-                                     ^ String.concatWith ", " (map (fn (x, _) => "uw_" ^ monoName env x) unique)
-                                     ^ ")")), loc),
-             fm)
+          | L.ECApp (
+            (L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "unique"), _), _), _), t), _),
+                      nm), _),
+            (L.CRecord (_, unique), _)) =>
+            let
+                val unique = (nm, t) :: unique
+            in
+                ((L'.EPrim (Prim.String ("UNIQUE ("
+                                         ^ String.concatWith ", " (map (fn (x, _) => "uw_" ^ monoName env x) unique)
+                                         ^ ")")), loc),
+                 fm)
+            end
 
           | L.EFfiApp ("Basis", "dml", [e]) =>
             let
@@ -1193,7 +1205,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.ECApp ((L.EFfi ("Basis", "insert"), _), fields) =>
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "insert"), _), fields), _), _) =>
             (case monoType env (L.TRecord fields, loc) of
                  (L'.TRecord fields, _) =>
                  let
@@ -1217,7 +1229,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  end
                | _ => poly ())
 
-          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "update"), _), _), _), changed) =>
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "update"), _), _), _), _), _), changed) =>
             (case monoType env (L.TRecord changed, loc) of
                  (L'.TRecord changed, _) =>
                  let
@@ -1246,7 +1258,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  end
                | _ => poly ())
 
-          | L.ECApp ((L.EFfi ("Basis", "delete"), _), _) =>
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "delete"), _), _), _), _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
@@ -1347,6 +1359,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 val un = (L'.TRecord [], loc)
                 fun gf s = (L'.EField ((L'.ERel 0, loc), s), loc)
+
+                val tables = List.mapPartial
+                                 (fn (x, (L.CTuple [y, _], _)) => SOME (x, y)
+                                   | _ => (E.errorAt loc "Bad sql_query1 tables pair";
+                                           NONE))
+                             tables
 
                 fun doTables tables =
                     let
@@ -2481,7 +2499,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (env, fm, [(L'.DExport (ek, s, n, ts, ran), loc)])
             end
-          | L.DTable (x, n, (L.CRecord (_, xts), _), s, e) =>
+          | L.DTable (x, n, (L.CRecord (_, xts), _), s, e, _) =>
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
@@ -2615,7 +2633,7 @@ fun monoize env file =
             in
                 foldl (fn ((d, _), e) =>
                           case d of
-                              L.DTable (_, _, xts, tab, _) => doTable (tab, #1 xts, e)
+                              L.DTable (_, _, xts, tab, _, _) => doTable (tab, #1 xts, e)
                             | _ => e) e file
             end
 
@@ -2660,7 +2678,7 @@ fun monoize env file =
             in
                 foldl (fn ((d, _), e) =>
                           case d of
-                              L.DTable (_, _, xts, tab, _) => doTable (tab, #1 xts, e)
+                              L.DTable (_, _, xts, tab, _, _) => doTable (tab, #1 xts, e)
                             | _ => e) e file
             end
 

@@ -294,9 +294,9 @@ fun tagIn bt =
  | query1 of exp
  | tables of (con * exp) list
  | tname of con
- | tnameW of (con * con)
- | tnames of con
- | tnames' of (con * con) list
+ | tnameW of con * con
+ | tnames of (con * con) * (con * con) list
+ | tnames' of (con * con) * (con * con) list
  | table of con * exp
  | tident of con
  | fident of con
@@ -493,7 +493,9 @@ cst    : UNIQUE tnames                  (let
                                              val loc = s (UNIQUEleft, tnamesright)
                                                        
                                              val e = (EVar (["Basis"], "unique", Infer), loc)
-                                             val e = (ECApp (e, tnames), loc)
+                                             val e = (ECApp (e, #1 (#1 tnames)), loc)
+                                             val e = (ECApp (e, (CRecord (#2 tnames), loc)), loc)
+                                             val e = (EDisjointApp e, loc)
                                          in
                                              (EDisjointApp e, loc)
                                          end)
@@ -505,12 +507,11 @@ tnameW : tname                          (let
                                              (tname, (CWild (KType, loc), loc))
                                          end)
 
-tnames : tnameW                         (CRecord [tnameW], s (tnameWleft, tnameWright))
-       | LPAREN tnames' RPAREN          (CRecord tnames', s (LPARENleft, RPARENright))
-       | LBRACE LBRACE cexp RBRACE RBRACE (cexp)
+tnames : tnameW                         (tnameW, [])
+       | LPAREN tnames' RPAREN          (tnames')
 
-tnames': tnameW                         ([tnameW])
-       | tnameW COMMA tnames'           (tnameW :: tnames')
+tnames': tnameW                         (tnameW, [])
+       | tnameW COMMA tnames'           (#1 tnames', tnameW :: #2 tnames')
 
 valis  : vali                           ([vali])
        | vali AND valis                 (vali :: valis)

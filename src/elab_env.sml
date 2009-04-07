@@ -1532,11 +1532,13 @@ fun declBinds env (d, loc) =
       | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | DConstraint _ => env
       | DExport _ => env
-      | DTable (tn, x, n, c, _) =>
+      | DTable (tn, x, n, c, _, cc) =>
         let
-            val t = (CApp ((CModProj (tn, [], "sql_table"), loc), c), loc)
+            val ct = (CModProj (tn, [], "sql_table"), loc)
+            val ct = (CApp (ct, c), loc)
+            val ct = (CApp (ct, cc), loc)
         in
-            pushENamedAs env x n t
+            pushENamedAs env x n ct
         end
       | DSequence (tn, x, n) =>
         let

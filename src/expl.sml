@@ -141,7 +141,7 @@ datatype decl' =
        | DStr of string * int * sgn * str
        | DFfiStr of string * int * sgn
        | DExport of int * sgn * str
-       | DTable of int * string * int * con * exp
+       | DTable of int * string * int * con * exp * con
        | DSequence of int * string * int
        | DDatabase of string
        | DCookie of int * string * int * con

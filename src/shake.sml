@@ -59,7 +59,7 @@ fun shake file =
         val (usedE, usedC, table_cs) =
             List.foldl
                 (fn ((DExport (_, n), _), (usedE, usedC, table_cs)) => (IS.add (usedE, n), usedE, table_cs)
-                  | ((DTable (_, _, c, _, e), _), (usedE, usedC, table_cs)) =>
+                  | ((DTable (_, _, c, _, e, _), _), (usedE, usedC, table_cs)) =>
                     let
                         val (usedE, usedC) = usedVars (usedE, usedC) e
                     in
@@ -79,7 +79,7 @@ fun shake file =
                                                           IM.insert (edef, n, (all_ns, t, e))) edef vis)
                                      end
                                    | ((DExport _, _), acc) => acc
-                                   | ((DTable (_, n, c, _, _), _), (cdef, edef)) =>
+                                   | ((DTable (_, n, c, _, _, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
                                    | ((DSequence (_, n, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], dummyt, dummye)))

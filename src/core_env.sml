@@ -313,11 +313,13 @@ fun declBinds env (d, loc) =
       | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
       | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t NONE s) env vis
       | DExport _ => env
-      | DTable (x, n, c, s, _) =>
+      | DTable (x, n, c, s, _, cc) =>
         let
-            val t = (CApp ((CFfi ("Basis", "sql_table"), loc), c), loc)
+            val ct = (CFfi ("Basis", "sql_table"), loc)
+            val ct = (CApp (ct, c), loc)
+            val ct = (CApp (ct, cc), loc)
         in
-            pushENamed env x n t NONE s
+            pushENamed env x n ct NONE s
         end
       | DSequence (x, n, s) =>
         let

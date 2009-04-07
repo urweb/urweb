@@ -880,6 +880,64 @@
              (L'.CError, _) => ()
            | (_, L'.CError) => ()
 
+           | (L'.CProj (c1, n1), _) =>
+             let
+                 fun trySnd () =
+                     case #1 (hnormCon env c2All) of
+                         L'.CProj (c2, n2) =>
+                         let
+                             fun tryNormal () =
+                                 if n1 = n2 then
+                                     unifyCons' env c1 c2
+                                 else
+                                     err CIncompatible
+                         in
+                             case #1 (hnormCon env c2) of
+                                 L'.CUnif (_, k, _, r) =>
+                                 (case #1 (hnormKind k) of
+                                      L'.KTuple ks =>
+                                      let
+                                          val loc = #2 c2
+                                          val us = map (fn k => cunif (loc, k)) ks
+                                      in
+                                          r := SOME (L'.CTuple us, loc);
+                                          unifyCons' env c1All (List.nth (us, n2 - 1))
+                                      end
+                                    | _ => tryNormal ())
+                            | _ => tryNormal ()
+                         end
+                       | _ => err CIncompatible
+             in
+                 case #1 (hnormCon env c1) of
+                     L'.CUnif (_, k, _, r) =>
+                     (case #1 (hnormKind k) of
+                          L'.KTuple ks =>
+                          let
+                              val loc = #2 c1
+                              val us = map (fn k => cunif (loc, k)) ks
+                          in
+                              r := SOME (L'.CTuple us, loc);
+                              unifyCons' env (List.nth (us, n1 - 1)) c2All
+                          end
+                        | _ => trySnd ())
+                   | _ => trySnd ()
+             end
+
+           | (_, L'.CProj (c2, n2)) =>
+             (case #1 (hnormCon env c2) of
+                  L'.CUnif (_, k, _, r) =>
+                  (case #1 (hnormKind k) of
+                       L'.KTuple ks =>
+                       let
+                           val loc = #2 c2
+                           val us = map (fn k => cunif (loc, k)) ks
+                       in
+                           r := SOME (L'.CTuple us, loc);
+                           unifyCons' env c1All (List.nth (us, n2 - 1))
+                       end
+                     | _ => err CIncompatible)
+                | _ => err CIncompatible)
+
            | (L'.CRecord _, _) => isRecord ()
            | (_, L'.CRecord _) => isRecord ()
            | (L'.CConcat _, _) => isRecord ()
@@ -961,64 +1019,6 @@
            | (L'.CTuple cs1, L'.CTuple cs2) =>
              ((ListPair.appEq (fn (c1, c2) => unifyCons' env c1 c2) (cs1, cs2))
               handle ListPair.UnequalLengths => err CIncompatible)
-
-           | (L'.CProj (c1, n1), _) =>
-             let
-                 fun trySnd () =
-                     case #1 (hnormCon env c2All) of
-                         L'.CProj (c2, n2) =>
-                         let
-                             fun tryNormal () =
-                                 if n1 = n2 then
-                                     unifyCons' env c1 c2
-                                 else
-                                     err CIncompatible
-                         in
-                             case #1 (hnormCon env c2) of
-                                 L'.CUnif (_, k, _, r) =>
-                                 (case #1 (hnormKind k) of
-                                      L'.KTuple ks =>
-                                      let
-                                          val loc = #2 c2
-                                          val us = map (fn k => cunif (loc, k)) ks
-                                      in
-                                          r := SOME (L'.CTuple us, loc);
-                                          unifyCons' env c1All (List.nth (us, n2 - 1))
-                                      end
-                                    | _ => tryNormal ())
-                            | _ => tryNormal ()
-                         end
-                       | _ => err CIncompatible
-             in
-                 case #1 (hnormCon env c1) of
-                     L'.CUnif (_, k, _, r) =>
-                     (case #1 (hnormKind k) of
-                          L'.KTuple ks =>
-                          let
-                              val loc = #2 c1
-                              val us = map (fn k => cunif (loc, k)) ks
-                          in
-                              r := SOME (L'.CTuple us, loc);
-                              unifyCons' env (List.nth (us, n1 - 1)) c2All
-                          end
-                        | _ => trySnd ())
-                   | _ => trySnd ()
-             end
-
-           | (_, L'.CProj (c2, n2)) =>
-             (case #1 (hnormCon env c2) of
-                  L'.CUnif (_, k, _, r) =>
-                  (case #1 (hnormKind k) of
-                       L'.KTuple ks =>
-                       let
-                           val loc = #2 c2
-                           val us = map (fn k => cunif (loc, k)) ks
-                       in
-                           r := SOME (L'.CTuple us, loc);
-                           unifyCons' env c1All (List.nth (us, n2 - 1))
-                       end
-                     | _ => err CIncompatible)
-                | _ => err CIncompatible)
 
            | (L'.CMap (dom1, ran1), L'.CMap (dom2, ran2)) =>
              (unifyKinds env dom1 dom2;
@@ -2319,7 +2319,8 @@ fun sgiOfDecl (d, loc) =
       | L'.DFfiStr (x, n, sgn) => [(L'.SgiStr (x, n, sgn), loc)]
       | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
       | L'.DExport _ => []
-      | L'.DTable (tn, x, n, c, _) => [(L'.SgiVal (x, n, (L'.CApp (tableOf (), c), loc)), loc)]
+      | L'.DTable (tn, x, n, c, _, cc) =>
+        [(L'.SgiVal (x, n, (L'.CApp ((L'.CApp (tableOf (), c), loc), cc), loc)), loc)]
       | L'.DSequence (tn, x, n) => [(L'.SgiVal (x, n, sequenceOf ()), loc)]
       | L'.DClass (x, n, k, c) => [(L'.SgiClass (x, n, k, c), loc)]
       | L'.DDatabase _ => []
@@ -3268,17 +3269,22 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs)) =
               | L.DTable (x, c, e) =>
                 let
                     val (c', k, gs') = elabCon (env, denv) c
-                    val (env, n) = E.pushENamed env x (L'.CApp (tableOf (), c'), loc)
+                    val uniques = cunif (loc, (L'.KRecord (L'.KRecord (L'.KUnit, loc), loc), loc))
+
+                    val ct = tableOf ()
+                    val ct = (L'.CApp (ct, c'), loc)
+                    val ct = (L'.CApp (ct, uniques), loc)
+
+                    val (env, n) = E.pushENamed env x ct
                     val (e', et, gs'') = elabExp (env, denv) e
 
-                    val names = cunif (loc, (L'.KRecord (L'.KUnit, loc), loc))
                     val cst = (L'.CModProj (!basis_r, [], "sql_constraints"), loc)
-                    val cst = (L'.CApp (cst, names), loc)
                     val cst = (L'.CApp (cst, c'), loc)
+                    val cst = (L'.CApp (cst, uniques), loc)
                 in
                     checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
                     checkCon env e' et cst;
-                    ([(L'.DTable (!basis_r, x, n, c', e'), loc)], (env, denv, gs'' @ enD gs' @ gs))
+                    ([(L'.DTable (!basis_r, x, n, c', e', uniques), loc)], (env, denv, gs'' @ enD gs' @ gs))
                 end
               | L.DSequence x =>
                 let

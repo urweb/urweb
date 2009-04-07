@@ -105,9 +105,6 @@ core_untangle.sml
 especialize.sig
 especialize.sml
 
-defunc.sig
-defunc.sml
-
 rpcify.sig
 rpcify.sml
 

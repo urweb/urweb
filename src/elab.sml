@@ -166,7 +166,7 @@ datatype decl' =
        | DFfiStr of string * int * sgn
        | DConstraint of con * con
        | DExport of int * sgn * str
-       | DTable of int * string * int * con * exp
+       | DTable of int * string * int * con * exp * con
        | DSequence of int * string * int
        | DClass of string * int * kind * con
        | DDatabase of string

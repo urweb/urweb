@@ -122,20 +122,27 @@ val self : transaction client
 
 (** SQL *)
 
-con sql_table :: {Type} -> Type
+con sql_table :: {Type} -> {{Unit}} -> Type
 
 (*** Constraints *)
 
-con sql_constraints :: {Unit} -> {Type} -> Type
-con sql_constraint :: {Type} -> Type
+con sql_constraints :: {Type} -> {{Unit}} -> Type
+(* Arguments: column types, uniqueness implications of constraints *)
 
-val no_constraint : fs ::: {Type} -> sql_constraints [] fs
-val one_constraint : fs ::: {Type} -> name :: Name -> sql_constraint fs -> sql_constraints [name] fs
-val join_constraints : names1 ::: {Unit} -> names2 ::: {Unit} -> fs ::: {Type} -> [names1 ~ names2]
-    => sql_constraints names1 fs -> sql_constraints names2 fs
-       -> sql_constraints (names1 ++ names2) fs
+con sql_constraint :: {Type} -> {Unit} -> Type
 
-val unique : rest ::: {Type} -> unique :: {Type} -> [unique ~ rest] => sql_constraint (unique ++ rest)
+val no_constraint : fs ::: {Type} -> sql_constraints fs []
+val one_constraint : fs ::: {Type} -> unique ::: {Unit} -> name :: Name
+                     -> sql_constraint fs unique
+                     -> sql_constraints fs [name = unique]
+val join_constraints : fs ::: {Type}
+                       -> uniques1 ::: {{Unit}} -> uniques2 ::: {{Unit}} -> [uniques1 ~ uniques2]
+    => sql_constraints fs uniques1 -> sql_constraints fs uniques2
+       -> sql_constraints fs (uniques1 ++ uniques2)
+
+val unique : rest ::: {Type} -> t ::: Type -> unique1 :: Name -> unique :: {Type}
+             -> [[unique1] ~ unique] => [[unique1 = t] ++ unique ~ rest]
+    => sql_constraint ([unique1 = t] ++ unique ++ rest) ([unique1] ++ map (fn _ => ()) unique)
 
 
 (*** Queries *)
@@ -151,17 +158,18 @@ val sql_subset : keep_drop :: {({Type} * {Type})}
                                      (map (fn fields :: ({Type} * {Type}) => fields.1) keep_drop)
 val sql_subset_all : tables :: {{Type}} -> sql_subset tables tables
 
-val sql_query1 : tables ::: {{Type}}
+val sql_query1 : tables ::: {({Type} * {{Unit}})}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}
                  -> selectedExps ::: {Type}
-                 -> {From : $(map sql_table tables),
-                     Where : sql_exp tables [] [] bool,
-                     GroupBy : sql_subset tables grouped,
-                     Having : sql_exp grouped tables [] bool,
+                 -> {From : $(map (fn p :: ({Type} * {{Unit}}) => sql_table p.1 p.2) tables),
+                     Where : sql_exp (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) [] [] bool,
+                     GroupBy : sql_subset (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) grouped,
+                     Having : sql_exp grouped (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) [] bool,
                      SelectFields : sql_subset grouped selectedFields,
-                     SelectExps : $(map (sql_exp grouped tables []) selectedExps) }
-                 -> sql_query1 tables selectedFields selectedExps
+                     SelectExps : $(map (sql_exp grouped (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) [])
+                                            selectedExps) }
+                 -> sql_query1 (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) selectedFields selectedExps
 
 type sql_relop 
 val sql_union : sql_relop
@@ -321,20 +329,20 @@ val query : tables ::: {{Type}} -> exps ::: {Type}
 type dml
 val dml : dml -> transaction unit
 
-val insert : fields ::: {Type}
-             -> sql_table fields
+val insert : fields ::: {Type} -> uniques ::: {{Unit}}
+             -> sql_table fields uniques
              -> $(map (fn t :: Type => sql_exp [] [] [] t) fields)
              -> dml
 
-val update : unchanged ::: {Type} -> changed :: {Type} ->
+val update : unchanged ::: {Type} -> uniques ::: {{Unit}} -> changed :: {Type} ->
              [changed ~ unchanged] =>
                 $(map (fn t :: Type => sql_exp [T = changed ++ unchanged] [] [] t) changed)
-                -> sql_table (changed ++ unchanged)
+                -> sql_table (changed ++ unchanged) uniques
                 -> sql_exp [T = changed ++ unchanged] [] [] bool
                 -> dml
 
-val delete : fields ::: {Type}
-             -> sql_table fields
+val delete : fields ::: {Type} -> uniques ::: {{Unit}}
+             -> sql_table fields uniques
              -> sql_exp [T = fields] [] [] bool
              -> dml
 
