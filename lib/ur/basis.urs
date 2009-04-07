@@ -161,9 +161,36 @@ val join_constraints : fs ::: {Type}
     => sql_constraints fs uniques1 -> sql_constraints fs uniques2
        -> sql_constraints fs (uniques1 ++ uniques2)
 
+
 val unique : rest ::: {Type} -> t ::: Type -> unique1 :: Name -> unique :: {Type}
              -> [[unique1] ~ unique] => [[unique1 = t] ++ unique ~ rest]
     => sql_constraint ([unique1 = t] ++ unique ++ rest) ([unique1] ++ map (fn _ => ()) unique)
+
+con matching :: {Type} -> {Type} -> Type
+val mat_nil : matching [] []
+val mat_cons : t ::: Type -> rest1 ::: {Type} -> rest2 ::: {Type}
+               -> nm1 :: Name -> nm2 :: Name
+               -> [[nm1] ~ rest1] => [[nm2] ~ rest2]
+    => matching rest1 rest2
+       -> matching ([nm1 = t] ++ rest1) ([nm2 = t] ++ rest2)
+
+con propagation_mode :: {Type} -> Type
+val restrict : fs ::: {Type} -> propagation_mode fs
+val cascade : fs ::: {Type} -> propagation_mode fs
+val no_action : fs ::: {Type} -> propagation_mode fs
+val set_null : fs ::: {Type} -> propagation_mode (map option fs)
+
+
+val foreign_key : mine1 ::: Name -> t ::: Type -> mine ::: {Type} -> munused ::: {Type}
+                  -> foreign ::: {Type} -> funused ::: {Type}
+                  -> nm ::: Name -> uniques ::: {{Unit}}
+                  -> [[mine1] ~ mine] => [[mine1 = t] ++ mine ~ munused]
+    => [foreign ~ funused] => [[nm] ~ uniques]
+    => matching ([mine1 = t] ++ mine) foreign
+       -> sql_table (foreign ++ funused) ([nm = map (fn _ => ()) foreign] ++ uniques)
+       -> {OnDelete : propagation_mode ([mine1 = t] ++ mine),
+           OnUpdate : propagation_mode ([mine1 = t] ++ mine)}
+       -> sql_constraint ([mine1 = t] ++ mine ++ munused) []
 
 
 (*** Queries *)

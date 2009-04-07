@@ -254,7 +254,8 @@ and prove env denv (c1, c2, loc) =
         val hasUnknown = List.exists (fn Unknown _ => true | _ => false)
         val unUnknown = List.mapPartial (fn Unknown _ => NONE | Piece p => SOME p)
     in
-        if hasUnknown ps1 orelse hasUnknown ps2 then
+        if (hasUnknown ps1 andalso not (List.null ps2))
+           orelse (hasUnknown ps2 andalso not (List.null ps1)) then
             [(loc, env, denv, c1, c2)]
         else
             let

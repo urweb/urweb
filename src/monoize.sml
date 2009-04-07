@@ -155,6 +155,14 @@ fun monoType env =
                     (L'.TFfi ("Basis", "sql_constraints"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_constraint"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "matching"), _), _), _), _) =>
+                    let
+                        val string = (L'.TFfi ("Basis", "string"), loc)
+                    in
+                        (L'.TRecord [("1", string), ("2", string)], loc)
+                    end
+                  | L.CApp ((L.CFfi ("Basis", "propagation_mode"), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_subset"), _), _), _), _) =>
                     (L'.TRecord [], loc)
@@ -1215,6 +1223,105 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EPrim (Prim.String ("UNIQUE ("
                                          ^ String.concatWith ", " (map (fn (x, _) => "uw_" ^ monoName env x) unique)
                                          ^ ")")), loc),
+                 fm)
+            end
+
+          | L.EFfi ("Basis", "mat_nil") =>
+            let
+                val string = (L'.TFfi ("Basis", "string"), loc)
+                val stringE = (L'.EPrim (Prim.String ""), loc)
+            in
+                ((L'.ERecord [("1", stringE, string),
+                              ("2", stringE, string)], loc), fm)
+            end
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.EFfi ("Basis", "mat_cons"), _),
+                _), _),
+               _), _),
+              _), _),
+             (L.CName nm1, _)), _),
+            (L.CName nm2, _)) =>
+            let
+                val string = (L'.TFfi ("Basis", "string"), loc)
+                val mat = (L'.TRecord [("1", string), ("2", string)], loc)
+            in
+                ((L'.EAbs ("m", mat, mat,
+                           (L'.ECase ((L'.EField ((L'.ERel 0, loc), "1"), loc),
+                                      [((L'.PPrim (Prim.String ""), loc),
+                                        (L'.ERecord [("1", (L'.EPrim (Prim.String ("uw_" ^ nm1)), loc), string),
+                                                     ("2", (L'.EPrim (Prim.String ("uw_" ^ nm2)), loc), string)], loc)),
+                                       ((L'.PWild, loc),
+                                        (L'.ERecord [("1", (L'.EStrcat (
+                                                            (L'.EPrim (Prim.String ("uw_" ^ nm1 ^ ", ")), loc),
+                                                            (L'.EField ((L'.ERel 0, loc), "1"), loc)), loc), string),
+                                                     ("2", (L'.EStrcat (
+                                                            (L'.EPrim (Prim.String ("uw_" ^ nm2 ^ ", ")), loc),
+                                                            (L'.EField ((L'.ERel 0, loc), "2"), loc)), loc), string)],
+                                         loc))],
+                                      {disc = string,
+                                       result = mat}), loc)), loc),
+                 fm)
+            end
+
+          | L.ECApp ((L.EFfi ("Basis", "restrict"), _), _) => ((L'.EPrim (Prim.String "RESTRICT"), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "cascade"), _), _) => ((L'.EPrim (Prim.String "CASCADE"), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "no_action"), _), _) => ((L'.EPrim (Prim.String "NO ACTION"), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "set_null"), _), _) => ((L'.EPrim (Prim.String "SET NULL"), loc), fm)
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.ECApp (
+                 (L.ECApp (
+                  (L.ECApp (
+                   (L.EFfi ("Basis", "foreign_key"), _),
+                   _), _),
+                  _), _),
+                 _), _),
+                _), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val unit = (L'.TRecord [], loc)
+                val string = (L'.TFfi ("Basis", "string"), loc)
+                val mat = (L'.TRecord [("1", string), ("2", string)], loc)
+                val recd = (L'.TRecord [("OnDelete", string),
+                                        ("OnUpdate", string)], loc)
+
+                fun strcat [] = raise Fail "Monoize.strcat"
+                  | strcat [e] = e
+                  | strcat (e1 :: es) = (L'.EStrcat (e1, strcat es), loc)
+
+                fun prop (fd, kw) =
+                    (L'.ECase ((L'.EField ((L'.ERel 0, loc), fd), loc),
+                               [((L'.PPrim (Prim.String "NO ACTION"), loc),
+                                 (L'.EPrim (Prim.String ""), loc)),
+                                ((L'.PWild, loc),
+                                 strcat [(L'.EPrim (Prim.String (" ON " ^ kw ^ " ")), loc),
+                                         (L'.EField ((L'.ERel 0, loc), fd), loc)])],
+                               {disc = string,
+                                result = string}), loc)
+            in
+                ((L'.EAbs ("m", mat, (L'.TFun (string, (L'.TFun (recd, string), loc)), loc),
+                           (L'.EAbs ("tab", string, (L'.TFun (recd, string), loc),
+                                     (L'.EAbs ("pr", recd, string,
+                                               strcat [(L'.EPrim (Prim.String "FOREIGN KEY ("), loc),
+                                                       (L'.EField ((L'.ERel 2, loc), "1"), loc),
+                                                       (L'.EPrim (Prim.String ") REFERENCES "), loc),
+                                                       (L'.ERel 1, loc),
+                                                       (L'.EPrim (Prim.String " ("), loc),
+                                                       (L'.EField ((L'.ERel 2, loc), "2"), loc),
+                                                       (L'.EPrim (Prim.String ")"), loc),
+                                                       prop ("OnDelete", "DELETE"),
+                                                       prop ("OnUpdate", "UPDATE")]), loc)), loc)), loc),
                  fm)
             end
 

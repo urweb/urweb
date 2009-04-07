@@ -174,6 +174,8 @@ fun tagIn bt =
         "table" => "tabl"
       | _ => bt
 
+datatype prop_kind = Delete | Update
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -208,7 +210,7 @@ fun tagIn bt =
  | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
- | CCONSTRAINT | UNIQUE | PRIMARY | KEY
+ | CCONSTRAINT | UNIQUE | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
 
 %nonterm
    file of decl list
@@ -229,6 +231,11 @@ fun tagIn bt =
  | cst of exp
  | csts of exp
  | cstopt of exp
+
+ | pmode of prop_kind * exp
+ | pkind of prop_kind
+ | prule of exp
+ | pmodes of (prop_kind * exp) list
 
  | sgn of sgn
  | sgntm of sgn
@@ -503,6 +510,54 @@ cst    : UNIQUE tnames                  (let
                                          in
                                              (EDisjointApp e, loc)
                                          end)
+
+       | FOREIGN KEY tnames REFERENCES texp LPAREN tnames' RPAREN pmodes
+                                        (let
+                                             val loc = s (FOREIGNleft, pmodesright)
+
+                                             val mat = ListPair.foldrEq
+                                                       (fn ((nm1, _), (nm2, _), mat) =>
+                                                           let
+                                                               val e = (EVar (["Basis"], "mat_cons", Infer), loc)
+                                                               val e = (ECApp (e, nm1), loc)
+                                                               val e = (ECApp (e, nm2), loc)
+                                                               val e = (EDisjointApp e, loc)
+                                                               val e = (EDisjointApp e, loc)
+                                                           in
+                                                               (EApp (e, mat), loc)
+                                                           end)
+                                                       (EVar (["Basis"], "mat_nil", Infer), loc)
+                                                       (#1 tnames :: #2 tnames, #1 tnames' :: #2 tnames')
+
+                                             fun findMode mode =
+                                                 let
+                                                     fun findMode' pmodes =
+                                                         case pmodes of
+                                                             [] => (EVar (["Basis"], "no_action", Infer), loc)
+                                                           | (mode', rule) :: pmodes' =>
+                                                             if mode' = mode then
+                                                                 (if List.exists (fn (mode', _) => mode' = mode)
+                                                                                 pmodes' then
+                                                                      ErrorMsg.errorAt loc "Duplicate propagation rule"
+                                                                  else
+                                                                      ();
+                                                                  rule)
+                                                             else
+                                                                 findMode' pmodes'
+                                                 in
+                                                     findMode' pmodes
+                                                 end
+
+                                             val e = (EVar (["Basis"], "foreign_key", Infer), loc)
+                                             val e = (EApp (e, mat), loc)
+                                             val e = (EApp (e, texp), loc)
+                                         in
+                                             (EApp (e, (ERecord [((CName "OnDelete", loc),
+                                                                  findMode Delete),
+                                                                 ((CName "OnUpdate", loc),
+                                                                  findMode Update)], loc)), loc)
+                                         end)
+
        | LBRACE eexp RBRACE             (eexp)
 
 tnameW : tname                          (let
@@ -516,6 +571,19 @@ tnames : tnameW                         (tnameW, [])
 
 tnames': tnameW                         (tnameW, [])
        | tnameW COMMA tnames'           (#1 tnames', tnameW :: #2 tnames')
+
+pmode  : ON pkind prule                 (pkind, prule)
+
+pkind  : DELETE                         (Delete)
+       | UPDATE                         (Update)
+
+prule  : NO ACTION                      (EVar (["Basis"], "no_action", Infer), s (NOleft, ACTIONright))
+       | RESTRICT                       (EVar (["Basis"], "restrict", Infer), s (RESTRICTleft, RESTRICTright))
+       | CASCADE                        (EVar (["Basis"], "cascade", Infer), s (CASCADEleft, CASCADEright))
+       | SET NULL                       (EVar (["Basis"], "set_null", Infer), s (SETleft, NULLright))
+
+pmodes :                                ([])
+       | pmode pmodes                   (pmode :: pmodes)
 
 commaOpt:                               ()
         | COMMA                         ()

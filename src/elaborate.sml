@@ -463,7 +463,10 @@
        | _ => false
  fun cunifsRemain c =
      case c of
-         L'.CUnif (loc, _, _, ref NONE) => SOME loc
+         L'.CUnif (loc, (L'.KRecord k, _), _, r as ref NONE) =>
+         (r := SOME (L'.CRecord (k, []), loc);
+          NONE)
+       | L'.CUnif (loc, _, _, ref NONE) => SOME loc
        | _ => NONE
 
  val kunifsInDecl = U.Decl.exists {kind = kunifsRemain,
@@ -618,6 +621,8 @@
        | L'.CKApp _ => false
        | L'.TKFun _ => false
 
+ val recdCounter = ref 0
+
  fun unifyRecordCons env (c1, c2) =
      let
          fun rkindof c =
@@ -711,6 +716,41 @@
          (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
+         fun unsummarize {fields, unifs, others} =
+             let
+                 val c = (L'.CRecord (k, fields), loc)
+
+                 val c = foldl (fn ((c1, _), c2) => (L'.CConcat (c1, c2), loc))
+                               c unifs
+             in
+                 foldl (fn (c1, c2) => (L'.CConcat (c1, c2), loc))
+                       c others
+             end
+
+         val (unifs1, fs1, others1, unifs2, fs2, others2) =
+             case (unifs1, fs1, others1, unifs2, fs2, others2) of
+                 orig as ([(_, r)], [], [], _, _, _) =>
+                 let
+                     val c = unsummarize {fields = fs2, others = others2, unifs = unifs2}
+                 in
+                     if occursCon r c then
+                         orig
+                     else
+                         (r := SOME c;
+                          ([], [], [], [], [], []))
+                 end
+               | orig as (_, _, _, [(_, r)], [], []) =>
+                 let
+                     val c = unsummarize {fields = fs1, others = others1, unifs = unifs1}
+                 in
+                     if occursCon r c then
+                         orig
+                     else
+                         (r := SOME c;
+                          ([], [], [], [], [], []))
+                 end
+               | orig => orig
+
          fun unifFields (fs, others, unifs) =
              case (fs, others, unifs) of
                  ([], [], _) => ([], [], unifs)
@@ -719,7 +759,8 @@
                  let
                      val r' = ref NONE
                      val kr = (L'.KRecord k, dummy)
-                     val cr' = (L'.CUnif (dummy, kr, "recd", r'), dummy)
+                     val cr' = (L'.CUnif (dummy, kr, ("recd" ^ Int.toString (!recdCounter)), r'), dummy)
+                     val () = recdCounter := 1 + !recdCounter
 
                      val prefix = case (fs, others) of
                                       ([], other :: others) =>
@@ -762,6 +803,8 @@
                      (fs1, fs2, others1, others2)
                | _ => (fs1, fs2, others1, others2)
 
+         val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (unifs1, unifs2)
+
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
@@ -770,34 +813,31 @@
                         | _ => false
          val empty = (L'.CRecord (k, []), dummy)
 
-         fun unsummarize {fields, unifs, others} =
-             let
-                 val c = (L'.CRecord (k, fields), loc)
-
-                 val c = foldl (fn ((c1, _), c2) => (L'.CConcat (c1, c2), loc))
-                               c unifs
-             in
-                 foldl (fn (c1, c2) => (L'.CConcat (c1, c2), loc))
-                       c others
-             end
-
-         fun pairOffUnifs (unifs1, unifs2) =
-             case (unifs1, unifs2) of
-                 ([], _) =>
-                 if clear then
-                     List.app (fn (_, r) => r := SOME empty) unifs2
-                 else
-                     raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
-               | (_, []) =>
-                 if clear then
-                     List.app (fn (_, r) => r := SOME empty) unifs1
-                 else
-                     raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
-               | ((c1, _) :: rest1, (_, r2) :: rest2) =>
-                 (r2 := SOME c1;
-                  pairOffUnifs (rest1, rest2))
+         fun failure () = raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
      in
-         pairOffUnifs (unifs1, unifs2)
+         case (unifs1, fs1, others1, unifs2, fs2, others2) of
+             ([(_, r)], [], [], _, _, _) =>
+             let
+                 val c = unsummarize {fields = fs2, others = others2, unifs = unifs2}
+             in
+                 if occursCon r c then
+                     failure ()
+                 else
+                     r := SOME c
+             end
+           | (_, _, _, [(_, r)], [], []) =>
+             let
+                 val c = unsummarize {fields = fs1, others = others1, unifs = unifs1}
+             in
+                 if occursCon r c then
+                     failure ()
+                 else
+                     r := SOME c
+             end
+           | _ => if clear then
+                      ()
+                  else
+                      failure ()
          (*before eprefaces "Summaries'" [("#1", p_summary env s1),
                                        ("#2", p_summary env s2)]*)
      end
