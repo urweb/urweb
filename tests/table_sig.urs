@@ -1,0 +1,1 @@
+table t : { A : int }

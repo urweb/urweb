@@ -532,34 +532,32 @@ sgntm  : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
        | sgntm WHERE LTYPE SYMBOL EQ cexp(SgnWhere (sgntm, SYMBOL, cexp), s (sgntmleft, cexpright))
        | LPAREN sgn RPAREN              (sgn)
 
-sgi    : CON SYMBOL DCOLON kind         (SgiConAbs (SYMBOL, kind), s (CONleft, kindright))
-       | LTYPE SYMBOL                   (SgiConAbs (SYMBOL, (KType, s (LTYPEleft, SYMBOLright))),
-                                         s (LTYPEleft, SYMBOLright))
-       | CON SYMBOL EQ cexp             (SgiCon (SYMBOL, NONE, cexp), s (CONleft, cexpright))
-       | CON SYMBOL DCOLON kind EQ cexp (SgiCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright))
-       | LTYPE SYMBOL EQ cexp           (SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
-                                         s (LTYPEleft, cexpright))
-       | DATATYPE SYMBOL dargs EQ barOpt dcons(SgiDatatype (SYMBOL, dargs, dcons), s (DATATYPEleft, dconsright))
+sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, kindright)))
+       | LTYPE SYMBOL                   ((SgiConAbs (SYMBOL, (KType, s (LTYPEleft, SYMBOLright))),
+                                          s (LTYPEleft, SYMBOLright)))
+       | CON SYMBOL EQ cexp             ((SgiCon (SYMBOL, NONE, cexp), s (CONleft, cexpright)))
+       | CON SYMBOL DCOLON kind EQ cexp ((SgiCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright)))
+       | LTYPE SYMBOL EQ cexp           ((SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
+                                          s (LTYPEleft, cexpright)))
+       | DATATYPE SYMBOL dargs EQ barOpt dcons((SgiDatatype (SYMBOL, dargs, dcons), s (DATATYPEleft, dconsright)))
        | DATATYPE SYMBOL dargs EQ DATATYPE CSYMBOL DOT path
                 (case dargs of
                      [] => (SgiDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))
                    | _ => raise Fail "Arguments specified for imported datatype")
-       | VAL SYMBOL COLON cexp          (SgiVal (SYMBOL, cexp), s (VALleft, cexpright))
+       | VAL SYMBOL COLON cexp          ((SgiVal (SYMBOL, cexp), s (VALleft, cexpright)))
 
-       | STRUCTURE CSYMBOL COLON sgn    (SgiStr (CSYMBOL, sgn), s (STRUCTUREleft, sgnright))
-       | SIGNATURE CSYMBOL EQ sgn       (SgiSgn (CSYMBOL, sgn), s (SIGNATUREleft, sgnright))
+       | STRUCTURE CSYMBOL COLON sgn    ((SgiStr (CSYMBOL, sgn), s (STRUCTUREleft, sgnright)))
+       | SIGNATURE CSYMBOL EQ sgn       ((SgiSgn (CSYMBOL, sgn), s (SIGNATUREleft, sgnright)))
        | FUNCTOR CSYMBOL LPAREN CSYMBOL COLON sgn RPAREN COLON sgn
-                                        (SgiStr (CSYMBOL1,
-                                                 (SgnFun (CSYMBOL2, sgn1, sgn2), s (FUNCTORleft, sgn2right))),
-                                         s (FUNCTORleft, sgn2right))
-       | INCLUDE sgn                    (SgiInclude sgn, s (INCLUDEleft, sgnright))
-       | CONSTRAINT cterm TWIDDLE cterm (SgiConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))
-       | TABLE SYMBOL COLON cexp        (let
-                                             val loc = s (TABLEleft, cexpright)
-                                             val t = (CApp ((CVar (["Basis"], "sql_table"), loc),
-                                                            entable cexp), loc)
+                                        ((SgiStr (CSYMBOL1,
+                                                  (SgnFun (CSYMBOL2, sgn1, sgn2), s (FUNCTORleft, sgn2right))),
+                                          s (FUNCTORleft, sgn2right)))
+       | INCLUDE sgn                    ((SgiInclude sgn, s (INCLUDEleft, sgnright)))
+       | CONSTRAINT cterm TWIDDLE cterm ((SgiConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright)))
+       | TABLE SYMBOL COLON cterm cstopt(let
+                                             val loc = s (TABLEleft, ctermright)
                                          in
-                                             (SgiVal (SYMBOL, t), loc)
+                                             (SgiTable (SYMBOL, entable cterm, cstopt), loc)
                                          end)
        | SEQUENCE SYMBOL                (let
                                              val loc = s (SEQUENCEleft, SYMBOLright)

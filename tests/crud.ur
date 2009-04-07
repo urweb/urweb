@@ -33,7 +33,7 @@ fun bool name = {Nam = name,
 functor Make(M : sig
                  con cols :: {(Type * Type)}
                  constraint [Id] ~ cols
-                 val tab : sql_table ([Id = int] ++ mapT2T fstTT cols)
+                 table tab : ([Id = int] ++ mapT2T fstTT cols)
 
                  val title : string
 

@@ -109,7 +109,7 @@ signature ELAB_ERR = sig
            | NotFunctor of Elab.sgn
            | FunctorRebind of ErrorMsg.span
            | UnOpenable of Elab.sgn
-           | NotType of Elab.kind * (Elab.kind * Elab.kind * kunify_error)
+           | NotType of ErrorMsg.span * Elab.kind * (Elab.kind * Elab.kind * kunify_error)
            | DuplicateConstructor of string * ErrorMsg.span
            | NotDatatype of ErrorMsg.span
 

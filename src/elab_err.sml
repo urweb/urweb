@@ -328,7 +328,7 @@ datatype str_error =
        | NotFunctor of sgn
        | FunctorRebind of ErrorMsg.span
        | UnOpenable of sgn
-       | NotType of kind * (kind * kind * kunify_error)
+       | NotType of ErrorMsg.span * kind * (kind * kind * kunify_error)
        | DuplicateConstructor of string * ErrorMsg.span
        | NotDatatype of ErrorMsg.span
 
@@ -344,8 +344,8 @@ fun strError env err =
       | UnOpenable sgn =>
         (ErrorMsg.errorAt (#2 sgn) "Un-openable structure";
          eprefaces' [("Signature", p_sgn env sgn)])
-      | NotType (k, (k1, k2, ue)) =>
-        (ErrorMsg.errorAt (#2 k) "'val' type kind is not 'Type'";
+      | NotType (loc, k, (k1, k2, ue)) =>
+        (ErrorMsg.errorAt loc "'val' type kind is not 'Type'";
          eprefaces' [("Kind", p_kind env k),
                      ("Subkind 1", p_kind env k1),
                      ("Subkind 2", p_kind env k2)];

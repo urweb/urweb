@@ -417,6 +417,17 @@ fun p_sgn_item (sgi, _) =
                               string ":",
                               space,
                               p_con c]
+      | SgiTable (x, c, e) => box [string "table",
+                                space,
+                                string x,
+                                space,
+                                string ":",
+                                space,
+                                p_con c,
+                                space,
+                                string "constraints",
+                                space,
+                                p_exp e]
       | SgiStr (x, sgn) => box [string "structure",
                                 space,
                                 string x,

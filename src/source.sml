@@ -77,12 +77,18 @@ datatype con' =
 
 withtype con = con' located
 
+datatype inference =
+         Infer
+       | DontInfer
+       | TypesOnly
+
 datatype sgn_item' =
          SgiConAbs of string * kind
        | SgiCon of string * kind option * con
        | SgiDatatype of string * string list * (string * con option) list
        | SgiDatatypeImp of string * string list * string
        | SgiVal of string * con
+       | SgiTable of string * con * exp
        | SgiStr of string * sgn
        | SgiSgn of string * sgn
        | SgiInclude of sgn
@@ -97,55 +103,50 @@ and sgn' =
   | SgnWhere of sgn * string * con
   | SgnProj of string * string list * string
 
-withtype sgn_item = sgn_item' located
-and sgn = sgn' located
+and pat' =
+    PWild
+  | PVar of string
+  | PPrim of Prim.t
+  | PCon of string list * string * pat option
+  | PRecord of (string * pat) list * bool
 
-datatype pat' =
-         PWild
-       | PVar of string
-       | PPrim of Prim.t
-       | PCon of string list * string * pat option
-       | PRecord of (string * pat) list * bool
+and exp' =
+    EAnnot of exp * con
 
-withtype pat = pat' located
+  | EPrim of Prim.t
+  | EVar of string list * string * inference
+  | EApp of exp * exp
+  | EAbs of string * con option * exp
+  | ECApp of exp * con
+  | ECAbs of explicitness * string * kind * exp
+  | EDisjoint of con * con * exp
+  | EDisjointApp of exp
 
-datatype inference =
-         Infer
-       | DontInfer
-       | TypesOnly
+  | EKAbs of string * exp
 
-datatype exp' =
-         EAnnot of exp * con
+  | ERecord of (con * exp) list
+  | EField of exp * con
+  | EConcat of exp * exp
+  | ECut of exp * con
+  | ECutMulti of exp * con
 
-       | EPrim of Prim.t
-       | EVar of string list * string * inference
-       | EApp of exp * exp
-       | EAbs of string * con option * exp
-       | ECApp of exp * con
-       | ECAbs of explicitness * string * kind * exp
-       | EDisjoint of con * con * exp
-       | EDisjointApp of exp
+  | EWild
 
-       | EKAbs of string * exp
+  | ECase of exp * (pat * exp) list
 
-       | ERecord of (con * exp) list
-       | EField of exp * con
-       | EConcat of exp * exp
-       | ECut of exp * con
-       | ECutMulti of exp * con
-
-       | EWild
-
-       | ECase of exp * (pat * exp) list
-
-       | ELet of edecl list * exp
+  | ELet of edecl list * exp
 
 and edecl' =
     EDVal of string * con option * exp
   | EDValRec of (string * con option * exp) list
 
-withtype exp = exp' located
+withtype sgn_item = sgn_item' located
+and sgn = sgn' located
+and pat = pat' located
+and exp = exp' located
 and edecl = edecl' located
+
+
 
 datatype decl' =
          DCon of string * kind option * con

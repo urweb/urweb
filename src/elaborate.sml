@@ -871,16 +871,7 @@
      let
          fun err f = raise CUnify' (f (c1All, c2All))
 
-         fun isRecord () = unifyRecordCons env (c1All, c2All)
-     in
-         (*eprefaces "unifyCons''" [("c1All", p_con env c1All),
-                                  ("c2All", p_con env c2All)];*)
-
-         case (c1, c2) of
-             (L'.CError, _) => ()
-           | (_, L'.CError) => ()
-
-           | (L'.CProj (c1, n1), _) =>
+         fun projSpecial1 (c1, n1, onFail) =
              let
                  fun trySnd () =
                      case #1 (hnormCon env c2All) of
@@ -890,7 +881,7 @@
                                  if n1 = n2 then
                                      unifyCons' env c1 c2
                                  else
-                                     err CIncompatible
+                                     onFail ()
                          in
                              case #1 (hnormCon env c2) of
                                  L'.CUnif (_, k, _, r) =>
@@ -906,7 +897,7 @@
                                     | _ => tryNormal ())
                             | _ => tryNormal ()
                          end
-                       | _ => err CIncompatible
+                       | _ => onFail ()
              in
                  case #1 (hnormCon env c1) of
                      L'.CUnif (_, k, _, r) =>
@@ -923,20 +914,35 @@
                    | _ => trySnd ()
              end
 
-           | (_, L'.CProj (c2, n2)) =>
-             (case #1 (hnormCon env c2) of
-                  L'.CUnif (_, k, _, r) =>
-                  (case #1 (hnormKind k) of
-                       L'.KTuple ks =>
-                       let
-                           val loc = #2 c2
-                           val us = map (fn k => cunif (loc, k)) ks
-                       in
-                           r := SOME (L'.CTuple us, loc);
-                           unifyCons' env c1All (List.nth (us, n2 - 1))
-                       end
-                     | _ => err CIncompatible)
-                | _ => err CIncompatible)
+         fun projSpecial2 (c2, n2, onFail) =
+             case #1 (hnormCon env c2) of
+                 L'.CUnif (_, k, _, r) =>
+                 (case #1 (hnormKind k) of
+                      L'.KTuple ks =>
+                      let
+                          val loc = #2 c2
+                          val us = map (fn k => cunif (loc, k)) ks
+                      in
+                          r := SOME (L'.CTuple us, loc);
+                          unifyCons' env c1All (List.nth (us, n2 - 1))
+                      end
+                    | _ => onFail ())
+               | _ => onFail ()
+
+         fun isRecord' () = unifyRecordCons env (c1All, c2All)
+
+         fun isRecord () =
+             case (c1, c2) of
+                 (L'.CProj (c1, n1), _) => projSpecial1 (c1, n1, isRecord')
+               | (_, L'.CProj (c2, n2)) => projSpecial2 (c2, n2, isRecord')
+               | _ => isRecord' ()
+     in
+         (*eprefaces "unifyCons''" [("c1All", p_con env c1All),
+                                  ("c2All", p_con env c2All)];*)
+
+         case (c1, c2) of
+             (L'.CError, _) => ()
+           | (_, L'.CError) => ()
 
            | (L'.CRecord _, _) => isRecord ()
            | (_, L'.CRecord _) => isRecord ()
@@ -1019,6 +1025,9 @@
            | (L'.CTuple cs1, L'.CTuple cs2) =>
              ((ListPair.appEq (fn (c1, c2) => unifyCons' env c1 c2) (cs1, cs2))
               handle ListPair.UnequalLengths => err CIncompatible)
+
+           | (L'.CProj (c1, n1), _) => projSpecial1 (c1, n1, fn () => err CIncompatible)
+           | (_, L'.CProj (c2, n2)) => projSpecial2 (c2, n2, fn () => err CIncompatible)
 
            | (L'.CMap (dom1, ran1), L'.CMap (dom2, ran2)) =>
              (unifyKinds env dom1 dom2;
@@ -2013,9 +2022,41 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             val c' = normClassConstraint env c'
         in
             (unifyKinds env ck ktype
-             handle KUnify ue => strError env (NotType (ck, ue)));
+             handle KUnify ue => strError env (NotType (loc, ck, ue)));
 
             ([(L'.SgiVal (x, n, c'), loc)], (env', denv, gs' @ gs))
+        end
+
+      | L.SgiTable (x, c, e) =>
+        let
+            val cstK = (L'.KRecord (L'.KRecord (L'.KUnit, loc), loc), loc)
+            val x' = x ^ "_hidden_constraints"
+            val (env', hidden_n) = E.pushCNamed env x' cstK NONE
+            val hidden = (L'.CNamed hidden_n, loc)
+
+            val (c', ck, gs') = elabCon (env, denv) c
+            val visible = cunif (loc, cstK)
+            val uniques = (L'.CConcat (visible, hidden), loc)
+
+            val ct = tableOf ()
+            val ct = (L'.CApp (ct, c'), loc)
+            val ct = (L'.CApp (ct, uniques), loc)
+
+            val (env', n) = E.pushENamed env' x ct
+
+            val (e', et, gs'') = elabExp (env, denv) e
+            val gs'' = List.mapPartial (fn Disjoint x => SOME x
+                                         | _ => NONE) gs''
+
+            val cst = (L'.CModProj (!basis_r, [], "sql_constraints"), loc)
+            val cst = (L'.CApp (cst, c'), loc)
+            val cst = (L'.CApp (cst, visible), loc)
+        in
+            checkKind env c' ck (L'.KRecord (L'.KType, loc), loc);
+            checkCon env' e' et cst;
+
+            ([(L'.SgiConAbs (x', hidden_n, cstK), loc),
+              (L'.SgiVal (x, n, ct), loc)], (env', denv, gs'' @ gs' @ gs))
         end
 
       | L.SgiStr (x, sgn) =>
@@ -2213,7 +2254,7 @@ and elabSgn (env, denv) (sgn, loc) =
              end)
                                                               
 
-fun selfify env {str, strs, sgn} =
+and selfify env {str, strs, sgn} =
     case #1 (hnormSgn env sgn) of
         L'.SgnError => sgn
       | L'.SgnVar _ => sgn
@@ -2238,7 +2279,7 @@ fun selfify env {str, strs, sgn} =
             NONE => raise Fail "Elaborate.selfify: projectSgn returns NONE"
           | SOME sgn => selfify env {str = str, strs = strs, sgn = sgn}
 
-fun selfifyAt env {str, sgn} =
+and selfifyAt env {str, sgn} =
     let
         fun self (str, _) =
             case str of
@@ -2254,7 +2295,7 @@ fun selfifyAt env {str, sgn} =
           | SOME (str, strs) => selfify env {sgn = sgn, str = str, strs = strs}
     end
 
-fun dopen env {str, strs, sgn} =
+and dopen env {str, strs, sgn} =
     let
         val m = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
                 (L'.StrVar str, #2 sgn) strs
@@ -2307,7 +2348,7 @@ fun dopen env {str, strs, sgn} =
                   ([], env))
     end
 
-fun sgiOfDecl (d, loc) =
+and sgiOfDecl (d, loc) =
     case d of
         L'.DCon (x, n, k, c) => [(L'.SgiCon (x, n, k, c), loc)]
       | L'.DDatatype x => [(L'.SgiDatatype x, loc)]
@@ -2326,7 +2367,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
 
-fun subSgn env sgn1 (sgn2 as (_, loc2)) =
+and subSgn env sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
                         ("sgn2", p_sgn env sgn2)];*)
     case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
@@ -2694,7 +2735,7 @@ fun subSgn env sgn1 (sgn2 as (_, loc2)) =
       | _ => sgnError env (SgnWrongForm (sgn1, sgn2)))
 
 
-fun positive self =
+and positive self =
     let
         open L
 
@@ -2760,7 +2801,7 @@ fun positive self =
         pos
     end
 
-fun wildifyStr env (str, sgn) =
+and wildifyStr env (str, sgn) =
     case #1 (hnormSgn env sgn) of
         L'.SgnConst sgis =>
         (case #1 str of
@@ -2922,7 +2963,7 @@ fun wildifyStr env (str, sgn) =
            | _ => str)
       | _ => str
 
-fun elabDecl (dAll as (d, loc), (env, denv, gs)) =
+and elabDecl (dAll as (d, loc), (env, denv, gs)) =
     let
         (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
         (*val befor = Time.now ()*)

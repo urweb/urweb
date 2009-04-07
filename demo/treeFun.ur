@@ -9,7 +9,7 @@ functor Make(M : sig
                  val key_inj : sql_injectable key
                  val option_key_inj : sql_injectable (option key)
 
-                 table tab : [id = key, parent = option key] ++ cols
+                 table tab : ([id = key, parent = option key] ++ cols)
              end) = struct
 
     open M
