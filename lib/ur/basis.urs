@@ -124,6 +124,20 @@ val self : transaction client
 
 con sql_table :: {Type} -> Type
 
+(*** Constraints *)
+
+con sql_constraints :: {Unit} -> {Type} -> Type
+con sql_constraint :: {Type} -> Type
+
+val no_constraint : fs ::: {Type} -> sql_constraints [] fs
+val one_constraint : fs ::: {Type} -> name :: Name -> sql_constraint fs -> sql_constraints [name] fs
+val join_constraints : names1 ::: {Unit} -> names2 ::: {Unit} -> fs ::: {Type} -> [names1 ~ names2]
+    => sql_constraints names1 fs -> sql_constraints names2 fs
+       -> sql_constraints (names1 ++ names2) fs
+
+val unique : rest ::: {Type} -> unique :: {Type} -> [unique ~ rest] => sql_constraint (unique ++ rest)
+
+
 (*** Queries *)
 
 con sql_query :: {{Type}} -> {Type} -> Type

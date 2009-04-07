@@ -38,6 +38,13 @@ structure SS = BinarySetFn(struct
 
 fun checkDecl ((d, loc), (funcs, rels)) =
     let
+        fun doFunc s =
+            (if SS.member (funcs, s) then
+                 E.errorAt loc ("Duplicate function path " ^ s)
+             else
+                 ();
+             (SS.add (funcs, s), rels))
+
         fun doRel s =
             (if SS.member (rels, s) then
                  E.errorAt loc ("Duplicate table/sequence path " ^ s)
@@ -46,14 +53,27 @@ fun checkDecl ((d, loc), (funcs, rels)) =
              (funcs, SS.add (rels, s)))
     in
         case d of
-            DExport (_, s, _, _, _) =>
-            (if SS.member (funcs, s) then
-                 E.errorAt loc ("Duplicate function path " ^ s)
-             else
-                 ();
-             (SS.add (funcs, s), rels))
+            DExport (_, s, _, _, _) => doFunc s
             
-          | DTable (s, _) => doRel s
+          | DTable (s, _, e) =>
+            let
+                fun constraints (e, rels) =
+                    case #1 e of
+                        ERecord [(s', _, _)] =>
+                        let
+                            val s' = s ^ "_" ^ s'
+                        in
+                            if SS.member (rels, s') then
+                                E.errorAt loc ("Duplicate constraint path " ^ s')
+                            else
+                                ();
+                            SS.add (rels, s')
+                        end
+                      | EStrcat (e1, e2) => constraints (e2, constraints (e1, rels))
+                      | _ => rels
+            in
+                (funcs, constraints (e, #2 (doRel s)))
+            end
           | DSequence s => doRel s
 
           | _ => (funcs, rels)

@@ -160,7 +160,7 @@ datatype decl' =
        | DConstraint of con * con
        | DOpenConstraints of string * string list
        | DExport of str
-       | DTable of string * con
+       | DTable of string * con * exp
        | DSequence of string
        | DClass of string * kind * con
        | DDatabase of string

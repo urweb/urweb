@@ -588,13 +588,17 @@ fun p_decl ((d, _) : decl) =
       | DExport str => box [string "export",
                             space,
                             p_str str]
-      | DTable (x, c) => box [string "table",
-                              space,
-                              string x,
-                              space,
-                              string ":",
-                              space,
-                              p_con c]
+      | DTable (x, c, e) => box [string "table",
+                                 space,
+                                 string x,
+                                 space,
+                                 string ":",
+                                 space,
+                                 p_con c,
+                                 space,
+                                 string "constraints",
+                                 space,
+                                 p_exp e]
       | DSequence x => box [string "sequence",
                             space,
                             string x]

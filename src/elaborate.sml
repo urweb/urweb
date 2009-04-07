@@ -1126,11 +1126,11 @@
                  else
                      (e, t, [])
                | t => (e, t, [])
-    in
-        case infer of
-            L.DontInfer => (e, t, [])
-          | _ => unravel (t, e)
-    end
+     in
+         case infer of
+             L.DontInfer => (e, t, [])
+           | _ => unravel (t, e)
+     end
 
 fun elabPat (pAll as (p, loc), (env, bound)) =
     let
@@ -2319,7 +2319,7 @@ fun sgiOfDecl (d, loc) =
       | L'.DFfiStr (x, n, sgn) => [(L'.SgiStr (x, n, sgn), loc)]
       | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
       | L'.DExport _ => []
-      | L'.DTable (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (tableOf (), c), loc)), loc)]
+      | L'.DTable (tn, x, n, c, _) => [(L'.SgiVal (x, n, (L'.CApp (tableOf (), c), loc)), loc)]
       | L'.DSequence (tn, x, n) => [(L'.SgiVal (x, n, sequenceOf ()), loc)]
       | L'.DClass (x, n, k, c) => [(L'.SgiClass (x, n, k, c), loc)]
       | L'.DDatabase _ => []
@@ -3265,13 +3265,20 @@ fun elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     ([(L'.DExport (E.newNamed (), sgn, str'), loc)], (env, denv, gs' @ gs))
                 end
 
-              | L.DTable (x, c) =>
+              | L.DTable (x, c, e) =>
                 let
                     val (c', k, gs') = elabCon (env, denv) c
                     val (env, n) = E.pushENamed env x (L'.CApp (tableOf (), c'), loc)
+                    val (e', et, gs'') = elabExp (env, denv) e
+
+                    val names = cunif (loc, (L'.KRecord (L'.KUnit, loc), loc))
+                    val cst = (L'.CModProj (!basis_r, [], "sql_constraints"), loc)
+                    val cst = (L'.CApp (cst, names), loc)
+                    val cst = (L'.CApp (cst, c'), loc)
                 in
                     checkKind env c' k (L'.KRecord (L'.KType, loc), loc);
-                    ([(L'.DTable (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
+                    checkCon env e' et cst;
+                    ([(L'.DTable (!basis_r, x, n, c', e'), loc)], (env, denv, gs'' @ enD gs' @ gs))
                 end
               | L.DSequence x =>
                 let

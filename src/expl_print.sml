@@ -663,13 +663,17 @@ fun p_decl env (dAll as (d, _) : decl) =
                                       string ":",
                                       space,
                                       p_sgn env sgn]
-      | DTable (_, x, n, c) => box [string "table",
-                                    space,
-                                    p_named x n,
-                                    space,
-                                    string ":",
-                                    space,
-                                    p_con env c]
+      | DTable (_, x, n, c, e) => box [string "table",
+                                       space,
+                                       p_named x n,
+                                       space,
+                                       string ":",
+                                       space,
+                                       p_con env c,
+                                       space,
+                                       string "constraints",
+                                       space,
+                                       p_exp env e]
       | DSequence (_, x, n) => box [string "sequence",
                                     space,
                                     p_named x n]

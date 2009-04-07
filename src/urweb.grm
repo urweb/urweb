@@ -208,6 +208,7 @@ fun tagIn bt =
  | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
+ | CCONSTRAINT | UNIQUE
 
 %nonterm
    file of decl list
@@ -221,6 +222,10 @@ fun tagIn bt =
  | barOpt of unit
  | dcons of (string * con option) list
  | dcon of string * con option
+
+ | cst of exp
+ | csts of exp
+ | cstopt of exp
 
  | sgn of sgn
  | sgntm of sgn
@@ -289,6 +294,9 @@ fun tagIn bt =
  | query1 of exp
  | tables of (con * exp) list
  | tname of con
+ | tnameW of (con * con)
+ | tnames of con
+ | tnames' of (con * con) list
  | table of con * exp
  | tident of con
  | fident of con
@@ -410,7 +418,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                            | m :: ms => [(DOpenConstraints (m, ms), s (OPENleft, mpathright))])
        | CONSTRAINT cterm TWIDDLE cterm ([(DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))])
        | EXPORT spath                   ([(DExport spath, s (EXPORTleft, spathright))])
-       | TABLE SYMBOL COLON cexp        ([(DTable (SYMBOL, entable cexp), s (TABLEleft, cexpright))])
+       | TABLE SYMBOL COLON cterm cstopt([(DTable (SYMBOL, entable cterm, cstopt), s (TABLEleft, cstoptright))])
        | SEQUENCE SYMBOL                ([(DSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))])
        | CLASS SYMBOL EQ cexp           (let
                                              val loc = s (CLASSleft, cexpright)
@@ -459,6 +467,50 @@ vali   : SYMBOL eargl2 copt EQ eexp     (let
 
 copt   :                                (NONE)
        | COLON cexp                     (SOME cexp)
+
+cstopt :                                (EVar (["Basis"], "no_constraint", Infer), dummy)
+       | csts                           (csts)
+
+csts   : CCONSTRAINT tname cst          (let
+                                             val loc = s (CCONSTRAINTleft, cstright)
+                                                       
+                                             val e = (EVar (["Basis"], "one_constraint", Infer), loc)
+                                             val e = (ECApp (e, tname), loc)
+                                         in
+                                             (EApp (e, cst), loc)
+                                         end)
+       | csts COMMA csts                (let
+                                             val loc = s (csts1left, csts2right)
+
+                                             val e = (EVar (["Basis"], "join_constraints", Infer), loc)
+                                             val e = (EApp (e, csts1), loc)
+                                         in
+                                             (EApp (e, csts2), loc)
+                                         end)
+       | LBRACE LBRACE eexp RBRACE RBRACE (eexp)
+
+cst    : UNIQUE tnames                  (let
+                                             val loc = s (UNIQUEleft, tnamesright)
+                                                       
+                                             val e = (EVar (["Basis"], "unique", Infer), loc)
+                                             val e = (ECApp (e, tnames), loc)
+                                         in
+                                             (EDisjointApp e, loc)
+                                         end)
+       | LBRACE eexp RBRACE             (eexp)
+
+tnameW : tname                          (let
+                                             val loc = s (tnameleft, tnameright)
+                                         in
+                                             (tname, (CWild (KType, loc), loc))
+                                         end)
+
+tnames : tnameW                         (CRecord [tnameW], s (tnameWleft, tnameWright))
+       | LPAREN tnames' RPAREN          (CRecord tnames', s (LPARENleft, RPARENright))
+       | LBRACE LBRACE cexp RBRACE RBRACE (cexp)
+
+tnames': tnameW                         ([tnameW])
+       | tnameW COMMA tnames'           (tnameW :: tnames')
 
 valis  : vali                           ([vali])
        | vali AND valis                 (vali :: valis)

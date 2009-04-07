@@ -524,7 +524,7 @@ fun cifyDecl ((d, loc), sm) =
             (NONE, SOME (ek, "/" ^ s, n, ts, t, L'.ServerAndPullAndPush), sm)
         end
 
-      | L.DTable (s, xts) =>
+      | L.DTable (s, xts, e) =>
         let
             val (xts, sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
                                                   let
@@ -532,8 +532,18 @@ fun cifyDecl ((d, loc), sm) =
                                                   in
                                                       ((x, t), sm)
                                                   end) sm xts
+
+            fun flatten e =
+                case #1 e of
+                    L.ERecord [] => []
+                  | L.ERecord [(x, (L.EPrim (Prim.String v), _), _)] => [(x, v)]
+                  | L.EStrcat (e1, e2) => flatten e1 @ flatten e2
+                  | _ => (ErrorMsg.errorAt loc "Constraint has not been fully determined";
+                          Print.prefaces "Undetermined constraint"
+                          [("e", MonoPrint.p_exp MonoEnv.empty e)];
+                          [])
         in
-            (SOME (L'.DTable (s, xts), loc), NONE, sm)
+            (SOME (L'.DTable (s, xts, flatten e), loc), NONE, sm)
         end
       | L.DSequence s =>
         (SOME (L'.DSequence s, loc), NONE, sm)

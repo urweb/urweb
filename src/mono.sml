@@ -121,7 +121,7 @@ datatype decl' =
        | DValRec of (string * int * typ * exp * string) list
        | DExport of Core.export_kind * string * int * typ list * typ
 
-       | DTable of string * (string * typ) list
+       | DTable of string * (string * typ) list * exp
        | DSequence of string
        | DDatabase of {name : string, expunge : int, initialize : int}
 

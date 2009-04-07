@@ -766,7 +766,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                    bind (ctx, Str (x, sgn))
                                                  | DConstraint _ => ctx
                                                  | DExport _ => ctx
-                                                 | DTable (tn, x, n, c) =>
+                                                 | DTable (tn, x, n, c, _) =>
                                                    bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "sql_table"), loc),
                                                                                 c), loc)))
                                                  | DSequence (tn, x, n) =>
@@ -864,10 +864,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                     fn str' =>
                                        (DExport (en, sgn', str'), loc)))
 
-              | DTable (tn, x, n, c) =>
-                S.map2 (mfc ctx c,
+              | DTable (tn, x, n, c, e) =>
+                S.bind2 (mfc ctx c,
                         fn c' =>
-                           (DTable (tn, x, n, c'), loc))
+                           S.map2 (mfe ctx e,
+                                   fn e' =>
+                                      (DTable (tn, x, n, c', e'), loc)))
               | DSequence _ => S.return2 dAll
 
               | DClass (x, n, k, c) =>
@@ -1018,7 +1020,7 @@ and maxNameDecl (d, _) =
       | DConstraint _ => 0
       | DClass (_, n, _, _) => n
       | DExport _ => 0
-      | DTable (n1, _, n2, _) => Int.max (n1, n2)
+      | DTable (n1, _, n2, _, _) => Int.max (n1, n2)
       | DSequence (n1, _, n2) => Int.max (n1, n2)
       | DDatabase _ => 0
       | DCookie (n1, _, n2, _) => Int.max (n1, n2)

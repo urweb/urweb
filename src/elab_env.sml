@@ -1532,7 +1532,7 @@ fun declBinds env (d, loc) =
       | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
       | DConstraint _ => env
       | DExport _ => env
-      | DTable (tn, x, n, c) =>
+      | DTable (tn, x, n, c, _) =>
         let
             val t = (CApp ((CModProj (tn, [], "sql_table"), loc), c), loc)
         in

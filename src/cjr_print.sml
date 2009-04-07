@@ -1435,7 +1435,7 @@ fun p_exp' par env (e, loc) =
             val wontLeakAnything = notLeaky env false state
         in
             box [if wontLeakAnything then
-                     string "uw_begin_region(ctx), "
+                     string "(uw_begin_region(ctx), "
                  else
                      box [],
                  string "({",
@@ -1585,7 +1585,11 @@ fun p_exp' par env (e, loc) =
                      box [],
                  string "acc;",
                  newline,
-                 string "})"]
+                 string "})",
+                 if wontLeakAnything then
+                     string ")"
+                 else
+                     box []]
         end
 
       | EDml {dml, prepared} =>
@@ -1937,10 +1941,19 @@ fun p_decl env (dAll as (d, _) : decl) =
                  p_list_sep newline (p_fun env) vis,
                  newline]
         end
-      | DTable (x, _) => box [string "/* SQL table ",
-                              string x,
-                              string " */",
-                              newline]
+      | DTable (x, _, csts) => box [string "/* SQL table ",
+                                    string x,
+                                    space,
+                                    string "constraints",
+                                    space,
+                                    p_list (fn (x, v) => box [string x,
+                                                              space,
+                                                              string ":",
+                                                              space,
+                                                              string v]) csts,
+                                    space,
+                                    string " */",
+                                    newline]
       | DSequence x => box [string "/* SQL sequence ",
                             string x,
                             string " */",
@@ -2454,7 +2467,7 @@ fun p_file env (ds, ps) =
 
         val pds' = map p_page ps
 
-        val tables = List.mapPartial (fn (DTable (s, xts), _) => SOME (s, xts)
+        val tables = List.mapPartial (fn (DTable (s, xts, _), _) => SOME (s, xts)
                                        | _ => NONE) ds
         val sequences = List.mapPartial (fn (DSequence s, _) => SOME s
                                           | _ => NONE) ds
@@ -2798,7 +2811,7 @@ fun p_sql env (ds, _) =
                        (fn (dAll as (d, _), env) =>
                            let
                                val pp = case d of
-                                            DTable (s, xts) =>
+                                            DTable (s, xts, csts) =>
                                             box [string "CREATE TABLE ",
                                                  string s,
                                                  string "(",
@@ -2807,6 +2820,20 @@ fun p_sql env (ds, _) =
                                                                  string (CharVector.map Char.toLower x),
                                                                  space,
                                                                  p_sqltype env (t, ErrorMsg.dummySpan)]) xts,
+                                                 case csts of
+                                                     [] => box []
+                                                   | _ => box [string ","],
+                                                 cut,
+                                                 p_list_sep (box [string ",", newline])
+                                                            (fn (x, c) =>
+                                                                box [string "CONSTRAINT",
+                                                                     space,
+                                                                     string s,
+                                                                     string "_",
+                                                                     string x,
+                                                                     space,
+                                                                     string c]) csts,
+                                                 newline,
                                                  string ");",
                                                  newline,
                                                  newline]

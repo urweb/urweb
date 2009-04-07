@@ -46,11 +46,26 @@ val dummye = (EPrim (Prim.String ""), ErrorMsg.dummySpan)
 
 fun shake file =
     let
-        val (page_es, table_cs) =
+        val usedVars = U.Exp.fold {kind = fn (_, st) => st,
+                                   con = fn (c, st as (es, cs)) =>
+                                            case c of
+                                                CNamed n => (es, IS.add (cs, n))
+                                              | _ => st,
+                                   exp = fn (e, st as (es, cs)) =>
+                                            case e of
+                                                ENamed n => (IS.add (es, n), cs)
+                                              | _ => st}
+
+        val (usedE, usedC, table_cs) =
             List.foldl
-                (fn ((DExport (_, n), _), (page_es, table_cs)) => (n :: page_es, table_cs)
-                  | ((DTable (_, _, c, _), _), (page_es, table_cs)) => (page_es, c :: table_cs)
-                  | (_, acc) => acc) ([], []) file
+                (fn ((DExport (_, n), _), (usedE, usedC, table_cs)) => (IS.add (usedE, n), usedE, table_cs)
+                  | ((DTable (_, _, c, _, e), _), (usedE, usedC, table_cs)) =>
+                    let
+                        val (usedE, usedC) = usedVars (usedE, usedC) e
+                    in
+                        (usedE, usedC, c :: table_cs)
+                    end
+                  | (_, acc) => acc) (IS.empty, IS.empty, []) file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
                                    | ((DDatatype (_, n, _, xncs), _), (cdef, edef)) =>
@@ -64,7 +79,7 @@ fun shake file =
                                                           IM.insert (edef, n, (all_ns, t, e))) edef vis)
                                      end
                                    | ((DExport _, _), acc) => acc
-                                   | ((DTable (_, n, c, _), _), (cdef, edef)) =>
+                                   | ((DTable (_, n, c, _, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
                                    | ((DSequence (_, n, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], dummyt, dummye)))
@@ -122,17 +137,17 @@ fun shake file =
 
         and shakeExp s = U.Exp.fold {kind = kind, con = con, exp = exp} s
 
-        val s = {con = IS.empty, exp = IS.addList (IS.empty, page_es)}
+        val s = {con = usedC, exp = usedE}
 
-        val s = foldl (fn (n, s) =>
-                          case IM.find (edef, n) of
-                              NONE => raise Fail "Shake: Couldn't find 'val'"
-                            | SOME (ns, t, e) =>
-                              let
-                                  val s = shakeExp (shakeCon s t) e
-                              in
-                                  foldl (fn (n, s) => exp (ENamed n, s)) s ns
-                              end) s page_es
+        val s = IS.foldl (fn (n, s) =>
+                             case IM.find (edef, n) of
+                                 NONE => raise Fail "Shake: Couldn't find 'val'"
+                               | SOME (ns, t, e) =>
+                                 let
+                                     val s = shakeExp (shakeCon s t) e
+                                 in
+                                     foldl (fn (n, s) => exp (ENamed n, s)) s ns
+                                 end) s usedE
 
         val s = foldl (fn (c, s) => shakeCon s c) s table_cs
     in
