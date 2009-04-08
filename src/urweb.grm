@@ -1204,11 +1204,23 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                          s (NOTAGSleft, NOTAGSright))
        | tag DIVIDE GT                  (let
                                              val pos = s (tagleft, GTright)
+
+                                             val cdata =
+                                                 if #1 tag = "submit" orelse #1 tag = "dyn" then
+                                                     let
+                                                         val e = (EVar (["Basis"], "cdata", DontInfer), pos)
+                                                         val e = (ECApp (e, (CWild (KWild, pos), pos)), pos)
+                                                     in
+                                                         (ECApp (e, (CRecord [], pos)), pos)
+                                                     end
+                                                 else
+                                                     (EVar (["Basis"], "cdata", Infer), pos)
+
+                                             val cdata = (EApp (cdata,
+                                                                (EPrim (Prim.String ""), pos)),
+                                                          pos)
                                          in
-                                             (EApp (#2 tag,
-                                                    (EApp ((EVar (["Basis"], "cdata", Infer), pos),
-                                                           (EPrim (Prim.String ""), pos)),
-                                                     pos)), pos)
+                                             (EApp (#2 tag, cdata), pos)
                                          end)
          
        | tag GT xml END_TAG             (let

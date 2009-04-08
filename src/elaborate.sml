@@ -463,10 +463,7 @@
        | _ => false
  fun cunifsRemain c =
      case c of
-         L'.CUnif (loc, (L'.KRecord k, _), _, r as ref NONE) =>
-         (r := SOME (L'.CRecord (k, []), loc);
-          NONE)
-       | L'.CUnif (loc, _, _, ref NONE) => SOME loc
+         L'.CUnif (loc, _, _, ref NONE) => SOME loc
        | _ => NONE
 
  val kunifsInDecl = U.Decl.exists {kind = kunifsRemain,
@@ -727,6 +724,8 @@
                        c others
              end
 
+         val empties = ([], [], [], [], [], [])
+
          val (unifs1, fs1, others1, unifs2, fs2, others2) =
              case (unifs1, fs1, others1, unifs2, fs2, others2) of
                  orig as ([(_, r)], [], [], _, _, _) =>
@@ -737,7 +736,7 @@
                          orig
                      else
                          (r := SOME c;
-                          ([], [], [], [], [], []))
+                          empties)
                  end
                | orig as (_, _, _, [(_, r)], [], []) =>
                  let
@@ -747,42 +746,24 @@
                          orig
                      else
                          (r := SOME c;
-                          ([], [], [], [], [], []))
+                          empties)
                  end
+               | orig as ([(_, r1 as ref NONE)], _, [], [(_, r2 as ref NONE)], _, []) =>
+                 if List.all (fn (x1, _) => List.all (fn (x2, _) => consNeq env (x1, x2)) fs2) fs1 then
+                     let
+                         val kr = (L'.KRecord k, dummy)
+                         val u = cunif (loc, kr)
+                     in
+                         r1 := SOME (L'.CConcat ((L'.CRecord (k, fs2), loc), u), loc);
+                         r2 := SOME (L'.CConcat ((L'.CRecord (k, fs1), loc), u), loc);
+                         empties
+                     end
+                 else
+                     orig
                | orig => orig
 
-         fun unifFields (fs, others, unifs) =
-             case (fs, others, unifs) of
-                 ([], [], _) => ([], [], unifs)
-               | (_, _, []) => (fs, others, [])
-               | (_, _, (_, r) :: rest) =>
-                 let
-                     val r' = ref NONE
-                     val kr = (L'.KRecord k, dummy)
-                     val cr' = (L'.CUnif (dummy, kr, ("recd" ^ Int.toString (!recdCounter)), r'), dummy)
-                     val () = recdCounter := 1 + !recdCounter
-
-                     val prefix = case (fs, others) of
-                                      ([], other :: others) =>
-                                      List.foldl (fn (other, c) =>
-                                                     (L'.CConcat (c, other), dummy))
-                                                 other others
-                                    | (fs, []) =>
-                                      (L'.CRecord (k, fs), dummy)
-                                    | (fs, others) =>
-                                      List.foldl (fn (other, c) =>
-                                                     (L'.CConcat (c, other), dummy))
-                                                 (L'.CRecord (k, fs), dummy) others
-                 in
-                     r := SOME (L'.CConcat (prefix, cr'), dummy);
-                     ([], [], (cr', r') :: rest)
-                 end
-
-         val (fs1, others1, unifs2) = unifFields (fs1, others1, unifs2)
-         val (fs2, others2, unifs1) = unifFields (fs2, others2, unifs1)
-
          (*val () = eprefaces "Summaries4" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
-                                          ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+                                            ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
          fun isGuessable (other, fs) =
              (guessMap env (other, (L'.CRecord (k, fs), loc), GuessFailure);
@@ -803,8 +784,6 @@
                      (fs1, fs2, others1, others2)
                | _ => (fs1, fs2, others1, others2)
 
-         val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (unifs1, unifs2)
-
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
@@ -812,32 +791,16 @@
                           ([], [], [], []) => true
                         | _ => false
          val empty = (L'.CRecord (k, []), dummy)
-
-         fun failure () = raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
      in
          case (unifs1, fs1, others1, unifs2, fs2, others2) of
-             ([(_, r)], [], [], _, _, _) =>
-             let
-                 val c = unsummarize {fields = fs2, others = others2, unifs = unifs2}
-             in
-                 if occursCon r c then
-                     failure ()
-                 else
-                     r := SOME c
-             end
-           | (_, _, _, [(_, r)], [], []) =>
-             let
-                 val c = unsummarize {fields = fs1, others = others1, unifs = unifs1}
-             in
-                 if occursCon r c then
-                     failure ()
-                 else
-                     r := SOME c
-             end
+             (_, [], [], [], [], []) =>
+             app (fn (_, r) => r := SOME empty) unifs1
+           | ([], [], [], _, [], []) =>
+             app (fn (_, r) => r := SOME empty) unifs2
            | _ => if clear then
                       ()
                   else
-                      failure ()
+                      raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
          (*before eprefaces "Summaries'" [("#1", p_summary env s1),
                                        ("#2", p_summary env s2)]*)
      end
