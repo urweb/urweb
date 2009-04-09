@@ -1,6 +1,7 @@
 sequence s
 table t : { Id : int, Parent : option int, Nam : string }
-  PRIMARY KEY Id
+  PRIMARY KEY Id,
+  CONSTRAINT F FOREIGN KEY Parent REFERENCES t (Id) ON DELETE CASCADE
 
 open TreeFun.Make(struct
                       val tab = t
