@@ -198,12 +198,18 @@ val foreign_key : mine1 ::: Name -> t ::: Type -> mine ::: {Type} -> munused :::
            OnUpdate : propagation_mode ([mine1 = t] ++ mine)}
        -> sql_constraint ([mine1 = t] ++ mine ++ munused) []
 
+con sql_exp :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
+
+val check : fs ::: {Type}
+            -> sql_exp [] [] fs bool
+            -> sql_constraint fs []
+
+
 
 (*** Queries *)
 
 con sql_query :: {{Type}} -> {Type} -> Type
 con sql_query1 :: {{Type}} -> {{Type}} -> {Type} -> Type
-con sql_exp :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
 
 con sql_subset :: {{Type}} -> {{Type}} -> Type
 val sql_subset : keep_drop :: {({Type} * {Type})}

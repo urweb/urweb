@@ -367,6 +367,7 @@ notags = [^<{\n]+;
 
 <INITIAL> "CONSTRAINT"=> (Tokens.CCONSTRAINT (pos yypos, pos yypos + size yytext));
 <INITIAL> "UNIQUE"    => (Tokens.UNIQUE (pos yypos, pos yypos + size yytext));
+<INITIAL> "CHECK"     => (Tokens.CHECK (pos yypos, pos yypos + size yytext));
 <INITIAL> "PRIMARY"   => (Tokens.PRIMARY (pos yypos, pos yypos + size yytext));
 <INITIAL> "FOREIGN"   => (Tokens.FOREIGN (pos yypos, pos yypos + size yytext));
 <INITIAL> "KEY"       => (Tokens.KEY (pos yypos, pos yypos + size yytext));

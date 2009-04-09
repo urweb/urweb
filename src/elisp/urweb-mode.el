@@ -148,7 +148,7 @@ See doc for the variable `urweb-mode-info'."
                  "HAVING" "LIMIT" "OFFSET" "ALL" "UNION" "INTERSECT" "EXCEPT"
                  "TRUE" "FALSE" "AND" "OR" "NOT" "COUNT" "AVG" "SUM" "MIN" "MAX"
                  "ASC" "DESC" "INSERT" "INTO" "VALUES" "UPDATE" "SET" "DELETE"
-                 "PRIMARY" "KEY" "CONSTRAINT" "UNIQUE"
+                 "PRIMARY" "KEY" "CONSTRAINT" "UNIQUE" "CHECK"
                  "FOREIGN" "REFERENCES" "ON" "NO" "ACTION" "CASCADE" "RESTRICT" "NULL")
   "A regexp that matches SQL keywords.")
 

@@ -87,7 +87,13 @@ fun sqlifyInt n = attrifyInt n ^ "::int8"
 fun sqlifyFloat n = attrifyFloat n ^ "::float8"
 
 fun sqlifyString s = "E'" ^ String.translate (fn #"'" => "\\'"
-                                               | ch => str ch)
+                                               | #"\\" => "\\\\"
+                                               | ch =>
+                                                 if Char.isPrint ch then
+                                                     str ch
+                                                 else
+                                                     "\\" ^ StringCvt.padLeft #"0" 3
+                                                                              (Int.fmt StringCvt.OCT (ord ch)))
                                              (String.toString s) ^ "'::text"
 
 fun exp e =
@@ -364,6 +370,34 @@ fun exp e =
         optExp (EApp (e2, e1), loc)
 
       | EJavaScript (_, _, SOME (e, _)) => e
+
+      | EFfiApp ("Basis", "checkString", [(EPrim (Prim.String s), loc)]) => 
+        let
+            fun uwify (cs, acc) =
+                case cs of
+                    [] => String.concat (rev acc)
+                  | #"(" :: #"_" :: cs => uwify (cs, "(uw_" :: acc)
+                  | #" " :: #"_" :: cs => uwify (cs, " uw_" :: acc)
+                  | #"'" :: cs =>
+                    let
+                        fun waitItOut (cs, acc) =
+                            case cs of
+                                [] => raise Fail "MonoOpt: Unterminated SQL string literal"
+                              | #"'" :: cs => uwify (cs, "'" :: acc)
+                              | #"\\" :: #"'" :: cs => waitItOut (cs, "\\'" :: acc)
+                              | #"\\" :: #"\\" :: cs => waitItOut (cs, "\\\\" :: acc)
+                              | c :: cs => waitItOut (cs, str c :: acc)
+                    in
+                        waitItOut (cs, "'" :: acc)
+                    end
+                  | c :: cs => uwify (cs, str c :: acc)
+
+            val s = case String.explode s of
+                        #"_" :: cs => uwify (cs, ["uw_"])
+                      | cs => uwify (cs, [])
+        in
+            EPrim (Prim.String s)
+        end
 
       | _ => e
 

@@ -1342,6 +1342,17 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.ECApp ((L.EFfi ("Basis", "check"), _), _) =>
+            let
+                val string = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("e", string, string,
+                           (L'.EStrcat ((L'.EPrim (Prim.String "CHECK "), loc),
+                                        (L'.EFfiApp ("Basis", "checkString",
+                                                     [(L'.ERel 0, loc)]), loc)), loc)), loc),
+                 fm)
+            end
+
           | L.EFfiApp ("Basis", "dml", [e]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e

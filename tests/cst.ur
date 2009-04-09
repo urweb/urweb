@@ -1,7 +1,11 @@
-table u : {C : int, D : int, E : option int}
+table u : {C : int, D : int, E : option int, F : string}
   PRIMARY KEY C,
   CONSTRAINT U UNIQUE (C, D),
-  CONSTRAINT U2 UNIQUE E
+  CONSTRAINT U2 UNIQUE E,
+
+  CONSTRAINT Pos CHECK D > 0,
+  CONSTRAINT NoNo CHECK C + D <> 2,
+  CONSTRAINT Known CHECK F = "_E = 6"
 
 table t : {A : int, B : int, C : option int}
   PRIMARY KEY B,

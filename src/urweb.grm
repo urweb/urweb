@@ -210,7 +210,7 @@ datatype prop_kind = Delete | Update
  | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
- | CCONSTRAINT | UNIQUE | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
+ | CCONSTRAINT | UNIQUE | CHECK | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
 
 %nonterm
    file of decl list
@@ -509,6 +509,13 @@ cst    : UNIQUE tnames                  (let
                                              val e = (EDisjointApp e, loc)
                                          in
                                              (EDisjointApp e, loc)
+                                         end)
+
+       | CHECK sqlexp                   (let
+                                             val loc = s (CHECKleft, sqlexpright)
+                                         in
+                                             (EApp ((EVar (["Basis"], "check", Infer), loc),
+                                                    sqlexp), loc)
                                          end)
 
        | FOREIGN KEY tnames REFERENCES texp LPAREN tnames' RPAREN pmodes
