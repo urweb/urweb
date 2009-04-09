@@ -166,13 +166,19 @@ val unique : rest ::: {Type} -> t ::: Type -> unique1 :: Name -> unique :: {Type
              -> [[unique1] ~ unique] => [[unique1 = t] ++ unique ~ rest]
     => sql_constraint ([unique1 = t] ++ unique ++ rest) ([unique1] ++ map (fn _ => ()) unique)
 
+class linkable :: Type -> Type -> Type
+val linkable_same : t ::: Type -> linkable t t
+val linkable_from_nullable : t ::: Type -> linkable (option t) t
+val linkable_to_nullable : t ::: Type -> linkable t (option t)
+
 con matching :: {Type} -> {Type} -> Type
 val mat_nil : matching [] []
-val mat_cons : t ::: Type -> rest1 ::: {Type} -> rest2 ::: {Type}
+val mat_cons : t1 ::: Type -> rest1 ::: {Type} -> t2 ::: Type -> rest2 ::: {Type}
                -> nm1 :: Name -> nm2 :: Name
                -> [[nm1] ~ rest1] => [[nm2] ~ rest2]
-    => matching rest1 rest2
-       -> matching ([nm1 = t] ++ rest1) ([nm2 = t] ++ rest2)
+    => linkable t1 t2
+       -> matching rest1 rest2
+       -> matching ([nm1 = t1] ++ rest1) ([nm2 = t2] ++ rest2)
 
 con propagation_mode :: {Type} -> Type
 val restrict : fs ::: {Type} -> propagation_mode fs

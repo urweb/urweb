@@ -155,6 +155,8 @@ fun monoType env =
                     (L'.TFfi ("Basis", "sql_constraints"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_constraint"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "linkable"), _), _), _), _) =>
+                    (L'.TRecord [], loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "matching"), _), _), _), _) =>
                     let
                         val string = (L'.TFfi ("Basis", "string"), loc)
@@ -1226,6 +1228,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.ECApp ((L.EFfi ("Basis", "linkable_same"), loc), _) =>
+            ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "linkable_from_nullable"), loc), _) =>
+            ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "linkable_to_nullable"), loc), _) =>
+            ((L'.ERecord [], loc), fm)
+
           | L.EFfi ("Basis", "mat_nil") =>
             let
                 val string = (L'.TFfi ("Basis", "string"), loc)
@@ -1239,7 +1248,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "mat_cons"), _),
+                (L.ECApp (
+                 (L.EFfi ("Basis", "mat_cons"), _),
+                 _), _),
                 _), _),
                _), _),
               _), _),
@@ -1249,21 +1260,27 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val string = (L'.TFfi ("Basis", "string"), loc)
                 val mat = (L'.TRecord [("1", string), ("2", string)], loc)
             in
-                ((L'.EAbs ("m", mat, mat,
-                           (L'.ECase ((L'.EField ((L'.ERel 0, loc), "1"), loc),
-                                      [((L'.PPrim (Prim.String ""), loc),
-                                        (L'.ERecord [("1", (L'.EPrim (Prim.String ("uw_" ^ nm1)), loc), string),
-                                                     ("2", (L'.EPrim (Prim.String ("uw_" ^ nm2)), loc), string)], loc)),
-                                       ((L'.PWild, loc),
-                                        (L'.ERecord [("1", (L'.EStrcat (
-                                                            (L'.EPrim (Prim.String ("uw_" ^ nm1 ^ ", ")), loc),
-                                                            (L'.EField ((L'.ERel 0, loc), "1"), loc)), loc), string),
-                                                     ("2", (L'.EStrcat (
-                                                            (L'.EPrim (Prim.String ("uw_" ^ nm2 ^ ", ")), loc),
-                                                            (L'.EField ((L'.ERel 0, loc), "2"), loc)), loc), string)],
-                                         loc))],
-                                      {disc = string,
-                                       result = mat}), loc)), loc),
+                ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun (mat, mat), loc),
+                           (L'.EAbs ("m", mat, mat,
+                                     (L'.ECase ((L'.EField ((L'.ERel 0, loc), "1"), loc),
+                                                [((L'.PPrim (Prim.String ""), loc),
+                                                  (L'.ERecord [("1", (L'.EPrim (Prim.String ("uw_" ^ nm1)),
+                                                                      loc), string),
+                                                               ("2", (L'.EPrim (Prim.String ("uw_" ^ nm2)),
+                                                                      loc), string)], loc)),
+                                                 ((L'.PWild, loc),
+                                                  (L'.ERecord [("1", (L'.EStrcat (
+                                                                      (L'.EPrim (Prim.String ("uw_" ^ nm1 ^ ", ")),
+                                                                       loc),
+                                                                      (L'.EField ((L'.ERel 0, loc), "1"), loc)),
+                                                                      loc), string),
+                                                               ("2", (L'.EStrcat (
+                                                                      (L'.EPrim (Prim.String ("uw_" ^ nm2 ^ ", ")), loc),
+                                                                      (L'.EField ((L'.ERel 0, loc), "2"), loc)),
+                                                                      loc), string)],
+                                                   loc))],
+                                                {disc = string,
+                                                 result = mat}), loc)), loc)), loc),
                  fm)
             end
 

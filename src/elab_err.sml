@@ -217,7 +217,7 @@ fun expError env err =
                                               ("Type", p_con env c)]) co)
       | Unresolvable (loc, c) =>
         (ErrorMsg.errorAt loc "Can't resolve type class instance";
-         eprefaces' [("Class constraint", p_con env c),
+         eprefaces' [("Class constraint", p_con env c)(*,
                      ("Class database", p_list (fn (c, rules) =>
                                                    box [P.p_con env c,
                                                         PD.string ":",
@@ -227,7 +227,7 @@ fun expError env err =
                                                                         PD.string ":",
                                                                         space,
                                                                         P.p_con env c]) rules])
-                                        (E.listClasses env))])
+                                        (E.listClasses env))*)])
       | IllegalRec (x, e) =>
         (ErrorMsg.errorAt (#2 e) "Illegal 'val rec' righthand side (must be a function abstraction)";
          eprefaces' [("Variable", PD.string x),

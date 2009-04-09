@@ -523,6 +523,7 @@ cst    : UNIQUE tnames                  (let
                                                                val e = (ECApp (e, nm2), loc)
                                                                val e = (EDisjointApp e, loc)
                                                                val e = (EDisjointApp e, loc)
+                                                               val e = (EApp (e, (EWild, loc)), loc)
                                                            in
                                                                (EApp (e, mat), loc)
                                                            end)

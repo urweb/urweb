@@ -170,7 +170,7 @@
  fun cunif (loc, k) =
      let
          val n = !count
-         val s = if n <= 26 then
+         val s = if n < 26 then
                      str (chr (ord #"A" + n))
                  else
                      "U" ^ Int.toString (n - 26)
