@@ -244,7 +244,22 @@ fun map {kind, con} s =
         S.Return () => raise Fail "ElabUtil.Con.map: Impossible"
       | S.Continue (s, ()) => s
 
-fun exists {kind, con} k =
+fun existsB {kind, con, bind} ctx c =
+    case mapfoldB {kind = fn ctx => fn k => fn () =>
+                                               if kind (ctx, k) then
+                                                   S.Return ()
+                                               else
+                                                   S.Continue (k, ()),
+                   con = fn ctx => fn c => fn () =>
+                                              if con (ctx, c) then
+                                                  S.Return ()
+                                              else
+                                                  S.Continue (c, ()),
+                   bind = bind} ctx c () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+fun exists {kind, con} c =
     case mapfold {kind = fn k => fn () =>
                                     if kind k then
                                         S.Return ()
@@ -254,7 +269,7 @@ fun exists {kind, con} k =
                                     if con c then
                                         S.Return ()
                                     else
-                                        S.Continue (c, ())} k () of
+                                        S.Continue (c, ())} c () of
         S.Return _ => true
       | S.Continue _ => false
 

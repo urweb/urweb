@@ -660,8 +660,9 @@ sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, 
                                          end)
        | CLASS SYMBOL                   (let
                                              val loc = s (CLASSleft, SYMBOLright)
+                                             val k = (KArrow ((KType, loc), (KType, loc)), loc)
                                          in
-                                             (SgiClassAbs (SYMBOL, (KWild, loc)), loc)
+                                             (SgiClassAbs (SYMBOL, k), loc)
                                          end)
        | CLASS SYMBOL DCOLON kind       (let
                                              val loc = s (CLASSleft, kindright)

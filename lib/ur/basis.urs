@@ -71,7 +71,7 @@ val read_time : read time
 
 (** * Monads *)
 
-class monad :: Type -> Type
+class monad :: (Type -> Type) -> Type
 val return : m ::: (Type -> Type) -> t ::: Type
              -> monad m
              -> t -> m t

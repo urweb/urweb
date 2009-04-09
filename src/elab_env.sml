@@ -162,6 +162,11 @@ datatype class_name =
          ClNamed of int
        | ClProj of int * string list * string
 
+fun class_name_out cn =
+    case cn of
+        ClNamed n => (CNamed n, ErrorMsg.dummySpan)
+      | ClProj x => (CModProj x, ErrorMsg.dummySpan)
+
 fun cn2s cn =
     case cn of
         ClNamed n => "Named(" ^ Int.toString n ^ ")"
@@ -185,71 +190,10 @@ end
 structure CS = BinarySetFn(CK)
 structure CM = BinaryMapFn(CK)
 
-datatype class_key =
-         CkNamed of int
-       | CkRel of int
-       | CkProj of int * string list * string
-       | CkApp of class_key * class_key
-       | CkOther of con
-
-fun ck2s ck =
-    case ck of
-        CkNamed n => "Named(" ^ Int.toString n ^ ")"
-      | CkRel n => "Rel(" ^ Int.toString n ^ ")"
-      | CkProj (m, ms, x) => "Proj(" ^ Int.toString m ^ "," ^ String.concatWith "," ms ^ "," ^ x ^ ")"
-      | CkApp (ck1, ck2) => "App(" ^ ck2s ck1 ^ ", " ^ ck2s ck2 ^ ")"
-      | CkOther _ => "Other"
-
-type class_key_n = class_key * int
-
-fun ckn2s (ck, n) = ck2s ck ^ "[" ^ Int.toString n ^ "]"
-
-fun cp2s (cn, ck) = "(" ^ cn2s cn ^ "," ^ ck2s ck ^ ")"
-
-structure KK = struct
-type ord_key = class_key_n
-open Order
-fun compare' x =
-    case x of
-        (CkNamed n1, CkNamed n2) => Int.compare (n1, n2)
-      | (CkNamed _, _) => LESS
-      | (_, CkNamed _) => GREATER
-
-      | (CkRel n1, CkRel n2) => Int.compare (n1, n2)
-      | (CkRel _, _) => LESS
-      | (_, CkRel _) => GREATER
-
-      | (CkProj (m1, ms1, x1), CkProj (m2, ms2, x2)) =>
-        join (Int.compare (m1, m2),
-              fn () => join (joinL String.compare (ms1, ms2),
-                             fn () => String.compare (x1, x2)))
-      | (CkProj _, _) => LESS
-      | (_, CkProj _) => GREATER
-
-      | (CkApp (f1, x1), CkApp (f2, x2)) =>
-        join (compare' (f1, f2),
-              fn () => compare' (x1, x2))
-      | (CkApp _, _) => LESS
-      | (_, CkApp _) => GREATER
-
-      | (CkOther _, CkOther _) => EQUAL
-fun compare ((k1, n1), (k2, n2)) =
-    join (Int.compare (n1, n2),
-       fn () => compare' (k1, k2))
-end
-
-structure KM = BinaryMapFn(KK)
-
-type class = {ground : ((class_name * class_key) list * exp) KM.map,
-              inclusions : exp CM.map}
-val empty_class = {ground = KM.empty,
-                   inclusions = CM.empty}
-
-fun printClasses cs = (print "Classes:\n";
-                       CM.appi (fn (cn, {ground = km, ...} : class) =>
-                                   (print (cn2s cn ^ ":");
-                                    KM.appi (fn (ck, _) => print (" " ^ ckn2s ck)) km;
-                                    print "\n")) cs)
+type class = {ground : (con * exp) list,
+              rules : (int * con list * con * exp) list}
+val empty_class = {ground = [],
+                   rules = []}
 
 type env = {
      renameK : int SM.map,
@@ -309,16 +253,6 @@ val empty = {
     str = IM.empty
 }
 
-fun liftClassKey' ck =
-    case ck of
-        CkNamed _ => ck
-      | CkRel n => CkRel (n + 1)
-      | CkProj _ => ck
-      | CkApp (ck1, ck2) => CkApp (liftClassKey' ck1, liftClassKey' ck2)
-      | CkOther c => CkOther (lift c)
-
-fun liftClassKey (ck, n) = (liftClassKey' ck, n)
-
 fun pushKRel (env : env) x =
     let
         val renameK = SM.map (fn n => n+1) (#renameK env)
@@ -334,7 +268,12 @@ fun pushKRel (env : env) x =
          datatypes = #datatypes env,
          constructors = #constructors env,
 
-         classes = #classes env,
+         classes = CM.map (fn cl => {ground = map (fn (c, e) =>
+                                                      (liftKindInCon 0 c,
+                                                       e))
+                                                  (#ground cl),
+                                     rules = #rules cl})
+                          (#classes env),
 
          renameE = SM.map (fn Rel' (n, c) => Rel' (n, liftKindInCon 0 c)
                             | Named' (n, c) => Named' (n, c)) (#renameE env),
@@ -371,10 +310,11 @@ fun pushCRel (env : env) x k =
          constructors = #constructors env,
 
          classes = CM.map (fn class =>
-                              {ground = KM.foldli (fn (ck, e, km) =>
-                                                      KM.insert (km, liftClassKey ck, e))
-                                                  KM.empty (#ground class),
-                               inclusions = #inclusions class})
+                              {ground = map (fn (c, e) =>
+                                                (liftConInCon 0 c,
+                                                 e))
+                                            (#ground class),
+                               rules = #rules class})
                           (#classes env),
 
          renameE = SM.map (fn Rel' (n, c) => Rel' (n, lift c)
@@ -482,6 +422,23 @@ fun lookupConstructor (env : env) s = SM.find (#constructors env, s)
 fun datatypeArgs (xs, _) = xs
 fun constructors (_, dt) = IM.foldri (fn (n, (x, to), ls) => (x, n, to) :: ls) [] dt
 
+fun listClasses (env : env) =
+    map (fn (cn, {ground, rules}) =>
+            (class_name_out cn,
+             ground
+             @ map (fn (nvs, cs, c, e) =>
+                       let
+                           val loc = #2 c
+                           val c = foldr (fn (c', c) => (TFun (c', c), loc)) c cs
+                           val c = ListUtil.foldli (fn (n, (), c) => (TCFun (Explicit,
+                                                                             "x" ^ Int.toString n,
+                                                                             (KError, loc),
+                                                                             c), loc))
+                                                   c (List.tabulate (nvs, fn _ => ()))
+                       in
+                           (c, e)
+                       end) rules)) (CM.listItemsi (#classes env))
+
 fun pushClass (env : env) n =
     {renameK = #renameK env,
      relK = #relK env,
@@ -520,133 +477,169 @@ fun isClass (env : env) c =
         find (class_name_in c)
     end
 
-fun class_key_in (all as (c, _)) =
-    case c of
-        CRel n => CkRel n
-      | CNamed n => CkNamed n
-      | CModProj x => CkProj x
-      | CUnif (_, _, _, ref (SOME c)) => class_key_in c
-      | CApp (c1, c2) => CkApp (class_key_in c1, class_key_in c2)
-      | _ => CkOther all
+fun class_head_in c =
+    case #1 c of
+        CApp (f, _) => class_head_in f
+      | CUnif (_, _, _, ref (SOME c)) => class_head_in c
+      | _ => class_name_in c
 
-fun class_key_out loc =
+exception Unify
+
+fun unifyKinds (k1, k2) =
+    case (#1 k1, #1 k2) of
+        (KType, KType) => ()
+      | (KArrow (d1, r1), KArrow (d2, r2)) => (unifyKinds (d1, d2); unifyKinds (r1, r2))
+      | (KName, KName) => ()
+      | (KRecord k1, KRecord k2) => unifyKinds (k1, k2)
+      | (KUnit, KUnit) => ()
+      | (KTuple ks1, KTuple ks2) => (ListPair.appEq unifyKinds (ks1, ks2)
+                                     handle ListPair.UnequalLengths => raise Unify)
+      | (KUnif (_, _, ref (SOME k1)), _) => unifyKinds (k1, k2)
+      | (_, KUnif (_, _, ref (SOME k2))) => unifyKinds (k1, k2)
+      | (KRel n1, KRel n2) => if n1 = n2 then () else raise Unify
+      | (KFun (_, k1), KFun (_, k2)) => unifyKinds (k1, k2)
+      | _ => raise Unify
+
+fun unifyCons rs =
     let
-        fun cko k =
-            case k of
-                CkRel n => (CRel n, loc)
-              | CkNamed n => (CNamed n, loc)
-              | CkProj x => (CModProj x, loc)
-              | CkApp (k1, k2) => (CApp (cko k1, cko k2), loc)
-              | CkOther c => c
+        fun unify d (c1, c2) =
+            case (#1 c1, #1 c2) of
+                (CUnif (_, _, _, ref (SOME c1)), _) => unify d (c1, c2)
+              | (_, CUnif (_, _, _, ref (SOME c2))) => unify d (c1, c2)
+
+              | (c1', CRel n2) =>
+                if n2 < d then
+                    case c1' of
+                        CRel n1 => if n1 = n2 then () else raise Unify
+                      | _ => raise Unify
+                else if n2 - d >= length rs then
+                    case c1' of
+                        CRel n1 => if n1 = n2 - length rs then () else raise Unify
+                      | _ => raise Unify
+                else
+                    let
+                        val r = List.nth (rs, n2 - d)
+                    in
+                        case !r of
+                            NONE => r := SOME c1
+                          | SOME c2 => unify d (c1, c2)
+                    end
+
+              | (TFun (d1, r1), TFun (d2, r2)) => (unify d (d1, d2); unify d (r1, r2))
+              | (TCFun (_, _, k1, r1), TCFun (_, _, k2, r2)) => (unifyKinds (k1, k2); unify (d + 1) (r1, r2))
+              | (TRecord c1, TRecord c2) => unify d (c1, c2)
+              | (TDisjoint (a1, b1, c1), TDisjoint (a2, b2, c2)) =>
+                (unify d (a1, a2); unify d (b1, b2); unify d (c1, c2))
+
+              | (CNamed n1, CNamed n2) => if n1 = n2 then () else raise Unify
+              | (CModProj (n1, ms1, x1), CModProj (n2, ms2, x2)) =>
+                if n1 = n2 andalso ms1 = ms2 andalso x1 = x2 then () else raise Unify
+              | (CApp (f1, x1), CApp (f2, x2)) => (unify d (f1, f2); unify d (x1, x2))
+              | (CAbs (_, k1, b1), CAbs (_, k2, b2)) => (unifyKinds (k1, k2); unify (d + 1) (b1, b2))
+
+              | (CKAbs (_, b1), CKAbs (_, b2)) => unify d (b1, b2)
+              | (CKApp (c1, k1), CKApp (c2, k2)) => (unify d (c1, c2); unifyKinds (k1, k2))
+              | (TKFun (_, c1), TKFun (_, c2)) => unify d (c1, c2)
+
+              | (CName s1, CName s2) => if s1 = s2 then () else raise Unify
+
+              | (CRecord (k1, xcs1), CRecord (k2, xcs2)) =>
+                (unifyKinds (k1, k2);
+                 ListPair.appEq (fn ((x1, c1), (x2, c2)) => (unify d (x1, x2); unify d (c1, c2))) (xcs1, xcs2)
+                 handle ListPair.UnequalLengths => raise Unify)
+              | (CConcat (f1, x1), CConcat (f2, x2)) => (unify d (f1, f2); unify d (x1, x2))
+              | (CMap (d1, r1), CMap (d2, r2)) => (unifyKinds (d1, d2); unifyKinds (r1, r2))
+
+              | (CUnit, CUnit) => ()
+
+              | (CTuple cs1, CTuple cs2) => (ListPair.appEq (unify d) (cs1, cs2)
+                                             handle ListPair.UnequalLengths => raise Unify)
+              | (CProj (c1, n1), CProj (c2, n2)) => (unify d (c1, c2);
+                                                     if n1 = n2 then () else raise Unify)
+
+              | _ => raise Unify
     in
-        cko
+        unify
     end
 
-fun class_pair_in (c, _) =
-    case c of
-        CApp (f, x) =>
-        (case class_name_in f of
-             SOME f => SOME (f, class_key_in x)
-           | _ => NONE)
-      | CUnif (_, _, _, ref (SOME c)) => class_pair_in c
-      | _ => NONE
-
-fun sub_class_key (n, c) =
+fun tryUnify nRs (c1, c2) =
     let
-        fun csk k =
-            case k of
-                CkRel n' => SOME (if n' = n then
-                                      c
-                                  else
-                                      k)
-              | CkNamed _ => SOME k
-              | CkProj _ => SOME k
-              | CkApp (k1, k2) =>
-                (case (csk k1, csk k2) of
-                     (SOME k1, SOME k2) => SOME (CkApp (k1, k2))
-                   | _ => NONE)
-              | CkOther _ => NONE
+        val rs = List.tabulate (nRs, fn _ => ref NONE)
     in
-        csk
+        (unifyCons rs 0 (c1, c2);
+         SOME (map (fn r => case !r of
+                                NONE => raise Unify
+                              | SOME c => c) rs))
+        handle Unify => NONE
     end
 
-fun resolveClass (env : env) c =
-    let
-        fun doPair (f, x) =
-            case CM.find (#classes env, f) of
-                NONE => NONE
-              | SOME class =>
-                let
-                    val loc = #2 c
+fun unifySubst (rs : con list) =
+    U.Con.mapB {kind = fn _ => fn k => k,
+                con = fn d => fn c =>
+                                 case c of
+                                     CRel n =>
+                                     if n < d then
+                                         c
+                                     else
+                                         #1 (List.nth (rs, n - d))
+                                   | _ => c,
+                bind = fn (d, U.Con.RelC _) => d + 1
+                        | (d, _) => d}
+               0
 
-                    fun tryIncs () =
+fun resolveClass (env : env) =
+    let
+        fun resolve c =
+            let
+                fun doHead f =
+                    case CM.find (#classes env, f) of
+                        NONE => NONE
+                      | SOME class =>
                         let
-                            fun tryIncs fs =
-                                case fs of
+                            val loc = #2 c
+
+                            fun tryRules rules =
+                                case rules of
                                     [] => NONE
-                                  | (f', e') :: fs =>
-                                    case doPair (f', x) of
-                                        NONE => tryIncs fs
-                                      | SOME e =>
+                                  | (nRs, cs, c', e) :: rules' =>
+                                    case tryUnify nRs (c, c') of
+                                        NONE => tryRules rules'
+                                      | SOME rs =>
                                         let
-                                            val e' = (ECApp (e', class_key_out loc x), loc)
-                                            val e' = (EApp (e', e), loc)
+                                            val eos = map (resolve o unifySubst rs) cs
                                         in
-                                            SOME e'
-                                        end
-                        in
-                            tryIncs (CM.listItemsi (#inclusions class))
-                        end
+                                            if List.exists (not o Option.isSome) eos then
+                                                tryRules rules'
+                                            else
+                                                let
+                                                    val es = List.mapPartial (fn x => x) eos
 
-                    fun tryRules (k, args) =
-                        let
-                            val len = length args
-
-                            fun tryNext () =
-                                case k of
-                                    CkApp (k1, k2) => tryRules (k1, k2 :: args)
-                                  | _ => tryIncs ()
-                        in
-                            case KM.find (#ground class, (k, length args)) of
-                                SOME (cs, e) =>
-                                let
-                                    val es = map (fn (cn, ck) =>
-                                                     let
-                                                         val ck = ListUtil.foldli (fn (i, arg, ck) =>
-                                                                                      case ck of
-                                                                                          NONE => NONE
-                                                                                        | SOME ck =>
-                                                                                          sub_class_key (len - i - 1,
-                                                                                                         arg)
-                                                                                                        ck)
-                                                                                  (SOME ck) args
-                                                     in
-                                                         case ck of
-                                                             NONE => NONE
-                                                           | SOME ck => doPair (cn, ck)
-                                                     end) cs
-                                in
-                                    if List.exists (not o Option.isSome) es then
-                                        tryNext ()
-                                    else
-                                        let
-                                            val e = foldl (fn (arg, e) => (ECApp (e, class_key_out loc arg), loc))
-                                                          e args
-                                            val e = foldr (fn (pf, e) => (EApp (e, pf), loc))
-                                                          e (List.mapPartial (fn x => x) es)
-                                        in
-                                            SOME e
+                                                    val e = foldr (fn (c, e) => (ECApp (e, c), loc)) e rs
+                                                    val e = foldl (fn (e', e) => (EApp (e, e'), loc)) e es
+                                                in
+                                                    SOME e
+                                                end
                                         end
-                                end
-                              | NONE => tryNext ()
+
+                            fun rules () = tryRules (#rules class)
+  
+                            fun tryGrounds ces =
+                                case ces of
+                                    [] => rules ()
+                                  | (c', e) :: ces' =>
+                                    case tryUnify 0 (c, c') of
+                                        NONE => tryGrounds ces'
+                                      | SOME _ => SOME e
+                        in
+                            tryGrounds (#ground class)
                         end
-                in
-                    tryRules (x, [])
-                end
+            in
+                case class_head_in c of
+                    SOME f => doHead f
+                  | _ => NONE
+            end
     in
-        case class_pair_in c of
-            SOME p => doPair p
-          | _ => NONE
+        resolve
     end
 
 fun pushERel (env : env) x t =
@@ -655,17 +648,17 @@ fun pushERel (env : env) x t =
                                | x => x) (#renameE env)
 
         val classes = CM.map (fn class =>
-                                 {ground = KM.map (fn (ps, e) => (ps, liftExp e)) (#ground class),
-                                  inclusions = #inclusions class}) (#classes env)
-        val classes = case class_pair_in t of
+                                 {ground = map (fn (c, e) => (c, liftExp e)) (#ground class),
+                                  rules = #rules class}) (#classes env)
+        val classes = case class_head_in t of
                           NONE => classes
-                        | SOME (f, x) =>
+                        | SOME f =>
                           case CM.find (classes, f) of
                               NONE => classes
                             | SOME class =>
                               let
-                                  val class = {ground = KM.insert (#ground class, (x, 0), ([], (ERel 0, #2 t))),
-                                               inclusions = #inclusions class}
+                                  val class = {ground = (t, (ERel 0, #2 t)) :: #ground class,
+                                               rules = #rules class}
                               in
                                   CM.insert (classes, f, class)
                               end
@@ -697,16 +690,6 @@ fun lookupERel (env : env) n =
     (List.nth (#relE env, n))
     handle Subscript => raise UnboundRel n
 
-datatype rule =
-         Normal of int * (class_name * class_key) list * class_key
-       | Inclusion of class_name
-
-fun containsOther k =
-    case k of
-        CkOther _ => true
-      | CkApp (k1, k2) => containsOther k1 orelse containsOther k2
-      | _ => false
-
 fun rule_in c =
     let
         fun quantifiers (c, nvars) =
@@ -717,68 +700,18 @@ fun rule_in c =
                     fun clauses (c, hyps) =
                         case #1 c of
                             TFun (hyp, c) =>
-                            (case class_pair_in hyp of
-                                 SOME (p as (_, CkRel _)) => clauses (c, p :: hyps)
-                               | _ => NONE)
+                            (case class_head_in hyp of
+                                 SOME _ => clauses (c, hyp :: hyps)
+                               | NONE => NONE)
                           | _ =>
-                            case class_pair_in c of
+                            case class_head_in c of
                                 NONE => NONE
-                              | SOME (cn, ck) =>
-                                let
-                                    fun dearg (ck, i) =
-                                        if i >= nvars then
-                                            if containsOther ck
-                                               orelse List.exists (fn (_, k) => containsOther k) hyps then
-                                                NONE
-                                            else
-                                                SOME (cn, Normal (nvars, hyps, ck))
-                                        else case ck of
-                                                 CkApp (ck, CkRel i') =>
-                                                 if i' = i then
-                                                     dearg (ck, i + 1)
-                                                 else
-                                                     NONE
-                                               | _ => NONE
-                                in
-                                    dearg (ck, 0)
-                                end
+                              | SOME f => SOME (f, nvars, rev hyps, c)
                 in
                     clauses (c, [])
                 end
     in
-        case #1 c of
-            TCFun (_, _, _, (TFun ((CApp (f1, (CRel 0, _)), _),
-                                   (CApp (f2, (CRel 0, _)), _)), _)) =>
-            (case (class_name_in f1, class_name_in f2) of
-                 (SOME f1, SOME f2) => SOME (f2, Inclusion f1)
-               | _ => NONE)
-          | _ => quantifiers (c, 0)
-    end
-
-fun inclusion (classes : class CM.map, init, inclusions, f, e : exp) =
-    let
-        fun search (f, fs) =
-            if f = init then
-                NONE
-            else if CS.member (fs, f) then
-                SOME fs
-            else
-                let
-                    val fs = CS.add (fs, f)
-                in
-                    case CM.find (classes, f) of
-                        NONE => SOME fs
-                      | SOME {inclusions = fs', ...} =>
-                        CM.foldli (fn (f', _, fs) =>
-                                      case fs of
-                                          NONE => NONE
-                                        | SOME fs => search (f', fs)) (SOME fs) fs'
-                end
-    in
-        case search (f, CS.empty) of
-            SOME _ => CM.insert (inclusions, f, e)
-          | NONE => (ErrorMsg.errorAt (#2 e) "Type class inclusion would create a cycle";
-                     inclusions)
+        quantifiers (c, 0)
     end
 
 fun pushENamedAs (env : env) x n t =
@@ -786,7 +719,7 @@ fun pushENamedAs (env : env) x n t =
         val classes = #classes env
         val classes = case rule_in t of
                           NONE => classes
-                        | SOME (f, rule) =>
+                        | SOME (f, nvs, cs, c) =>
                           case CM.find (classes, f) of
                               NONE => classes
                             | SOME class =>
@@ -794,13 +727,8 @@ fun pushENamedAs (env : env) x n t =
                                   val e = (ENamed n, #2 t)
 
                                   val class =
-                                      case rule of
-                                          Normal (nvars, hyps, x) =>
-                                          {ground = KM.insert (#ground class, (x, nvars), (hyps, e)),
-                                           inclusions = #inclusions class}
-                                        | Inclusion f' =>
-                                          {ground = #ground class,
-                                           inclusions = inclusion (classes, f, #inclusions class, f', e)}
+                                      {ground = #ground class,
+                                       rules = (nvs, cs, c, e) :: #rules class}
                               in
                                   CM.insert (classes, f, class)
                               end
@@ -985,31 +913,6 @@ fun sgnS_con' (arg as (m1, ms', (sgns, strs, cons))) c =
                                (sgnS_con' arg (#1 c2), #2 c2))
       | _ => c
 
-fun sgnS_class_name (arg as (m1, ms', (sgns, strs, cons))) nm =
-    case nm of
-        ClProj (m1, ms, x) =>
-        (case IM.find (strs, m1) of
-             NONE => nm
-           | SOME m1x => ClProj (m1, ms' @ m1x :: ms, x))
-      | ClNamed n =>
-        (case IM.find (cons, n) of
-             NONE => nm
-           | SOME nx => ClProj (m1, ms', nx))
-
-fun sgnS_class_key (arg as (m1, ms', (sgns, strs, cons))) k =
-    case k of
-        CkProj (m1, ms, x) =>
-        (case IM.find (strs, m1) of
-             NONE => k
-           | SOME m1x => CkProj (m1, ms' @ m1x :: ms, x))
-      | CkNamed n =>
-        (case IM.find (cons, n) of
-             NONE => k
-           | SOME nx => CkProj (m1, ms', nx))
-      | CkApp (k1, k2) => CkApp (sgnS_class_key arg k1,
-                                 sgnS_class_key arg k2)
-      | _ => k
-
 fun sgnS_sgn (str, (sgns, strs, cons)) sgn =
     case sgn of
         SgnProj (m1, ms, x) =>
@@ -1120,22 +1023,10 @@ fun enrichClasses env classes (m1, ms) sgn =
                                 | SgiVal (x, n, c) =>
                                   (case rule_in c of
                                        NONE => default ()
-                                     | SOME (cn, rule) =>
+                                     | SOME (cn, nvs, cs, c) =>
                                        let
-                                           val globalizeN = sgnS_class_name (m1, ms, fmap)
-                                           val globalize = sgnS_class_key (m1, ms, fmap)
-
-                                           fun unravel c =
-                                               case c of
-                                                   ClNamed n =>
-                                                   ((case lookupCNamed env n of
-                                                         (_, _, SOME c') =>
-                                                         (case class_name_in c' of
-                                                              NONE => c
-                                                            | SOME k => unravel k)
-                                                       | _ => c)
-                                                    handle UnboundNamed _ => c)
-                                                 | _ => c
+                                           val loc = #2 c
+                                           fun globalize (c, loc) = (sgnS_con' (m1, ms, fmap) c, loc)
 
                                            val nc =
                                                case cn of
@@ -1150,23 +1041,14 @@ fun enrichClasses env classes (m1, ms) sgn =
                                                            NONE => classes
                                                          | SOME class =>
                                                            let
-                                                               val e = (EModProj (m1, ms, x),
-                                                                                     #2 sgn)
+                                                               val e = (EModProj (m1, ms, x), #2 sgn)
 
                                                                val class =
-                                                                   case rule of
-                                                                       Normal (nvars, hyps, a) =>
-                                                                       {ground = 
-                                                                        KM.insert (#ground class, (globalize a, nvars),
-                                                                                   (map (fn (n, k) =>
-                                                                                            (globalizeN n,
-                                                                                             globalize k)) hyps, e)),
-                                                                        inclusions = #inclusions class}
-                                                                     | Inclusion f' =>
-                                                                       {ground = #ground class,
-                                                                        inclusions = inclusion (classes, cn,
-                                                                                                #inclusions class,
-                                                                                                globalizeN f', e)}
+                                                                   {ground = #ground class,
+                                                                    rules = (nvs,
+                                                                             map globalize cs,
+                                                                             globalize c,
+                                                                             e) :: #rules class}
                                                            in
                                                                CM.insert (classes, cn, class)
                                                            end
@@ -1188,19 +1070,11 @@ fun enrichClasses env classes (m1, ms) sgn =
                                                                val e = (EModProj (m1, ms, x), #2 sgn)
 
                                                                val class = 
-                                                                   case rule of
-                                                                       Normal (nvars, hyps, a) =>
-                                                                       {ground =
-                                                                        KM.insert (#ground class, (globalize a, nvars),
-                                                                                   (map (fn (n, k) =>
-                                                                                            (globalizeN n,
-                                                                                             globalize k)) hyps, e)),
-                                                                        inclusions = #inclusions class}
-                                                                     | Inclusion f' =>
-                                                                       {ground = #ground class,
-                                                                        inclusions = inclusion (classes, cn,
-                                                                                                #inclusions class,
-                                                                                                globalizeN f', e)}
+                                                                   {ground = #ground class,
+                                                                    rules = (nvs,
+                                                                             map globalize cs,
+                                                                             globalize c,
+                                                                             e) :: #rules class}
                                                            in
                                                                CM.insert (classes, cn, class)
                                                            end
@@ -1301,8 +1175,8 @@ fun sgiBinds env (sgi, loc) =
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
       | SgiConstraint _ => env
 
-      | SgiClassAbs (x, n, k) => pushCNamedAs env x n (KArrow (k, (KType, loc)), loc) NONE
-      | SgiClass (x, n, k, c) => pushCNamedAs env x n (KArrow (k, (KType, loc)), loc) (SOME c)
+      | SgiClassAbs (x, n, k) => pushCNamedAs env x n k NONE
+      | SgiClass (x, n, k, c) => pushCNamedAs env x n k (SOME c)
 
 fun sgnSubCon x =
     ElabUtil.Con.map {kind = id,
