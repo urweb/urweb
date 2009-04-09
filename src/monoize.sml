@@ -126,6 +126,7 @@ fun monoType env =
                   | L.CApp ((L.CFfi ("Basis", "read"), _), t) =>
                     readType (mt env dtmap t, loc)
 
+                  | L.CFfi ("Basis", "url") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
@@ -2075,6 +2076,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                 L'.ERecord xes => xes
                               | _ => raise Fail "Non-record attributes!"
 
+                val attrs =
+                    if List.exists (fn ("Link", _, _) => true
+                                     | _ => false) attrs then
+                        List.filter (fn ("Href", _, _) => false
+                                      | _ => true) attrs
+                    else
+                        attrs
+
                 fun findOnload (attrs, acc) =
                     case attrs of
                         [] => (NONE, acc)
@@ -2137,8 +2146,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                       let
                                           val fooify =
                                               case x of
-                                                  "Href" => urlifyExp
-                                                | "Link" => urlifyExp
+                                                  "Link" => urlifyExp
+                                                | "Action" => urlifyExp
                                                 | _ => attrifyExp
 
                                           val xp = " " ^ lowercaseFirst x ^ "=\""

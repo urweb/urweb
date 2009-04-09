@@ -486,7 +486,11 @@ val ul : bodyTag []
 
 val hr : bodyTag []
 
-val a : bodyTag [Link = transaction page, Onclick = transaction unit]
+type url
+val bless : string -> url
+val a : bodyTag [Link = transaction page, Href = url, Onclick = transaction unit]
+
+val img : bodyTag [Src = url]
 
 val form : ctx ::: {Unit} -> bind ::: {Type}
             -> [[Body] ~ ctx] =>

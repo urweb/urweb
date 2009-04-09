@@ -1973,3 +1973,7 @@ failure_kind uw_initialize(uw_context ctx) {
 
   return r;
 }
+
+uw_Basis_string uw_Basis_bless(uw_context ctx, uw_Basis_string s) {
+  return s;
+}

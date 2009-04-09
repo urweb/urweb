@@ -1280,7 +1280,19 @@ tagHead: BEGIN_TAG                      (let
 attrs  :                                ([])
        | attr attrs                     (attr :: attrs)
 
-attr   : SYMBOL EQ attrv                ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)), attrv)
+attr   : SYMBOL EQ attrv                ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)),
+                                         if (SYMBOL = "href" orelse SYMBOL = "src")
+                                            andalso (case #1 attrv of
+                                                         EPrim _ => true
+                                                       | _ => false) then
+                                             let
+                                                 val loc = s (attrvleft, attrvright)
+                                             in
+                                                 (EApp ((EVar (["Basis"], "bless", Infer), loc),
+                                                        attrv), loc)
+                                             end
+                                         else
+                                             attrv)
                 
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))

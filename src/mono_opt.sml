@@ -30,6 +30,8 @@ structure MonoOpt :> MONO_OPT = struct
 open Mono
 structure U = MonoUtil
 
+val bless = ref (fn _ : string => true)
+
 fun typ t = t
 fun decl d = d
 
@@ -370,6 +372,13 @@ fun exp e =
         optExp (EApp (e2, e1), loc)
 
       | EJavaScript (_, _, SOME (e, _)) => e
+
+      | EFfiApp ("Basis", "bless", [(se as EPrim (Prim.String s), loc)]) =>
+        (if !bless s then
+             ()
+         else
+             ErrorMsg.errorAt loc "Invalid URL passed to 'bless'";
+         se)
 
       | EFfiApp ("Basis", "checkString", [(EPrim (Prim.String s), loc)]) => 
         let
