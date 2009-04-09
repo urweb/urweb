@@ -1,4 +1,11 @@
 ========
+Next
+========
+
+- Reimplement constructor class resolution to be more general and Prolog-like
+- SQL table constraints
+
+========
 20090405
 ========
 
