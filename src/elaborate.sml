@@ -497,6 +497,24 @@
       others : L'.con list
  }
 
+ fun normalizeRecordSummary env (r : record_summary) =
+     let
+         val (fields, unifs, others) =
+             foldl (fn (u as (uc, _), (fields, unifs, others)) =>
+                       let
+                           val uc' = hnormCon env uc
+                       in
+                           case #1 uc' of
+                               L'.CUnif _ => (fields, u :: unifs, others)
+                             | L'.CRecord (_, fs) => (fs @ fields, unifs, others)
+                             | L'.CConcat ((L'.CRecord (_, fs), _), rest) => (fs @ fields, unifs, rest :: others)
+                             | _ => (fields, unifs, uc' :: others)
+                       end)
+             (#fields r, [], #others r) (#unifs r)
+     in
+         {fields = fields, unifs = unifs, others = others}
+     end
+
  fun summaryToCon {fields, unifs, others} =
      let
          val c = (L'.CRecord (ktype, []), dummy)
@@ -619,6 +637,9 @@
        | L'.TKFun _ => false
 
  val recdCounter = ref 0
+
+ val mayDelay = ref false
+ val delayedUnifs = ref ([] : (E.env * L'.kind * record_summary * record_summary) list)
 
  fun unifyRecordCons env (c1, c2) =
      let
@@ -787,20 +808,24 @@
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
-         val clear = case (fs1, others1, fs2, others2) of
-                          ([], [], [], []) => true
-                        | _ => false
          val empty = (L'.CRecord (k, []), dummy)
+         fun failure () = raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
      in
          case (unifs1, fs1, others1, unifs2, fs2, others2) of
              (_, [], [], [], [], []) =>
              app (fn (_, r) => r := SOME empty) unifs1
            | ([], [], [], _, [], []) =>
              app (fn (_, r) => r := SOME empty) unifs2
-           | _ => if clear then
-                      ()
-                  else
-                      raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
+           | ([], _, _, _, _ :: _, _) => failure ()
+           | ([], _, _, _, _, _ :: _) => failure ()
+           | (_, _ :: _, _, [], _, _) => failure ()
+           | (_, _, _ :: _, [], _, _) => failure ()
+           | _ =>
+             if !mayDelay then
+                 delayedUnifs := (env, k, s1, s2) :: !delayedUnifs
+             else
+                 failure ()
+                      
          (*before eprefaces "Summaries'" [("#1", p_summary env s1),
                                        ("#2", p_summary env s2)]*)
      end
@@ -3554,6 +3579,9 @@ and elabStr (env, denv) (str, loc) =
 
 fun elabFile basis topStr topSgn env file =
     let
+        val () = mayDelay := true
+        val () = delayedUnifs := []
+
         val (sgn, gs) = elabSgn (env, D.empty) (L.SgnConst basis, ErrorMsg.dummySpan)
         val () = case gs of
                      [] => ()
@@ -3611,31 +3639,46 @@ fun elabFile basis topStr topSgn env file =
 
         val (ds', env') = dopen env' {str = top_n, strs = [], sgn = topSgn}
 
+        val checks = ref ([] : (unit -> unit) list)
+
         fun elabDecl' (d, (env, gs)) =
             let
                 val () = resetKunif ()
                 val () = resetCunif ()
                 val (ds, (env, _, gs)) = elabDecl (d, (env, D.empty, gs))
             in
-                if ErrorMsg.anyErrors () then
-                    ()
-                else (
-                    if List.exists kunifsInDecl ds then
-                        declError env (KunifsRemain ds)
-                    else
-                        ();
-                    
-                    case ListUtil.search cunifsInDecl ds of
-                        NONE => ()
-                      | SOME loc =>
-                        declError env (CunifsRemain ds)
-                    );
+                checks :=
+                (fn () =>
+                    (if List.exists kunifsInDecl ds then
+                         declError env (KunifsRemain ds)
+                     else
+                         ();
+                     
+                     case ListUtil.search cunifsInDecl ds of
+                         NONE => ()
+                       | SOME loc =>
+                         declError env (CunifsRemain ds)))
+                :: !checks;
 
                 (ds, (env, gs))
             end
 
         val (file, (_, gs)) = ListUtil.foldlMapConcat elabDecl' (env', []) file
     in
+        mayDelay := false;
+
+        app (fn (env, k, s1, s2) =>
+                unifySummaries env (k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)
+                handle CUnify' err => (ErrorMsg.errorAt (#2 k) "Error in final record unification";
+                                       cunifyError env err))
+            (!delayedUnifs);
+        delayedUnifs := [];
+
+        if ErrorMsg.anyErrors () then
+            ()
+        else
+            app (fn f => f ()) (!checks);
+
         if ErrorMsg.anyErrors () then
             ()
         else
