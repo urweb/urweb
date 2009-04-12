@@ -2146,17 +2146,13 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DJavaScript s => box [string "static char jslib[] = \"",
                               string (String.toString s),
                               string "\";"]
-      | DStyle (s, xs) => box [string "/*",
-                               space,
-                               string "style",
-                               space,
-                               string s,
-                               space,
-                               string ":",
-                               space,
-                               p_list string xs,
-                               space,
-                               string "*/"]
+      | DStyle s => box [string "/*",
+                         space,
+                         string "style",
+                         space,
+                         string s,
+                         space,
+                         string "*/"]
 
 datatype 'a search =
          Found of 'a

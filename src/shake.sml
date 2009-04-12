@@ -87,8 +87,8 @@ fun shake file =
                                    | ((DDatabase _, _), acc) => acc
                                    | ((DCookie (_, n, c, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
-                                   | ((DStyle (_, n, c, _), _), (cdef, edef)) =>
-                                     (cdef, IM.insert (edef, n, ([], c, dummye))))
+                                   | ((DStyle (_, n, _), _), (cdef, edef)) =>
+                                     (cdef, IM.insert (edef, n, ([], dummyt, dummye))))
                                  (IM.empty, IM.empty) file
 
         fun kind (_, s) = s

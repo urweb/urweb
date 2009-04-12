@@ -39,8 +39,8 @@ val ex : tf :: (Type -> Type) -> choice :: Type -> tf choice -> ex tf
 val compose : t1 ::: Type -> t2 ::: Type -> t3 ::: Type
               -> (t2 -> t3) -> (t1 -> t2) -> (t1 -> t3)
 
-val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> css ::: {Unit} -> show t -> t
-          -> xml ctx use [] css
+val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> show t -> t
+          -> xml ctx use []
 
 val foldUR : tf :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}
@@ -54,11 +54,11 @@ val foldUR2 : tf1 :: Type -> tf2 :: Type -> tr :: ({Unit} -> Type)
                        tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
              -> tr [] -> r :: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> tr r
 
-val foldURX2: css ::: {Unit} -> tf1 :: Type -> tf2 :: Type -> ctx :: {Unit}
+val foldURX2: tf1 :: Type -> tf2 :: Type -> ctx :: {Unit}
               -> (nm :: Name -> rest :: {Unit}
                   -> [[nm] ~ rest] =>
-                        tf1 -> tf2 -> xml ctx [] [] css)
-              -> r :: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> xml ctx [] [] css
+                        tf1 -> tf2 -> xml ctx [] [])
+              -> r :: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> xml ctx [] []
 
 val foldR : K --> tf :: (K -> Type) -> tr :: ({K} -> Type)
              -> (nm :: Name -> t :: K -> rest :: {K}
@@ -74,18 +74,18 @@ val foldR2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
              -> tr []
              -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> tr r
 
-val foldRX : K --> css ::: {Unit} -> tf :: (K -> Type) -> ctx :: {Unit}
+val foldRX : K --> tf :: (K -> Type) -> ctx :: {Unit}
              -> (nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
-                       tf t -> xml ctx [] [] css)
-             -> r :: {K} -> folder r -> $(map tf r) -> xml ctx [] [] css
+                       tf t -> xml ctx [] [])
+             -> r :: {K} -> folder r -> $(map tf r) -> xml ctx [] []
 
-val foldRX2 : K --> css ::: {Unit} -> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> ctx :: {Unit}
+val foldRX2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> ctx :: {Unit}
               -> (nm :: Name -> t :: K -> rest :: {K}
                   -> [[nm] ~ rest] =>
-                        tf1 t -> tf2 t -> xml ctx [] [] css)
+                        tf1 t -> tf2 t -> xml ctx [] [])
               -> r :: {K} -> folder r
-              -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] [] css
+              -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] []
 
 val queryI : tables ::: {{Type}} -> exps ::: {Type}
              -> [tables ~ exps] =>
@@ -94,19 +94,19 @@ val queryI : tables ::: {{Type}} -> exps ::: {Type}
                  -> transaction unit)
              -> transaction unit
 
-val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> css ::: {Unit}
+val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
              -> [tables ~ exps] =>
              sql_query tables exps
              -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
-                 -> xml ctx [] [] css)
-             -> transaction (xml ctx [] [] css)
+                 -> xml ctx [] [])
+             -> transaction (xml ctx [] [])
 
-val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> css ::: {Unit}
+val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
               -> [tables ~ exps] =>
               sql_query tables exps
               -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
-                  -> transaction (xml ctx [] [] css))
-              -> transaction (xml ctx [] [] css)
+                  -> transaction (xml ctx [] []))
+              -> transaction (xml ctx [] [])
                        
 val oneOrNoRows : tables ::: {{Type}} -> exps ::: {Type}
                   -> [tables ~ exps] =>

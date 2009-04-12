@@ -2402,7 +2402,7 @@ and sgiOfDecl (d, loc) =
       | L'.DClass (x, n, k, c) => [(L'.SgiClass (x, n, k, c), loc)]
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
-      | L'.DStyle (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (styleOf (), c), loc)), loc)]
+      | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
 
 and subSgn env sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
@@ -3284,40 +3284,30 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                                      (L'.CApp (tf, arg), _) =>
                                                      (case (hnormCon env tf, hnormCon env arg) of
                                                           ((L'.CModProj (basis, [], "transaction"), _),
-                                                           (L'.CApp (tf, arg4), _)) =>
+                                                           (L'.CApp (tf, arg3), _)) =>
                                                           (case (basis = !basis_r,
-                                                                 hnormCon env tf, hnormCon env arg4) of
+                                                                 hnormCon env tf, hnormCon env arg3) of
                                                                (true,
-                                                                (L'.CApp (tf, arg3), _),
+                                                                (L'.CApp (tf, arg2), _),
                                                                 ((L'.CRecord (_, []), _))) =>
-                                                               (case hnormCon env tf of
-                                                                    (L'.CApp (tf, arg2), _) =>
-                                                                    (case hnormCon env tf of
-                                                                         (L'.CApp (tf, arg1), _) =>
-                                                                         (case (hnormCon env tf,
-                                                                                hnormCon env arg1,
-                                                                                hnormCon env arg2,
-                                                                                hnormCon env arg3,
-                                                                                hnormCon env arg4) of
-                                                                              (tf,
-                                                                               arg1,
-                                                                               (L'.CRecord (_, []), _),
-                                                                               arg2,
-                                                                               arg4) =>
-                                                                              let
-                                                                                  val t = (L'.CApp (tf, arg1), loc)
-                                                                                  val t = (L'.CApp (t, arg2), loc)
-                                                                                  val t = (L'.CApp (t, arg3), loc)
-                                                                                  val t = (L'.CApp (t, arg4), loc)
-
-                                                                                  val t = (L'.CApp (
-                                                                                           (L'.CModProj
-                                                                                                (basis, [], "transaction"), loc),
+                                                               (case (hnormCon env tf) of
+                                                                    (L'.CApp (tf, arg1), _) =>
+                                                                    (case (hnormCon env tf,
+                                                                           hnormCon env arg1,
+                                                                           hnormCon env arg2) of
+                                                                         (tf, arg1,
+                                                                          (L'.CRecord (_, []), _)) =>
+                                                                         let
+                                                                             val t = (L'.CApp (tf, arg1), loc)
+                                                                             val t = (L'.CApp (t, arg2), loc)
+                                                                             val t = (L'.CApp (t, arg3), loc)
+                                                                             val t = (L'.CApp (
+                                                                                      (L'.CModProj
+                                                                                           (basis, [], "transaction"), loc),
                                                                                       t), loc)
-                                                                              in
-                                                                                  (L'.SgiVal (x, n, makeRes t), loc)
-                                                                              end
-                                                                            | _ => all)
+                                                                         in
+                                                                             (L'.SgiVal (x, n, makeRes t), loc)
+                                                                         end
                                                                        | _ => all)
                                                                   | _ => all)
                                                              | _ => all)
@@ -3402,13 +3392,11 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     checkKind env c' k (L'.KType, loc);
                     ([(L'.DCookie (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
                 end
-              | L.DStyle (x, c) =>
+              | L.DStyle x =>
                 let
-                    val (c', k, gs') = elabCon (env, denv) c
-                    val (env, n) = E.pushENamed env x (L'.CApp (styleOf (), c'), loc)
+                    val (env, n) = E.pushENamed env x (styleOf ())
                 in
-                    checkKind env c' k (L'.KRecord (L'.KUnit, loc), loc);
-                    ([(L'.DStyle (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
+                    ([(L'.DStyle (!basis_r, x, n), loc)], (env, denv, gs))
                 end
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
@@ -3632,16 +3620,6 @@ fun elabFile basis topStr topSgn env file =
                      [] => ()
                    | _ => raise Fail "Unresolved disjointness constraints in top.urs"
         val (topStr, topSgn', gs) = elabStr (env', D.empty) (L.StrConst topStr, ErrorMsg.dummySpan)
-
-        val () = subSgn env' topSgn' topSgn
-
-        val () = app (fn (env, k, s1, s2) =>
-                         unifySummaries env (k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)
-                         handle CUnify' err => (ErrorMsg.errorAt (#2 k) "Error in Top final record unification";
-                                                cunifyError env err))
-                     (!delayedUnifs)
-        val () = delayedUnifs := []
-
         val () = case gs of
                      [] => ()
                    | _ => app (fn Disjoint (loc, env, denv, c1, c2) =>
@@ -3651,8 +3629,7 @@ fun elabFile basis topStr topSgn env file =
                                        (prefaces "Unresolved constraint in top.ur"
                                                  [("loc", PD.string (ErrorMsg.spanToString loc)),
                                                   ("c1", p_con env c1),
-                                                  ("c2", p_con env c2),
-                                                  ("topStr", p_str env topStr)];
+                                                  ("c2", p_con env c2)];
                                         raise Fail "Unresolved constraint in top.ur"))
                                 | TypeClass (env, c, r, loc) =>
                                   let
@@ -3662,6 +3639,8 @@ fun elabFile basis topStr topSgn env file =
                                           SOME e => r := SOME e
                                         | NONE => expError env (Unresolvable (loc, c))
                                   end) gs
+
+        val () = subSgn env' topSgn' topSgn
 
         val (env', top_n) = E.pushStrNamed env' "Top" topSgn
         val () = top_r := top_n

@@ -319,9 +319,9 @@ fun declBinds env (d, loc) =
         in
             pushENamed env x n t
         end
-      | DStyle (tn, x, n, c) =>
+      | DStyle (tn, x, n) =>
         let
-            val t = (CApp ((CModProj (tn, [], "css_class"), loc), c), loc)
+            val t = (CModProj (tn, [], "css_class"), loc)
         in
             pushENamed env x n t
         end

@@ -110,7 +110,7 @@ datatype decl' =
        | DPreparedStatements of (string * int) list
 
        | DJavaScript of string
-       | DStyle of string * string list
+       | DStyle of string
 
 withtype decl = decl' located
 

@@ -469,7 +469,7 @@ fun reduce file =
               | DSequence _ => (d, st)
               | DDatabase _ => (d, st)
               | DCookie (s, n, c, s') => ((DCookie (s, n, con namedC [] c, s'), loc), st)
-              | DStyle (s, n, c, s') => ((DStyle (s, n, con namedC [] c, s'), loc), st)
+              | DStyle (s, n, s') => ((DStyle (s, n, s'), loc), st)
 
         val (file, _) = ListUtil.foldlMap doDecl (IM.empty, IM.empty) file
     in

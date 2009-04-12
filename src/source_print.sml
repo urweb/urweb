@@ -640,13 +640,9 @@ fun p_decl ((d, _) : decl) =
                                string ":",
                                space,
                                p_con c]
-      | DStyle (x, c) => box [string "style",
-                              space,
-                              string x,
-                              space,
-                              string ":",
-                              space,
-                              p_con c]
+      | DStyle x => box [string "style",
+                         space,
+                         string x]
 
 and p_str (str, _) =
     case str of

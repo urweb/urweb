@@ -586,17 +586,13 @@ fun p_decl env (dAll as (d, _) : decl) =
                                      string ":",
                                      space,
                                      p_con env c]
-      | DStyle (x, n, c, s) => box [string "style",
-                                    space,
-                                    p_named x n,
-                                    space,
-                                    string "as",
-                                    space,
-                                    string s,
-                                    space,
-                                    string ":",
-                                    space,
-                                    p_con env c]
+      | DStyle (x, n, s) => box [string "style",
+                                 space,
+                                 p_named x n,
+                                 space,
+                                 string "as",
+                                 space,
+                                 string s]
 
 fun p_file env file =
     let

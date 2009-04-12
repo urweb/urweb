@@ -127,14 +127,10 @@ fun monoType env =
                     readType (mt env dtmap t, loc)
 
                   | L.CFfi ("Basis", "url") => (L'.TFfi ("Basis", "string"), loc)
-                  | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _), _), _) =>
+                  | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
-                  | L.CApp ((L.CFfi ("Basis", "css_class"), _), _) =>
-                    (L'.TFfi ("Basis", "string"), loc)
-                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "css_subset"), _), _), _), _) =>
-                    (L'.TRecord [], loc)
 
                   | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
@@ -2007,9 +2003,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EApp (
             (L.ECApp (
-             (L.ECApp (
-              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
-              _), _),
+             (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
              _), _),
             se) =>
             let
@@ -2018,32 +2012,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EFfiApp ("Basis", "htmlifyString", [se]), loc), fm)
             end
 
-          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "css_subset"), _), _), _), _) =>
-            ((L'.ERecord [], loc), fm)
-
           | L.EApp (
             (L.EApp (
-             (L.EApp (
-              (L.EApp (
+             (L.ECApp (
+              (L.ECApp (
                (L.ECApp (
                 (L.ECApp (
-                 (L.ECApp (
-                  (L.ECApp (
-                   (L.ECApp (
-                    (L.ECApp (
-                     (L.ECApp (
-                      (L.EFfi ("Basis", "join"),
-                       _), _), _),
-                     _), _),
-                    _), _),
-                   _), _),
-                  _), _),
-                 _), _),
+                 (L.EFfi ("Basis", "join"),
+                     _), _), _),
                 _), _),
-               xml1), _),
-              xml2), _),
-             _), _),
-            _) =>
+               _), _),
+              _), _),
+             xml1), _),
+            xml2) =>
             let
                 val (xml1, fm) = monoExp (env, st, fm) xml1
                 val (xml2, fm) = monoExp (env, st, fm) xml2
@@ -2054,26 +2035,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EApp (
             (L.EApp (
              (L.EApp (
-              (L.EApp (
-               (L.EApp (
+              (L.ECApp (
+               (L.ECApp (
                 (L.ECApp (
                  (L.ECApp (
                   (L.ECApp (
                    (L.ECApp (
                     (L.ECApp (
                      (L.ECApp (
-                      (L.ECApp (
-                       (L.ECApp (
-                        (L.ECApp (
-                         (L.ECApp (
-                          (L.ECApp (
-                           (L.EFfi ("Basis", "tag"),
-                            _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
-                   _), _), _), _), _), _),
-                attrs), _),
-               tag), _),
-              _), _),
-             _), _),
+                      (L.EFfi ("Basis", "tag"),
+                       _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+              attrs), _),
+             tag), _),
             xml) =>
             let
                 fun getTag' (e, _) =
@@ -2732,23 +2705,17 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                       fm,
                       [(L'.DVal (x, n, t', e, s), loc)])
             end
-          | L.DStyle (x, n, (L.CRecord (_, xcs), _), s) =>
+          | L.DStyle (x, n, s) =>
             let
-                val xs = map (fn ((L.CName x, _), _) => x
-                               | (x, _) => (E.errorAt (#2 x) "Undetermined style component";
-                                            Print.eprefaces' [("Name", CorePrint.p_con env x)];
-                                            "")) xcs
-
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
                 val e = (L'.EPrim (Prim.String s), loc)
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
-                      [(L'.DStyle (s, xs), loc),
+                      [(L'.DStyle s, loc),
                        (L'.DVal (x, n, t', e, s), loc)])
             end
-          | L.DStyle _ => poly ()
     end
 
 datatype expungable = Client | Channel

@@ -171,7 +171,7 @@ datatype decl' =
        | DClass of string * int * kind * con
        | DDatabase of string
        | DCookie of int * string * int * con
-       | DStyle of int * string * int * con
+       | DStyle of int * string * int
 
      and str' =
          StrConst of decl list

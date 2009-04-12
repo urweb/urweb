@@ -451,7 +451,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                              [(DClass (SYMBOL1, kind, c), s (CLASSleft, cexpright))]
                                          end)
        | COOKIE SYMBOL COLON cexp       ([(DCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))])
-       | STYLE SYMBOL COLON cexp        ([(DStyle (SYMBOL, cexp), s (STYLEleft, cexpright))])
+       | STYLE SYMBOL                   ([(DStyle SYMBOL, s (STYLEleft, SYMBOLright))])
 
 kopt   :                                (NONE)
        | DCOLON kind                    (SOME kind)
@@ -708,10 +708,9 @@ sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, 
                                          in
                                              (SgiVal (SYMBOL, t), loc)
                                          end)
-       | STYLE SYMBOL COLON cexp        (let
-                                             val loc = s (STYLEleft, cexpright)
-                                             val t = (CApp ((CVar (["Basis"], "css_class"), loc),
-                                                            cexp), loc)
+       | STYLE SYMBOL                   (let
+                                             val loc = s (STYLEleft, SYMBOLright)
+                                             val t = (CVar (["Basis"], "css_class"), loc)
                                          in
                                              (SgiVal (SYMBOL, t), loc)
                                          end)
@@ -1208,12 +1207,11 @@ rexp   :                                ([])
 
 xml    : xmlOne xml                     (let
                                              val pos = s (xmlOneleft, xmlright)
-                                             val e = (EVar (["Basis"], "join", Infer), pos)
-                                             val e = (EApp (e, xmlOne), pos)
-                                             val e = (EApp (e, xml), pos)
-                                             val e = (EApp (e, (EVar (["Basis"], "css_subset", Infer), pos)), pos)
                                          in
-                                             (EApp (e, (EVar (["Basis"], "css_subset", Infer), pos)), pos)
+                                             (EApp ((EApp (
+                                                     (EVar (["Basis"], "join", Infer), pos),
+                                                  xmlOne), pos),
+                                                    xml), pos)
                                          end)
        | xmlOne                         (xmlOne)
 
@@ -1228,7 +1226,6 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                      let
                                                          val e = (EVar (["Basis"], "cdata", DontInfer), pos)
                                                          val e = (ECApp (e, (CWild (KWild, pos), pos)), pos)
-                                                         val e = (ECApp (e, (CRecord [], pos)), pos)
                                                      in
                                                          (ECApp (e, (CRecord [], pos)), pos)
                                                      end
@@ -1269,13 +1266,13 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
 
 tag    : tagHead attrs                  (let
                                              val pos = s (tagHeadleft, attrsright)
-                                             val e = (EVar (["Basis"], "tag", Infer), pos)
-                                             val e = (EApp (e, (ERecord attrs, pos)), pos)
-                                             val e = (EApp (e, (EApp (#2 tagHead, (ERecord [], pos)), pos)), pos)
-                                             val e = (EApp (e, (EVar (["Basis"], "css_subset", Infer), pos)), pos)
-                                             val e = (EApp (e, (EVar (["Basis"], "css_subset", Infer), pos)), pos)
                                          in
-                                             (#1 tagHead, e)
+                                             (#1 tagHead,
+                                              (EApp ((EApp ((EVar (["Basis"], "tag", Infer), pos),
+                                                            (ERecord attrs, pos)), pos),
+                                                     (EApp (#2 tagHead,
+                                                            (ERecord [], pos)), pos)),
+                                               pos))
                                          end)
 
 tagHead: BEGIN_TAG                      (let

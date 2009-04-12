@@ -1,5 +1,5 @@
-style q : []
-style r : [Table, List]
+style q
+style r
 
 fun main () : transaction page = return <xml><body>
   Hi.

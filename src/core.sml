@@ -134,7 +134,7 @@ datatype decl' =
        | DSequence of string * int * string
        | DDatabase of string
        | DCookie of string * int * con * string
-       | DStyle of string * int * con * string
+       | DStyle of string * int * string
 
 withtype decl = decl' located
 

@@ -923,11 +923,10 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                                ran' as
                                                     (L.CApp
                                                          ((L.CApp
-                                                               ((L.CApp
-                                                                     ((L.CApp ((L.CModProj (basis', [], "xml"), _),
-                                                                               (L.CRecord (_, [((L.CName "Html", _),
-                                                                                                _)]), _)), _), _),
-                                                                 _), _), _), _), _))) =>
+                                                               ((L.CApp ((L.CModProj (basis', [], "xml"), _),
+                                                                         (L.CRecord (_, [((L.CName "Html", _),
+                                                                                          _)]), _)), _), _),
+                                                           _), _), _))) =>
                                       let
                                           val ran = (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc)
                                           val ranT = (L.CApp ((L.CModProj (basis, [], "transaction"), loc),
@@ -1003,12 +1002,12 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
         in
             ([(L'.DCookie (x, n, corifyCon st c, s), loc)], st)
         end
-      | L.DStyle (_, x, n, c) =>
+      | L.DStyle (_, x, n) =>
         let
             val (st, n) = St.bindVal st x n
             val s = doRestify (mods, x)
         in
-            ([(L'.DStyle (x, n, corifyCon st c, s), loc)], st)
+            ([(L'.DStyle (x, n, s), loc)], st)
         end
 
 and corifyStr mods ((str, _), st) =
@@ -1066,7 +1065,7 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DSequence (_, _, n') => Int.max (n, n')
                              | L.DDatabase _ => n
                              | L.DCookie (_, _, n', _) => Int.max (n, n')
-                             | L.DStyle (_, _, n', _) => Int.max (n, n'))
+                             | L.DStyle (_, _, n') => Int.max (n, n'))
                        0 ds
 
 and maxNameStr (str, _) =

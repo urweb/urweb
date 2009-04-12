@@ -145,7 +145,7 @@ datatype decl' =
        | DSequence of int * string * int
        | DDatabase of string
        | DCookie of int * string * int * con
-       | DStyle of int * string * int * con
+       | DStyle of int * string * int
 
      and str' =
          StrConst of decl list
