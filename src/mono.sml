@@ -127,6 +127,8 @@ datatype decl' =
 
        | DJavaScript of string
 
+       | DStyle of string * string list
+
 
 withtype decl = decl' located
 

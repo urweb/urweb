@@ -334,6 +334,12 @@ fun declBinds env (d, loc) =
         in
             pushENamed env x n t NONE s
         end
+      | DStyle (x, n, c, s) =>
+        let
+            val t = (CApp ((CFfi ("Basis", "css_class"), loc), c), loc)
+        in
+            pushENamed env x n t NONE s
+        end
 
 fun patBinds env (p, loc) =
     case p of

@@ -319,6 +319,12 @@ fun declBinds env (d, loc) =
         in
             pushENamed env x n t
         end
+      | DStyle (tn, x, n, c) =>
+        let
+            val t = (CApp ((CModProj (tn, [], "css_class"), loc), c), loc)
+        in
+            pushENamed env x n t
+        end
 
 fun sgiBinds env (sgi, loc) =
     case sgi of

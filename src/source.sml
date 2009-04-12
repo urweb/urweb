@@ -164,6 +164,7 @@ datatype decl' =
        | DClass of string * kind * con
        | DDatabase of string
        | DCookie of string * con
+       | DStyle of string * con
 
      and str' =
          StrConst of decl list

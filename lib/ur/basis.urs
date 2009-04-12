@@ -405,6 +405,9 @@ val nextval : sql_sequence -> transaction int
 
 (** XML *)
 
+con css_class :: {Unit} -> Type
+(* The argument lists categories of properties that this class could set usefully. *)
+
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 
 
@@ -439,6 +442,7 @@ con page = xhtml [] []
 con xbody = xml [Body] [] []
 con xtr = xml [Body, Tr] [] []
 con xform = xml [Body, Form] [] []
+
 
 (*** HTML details *)
 

@@ -407,6 +407,7 @@ fun unnest file =
                   | DClass _ => default ()
                   | DDatabase _ => default ()
                   | DCookie _ => default ()
+                  | DStyle _ => default ()
             end
 
         and doStr (all as (str, loc), st) =

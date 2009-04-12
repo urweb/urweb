@@ -1902,6 +1902,7 @@ val hnormSgn = E.hnormSgn
 fun tableOf () = (L'.CModProj (!basis_r, [], "sql_table"), ErrorMsg.dummySpan)
 fun sequenceOf () = (L'.CModProj (!basis_r, [], "sql_sequence"), ErrorMsg.dummySpan)
 fun cookieOf () = (L'.CModProj (!basis_r, [], "http_cookie"), ErrorMsg.dummySpan)
+fun styleOf () = (L'.CModProj (!basis_r, [], "css_class"), ErrorMsg.dummySpan)
 
 fun dopenConstraints (loc, env, denv) {str, strs} =
     case E.lookupStr env str of
@@ -2401,6 +2402,7 @@ and sgiOfDecl (d, loc) =
       | L'.DClass (x, n, k, c) => [(L'.SgiClass (x, n, k, c), loc)]
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
+      | L'.DStyle (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (styleOf (), c), loc)), loc)]
 
 and subSgn env sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
@@ -3389,6 +3391,14 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                 in
                     checkKind env c' k (L'.KType, loc);
                     ([(L'.DCookie (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
+                end
+              | L.DStyle (x, c) =>
+                let
+                    val (c', k, gs') = elabCon (env, denv) c
+                    val (env, n) = E.pushENamed env x (L'.CApp (styleOf (), c'), loc)
+                in
+                    checkKind env c' k (L'.KRecord (L'.KUnit, loc), loc);
+                    ([(L'.DStyle (!basis_r, x, n, c'), loc)], (env, denv, enD gs' @ gs))
                 end
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)

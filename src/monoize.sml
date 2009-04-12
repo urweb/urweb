@@ -2705,6 +2705,23 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                       fm,
                       [(L'.DVal (x, n, t', e, s), loc)])
             end
+          | L.DStyle (x, n, (L.CRecord (_, xcs), _), s) =>
+            let
+                val xs = map (fn ((L.CName x, _), _) => x
+                               | (x, _) => (E.errorAt (#2 x) "Undetermined style component";
+                                            Print.eprefaces' [("Name", CorePrint.p_con env x)];
+                                            "")) xcs
+
+                val t = (L.CFfi ("Basis", "string"), loc)
+                val t' = (L'.TFfi ("Basis", "string"), loc)
+                val e = (L'.EPrim (Prim.String s), loc)
+            in
+                SOME (Env.pushENamed env x n t NONE s,
+                      fm,
+                      [(L'.DStyle (s, xs), loc),
+                       (L'.DVal (x, n, t', e, s), loc)])
+            end
+          | L.DStyle _ => poly ()
     end
 
 datatype expungable = Client | Channel

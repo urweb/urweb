@@ -187,6 +187,7 @@ fun explifyDecl (d, loc : EM.span) =
                                                 (L'.KArrow (explifyKind k, (L'.KType, loc)), loc), explifyCon c), loc)
       | L.DDatabase s => SOME (L'.DDatabase s, loc)
       | L.DCookie (nt, x, n, c) => SOME (L'.DCookie (nt, x, n, explifyCon c), loc)
+      | L.DStyle (nt, x, n, c) => SOME (L'.DStyle (nt, x, n, explifyCon c), loc)
 
 and explifyStr (str, loc) =
     case str of

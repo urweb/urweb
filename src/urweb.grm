@@ -194,7 +194,7 @@ datatype prop_kind = Delete | Update
  | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
- | COOKIE
+ | COOKIE | STYLE
  | CASE | IF | THEN | ELSE
 
  | XML_BEGIN of string | XML_END | XML_BEGIN_END of string
@@ -451,6 +451,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                              [(DClass (SYMBOL1, kind, c), s (CLASSleft, cexpright))]
                                          end)
        | COOKIE SYMBOL COLON cexp       ([(DCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))])
+       | STYLE SYMBOL COLON cexp        ([(DStyle (SYMBOL, cexp), s (STYLEleft, cexpright))])
 
 kopt   :                                (NONE)
        | DCOLON kind                    (SOME kind)
@@ -704,6 +705,13 @@ sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, 
                                              val loc = s (COOKIEleft, cexpright)
                                              val t = (CApp ((CVar (["Basis"], "http_cookie"), loc),
                                                             entable cexp), loc)
+                                         in
+                                             (SgiVal (SYMBOL, t), loc)
+                                         end)
+       | STYLE SYMBOL COLON cexp        (let
+                                             val loc = s (STYLEleft, cexpright)
+                                             val t = (CApp ((CVar (["Basis"], "css_class"), loc),
+                                                            cexp), loc)
                                          in
                                              (SgiVal (SYMBOL, t), loc)
                                          end)

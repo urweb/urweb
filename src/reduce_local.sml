@@ -152,6 +152,7 @@ fun reduce file =
               | DSequence _ => d
               | DDatabase _ => d
               | DCookie _ => d
+              | DStyle _ => d
     in
         map doDecl file
     end

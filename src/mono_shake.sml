@@ -58,7 +58,8 @@ fun shake file =
                                    | ((DTable _, _), acc) => acc
                                    | ((DSequence _, _), acc) => acc
                                    | ((DDatabase _, _), acc) => acc
-                                   | ((DJavaScript _, _), acc) => acc)
+                                   | ((DJavaScript _, _), acc) => acc
+                                   | ((DStyle _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
         fun typ (c, s) =
@@ -115,7 +116,8 @@ fun shake file =
                       | (DTable _, _) => true
                       | (DSequence _, _) => true
                       | (DDatabase _, _) => true
-                      | (DJavaScript _, _) => true) file
+                      | (DJavaScript _, _) => true
+                      | (DStyle _, _) => true) file
     end
 
 end

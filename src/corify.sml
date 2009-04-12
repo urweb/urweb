@@ -1002,6 +1002,13 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
         in
             ([(L'.DCookie (x, n, corifyCon st c, s), loc)], st)
         end
+      | L.DStyle (_, x, n, c) =>
+        let
+            val (st, n) = St.bindVal st x n
+            val s = doRestify (mods, x)
+        in
+            ([(L'.DStyle (x, n, corifyCon st c, s), loc)], st)
+        end
 
 and corifyStr mods ((str, _), st) =
     case str of
@@ -1057,7 +1064,8 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DTable (_, _, n', _, _, _, _, _) => Int.max (n, n')
                              | L.DSequence (_, _, n') => Int.max (n, n')
                              | L.DDatabase _ => n
-                             | L.DCookie (_, _, n', _) => Int.max (n, n'))
+                             | L.DCookie (_, _, n', _) => Int.max (n, n')
+                             | L.DStyle (_, _, n', _) => Int.max (n, n'))
                        0 ds
 
 and maxNameStr (str, _) =
