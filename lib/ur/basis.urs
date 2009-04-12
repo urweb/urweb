@@ -408,40 +408,64 @@ val nextval : sql_sequence -> transaction int
 con css_class :: {Unit} -> Type
 (* The argument lists categories of properties that this class could set usefully. *)
 
-con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
+con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> {Unit} -> Type
+(* Arguments:
+ * 1. Attributes
+ * 2. Context for this tag
+ * 3. Context for inner XML
+ * 4. Form fields used
+ * 5. Form fields defined
+ * 6. CSS property categories that the tag might use
+ *)
 
+con xml :: {Unit} -> {Type} -> {Type} -> {Unit} -> Type
+(* Arguments:
+ * 1. Context
+ * 2. Form fields used
+ * 3. Form fields defined
+ * 4. CSS property categories that this XML fragment might use
+ *)
 
-con xml :: {Unit} -> {Type} -> {Type} -> Type
-val cdata : ctx ::: {Unit} -> use ::: {Type} -> string -> xml ctx use []
+con css_subset :: {Unit} -> {Unit} -> Type
+val css_subset : cs1 ::: {Unit} -> cs2 ::: {Unit} -> [cs1 ~ cs2]
+    => css_subset cs1 (cs1 ++ cs2)
+
+val cdata : ctx ::: {Unit} -> use ::: {Type} -> css ::: {Unit} -> string -> xml ctx use [] css
 val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type}
           -> ctxOuter ::: {Unit} -> ctxInner ::: {Unit}
           -> useOuter ::: {Type} -> useInner ::: {Type}
           -> bindOuter ::: {Type} -> bindInner ::: {Type}
+          -> css ::: {Unit} -> cssOuter ::: {Unit} -> cssInner ::: {Unit}
           -> [attrsGiven ~ attrsAbsent] =>
              [useOuter ~ useInner] =>
              [bindOuter ~ bindInner] =>
            $attrsGiven
            -> tag (attrsGiven ++ attrsAbsent)
-                  ctxOuter ctxInner useOuter bindOuter
-           -> xml ctxInner useInner bindInner
-           -> xml ctxOuter (useOuter ++ useInner) (bindOuter ++ bindInner)
+                  ctxOuter ctxInner useOuter bindOuter cssOuter
+           -> css_subset cssOuter css
+           -> css_subset cssInner css
+           -> xml ctxInner useInner bindInner cssInner
+           -> xml ctxOuter (useOuter ++ useInner) (bindOuter ++ bindInner) css
 val join : ctx ::: {Unit} 
-        -> use1 ::: {Type} -> bind1 ::: {Type} -> bind2 ::: {Type}
-        -> [use1 ~ bind1] => [bind1 ~ bind2] =>
-              xml ctx use1 bind1
-              -> xml ctx (use1 ++ bind1) bind2
-              -> xml ctx use1 (bind1 ++ bind2)
+           -> use1 ::: {Type} -> bind1 ::: {Type} -> bind2 ::: {Type}
+           -> css ::: {Unit} -> css1 ::: {Unit} -> css2 ::: {Unit}
+           -> [use1 ~ bind1] => [bind1 ~ bind2]
+    => xml ctx use1 bind1 css1
+       -> xml ctx (use1 ++ bind1) bind2 css2
+       -> css_subset css1 css
+       -> css_subset css2 css
+       -> xml ctx use1 (bind1 ++ bind2) css
 val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type}
-              -> bind ::: {Type}
+              -> bind ::: {Type} -> css ::: {Unit}
               -> [use1 ~ use2] =>
-                    xml ctx use1 bind
-                    -> xml ctx (use1 ++ use2) bind
+                    xml ctx use1 bind css
+                    -> xml ctx (use1 ++ use2) bind css
 
 con xhtml = xml [Html]
 con page = xhtml [] []
-con xbody = xml [Body] [] []
-con xtr = xml [Body, Tr] [] []
-con xform = xml [Body, Form] [] []
+con xbody = xml [Body] [] [] []
+con xtr = xml [Body, Tr] [] [] []
+con xform = xml [Body, Form] [] [] []
 
 
 (*** HTML details *)
@@ -453,21 +477,21 @@ con form = [Body, Form]
 con tabl = [Body, Table]
 con tr = [Body, Tr]
 
-val dyn : use ::: {Type} -> bind ::: {Type} -> unit
-          -> tag [Signal = signal (xml body use bind)] body [] use bind
+val dyn : use ::: {Type} -> bind ::: {Type} -> unit -> css ::: {Unit}
+          -> tag [Signal = signal (xml body use bind css)] body [] use bind css
 
-val head : unit -> tag [] html head [] []
-val title : unit -> tag [] head [] [] []
+val head : unit -> tag [] html head [] [] []
+val title : unit -> tag [] head [] [] [] []
 
-val body : unit -> tag [Onload = transaction unit] html body [] []
+val body : unit -> tag [Onload = transaction unit] html body [] [] []
 con bodyTag = fn (attrs :: {Type}) =>
                  ctx ::: {Unit} ->
                  [[Body] ~ ctx] =>
-                    unit -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
+                    unit -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] [] []
 con bodyTagStandalone = fn (attrs :: {Type}) =>
                            ctx ::: {Unit}
                            -> [[Body] ~ ctx] =>
-                                 unit -> tag attrs ([Body] ++ ctx) [] [] []
+                                 unit -> tag attrs ([Body] ++ ctx) [] [] [] []
 
 val br : bodyTagStandalone []
 
@@ -492,19 +516,19 @@ val hr : bodyTag []
 
 type url
 val bless : string -> url
-val a : bodyTag [Link = transaction page, Href = url, Onclick = transaction unit]
+val a : css ::: {Unit} -> bodyTag [Link = transaction (page css), Href = url, Onclick = transaction unit]
 
 val img : bodyTag [Src = url]
 
-val form : ctx ::: {Unit} -> bind ::: {Type}
+val form : ctx ::: {Unit} -> bind ::: {Type} -> css ::: {Unit}
             -> [[Body] ~ ctx] =>
-                  xml form [] bind
-                  -> xml ([Body] ++ ctx) [] []
+                  xml form [] bind css
+                  -> xml ([Body] ++ ctx) [] [] css
 con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   ctx ::: {Unit}
                   -> [[Form] ~ ctx] =>
                         nm :: Name -> unit
-                        -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
+                        -> tag attrs ([Form] ++ ctx) inner [] [nm = ty] []
 val textbox : formTag string [] [Value = string, Size = int, Source = source string]
 val password : formTag string [] [Value = string, Size = int]
 val textarea : formTag string [] [Rows = int, Cols = int]
@@ -513,42 +537,40 @@ val checkbox : formTag bool [] [Checked = bool]
 
 con radio = [Body, Radio]
 val radio : formTag string radio []
-val radioOption : unit -> tag [Value = string] radio [] [] []
+val radioOption : unit -> tag [Value = string] radio [] [] [] []
 
 con select = [Select]
 val select : formTag string select []
-val option : unit -> tag [Value = string, Selected = bool] select [] [] []
+val option : unit -> tag [Value = string, Selected = bool] select [] [] [] []
 
-val submit : ctx ::: {Unit} -> use ::: {Type}
+val submit : ctx ::: {Unit} -> use ::: {Type} -> css ::: {Unit}
              -> [[Form] ~ ctx] =>
                    unit
-                   -> tag [Value = string, Action = $use -> transaction page]
-                          ([Form] ++ ctx) ([Form] ++ ctx) use []
+                   -> tag [Value = string, Action = $use -> transaction (page css)]
+                          ([Form] ++ ctx) ([Form] ++ ctx) use [] []
 
+(*** Tables *)
+
+val tabl : other ::: {Unit} -> [other ~ [Body, Table]] =>
+                                  unit -> tag [Border = int] ([Body] ++ other) ([Body, Table] ++ other) [] [] [Table]
+val tr : other ::: {Unit} -> [other ~ [Body, Table, Tr]] =>
+                                unit -> tag [] ([Body, Table] ++ other) ([Body, Tr] ++ other) [] [] []
+val th : other ::: {Unit} -> [other ~ [Body, Tr]] =>
+                                unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] [] [Cell]
+val td : other ::: {Unit} -> [other ~ [Body, Tr]] =>
+                                unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] [] [Cell]
+                                        
 (*** AJAX-oriented widgets *)
 
 con cformTag = fn (attrs :: {Type}) =>
                   ctx ::: {Unit}
                   -> [[Body] ~ ctx] =>
-                        unit -> tag attrs ([Body] ++ ctx) [] [] []
+                        unit -> tag attrs ([Body] ++ ctx) [] [] [] []
 
 val ctextbox : cformTag [Value = string, Size = int, Source = source string]
 val button : cformTag [Value = string, Onclick = transaction unit]
 
-(*** Tables *)
-
-val tabl : other ::: {Unit} -> [other ~ [Body, Table]] =>
-                                  unit -> tag [Border = int] ([Body] ++ other) ([Body, Table] ++ other) [] []
-val tr : other ::: {Unit} -> [other ~ [Body, Table, Tr]] =>
-                                unit -> tag [] ([Body, Table] ++ other) ([Body, Tr] ++ other) [] []
-val th : other ::: {Unit} -> [other ~ [Body, Tr]] =>
-                                unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] []
-val td : other ::: {Unit} -> [other ~ [Body, Tr]] =>
-                                unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] []
-
 
 (** Aborting *)
 
-val error : t ::: Type -> xml [Body] [] [] -> t
-
-
+val error : t ::: Type -> xml [Body] [] [] [] -> t

@@ -127,10 +127,14 @@ fun monoType env =
                     readType (mt env dtmap t, loc)
 
                   | L.CFfi ("Basis", "url") => (L'.TFfi ("Basis", "string"), loc)
-                  | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
+                  | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CFfi ("Basis", "css_class"), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "css_subset"), _), _), _), _) =>
+                    (L'.TRecord [], loc)
 
                   | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
@@ -2003,7 +2007,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EApp (
             (L.ECApp (
-             (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
+             (L.ECApp (
+              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
+              _), _),
              _), _),
             se) =>
             let
@@ -2012,19 +2018,32 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EFfiApp ("Basis", "htmlifyString", [se]), loc), fm)
             end
 
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "css_subset"), _), _), _), _) =>
+            ((L'.ERecord [], loc), fm)
+
           | L.EApp (
             (L.EApp (
-             (L.ECApp (
-              (L.ECApp (
+             (L.EApp (
+              (L.EApp (
                (L.ECApp (
                 (L.ECApp (
-                 (L.EFfi ("Basis", "join"),
-                     _), _), _),
+                 (L.ECApp (
+                  (L.ECApp (
+                   (L.ECApp (
+                    (L.ECApp (
+                     (L.ECApp (
+                      (L.EFfi ("Basis", "join"),
+                       _), _), _),
+                     _), _),
+                    _), _),
+                   _), _),
+                  _), _),
+                 _), _),
                 _), _),
-               _), _),
-              _), _),
-             xml1), _),
-            xml2) =>
+               xml1), _),
+              xml2), _),
+             _), _),
+            _) =>
             let
                 val (xml1, fm) = monoExp (env, st, fm) xml1
                 val (xml2, fm) = monoExp (env, st, fm) xml2
@@ -2035,18 +2054,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EApp (
             (L.EApp (
              (L.EApp (
-              (L.ECApp (
-               (L.ECApp (
+              (L.EApp (
+               (L.EApp (
                 (L.ECApp (
                  (L.ECApp (
                   (L.ECApp (
                    (L.ECApp (
                     (L.ECApp (
                      (L.ECApp (
-                      (L.EFfi ("Basis", "tag"),
-                       _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
-              attrs), _),
-             tag), _),
+                      (L.ECApp (
+                       (L.ECApp (
+                        (L.ECApp (
+                         (L.ECApp (
+                          (L.ECApp (
+                           (L.EFfi ("Basis", "tag"),
+                            _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                   _), _), _), _), _), _),
+                attrs), _),
+               tag), _),
+              _), _),
+             _), _),
             xml) =>
             let
                 fun getTag' (e, _) =

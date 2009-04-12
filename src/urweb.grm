@@ -1208,11 +1208,12 @@ rexp   :                                ([])
 
 xml    : xmlOne xml                     (let
                                              val pos = s (xmlOneleft, xmlright)
+                                             val e = (EVar (["Basis"], "join", Infer), pos)
+                                             val e = (EApp (e, xmlOne), pos)
+                                             val e = (EApp (e, xml), pos)
+                                             val e = (EApp (e, (EVar (["Basis"], "css_subset", Infer), pos)), pos)
                                          in
-                                             (EApp ((EApp (
-                                                     (EVar (["Basis"], "join", Infer), pos),
-                                                  xmlOne), pos),
-                                                    xml), pos)
+                                             (EApp (e, (EVar (["Basis"], "css_subset", Infer), pos)), pos)
                                          end)
        | xmlOne                         (xmlOne)
 
@@ -1227,6 +1228,7 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                      let
                                                          val e = (EVar (["Basis"], "cdata", DontInfer), pos)
                                                          val e = (ECApp (e, (CWild (KWild, pos), pos)), pos)
+                                                         val e = (ECApp (e, (CRecord [], pos)), pos)
                                                      in
                                                          (ECApp (e, (CRecord [], pos)), pos)
                                                      end
@@ -1267,13 +1269,13 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
 
 tag    : tagHead attrs                  (let
                                              val pos = s (tagHeadleft, attrsright)
+                                             val e = (EVar (["Basis"], "tag", Infer), pos)
+                                             val e = (EApp (e, (ERecord attrs, pos)), pos)
+                                             val e = (EApp (e, (EApp (#2 tagHead, (ERecord [], pos)), pos)), pos)
+                                             val e = (EApp (e, (EVar (["Basis"], "css_subset", Infer), pos)), pos)
+                                             val e = (EApp (e, (EVar (["Basis"], "css_subset", Infer), pos)), pos)
                                          in
-                                             (#1 tagHead,
-                                              (EApp ((EApp ((EVar (["Basis"], "tag", Infer), pos),
-                                                            (ERecord attrs, pos)), pos),
-                                                     (EApp (#2 tagHead,
-                                                            (ERecord [], pos)), pos)),
-                                               pos))
+                                             (#1 tagHead, e)
                                          end)
 
 tagHead: BEGIN_TAG                      (let

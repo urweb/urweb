@@ -923,10 +923,11 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                                ran' as
                                                     (L.CApp
                                                          ((L.CApp
-                                                               ((L.CApp ((L.CModProj (basis', [], "xml"), _),
-                                                                         (L.CRecord (_, [((L.CName "Html", _),
-                                                                                          _)]), _)), _), _),
-                                                           _), _), _))) =>
+                                                               ((L.CApp
+                                                                     ((L.CApp ((L.CModProj (basis', [], "xml"), _),
+                                                                               (L.CRecord (_, [((L.CName "Html", _),
+                                                                                                _)]), _)), _), _),
+                                                                 _), _), _), _), _))) =>
                                       let
                                           val ran = (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc)
                                           val ranT = (L.CApp ((L.CModProj (basis, [], "transaction"), loc),

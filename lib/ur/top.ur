@@ -71,7 +71,7 @@ fun ex (tf :: (Type -> Type)) (choice :: Type) (body : tf choice) : ex tf =
 fun compose (t1 ::: Type) (t2 ::: Type) (t3 ::: Type)
             (f1 : t2 -> t3) (f2 : t1 -> t2) (x : t1) = f1 (f2 x)
 
-fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (_ : show t) (v : t) =
+fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (css ::: {Unit}) (_ : show t) (v : t) =
     cdata (show v)
 
 fun foldUR (tf :: Type) (tr :: {Unit} -> Type)
@@ -94,11 +94,11 @@ fun foldUR2 (tf1 :: Type) (tf2 :: Type) (tr :: {Unit} -> Type)
            f [nm] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
        (fn _ _ => i)
 
-fun foldURX2 (tf1 :: Type) (tf2 :: Type) (ctx :: {Unit})
+fun foldURX2 (css ::: {Unit}) (tf1 :: Type) (tf2 :: Type) (ctx :: {Unit})
            (f : nm :: Name -> rest :: {Unit}
                 -> [[nm] ~ rest] =>
-                      tf1 -> tf2 -> xml ctx [] []) =
-    foldUR2 [tf1] [tf2] [fn _ => xml ctx [] []]
+                      tf1 -> tf2 -> xml ctx [] [] css) =
+    foldUR2 [tf1] [tf2] [fn _ => xml ctx [] [] css]
             (fn (nm :: Name) (rest :: {Unit}) [[nm] ~ rest] v1 v2 acc =>
                 <xml>{f [nm] [rest] ! v1 v2}{acc}</xml>)
             <xml/>
@@ -124,20 +124,20 @@ fun foldR2 K (tf1 :: K -> Type) (tf2 :: K -> Type) (tr :: {K} -> Type)
            f [nm] [t] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
        (fn _ _ => i)
 
-fun foldRX K (tf :: K -> Type) (ctx :: {Unit})
+fun foldRX K (css ::: {Unit}) (tf :: K -> Type) (ctx :: {Unit})
             (f : nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
-                       tf t -> xml ctx [] []) =
-    foldR [tf] [fn _ => xml ctx [] []]
+                       tf t -> xml ctx [] [] css) =
+    foldR [tf] [fn _ => xml ctx [] [] css]
           (fn (nm :: Name) (t :: K) (rest :: {K}) [[nm] ~ rest] r acc =>
               <xml>{f [nm] [t] [rest] ! r}{acc}</xml>)
           <xml/>
 
-fun foldRX2 K (tf1 :: K -> Type) (tf2 :: K -> Type) (ctx :: {Unit})
+fun foldRX2 K (css ::: {Unit}) (tf1 :: K -> Type) (tf2 :: K -> Type) (ctx :: {Unit})
              (f : nm :: Name -> t :: K -> rest :: {K}
                   -> [[nm] ~ rest] =>
-                        tf1 t -> tf2 t -> xml ctx [] []) =
-    foldR2 [tf1] [tf2] [fn _ => xml ctx [] []]
+                        tf1 t -> tf2 t -> xml ctx [] [] css) =
+    foldR2 [tf1] [tf2] [fn _ => xml ctx [] [] css]
            (fn (nm :: Name) (t :: K) (rest :: {K}) [[nm] ~ rest]
                             r1 r2 acc =>
                <xml>{f [nm] [t] [rest] ! r1 r2}{acc}</xml>)
@@ -151,18 +151,18 @@ fun queryI (tables ::: {{Type}}) (exps ::: {Type})
           (fn fs _ => f fs)
           ()
 
-fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
+fun queryX (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit}) (css ::: {Unit})
            [tables ~ exps] (q : sql_query tables exps)
            (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
-                -> xml ctx [] []) =
+                -> xml ctx [] [] css) =
     query q
           (fn fs acc => return <xml>{acc}{f fs}</xml>)
           <xml/>
 
-fun queryX' (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit})
+fun queryX' (tables ::: {{Type}}) (exps ::: {Type}) (ctx ::: {Unit}) (css ::: {Unit})
             [tables ~ exps] (q : sql_query tables exps)
             (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
-                 -> transaction (xml ctx [] [])) =
+                 -> transaction (xml ctx [] [] css)) =
     query q
           (fn fs acc =>
               r <- f fs;
