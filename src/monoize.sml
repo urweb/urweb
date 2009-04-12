@@ -131,6 +131,7 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "css_class") => (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
@@ -2035,7 +2036,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EApp (
             (L.EApp (
              (L.EApp (
-              (L.ECApp (
+              (L.EApp (
                (L.ECApp (
                 (L.ECApp (
                  (L.ECApp (
@@ -2043,8 +2044,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                    (L.ECApp (
                     (L.ECApp (
                      (L.ECApp (
-                      (L.EFfi ("Basis", "tag"),
-                       _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                      (L.ECApp (
+                       (L.EFfi ("Basis", "tag"),
+                        _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+               class), _),
               attrs), _),
              tag), _),
             xml) =>
@@ -2096,9 +2099,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                   | lowercaseFirst s = String.str (Char.toLower (String.sub (s, 0)))
                                        ^ String.extract (s, 1, NONE)
 
+                val (class, fm) = monoExp (env, st, fm) class
+
                 fun tagStart tag =
                     let
+                        val t = (L'.TFfi ("Basis", "string"), loc)
                         val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
+
+                        val s = (L'.ECase (class,
+                                           [((L'.PNone t, loc),
+                                             s),
+                                            ((L'.PSome (t, (L'.PVar ("x", t), loc)), loc),
+                                             (L'.EStrcat (s,
+                                                         (L'.EStrcat ((L'.EPrim (Prim.String " class=\""), loc),
+                                                                      (L'.EStrcat ((L'.ERel 0, loc),
+                                                                                   (L'.EPrim (Prim.String "\""), loc)),
+                                                                       loc)), loc)), loc))],
+                                           {disc = (L'.TOption t, loc),
+                                            result = t}), loc)
                     in
                         foldl (fn (("Action", _, _), acc) => acc
                                 | (("Source", _, _), acc) => acc

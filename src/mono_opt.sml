@@ -242,6 +242,13 @@ fun exp e =
       | EWrite (EFfiApp ("Basis", "attrifyString", [e]), _) =>
         EFfiApp ("Basis", "attrifyString_w", [e])
 
+      | EFfiApp ("Basis", "attrifyCss_class", [(EPrim (Prim.String s), _)]) =>
+        EPrim (Prim.String s)
+      | EWrite (EFfiApp ("Basis", "attrifyCss_class", [(EPrim (Prim.String s), _)]), loc) =>
+        EWrite (EPrim (Prim.String s), loc)
+      | EWrite (EFfiApp ("Basis", "attrifyCss_class", [e]), _) =>
+        EFfiApp ("Basis", "attrifyString_w", [e])
+
       | EFfiApp ("Basis", "urlifyInt", [(EPrim (Prim.Int n), _)]) =>
         EPrim (Prim.String (urlifyInt n))
       | EWrite (EFfiApp ("Basis", "urlifyInt", [(EPrim (Prim.Int n), _)]), loc) =>

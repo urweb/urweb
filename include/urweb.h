@@ -74,6 +74,7 @@ char *uw_Basis_attrifyString(uw_context, uw_Basis_string);
 char *uw_Basis_attrifyTime(uw_context, uw_Basis_time);
 char *uw_Basis_attrifyChannel(uw_context, uw_Basis_channel);
 char *uw_Basis_attrifyClient(uw_context, uw_Basis_client);
+char *uw_Basis_attrifyCss_class(uw_context, uw_Basis_css_class);
 
 uw_unit uw_Basis_attrifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_attrifyFloat_w(uw_context, uw_Basis_float);

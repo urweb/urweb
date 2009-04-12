@@ -1493,26 +1493,28 @@ fun unmodCon env (c, loc) =
         end
       | _ => (c, loc)
 
-fun normClassKey envs c =
+fun normClassKey env c =
     let
-        val c = hnormCon envs c
+        val c = hnormCon env c
     in
         case #1 c of
             L'.CApp (c1, c2) =>
             let
-                val c1 = normClassKey envs c1
-                val c2 = normClassKey envs c2
+                val c1 = normClassKey env c1
+                val c2 = normClassKey env c2
             in
                 (L'.CApp (c1, c2), #2 c)
             end
-          | _ => c
+          | L'.CRecord (k, xcs) => (L'.CRecord (k, map (fn (x, c) => (normClassKey env x,
+                                                                      normClassKey env c)) xcs), #2 c)
+          | _ => unmodCon env c
     end
 
 fun normClassConstraint env (c, loc) =
     case c of
         L'.CApp (f, x) =>
         let
-            val f = unmodCon env f
+            val f = normClassKey env f
             val x = normClassKey env x
         in
             (L'.CApp (f, x), loc)
@@ -1526,7 +1528,7 @@ fun normClassConstraint env (c, loc) =
         end
       | L'.TCFun (expl, x, k, c1) => (L'.TCFun (expl, x, k, normClassConstraint env c1), loc)
       | L'.CUnif (_, _, _, ref (SOME c)) => normClassConstraint env c
-      | _ => (c, loc)
+      | _ => unmodCon env (c, loc)
 
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
@@ -2047,6 +2049,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
         let
             val (c', ck, gs') = elabCon (env, denv) c
 
+            val old = c'
             val c' = normClassConstraint env c'
             val (env', n) = E.pushENamed env x c'
         in

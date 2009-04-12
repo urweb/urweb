@@ -46,7 +46,7 @@ fun exp env (e, s) =
         EApp (
         (EApp (
          (EApp (
-          (ECApp (
+          (EApp (
            (ECApp (
             (ECApp (
              (ECApp (
@@ -54,9 +54,11 @@ fun exp env (e, s) =
                (ECApp (
                 (ECApp (
                  (ECApp (
-                  (EFfi ("Basis", "tag"),
-                   loc), given), _), absent), _), outer), _), inner), _),
-              useOuter), _), useInner), _), bindOuter), _), bindInner), _),
+                  (ECApp (
+                   (EFfi ("Basis", "tag"),
+                    loc), given), _), absent), _), outer), _), inner), _),
+               useOuter), _), useInner), _), bindOuter), _), bindInner), _),
+           class), _),
           attrs), _),
          tag), _),
         xml) =>
@@ -124,7 +126,7 @@ fun exp env (e, s) =
                  (EApp (
                   (EApp (
                    (EApp (
-                    (ECApp (
+                    (EApp (
                      (ECApp (
                       (ECApp (
                        (ECApp (
@@ -132,9 +134,11 @@ fun exp env (e, s) =
                          (ECApp (
                           (ECApp (
                            (ECApp (
-                            (EFfi ("Basis", "tag"),
-                             loc), given), loc), absent), loc), outer), loc), inner), loc),
-                        useOuter), loc), useInner), loc), bindOuter), loc), bindInner), loc),
+                            (ECApp (
+                             (EFfi ("Basis", "tag"),
+                              loc), given), loc), absent), loc), outer), loc), inner), loc),
+                         useOuter), loc), useInner), loc), bindOuter), loc), bindInner), loc),
+                     class), loc),
                     (ERecord xets, loc)), loc),
                    tag), loc),
                   xml), s)

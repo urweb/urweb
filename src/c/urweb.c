@@ -922,6 +922,10 @@ char *uw_Basis_attrifyString(uw_context ctx, uw_Basis_string s) {
   return result;
 }
 
+char *uw_Basis_attrifyCss_class(uw_context ctx, uw_Basis_css_class s) {
+  return s;
+}
+
 static void uw_Basis_attrifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
   int len;
 

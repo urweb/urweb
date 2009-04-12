@@ -114,35 +114,6 @@ fun default (_, x, st) = (x, st)
 
 fun specialize' file =
     let
-        fun default' (_, fs) = fs
-
-        fun actionableExp (e, fs) =
-            case e of
-                ERecord xes =>
-                foldl (fn (((CName s, _), e, _), fs) =>
-                          if s = "Action" orelse s = "Link" then
-                              let
-                                  fun findHead (e, _) =
-                                      case e of
-                                          ENamed n => IS.add (fs, n)
-                                        | EApp (e, _) => findHead e
-                                        | _ => fs
-                              in
-                                  findHead e
-                              end
-                          else
-                              fs
-                        | (_, fs) => fs)
-                fs xes
-              | _ => fs
-
-        val actionable =
-            U.File.fold {kind = default',
-                         con = default',
-                         exp = actionableExp,
-                         decl = default'}
-            IS.empty file
-
         fun bind (env, b) =
             case b of
                 U.Decl.RelE xt => xt :: env
@@ -150,6 +121,9 @@ fun specialize' file =
 
         fun exp (env, e, st : state) =
             let
+                (*val () = Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty
+                                                                     (e, ErrorMsg.dummySpan))]*)
+
                 fun getApp e =
                     case e of
                         ENamed f => SOME (f, [])
@@ -160,12 +134,17 @@ fun specialize' file =
                       | _ => NONE
             in
                 case getApp e of
-                    NONE => (e, st)
+                    NONE => ((*Print.prefaces "No" [("e", CorePrint.p_exp CoreEnv.empty
+                                                                        (e, ErrorMsg.dummySpan))];*)
+                             (e, st))
                   | SOME (f, xs) =>
                     case IM.find (#funcs st, f) of
                         NONE => (e, st)
                       | SOME {name, args, body, typ, tag} =>
                         let
+                            (*val () = Print.prefaces "Consider" [("e", CorePrint.p_exp CoreEnv.empty
+                                                                                      (e, ErrorMsg.dummySpan))]*)
+
                             val functionInside = U.Con.exists {kind = fn _ => false,
                                                                con = fn TFun _ => true
                                                                       | CFfi ("Basis", "transaction") => true
@@ -208,7 +187,7 @@ fun specialize' file =
                                                       e xs
                                     in
                                         (*Print.prefaces "Brand new (reuse)"
-                                                       [("e'", CorePrint.p_exp env e)];*)
+                                                       [("e'", CorePrint.p_exp CoreEnv.empty e)];*)
                                         (#1 e, st)
                                     end
                                   | NONE =>
@@ -267,9 +246,9 @@ fun specialize' file =
                                                 val e' = foldl (fn (arg, e) => (EApp (e, arg), loc))
                                                                e' xs
                                                 (*val () = Print.prefaces "Brand new"
-                                                                        [("e'", CorePrint.p_exp env e'),
-                                                                         ("e", CorePrint.p_exp env (e, loc)),
-                                                                         ("body'", CorePrint.p_exp env body')]*)
+                                                                        [("e'", CorePrint.p_exp CoreEnv.empty e'),
+                                                                         ("e", CorePrint.p_exp CoreEnv.empty (e, loc)),
+                                                                         ("body'", CorePrint.p_exp CoreEnv.empty body')]*)
                                             in
                                                 (#1 e',
                                                  {maxName = #maxName st,
@@ -358,7 +337,8 @@ fun specialize' file =
 
 fun specialize file =
     let
-        (*val () = Print.prefaces "Intermediate" [("file", CorePrint.p_file CoreEnv.empty file)];*)
+        val file = ReduceLocal.reduce file
+        (*val () = Print.prefaces "Intermediate" [("file", CorePrint.p_file CoreEnv.empty file)]*)
         (*val file = ReduceLocal.reduce file*)
         val (changed, file) = specialize' file
         (*val file = ReduceLocal.reduce file
@@ -368,7 +348,7 @@ fun specialize file =
         (*print "Round over\n";*)
         if changed then
             let
-                val file = ReduceLocal.reduce file
+                (*val file = ReduceLocal.reduce file*)
                 val file = CoreUntangle.untangle file
                 val file = Shake.shake file
             in

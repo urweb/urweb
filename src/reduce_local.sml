@@ -72,6 +72,11 @@ fun exp env (all as (e, loc)) =
       | EFfi _ => all
       | EFfiApp (m, f, es) => (EFfiApp (m, f, map (exp env) es), loc)
 
+      | EApp ((ECApp ((ECAbs (_, _, (EAbs (_, (CRel 0, _), _,
+                                           (ECon (dk, pc, [(CRel 0, loc)], SOME (ERel 0, _)), _)), _)), _),
+                      t), _), e) =>
+        (ECon (dk, pc, [t], SOME (exp env e)), loc)
+
       | EApp (e1, e2) =>
         let
             val e1 = exp env e1
@@ -83,6 +88,9 @@ fun exp env (all as (e, loc)) =
         end
 
       | EAbs (x, dom, ran, e) => (EAbs (x, dom, ran, exp (Unknown :: env) e), loc)
+
+      | ECApp ((ECAbs (_, _, (ECon (dk, pc, [(CRel 0, loc)], NONE), _)), _), t) =>
+        (ECon (dk, pc, [t], NONE), loc)
 
       | ECApp (e, c) => (ECApp (exp env e, c), loc)
       | ECAbs (x, k, e) => (ECAbs (x, k, exp env e), loc)

@@ -899,19 +899,19 @@ fun sgnS_con (str, (sgns, strs, cons)) c =
              end)
       | _ => c
 
-fun sgnS_con' (arg as (m1, ms', (sgns, strs, cons))) c =
-    case c of
-        CModProj (m1, ms, x) =>
-        (case IM.find (strs, m1) of
-             NONE => c
-           | SOME m1x => CModProj (m1, ms' @ m1x :: ms, x))
-      | CNamed n =>
-        (case IM.find (cons, n) of
-             NONE => c
-           | SOME nx => CModProj (m1, ms', nx))
-      | CApp (c1, c2) => CApp ((sgnS_con' arg (#1 c1), #2 c1),
-                               (sgnS_con' arg (#1 c2), #2 c2))
-      | _ => c
+fun sgnS_con' (m1, ms', (sgns, strs, cons)) =
+    U.Con.map {kind = fn x => x,
+               con = fn c =>
+                        case c of
+                            CModProj (m1, ms, x) =>
+                            (case IM.find (strs, m1) of
+                                 NONE => c
+                               | SOME m1x => CModProj (m1, ms' @ m1x :: ms, x))
+                          | CNamed n =>
+                            (case IM.find (cons, n) of
+                                 NONE => c
+                               | SOME nx => CModProj (m1, ms', nx))
+                          | _ => c}
 
 fun sgnS_sgn (str, (sgns, strs, cons)) sgn =
     case sgn of
@@ -1026,7 +1026,7 @@ fun enrichClasses env classes (m1, ms) sgn =
                                      | SOME (cn, nvs, cs, c) =>
                                        let
                                            val loc = #2 c
-                                           fun globalize (c, loc) = (sgnS_con' (m1, ms, fmap) c, loc)
+                                           val globalize = sgnS_con' (m1, ms, fmap)
 
                                            val nc =
                                                case cn of

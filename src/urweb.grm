@@ -176,6 +176,8 @@ fun tagIn bt =
 
 datatype prop_kind = Delete | Update
 
+datatype attr = Class of exp | Normal of con * exp
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -296,8 +298,8 @@ datatype prop_kind = Delete | Update
  | rpat of (string * pat) list * bool
  | ptuple of pat list
 
- | attrs of (con * exp) list
- | attr of con * exp
+ | attrs of exp option * (con * exp) list
+ | attr of attr
  | attrv of exp
 
  | query of exp
@@ -1266,13 +1268,18 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
 
 tag    : tagHead attrs                  (let
                                              val pos = s (tagHeadleft, attrsright)
+
+                                             val e = (EVar (["Basis"], "tag", Infer), pos)
+                                             val eo = case #1 attrs of
+                                                          NONE => (EVar (["Basis"], "None", Infer), pos)
+                                                        | SOME e => (EApp ((EVar (["Basis"], "Some", Infer), pos),
+                                                                           e), pos)
+                                             val e = (EApp (e, eo), pos)
+                                             val e = (EApp (e, (ERecord (#2 attrs), pos)), pos)
+                                             val e = (EApp (e, (EApp (#2 tagHead,
+                                                                      (ERecord [], pos)), pos)), pos)
                                          in
-                                             (#1 tagHead,
-                                              (EApp ((EApp ((EVar (["Basis"], "tag", Infer), pos),
-                                                            (ERecord attrs, pos)), pos),
-                                                     (EApp (#2 tagHead,
-                                                            (ERecord [], pos)), pos)),
-                                               pos))
+                                             (#1 tagHead, e)
                                          end)
 
 tagHead: BEGIN_TAG                      (let
@@ -1284,22 +1291,36 @@ tagHead: BEGIN_TAG                      (let
                                          end)
        | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
-attrs  :                                ([])
-       | attr attrs                     (attr :: attrs)
+attrs  :                                (NONE, [])
+       | attr attrs                     (let
+                                             val loc = s (attrleft, attrsright)
+                                         in
+                                             case attr of
+                                                 Class e =>
+                                                 (case #1 attrs of
+                                                      NONE => ()
+                                                    | SOME _ => ErrorMsg.errorAt loc "Multiple classes specified for tag";
+                                                  (SOME e, #2 attrs))
+                                               | Normal xe =>
+                                                 (#1 attrs, xe :: #2 attrs)
+                                         end)
 
-attr   : SYMBOL EQ attrv                ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)),
-                                         if (SYMBOL = "href" orelse SYMBOL = "src")
-                                            andalso (case #1 attrv of
-                                                         EPrim _ => true
-                                                       | _ => false) then
-                                             let
-                                                 val loc = s (attrvleft, attrvright)
-                                             in
-                                                 (EApp ((EVar (["Basis"], "bless", Infer), loc),
-                                                        attrv), loc)
-                                             end
+attr   : SYMBOL EQ attrv                (if SYMBOL = "class" then
+                                             Class attrv
                                          else
-                                             attrv)
+                                             Normal ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)),
+                                                     if (SYMBOL = "href" orelse SYMBOL = "src")
+                                                        andalso (case #1 attrv of
+                                                                     EPrim _ => true
+                                                                   | _ => false) then
+                                                         let
+                                                             val loc = s (attrvleft, attrvright)
+                                                         in
+                                                             (EApp ((EVar (["Basis"], "bless", Infer), loc),
+                                                                    attrv), loc)
+                                                         end
+                                                     else
+                                                         attrv))
                 
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))

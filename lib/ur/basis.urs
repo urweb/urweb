@@ -405,11 +405,9 @@ val nextval : sql_sequence -> transaction int
 
 (** XML *)
 
-con css_class :: {Unit} -> Type
-(* The argument lists categories of properties that this class could set usefully. *)
+type css_class
 
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
-
 
 con xml :: {Unit} -> {Type} -> {Type} -> Type
 val cdata : ctx ::: {Unit} -> use ::: {Type} -> string -> xml ctx use []
@@ -420,7 +418,8 @@ val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type}
           -> [attrsGiven ~ attrsAbsent] =>
              [useOuter ~ useInner] =>
              [bindOuter ~ bindInner] =>
-           $attrsGiven
+           option css_class
+           -> $attrsGiven
            -> tag (attrsGiven ++ attrsAbsent)
                   ctxOuter ctxInner useOuter bindOuter
            -> xml ctxInner useInner bindInner

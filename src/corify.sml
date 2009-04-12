@@ -1005,7 +1005,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
       | L.DStyle (_, x, n) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = doRestify (mods, x)
+            val s = relify (doRestify (mods, x))
         in
             ([(L'.DStyle (x, n, s), loc)], st)
         end
