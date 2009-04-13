@@ -104,7 +104,7 @@ tree.urp
         <li> SQL field names <tt>id</tt> (for primary keys) and <tt>parent</tt> (for parent links)</li>
         <li> A type-level record <tt>cols</tt> of field names besides <tt>id</tt> and <tt>parent</tt></li>
         <li> "Proofs" that <tt>id</tt> is distinct from <tt>parent</tt> and that neither of <tt>id</tt> and <tt>parent</tt> appears in <tt>cols</tt></li>
-        <li> Witnesses that both <tt>key</tt> and <tt>option key</tt> belong to the type class <tt>sql_injectable</tt>, which indicates that they are fair game to use with SQL</li>
+        <li> A witness that <tt>key</tt> belongs to the type class <tt>sql_injectable_prim</tt>, which indicates that both <tt>key</tt> and <tt>option key</tt> are fair game to use with SQL</li>
         <li> An SQL table <tt>tab</tt>, containing a field <tt>id</tt> of type <tt>key</tt>, a field <tt>parent</tt> of type <tt>option key</tt>, and every field of <tt>cols</tt></li>
 </ol>
 

@@ -6,8 +6,7 @@ functor Make(M : sig
                  constraint [id] ~ [parent]
                  constraint [id, parent] ~ cols
 
-                 val key_inj : sql_injectable key
-                 val option_key_inj : sql_injectable (option key)
+                 val key_inj : sql_injectable_prim key
 
                  table tab : ([id = key, parent = option key] ++ cols)
              end) : sig
