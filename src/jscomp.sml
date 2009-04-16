@@ -53,7 +53,11 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "strcat"), "cat"),
              (("Basis", "intToString"), "ts"),
              (("Basis", "floatToString"), "ts"),
-             (("Basis", "onError"), "onError")]
+             (("Basis", "onError"), "onError"),
+             (("Basis", "onFail"), "onFail"),
+             (("Basis", "onConnectFail"), "onConnectFail"),
+             (("Basis", "onDisconnect"), "onDisconnect"),
+             (("Basis", "onServerError"), "onServerError")]
 
 structure FM = BinaryMapFn(struct
                            type ord_key = string * string
@@ -764,6 +768,11 @@ fun process file =
                             end
                           | EBinop (s, e1, e2) =>
                             let
+                                val s =
+                                    case s of
+                                        "!strcmp" => "=="
+                                      | _ => s
+
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in

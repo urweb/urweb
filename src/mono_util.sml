@@ -325,15 +325,19 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                 fn t' =>
                                    (EUnurlify (e', t'), loc)))
               | EJavaScript (m, e, NONE) =>
-                S.map2 (mfe ctx e,
-                     fn e' =>
-                        (EJavaScript (m, e', NONE), loc))
+                S.bind2 (mfmode ctx m,
+                         fn m' =>
+                            S.map2 (mfe ctx e,
+                                 fn e' =>
+                                    (EJavaScript (m', e', NONE), loc)))
               | EJavaScript (m, e, SOME e2) =>
-                S.bind2 (mfe ctx e,
-                     fn e' =>
-                        S.map2 (mfe ctx e2,
-                             fn e2' =>
-                                (EJavaScript (m, e', SOME e2'), loc)))
+                S.bind2 (mfmode ctx m,
+                         fn m' =>
+                            S.bind2 (mfe ctx e,
+                                  fn e' =>
+                                     S.map2 (mfe ctx e2,
+                                          fn e2' =>
+                                             (EJavaScript (m, e', SOME e2'), loc))))
 
               | ESignalReturn e =>
                 S.map2 (mfe ctx e,
@@ -372,6 +376,14 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                          S.map2 (mfe ctx ek,
                                fn ek' =>
                                   (ESleep (s', ek'), loc)))
+
+        and mfmode ctx mode =
+            case mode of
+                Attribute => S.return2 mode
+              | Script => S.return2 mode
+              | Source t =>
+                S.map2 (mft t,
+                     fn t' => Source t')
     in
         mfe
     end

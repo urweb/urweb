@@ -26,11 +26,14 @@ fun main () =
             receiverB ()
 
         fun sender s n f =
-            sleep 9;
+            sleep 2000;
             writeBack (s, n, f);
             sender (s ^ "!") (n + 1) (f + 1.23)
     in
-        return <xml><body onload={spawn (receiverA ()); spawn (receiverB ()); sender "" 0 0.0}>
+        return <xml><body onload={onDisconnect (alert "Server booted me");
+                                  onConnectFail (alert "Connection failed");
+                                  onServerError (fn s => alert ("Server error: " ^ s));
+                                  spawn (receiverA ()); spawn (receiverB ()); sender "" 0 0.0}>
           <dyn signal={Buffer.render buf}/>
         </body></xml>
     end
