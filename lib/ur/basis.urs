@@ -553,6 +553,7 @@ val td : other ::: {Unit} -> [other ~ [Body, Tr]] =>
 val error : t ::: Type -> xbody -> t
 
 val onError : (xbody -> transaction unit) -> transaction unit
+val onFail : (string -> transaction unit) -> transaction unit
 (* Client-side only *)
 
 val show_xml : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> show (xml ctx use bind)
