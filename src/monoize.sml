@@ -2725,7 +2725,8 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
-                      [(L'.DVal (x, n, t', e, s), loc)])
+                      [(L'.DCookie s, loc),
+                       (L'.DVal (x, n, t', e, s), loc)])
             end
           | L.DStyle (x, n, s) =>
             let

@@ -259,6 +259,7 @@ fun prepDecl (d as (_, loc), sns) =
       | DDatabase _ => (d, sns)
       | DPreparedStatements _ => (d, sns)
       | DJavaScript _ => (d, sns)
+      | DCookie _ => (d, sns)
       | DStyle _ => (d, sns)
 
 fun prepare (ds, ps) =

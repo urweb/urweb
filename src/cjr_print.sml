@@ -2146,6 +2146,13 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DJavaScript s => box [string "static char jslib[] = \"",
                               string (String.toString s),
                               string "\";"]
+      | DCookie s => box [string "/*",
+                          space,
+                          string "cookie",
+                          space,
+                          string s,
+                          space,
+                          string "*/"]
       | DStyle s => box [string "/*",
                          space,
                          string "style",

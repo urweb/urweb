@@ -474,6 +474,7 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
               | DSequence _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll
               | DJavaScript _ => S.return2 dAll
+              | DCookie _ => S.return2 dAll
               | DStyle _ => S.return2 dAll
 
         and mfvi ctx (x, n, t, e, s) =
@@ -556,6 +557,7 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DSequence _ => ctx
                                       | DDatabase _ => ctx
                                       | DJavaScript _ => ctx
+                                      | DCookie _ => ctx
                                       | DStyle _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
@@ -606,6 +608,7 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DSequence _ => count
                           | DDatabase _ => count
                           | DJavaScript _ => count
+                          | DCookie _ => count
                           | DStyle _ => count) 0
 
 end

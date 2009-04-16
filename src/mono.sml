@@ -127,6 +127,7 @@ datatype decl' =
 
        | DJavaScript of string
 
+       | DCookie of string
        | DStyle of string
 
 

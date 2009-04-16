@@ -36,21 +36,35 @@ structure SS = BinarySetFn(struct
                            val compare = String.compare
                            end)
 
-fun checkDecl ((d, loc), (funcs, rels)) =
+fun checkDecl ((d, loc), (funcs, rels, cookies, styles)) =
     let
         fun doFunc s =
             (if SS.member (funcs, s) then
                  E.errorAt loc ("Duplicate function path " ^ s)
              else
                  ();
-             (SS.add (funcs, s), rels))
+             (SS.add (funcs, s), rels, cookies, styles))
 
         fun doRel s =
             (if SS.member (rels, s) then
                  E.errorAt loc ("Duplicate table/sequence path " ^ s)
              else
                  ();
-             (funcs, SS.add (rels, s)))
+             (funcs, SS.add (rels, s), cookies, styles))
+
+        fun doCookie s =
+            (if SS.member (cookies, s) then
+                 E.errorAt loc ("Duplicate cookie path " ^ s)
+             else
+                 ();
+             (funcs, rels, SS.add (cookies, s), styles))
+
+        fun doStyle s =
+            (if SS.member (styles, s) then
+                 E.errorAt loc ("Duplicate style path " ^ s)
+             else
+                 ();
+             (funcs, rels, cookies, SS.add (styles, s)))
     in
         case d of
             DExport (_, s, _, _, _) => doFunc s
@@ -86,13 +100,16 @@ fun checkDecl ((d, loc), (funcs, rels)) =
                                    SS.add (rels, s')
                                end
             in
-                (funcs, constraints (ce, rels))
+                (funcs, constraints (ce, rels), cookies, styles)
             end
           | DSequence s => doRel s
 
-          | _ => (funcs, rels)
+          | DCookie s => doCookie s
+          | DStyle s => doStyle s
+
+          | _ => (funcs, rels, cookies, styles)
     end
 
-fun check ds = ignore (foldl checkDecl (SS.empty, SS.empty) ds)
+fun check ds = ignore (foldl checkDecl (SS.empty, SS.empty, SS.empty, SS.empty) ds)
 
 end

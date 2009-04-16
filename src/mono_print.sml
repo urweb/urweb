@@ -440,6 +440,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                               string s,
                               string ")"]
 
+      | DCookie s => box [string "cookie",
+                          space,
+                          string s]
       | DStyle s => box [string "style",
                          space,
                          string s]

@@ -59,6 +59,7 @@ fun shake file =
                                    | ((DSequence _, _), acc) => acc
                                    | ((DDatabase _, _), acc) => acc
                                    | ((DJavaScript _, _), acc) => acc
+                                   | ((DCookie _, _), acc) => acc
                                    | ((DStyle _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
@@ -117,6 +118,7 @@ fun shake file =
                       | (DSequence _, _) => true
                       | (DDatabase _, _) => true
                       | (DJavaScript _, _) => true
+                      | (DCookie _, _) => true
                       | (DStyle _, _) => true) file
     end
 

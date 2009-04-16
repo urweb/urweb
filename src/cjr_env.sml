@@ -167,6 +167,7 @@ fun declBinds env (d, loc) =
       | DDatabase _ => env
       | DPreparedStatements _ => env
       | DJavaScript _ => env
+      | DCookie _ => env
       | DStyle _ => env
 
 end
