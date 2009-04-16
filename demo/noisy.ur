@@ -25,7 +25,7 @@ fun check ls =
                  | Some a => a);
         check ls'
 
-fun main () =
+fun action () =
     idAdd <- source "";
     aAdd <- source "";
 
@@ -41,3 +41,7 @@ fun main () =
       <button value="Delete" onclick={id <- get idDel; del (readError id)}/>
       <ctextbox source={idDel}/>
     </body></xml>
+
+fun main () = return <xml><body>
+  <form><submit value="Begin demo" action={action}/></form>
+</body></xml>

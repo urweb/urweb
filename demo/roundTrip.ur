@@ -6,7 +6,7 @@ fun writeBack v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Client = {[me]});
     send r.Channels.Channel v
 
-fun main () =
+fun action () =
     me <- self;
     ch <- channel;
     dml (INSERT INTO channels (Client, Channel) VALUES ({[me]}, {[ch]}));
@@ -28,3 +28,7 @@ fun main () =
           <dyn signal={Buffer.render buf}/>
         </body></xml>
     end
+
+fun main () = return <xml><body>
+  <form><submit value="Begin demo" action={action}/></form>
+</body></xml>
