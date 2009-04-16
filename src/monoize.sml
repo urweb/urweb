@@ -900,6 +900,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EFfi ("Basis", "boolToString"), loc), fm)
           | L.EFfi ("Basis", "show_time") =>
             ((L'.EFfi ("Basis", "timeToString"), loc), fm)
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "show_xml"), _), _),_), _), _), _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
+            end
           | L.ECApp ((L.EFfi ("Basis", "mkShow"), _), t) =>
             let
                 val t = monoType env t
