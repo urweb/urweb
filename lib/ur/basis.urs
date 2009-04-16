@@ -452,11 +452,15 @@ con form = [Body, Form]
 con tabl = [Body, Table]
 con tr = [Body, Tr]
 
+type url
+val bless : string -> url
+
 val dyn : use ::: {Type} -> bind ::: {Type} -> unit
           -> tag [Signal = signal (xml body use bind)] body [] use bind
 
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
+val link : unit -> tag [Rel = string, Typ = string, Href = url, Media = string] head [] [] []
 
 val body : unit -> tag [Onload = transaction unit] html body [] []
 con bodyTag = fn (attrs :: {Type}) =>
@@ -489,8 +493,6 @@ val ul : bodyTag []
 
 val hr : bodyTag []
 
-type url
-val bless : string -> url
 val a : bodyTag [Link = transaction page, Href = url, Onclick = transaction unit]
 
 val img : bodyTag [Src = url]

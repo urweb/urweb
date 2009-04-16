@@ -1308,19 +1308,26 @@ attrs  :                                (NONE, [])
 attr   : SYMBOL EQ attrv                (if SYMBOL = "class" then
                                              Class attrv
                                          else
-                                             Normal ((CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright)),
-                                                     if (SYMBOL = "href" orelse SYMBOL = "src")
-                                                        andalso (case #1 attrv of
-                                                                     EPrim _ => true
-                                                                   | _ => false) then
-                                                         let
-                                                             val loc = s (attrvleft, attrvright)
-                                                         in
-                                                             (EApp ((EVar (["Basis"], "bless", Infer), loc),
-                                                                    attrv), loc)
-                                                         end
-                                                     else
-                                                         attrv))
+                                             let
+                                                 val sym =
+                                                     case SYMBOL of
+                                                         "type" => "Typ"
+                                                       | x => capitalize x
+                                             in
+                                                 Normal ((CName sym, s (SYMBOLleft, SYMBOLright)),
+                                                         if (sym = "Href" orelse sym = "Src")
+                                                            andalso (case #1 attrv of
+                                                                         EPrim _ => true
+                                                                       | _ => false) then
+                                                             let
+                                                                 val loc = s (attrvleft, attrvright)
+                                                             in
+                                                                 (EApp ((EVar (["Basis"], "bless", Infer), loc),
+                                                                        attrv), loc)
+                                                             end
+                                                         else
+                                                             attrv)
+                                             end)
                 
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))

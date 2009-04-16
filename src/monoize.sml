@@ -2168,6 +2168,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                 | "Action" => urlifyExp
                                                 | _ => attrifyExp
 
+                                          val x =
+                                              case x of
+                                                  "Typ" => "Type"
+                                                | _ => x
                                           val xp = " " ^ lowercaseFirst x ^ "=\""
 
                                           val (e, fm) = fooify env fm (e, t)
