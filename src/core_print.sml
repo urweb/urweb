@@ -470,8 +470,8 @@ fun p_vali env (x, n, t, e, s) =
 fun p_export_kind ck =
     case ck of
         Link => string "link"
-      | Action => string "action"
-      | Rpc => string "rpc"
+      | Action _ => string "action"
+      | Rpc _ => string "rpc"
 
 fun p_datatype env (x, n, xs, cons) =
     let

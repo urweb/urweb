@@ -81,10 +81,7 @@ datatype con' =
 
 withtype con = con' located
 
-datatype datatype_kind =
-         Enum
-       | Option
-       | Default
+datatype datatype_kind = datatype DatatypeKind.datatype_kind
 
 datatype patCon =
          PConVar of int

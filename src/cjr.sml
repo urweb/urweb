@@ -29,7 +29,7 @@ structure Cjr = struct
 
 type 'a located = 'a ErrorMsg.located
 
-datatype datatype_kind = datatype Mono.datatype_kind
+datatype datatype_kind = datatype DatatypeKind.datatype_kind
 
 datatype typ' =
          TFun of typ * typ
@@ -120,6 +120,9 @@ datatype sidedness =
        | ServerAndPull
        | ServerAndPullAndPush
 
-type file = decl list * (Core.export_kind * string * int * typ list * typ * sidedness) list
+datatype effect = datatype Export.effect
+datatype export_kind = datatype Export.export_kind
+
+type file = decl list * (export_kind * string * int * typ list * typ * sidedness) list
 
 end

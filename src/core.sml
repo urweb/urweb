@@ -70,7 +70,7 @@ datatype con' =
 
 withtype con = con' located
 
-datatype datatype_kind = datatype Elab.datatype_kind
+datatype datatype_kind = datatype DatatypeKind.datatype_kind
 
 datatype patCon =
          PConVar of int
@@ -119,10 +119,8 @@ datatype exp' =
 
 withtype exp = exp' located
 
-datatype export_kind =
-         Link
-       | Action
-       | Rpc
+datatype effect = datatype Export.effect
+datatype export_kind = datatype Export.export_kind
 
 datatype decl' =
          DCon of string * int * kind * con

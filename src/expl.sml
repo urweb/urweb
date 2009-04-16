@@ -70,7 +70,7 @@ datatype con' =
 
 withtype con = con' located
 
-datatype datatype_kind = datatype Elab.datatype_kind
+datatype datatype_kind = datatype DatatypeKind.datatype_kind
 
 datatype patCon =
          PConVar of int

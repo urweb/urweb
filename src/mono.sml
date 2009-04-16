@@ -29,7 +29,7 @@ structure Mono = struct
 
 type 'a located = 'a ErrorMsg.located
 
-datatype datatype_kind = datatype Core.datatype_kind
+datatype datatype_kind = datatype DatatypeKind.datatype_kind
 
 datatype typ' =
          TFun of typ * typ
@@ -115,11 +115,14 @@ datatype exp' =
 
 withtype exp = exp' located
 
+datatype effect = datatype Export.effect
+datatype export_kind = datatype Export.export_kind
+
 datatype decl' =
          DDatatype of string * int * (string * int * typ option) list
        | DVal of string * int * typ * exp * string
        | DValRec of (string * int * typ * exp * string) list
-       | DExport of Core.export_kind * string * int * typ list * typ
+       | DExport of export_kind * string * int * typ list * typ
 
        | DTable of string * (string * typ) list * exp * exp
        | DSequence of string
@@ -129,7 +132,6 @@ datatype decl' =
 
        | DCookie of string
        | DStyle of string
-
 
 withtype decl = decl' located
 

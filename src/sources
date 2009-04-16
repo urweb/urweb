@@ -19,6 +19,9 @@ print.sml
 prim.sig
 prim.sml
 
+datatype_kind.sml
+export.sml
+
 source.sml
 
 urweb.grm
