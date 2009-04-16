@@ -1981,3 +1981,25 @@ failure_kind uw_initialize(uw_context ctx) {
 uw_Basis_string uw_Basis_bless(uw_context ctx, uw_Basis_string s) {
   return s;
 }
+
+uw_Basis_string uw_unnull(uw_Basis_string s) {
+  return s ? s : "";
+}
+
+extern int uw_hash_blocksize;
+
+uw_Basis_string uw_Basis_makeSigString(uw_context ctx, uw_Basis_string sig) {
+  uw_Basis_string r = uw_malloc(ctx, 2 * uw_hash_blocksize + 1);
+  int i;
+  
+  for (i = 0; i < uw_hash_blocksize; ++i)
+    sprintf(&r[2*i], "%.02X", ((unsigned char *)sig)[i]);
+
+  return r;
+}
+
+extern uw_Basis_string uw_cookie_sig(uw_context);
+
+uw_Basis_string uw_Basis_sigString(uw_context ctx, uw_unit u) {
+  return uw_cookie_sig(ctx);
+}

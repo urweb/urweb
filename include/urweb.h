@@ -152,3 +152,7 @@ uw_unit uw_Basis_send(uw_context, uw_Basis_channel, uw_Basis_string);
 uw_Basis_client uw_Basis_self(uw_context, uw_unit);
 
 uw_Basis_string uw_Basis_bless(uw_context, uw_Basis_string);
+
+uw_Basis_string uw_unnull(uw_Basis_string);
+uw_Basis_string uw_Basis_makeSigString(uw_context, uw_Basis_string);
+uw_Basis_string uw_Basis_sigString(uw_context, uw_unit);

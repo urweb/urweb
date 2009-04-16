@@ -2399,7 +2399,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EApp ((L.ECApp (
                      (L.ECApp ((L.EFfi ("Basis", "form"), _), _), _),
-                     _), _),
+                     (L.CRecord (_, fields), _)), _),
                     xml) =>
             let
                 fun findSubmit (e, _) =
@@ -2468,7 +2468,38 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          fm)
                     end
                 
+                fun inFields s = List.exists (fn ((L.CName s', _), _) => s' = s
+                                               | _ => true) fields
+
+                fun getSigName () =
+                    let
+                        fun getSigName' n =
+                            let
+                                val s = "Sig" ^ Int.toString n
+                            in
+                                if inFields s then
+                                    getSigName' (n + 1)
+                                else
+                                    s
+                            end
+                    in
+                        if inFields "Sig" then
+                            getSigName' 0
+                        else
+                            "Sig"
+                    end
+
+                val sigName = getSigName ()
+                val sigSet = (L'.EFfiApp ("Basis", "sigString", [(L'.ERecord [], loc)]), loc)
+                val sigSet = (L'.EStrcat ((L'.EPrim (Prim.String ("<input type=\"hidden\" name=\""
+                                                                  ^ sigName
+                                                                  ^ "\" value=\"")), loc),
+                                          sigSet), loc)
+                val sigSet = (L'.EStrcat (sigSet,
+                                          (L'.EPrim (Prim.String "\">"), loc)), loc)
+
                 val (xml, fm) = monoExp (env, st, fm) xml
+                val xml = (L'.EStrcat (sigSet, xml), loc)
             in
                 ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form method=\"post\""), loc),
                                            (L'.EStrcat (action,

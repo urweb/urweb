@@ -611,7 +611,7 @@ fun compileC {cname, oname, ename, libs, profile} =
         val driver_o = clibFile "driver.o"
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wstrict-prototypes -Werror -O3 -I include -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -Werror -O3 -lm -pthread " ^ libs ^ " " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
+        val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ libs ^ " " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
 
         val (compile, link) =
             if profile then
