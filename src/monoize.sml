@@ -2426,7 +2426,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | L.EApp (
                         (L.EApp (
                          (L.EApp (
-                          (L.ECApp (
+                          (L.EApp (
                            (L.ECApp (
                             (L.ECApp (
                              (L.ECApp (
@@ -2434,8 +2434,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                (L.ECApp (
                                 (L.ECApp (
                                  (L.ECApp (
-                                  (L.EFfi ("Basis", "tag"),
-                                   _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                                  (L.ECApp (
+                                   (L.EFfi ("Basis", "tag"),
+                                    _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                           _), _),
                           attrs), _),
                          _), _),
                         xml) =>
@@ -2468,7 +2470,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 
                 val (xml, fm) = monoExp (env, st, fm) xml
             in
-                ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form"), loc),
+                ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form method=\"post\""), loc),
                                            (L'.EStrcat (action,
                                                         (L'.EPrim (Prim.String ">"), loc)), loc)), loc),
                               (L'.EStrcat (xml,

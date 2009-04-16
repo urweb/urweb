@@ -107,7 +107,7 @@ static void *worker(void *data) {
   uw_context ctx = new_context();
 
   while (1) {
-    char buf[uw_bufsize+1], *back = buf, *s;
+    char buf[uw_bufsize+1], *back = buf, *s, *post;
     int sock, dont_close = 0;
 
     pthread_mutex_lock(&queue_mutex);
@@ -132,16 +132,18 @@ static void *worker(void *data) {
         break;
       }
 
-      printf("Received %d bytes.\n", r);
+      //printf("Received %d bytes.\n", r);
 
       back += r;
       *back = 0;
-    
+
       if (s = strstr(buf, "\r\n\r\n")) {
         failure_kind fk;
-        char *cmd, *path, *headers, path_copy[uw_bufsize+1], *inputs;
+        int is_post = 0;
+        char *cmd, *path, *headers, path_copy[uw_bufsize+1], *inputs, *after_headers;
 
         s[2] = 0;
+        after_headers = s + 4;
 
         if (!(s = strstr(buf, "\r\n"))) {
           fprintf(stderr, "No newline in buf\n");
@@ -159,8 +161,40 @@ static void *worker(void *data) {
           break;
         }
 
-        if (strcmp(cmd, "GET")) {
-          fprintf(stderr, "Not ready for non-get command: %s\n", cmd);
+        uw_set_headers(ctx, headers);
+
+        if (!strcmp(cmd, "POST")) {
+          char *clen_s = uw_Basis_requestHeader(ctx, "Content-length");
+          if (!clen_s) {
+            printf("No Content-length with POST\n");
+            goto done;
+          }
+          int clen = atoi(clen_s);
+          if (clen < 0) {
+            printf("Negative Content-length with POST\n");
+            goto done;
+          }
+
+          while (back - after_headers < clen) {
+            r = recv(sock, back, uw_bufsize - (back - buf), 0);
+
+            if (r < 0) {
+              fprintf(stderr, "Recv failed\n");
+              goto done;
+            }
+
+            if (r == 0) {
+              printf("Connection closed.\n");
+              goto done;
+            }
+
+            back += r;
+            *back = 0;      
+          }
+
+          is_post = 1;
+        } else if (strcmp(cmd, "GET")) {
+          fprintf(stderr, "Not ready for non-GET/POST command: %s\n", cmd);
           break;
         }
 
@@ -169,8 +203,6 @@ static void *worker(void *data) {
           fprintf(stderr, "No second space in HTTP command\n");
           break;
         }
-
-        uw_set_headers(ctx, headers);
 
         if (!strcmp(path, "/.msgs")) {
           char *id = uw_Basis_requestHeader(ctx, "UrWeb-Client");
@@ -188,9 +220,12 @@ static void *worker(void *data) {
           break;
         }
 
-        if (inputs = strchr(path, '?')) {
-          char *name, *value;
+        if (is_post)
+          inputs = after_headers;
+        else if (inputs = strchr(path, '?'))
           *inputs++ = 0;
+        if (inputs) {
+          char *name, *value;
 
           while (*inputs) {
             name = inputs;
@@ -280,6 +315,7 @@ static void *worker(void *data) {
       }
     }
 
+  done:
     if (!dont_close)
       close(sock);
     uw_reset(ctx);
