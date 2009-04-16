@@ -505,12 +505,19 @@ val marshalcheck = {
 
 val toMarshalcheck = transform marshalcheck "marshalcheck" o toShake3
 
+val effectize = {
+    func = Effective.effectize,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toEffectize = transform effectize "effectize" o toMarshalcheck
+
 val monoize = {
     func = Monoize.monoize CoreEnv.empty,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMonoize = transform monoize "monoize" o toMarshalcheck
+val toMonoize = transform monoize "monoize" o toEffectize
 
 val mono_opt = {
     func = MonoOpt.optimize,

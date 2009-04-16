@@ -467,12 +467,6 @@ fun p_vali env (x, n, t, e, s) =
              p_exp env e]
     end
 
-fun p_export_kind ck =
-    case ck of
-        Link => string "link"
-      | Action _ => string "action"
-      | Rpc _ => string "rpc"
-
 fun p_datatype env (x, n, xs, cons) =
     let
         val k = (KType, ErrorMsg.dummySpan)
@@ -538,7 +532,7 @@ fun p_decl env (dAll as (d, _) : decl) =
         end
       | DExport (ek, n) => box [string "export",
                                 space,
-                                p_export_kind ek,
+                                Export.p_export_kind ek,
                                 space,
                                 p_enamed env n,
                                 space,

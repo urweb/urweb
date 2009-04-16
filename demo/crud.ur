@@ -167,7 +167,7 @@ functor Make(M : sig
             return <xml><body>
               <p>Are you sure you want to delete ID #{[id]}?</p>
               
-              <p><a link={delete ()}>I was born sure!</a></p>
+              <form><submit action={delete} value="I was born sure!"/></form>
             </body></xml>
         end    
 

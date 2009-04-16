@@ -6,7 +6,7 @@ structure SR = RefFun.Make(struct
                                type data = string
                            end)
 
-fun main () =
+fun mutate () =
     ir <- IR.new 3;
     ir' <- IR.new 7;
     sr <- SR.new "hi";
@@ -24,3 +24,7 @@ fun main () =
     return <xml><body>
       {[iv]}, {[iv']}, {[sv]}
     </body></xml>
+
+fun main () = return <xml><body>
+  <form><submit action={mutate} value="Do some pointless stuff"/></form>
+</body></xml>

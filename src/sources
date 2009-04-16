@@ -20,6 +20,8 @@ prim.sig
 prim.sml
 
 datatype_kind.sml
+
+export.sig
 export.sml
 
 source.sml
@@ -113,6 +115,9 @@ rpcify.sml
 
 tag.sig
 tag.sml
+
+effectize.sig
+effectize.sml
 
 marshalcheck.sig
 marshalcheck.sml

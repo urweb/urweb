@@ -387,7 +387,7 @@ fun p_decl env (dAll as (d, _) : decl) =
 
       | DExport (ek, s, n, ts, t) => box [string "export",
                                           space,
-                                          CorePrint.p_export_kind ek,
+                                          Export.p_export_kind ek,
                                           space,
                                           p_enamed env n,
                                           space,

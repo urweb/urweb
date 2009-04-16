@@ -25,29 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Export = struct
+signature EFFECTIZE = sig
 
-open Print.PD
-open Print
-
-datatype effect =
-         ReadOnly
-       | ReadWrite
-
-datatype export_kind =
-         Link
-       | Action of effect
-       | Rpc of effect
-
-fun p_effect ef =
-    case ef of
-        ReadOnly => string "r"
-      | ReadWrite => string "rw"
-
-fun p_export_kind ck =
-    case ck of
-        Link => string "link"
-      | Action ef => box [string "action(", p_effect ef, string ")"]
-      | Rpc ef => box [string "rpc(", p_effect ef, string ")"]
+    val effectize : Core.file -> Core.file
 
 end

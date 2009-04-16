@@ -34,7 +34,6 @@ signature CORE_PRINT = sig
     val p_exp : CoreEnv.env -> Core.exp Print.printer
     val p_decl : CoreEnv.env -> Core.decl Print.printer
     val p_file : CoreEnv.env -> Core.file Print.printer
-    val p_export_kind : Core.export_kind Print.printer
 
     val debug : bool ref
 end

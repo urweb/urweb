@@ -25,10 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Export = struct
-
-open Print.PD
-open Print
+signature EXPORT = sig
 
 datatype effect =
          ReadOnly
@@ -39,15 +36,7 @@ datatype export_kind =
        | Action of effect
        | Rpc of effect
 
-fun p_effect ef =
-    case ef of
-        ReadOnly => string "r"
-      | ReadWrite => string "rw"
-
-fun p_export_kind ck =
-    case ck of
-        Link => string "link"
-      | Action ef => box [string "action(", p_effect ef, string ")"]
-      | Rpc ef => box [string "rpc(", p_effect ef, string ")"]
+val p_effect : effect Print.printer
+val p_export_kind : export_kind Print.printer
 
 end

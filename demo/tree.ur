@@ -8,7 +8,7 @@ open TreeFun.Make(struct
                   end)
 
 fun row r = <xml>
-  #{[r.Id]}: {[r.Nam]} <a link={del r.Id}>[Delete]</a>
+  #{[r.Id]}: {[r.Nam]} <form><submit action={del r.Id} value="Delete"/></form>
 
   <form>
     Add child: <textbox{#Nam}/> <submit action={add (Some r.Id)}/>
@@ -30,6 +30,6 @@ and add parent r =
     dml (INSERT INTO t (Id, Parent, Nam) VALUES ({[id]}, {[parent]}, {[r.Nam]}));
     main ()
 
-and del id =
+and del id () =
     dml (DELETE FROM t WHERE Id = {[id]});
     main ()

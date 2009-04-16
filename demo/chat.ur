@@ -6,7 +6,7 @@ sequence s
 table t : { Id : int, Title : string, Room : Room.topic }
   PRIMARY KEY Id
 
-fun chat id =
+fun chat id () =
     r <- oneRow (SELECT t.Title, t.Room FROM t WHERE t.Id = {[id]});
     ch <- Room.subscribe r.T.Room;
 
@@ -55,12 +55,13 @@ fun list () =
         count <- Room.subscribers r.T.Room;
         return <xml><tr>
           <td>{[r.T.Id]}</td>
-          <td><a link={chat r.T.Id}>{[r.T.Title]}</a></td>
+          <td>{[r.T.Title]}</td>
           <td>{[count]}</td>
-          <td><a link={delete r.T.Id}>[delete]</a></td>
+          <td><form><submit action={chat r.T.Id} value="Enter"/></form></td>
+          <td><form><submit action={delete r.T.Id} value="Delete"/></form></td>
         </tr></xml>)
 
-and delete id =
+and delete id () =
     dml (DELETE FROM t WHERE Id = {[id]});
     main ()
 

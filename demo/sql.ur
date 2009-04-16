@@ -5,7 +5,7 @@ fun list () =
     rows <- queryX (SELECT * FROM t)
             (fn row => <xml><tr>
               <td>{[row.T.A]}</td> <td>{[row.T.B]}</td> <td>{[row.T.C]}</td> <td>{[row.T.D]}</td>
-              <td><a link={delete row.T.A}>[delete]</a></td>
+              <td><form><submit action={delete row.T.A} value="Delete"/></form></td>
             </tr></xml>);
     return <xml>
       <table border=1>
@@ -36,7 +36,7 @@ and add r =
       {xml}
     </body></xml>
 
-and delete a =
+and delete a () =
     dml (DELETE FROM t
          WHERE t.A = {[a]});
     xml <- list ();
