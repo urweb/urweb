@@ -550,6 +550,7 @@ val td : other ::: {Unit} -> [other ~ [Body, Tr]] =>
 
 (** Aborting *)
 
-val error : t ::: Type -> xml [Body] [] [] -> t
+val error : t ::: Type -> xbody -> t
 
-
+val onError : (xbody -> transaction unit) -> transaction unit
+(* Client-side only *)

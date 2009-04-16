@@ -52,7 +52,8 @@ val funcs = [(("Basis", "alert"), "alert"),
              (("Basis", "recv"), "rv"),
              (("Basis", "strcat"), "cat"),
              (("Basis", "intToString"), "ts"),
-             (("Basis", "floatToString"), "ts")]
+             (("Basis", "floatToString"), "ts"),
+             (("Basis", "onError"), "onError")]
 
 structure FM = BinaryMapFn(struct
                            type ord_key = string * string
@@ -861,7 +862,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "alert(cat(\"ERROR: \",", e, str "))"],
+                                (strcat [str "er(", e, str ")"],
                                  st)
                             end
 

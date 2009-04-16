@@ -60,13 +60,6 @@ fun classify (ds, ps) =
 
         fun hasClient {basis, words, onload} csids =
             let
-                fun realOnload ss =
-                    case ss of
-                        [] => false
-                      | (EFfiApp ("Basis", "get_settings", _), _) :: ss => realOnload ss
-                      | (EPrim (Prim.String s), _) :: ss => not (String.isPrefix "'" s)
-                      | _ => true
-
                 fun hasClient e =
                     case #1 e of
                         EPrim (Prim.String s) => List.exists (fn n => inString {needle = n, haystack = s}) words
@@ -79,11 +72,10 @@ fun classify (ds, ps) =
                       | ESome (_, e) => hasClient e
                       | EFfi ("Basis", x) => SS.member (basis, x)
                       | EFfi _ => false
-                      | EFfiApp ("Basis", "strcat", all as ((EPrim (Prim.String s1), _) :: ss)) =>
-                        if onload andalso String.isSuffix " onload='" s1 then
-                            realOnload ss orelse List.exists hasClient all
-                        else
-                            List.exists hasClient all
+                      | EFfiApp ("Basis", "maybe_onload",
+                                 [(EFfiApp ("Basis", "strcat", all as [_, (EPrim (Prim.String s), _)]), _)]) =>
+                        List.exists hasClient all
+                        orelse (onload andalso size s > 0)
                       | EFfiApp ("Basis", x, es) => SS.member (basis, x)
                                                     orelse List.exists hasClient es
                       | EFfiApp (_, _, es) => List.exists hasClient es

@@ -61,6 +61,7 @@ fun impure (e, _) =
       | EFfiApp ("Basis", "new_channel", _) => true
       | EFfiApp ("Basis", "subscribe", _) => true
       | EFfiApp ("Basis", "send", _) => true
+      | EFfiApp ("Basis", "onError", _) => true
       | EFfiApp _ => false
       | EApp ((EFfi _, _), _) => false
       | EApp _ => true
@@ -207,6 +208,9 @@ fun match (env, p : pat, e : exp) =
             consider (xps, env)
         end
 
+      | (PNone _, ENone _) => Yes env
+      | (PSome (_, p), ESome (_, e)) => match (env, p, e)
+
       | _ => Maybe
 
 datatype event =
@@ -282,6 +286,7 @@ fun reduce file =
                       | EFfiApp ("Basis", "new_channel", es) => ffi es
                       | EFfiApp ("Basis", "subscribe", es) => ffi es
                       | EFfiApp ("Basis", "send", es) => ffi es
+                      | EFfiApp ("Basis", "onError", es) => ffi es
                       | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
                       | EApp ((EFfi _, _), e) => summarize d e
                       | EApp _ =>
