@@ -2227,14 +2227,17 @@ fun p_file env (ds, ps) =
 
         val fields = foldl (fn ((ek, _, _, ts, _, _), fields) =>
                                case ek of
-                                   Core.Link => fields
-                                 | Core.Rpc _ => fields
-                                 | Core.Action _ =>
+                                   Link => fields
+                                 | Rpc _ => fields
+                                 | Action eff =>
                                    case List.nth (ts, length ts - 2) of
                                        (TRecord i, _) =>
                                        let
                                            val xts = E.lookupStruct env i
-                                           val xts = (sigName xts, (TRecord 0, ErrorMsg.dummySpan)) :: xts
+                                           val xts = case eff of
+                                                         ReadCookieWrite =>
+                                                         (sigName xts, (TRecord 0, ErrorMsg.dummySpan)) :: xts
+                                                       | _ => xts
                                            val xtsSet = SS.addList (SS.empty, map #1 xts)
                                        in
                                            foldl (fn ((x, _), fields) =>
@@ -2424,10 +2427,26 @@ fun p_file env (ds, ps) =
                 fun couldWrite ek =
                     case ek of
                         Link => false
-                      | Action ef => ef = ReadWrite
-                      | Rpc ef => ef = ReadWrite
+                      | Action ef => ef = ReadCookieWrite
+                      | Rpc ef => ef = ReadCookieWrite
             in
-                box [if couldWrite ek then
+                box [string "if (!strncmp(request, \"",
+                     string (String.toString s),
+                     string "\", ",
+                     string (Int.toString (size s)),
+                     string ") && (request[",
+                     string (Int.toString (size s)),
+                     string "] == 0 || request[",
+                     string (Int.toString (size s)),
+                     string "] == '/')) {",
+                     newline,
+                     string "request += ",
+                     string (Int.toString (size s)),
+                     string ";",
+                     newline,
+                     string "if (*request == '/') ++request;",
+                     newline,
+                     if couldWrite ek then
                          box [string "{",
                               newline,
                               string "uw_Basis_string sig = ",
@@ -2450,23 +2469,6 @@ fun p_file env (ds, ps) =
                               newline]
                      else
                          box [],
-                     
-                     string "if (!strncmp(request, \"",
-                     string (String.toString s),
-                     string "\", ",
-                     string (Int.toString (size s)),
-                     string ") && (request[",
-                     string (Int.toString (size s)),
-                     string "] == 0 || request[",
-                     string (Int.toString (size s)),
-                     string "] == '/')) {",
-                     newline,
-                     string "request += ",
-                     string (Int.toString (size s)),
-                     string ";",
-                     newline,
-                     string "if (*request == '/') ++request;",
-                     newline,
                      box (case ek of
                               Core.Rpc _ => [string "uw_write_header(ctx, \"Content-type: text/plain\\r\\n\");",
                                              newline]

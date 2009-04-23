@@ -34,6 +34,7 @@ structure L = Core
 structure L' = Mono
 
 structure IM = IntBinaryMap
+structure IS = IntBinarySet
 
 val urlPrefix = ref "/"
 
@@ -537,6 +538,8 @@ fun strcatComma loc es =
         end
 
 fun strcatR loc e xs = strcatComma loc (map (fn (x, _) => (L'.EField (e, x), loc)) xs)
+
+val readCookie = ref IS.empty
 
 fun monoExp (env, st, fm) (all as (e, loc)) =
     let
@@ -2453,53 +2456,64 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            | _ => findSubmit xml)
                       | _ => NotFound
 
-                val (action, fm) = case findSubmit xml of
-                    NotFound => ((L'.EPrim (Prim.String ""), loc), fm)
+                val (func, action, fm) = case findSubmit xml of
+                    NotFound => (0, (L'.EPrim (Prim.String ""), loc), fm)
                   | Error => raise Fail "Not ready for multi-submit lforms yet"
                   | Found (action, actionT) =>
                     let
+                        val func = case #1 action of
+                                       L.EClosure (n, _) => n
+                                     | _ => raise Fail "Monoize: Action is not a closure"
                         val actionT = monoType env actionT
                         val (action, fm) = monoExp (env, st, fm) action
                         val (action, fm) = urlifyExp env fm (action, actionT)
                     in
-                        ((L'.EStrcat ((L'.EPrim (Prim.String " action=\""), loc),
+                        (func,
+                         (L'.EStrcat ((L'.EPrim (Prim.String " action=\""), loc),
                                       (L'.EStrcat (action,
                                                    (L'.EPrim (Prim.String "\""), loc)), loc)), loc),
                          fm)
                     end
-                
-                fun inFields s = List.exists (fn ((L.CName s', _), _) => s' = s
-                                               | _ => true) fields
-
-                fun getSigName () =
-                    let
-                        fun getSigName' n =
-                            let
-                                val s = "Sig" ^ Int.toString n
-                            in
-                                if inFields s then
-                                    getSigName' (n + 1)
-                                else
-                                    s
-                            end
-                    in
-                        if inFields "Sig" then
-                            getSigName' 0
-                        else
-                            "Sig"
-                    end
-
-                val sigName = getSigName ()
-                val sigSet = (L'.EFfiApp ("Basis", "sigString", [(L'.ERecord [], loc)]), loc)
-                val sigSet = (L'.EStrcat ((L'.EPrim (Prim.String ("<input type=\"hidden\" name=\""
-                                                                  ^ sigName
-                                                                  ^ "\" value=\"")), loc),
-                                          sigSet), loc)
-                val sigSet = (L'.EStrcat (sigSet,
-                                          (L'.EPrim (Prim.String "\">"), loc)), loc)
 
                 val (xml, fm) = monoExp (env, st, fm) xml
-                val xml = (L'.EStrcat (sigSet, xml), loc)
+
+                val xml =
+                    if IS.member (!readCookie, func) then
+                        let
+                            fun inFields s = List.exists (fn ((L.CName s', _), _) => s' = s
+                                                           | _ => true) fields
+
+                            fun getSigName () =
+                                let
+                                    fun getSigName' n =
+                                        let
+                                            val s = "Sig" ^ Int.toString n
+                                        in
+                                            if inFields s then
+                                                getSigName' (n + 1)
+                                            else
+                                                s
+                                        end
+                                in
+                                    if inFields "Sig" then
+                                        getSigName' 0
+                                    else
+                                        "Sig"
+                                end
+
+                            val sigName = getSigName ()
+                            val sigSet = (L'.EFfiApp ("Basis", "sigString", [(L'.ERecord [], loc)]), loc)
+                            val sigSet = (L'.EStrcat ((L'.EPrim (Prim.String ("<input type=\"hidden\" name=\""
+                                                                              ^ sigName
+                                                                              ^ "\" value=\"")), loc),
+                                                      sigSet), loc)
+                            val sigSet = (L'.EStrcat (sigSet,
+                                                      (L'.EPrim (Prim.String "\">"), loc)), loc)
+                        in
+                            (L'.EStrcat (sigSet, xml), loc)
+                        end
+                    else
+                        xml
             in
                 ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form method=\"post\""), loc),
                                            (L'.EStrcat (action,
@@ -2792,6 +2806,15 @@ fun monoize env file =
                 urlPrefix := p ^ "/"
             else
                 ()
+
+        (* Calculate which exported functions need cookie signature protection *)
+        val rcook = foldl (fn ((d, _), rcook) =>
+                              case d of
+                                  L.DExport (L.Action L.ReadCookieWrite, n) => IS.add (rcook, n)
+                                | L.DExport (L.Rpc L.ReadCookieWrite, n) => IS.add (rcook, n)
+                                | _ => rcook)
+                          IS.empty file
+        val () = readCookie := rcook
 
         val loc = E.dummySpan
         val client = (L'.TFfi ("Basis", "client"), loc)

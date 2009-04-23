@@ -25,13 +25,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Export = struct
+structure Export :> EXPORT = struct
 
 open Print.PD
 open Print
 
 datatype effect =
          ReadOnly
+       | ReadCookieWrite
        | ReadWrite
 
 datatype export_kind =
@@ -42,6 +43,7 @@ datatype export_kind =
 fun p_effect ef =
     case ef of
         ReadOnly => string "r"
+      | ReadCookieWrite => string "rcw"
       | ReadWrite => string "rw"
 
 fun p_export_kind ck =

@@ -29,6 +29,7 @@ signature EXPORT = sig
 
 datatype effect =
          ReadOnly
+       | ReadCookieWrite
        | ReadWrite
 
 datatype export_kind =
