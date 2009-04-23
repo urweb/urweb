@@ -62,6 +62,9 @@ datatype javascript_mode =
        | Script
        | Source of typ
 
+datatype effect = datatype Export.effect
+datatype export_kind = datatype Export.export_kind
+
 datatype exp' =
          EPrim of Prim.t
        | ERel of int
@@ -109,14 +112,11 @@ datatype exp' =
        | ESignalBind of exp * exp
        | ESignalSource of exp
 
-       | EServerCall of exp * exp * typ
+       | EServerCall of exp * exp * typ * effect
        | ERecv of exp * exp * typ
        | ESleep of exp * exp
 
 withtype exp = exp' located
-
-datatype effect = datatype Export.effect
-datatype export_kind = datatype Export.export_kind
 
 datatype decl' =
          DDatatype of string * int * (string * int * typ option) list

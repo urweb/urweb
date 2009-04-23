@@ -2668,7 +2668,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                   (L'.ERel 0, loc)), loc),
                                                         (L'.ERecord [], loc)), loc)), loc)), loc)
                 val ek = (L'.EApp (ekf, ek), loc)
-                val e = (L'.EServerCall (call, ek, t), loc)
+                val eff = if IS.member (!readCookie, n) then
+                              L'.ReadCookieWrite
+                          else
+                              L'.ReadOnly
+                val e = (L'.EServerCall (call, ek, t, eff), loc)
                 val e = liftExpInExp 0 e
                 val unit = (L'.TRecord [], loc)
                 val e = (L'.EAbs ("_", unit, unit, e), loc)

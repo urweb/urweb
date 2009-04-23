@@ -2497,6 +2497,13 @@ fun p_file env (ds, ps) =
                                     string (!Monoize.urlPrefix),
                                     string "\");",
                                     newline]),
+                     string "uw_set_needs_sig(ctx, ",
+                     string (if couldWrite ek then
+                                 "1"
+                             else
+                                 "0"),
+                     string ");",
+                     newline,
                      string "uw_login(ctx);",
                      newline,
                      box [string "{",

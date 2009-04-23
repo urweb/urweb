@@ -371,7 +371,7 @@ fun reduce file =
                       | ESignalBind (e1, e2) => summarize d e1 @ summarize d e2
                       | ESignalSource e => summarize d e
 
-                      | EServerCall (e, ek, _) => summarize d e @ summarize d ek @ [Unsure]
+                      | EServerCall (e, ek, _, _) => summarize d e @ summarize d ek @ [Unsure]
                       | ERecv (e, ek, _) => summarize d e @ summarize d ek @ [Unsure]
                       | ESleep (e, ek) => summarize d e @ summarize d ek @ [Unsure]
             in

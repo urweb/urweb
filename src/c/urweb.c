@@ -300,7 +300,7 @@ struct uw_context {
 
   const char *script_header, *url_prefix;
 
-  int needs_push;
+  int needs_push, needs_sig;
 
   size_t n_deltas, used_deltas;
   delta *deltas;
@@ -336,6 +336,7 @@ uw_context uw_init() {
   ctx->script_header = "";
   ctx->url_prefix = "/";
   ctx->needs_push = 0;
+  ctx->needs_sig = 0;
   
   ctx->error_message[0] = 0;
 
@@ -589,6 +590,10 @@ void uw_set_needs_push(uw_context ctx, int n) {
   ctx->needs_push = n;
 }
 
+void uw_set_needs_sig(uw_context ctx, int n) {
+  ctx->needs_sig = n;
+}
+
 
 static void buf_check_ctx(uw_context ctx, buf *b, size_t extra, const char *desc) {
   if (b->back - b->front < extra) {
@@ -717,16 +722,30 @@ uw_Basis_string uw_Basis_maybe_onload(uw_context ctx, uw_Basis_string s) {
   }
 }
 
+extern uw_Basis_string uw_cookie_sig(uw_context);
+
 const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
-  if (ctx->client == NULL)
-    return "";
-  else {
-    char *r = uw_malloc(ctx, 59 + 3 * INTS_MAX + strlen(ctx->url_prefix));
-    sprintf(r, "client_id=%u;client_pass=%d;url_prefix=\"%s\";timeout=%d;listener();",
+  if (ctx->client == NULL) {
+    if (ctx->needs_sig) {
+      char *sig = uw_cookie_sig(ctx);
+      char *r = uw_malloc(ctx, strlen(sig) + 8);
+      sprintf(r, "sig=\"%s\";", sig);
+      return r;
+    }
+    else
+      return "";
+  } else {
+    char *sig = ctx->needs_sig ? uw_cookie_sig(ctx) : "";
+    char *r = uw_malloc(ctx, 59 + 3 * INTS_MAX + strlen(ctx->url_prefix)
+                        + (ctx->needs_sig ? strlen(sig) + 7 : 0));
+    sprintf(r, "client_id=%u;client_pass=%d;url_prefix=\"%s\";timeout=%d;%s%s%slistener();",
             ctx->client->id,
             ctx->client->pass,
             ctx->url_prefix,
-            ctx->timeout);
+            ctx->timeout,
+            ctx->needs_sig ? "sig=\"" : "",
+            sig,
+            ctx->needs_sig ? "\";" : "");
     return r;
   }
 }
@@ -1997,8 +2016,6 @@ uw_Basis_string uw_Basis_makeSigString(uw_context ctx, uw_Basis_string sig) {
 
   return r;
 }
-
-extern uw_Basis_string uw_cookie_sig(uw_context);
 
 uw_Basis_string uw_Basis_sigString(uw_context ctx, uw_unit u) {
   return uw_cookie_sig(ctx);

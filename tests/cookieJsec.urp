@@ -1,0 +1,5 @@
+debug
+database dbname=cookiejsec
+sql cookieJsec.sql
+
+cookieJsec

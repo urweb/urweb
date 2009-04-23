@@ -113,7 +113,7 @@ fun varDepth (e, _) =
       | ESignalReturn e => varDepth e
       | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
       | ESignalSource e => varDepth e
-      | EServerCall (e, ek, _) => Int.max (varDepth e, varDepth ek)
+      | EServerCall (e, ek, _, _) => Int.max (varDepth e, varDepth ek)
       | ERecv (e, ek, _) => Int.max (varDepth e, varDepth ek)
       | ESleep (e, ek) => Int.max (varDepth e, varDepth ek)
 
@@ -156,7 +156,7 @@ fun closedUpto d =
               | ESignalReturn e => cu inner e
               | ESignalBind (e1, e2) => cu inner e1 andalso cu inner e2
               | ESignalSource e => cu inner e
-              | EServerCall (e, ek, _) => cu inner e andalso cu inner ek
+              | EServerCall (e, ek, _, _) => cu inner e andalso cu inner ek
               | ERecv (e, ek, _) => cu inner e andalso cu inner ek
               | ESleep (e, ek) => cu inner e andalso cu inner ek
     in
@@ -956,7 +956,7 @@ fun process file =
                                  st)
                             end
 
-                          | EServerCall (e, ek, t) =>
+                          | EServerCall (e, ek, t, eff) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                                 val (ek, st) = jsE inner (ek, st)
@@ -967,7 +967,11 @@ fun process file =
                                          str ("), function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ unurl ^ "},"),
                                          ek,
-                                         str ")"],
+                                         str (","
+                                              ^ (case eff of
+                                                     ReadCookieWrite => "true"
+                                                   | _ => "false")
+                                              ^ ")")],
                                  st)
                             end
 
