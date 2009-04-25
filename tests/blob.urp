@@ -1,0 +1,5 @@
+debug
+database dbname=blob
+sql blob.sql
+
+blob

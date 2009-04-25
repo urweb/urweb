@@ -2,6 +2,7 @@ type int
 type float
 type string
 type time
+type blob
 
 type unit = {}
 
@@ -134,6 +135,7 @@ val sql_int : sql_injectable_prim int
 val sql_float : sql_injectable_prim float
 val sql_string : sql_injectable_prim string
 val sql_time : sql_injectable_prim time
+val sql_blob : sql_injectable_prim blob
 val sql_channel : t ::: Type -> sql_injectable_prim (channel t)
 val sql_client : sql_injectable_prim client
 
@@ -511,6 +513,16 @@ val password : formTag string [] [Value = string, Size = int]
 val textarea : formTag string [] [Rows = int, Cols = int]
 
 val checkbox : formTag bool [] [Checked = bool]
+
+type file
+val fileName : file -> option string
+val fileData : file -> blob
+
+type files
+val numFiles : files -> int
+val fileNum : files -> int -> file
+
+val upload : formTag files [] [Value = string, Size = int]
 
 con radio = [Body, Radio]
 val radio : formTag string radio []

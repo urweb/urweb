@@ -400,7 +400,7 @@ fun p_unsql wontLeakStrings env (tAll as (t, loc)) e =
         if wontLeakStrings then
             e
         else
-            box [string "uw_Basis_strdup(ctx, ", e, string ")"]
+            box [string "uw_strdup(ctx, ", e, string ")"]
       | TFfi ("Basis", "bool") => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "time") => box [string "uw_Basis_stringToTime_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "channel") => box [string "uw_Basis_stringToChannel_error(ctx, ", e, string ")"]
@@ -447,9 +447,19 @@ datatype sql_type =
        | String
        | Bool
        | Time
+       | Blob
        | Channel
        | Client
        | Nullable of sql_type
+
+fun isBlob Blob = true
+  | isBlob (Nullable t) = isBlob t
+  | isBlob _ = false
+
+fun isFiles (t : typ) =
+    case #1 t of
+        TFfi ("Basis", "files") => true
+      | _ => false
 
 fun p_sql_type' t =
     case t of
@@ -458,6 +468,7 @@ fun p_sql_type' t =
       | String => "uw_Basis_string"
       | Bool => "uw_Basis_bool"
       | Time => "uw_Basis_time"
+      | Blob => "uw_Basis_blob"
       | Channel => "uw_Basis_channel"
       | Client => "uw_Basis_client"
       | Nullable String => "uw_Basis_string"
@@ -475,6 +486,7 @@ fun getPargs (e, _) =
       | EFfiApp ("Basis", "sqlifyString", [e]) => [(e, String)]
       | EFfiApp ("Basis", "sqlifyBool", [e]) => [(e, Bool)]
       | EFfiApp ("Basis", "sqlifyTime", [e]) => [(e, Time)]
+      | EFfiApp ("Basis", "sqlifyBlob", [e]) => [(e, Blob)]
       | EFfiApp ("Basis", "sqlifyChannel", [e]) => [(e, Channel)]
       | EFfiApp ("Basis", "sqlifyClient", [e]) => [(e, Client)]
 
@@ -501,6 +513,7 @@ fun p_ensql t e =
       | String => e
       | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
       | Time => box [string "uw_Basis_attrifyTime(ctx, ", e, string ")"]
+      | Blob => box [e, string ".data"]
       | Channel => box [string "uw_Basis_attrifyChannel(ctx, ", e, string ")"]
       | Client => box [string "uw_Basis_attrifyClient(ctx, ", e, string ")"]
       | Nullable String => e
@@ -534,6 +547,7 @@ fun notLeaky env allowHeapAllocated =
                                                   | SOME t => nl ok' t) cons
                  end)
               | TFfi ("Basis", "string") => false
+              | TFfi ("Basis", "blob") => false
               | TFfi _ => true
               | TOption t => allowHeapAllocated andalso nl ok t
     in
@@ -1478,6 +1492,19 @@ fun p_exp' par env (e, loc) =
                               newline,
                               newline,
 
+                              string "const int paramFormats[] = { ",
+                              p_list_sep (box [string ",", space])
+                              (fn (_, t) => if isBlob t then string "1" else string "0") ets,
+                              string " };",
+                              newline,
+                              string "const int paramLengths[] = { ",
+                              p_list_sepi (box [string ",", space])
+                              (fn i => fn (_, Blob) => string ("arg" ^ Int.toString (i + 1) ^ ".size")
+                                        | (_, Nullable Blob) => string ("arg" ^ Int.toString (i + 1)
+                                                                        ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
+                                        | _ => string "0") ets,
+                              string " };",
+                              newline,
                               string "const char *paramValues[] = { ",
                               p_list_sepi (box [string ",", space])
                               (fn i => fn (_, t) => p_ensql t (box [string "arg",
@@ -1495,7 +1522,7 @@ fun p_exp' par env (e, loc) =
                                     string (Int.toString n),
                                     string "\", ",
                                     string (Int.toString (length (getPargs query))),
-                                    string ", paramValues, NULL, NULL, 0);"],
+                                    string ", paramValues, paramLengths, paramFormats, 0);"],
                  newline,
                  newline,
 
@@ -1790,7 +1817,7 @@ fun p_exp' par env (e, loc) =
         in
             box [string "({",
                  newline,
-                 string "uw_Basis_string request = uw_Basis_maybe_strdup(ctx, ",
+                 string "uw_Basis_string request = uw_maybe_strdup(ctx, ",
                  p_exp env e,
                  string ");",
                  newline,
@@ -2173,6 +2200,7 @@ fun p_sqltype'' env (tAll as (t, loc)) =
       | TFfi ("Basis", "string") => "text"
       | TFfi ("Basis", "bool") => "bool"
       | TFfi ("Basis", "time") => "timestamp"
+      | TFfi ("Basis", "blob") => "bytea"
       | TFfi ("Basis", "channel") => "int8"
       | TFfi ("Basis", "client") => "int4"
       | _ => (ErrorMsg.errorAt loc "Don't know SQL equivalent of type";
@@ -2382,26 +2410,37 @@ fun p_file env (ds, ps) =
                                                                    (TFfi ("Basis", "bool"), _) => "optional_"
                                                                  | _ => ""
                                                    in
-                                                       box [string "request = uw_get_",
-                                                            string f,
-                                                            string "input(ctx, ",
-                                                            string (Int.toString n),
-                                                            string ");",
-                                                            newline,
-                                                            string "if (request == NULL)",
-                                                            newline,
-                                                            box [string "uw_error(ctx, FATAL, \"Missing input ",
-                                                                 string x,
-                                                                 string "\");"],
-                                                            newline,
-                                                            string "uw_input_",
-                                                            p_ident x,
-                                                            space,
-                                                            string "=",
-                                                            space,
-                                                            unurlify env t,
-                                                            string ";",
-                                                            newline]
+                                                       if isFiles t then
+                                                           box [string "uw_input_",
+                                                                p_ident x,
+                                                                space,
+                                                                string "=",
+                                                                space,
+                                                                string "uw_get_file_input(ctx, ",
+                                                                string (Int.toString n),
+                                                                string ");",
+                                                                newline]
+                                                       else
+                                                           box [string "request = uw_get_",
+                                                                string f,
+                                                                string "input(ctx, ",
+                                                                string (Int.toString n),
+                                                                string ");",
+                                                                newline,
+                                                                string "if (request == NULL)",
+                                                                newline,
+                                                                box [string "uw_error(ctx, FATAL, \"Missing input ",
+                                                                     string x,
+                                                                     string "\");"],
+                                                                newline,
+                                                                string "uw_input_",
+                                                                p_ident x,
+                                                                space,
+                                                                string "=",
+                                                                space,
+                                                                unurlify env t,
+                                                                string ";",
+                                                                newline]
                                                    end) xts),
                                       string "struct __uws_",
                                       string (Int.toString i),

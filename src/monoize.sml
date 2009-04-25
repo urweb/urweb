@@ -1663,6 +1663,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyTime", [(L'.ERel 0, loc)]), loc)), loc),
              fm)
+          | L.EFfi ("Basis", "sql_blob") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "blob"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyBlob", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_channel"), _), _) =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "channel"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyChannel", [(L'.ERel 0, loc)]), loc)), loc),
@@ -2339,6 +2343,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                raise Fail "No name passed to ltextarea tag"))
 
                   | "checkbox" => input "checkbox"
+                  | "upload" => input "file"
 
                   | "radio" =>
                     (case targs of
@@ -2475,6 +2480,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          fm)
                     end
 
+                val hasUpload = CoreUtil.Exp.exists {kind = fn _ => false,
+                                                     con = fn _ => false,
+                                                     exp = fn e =>
+                                                              case e of
+                                                                  L.EFfi ("Basis", "upload") => true
+                                                                | _ => false} xml
+
                 val (xml, fm) = monoExp (env, st, fm) xml
 
                 val xml =
@@ -2514,6 +2526,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         end
                     else
                         xml
+
+                val action = if hasUpload then
+                                 (L'.EStrcat (action,
+                                              (L'.EPrim (Prim.String " enctype=\"multipart/form-data\""), loc)), loc)
+                             else
+                                 action
+
             in
                 ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form method=\"post\""), loc),
                                            (L'.EStrcat (action,

@@ -282,11 +282,23 @@ typedef struct {
   buf msgs;
 } delta;
 
+typedef enum {
+  UNSET, NORMAL, FILES
+} input_kind;
+
+typedef struct {
+  input_kind kind;
+  union {
+    char *normal;
+    uw_Basis_files files;
+  } data;
+} input;
+
 struct uw_context {
   char *headers, *headers_end;
 
   buf outHeaders, page, heap, script;
-  char **inputs;
+  input *inputs;
 
   int source_count;
 
@@ -325,7 +337,7 @@ uw_context uw_init() {
   buf_init(&ctx->script, 1);
   ctx->script.start[0] = 0;
 
-  ctx->inputs = calloc(uw_inputs_len, sizeof(char *));
+  ctx->inputs = calloc(uw_inputs_len, sizeof(input));
 
   ctx->db = NULL;
 
@@ -398,7 +410,7 @@ void uw_reset_keep_request(uw_context ctx) {
 
 void uw_reset(uw_context ctx) {
   uw_reset_keep_request(ctx);
-  memset(ctx->inputs, 0, uw_inputs_len * sizeof(char *));
+  memset(ctx->inputs, 0, uw_inputs_len * sizeof(input));
 }
 
 void uw_db_init(uw_context);
@@ -544,9 +556,9 @@ char *uw_error_message(uw_context ctx) {
   return ctx->error_message;
 }
 
-int uw_input_num(char*);
+extern int uw_input_num(const char*);
 
-void uw_set_input(uw_context ctx, char *name, char *value) {
+void uw_set_input(uw_context ctx, const char *name, char *value) {
   int n = uw_input_num(name);
 
   if (n < 0)
@@ -555,9 +567,8 @@ void uw_set_input(uw_context ctx, char *name, char *value) {
   if (n >= uw_inputs_len)
     uw_error(ctx, FATAL, "For input name %s, index %d is out of range", name, n);
 
-  ctx->inputs[n] = value;
-
-  //printf("[%d] %s = %s\n", n, name, value);
+  ctx->inputs[n].kind = NORMAL;
+  ctx->inputs[n].data.normal = value;
 }
 
 char *uw_get_input(uw_context ctx, int n) {
@@ -565,8 +576,17 @@ char *uw_get_input(uw_context ctx, int n) {
     uw_error(ctx, FATAL, "Negative input index %d", n);
   if (n >= uw_inputs_len)
     uw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
-  //printf("[%d] = %s\n", n, ctx->inputs[n]);
-  return ctx->inputs[n];
+
+  switch (ctx->inputs[n].kind) {
+  case UNSET:
+    return NULL;
+  case FILES:
+    uw_error(ctx, FATAL, "Tried to read a files form input as normal");
+  case NORMAL:
+    return ctx->inputs[n].data.normal;
+  default:
+    uw_error(ctx, FATAL, "Impossible input kind");
+  }
 }
 
 char *uw_get_optional_input(uw_context ctx, int n) {
@@ -574,8 +594,51 @@ char *uw_get_optional_input(uw_context ctx, int n) {
     uw_error(ctx, FATAL, "Negative input index %d", n);
   if (n >= uw_inputs_len)
     uw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
-  //printf("[%d] = %s\n", n, ctx->inputs[n]);
-  return (ctx->inputs[n] == NULL ? "" : ctx->inputs[n]);
+
+  switch (ctx->inputs[n].kind) {
+  case UNSET:
+    return "";
+  case FILES:
+    uw_error(ctx, FATAL, "Tried to read a files form input as normal");
+  case NORMAL:
+    return ctx->inputs[n].data.normal;
+  default:
+    uw_error(ctx, FATAL, "Impossible input kind");
+  }
+}
+
+void uw_set_file_input(uw_context ctx, const char *name, uw_Basis_files fs) {
+  int n = uw_input_num(name);
+
+  if (n < 0)
+    uw_error(ctx, FATAL, "Bad file input name %s", name);
+
+  if (n >= uw_inputs_len)
+    uw_error(ctx, FATAL, "For file input name %s, index %d is out of range", name, n);
+
+  ctx->inputs[n].kind = FILES;
+  ctx->inputs[n].data.files = fs;
+}
+
+uw_Basis_files uw_get_file_input(uw_context ctx, int n) {
+  if (n < 0)
+    uw_error(ctx, FATAL, "Negative file input index %d", n);
+  if (n >= uw_inputs_len)
+    uw_error(ctx, FATAL, "Out-of-bounds file input index %d", n);
+
+  switch (ctx->inputs[n].kind) {
+  case UNSET:
+    {
+      uw_Basis_files fs = {};
+      return fs;
+    }
+  case FILES:
+    return ctx->inputs[n].data.files;
+  case NORMAL:
+    uw_error(ctx, FATAL, "Tried to read a normal form input as files");
+  default:
+    uw_error(ctx, FATAL, "Impossible input kind");
+  }
 }
 
 void uw_set_script_header(uw_context ctx, const char *s) {
@@ -1393,7 +1456,7 @@ uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_str
   return s;
 }
 
-uw_Basis_string uw_Basis_strdup(uw_context ctx, uw_Basis_string s1) {
+uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {
   int len = strlen(s1) + 1;
   char *s;
 
@@ -1407,9 +1470,9 @@ uw_Basis_string uw_Basis_strdup(uw_context ctx, uw_Basis_string s1) {
   return s;
 }
 
-uw_Basis_string uw_Basis_maybe_strdup(uw_context ctx, uw_Basis_string s1) {
+uw_Basis_string uw_maybe_strdup(uw_context ctx, uw_Basis_string s1) {
   if (s1)
-    return uw_Basis_strdup(ctx, s1);
+    return uw_strdup(ctx, s1);
   else
     return NULL;
 }
@@ -1477,7 +1540,7 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
       if (isprint(c))
         *s2++ = c;
       else {
-        sprintf(s2, "\\%3o", c);
+        sprintf(s2, "\\%03o", c);
         s2 += 4;
       }
     }
@@ -1485,6 +1548,43 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
 
   strcpy(s2, "'::text");
   ctx->heap.front = s2 + 8;
+  return r;
+}
+
+uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
+  char *r, *s2;
+  size_t i;
+
+  uw_check_heap(ctx, b.size * 5 + 11);
+
+  r = s2 = ctx->heap.front;
+  *s2++ = 'E';
+  *s2++ = '\'';
+
+  for (i = 0; i < b.size; ++i) {
+    char c = b.data[i];
+
+    switch (c) {
+    case '\'':
+      strcpy(s2, "\\'");
+      s2 += 2;
+      break;
+    case '\\':
+      strcpy(s2, "\\\\\\\\");
+      s2 += 4;
+      break;
+    default:
+      if (isprint(c))
+        *s2++ = c;
+      else {
+        sprintf(s2, "\\\\%03o", c);
+        s2 += 5;
+      }
+    }
+  }
+
+  strcpy(s2, "'::bytea");
+  ctx->heap.front = s2 + 9;
   return r;
 }
 
@@ -2019,4 +2119,23 @@ uw_Basis_string uw_Basis_makeSigString(uw_context ctx, uw_Basis_string sig) {
 
 uw_Basis_string uw_Basis_sigString(uw_context ctx, uw_unit u) {
   return uw_cookie_sig(ctx);
+}
+
+uw_Basis_string uw_Basis_fileName(uw_context ctx, uw_Basis_file f) {
+  return f.name;
+}
+
+uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
+  return f.data;
+}
+
+uw_Basis_int uw_Basis_numFiles(uw_context ctx, uw_Basis_files fs) {
+  return fs.size;
+}
+
+uw_Basis_file uw_Basis_fileNum(uw_context ctx, uw_Basis_files fs, uw_Basis_int n) {
+  if (n < 0 || n >= fs.size)
+    uw_error(ctx, FATAL, "Files index out of bounds");
+  else
+    return fs.files[n];
 }

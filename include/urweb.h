@@ -39,9 +39,12 @@ void uw_memstats(uw_context);
 
 int uw_send(uw_context, int sock);
 
-void uw_set_input(uw_context, char *name, char *value);
+void uw_set_input(uw_context, const char *name, char *value);
 char *uw_get_input(uw_context, int name);
 char *uw_get_optional_input(uw_context, int name);
+
+void uw_set_file_input(uw_context, char *name, uw_Basis_files fs);
+uw_Basis_files uw_get_file_input(uw_context, int name);
 
 void uw_write(uw_context, const char*);
 
@@ -101,14 +104,15 @@ uw_Basis_bool uw_Basis_unurlifyBool(uw_context, char **);
 uw_Basis_time uw_Basis_unurlifyTime(uw_context, char **);
 
 uw_Basis_string uw_Basis_strcat(uw_context, const char *, const char *);
-uw_Basis_string uw_Basis_strdup(uw_context, const char *);
-uw_Basis_string uw_Basis_maybe_strdup(uw_context, const char *);
+uw_Basis_string uw_strdup(uw_context, const char *);
+uw_Basis_string uw_maybe_strdup(uw_context, const char *);
 
 uw_Basis_string uw_Basis_sqlifyInt(uw_context, uw_Basis_int);
 uw_Basis_string uw_Basis_sqlifyFloat(uw_context, uw_Basis_float);
 uw_Basis_string uw_Basis_sqlifyString(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_sqlifyBool(uw_context, uw_Basis_bool);
 uw_Basis_string uw_Basis_sqlifyTime(uw_context, uw_Basis_time);
+uw_Basis_string uw_Basis_sqlifyBlob(uw_context, uw_Basis_blob);
 uw_Basis_string uw_Basis_sqlifyChannel(uw_context, uw_Basis_channel);
 uw_Basis_string uw_Basis_sqlifyClient(uw_context, uw_Basis_client);
 
@@ -157,3 +161,8 @@ uw_Basis_string uw_Basis_bless(uw_context, uw_Basis_string);
 uw_Basis_string uw_unnull(uw_Basis_string);
 uw_Basis_string uw_Basis_makeSigString(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_sigString(uw_context, uw_unit);
+
+uw_Basis_string uw_Basis_fileName(uw_context, uw_Basis_file);
+uw_Basis_blob uw_Basis_fileData(uw_context, uw_Basis_file);
+uw_Basis_int uw_Basis_numFiles(uw_context, uw_Basis_files);
+uw_Basis_file uw_Basis_fileNum(uw_context, uw_Basis_files, uw_Basis_int);

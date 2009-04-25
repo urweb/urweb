@@ -4,6 +4,10 @@ typedef long long uw_Basis_int;
 typedef double uw_Basis_float;
 typedef char* uw_Basis_string;
 typedef time_t uw_Basis_time;
+typedef struct {
+  size_t size;
+  char *data;
+} uw_Basis_blob;
 
 struct __uws_0 {
 };
@@ -24,6 +28,15 @@ typedef struct {
   unsigned cli, chn;
 } uw_Basis_channel;
 
+typedef struct uw_Basis_file {
+  uw_Basis_string name;
+  uw_Basis_blob data;
+} uw_Basis_file;
+
+typedef struct uw_Basis_files {
+  size_t size;
+  uw_Basis_file *files;
+} uw_Basis_files;
 
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY } failure_kind;
 

@@ -1,5 +1,6 @@
-#include <stdio.h>
+#define _GNU_SOURCE
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -147,9 +148,11 @@ void uw_sign(const char *in, char *out) {
 static void *worker(void *data) {
   int me = *(int *)data, retries_left = MAX_RETRIES;
   uw_context ctx = new_context();
+  size_t buf_size = 1;
+  char *buf = malloc(buf_size);
 
   while (1) {
-    char buf[uw_bufsize+1], *back = buf, *s, *post;
+    char *back = buf, *s, *post;
     int sock, dont_close = 0;
 
     pthread_mutex_lock(&queue_mutex);
@@ -162,7 +165,17 @@ static void *worker(void *data) {
 
     while (1) {
       unsigned retries_left = MAX_RETRIES;
-      int r = recv(sock, back, uw_bufsize - (back - buf), 0);
+      int r;
+
+      if (back - buf == buf_size) {
+        char *new_buf;
+        buf_size *= 2;
+        new_buf = realloc(buf, buf_size);
+        back = new_buf + (back - buf);
+        buf = new_buf;
+      }
+
+      r = recv(sock, back, buf_size - (back - buf), 0);
 
       if (r < 0) {
         fprintf(stderr, "Recv failed\n");
@@ -182,7 +195,11 @@ static void *worker(void *data) {
       if (s = strstr(buf, "\r\n\r\n")) {
         failure_kind fk;
         int is_post = 0;
+        char *boundary = NULL;
+        size_t boundary_len;
         char *cmd, *path, *headers, path_copy[uw_bufsize+1], *inputs, *after_headers;
+
+        //printf("All: %s\n", buf);
 
         s[2] = 0;
         after_headers = s + 4;
@@ -196,7 +213,7 @@ static void *worker(void *data) {
         headers = s + 2;
         cmd = s = buf;
 
-        printf("Read: %s\n", buf);
+        //printf("Read: %s\n", buf);
       
         if (!strsep(&s, " ")) {
           fprintf(stderr, "No first space in HTTP command\n");
@@ -208,17 +225,25 @@ static void *worker(void *data) {
         if (!strcmp(cmd, "POST")) {
           char *clen_s = uw_Basis_requestHeader(ctx, "Content-length");
           if (!clen_s) {
-            printf("No Content-length with POST\n");
+            fprintf(stderr, "No Content-length with POST\n");
             goto done;
           }
           int clen = atoi(clen_s);
           if (clen < 0) {
-            printf("Negative Content-length with POST\n");
+            fprintf(stderr, "Negative Content-length with POST\n");
             goto done;
           }
 
           while (back - after_headers < clen) {
-            r = recv(sock, back, uw_bufsize - (back - buf), 0);
+            if (back - buf == buf_size) {
+              char *new_buf;
+              buf_size *= 2;
+              new_buf = realloc(buf, buf_size);
+              back = new_buf + (back - buf);
+              buf = new_buf;
+            }
+
+            r = recv(sock, back, buf_size - (back - buf), 0);
 
             if (r < 0) {
               fprintf(stderr, "Recv failed\n");
@@ -235,6 +260,19 @@ static void *worker(void *data) {
           }
 
           is_post = 1;
+
+          clen_s = uw_Basis_requestHeader(ctx, "Content-type");
+          if (clen_s && !strncasecmp(clen_s, "multipart/form-data", 19)) {
+            if (strncasecmp(clen_s + 19, "; boundary=", 11)) {
+              fprintf(stderr, "Bad multipart boundary spec");
+              break;
+            }
+
+            boundary = clen_s + 28;
+            boundary[0] = '-';
+            boundary[1] = '-';
+            boundary_len = strlen(boundary);
+          }
         } else if (strcmp(cmd, "GET")) {
           fprintf(stderr, "Not ready for non-GET/POST command: %s\n", cmd);
           break;
@@ -262,26 +300,134 @@ static void *worker(void *data) {
           break;
         }
 
-        if (is_post)
-          inputs = after_headers;
-        else if (inputs = strchr(path, '?'))
-          *inputs++ = 0;
-        if (inputs) {
-          char *name, *value;
+        if (boundary) {
+          char *part = after_headers, *after_sub_headers, *header, *after_header;
+          size_t part_len;
 
-          while (*inputs) {
-            name = inputs;
-            if (inputs = strchr(inputs, '&'))
-              *inputs++ = 0;
-            else
-              inputs = strchr(name, 0);
+          part = strstr(part, boundary);
+          if (!part) {
+            fprintf(stderr, "Missing first multipart boundary\n");
+            break;
+          }
+          part += boundary_len;
 
-            if (value = strchr(name, '=')) {
-              *value++ = 0;
-              uw_set_input(ctx, name, value);
+          while (1) {
+            char *name = NULL, *filename = NULL, *type = NULL;
+
+            if (part[0] == '-' && part[1] == '-')
+              break;
+
+            if (*part != '\r') {
+              fprintf(stderr, "No \\r after multipart boundary\n");
+              goto done;
             }
-            else
-              uw_set_input(ctx, name, "");
+            ++part;
+            if (*part != '\n') {
+              fprintf(stderr, "No \\n after multipart boundary\n");
+              goto done;
+            }
+            ++part;
+            
+            if (!(after_sub_headers = strstr(part, "\r\n\r\n"))) {
+              fprintf(stderr, "Missing end of headers after multipart boundary\n");
+              goto done;
+            }
+            after_sub_headers[2] = 0;
+            after_sub_headers += 4;
+
+            for (header = part; after_header = strstr(header, "\r\n"); header = after_header + 2) {
+              char *colon, *after_colon;
+
+              *after_header = 0;
+              if (!(colon = strchr(header, ':'))) {
+                fprintf(stderr, "Missing colon in multipart sub-header\n");
+                goto done;
+              }
+              *colon++ = 0;
+              if (*colon++ != ' ') {
+                fprintf(stderr, "No space after colon in multipart sub-header\n");
+                goto done;
+              }
+
+              if (!strcasecmp(header, "Content-Disposition")) {
+                if (strncmp(colon, "form-data; ", 11)) {
+                  fprintf(stderr, "Multipart data is not \"form-data\"\n");
+                  goto done;
+                }
+
+                for (colon += 11; after_colon = strchr(colon, '='); colon = after_colon) {
+                  char *data;
+                  after_colon[0] = 0;
+                  if (after_colon[1] != '"') {
+                    fprintf(stderr, "Disposition setting is missing initial quote\n");
+                    goto done;
+                  }
+                  data = after_colon+2;
+                  if (!(after_colon = strchr(data, '"'))) {
+                    fprintf(stderr, "Disposition setting is missing final quote\n");
+                    goto done;
+                  }
+                  after_colon[0] = 0;
+                  ++after_colon;
+                  if (after_colon[0] == ';' && after_colon[1] == ' ')
+                    after_colon += 2;
+
+                  if (!strcasecmp(colon, "name"))
+                    name = data;
+                  else if (!strcasecmp(colon, "filename"))
+                    filename = data;
+                }
+              } else if (!strcasecmp(header, "Content-Type")) {
+                type = colon;
+              }
+            }
+
+            part = memmem(after_sub_headers, back - after_sub_headers, boundary, boundary_len);
+            if (!part) {
+              fprintf(stderr, "Missing boundary after multipart payload\n");
+              goto done;
+            }
+            part[-2] = 0;
+            part_len = part - after_sub_headers - 2;
+            part[0] = 0;
+            part += boundary_len;
+
+            if (filename) {
+              uw_Basis_file *f = malloc(sizeof(uw_Basis_file));
+              uw_Basis_files fs = { 1, f };
+
+              f->name = filename;
+              f->data.size = part_len;
+              f->data.data = after_sub_headers;
+
+              uw_set_file_input(ctx, name, fs);
+            } else
+              uw_set_input(ctx, name, after_sub_headers);
+          }
+        }
+        else {
+          if (is_post)
+            inputs = after_headers;
+          else if (inputs = strchr(path, '?'))
+            *inputs++ = 0;
+
+          if (inputs) {
+            char *name, *value;
+
+            while (*inputs) {
+              name = inputs;
+              if (inputs = strchr(inputs, '&'))
+                *inputs++ = 0;
+              else
+                inputs = strchr(name, 0);
+
+              if (value = strchr(name, '=')) {
+                *value++ = 0;
+                uw_set_input(ctx, name, value);
+              }
+              else
+                uw_set_input(ctx, name, "");
+            }
           }
         }
 
