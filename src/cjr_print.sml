@@ -1648,6 +1648,19 @@ fun p_exp' par env (e, loc) =
                           newline,
                           newline,
 
+                          string "const int paramFormats[] = { ",
+                          p_list_sep (box [string ",", space])
+                                     (fn (_, t) => if isBlob t then string "1" else string "0") ets,
+                          string " };",
+                          newline,
+                          string "const int paramLengths[] = { ",
+                          p_list_sepi (box [string ",", space])
+                                      (fn i => fn (_, Blob) => string ("arg" ^ Int.toString (i + 1) ^ ".size")
+                                                | (_, Nullable Blob) => string ("arg" ^ Int.toString (i + 1)
+                                                                                ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
+                                                | _ => string "0") ets,
+                          string " };",
+                          newline,
                           string "const char *paramValues[] = { ",
                           p_list_sepi (box [string ",", space])
                                       (fn i => fn (_, t) => p_ensql t (box [string "arg",
@@ -1666,7 +1679,7 @@ fun p_exp' par env (e, loc) =
                                 string (Int.toString n),
                                 string "\", ",
                                 string (Int.toString (length (getPargs dml))),
-                                string ", paramValues, NULL, NULL, 0);"],
+                                string ", paramValues, paramLengths, paramFormats, 0);"],
              newline,
              newline,
 

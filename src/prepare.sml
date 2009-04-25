@@ -47,6 +47,8 @@ fun prepString (e, ss, n) =
         SOME ("$" ^ Int.toString (n + 1) ^ "::bool" :: ss, n + 1)
       | EFfiApp ("Basis", "sqlifyTime", [e]) =>
         SOME ("$" ^ Int.toString (n + 1) ^ "::timestamp" :: ss, n + 1)
+      | EFfiApp ("Basis", "sqlifyBlob", [e]) =>
+        SOME ("$" ^ Int.toString (n + 1) ^ "::bytea" :: ss, n + 1)
       | EFfiApp ("Basis", "sqlifyChannel", [e]) =>
         SOME ("$" ^ Int.toString (n + 1) ^ "::int8" :: ss, n + 1)
       | EFfiApp ("Basis", "sqlifyClient", [e]) =>
