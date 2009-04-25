@@ -43,8 +43,8 @@ void uw_set_input(uw_context, const char *name, char *value);
 char *uw_get_input(uw_context, int name);
 char *uw_get_optional_input(uw_context, int name);
 
-void uw_set_file_input(uw_context, char *name, uw_Basis_files fs);
-uw_Basis_files uw_get_file_input(uw_context, int name);
+void uw_set_file_input(uw_context, char *name, uw_Basis_file);
+uw_Basis_file uw_get_file_input(uw_context, int name);
 
 void uw_write(uw_context, const char*);
 
@@ -164,5 +164,4 @@ uw_Basis_string uw_Basis_sigString(uw_context, uw_unit);
 
 uw_Basis_string uw_Basis_fileName(uw_context, uw_Basis_file);
 uw_Basis_blob uw_Basis_fileData(uw_context, uw_Basis_file);
-uw_Basis_int uw_Basis_numFiles(uw_context, uw_Basis_files);
-uw_Basis_file uw_Basis_fileNum(uw_context, uw_Basis_files, uw_Basis_int);
+

@@ -283,14 +283,14 @@ typedef struct {
 } delta;
 
 typedef enum {
-  UNSET, NORMAL, FILES
+  UNSET, NORMAL, FIL
 } input_kind;
 
 typedef struct {
   input_kind kind;
   union {
     char *normal;
-    uw_Basis_files files;
+    uw_Basis_file file;
   } data;
 } input;
 
@@ -580,8 +580,8 @@ char *uw_get_input(uw_context ctx, int n) {
   switch (ctx->inputs[n].kind) {
   case UNSET:
     return NULL;
-  case FILES:
-    uw_error(ctx, FATAL, "Tried to read a files form input as normal");
+  case FIL:
+    uw_error(ctx, FATAL, "Tried to read a file form input as normal");
   case NORMAL:
     return ctx->inputs[n].data.normal;
   default:
@@ -598,8 +598,8 @@ char *uw_get_optional_input(uw_context ctx, int n) {
   switch (ctx->inputs[n].kind) {
   case UNSET:
     return "";
-  case FILES:
-    uw_error(ctx, FATAL, "Tried to read a files form input as normal");
+  case FIL:
+    uw_error(ctx, FATAL, "Tried to read a file form input as normal");
   case NORMAL:
     return ctx->inputs[n].data.normal;
   default:
@@ -607,7 +607,7 @@ char *uw_get_optional_input(uw_context ctx, int n) {
   }
 }
 
-void uw_set_file_input(uw_context ctx, const char *name, uw_Basis_files fs) {
+void uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
   int n = uw_input_num(name);
 
   if (n < 0)
@@ -616,11 +616,13 @@ void uw_set_file_input(uw_context ctx, const char *name, uw_Basis_files fs) {
   if (n >= uw_inputs_len)
     uw_error(ctx, FATAL, "For file input name %s, index %d is out of range", name, n);
 
-  ctx->inputs[n].kind = FILES;
-  ctx->inputs[n].data.files = fs;
+  ctx->inputs[n].kind = FIL;
+  ctx->inputs[n].data.file = f;
 }
 
-uw_Basis_files uw_get_file_input(uw_context ctx, int n) {
+void *uw_malloc(uw_context ctx, size_t len);
+
+uw_Basis_file uw_get_file_input(uw_context ctx, int n) {
   if (n < 0)
     uw_error(ctx, FATAL, "Negative file input index %d", n);
   if (n >= uw_inputs_len)
@@ -629,11 +631,12 @@ uw_Basis_files uw_get_file_input(uw_context ctx, int n) {
   switch (ctx->inputs[n].kind) {
   case UNSET:
     {
-      uw_Basis_files fs = {};
-      return fs;
+      char *data = uw_malloc(ctx, 0);
+      uw_Basis_file f = {"", {0, data}};
+      return f;
     }
-  case FILES:
-    return ctx->inputs[n].data.files;
+  case FIL:
+    return ctx->inputs[n].data.file;
   case NORMAL:
     uw_error(ctx, FATAL, "Tried to read a normal form input as files");
   default:
@@ -2127,15 +2130,4 @@ uw_Basis_string uw_Basis_fileName(uw_context ctx, uw_Basis_file f) {
 
 uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
   return f.data;
-}
-
-uw_Basis_int uw_Basis_numFiles(uw_context ctx, uw_Basis_files fs) {
-  return fs.size;
-}
-
-uw_Basis_file uw_Basis_fileNum(uw_context ctx, uw_Basis_files fs, uw_Basis_int n) {
-  if (n < 0 || n >= fs.size)
-    uw_error(ctx, FATAL, "Files index out of bounds");
-  else
-    return fs.files[n];
 }

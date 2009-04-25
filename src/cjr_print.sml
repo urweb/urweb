@@ -456,9 +456,9 @@ fun isBlob Blob = true
   | isBlob (Nullable t) = isBlob t
   | isBlob _ = false
 
-fun isFiles (t : typ) =
+fun isFile (t : typ) =
     case #1 t of
-        TFfi ("Basis", "files") => true
+        TFfi ("Basis", "file") => true
       | _ => false
 
 fun p_sql_type' t =
@@ -2423,7 +2423,7 @@ fun p_file env (ds, ps) =
                                                                    (TFfi ("Basis", "bool"), _) => "optional_"
                                                                  | _ => ""
                                                    in
-                                                       if isFiles t then
+                                                       if isFile t then
                                                            box [string "uw_input_",
                                                                 p_ident x,
                                                                 space,

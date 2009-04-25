@@ -393,14 +393,9 @@ static void *worker(void *data) {
             part += boundary_len;
 
             if (filename) {
-              uw_Basis_file *f = malloc(sizeof(uw_Basis_file));
-              uw_Basis_files fs = { 1, f };
+              uw_Basis_file f = {filename, {part_len, after_sub_headers}};
 
-              f->name = filename;
-              f->data.size = part_len;
-              f->data.data = after_sub_headers;
-
-              uw_set_file_input(ctx, name, fs);
+              uw_set_file_input(ctx, name, f);
             } else
               uw_set_input(ctx, name, after_sub_headers);
           }

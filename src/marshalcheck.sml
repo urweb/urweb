@@ -57,7 +57,7 @@ val clientToServer = [("Basis", "int"),
                       ("Basis", "float"),
                       ("Basis", "string"),
                       ("Basis", "time"),
-                      ("Basis", "files"),
+                      ("Basis", "file"),
                       ("Basis", "unit"),
                       ("Basis", "option"),
                       ("Basis", "bool")]

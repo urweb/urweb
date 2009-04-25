@@ -33,11 +33,6 @@ typedef struct uw_Basis_file {
   uw_Basis_blob data;
 } uw_Basis_file;
 
-typedef struct uw_Basis_files {
-  size_t size;
-  uw_Basis_file *files;
-} uw_Basis_files;
-
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY } failure_kind;
 
 

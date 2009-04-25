@@ -518,11 +518,7 @@ type file
 val fileName : file -> option string
 val fileData : file -> blob
 
-type files
-val numFiles : files -> int
-val fileNum : files -> int -> file
-
-val upload : formTag files [] [Value = string, Size = int]
+val upload : formTag file [] [Value = string, Size = int]
 
 con radio = [Body, Radio]
 val radio : formTag string radio []
