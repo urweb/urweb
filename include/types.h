@@ -29,7 +29,7 @@ typedef struct {
 } uw_Basis_channel;
 
 typedef struct uw_Basis_file {
-  uw_Basis_string name;
+  uw_Basis_string name, type;
   uw_Basis_blob data;
 } uw_Basis_file;
 

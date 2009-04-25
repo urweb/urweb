@@ -632,7 +632,7 @@ uw_Basis_file uw_get_file_input(uw_context ctx, int n) {
   case UNSET:
     {
       char *data = uw_malloc(ctx, 0);
-      uw_Basis_file f = {"", {0, data}};
+      uw_Basis_file f = {NULL, "", {0, data}};
       return f;
     }
   case FIL:
@@ -2126,6 +2126,10 @@ uw_Basis_string uw_Basis_sigString(uw_context ctx, uw_unit u) {
 
 uw_Basis_string uw_Basis_fileName(uw_context ctx, uw_Basis_file f) {
   return f.name;
+}
+
+uw_Basis_string uw_Basis_fileMimeType(uw_context ctx, uw_Basis_file f) {
+  return f.type;
 }
 
 uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {

@@ -393,7 +393,7 @@ static void *worker(void *data) {
             part += boundary_len;
 
             if (filename) {
-              uw_Basis_file f = {filename, {part_len, after_sub_headers}};
+              uw_Basis_file f = {filename, type, {part_len, after_sub_headers}};
 
               uw_set_file_input(ctx, name, f);
             } else

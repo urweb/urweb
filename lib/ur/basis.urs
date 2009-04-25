@@ -516,6 +516,7 @@ val checkbox : formTag bool [] [Checked = bool]
 
 type file
 val fileName : file -> option string
+val fileMimeType : file -> string
 val fileData : file -> blob
 
 val upload : formTag file [] [Value = string, Size = int]

@@ -163,5 +163,6 @@ uw_Basis_string uw_Basis_makeSigString(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_sigString(uw_context, uw_unit);
 
 uw_Basis_string uw_Basis_fileName(uw_context, uw_Basis_file);
+uw_Basis_string uw_Basis_fileMimeType(uw_context, uw_Basis_file);
 uw_Basis_blob uw_Basis_fileData(uw_context, uw_Basis_file);
 
