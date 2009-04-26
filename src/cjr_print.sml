@@ -418,7 +418,7 @@ fun p_unsql wontLeakStrings env (tAll as (t, loc)) e eLen =
 fun p_getcol wontLeakStrings env (tAll as (t, loc)) i =
     case t of
         TOption t =>
-        box [string "(PQgetisnull (res, i, ",
+        box [string "(PQgetisnull(res, i, ",
              string (Int.toString i),
              string ") ? NULL : ",
              case t of
@@ -440,13 +440,30 @@ fun p_getcol wontLeakStrings env (tAll as (t, loc)) i =
                            string "})"],
              string ")"]
       | _ =>
-        p_unsql wontLeakStrings env tAll
-                (box [string "PQgetvalue(res, i, ",
-                      string (Int.toString i),
-                      string ")"])
-                (box [string "PQgetlength(res, i, ",
-                      string (Int.toString i),
-                      string ")"])
+        box [string "(PQgetisnull(res, i, ",
+             string (Int.toString i),
+             string ") ? ",
+             box [string "({",
+                  p_typ env tAll,
+                  space,
+                  string "tmp;",
+                  newline,
+                  string "uw_error(ctx, FATAL, \"Unexpectedly NULL field #",
+                  string (Int.toString i),
+                  string "\");",
+                  newline,
+                  string "tmp;",
+                  newline,
+                  string "})"],
+             string " : ",
+             p_unsql wontLeakStrings env tAll
+                     (box [string "PQgetvalue(res, i, ",
+                           string (Int.toString i),
+                           string ")"])
+                     (box [string "PQgetlength(res, i, ",
+                           string (Int.toString i),
+                           string ")"]),
+             string ")"]
 
 datatype sql_type =
          Int
@@ -1566,6 +1583,28 @@ fun p_exp' par env (e, loc) =
                           NONE => string "query"
                         | SOME _ => p_exp env query,
                       string ", PQerrorMessage(conn));",
+                      newline],
+                 string "}",
+                 newline,
+                 newline,
+
+                 string "if (PQnfields(res) != ",
+                 string (Int.toString (length outputs)),
+                 string ") {",
+                 newline,
+                 box [string "int nf = PQnfields(res);",
+                      newline,
+                      string "PQclear(res);",
+                      newline,
+                      string "uw_error(ctx, FATAL, \"",
+                      string (ErrorMsg.spanToString loc),
+                      string ": Query returned %d columns instead of ",
+                      string (Int.toString (length outputs)),
+                      string ":\\n%s\\n%s\", ",
+                      case prepared of
+                          NONE => string "query"
+                        | SOME _ => p_exp env query,
+                      string ", nf, PQerrorMessage(conn));",
                       newline],
                  string "}",
                  newline,
