@@ -2183,6 +2183,10 @@ uw_Basis_string uw_Basis_fileMimeType(uw_context ctx, uw_Basis_file f) {
   return f.type;
 }
 
+uw_Basis_int uw_Basis_blobSize(uw_context ctx, uw_Basis_blob b) {
+  return b.size;
+}
+
 uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
   return f.data;
 }
