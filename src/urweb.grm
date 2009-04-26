@@ -329,6 +329,7 @@ datatype attr = Class of exp | Normal of con * exp
  | ofopt of exp
  | sqlint of exp
  | sqlagg of string
+ | fname of exp
 
  | texp of exp
  | fields of con list
@@ -1536,6 +1537,17 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                          in
                                              (EApp (e, sqlexp), loc)
                                          end)
+       | fname LPAREN sqlexp RPAREN     (let
+                                             val loc = s (fnameleft, RPARENright)
+
+                                             val e = (EVar (["Basis"], "sql_ufunc", Infer), loc)
+                                             val e = (EApp (e, fname), loc)
+                                         in
+                                             (EApp (e, sqlexp), loc)
+                                         end)
+
+fname  : SYMBOL                         (EVar (["Basis"], "sql_" ^ SYMBOL, Infer), s (SYMBOLleft, SYMBOLright))
+       | LBRACE eexp RBRACE             (eexp)
 
 wopt   :                                (sql_inject (EVar (["Basis"], "True", Infer),
                                                      dummy))

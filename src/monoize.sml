@@ -201,6 +201,8 @@ fun monoType env =
                     (L'.TRecord [], loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_nfunc"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_ufunc"), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "channel"), _), _) =>
                     (L'.TFfi ("Basis", "channel"), loc)
@@ -1989,6 +1991,31 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
           | L.EFfi ("Basis", "sql_current_timestamp") => ((L'.EPrim (Prim.String "CURRENT_TIMESTAMP"), loc), fm)
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_ufunc"), _),
+                _), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
+                           (L'.EAbs ("x", s, s,
+                                     strcat [(L'.ERel 1, loc),
+                                             sc "(",
+                                             (L'.ERel 0, loc),
+                                             sc ")"]), loc)), loc),
+                 fm)
+            end
+          | L.EFfi ("Basis", "sql_octet_length") => ((L'.EPrim (Prim.String "octet_length"), loc), fm)
 
           | (L.ECApp (
              (L.ECApp (

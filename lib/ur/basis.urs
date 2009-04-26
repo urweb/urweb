@@ -363,6 +363,13 @@ val sql_nfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_nfunc t -> sql_exp tables agg exps t
 val sql_current_timestamp : sql_nfunc time
 
+con sql_ufunc :: Type -> Type -> Type
+val sql_ufunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                -> dom ::: Type -> ran ::: Type
+                -> sql_ufunc dom ran -> sql_exp tables agg exps dom
+                -> sql_exp tables agg exps ran
+val sql_octet_length : sql_ufunc blob int
+
 
 (*** Executing queries *)
 

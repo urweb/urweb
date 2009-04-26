@@ -12,8 +12,8 @@ fun save r =
     main ()
 
 and main () =
-    ls <- queryX (SELECT t.Id, t.Desc, t.Data FROM t ORDER BY t.Desc)
-          (fn r => <xml><li><a link={view r.T.Id}>{[r.T.Desc]} ({[blobSize r.T.Data]})</a></li></xml>);
+    ls <- queryX (SELECT t.Id, t.Desc, octet_length(t.Data) AS Len FROM t ORDER BY t.Desc)
+          (fn r => <xml><li><a link={view r.T.Id}>{[r.T.Desc]} ({[r.Len]})</a></li></xml>);
     return <xml><body>
       {ls}
 
