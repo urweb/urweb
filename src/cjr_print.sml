@@ -392,7 +392,7 @@ fun patConInfo env pc =
          "uw_" ^ ident m ^ "_" ^ ident con,
          "uw_" ^ ident con)
 
-fun p_unsql wontLeakStrings env (tAll as (t, loc)) e =
+fun p_unsql wontLeakStrings env (tAll as (t, loc)) e eLen =
     case t of
         TFfi ("Basis", "int") => box [string "uw_Basis_stringToInt_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "float") => box [string "uw_Basis_stringToFloat_error(ctx, ", e, string ")"]
@@ -403,6 +403,11 @@ fun p_unsql wontLeakStrings env (tAll as (t, loc)) e =
             box [string "uw_strdup(ctx, ", e, string ")"]
       | TFfi ("Basis", "bool") => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "time") => box [string "uw_Basis_stringToTime_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "blob") => box [string "uw_Basis_stringToBlob_error(ctx, ",
+                                       e,
+                                       string ", ",
+                                       eLen,
+                                       string ")"]
       | TFfi ("Basis", "channel") => box [string "uw_Basis_stringToChannel_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "client") => box [string "uw_Basis_stringToClient_error(ctx, ", e, string ")"]
 
@@ -434,16 +439,12 @@ fun p_getcol wontLeakStrings env (tAll as (t, loc)) i =
                            newline,
                            string "})"],
              string ")"]
-
-      | TFfi ("Basis", "blob") => box [string "uw_Basis_stringToBlob_error(ctx, PQgetvalue(res, i, ",
-                                       string (Int.toString i),
-                                       string "), PQgetlength(res, i, ",
-                                       string (Int.toString i),
-                                       string "))"]
-             
       | _ =>
         p_unsql wontLeakStrings env tAll
                 (box [string "PQgetvalue(res, i, ",
+                      string (Int.toString i),
+                      string ")"])
+                (box [string "PQgetlength(res, i, ",
                       string (Int.toString i),
                       string ")"])
 
@@ -526,7 +527,7 @@ fun p_ensql t e =
       | Nullable t => box [string "(",
                            e,
                            string " == NULL ? NULL : ",
-                           p_ensql t (box [string "*", e]),
+                           p_ensql t (box [string "(*", e, string ")"]),
                            string ")"]
 
 fun notLeaky env allowHeapAllocated =
@@ -1821,7 +1822,8 @@ fun p_exp' par env (e, loc) =
 
                  string "n = ",
                  p_unsql true env (TFfi ("Basis", "int"), loc)
-                         (string "PQgetvalue(res, 0, 0)"),
+                         (string "PQgetvalue(res, 0, 0)")
+                         (box []),
                  string ";",
                  newline,
                  string "PQclear(res);",
