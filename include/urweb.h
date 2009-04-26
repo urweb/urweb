@@ -22,6 +22,7 @@ void uw_reset_keep_error_message(uw_context);
 
 failure_kind uw_begin_init(uw_context);
 void uw_set_headers(uw_context, char *headers);
+void uw_headers_moved(uw_context ctx, char *headers);
 failure_kind uw_begin(uw_context, char *path);
 void uw_login(uw_context);
 void uw_commit(uw_context);
@@ -106,6 +107,7 @@ uw_Basis_time uw_Basis_unurlifyTime(uw_context, char **);
 uw_Basis_string uw_Basis_strcat(uw_context, const char *, const char *);
 uw_Basis_string uw_strdup(uw_context, const char *);
 uw_Basis_string uw_maybe_strdup(uw_context, const char *);
+char *uw_memdup(uw_context, const char *, size_t);
 
 uw_Basis_string uw_Basis_sqlifyInt(uw_context, uw_Basis_int);
 uw_Basis_string uw_Basis_sqlifyFloat(uw_context, uw_Basis_float);
@@ -141,6 +143,7 @@ uw_Basis_int uw_Basis_stringToInt_error(uw_context, uw_Basis_string);
 uw_Basis_float uw_Basis_stringToFloat_error(uw_context, uw_Basis_string);
 uw_Basis_bool uw_Basis_stringToBool_error(uw_context, uw_Basis_string);
 uw_Basis_time uw_Basis_stringToTime_error(uw_context, uw_Basis_string);
+uw_Basis_blob uw_Basis_stringToBlob_error(uw_context, uw_Basis_string, size_t);
 uw_Basis_channel uw_Basis_stringToChannel_error(uw_context, uw_Basis_string);
 uw_Basis_client uw_Basis_stringToClient_error(uw_context, uw_Basis_string);
 

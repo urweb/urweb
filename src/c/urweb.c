@@ -443,6 +443,11 @@ void uw_set_headers(uw_context ctx, char *headers) {
   ctx->headers_end = s;
 }
 
+void uw_headers_moved(uw_context ctx, char *headers) {
+  ctx->headers_end = headers + (ctx->headers_end - ctx->headers);
+  ctx->headers = headers;
+}
+
 int uw_db_begin(uw_context);
 
 __attribute__((noreturn)) void uw_error(uw_context ctx, failure_kind fk, const char *fmt, ...) {
@@ -1481,6 +1486,11 @@ uw_Basis_string uw_maybe_strdup(uw_context ctx, uw_Basis_string s1) {
     return NULL;
 }
 
+char *uw_memdup(uw_context ctx, const char *p, size_t len) {
+  char *r = uw_malloc(ctx, len);
+  memcpy(r, p, len);
+  return r;
+}
 
 char *uw_Basis_sqlifyInt(uw_context ctx, uw_Basis_int n) {
   int len;
@@ -1894,6 +1904,36 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
     else
       uw_error(ctx, FATAL, "Can't parse time: %s", s);
   }
+}
+
+uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, size_t len) {
+  char *r = ctx->heap.front;
+  uw_Basis_blob b = {len, r};
+
+  uw_check_heap(ctx, len);
+
+  while (*s) {
+    if (s[0] == '\\') {
+      if (s[1] == '\\') {
+        *r++ = '\\';
+        s += 2;
+      } else if (isdigit(s[1]) && isdigit(s[2]) && isdigit(s[3])) {
+        *r++ = (s[1] - '0') * 8 * 8 + ((s[2] - '0') * 8) + (s[3] - '0');
+        s += 4;
+      }
+      else {
+        *r++ = '\\';
+        ++s;
+      }
+    } else {
+      *r++ = s[0];
+      ++s;
+    }
+  }
+
+  b.size = r - ctx->heap.front;
+  ctx->heap.front = r;
+  return b;
 }
 
 uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {

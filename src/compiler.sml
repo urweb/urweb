@@ -605,7 +605,7 @@ val sqlify = {
 
 val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
-fun compileC {cname, oname, ename, libs, profile} =
+fun compileC {cname, oname, ename, libs, profile, debug} =
     let
         val urweb_o = clibFile "urweb.o"
         val driver_o = clibFile "driver.o"
@@ -616,6 +616,12 @@ fun compileC {cname, oname, ename, libs, profile} =
         val (compile, link) =
             if profile then
                 (compile ^ " -pg", link ^ " -pg")
+            else
+                (compile, link)
+
+        val (compile, link) =
+            if debug then
+                (compile ^ " -g", link ^ " -g")
             else
                 (compile, link)
     in
@@ -682,7 +688,8 @@ fun compile job =
                         TextIO.closeOut outf
                     end;
 
-                compileC {cname = cname, oname = oname, ename = ename, libs = libs, profile = #profile job};
+                compileC {cname = cname, oname = oname, ename = ename, libs = libs,
+                          profile = #profile job, debug = #debug job};
                 
                 cleanup ()
             end

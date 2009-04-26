@@ -434,6 +434,12 @@ fun p_getcol wontLeakStrings env (tAll as (t, loc)) i =
                            newline,
                            string "})"],
              string ")"]
+
+      | TFfi ("Basis", "blob") => box [string "uw_Basis_stringToBlob_error(ctx, PQgetvalue(res, i, ",
+                                       string (Int.toString i),
+                                       string "), PQgetlength(res, i, ",
+                                       string (Int.toString i),
+                                       string "))"]
              
       | _ =>
         p_unsql wontLeakStrings env tAll
@@ -547,7 +553,7 @@ fun notLeaky env allowHeapAllocated =
                                                   | SOME t => nl ok' t) cons
                  end)
               | TFfi ("Basis", "string") => false
-              | TFfi ("Basis", "blob") => false
+              | TFfi ("Basis", "blob") => allowHeapAllocated
               | TFfi _ => true
               | TOption t => allowHeapAllocated andalso nl ok t
     in

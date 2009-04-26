@@ -40,7 +40,8 @@ signature COMPILER = sig
          timeout : int
     }
     val compile : string -> unit
-    val compileC : {cname : string, oname : string, ename : string, libs : string, profile : bool} -> unit
+    val compileC : {cname : string, oname : string, ename : string, libs : string,
+                    profile : bool, debug : bool} -> unit
 
     type ('src, 'dst) phase
     type ('src, 'dst) transform

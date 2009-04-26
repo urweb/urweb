@@ -148,7 +148,7 @@ void uw_sign(const char *in, char *out) {
 static void *worker(void *data) {
   int me = *(int *)data, retries_left = MAX_RETRIES;
   uw_context ctx = new_context();
-  size_t buf_size = 1;
+  size_t buf_size = 2;
   char *buf = malloc(buf_size);
 
   while (1) {
@@ -167,7 +167,7 @@ static void *worker(void *data) {
       unsigned retries_left = MAX_RETRIES;
       int r;
 
-      if (back - buf == buf_size) {
+      if (back - buf == buf_size - 1) {
         char *new_buf;
         buf_size *= 2;
         new_buf = realloc(buf, buf_size);
@@ -175,7 +175,7 @@ static void *worker(void *data) {
         buf = new_buf;
       }
 
-      r = recv(sock, back, buf_size - (back - buf), 0);
+      r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
       if (r < 0) {
         fprintf(stderr, "Recv failed\n");
@@ -235,15 +235,21 @@ static void *worker(void *data) {
           }
 
           while (back - after_headers < clen) {
-            if (back - buf == buf_size) {
+            if (back - buf == buf_size - 1) {
               char *new_buf;
               buf_size *= 2;
               new_buf = realloc(buf, buf_size);
+
               back = new_buf + (back - buf);
+              headers = new_buf + (headers - buf);
+              uw_headers_moved(ctx, headers);
+              after_headers = new_buf + (after_headers - buf);
+              s = new_buf + (s - buf);
+
               buf = new_buf;
             }
 
-            r = recv(sock, back, buf_size - (back - buf), 0);
+            r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
             if (r < 0) {
               fprintf(stderr, "Recv failed\n");
