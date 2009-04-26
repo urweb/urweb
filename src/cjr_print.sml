@@ -1276,8 +1276,26 @@ fun p_exp' par env (e, loc) =
              string "tmp;",
              newline,
              string "})"]
+      | EReturnBlob {blob, mimeType, t} =>
+        box [string "({",
+             newline,
+             p_typ env t,
+             space,
+             string "tmp;",
+             newline,
+             string "uw_return_blob(ctx, ",
+             p_exp env blob,
+             string ", ",
+             p_exp env mimeType,
+             string ");",
+             newline,
+             string "tmp;",
+             newline,
+             string "})"]
       | EApp ((EError (e, (TFun (_, ran), _)), loc), _) =>
         p_exp env (EError (e, ran), loc)
+      | EApp ((EReturnBlob {blob, mimeType, t = (TFun (_, ran), _)}, loc), _) =>
+        p_exp env (EReturnBlob {blob = blob, mimeType = mimeType, t = ran}, loc)
 
       | EFfiApp (m, x, es) => box [string "uw_",
                                    p_ident m,

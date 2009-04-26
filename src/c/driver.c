@@ -194,7 +194,7 @@ static void *worker(void *data) {
 
       if (s = strstr(buf, "\r\n\r\n")) {
         failure_kind fk;
-        int is_post = 0;
+        int is_post = 0, do_normal_send = 1;
         char *boundary = NULL;
         size_t boundary_len;
         char *cmd, *path, *headers, path_copy[uw_bufsize+1], *inputs, *after_headers;
@@ -433,7 +433,7 @@ static void *worker(void *data) {
 
           strcpy(path_copy, path);
           fk = uw_begin(ctx, path_copy);
-          if (fk == SUCCESS) {
+          if (fk == SUCCESS || fk == RETURN_BLOB) {
             uw_commit(ctx);
             break;
           } else if (fk == BOUNDED_RETRY) {

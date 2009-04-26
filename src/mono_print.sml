@@ -211,6 +211,18 @@ fun p_exp' par env (e, _) =
                               space,
                               p_typ env t,
                               string ")"]
+      | EReturnBlob {blob, mimeType, t} => box [string "(blob",
+                                                space,
+                                                p_exp env blob,
+                                                space,
+                                                string "in",
+                                                space,
+                                                p_exp env mimeType,
+                                                space,
+                                                string ":",
+                                                space,
+                                                p_typ env t,
+                                                string ")"]
 
       | EStrcat (e1, e2) => parenIf par (box [p_exp' true env e1,
                                               space,

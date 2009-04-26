@@ -101,6 +101,7 @@ fun varDepth (e, _) =
         (map (fn (p, e) => E.patBindsN p + varDepth e) pes)
       | EStrcat (e1, e2) => Int.max (varDepth e1, varDepth e2)
       | EError (e, _) => varDepth e
+      | EReturnBlob {blob = e1, mimeType = e2, ...} => Int.max (varDepth e1, varDepth e2)
       | EWrite e => varDepth e
       | ESeq (e1, e2) => Int.max (varDepth e1, varDepth e2)
       | ELet (_, _, e1, e2) => Int.max (varDepth e1, 1 + varDepth e2)
@@ -141,6 +142,7 @@ fun closedUpto d =
                 andalso List.all (fn (p, e) => cu (inner + E.patBindsN p) e) pes
               | EStrcat (e1, e2) => cu inner e1 andalso cu inner e2
               | EError (e, _) => cu inner e
+              | EReturnBlob {blob = e1, mimeType = e2, ...} => cu inner e1 andalso cu inner e2
               | EWrite e => cu inner e
               | ESeq (e1, e2) => cu inner e1 andalso cu inner e2
               | ELet (_, _, e1, e2) => cu inner e1 andalso cu (inner + 1) e2
@@ -915,6 +917,7 @@ fun process file =
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
+                          | EReturnBlob _ => unsupported "EUnurlify"
                           | EJavaScript (_, e, _) =>
                             let
                                 val (e, st) = jsE inner (e, st)

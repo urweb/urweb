@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -8,6 +8,7 @@
 #include <setjmp.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include <pthread.h>
 
@@ -2104,6 +2105,16 @@ uw_Basis_string uw_Basis_bless(uw_context ctx, uw_Basis_string s) {
   return s;
 }
 
+uw_Basis_string uw_Basis_blessMime(uw_context ctx, uw_Basis_string s) {
+  char *s2;
+
+  for (s2 = s; *s2; ++s2)
+    if (!isalnum(*s2) && *s2 != '/' && *s2 != '-' && *s2 != '.')
+      uw_error(ctx, FATAL, "MIME type \"%s\" contains invalid character %c\n", s, *s2);
+  
+  return s;
+}
+
 uw_Basis_string uw_unnull(uw_Basis_string s) {
   return s ? s : "";
 }
@@ -2134,4 +2145,29 @@ uw_Basis_string uw_Basis_fileMimeType(uw_context ctx, uw_Basis_file f) {
 
 uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
   return f.data;
+}
+
+__attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, uw_Basis_string mimeType) {
+  cleanup *cl;
+  int len;
+
+  buf_reset(&ctx->outHeaders);
+  buf_reset(&ctx->page);
+
+  uw_write_header(ctx, "HTTP/1.1 200 OK\r\nContent-Type: ");
+  uw_write_header(ctx, mimeType);
+  uw_write_header(ctx, "\r\nContent-Length: ");
+  buf_check(&ctx->outHeaders, INTS_MAX);
+  sprintf(ctx->outHeaders.front, "%d%n", b.size, &len);
+  ctx->outHeaders.front += len;
+  uw_write_header(ctx, "\r\n");  
+
+  buf_append(&ctx->page, b.data, b.size);
+
+  for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
+    cl->func(cl->arg);
+
+  ctx->cleanup_front = ctx->cleanup;
+
+  longjmp(ctx->jmp_buf, RETURN_BLOB);
 }

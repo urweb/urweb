@@ -521,6 +521,10 @@ val fileData : file -> blob
 
 val upload : formTag file [] [Value = string, Size = int]
 
+type mimeType
+val blessMime : string -> mimeType
+val returnBlob : t ::: Type -> blob -> mimeType -> transaction t
+
 con radio = [Body, Radio]
 val radio : formTag string radio []
 val radioOption : unit -> tag [Value = string] radio [] [] []

@@ -128,6 +128,7 @@ fun monoType env =
                     readType (mt env dtmap t, loc)
 
                   | L.CFfi ("Basis", "url") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "mimeType") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
@@ -2558,6 +2559,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("s", (L'.TFfi ("Basis", "string"), loc), t,
                            (L'.EError ((L'.ERel 0, loc), t), loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "returnBlob"), _), t) =>
+            let
+                val t = monoType env t
+                val un = (L'.TRecord [], loc)
+            in
+                ((L'.EAbs ("b", (L'.TFfi ("Basis", "blob"), loc),
+                           (L'.TFun ((L'.TFfi ("Basis", "string"), loc), (L'.TFun (un, t), loc)), loc),
+                           (L'.EAbs ("mt", (L'.TFfi ("Basis", "string"), loc), (L'.TFun (un, t), loc),
+                                     (L'.EAbs ("_", un, t,
+                                               (L'.EReturnBlob {blob = (L'.ERel 2, loc),
+                                                                mimeType = (L'.ERel 1, loc),
+                                                                t = t}, loc)), loc)), loc)), loc),
                  fm)
             end
 

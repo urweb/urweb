@@ -88,6 +88,7 @@ datatype exp' =
        | EStrcat of exp * exp
 
        | EError of exp * typ
+       | EReturnBlob of {blob : exp, mimeType : exp, t : typ}
 
        | EWrite of exp
        | ESeq of exp * exp

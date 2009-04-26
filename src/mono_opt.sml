@@ -31,6 +31,7 @@ open Mono
 structure U = MonoUtil
 
 val bless = ref (fn _ : string => true)
+val blessMime = ref (CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"-" orelse ch = #"/" orelse ch = #"."))
 
 fun typ t = t
 fun decl d = d
@@ -385,6 +386,12 @@ fun exp e =
              ()
          else
              ErrorMsg.errorAt loc "Invalid URL passed to 'bless'";
+         se)
+      | EFfiApp ("Basis", "blessMime", [(se as EPrim (Prim.String s), loc)]) =>
+        (if !blessMime s then
+             ()
+         else
+             ErrorMsg.errorAt loc "Invalid string passed to 'blessMime'";
          se)
 
       | EFfiApp ("Basis", "checkString", [(EPrim (Prim.String s), loc)]) => 
