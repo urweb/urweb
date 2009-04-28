@@ -338,6 +338,10 @@ notags = [^<{\n]+;
 <INITIAL> "OFFSET"    => (Tokens.OFFSET (pos yypos, pos yypos + size yytext));
 <INITIAL> "ALL"       => (Tokens.ALL (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "JOIN"      => (Tokens.JOIN (pos yypos, pos yypos + size yytext));
+<INITIAL> "INNER"     => (Tokens.INNER (pos yypos, pos yypos + size yytext));
+<INITIAL> "CROSS"     => (Tokens.CROSS (pos yypos, pos yypos + size yytext));
+
 <INITIAL> "UNION"     => (Tokens.UNION (pos yypos, pos yypos + size yytext));
 <INITIAL> "INTERSECT" => (Tokens.INTERSECT (pos yypos, pos yypos + size yytext));
 <INITIAL> "EXCEPT"    => (Tokens.EXCEPT (pos yypos, pos yypos + size yytext));

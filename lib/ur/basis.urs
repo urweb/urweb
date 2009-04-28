@@ -229,6 +229,11 @@ val sql_from_comma : tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
                      -> [tabs1 ~ tabs2]
     => sql_from_items tabs1 -> sql_from_items tabs2
        -> sql_from_items (tabs1 ++ tabs2)
+val sql_inner_join : tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
+                     -> [tabs1 ~ tabs2]
+    => sql_from_items tabs1 -> sql_from_items tabs2
+       -> sql_exp (tabs1 ++ tabs2) [] [] bool
+       -> sql_from_items (tabs1 ++ tabs2)
 
 val sql_query1 : tables ::: {{Type}}
                  -> grouped ::: {{Type}}

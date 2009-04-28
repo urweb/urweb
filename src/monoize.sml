@@ -1728,6 +1728,22 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                              (L'.ERel 0, loc)]), loc)), loc),
                  fm)
             end
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_inner_join"), _), _), _), _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("tab1", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("tab2", s, (L'.TFun (s, s), loc),
+                                     (L'.EAbs ("on", s, s,
+                                               strcat [(L'.EPrim (Prim.String "("), loc),
+                                                       (L'.ERel 2, loc),
+                                                       (L'.EPrim (Prim.String " JOIN "), loc),
+                                                       (L'.ERel 1, loc),
+                                                       (L'.EPrim (Prim.String " ON "), loc),
+                                                       (L'.ERel 0, loc),
+                                                       (L'.EPrim (Prim.String ")"), loc)]), loc)), loc)), loc),
+                 fm)
+            end
 
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_Nil"), _), _), _), _) =>
             ((L'.EPrim (Prim.String ""), loc), fm)

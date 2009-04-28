@@ -213,6 +213,7 @@ datatype attr = Class of exp | Normal of con * exp
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
  | CCONSTRAINT | UNIQUE | CHECK | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
+ | JOIN | INNER | CROSS
 
 %nonterm
    file of decl list
@@ -305,6 +306,7 @@ datatype attr = Class of exp | Normal of con * exp
  | query of exp
  | query1 of exp
  | tables of con list * exp
+ | fitem of con list * exp
  | tname of con
  | tnameW of con * con
  | tnames of (con * con) * (con * con) list
@@ -359,6 +361,7 @@ datatype attr = Class of exp | Normal of con * exp
 %nonassoc DCOLON TCOLON
 %left UNION INTERSECT EXCEPT
 %right COMMA
+%right JOIN INNER CROSS
 %right OR
 %right CAND
 %nonassoc EQ NE LT LE GT GE IS
@@ -1422,15 +1425,48 @@ query1 : SELECT select FROM tables wopt gopt hopt
        | query1 INTERSECT query1        (sql_relop ("intersect", query11, query12, s (query11left, query12right)))
        | query1 EXCEPT query1           (sql_relop ("except", query11, query12, s (query11left, query12right)))
 
-tables : table'                         ([#1 table'], #2 table')
-       | table' COMMA tables            (let
-                                             val loc = s (table'left, tablesright)
+tables : fitem                          (fitem)
+       | fitem COMMA tables             (let
+                                             val loc = s (fitemleft, tablesright)
                                                        
                                              val e = (EVar (["Basis"], "sql_from_comma", Infer), loc)
-                                             val e = (EApp (e, #2 table'), loc)
+                                             val e = (EApp (e, #2 fitem), loc)
                                          in
-                                             (#1 table' :: #1 tables,
+                                             (#1 fitem @ #1 tables,
                                               (EApp (e, #2 tables), loc))
+                                         end)
+
+fitem  : table'                         ([#1 table'], #2 table')
+       | fitem JOIN fitem ON sqlexp     (let
+                                             val loc = s (fitem1left, sqlexpright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_inner_join", Infer), loc)
+                                             val e = (EApp (e, #2 fitem1), loc)
+                                             val e = (EApp (e, #2 fitem2), loc)
+                                         in
+                                             (#1 fitem1 @ #1 fitem2,
+                                              (EApp (e, sqlexp), loc))
+                                         end)
+       | fitem INNER JOIN fitem ON sqlexp (let
+                                             val loc = s (fitem1left, sqlexpright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_inner_join", Infer), loc)
+                                             val e = (EApp (e, #2 fitem1), loc)
+                                             val e = (EApp (e, #2 fitem2), loc)
+                                         in
+                                             (#1 fitem1 @ #1 fitem2,
+                                              (EApp (e, sqlexp), loc))
+                                         end)
+       | fitem CROSS JOIN fitem         (let
+                                             val loc = s (fitem1left, fitem2right)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_inner_join", Infer), loc)
+                                             val e = (EApp (e, #2 fitem1), loc)
+                                             val e = (EApp (e, #2 fitem2), loc)
+                                             val tru = sql_inject (EVar (["Basis"], "True", Infer), loc)
+                                         in
+                                             (#1 fitem1 @ #1 fitem2,
+                                              (EApp (e, tru), loc))
                                          end)
 
 tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
