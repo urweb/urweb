@@ -41,11 +41,13 @@ void uw_memstats(uw_context);
 int uw_send(uw_context, int sock);
 
 void uw_set_input(uw_context, const char *name, char *value);
+void uw_set_file_input(uw_context, char *name, uw_Basis_file);
+
 char *uw_get_input(uw_context, int name);
 char *uw_get_optional_input(uw_context, int name);
-
-void uw_set_file_input(uw_context, char *name, uw_Basis_file);
 uw_Basis_file uw_get_file_input(uw_context, int name);
+void uw_enter_subform(uw_context, int name);
+void uw_leave_subform(uw_context);
 
 void uw_write(uw_context, const char*);
 

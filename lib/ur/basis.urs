@@ -555,9 +555,16 @@ val a : bodyTag [Link = transaction page, Href = url, Onclick = transaction unit
 val img : bodyTag [Src = url]
 
 val form : ctx ::: {Unit} -> bind ::: {Type}
-            -> [[Body] ~ ctx] =>
-                  xml form [] bind
-                  -> xml ([Body] ++ ctx) [] []
+           -> [[Body] ~ ctx] =>
+    xml form [] bind
+    -> xml ([Body] ++ ctx) [] []
+       
+val subform : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
+              -> [[Form] ~ ctx] =>
+    nm :: Name -> [[nm] ~ use] =>
+    xml form [] bind
+    -> xml ([Form] ++ ctx) use [nm = $bind]
+       
 con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   ctx ::: {Unit}
                   -> [[Form] ~ ctx] =>

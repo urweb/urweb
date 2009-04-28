@@ -280,7 +280,7 @@ datatype attr = Class of exp | Normal of con * exp
  | rexp of (con * exp) list
  | xml of exp
  | xmlOne of exp
- | tag of string * exp
+ | tag of (string * exp) * exp
  | tagHead of string * exp
  | bind of string * con option * exp
  | edecl of edecl
@@ -1240,7 +1240,7 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                              val pos = s (tagleft, GTright)
 
                                              val cdata =
-                                                 if #1 tag = "submit" orelse #1 tag = "dyn" then
+                                                 if #1 (#1 tag) = "submit" orelse #1 (#1 tag) = "dyn" then
                                                      let
                                                          val e = (EVar (["Basis"], "cdata", DontInfer), pos)
                                                          val e = (ECApp (e, (CWild (KWild, pos), pos)), pos)
@@ -1261,9 +1261,12 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                              val pos = s (tagleft, GTright)
                                              val et = tagIn END_TAG
                                          in
-                                             if #1 tag = et then
+                                             if #1 (#1 tag) = et then
                                                  if et = "form" then
                                                      (EApp ((EVar (["Basis"], "form", Infer), pos),
+                                                            xml), pos)
+                                                 else if et = "subform" then
+                                                     (EApp ((EDisjointApp (#2 (#1 tag)), pos),
                                                             xml), pos)
                                                  else
                                                      (EApp (#2 tag, xml), pos)
@@ -1295,7 +1298,7 @@ tag    : tagHead attrs                  (let
                                              val e = (EApp (e, (EApp (#2 tagHead,
                                                                       (ERecord [], pos)), pos)), pos)
                                          in
-                                             (#1 tagHead, e)
+                                             (tagHead, e)
                                          end)
 
 tagHead: BEGIN_TAG                      (let

@@ -2686,6 +2686,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.ECApp (
+                                          (L.EFfi ("Basis", "subform"), _), _), _), _),
+                                _), _), _), (L.CName nm, loc)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("xml", s, s,
+                           strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".b\" value=\""
+                                                           ^ nm ^ "\">")), loc),
+                                   (L'.ERel 0, loc),
+                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\">")), loc)]),
+                  loc),
+                 fm)
+            end
+
           | L.EApp ((L.ECApp (
                      (L.ECApp (
                       (L.ECApp (

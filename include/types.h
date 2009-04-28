@@ -35,6 +35,7 @@ typedef struct uw_Basis_file {
 
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY, RETURN_BLOB } failure_kind;
 
+typedef struct input *uw_input;
 
 #define INTS_MAX 50
 #define FLOATS_MAX 100

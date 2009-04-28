@@ -2340,31 +2340,50 @@ fun p_file env (ds, ps) =
                                                 E.declBinds env d))
                              env ds
 
+        fun flatFields (t : typ) =
+            case #1 t of
+                TRecord i =>
+                let
+                    val xts = E.lookupStruct env i
+                in
+                    SOME (map #1 xts :: List.concat (List.mapPartial (flatFields o #2) xts))
+                end
+              | _ => NONE
+
         val fields = foldl (fn ((ek, _, _, ts, _, _), fields) =>
                                case ek of
                                    Link => fields
                                  | Rpc _ => fields
                                  | Action eff =>
                                    case List.nth (ts, length ts - 2) of
-                                       (TRecord i, _) =>
+                                       (TRecord i, loc) =>
                                        let
                                            val xts = E.lookupStruct env i
                                            val xts = case eff of
                                                          ReadCookieWrite =>
                                                          (sigName xts, (TRecord 0, ErrorMsg.dummySpan)) :: xts
                                                        | _ => xts
-                                           val xtsSet = SS.addList (SS.empty, map #1 xts)
                                        in
-                                           foldl (fn ((x, _), fields) =>
-                                                     let
-                                                         val xtsSet' = Option.getOpt (SM.find (fields, x), SS.empty)
-                                                     in
-                                                         SM.insert (fields, x, SS.union (SS.delete (xtsSet, x),
-                                                                                         xtsSet'))
-                                                     end) fields xts
+                                           case flatFields (TRecord i, loc) of
+                                               NONE => raise Fail "CjrPrint: flatFields impossible"
+                                             | SOME fields' => List.revAppend (fields', fields)
                                        end
                                      | _ => raise Fail "CjrPrint: Last argument of action isn't record")
-                     SM.empty ps
+                           [] ps
+
+        val fields = foldl (fn (xts, fields) =>
+                               let
+                                   val xtsSet = SS.addList (SS.empty, xts)
+                               in
+                                   foldl (fn (x, fields) =>
+                                             let
+                                                 val xtsSet' = Option.getOpt (SM.find (fields, x), SS.empty)
+                                             in
+                                                 SM.insert (fields, x, SS.union (SS.delete (xtsSet, x),
+                                                                                 xtsSet'))
+                                             end) fields xts
+                               end)
+                           SM.empty fields
 
         val fnums = SM.foldli (fn (x, xs, fnums) =>
                                   let
@@ -2467,6 +2486,97 @@ fun p_file env (ds, ps) =
                              string "}"]
                 end
 
+        fun getInput (x, t) =
+            let
+                val n = case SM.find (fnums, x) of
+                            NONE => raise Fail "CjrPrint: Can't find in fnums"
+                          | SOME n => n
+
+                val f = case t of
+                            (TFfi ("Basis", "bool"), _) => "optional_"
+                          | _ => ""
+            in
+                if isFile t then
+                    box [string "uw_input_",
+                         p_ident x,
+                         space,
+                         string "=",
+                         space,
+                         string "uw_get_file_input(ctx, ",
+                         string (Int.toString n),
+                         string ");",
+                         newline]
+                else case #1 t of
+                         TRecord i =>
+                         let
+                             val xts = E.lookupStruct env i
+                         in
+                             box [string "uw_enter_subform(ctx, ",
+                                  string (Int.toString n),
+                                  string ");",
+                                  newline,
+                                  string "uw_input_",
+                                  p_ident x,
+                                  space,
+                                  string "=",
+                                  space,
+                                  string "({",
+                                  box [p_typ env t,
+                                       space,
+                                       string "result;",
+                                       newline,
+                                       p_list_sep (box [])
+                                                  (fn (x, t) =>
+                                                      box [p_typ env t,
+                                                           space,
+                                                           string "uw_input_",
+                                                           string x,
+                                                           string ";",
+                                                           newline])
+                                                  xts,
+                                       newline,
+                                       p_list_sep (box []) (fn (x, t) =>
+                                                               box [getInput (x, t),
+                                                                    string "result.__uwf_",
+                                                                    string x,
+                                                                    space,
+                                                                    string "=",
+                                                                    space,
+                                                                    string "uw_input_",
+                                                                    string x,
+                                                                    string ";",
+                                                                    newline])
+                                                  xts,
+                                       newline,
+                                       string "result;",
+                                       newline],
+                                  string "});",
+                                  newline,
+                                  string "uw_leave_subform(ctx);"]
+                         end
+                       | _ =>
+                         box [string "request = uw_get_",
+                              string f,
+                              string "input(ctx, ",
+                              string (Int.toString n),
+                              string ");",
+                              newline,
+                              string "if (request == NULL)",
+                              newline,
+                              box [string "uw_error(ctx, FATAL, \"Missing input ",
+                                   string x,
+                                   string "\");"],
+                              newline,
+                              string "uw_input_",
+                              p_ident x,
+                              space,
+                              string "=",
+                              space,
+                              unurlify env t,
+                              string ";",
+                              newline]
+            end
+
         fun p_page (ek, s, n, ts, ran, side) =
             let
                 val (ts, defInputs, inputsVar, fields) =
@@ -2487,48 +2597,7 @@ fun p_file env (ds, ps) =
                                                                   string ";",
                                                                   newline]) xts),
                                       newline,
-                                      box (map (fn (x, t) =>
-                                                   let
-                                                       val n = case SM.find (fnums, x) of
-                                                                   NONE => raise Fail "CjrPrint: Can't find in fnums"
-                                                                 | SOME n => n
-
-                                                       val f = case t of
-                                                                   (TFfi ("Basis", "bool"), _) => "optional_"
-                                                                 | _ => ""
-                                                   in
-                                                       if isFile t then
-                                                           box [string "uw_input_",
-                                                                p_ident x,
-                                                                space,
-                                                                string "=",
-                                                                space,
-                                                                string "uw_get_file_input(ctx, ",
-                                                                string (Int.toString n),
-                                                                string ");",
-                                                                newline]
-                                                       else
-                                                           box [string "request = uw_get_",
-                                                                string f,
-                                                                string "input(ctx, ",
-                                                                string (Int.toString n),
-                                                                string ");",
-                                                                newline,
-                                                                string "if (request == NULL)",
-                                                                newline,
-                                                                box [string "uw_error(ctx, FATAL, \"Missing input ",
-                                                                     string x,
-                                                                     string "\");"],
-                                                                newline,
-                                                                string "uw_input_",
-                                                                p_ident x,
-                                                                space,
-                                                                string "=",
-                                                                space,
-                                                                unurlify env t,
-                                                                string ";",
-                                                                newline]
-                                                   end) xts),
+                                      box (map getInput xts),
                                       string "struct __uws_",
                                       string (Int.toString i),
                                       space,
