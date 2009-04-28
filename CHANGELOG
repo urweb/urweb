@@ -9,6 +9,7 @@ Next
 - CSS
 - Signing cookie values cryptographically to thwart cross site request forgery
 - Blobs and HTTP file upload
+- SQL outer joins
 
 ========
 20090405
