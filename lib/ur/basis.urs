@@ -235,6 +235,17 @@ val sql_inner_join : tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
        -> sql_exp (tabs1 ++ tabs2) [] [] bool
        -> sql_from_items (tabs1 ++ tabs2)
 
+class nullify :: Type -> Type -> Type
+val nullify_option : t ::: Type -> nullify (option t) (option t)
+val nullify_prim : t ::: Type -> sql_injectable_prim t -> nullify t (option t)
+
+val sql_left_join : tabs1 ::: {{Type}} -> tabs2 ::: {{(Type * Type)}}
+                     -> [tabs1 ~ tabs2]
+    => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) tabs2)
+       -> sql_from_items tabs1 -> sql_from_items (map (map (fn p :: (Type * Type) => p.1)) tabs2)
+       -> sql_exp (tabs1 ++ map (map (fn p :: (Type * Type) => p.1)) tabs2) [] [] bool
+       -> sql_from_items (tabs1 ++ map (map (fn p :: (Type * Type) => p.2)) tabs2)
+
 val sql_query1 : tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}

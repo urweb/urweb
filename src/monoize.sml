@@ -189,6 +189,8 @@ fun monoType env =
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_injectable"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "nullify"), _), _), _), _) =>
+                    (L'.TRecord [], loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_unary"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_binary"), _), _), _), _), _), _) =>
@@ -581,6 +583,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.ERecord [("Lt", lt, (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc)),
                           ("Le", le, (L'.TFun (t, (L'.TFun (t, (L'.TFfi ("Basis", "bool"), loc)), loc)), loc))],
               loc), fm)
+
+        fun outerRec xts =
+            (L'.TRecord (map (fn ((L.CName x, _), (L.CRecord (_, xts), _)) =>
+                                 (x, (L'.TRecord (map (fn (x', _) => (x, (L'.TRecord [], loc))) xts), loc))
+                               | (x, all as (_, loc)) =>
+                                 (E.errorAt loc "Unsupported record field constructor";
+                                  Print.eprefaces' [("Name", CorePrint.p_con env x),
+                                                    ("Constructor", CorePrint.p_con env all)];
+                                  ("", dummyTyp))) xts), loc)
     in
         case e of
             L.EPrim p => ((L'.EPrim p, loc), fm)
@@ -1702,6 +1713,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.ECApp ((L.EFfi ("Basis", "nullify_option"), _), _) =>
+            ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "nullify_prim"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                       (L'.ERecord [], loc)), loc),
+             fm)
+
           | L.ECApp ((L.EFfi ("Basis", "sql_subset"), _), _) =>
             ((L'.ERecord [], loc), fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_subset_all"), _), _) =>
@@ -1742,6 +1760,25 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                        (L'.EPrim (Prim.String " ON "), loc),
                                                        (L'.ERel 0, loc),
                                                        (L'.EPrim (Prim.String ")"), loc)]), loc)), loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_left_join"), _), _), _), (L.CRecord (_, right), _)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("_", outerRec right,
+                           (L'.TFun (s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc)), loc),
+                           (L'.EAbs ("tab1", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                                     (L'.EAbs ("tab2", s, (L'.TFun (s, s), loc),
+                                               (L'.EAbs ("on", s, s,
+                                                         strcat [(L'.EPrim (Prim.String "("), loc),
+                                                                 (L'.ERel 2, loc),
+                                                                 (L'.EPrim (Prim.String " LEFT JOIN "), loc),
+                                                                 (L'.ERel 1, loc),
+                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                 (L'.ERel 0, loc),
+                                                                 (L'.EPrim (Prim.String ")"), loc)]),
+                                                loc)), loc)), loc)), loc),
                  fm)
             end
 

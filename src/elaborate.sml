@@ -1131,26 +1131,35 @@
                | (L'.TFun (dom, ran), _) =>
                  let
                      fun default () = (e, t, [])
+
+                     fun isInstance () =
+                         if infer <> L.TypesOnly then
+                             let
+                                 val r = ref NONE
+                                 val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
+                             in
+                                 (e, t, TypeClass (env, dom, r, loc) :: gs)
+                             end
+                         else
+                             default ()
+
+                     fun hasInstance c =
+                         case #1 (hnormCon env c) of
+                             L'.CApp (cl, x) =>
+                             let
+                                 val cl = hnormCon env cl
+                             in
+                                 isClassOrFolder env cl
+                             end
+                           | L'.TRecord c => U.Con.exists {kind = fn _ => false,
+                                                           con = fn c =>
+                                                                    E.isClass env (hnormCon env (c, loc))} c
+                           | _ => false
                  in
-                     case #1 (hnormCon env dom) of
-                         L'.CApp (cl, x) =>
-                         let
-                             val cl = hnormCon env cl
-                         in
-                             if infer <> L.TypesOnly then
-                                 if isClassOrFolder env cl then
-                                     let
-                                         val r = ref NONE
-                                         val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
-                                     in
-                                         (e, t, TypeClass (env, dom, r, loc) :: gs)
-                                     end
-                                 else
-                                     default ()
-                             else
-                                 default ()
-                         end
-                       | _ => default ()
+                     if hasInstance dom then
+                         isInstance ()
+                     else
+                         default ()
                  end
                | (L'.TDisjoint (r1, r2, t'), loc) =>
                  if infer <> L.TypesOnly then
@@ -3638,7 +3647,7 @@ fun elabFile basis topStr topSgn env file =
                                   let
                                       val c = normClassKey env c
                                   in
-                                      case E.resolveClass env c of
+                                      case E.resolveClass (hnormCon env) env c of
                                           SOME e => r := SOME e
                                         | NONE => expError env (Unresolvable (loc, c))
                                   end) gs
@@ -3688,11 +3697,6 @@ fun elabFile basis topStr topSgn env file =
         if ErrorMsg.anyErrors () then
             ()
         else
-            app (fn f => f ()) (!checks);
-
-        if ErrorMsg.anyErrors () then
-            ()
-        else
             app (fn Disjoint (loc, env, denv, c1, c2) =>
                     (case D.prove env denv (c1, c2, loc) of
                          [] => ()
@@ -3708,7 +3712,7 @@ fun elabFile basis topStr topSgn env file =
 
                         val c = normClassKey env c
                     in
-                        case E.resolveClass env c of
+                        case E.resolveClass (hnormCon env) env c of
                             SOME e => r := SOME e
                           | NONE =>
                             case #1 (hnormCon env c) of
@@ -3746,6 +3750,11 @@ fun elabFile basis topStr topSgn env file =
                                    | _ => default ())
                               | _ => default ()
                     end) gs;
+
+        if ErrorMsg.anyErrors () then
+            ()
+        else
+            app (fn f => f ()) (!checks);
 
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
         :: ds

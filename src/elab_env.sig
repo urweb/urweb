@@ -71,7 +71,7 @@ signature ELAB_ENV = sig
 
     val pushClass : env -> int -> env
     val isClass : env -> Elab.con -> bool
-    val resolveClass : env -> Elab.con -> Elab.exp option
+    val resolveClass : (Elab.con -> Elab.con) -> env -> Elab.con -> Elab.exp option
     val listClasses : env -> (Elab.con * (Elab.con * Elab.exp) list) list
 
     val pushERel : env -> string -> Elab.con -> env
