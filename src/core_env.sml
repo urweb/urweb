@@ -327,6 +327,13 @@ fun declBinds env (d, loc) =
         in
             pushENamed env x n t NONE s
         end
+      | DView (x, n, s, _, c) =>
+        let
+            val ct = (CFfi ("Basis", "sql_view"), loc)
+            val ct = (CApp (ct, c), loc)
+        in
+            pushENamed env x n ct NONE s
+        end
       | DDatabase _ => env
       | DCookie (x, n, c, s) =>
         let

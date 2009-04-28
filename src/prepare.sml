@@ -266,6 +266,7 @@ fun prepDecl (d as (_, loc), sns) =
 
       | DTable _ => (d, sns)
       | DSequence _ => (d, sns)
+      | DView _ => (d, sns)
       | DDatabase _ => (d, sns)
       | DPreparedStatements _ => (d, sns)
       | DJavaScript _ => (d, sns)

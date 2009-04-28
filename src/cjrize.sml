@@ -562,6 +562,34 @@ fun cifyDecl ((d, loc), sm) =
         end
       | L.DSequence s =>
         (SOME (L'.DSequence s, loc), NONE, sm)
+      | L.DView (s, xts, e) =>
+        let
+            val (xts, sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
+                                                  let
+                                                      val (t, sm) = cifyTyp (t, sm)
+                                                  in
+                                                      ((x, t), sm)
+                                                  end) sm xts
+
+            fun flatten e =
+                case #1 e of
+                    L.ERecord [] => []
+                  | L.ERecord [(x, (L.EPrim (Prim.String v), _), _)] => [(x, v)]
+                  | L.EStrcat (e1, e2) => flatten e1 @ flatten e2
+                  | _ => (ErrorMsg.errorAt loc "Constraint has not been fully determined";
+                          Print.prefaces "Undetermined constraint"
+                                         [("e", MonoPrint.p_exp MonoEnv.empty e)];
+                          [])
+
+            val e = case #1 e of
+                        L.EPrim (Prim.String s) => s
+                      | _ => (ErrorMsg.errorAt loc "VIEW query has not been fully determined";
+                              Print.prefaces "Undetermined VIEW query"
+                                             [("e", MonoPrint.p_exp MonoEnv.empty e)];
+                              "")
+        in
+            (SOME (L'.DView (s, xts, e), loc), NONE, sm)
+        end
       | L.DDatabase s => (SOME (L'.DDatabase s, loc), NONE, sm)
       | L.DJavaScript s => (SOME (L'.DJavaScript s, loc), NONE, sm)
       | L.DCookie args => (SOME (L'.DCookie args, loc), NONE, sm)

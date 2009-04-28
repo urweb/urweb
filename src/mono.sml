@@ -127,6 +127,7 @@ datatype decl' =
 
        | DTable of string * (string * typ) list * exp * exp
        | DSequence of string
+       | DView of string * (string * typ) list * exp
        | DDatabase of {name : string, expunge : int, initialize : int}
 
        | DJavaScript of string

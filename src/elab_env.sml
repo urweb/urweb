@@ -591,6 +591,22 @@ fun unifySubst (rs : con list) =
 
 exception Bad of con * con
 
+val hasUnif = U.Con.exists {kind = fn _ => false,
+                            con = fn CUnif (_, _, _, ref NONE) => true
+                                   | _ => false}
+
+fun startsWithUnif c =
+    let
+        fun firstArg (c, acc) =
+            case #1 c of
+                CApp (f, x) => firstArg (f, SOME x)
+              | _ => acc
+    in
+        case firstArg (c, NONE) of
+            NONE => false
+          | SOME x => hasUnif x
+    end
+
 fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
     let
         fun resolve c =
@@ -671,34 +687,37 @@ fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
                             tryGrounds (#ground class)
                         end
             in
-                case #1 c of
-                    TRecord c =>
-                    (case #1 (hnorm c) of
-                         CRecord (_, xts) =>
-                         let
-                             fun resolver (xts, acc) =
-                                 case xts of
-                                     [] => SOME (ERecord acc, #2 c)
-                                   | (x, t) :: xts =>
-                                     let
-                                         val t = hnorm t
+                if startsWithUnif c then
+                    NONE
+                else
+                    case #1 c of
+                        TRecord c =>
+                        (case #1 (hnorm c) of
+                             CRecord (_, xts) =>
+                             let
+                                 fun resolver (xts, acc) =
+                                     case xts of
+                                         [] => SOME (ERecord acc, #2 c)
+                                       | (x, t) :: xts =>
+                                         let
+                                             val t = hnorm t
 
-                                         val t = case t of
-                                                     (CApp (f, x), loc) => (CApp (hnorm f, hnorm x), loc)
-                                                   | _ => t
-                                     in
-                                         case resolve t of
-                                             NONE => NONE
-                                           | SOME e => resolver (xts, (x, e, t) :: acc)
-                                     end
-                         in
-                             resolver (xts, [])
-                         end
-                       | _ => NONE)
-                  | _ =>
-                    case class_head_in c of
-                        SOME f => doHead f
-                      | _ => NONE
+                                             val t = case t of
+                                                         (CApp (f, x), loc) => (CApp (hnorm f, hnorm x), loc)
+                                                       | _ => t
+                                         in
+                                             case resolve t of
+                                                 NONE => NONE
+                                               | SOME e => resolver (xts, (x, e, t) :: acc)
+                                         end
+                             in
+                                 resolver (xts, [])
+                             end
+                           | _ => NONE)
+                      | _ =>
+                        case class_head_in c of
+                            SOME f => doHead f
+                          | _ => NONE
             end
     in
         resolve
@@ -1481,6 +1500,13 @@ fun declBinds env (d, loc) =
             val t = (CModProj (tn, [], "sql_sequence"), loc)
         in
             pushENamedAs env x n t
+        end
+      | DView (tn, x, n, _, c) =>
+        let
+            val ct = (CModProj (tn, [], "sql_view"), loc)
+            val ct = (CApp (ct, c), loc)
+        in
+            pushENamedAs env x n ct
         end
       | DClass (x, n, k, c) =>
         let

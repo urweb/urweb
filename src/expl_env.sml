@@ -312,6 +312,13 @@ fun declBinds env (d, loc) =
         in
             pushENamed env x n t
         end
+      | DView (tn, x, n, _, c) =>
+        let
+            val ct = (CModProj (tn, [], "sql_view"), loc)
+            val ct = (CApp (ct, c), loc)
+        in
+            pushENamed env x n ct
+        end
       | DDatabase _ => env
       | DCookie (tn, x, n, c) =>
         let

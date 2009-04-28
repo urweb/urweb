@@ -404,6 +404,7 @@ fun unnest file =
                   | DExport _ => default ()
                   | DTable _ => default ()
                   | DSequence _ => default ()
+                  | DView _ => default ()
                   | DClass _ => default ()
                   | DDatabase _ => default ()
                   | DCookie _ => default ()

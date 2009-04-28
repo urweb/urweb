@@ -182,6 +182,8 @@ fun explifyDecl (d, loc : EM.span) =
         SOME (L'.DTable (nt, x, n, explifyCon c,
                          explifyExp pe, explifyCon pc,
                          explifyExp ce, explifyCon cc), loc)
+      | L.DView (nt, x, n, e, c) =>
+        SOME (L'.DView (nt, x, n, explifyExp e, explifyCon c), loc)
       | L.DSequence (nt, x, n) => SOME (L'.DSequence (nt, x, n), loc)
       | L.DClass (x, n, k, c) => SOME (L'.DCon (x, n,
                                                 (L'.KArrow (explifyKind k, (L'.KType, loc)), loc), explifyCon c), loc)

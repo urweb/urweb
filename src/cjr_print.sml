@@ -2069,6 +2069,15 @@ fun p_decl env (dAll as (d, _) : decl) =
                             string x,
                             string " */",
                             newline]
+      | DView (x, _, s) => box [string "/* SQL view ",
+                                string x,
+                                space,
+                                string "AS",
+                                space,
+                                string s,
+                                space,
+                                string " */",
+                                newline]
       | DDatabase {name, expunge, initialize} =>
         box [string "static void uw_db_validate(uw_context);",
              newline,
@@ -3086,6 +3095,17 @@ fun p_sql env (ds, _) =
                                           | DSequence s =>
                                             box [string "CREATE SEQUENCE ",
                                                  string s,
+                                                 string ";",
+                                                 newline,
+                                                 newline]
+                                          | DView (s, xts, q) =>
+                                            box [string "CREATE VIEW",
+                                                 space,
+                                                 string s,
+                                                 space,
+                                                 string "AS",
+                                                 space,
+                                                 string q,
                                                  string ";",
                                                  newline,
                                                  newline]

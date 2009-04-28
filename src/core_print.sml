@@ -566,6 +566,13 @@ fun p_decl env (dAll as (d, _) : decl) =
                                     string "as",
                                     space,
                                     string s]
+      | DView (x, n, s, e, _) => box [string "view",
+                                      space,
+                                      p_named x n,
+                                      space,
+                                      string "as",
+                                      space,
+                                      p_exp env e]
       | DDatabase s => box [string "database",
                             space,
                             string s]

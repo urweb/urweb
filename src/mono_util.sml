@@ -492,6 +492,10 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                               fn ce' =>
                                  (DTable (s, xts, pe', ce'), loc)))
               | DSequence _ => S.return2 dAll
+              | DView (s, xts, e) =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (DView (s, xts, e'), loc))
               | DDatabase _ => S.return2 dAll
               | DJavaScript _ => S.return2 dAll
               | DCookie _ => S.return2 dAll
@@ -575,6 +579,7 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DExport _ => ctx
                                       | DTable _ => ctx
                                       | DSequence _ => ctx
+                                      | DView _ => ctx
                                       | DDatabase _ => ctx
                                       | DJavaScript _ => ctx
                                       | DCookie _ => ctx
@@ -626,6 +631,7 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DExport _ => count
                           | DTable _ => count
                           | DSequence _ => count
+                          | DView _ => count
                           | DDatabase _ => count
                           | DJavaScript _ => count
                           | DCookie _ => count

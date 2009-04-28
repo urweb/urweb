@@ -758,6 +758,13 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DSequence (_, x, n) => box [string "sequence",
                                     space,
                                     p_named x n]
+      | DView (_, x, n, e, _) => box [string "view",
+                                      space,
+                                      p_named x n,
+                                      space,
+                                      string "as",
+                                      space,
+                                      p_exp env e]
       | DClass (x, n, k, c) => box [string "class",
                                     space,
                                     p_named x n,

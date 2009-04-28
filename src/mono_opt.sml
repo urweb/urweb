@@ -422,6 +422,31 @@ fun exp e =
             EPrim (Prim.String s)
         end
 
+      | EFfiApp ("Basis", "viewify", [(EPrim (Prim.String s), loc)]) => 
+        let
+            fun uwify (cs, acc) =
+                case cs of
+                    [] => String.concat (rev acc)
+                  | #"A" :: #"S" :: #" " :: #"_" :: cs => uwify (cs, "AS uw_" :: acc)
+                  | #"'" :: cs =>
+                    let
+                        fun waitItOut (cs, acc) =
+                            case cs of
+                                [] => raise Fail "MonoOpt: Unterminated SQL string literal"
+                              | #"'" :: cs => uwify (cs, "'" :: acc)
+                              | #"\\" :: #"'" :: cs => waitItOut (cs, "\\'" :: acc)
+                              | #"\\" :: #"\\" :: cs => waitItOut (cs, "\\\\" :: acc)
+                              | c :: cs => waitItOut (cs, str c :: acc)
+                    in
+                        waitItOut (cs, "'" :: acc)
+                    end
+                  | c :: cs => uwify (cs, str c :: acc)
+
+            val s = uwify (String.explode s, [])
+        in
+            EPrim (Prim.String s)
+        end
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)

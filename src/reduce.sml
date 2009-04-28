@@ -467,6 +467,7 @@ fun reduce file =
                                                                   exp (namedC, namedE) [] ce,
                                                                   con namedC [] cc), loc), st)
               | DSequence _ => (d, st)
+              | DView (s, n, s', e, c) => ((DView (s, n, s', exp (namedC, namedE) [] e, con namedC [] c), loc), st)
               | DDatabase _ => (d, st)
               | DCookie (s, n, c, s') => ((DCookie (s, n, con namedC [] c, s'), loc), st)
               | DStyle (s, n, s') => ((DStyle (s, n, s'), loc), st)

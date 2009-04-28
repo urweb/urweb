@@ -158,6 +158,7 @@ fun reduce file =
               | DExport _ => d
               | DTable _ => d
               | DSequence _ => d
+              | DView _ => d
               | DDatabase _ => d
               | DCookie _ => d
               | DStyle _ => d

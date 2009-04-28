@@ -107,6 +107,7 @@ datatype decl' =
 
        | DTable of string * (string * typ) list * string * (string * string) list
        | DSequence of string
+       | DView of string * (string * typ) list * string
        | DDatabase of {name : string, expunge : int, initialize : int}
        | DPreparedStatements of (string * int) list
 

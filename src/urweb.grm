@@ -195,7 +195,7 @@ datatype attr = Class of exp | Normal of con * exp
  | FN | PLUSPLUS | MINUSMINUS | MINUSMINUSMINUS | DOLLAR | TWIDDLE | CARET
  | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
- | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE
+ | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE | VIEW
  | COOKIE | STYLE
  | CASE | IF | THEN | ELSE
 
@@ -438,6 +438,10 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
        | TABLE SYMBOL COLON cterm pkopt commaOpt cstopt([(DTable (SYMBOL, entable cterm, pkopt, cstopt),
                                                  s (TABLEleft, cstoptright))])
        | SEQUENCE SYMBOL                ([(DSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))])
+       | VIEW SYMBOL EQ query           ([(DView (SYMBOL, query),
+                                           s (VIEWleft, queryright))])
+       | VIEW SYMBOL EQ LBRACE eexp RBRACE ([(DView (SYMBOL, eexp),
+                                           s (VIEWleft, RBRACEright))])
        | CLASS SYMBOL EQ cexp           (let
                                              val loc = s (CLASSleft, cexpright)
                                          in
@@ -671,6 +675,13 @@ sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, 
        | SEQUENCE SYMBOL                (let
                                              val loc = s (SEQUENCEleft, SYMBOLright)
                                              val t = (CVar (["Basis"], "sql_sequence"), loc)
+                                         in
+                                             (SgiVal (SYMBOL, t), loc)
+                                         end)
+       | VIEW SYMBOL COLON cexp         (let
+                                             val loc = s (VIEWleft, cexpright)
+                                             val t = (CVar (["Basis"], "sql_view"), loc)
+                                             val t = (CApp (t, cexp), loc)
                                          in
                                              (SgiVal (SYMBOL, t), loc)
                                          end)

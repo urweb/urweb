@@ -438,6 +438,13 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DSequence s => box [string "(* SQL sequence ",
                             string s,
                             string "*)"]
+      | DView (s, _, e) => box [string "(* SQL view ",
+                                string s,
+                                space,
+                                string "as",
+                                space,
+                                p_exp env e,
+                                string "*)"]
       | DDatabase {name, expunge, initialize} => box [string "database",
                                                       space,
                                                       string name,

@@ -130,6 +130,7 @@ datatype decl' =
        | DExport of export_kind * int
        | DTable of string * int * con * string * exp * con * exp * con
        | DSequence of string * int * string
+       | DView of string * int * string * exp * con
        | DDatabase of string
        | DCookie of string * int * con * string
        | DStyle of string * int * string

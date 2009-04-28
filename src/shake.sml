@@ -84,6 +84,8 @@ fun shake file =
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
                                    | ((DSequence (_, n, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], dummyt, dummye)))
+                                   | ((DView (_, n, _, _, c), _), (cdef, edef)) =>
+                                     (cdef, IM.insert (edef, n, ([], c, dummye)))
                                    | ((DDatabase _, _), acc) => acc
                                    | ((DCookie (_, n, c, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
@@ -159,8 +161,9 @@ fun shake file =
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => true
-                      | (DTable _, _) => true
+                      | (DView _, _) => true
                       | (DSequence _, _) => true
+                      | (DTable _, _) => true
                       | (DDatabase _, _) => true
                       | (DCookie _, _) => true
                       | (DStyle _, _) => true) file

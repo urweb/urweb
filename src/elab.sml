@@ -165,6 +165,7 @@ datatype decl' =
        | DExport of int * sgn * str
        | DTable of int * string * int * con * exp * con * exp * con
        | DSequence of int * string * int
+       | DView of int * string * int * exp * con
        | DClass of string * int * kind * con
        | DDatabase of string
        | DCookie of int * string * int * con

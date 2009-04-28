@@ -621,6 +621,13 @@ fun p_decl ((d, _) : decl) =
       | DSequence x => box [string "sequence",
                             space,
                             string x]
+      | DView (x, e) => box [string "view",
+                             space,
+                             string x,
+                             space,
+                             string "=",
+                             space,
+                             p_exp e]
       | DClass (x, k, c) => box [string "class",
                                  space,
                                  string x,

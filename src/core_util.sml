@@ -946,6 +946,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                                                             fn cc' =>
                                                                (DTable (x, n, c', s, pe', pc', ce', cc'), loc))))))
               | DSequence _ => S.return2 dAll
+              | DView (x, n, s, e, c) =>
+                S.bind2 (mfe ctx e,
+                     fn e' =>
+                        S.map2 (mfc ctx c,
+                             fn c' =>
+                                (DView (x, n, s, e', c'), loc)))
               | DDatabase _ => S.return2 dAll
               | DCookie (x, n, c, s) =>
                 S.map2 (mfc ctx c,
@@ -1082,6 +1088,14 @@ fun mapfoldB (all as {bind, ...}) =
                                         in
                                             bind (ctx, NamedE (x, n, t, NONE, s))
                                         end
+                                      | DView (x, n, s, _, c) =>
+                                        let
+                                            val loc = #2 d'
+                                            val ct = (CFfi ("Basis", "sql_view"), loc)
+                                            val ct = (CApp (ct, c), loc)
+                                        in
+                                            bind (ctx, NamedE (x, n, ct, NONE, s))
+                                        end
                                       | DDatabase _ => ctx
                                       | DCookie (x, n, c, s) =>
                                         let
@@ -1154,6 +1168,7 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DExport _ => count
                           | DTable (_, n, _, _, _, _, _, _) => Int.max (n, count)
                           | DSequence (_, n, _) => Int.max (n, count)
+                          | DView (_, n, _, _, _) => Int.max (n, count)
                           | DDatabase _ => count
                           | DCookie (_, n, _, _) => Int.max (n, count)
                           | DStyle (_, n, _) => Int.max (n, count)) 0

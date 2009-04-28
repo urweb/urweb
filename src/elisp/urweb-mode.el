@@ -137,7 +137,7 @@ See doc for the variable `urweb-mode-info'."
 	       "fun" "functor" "if" "include"
 	       "of" "open" "let" "in"
 	       "rec" "sequence" "sig" "signature" "cookie" "style"
-	       "struct" "structure" "table" "then" "type" "val" "where"
+	       "struct" "structure" "table" "view" "then" "type" "val" "where"
 	       "with"
 
                "Name" "Type" "Unit")

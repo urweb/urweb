@@ -803,19 +803,22 @@
                  handle GuessFailure => false
              end
 
-         val (fs1, fs2, others1, others2) =
+         val (fs1, fs2, others1, others2, unifs1, unifs2) =
              case (fs1, fs2, others1, others2, unifs1, unifs2) of
                  ([], _, [other1], [], [], _) =>
                  if isGuessable (other1, fs2, unifs2) then
-                     ([], [], [], [])
+                     ([], [], [], [], [], [])
                  else
-                     (fs1, fs2, others1, others2)
+                     (fs1, fs2, others1, others2, unifs1, unifs2)
                | (_, [], [], [other2], _, []) =>
                  if isGuessable (other2, fs1, unifs1) then
-                     ([], [], [], [])
+                     ([], [], [], [], [], [])
                  else
-                     (fs1, fs2, others1, others2)
-               | _ => (fs1, fs2, others1, others2)
+                     (prefaces "Not guessable" [("other2", p_con env other2),
+                                                ("fs1", p_con env (L'.CRecord (k, fs1), loc)),
+                                                ("#unifs1", PD.string (Int.toString (length unifs1)))];
+                      (fs1, fs2, others1, others2, unifs1, unifs2))
+               | _ => (fs1, fs2, others1, others2, unifs1, unifs2)
 
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
@@ -849,7 +852,7 @@
          fun unfold (dom, ran, f, r, c) =
              let
                  fun unfold (r, c) =
-                     case #1 c of
+                     case #1 (hnormCon env c) of
                          L'.CRecord (_, []) => unifyCons env r (L'.CRecord (dom, []), loc)
                        | L'.CRecord (_, [(x, v)]) =>
                          let
@@ -878,8 +881,7 @@
                              unfold (r2, c2');
                              unifyCons env r (L'.CConcat (r1, r2), loc)
                          end
-                       | L'.CUnif (_, _, _, ref (SOME c)) => unfold (r, c)
-                       | L'.CUnif (_, _, _, ur as ref NONE) =>
+                       | L'.CUnif (_, _, _, ur) =>
                          let
                              val ur' = cunif (loc, (L'.KRecord dom, loc))
                          in
@@ -1935,6 +1937,8 @@ val hnormSgn = E.hnormSgn
 
 fun tableOf () = (L'.CModProj (!basis_r, [], "sql_table"), ErrorMsg.dummySpan)
 fun sequenceOf () = (L'.CModProj (!basis_r, [], "sql_sequence"), ErrorMsg.dummySpan)
+fun viewOf () = (L'.CModProj (!basis_r, [], "sql_view"), ErrorMsg.dummySpan)
+fun queryOf () = (L'.CModProj (!basis_r, [], "sql_query"), ErrorMsg.dummySpan)
 fun cookieOf () = (L'.CModProj (!basis_r, [], "http_cookie"), ErrorMsg.dummySpan)
 fun styleOf () = (L'.CModProj (!basis_r, [], "css_class"), ErrorMsg.dummySpan)
 
@@ -2434,6 +2438,8 @@ and sgiOfDecl (d, loc) =
         [(L'.SgiVal (x, n, (L'.CApp ((L'.CApp (tableOf (), c), loc),
                                      (L'.CConcat (pc, cc), loc)), loc)), loc)]
       | L'.DSequence (tn, x, n) => [(L'.SgiVal (x, n, sequenceOf ()), loc)]
+      | L'.DView (tn, x, n, _, c) =>
+        [(L'.SgiVal (x, n, (L'.CApp (viewOf (), c), loc)), loc)]
       | L'.DClass (x, n, k, c) => [(L'.SgiClass (x, n, k, c), loc)]
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
@@ -3404,6 +3410,29 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     val (env, n) = E.pushENamed env x (sequenceOf ())
                 in
                     ([(L'.DSequence (!basis_r, x, n), loc)], (env, denv, gs))
+                end
+              | L.DView (x, e) =>
+                let
+                    val (e', t, gs') = elabExp (env, denv) e
+
+                    val k = (L'.KRecord (L'.KType, loc), loc)
+                    val fs = cunif (loc, k)
+                    val ts = cunif (loc, (L'.KRecord k, loc))
+                    val tf = (L'.CApp ((L'.CMap (k, k), loc),
+                                       (L'.CAbs ("_", k, (L'.CRecord ((L'.KType, loc), []), loc)), loc)), loc)
+                    val ts = (L'.CApp (tf, ts), loc)
+
+                    val cv = viewOf ()
+                    val cv = (L'.CApp (cv, fs), loc)
+                    val (env', n) = E.pushENamed env x cv
+
+                    val ct = queryOf ()
+                    val ct = (L'.CApp (ct, ts), loc)
+                    val ct = (L'.CApp (ct, fs), loc)
+                in
+                    checkCon env e' t ct;
+                    ([(L'.DView (!basis_r, x, n, e', fs), loc)],
+                     (env', denv, gs' @ gs))
                 end
 
               | L.DClass (x, k, c) =>

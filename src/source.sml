@@ -161,6 +161,7 @@ datatype decl' =
        | DExport of str
        | DTable of string * con * exp * exp
        | DSequence of string
+       | DView of string * exp
        | DClass of string * kind * con
        | DDatabase of string
        | DCookie of string * con

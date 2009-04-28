@@ -2938,6 +2938,24 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                        (L'.DVal (x, n, t', e_name, s), loc)])
             end
           | L.DTable _ => poly ()
+          | L.DView (x, n, s, e, (L.CRecord (_, xts), _)) =>
+            let
+                val t = (L.CFfi ("Basis", "string"), loc)
+                val t' = (L'.TFfi ("Basis", "string"), loc)
+                val s = "uw_" ^ s
+                val e_name = (L'.EPrim (Prim.String s), loc)
+
+                val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
+
+                val (e, fm) = monoExp (env, St.empty, fm) e
+                val e = (L'.EFfiApp ("Basis", "viewify", [e]), loc)
+            in
+                SOME (Env.pushENamed env x n t NONE s,
+                      fm,
+                      [(L'.DView (s, xts, e), loc),
+                       (L'.DVal (x, n, t', e_name, s), loc)])
+            end
+          | L.DView _ => poly ()
           | L.DSequence (x, n, s) =>
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
