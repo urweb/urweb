@@ -1781,6 +1781,45 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                 loc)), loc)), loc)), loc),
                  fm)
             end
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_right_join"), _), (L.CRecord (_, left), _)), _), _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("_", outerRec left,
+                           (L'.TFun (s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc)), loc),
+                           (L'.EAbs ("tab1", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                                     (L'.EAbs ("tab2", s, (L'.TFun (s, s), loc),
+                                               (L'.EAbs ("on", s, s,
+                                                         strcat [(L'.EPrim (Prim.String "("), loc),
+                                                                 (L'.ERel 2, loc),
+                                                                 (L'.EPrim (Prim.String " RIGHT JOIN "), loc),
+                                                                 (L'.ERel 1, loc),
+                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                 (L'.ERel 0, loc),
+                                                                 (L'.EPrim (Prim.String ")"), loc)]),
+                                                loc)), loc)), loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_full_join"), _), (L.CRecord (_, left), _)), _),
+                     (L.CRecord (_, right), _)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("_", outerRec (left @ right),
+                           (L'.TFun (s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc)), loc),
+                           (L'.EAbs ("tab1", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                                     (L'.EAbs ("tab2", s, (L'.TFun (s, s), loc),
+                                               (L'.EAbs ("on", s, s,
+                                                         strcat [(L'.EPrim (Prim.String "("), loc),
+                                                                 (L'.ERel 2, loc),
+                                                                 (L'.EPrim (Prim.String " FULL JOIN "), loc),
+                                                                 (L'.ERel 1, loc),
+                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                 (L'.ERel 0, loc),
+                                                                 (L'.EPrim (Prim.String ")"), loc)]),
+                                                loc)), loc)), loc)), loc),
+                 fm)
+            end
 
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_Nil"), _), _), _), _) =>
             ((L'.EPrim (Prim.String ""), loc), fm)

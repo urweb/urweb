@@ -246,6 +246,21 @@ val sql_left_join : tabs1 ::: {{Type}} -> tabs2 ::: {{(Type * Type)}}
        -> sql_exp (tabs1 ++ map (map (fn p :: (Type * Type) => p.1)) tabs2) [] [] bool
        -> sql_from_items (tabs1 ++ map (map (fn p :: (Type * Type) => p.2)) tabs2)
 
+val sql_right_join : tabs1 ::: {{(Type * Type)}} -> tabs2 ::: {{Type}}
+                     -> [tabs1 ~ tabs2]
+    => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) tabs1)
+       -> sql_from_items (map (map (fn p :: (Type * Type) => p.1)) tabs1) -> sql_from_items tabs2
+       -> sql_exp (map (map (fn p :: (Type * Type) => p.1)) tabs1 ++ tabs2) [] [] bool
+       -> sql_from_items (map (map (fn p :: (Type * Type) => p.2)) tabs1 ++ tabs2)
+
+val sql_full_join : tabs1 ::: {{(Type * Type)}} -> tabs2 ::: {{(Type * Type)}}
+                     -> [tabs1 ~ tabs2]
+    => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) (tabs1 ++ tabs2))
+       -> sql_from_items (map (map (fn p :: (Type * Type) => p.1)) tabs1)
+       -> sql_from_items (map (map (fn p :: (Type * Type) => p.1)) tabs2)
+       -> sql_exp (map (map (fn p :: (Type * Type) => p.1)) (tabs1 ++ tabs2)) [] [] bool
+       -> sql_from_items (map (map (fn p :: (Type * Type) => p.2)) (tabs1 ++ tabs2))
+
 val sql_query1 : tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}

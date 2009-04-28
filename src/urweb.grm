@@ -213,7 +213,7 @@ datatype attr = Class of exp | Normal of con * exp
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
  | CCONSTRAINT | UNIQUE | CHECK | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
- | JOIN | INNER | CROSS | LEFT
+ | JOIN | INNER | CROSS | OUTER | LEFT | RIGHT | FULL
 
 %nonterm
    file of decl list
@@ -361,7 +361,7 @@ datatype attr = Class of exp | Normal of con * exp
 %nonassoc DCOLON TCOLON
 %left UNION INTERSECT EXCEPT
 %right COMMA
-%right JOIN INNER CROSS LEFT
+%right JOIN INNER CROSS OUTER LEFT RIGHT FULL
 %right OR
 %right CAND
 %nonassoc EQ NE LT LE GT GE IS
@@ -1472,6 +1472,56 @@ fitem  : table'                         ([#1 table'], #2 table')
                                              val loc = s (fitem1left, sqlexpright)
                                                        
                                              val e = (EVar (["Basis"], "sql_left_join", Infer), loc)
+                                             val e = (EApp (e, #2 fitem1), loc)
+                                             val e = (EApp (e, #2 fitem2), loc)
+                                         in
+                                             (#1 fitem1 @ #1 fitem2,
+                                              (EApp (e, sqlexp), loc))
+                                         end)
+       | fitem LEFT OUTER JOIN fitem ON sqlexp (let
+                                             val loc = s (fitem1left, sqlexpright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_left_join", Infer), loc)
+                                             val e = (EApp (e, #2 fitem1), loc)
+                                             val e = (EApp (e, #2 fitem2), loc)
+                                         in
+                                             (#1 fitem1 @ #1 fitem2,
+                                              (EApp (e, sqlexp), loc))
+                                         end)
+       | fitem RIGHT JOIN fitem ON sqlexp (let
+                                             val loc = s (fitem1left, sqlexpright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_right_join", Infer), loc)
+                                             val e = (EApp (e, #2 fitem1), loc)
+                                             val e = (EApp (e, #2 fitem2), loc)
+                                         in
+                                             (#1 fitem1 @ #1 fitem2,
+                                              (EApp (e, sqlexp), loc))
+                                         end)
+       | fitem RIGHT OUTER JOIN fitem ON sqlexp (let
+                                             val loc = s (fitem1left, sqlexpright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_right_join", Infer), loc)
+                                             val e = (EApp (e, #2 fitem1), loc)
+                                             val e = (EApp (e, #2 fitem2), loc)
+                                         in
+                                             (#1 fitem1 @ #1 fitem2,
+                                              (EApp (e, sqlexp), loc))
+                                         end)
+       | fitem FULL JOIN fitem ON sqlexp (let
+                                             val loc = s (fitem1left, sqlexpright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_full_join", Infer), loc)
+                                             val e = (EApp (e, #2 fitem1), loc)
+                                             val e = (EApp (e, #2 fitem2), loc)
+                                         in
+                                             (#1 fitem1 @ #1 fitem2,
+                                              (EApp (e, sqlexp), loc))
+                                         end)
+       | fitem FULL OUTER JOIN fitem ON sqlexp (let
+                                             val loc = s (fitem1left, sqlexpright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_full_join", Infer), loc)
                                              val e = (EApp (e, #2 fitem1), loc)
                                              val e = (EApp (e, #2 fitem2), loc)
                                          in
