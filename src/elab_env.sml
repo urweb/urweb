@@ -589,56 +589,9 @@ fun unifySubst (rs : con list) =
                         | (d, _) => d}
                0
 
-fun postUnify x =
-    let
-        fun unify (c1, c2) =
-            case (#1 c1, #1 c2) of
-                (CUnif (_, _, _, ref (SOME c1)), _) => unify (c1, c2)
-              | (_, CUnif (_, _, _, ref (SOME c2))) => unify (c1, c2)
+exception Bad of con * con
 
-              | (CUnif (_, _, _, r), _) => r := SOME c2
-
-              | (TFun (d1, r1), TFun (d2, r2)) => (unify (d1, d2); unify (r1, r2))
-              | (TCFun (_, _, k1, r1), TCFun (_, _, k2, r2)) => (unifyKinds (k1, k2); unify (r1, r2))
-              | (TRecord c1, TRecord c2) => unify (c1, c2)
-              | (TDisjoint (a1, b1, c1), TDisjoint (a2, b2, c2)) =>
-                (unify (a1, a2); unify (b1, b2); unify (c1, c2))
-
-              | (CRel n1, CRel n2) => if n1 = n2 then () else raise Unify
-              | (CNamed n1, CNamed n2) => if n1 = n2 then () else raise Unify
-              | (CModProj (n1, ms1, x1), CModProj (n2, ms2, x2)) =>
-                if n1 = n2 andalso ms1 = ms2 andalso x1 = x2 then () else raise Unify
-              | (CApp (f1, x1), CApp (f2, x2)) => (unify (f1, f2); unify (x1, x2))
-              | (CAbs (_, k1, b1), CAbs (_, k2, b2)) => (unifyKinds (k1, k2); unify (b1, b2))
-
-              | (CKAbs (_, b1), CKAbs (_, b2)) => unify (b1, b2)
-              | (CKApp (c1, k1), CKApp (c2, k2)) => (unify (c1, c2); unifyKinds (k1, k2))
-              | (TKFun (_, c1), TKFun (_, c2)) => unify (c1, c2)
-
-              | (CName s1, CName s2) => if s1 = s2 then () else raise Unify
-
-              | (CRecord (k1, xcs1), CRecord (k2, xcs2)) =>
-                (unifyKinds (k1, k2);
-                 ListPair.appEq (fn ((x1, c1), (x2, c2)) => (unify (x1, x2); unify (c1, c2))) (xcs1, xcs2)
-                 handle ListPair.UnequalLengths => raise Unify)
-              | (CConcat (f1, x1), CConcat (f2, x2)) => (unify (f1, f2); unify (x1, x2))
-              | (CMap (d1, r1), CMap (d2, r2)) => (unifyKinds (d1, d2); unifyKinds (r1, r2))
-
-              | (CUnit, CUnit) => ()
-
-              | (CTuple cs1, CTuple cs2) => (ListPair.appEq unify (cs1, cs2)
-                                             handle ListPair.UnequalLengths => raise Unify)
-              | (CProj (c1, n1), CProj (c2, n2)) => (unify (c1, c2);
-                                                     if n1 = n2 then () else raise Unify)
-
-              | _ => raise Unify
-    in
-        unify x
-    end
-
-fun postUnifies x = (postUnify x; true) handle Unify => false
-
-fun resolveClass (hnorm : con -> con) (env : env) =
+fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
     let
         fun resolve c =
             let
@@ -648,6 +601,37 @@ fun resolveClass (hnorm : con -> con) (env : env) =
                       | SOME class =>
                         let
                             val loc = #2 c
+
+                            fun generalize (c as (_, loc)) =
+                                case #1 c of
+                                    CApp (f, x) =>
+                                    let
+                                        val (f, equate) = generalize f
+
+                                        fun isRecord () =
+                                            let
+                                                val rk = ref NONE
+                                                val k = (KUnif (loc, "k", rk), loc)
+                                                val r = ref NONE
+                                                val rc = (CUnif (loc, k, "x", r), loc)
+                                            in
+                                                ((CApp (f, rc), loc),
+                                              fn () => (if consEq (rc, x) then
+                                                            true
+                                                        else
+                                                            (raise Bad (rc, x);
+                                                             false))
+                                                       andalso equate ())
+                                            end
+                                    in
+                                        case #1 x of
+                                            CConcat _ => isRecord ()
+                                          | CRecord _ => isRecord ()
+                                          | _ => ((CApp (f, x), loc), equate)
+                                    end
+                                  | _ => (c, fn () => true)
+
+                            val (c, equate) = generalize c
 
                             fun tryRules rules =
                                 case rules of
@@ -660,7 +644,8 @@ fun resolveClass (hnorm : con -> con) (env : env) =
                                             val eos = map (resolve o unifySubst rs) cs
                                         in
                                             if List.exists (not o Option.isSome) eos
-                                               orelse not (postUnifies (c, unifySubst rs c')) then
+                                               orelse not (equate ())
+                                               orelse not (consEq (c, unifySubst rs c')) then
                                                 tryRules rules'
                                             else
                                                 let

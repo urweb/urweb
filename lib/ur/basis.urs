@@ -124,6 +124,13 @@ val self : transaction client
 (** SQL *)
 
 con sql_table :: {Type} -> {{Unit}} -> Type
+con sql_view :: {Type} -> Type
+
+class fieldsOf :: Type -> {Type} -> Type
+val fieldsOf_table : fs ::: {Type} -> keys ::: {{Unit}}
+                     -> fieldsOf (sql_table fs keys) fs
+val fieldsOf_view : fs ::: {Type}
+                    -> fieldsOf (sql_view fs) fs
 
 (*** Constraints *)
 
@@ -222,9 +229,9 @@ val sql_subset_all : tables :: {{Type}} -> sql_subset tables tables
 
 con sql_from_items :: {{Type}} -> Type
 
-val sql_from_table : cols ::: {Type} -> keys ::: {{Unit}}
-                     -> name :: Name -> sql_table cols keys
-                     -> sql_from_items [name = cols]
+val sql_from_table : t ::: Type -> fs ::: {Type}
+                     -> fieldsOf t fs -> name :: Name
+                     -> t -> sql_from_items [name = fs]
 val sql_from_comma : tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
                      -> [tabs1 ~ tabs2]
     => sql_from_items tabs1 -> sql_from_items tabs2

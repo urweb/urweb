@@ -184,6 +184,8 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "sql_offset") =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "fieldsOf"), _), _), _), _) =>
+                    (L'.TRecord [], loc)
 
                   | L.CApp ((L.CFfi ("Basis", "sql_injectable_prim"), _), t) =>
                     (L'.TFun (mt env dtmap t, (L'.TFfi ("Basis", "string"), loc)), loc)
@@ -1725,8 +1727,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp ((L.EFfi ("Basis", "sql_subset_all"), _), _) =>
             ((L'.ERecord [], loc), fm)
 
-          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_table"), _), _), _), _), _),
-                              (L.CName name, _)) =>
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "fieldsOf_table"), _), _), _), _) =>
+            ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "fieldsOf_view"), _), _) =>
+            ((L'.ERecord [], loc), fm)
+
+          | L.ECApp ((L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_table"), _), _), _), _), _), _), _),
+                     (L.CName name, _)) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
             in

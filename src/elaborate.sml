@@ -647,6 +647,13 @@
              case hnormKind (kindof env c) of
                  (L'.KRecord k, _) => k
                | (L'.KError, _) => kerror
+               | (L'.KUnif (_, _, r), _) =>
+                 let
+                     val k = kunif (#2 c)
+                 in
+                     r := SOME (L'.KRecord k, #2 c);
+                     k
+                 end
                | k => raise CUnify' (CKindof (k, c, "record"))
 
          val k1 = rkindof c1
@@ -786,20 +793,25 @@
          (*val () = eprefaces "Summaries4" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                             ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
-         fun isGuessable (other, fs) =
-             (guessMap env (other, (L'.CRecord (k, fs), loc), GuessFailure);
-              true)
-             handle GuessFailure => false
+         fun isGuessable (other, fs, unifs) =
+             let
+                 val c = (L'.CRecord (k, fs), loc)
+                 val c = foldl (fn ((c', _), c) => (L'.CConcat (c', c), loc)) c unifs
+             in
+                 (guessMap env (other, c, GuessFailure);
+                  true)
+                 handle GuessFailure => false
+             end
 
          val (fs1, fs2, others1, others2) =
-             case (fs1, fs2, others1, others2) of
-                 ([], _, [other1], []) =>
-                 if isGuessable (other1, fs2) then
+             case (fs1, fs2, others1, others2, unifs1, unifs2) of
+                 ([], _, [other1], [], [], _) =>
+                 if isGuessable (other1, fs2, unifs2) then
                      ([], [], [], [])
                  else
                      (fs1, fs2, others1, others2)
-               | (_, [], [], [other2]) =>
-                 if isGuessable (other2, fs1) then
+               | (_, [], [], [other2], _, []) =>
+                 if isGuessable (other2, fs1, unifs1) then
                      ([], [], [], [])
                  else
                      (fs1, fs2, others1, others2)
@@ -865,6 +877,13 @@
                              unfold (r1, c1');
                              unfold (r2, c2');
                              unifyCons env r (L'.CConcat (r1, r2), loc)
+                         end
+                       | L'.CUnif (_, _, _, ref (SOME c)) => unfold (r, c)
+                       | L'.CUnif (_, _, _, ur as ref NONE) =>
+                         let
+                             val ur' = cunif (loc, (L'.KRecord dom, loc))
+                         in
+                             ur := SOME (L'.CApp ((L'.CApp ((L'.CMap (dom, ran), loc), f), loc), ur'), loc)
                          end
                        | _ => raise ex
              in
@@ -1144,17 +1163,21 @@
                              default ()
 
                      fun hasInstance c =
-                         case #1 (hnormCon env c) of
-                             L'.CApp (cl, x) =>
+                         case hnormCon env c of
+                             (L'.TRecord c, _) => U.Con.exists {kind = fn _ => false,
+                                                                con = fn c =>
+                                                                         E.isClass env (hnormCon env (c, loc))} c
+                           | c =>
                              let
-                                 val cl = hnormCon env cl
+                                 fun findHead c =
+                                     case #1 c of
+                                         L'.CApp (f, _) => findHead f
+                                       | _ => c
+                                 
+                                 val cl = hnormCon env (findHead c)
                              in
                                  isClassOrFolder env cl
                              end
-                           | L'.TRecord c => U.Con.exists {kind = fn _ => false,
-                                                           con = fn c =>
-                                                                    E.isClass env (hnormCon env (c, loc))} c
-                           | _ => false
                  in
                      if hasInstance dom then
                          isInstance ()
@@ -3647,7 +3670,7 @@ fun elabFile basis topStr topSgn env file =
                                   let
                                       val c = normClassKey env c
                                   in
-                                      case E.resolveClass (hnormCon env) env c of
+                                      case E.resolveClass (hnormCon env) (consEq env) env c of
                                           SOME e => r := SOME e
                                         | NONE => expError env (Unresolvable (loc, c))
                                   end) gs
@@ -3684,7 +3707,94 @@ fun elabFile basis topStr topSgn env file =
             end
 
         val (file, (_, gs)) = ListUtil.foldlMapConcat elabDecl' (env', []) file
+
+        val delayed = !delayedUnifs
     in
+        delayedUnifs := [];
+        app (fn (env, k, s1, s2) =>
+                unifySummaries env (k, normalizeRecordSummary env s1, normalizeRecordSummary env s2))
+            delayed;
+
+        if ErrorMsg.anyErrors () then
+            ()
+        else
+            let
+                fun solver gs =
+                    let
+                        val (gs, solved) =
+                            ListUtil.foldlMapPartial
+                            (fn (g, solved) =>
+                                case g of
+                                    Disjoint (loc, env, denv, c1, c2) =>
+                                    (case D.prove env denv (c1, c2, loc) of
+                                         [] => (NONE, true)
+                                       | _ => (SOME g, solved))
+                                  | TypeClass (env, c, r, loc) =>
+                                    let
+                                        fun default () = (SOME g, solved)
+
+                                        val c = normClassKey env c
+                                    in
+                                        case E.resolveClass (hnormCon env) (consEq env) env c of
+                                            SOME e => (r := SOME e;
+                                                       (NONE, true))
+                                          | NONE =>
+                                            case #1 (hnormCon env c) of
+                                                L'.CApp (f, x) =>
+                                                (case (#1 (hnormCon env f), #1 (hnormCon env x)) of
+                                                     (L'.CKApp (f, _), L'.CRecord (k, xcs)) =>
+                                                     (case #1 (hnormCon env f) of
+                                                          L'.CModProj (top_n', [], "folder") =>
+                                                          if top_n' = top_n then
+                                                              let
+                                                                  val e = (L'.EModProj (top_n, ["Folder"], "nil"), loc)
+                                                                  val e = (L'.EKApp (e, k), loc)
+                                                                          
+                                                                  val (folder, _) = foldr (fn ((x, c), (folder, xcs)) =>
+                                                                                              let
+                                                                                                  val e = (L'.EModProj (top_n, ["Folder"],
+                                                                                                                        "cons"), loc)
+                                                                                                  val e = (L'.EKApp (e, k), loc)
+                                                                                                  val e = (L'.ECApp (e,
+                                                                                                                     (L'.CRecord (k, xcs),
+                                                                                                                      loc)), loc)
+                                                                                                  val e = (L'.ECApp (e, x), loc)
+                                                                                                  val e = (L'.ECApp (e, c), loc)
+                                                                                                  val e = (L'.EApp (e, folder), loc)
+                                                                                              in
+                                                                                                  (e, (x, c) :: xcs)
+                                                                                              end)
+                                                                                          (e, []) xcs
+                                                              in
+                                                                  (r := SOME folder;
+                                                                   (NONE, true))
+                                                              end
+                                                          else
+                                                              default ()
+                                        | _ => default ())
+                                   | _ => default ())
+                              | _ => default ()
+                                    end)
+                            false gs
+                    in
+                        case (gs, solved) of
+                            ([], _) => ()
+                          | (_, true) => solver gs
+                          | _ =>
+                            app (fn Disjoint (loc, env, denv, c1, c2) =>
+                                    ((ErrorMsg.errorAt loc "Couldn't prove field name disjointness";
+                                      eprefaces' [("Con 1", p_con env c1),
+                                                  ("Con 2", p_con env c2),
+                                                  ("Hnormed 1", p_con env (ElabOps.hnormCon env c1)),
+                                                  ("Hnormed 2", p_con env (ElabOps.hnormCon env c2))]))
+                                  | TypeClass (env, c, r, loc) =>
+                                    expError env (Unresolvable (loc, c)))
+                                gs
+                    end
+            in
+                solver gs
+            end;
+
         mayDelay := false;
 
         app (fn (env, k, s1, s2) =>
@@ -3693,63 +3803,6 @@ fun elabFile basis topStr topSgn env file =
                                        cunifyError env err))
             (!delayedUnifs);
         delayedUnifs := [];
-
-        if ErrorMsg.anyErrors () then
-            ()
-        else
-            app (fn Disjoint (loc, env, denv, c1, c2) =>
-                    (case D.prove env denv (c1, c2, loc) of
-                         [] => ()
-                       | _ =>
-                         (ErrorMsg.errorAt loc "Couldn't prove field name disjointness";
-                          eprefaces' [("Con 1", p_con env c1),
-                                      ("Con 2", p_con env c2),
-                                      ("Hnormed 1", p_con env (ElabOps.hnormCon env c1)),
-                                      ("Hnormed 2", p_con env (ElabOps.hnormCon env c2))]))
-                  | TypeClass (env, c, r, loc) =>
-                    let
-                        fun default () = expError env (Unresolvable (loc, c))
-
-                        val c = normClassKey env c
-                    in
-                        case E.resolveClass (hnormCon env) env c of
-                            SOME e => r := SOME e
-                          | NONE =>
-                            case #1 (hnormCon env c) of
-                                L'.CApp (f, x) =>
-                                (case (#1 (hnormCon env f), #1 (hnormCon env x)) of
-                                     (L'.CKApp (f, _), L'.CRecord (k, xcs)) =>
-                                     (case #1 (hnormCon env f) of
-                                          L'.CModProj (top_n', [], "folder") =>
-                                          if top_n' = top_n then
-                                              let
-                                                  val e = (L'.EModProj (top_n, ["Folder"], "nil"), loc)
-                                                  val e = (L'.EKApp (e, k), loc)
-
-                                                  val (folder, _) = foldr (fn ((x, c), (folder, xcs)) =>
-                                                                              let
-                                                                                  val e = (L'.EModProj (top_n, ["Folder"],
-                                                                                                        "cons"), loc)
-                                                                                  val e = (L'.EKApp (e, k), loc)
-                                                                                  val e = (L'.ECApp (e,
-                                                                                                     (L'.CRecord (k, xcs),
-                                                                                                      loc)), loc)
-                                                                                  val e = (L'.ECApp (e, x), loc)
-                                                                                  val e = (L'.ECApp (e, c), loc)
-                                                                                  val e = (L'.EApp (e, folder), loc)
-                                                                              in
-                                                                                  (e, (x, c) :: xcs)
-                                                                              end)
-                                                                          (e, []) xcs
-                                              in
-                                                  r := SOME folder
-                                              end
-                                          else
-                                              default ()
-                                        | _ => default ())
-                                   | _ => default ())
-                              | _ => default ()
-                    end) gs;
 
         if ErrorMsg.anyErrors () then
             ()

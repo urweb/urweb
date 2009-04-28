@@ -71,7 +71,8 @@ signature ELAB_ENV = sig
 
     val pushClass : env -> int -> env
     val isClass : env -> Elab.con -> bool
-    val resolveClass : (Elab.con -> Elab.con) -> env -> Elab.con -> Elab.exp option
+    val resolveClass : (Elab.con -> Elab.con) -> (Elab.con * Elab.con -> bool)
+                       -> env -> Elab.con -> Elab.exp option
     val listClasses : env -> (Elab.con * (Elab.con * Elab.exp) list) list
 
     val pushERel : env -> string -> Elab.con -> env
@@ -117,5 +118,7 @@ signature ELAB_ENV = sig
     val chaseMpath : env -> (int * string list) -> Elab.str * Elab.sgn
 
     val patBinds : env -> Elab.pat -> env
+
+    exception Bad of Elab.con * Elab.con
 
 end
