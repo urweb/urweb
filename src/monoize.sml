@@ -151,6 +151,8 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_query1"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_from_items"), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_exp"), _), _), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "primary_key"), _), _), _), _) =>
@@ -1530,12 +1532,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val un = (L'.TRecord [], loc)
                 fun gf s = (L'.EField ((L'.ERel 0, loc), s), loc)
 
-                val tables = List.mapPartial
-                                 (fn (x, (L.CTuple [y, _], _)) => SOME (x, y)
-                                   | _ => (E.errorAt loc "Bad sql_query1 tables pair";
-                                           NONE))
-                             tables
-
                 fun doTables tables =
                     let
                         val tables = map (fn ((L.CName x, _), xts) =>
@@ -1568,7 +1564,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                         (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) sexps
                     in
                         ((L'.EAbs ("r",
-                                   (L'.TRecord [("From", (L'.TRecord (map (fn (x, _) => (x, s)) tables), loc)),
+                                   (L'.TRecord [("From", s),
                                                 ("Where", s),
                                                 ("GroupBy", un),
                                                 ("Having", s),
@@ -1588,8 +1584,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                sc (x ^ ".uw_" ^ x'))
                                                                            xts)) stables),
                                            sc " FROM ",
-                                           strcatComma (map (fn (x, _) => strcat [(L'.EField (gf "From", x), loc),
-                                                                                  sc (" AS " ^ x)]) tables),
+                                           gf "From",
                                            (L'.ECase (gf "Where",
                                                       [((L'.PPrim (Prim.String "TRUE"), loc),
                                                         sc ""),
@@ -1711,6 +1706,28 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.ERecord [], loc), fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_subset_all"), _), _) =>
             ((L'.ERecord [], loc), fm)
+
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_table"), _), _), _), _), _),
+                              (L.CName name, _)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("tab", s, s,
+                           strcat [(L'.ERel 0, loc),
+                                   (L'.EPrim (Prim.String (" AS " ^ name)), loc)]), loc),
+                 fm)
+            end
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_comma"), _), _), _), _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("tab1", s, (L'.TFun (s, s), loc),
+                           (L'.EAbs ("tab2", s, s,
+                                     strcat [(L'.ERel 1, loc),
+                                             (L'.EPrim (Prim.String ", "), loc),
+                                             (L'.ERel 0, loc)]), loc)), loc),
+                 fm)
+            end
 
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_Nil"), _), _), _), _) =>
             ((L'.EPrim (Prim.String ""), loc), fm)

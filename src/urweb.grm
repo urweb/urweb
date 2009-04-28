@@ -304,12 +304,13 @@ datatype attr = Class of exp | Normal of con * exp
 
  | query of exp
  | query1 of exp
- | tables of (con * exp) list
+ | tables of con list * exp
  | tname of con
  | tnameW of con * con
  | tnames of (con * con) * (con * con) list
  | tnames' of (con * con) * (con * con) list
  | table of con * exp
+ | table' of con * exp
  | tident of con
  | fident of con
  | seli of select_item
@@ -1356,15 +1357,15 @@ query1 : SELECT select FROM tables wopt gopt hopt
 
                                              val (sel, exps) =
                                                  case select of
-                                                     Star => (map (fn (nm, _) =>
+                                                     Star => (map (fn nm =>
                                                                       (nm, (CTuple [(CWild (KRecord (KType, loc), loc),
                                                                                      loc),
                                                                                     (CRecord [], loc)],
-                                                                            loc))) tables,
+                                                                            loc))) (#1 tables),
                                                               [])
                                                    | Items sis =>
                                                      let
-                                                         val tabs = map (fn (nm, _) => (nm, (CRecord [], loc))) tables
+                                                         val tabs = map (fn nm => (nm, (CRecord [], loc))) (#1 tables)
                                                          val (tabs, exps) = foldl (amend_select loc) (tabs, []) sis
                                                      in
                                                          (map (fn (nm, c) => (nm,
@@ -1383,8 +1384,8 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                                                                    loc), loc)), loc)
                                                          | SOME gis =>
                                                            let
-                                                               val tabs = map (fn (nm, _) =>
-                                                                                  (nm, (CRecord [], loc))) tables
+                                                               val tabs = map (fn nm =>
+                                                                                  (nm, (CRecord [], loc))) (#1 tables)
                                                                val tabs = foldl (amend_group loc) tabs gis
 
                                                                val tabs = map (fn (nm, c) =>
@@ -1400,7 +1401,7 @@ query1 : SELECT select FROM tables wopt gopt hopt
 
                                              val e = (EVar (["Basis"], "sql_query1", Infer), loc)
                                              val re = (ERecord [((CName "From", loc),
-                                                                 (ERecord tables, loc)),
+                                                                 #2 tables),
                                                                 ((CName "Where", loc),
                                                                  wopt),
                                                                 ((CName "GroupBy", loc),
@@ -1421,8 +1422,16 @@ query1 : SELECT select FROM tables wopt gopt hopt
        | query1 INTERSECT query1        (sql_relop ("intersect", query11, query12, s (query11left, query12right)))
        | query1 EXCEPT query1           (sql_relop ("except", query11, query12, s (query11left, query12right)))
 
-tables : table                          ([table])
-       | table COMMA tables             (table :: tables)
+tables : table'                         ([#1 table'], #2 table')
+       | table' COMMA tables            (let
+                                             val loc = s (table'left, tablesright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_from_comma", Infer), loc)
+                                             val e = (EApp (e, #2 table'), loc)
+                                         in
+                                             (#1 table' :: #1 tables,
+                                              (EApp (e, #2 tables), loc))
+                                         end)
 
 tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | LBRACE cexp RBRACE             (cexp)
@@ -1431,6 +1440,14 @@ table  : SYMBOL                         ((CName (capitalize SYMBOL), s (SYMBOLle
                                          (EVar ([], SYMBOL, Infer), s (SYMBOLleft, SYMBOLright)))
        | SYMBOL AS tname                (tname, (EVar ([], SYMBOL, Infer), s (SYMBOLleft, SYMBOLright)))
        | LBRACE LBRACE eexp RBRACE RBRACE AS tname    (tname, eexp)
+
+table' : table                          (let
+                                             val loc = s (tableleft, tableright)
+                                             val e = (EVar (["Basis"], "sql_from_table", Infer), loc)
+                                             val e = (ECApp (e, #1 table), loc)
+                                         in
+                                             (#1 table, (EApp (e, #2 table), loc))
+                                         end)
 
 tident : SYMBOL                         (CName (capitalize SYMBOL), s (SYMBOLleft, SYMBOLright))
        | CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))

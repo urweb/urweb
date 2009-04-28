@@ -220,18 +220,28 @@ val sql_subset : keep_drop :: {({Type} * {Type})}
                                      (map (fn fields :: ({Type} * {Type}) => fields.1) keep_drop)
 val sql_subset_all : tables :: {{Type}} -> sql_subset tables tables
 
-val sql_query1 : tables ::: {({Type} * {{Unit}})}
+con sql_from_items :: {{Type}} -> Type
+
+val sql_from_table : cols ::: {Type} -> keys ::: {{Unit}}
+                     -> name :: Name -> sql_table cols keys
+                     -> sql_from_items [name = cols]
+val sql_from_comma : tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
+                     -> [tabs1 ~ tabs2]
+    => sql_from_items tabs1 -> sql_from_items tabs2
+       -> sql_from_items (tabs1 ++ tabs2)
+
+val sql_query1 : tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}
                  -> selectedExps ::: {Type}
-                 -> {From : $(map (fn p :: ({Type} * {{Unit}}) => sql_table p.1 p.2) tables),
-                     Where : sql_exp (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) [] [] bool,
-                     GroupBy : sql_subset (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) grouped,
-                     Having : sql_exp grouped (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) [] bool,
+                 -> {From : sql_from_items tables,
+                     Where : sql_exp tables [] [] bool,
+                     GroupBy : sql_subset tables grouped,
+                     Having : sql_exp grouped tables [] bool,
                      SelectFields : sql_subset grouped selectedFields,
-                     SelectExps : $(map (sql_exp grouped (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) [])
+                     SelectExps : $(map (sql_exp grouped tables [])
                                             selectedExps) }
-                 -> sql_query1 (map (fn p :: ({Type} * {{Unit}}) => p.1) tables) selectedFields selectedExps
+                 -> sql_query1 tables selectedFields selectedExps
 
 type sql_relop 
 val sql_union : sql_relop
