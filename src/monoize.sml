@@ -94,6 +94,8 @@ fun monoType env =
 
                   | L.CApp ((L.CFfi ("Basis", "option"), _), t) =>
                     (L'.TOption (mt env dtmap t), loc)
+                  | L.CApp ((L.CFfi ("Basis", "list"), _), t) =>
+                    (L'.TList (mt env dtmap t), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "eq"), _), t) =>
                     let
@@ -494,6 +496,9 @@ fun monoPatCon env pc =
 
 val dummyPat = (L'.PPrim (Prim.Int 0), ErrorMsg.dummySpan)
 
+
+fun listify t = (L'.TRecord [("1", t), ("2", (L'.TList t, #2 t))], #2 t)
+
 fun monoPat env (all as (p, loc)) =
     let
         fun poly () =
@@ -506,8 +511,12 @@ fun monoPat env (all as (p, loc)) =
           | L.PVar (x, t) => (L'.PVar (x, monoType env t), loc)
           | L.PPrim p => (L'.PPrim p, loc)
           | L.PCon (dk, pc, [], po) => (L'.PCon (dk, monoPatCon env pc, Option.map (monoPat env) po), loc)
+          | L.PCon (L.Option, L.PConFfi {mod = "Basis", datatyp = "list", ...}, [t], NONE) =>
+            (L'.PNone (listify (monoType env t)), loc)
+          | L.PCon (L.Option, L.PConFfi {mod = "Basis", datatyp = "list", ...}, [t], SOME p) =>
+            (L'.PSome (listify (monoType env t), monoPat env p), loc)
           | L.PCon (L.Option, _, [t], NONE) => (L'.PNone (monoType env t), loc)
-          | L.PCon (L.Option, _, [t], SOME p) => (L'.PSome (monoType env t, monoPat env p), loc)
+          | L.PCon (L.Option, pc, [t], SOME p) => (L'.PSome (monoType env t, monoPat env p), loc)
           | L.PCon _ => poly ()
           | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, monoPat env p, monoType env t)) xps), loc)
     end
@@ -612,6 +621,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         end
             in
                 ((L'.ECon (dk, monoPatCon env pc, eo), loc), fm)
+            end
+          | L.ECon (L.Option, L.PConFfi {mod = "Basis", datatyp = "list", ...}, [t], NONE) =>
+            ((L'.ENone (listify (monoType env t)), loc), fm)
+          | L.ECon (L.Option, L.PConFfi {mod = "Basis", datatyp = "list", ...}, [t], SOME e) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                ((L'.ESome (listify (monoType env t), e), loc), fm)
             end
           | L.ECon (L.Option, _, [t], NONE) =>
             ((L'.ENone (monoType env t), loc), fm)
@@ -2892,6 +2909,18 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (env', fm, [d])
             end
+          | L.DDatatype ("list", n, [_], [("Nil", _, NONE),
+                                          ("Cons", _, SOME (L.TRecord (L.CRecord (_,
+                                                                                  [((L.CName "1", _),
+                                                                                    (L.CRel 0, _)),
+                                                                                   ((L.CName "2", _),
+                                                                                    (L.CApp ((L.CNamed n', _),
+                                                                                             (L.CRel 0, _)),
+                                                                                     _))]), _), _))]) =>
+            if n = n' then
+                NONE
+            else
+                poly ()
           | L.DDatatype _ => poly ()
           | L.DVal (x, n, t, e, s) =>
             let

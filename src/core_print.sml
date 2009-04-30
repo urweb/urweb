@@ -198,11 +198,23 @@ fun p_con_named env n =
 fun p_patCon env pc =
     case pc of
         PConVar n => p_con_named env n
-      | PConFfi {mod = m, con, ...} => box [string "FFIC(",
-                                            string m,
-                                            string ".",
-                                            string con,
-                                            string ")"]
+      | PConFfi {mod = m, con, arg, ...} =>
+        if !debug then
+            box [string "FFIC[",
+                 case arg of
+                     NONE => box []
+                   | SOME t => p_con env t,
+                 string "](",
+                 string m,
+                 string ".",
+                 string con,
+                 string ")"]
+        else
+            box [string "FFIC(",
+                 string m,
+                 string ".",
+                 string con,
+                 string ")"]
 
 fun p_pat' par env (p, _) =
     case p of

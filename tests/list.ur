@@ -1,19 +1,17 @@
-datatype list a = Nil | Cons of a * list a
+fun isNil (t ::: Type) (ls : list t) =
+    case ls of
+        Nil => True
+      | _ => False
 
-val isNil = fn t ::: Type => fn ls : list t =>
-        case ls of Nil => True | _ => False
+fun delist (ls : list string) : xbody =
+        case ls of
+            Nil => <xml>Nil</xml>
+          | Cons (h, t) => <xml>{[h]} :: {delist t}</xml>
 
-val show = fn b => if b then "True" else "False"
+fun main () = return <xml><body>
+  {[isNil (Nil : list bool)]},
+  {[isNil (Cons (1, Nil))]},
+  {[isNil (Cons ("A", Cons ("B", Nil)))]}
 
-val rec delist : list string -> xml body [] [] = fn x =>
-        case x of
-          Nil => <body>Nil</body>
-        | Cons (h, t) => <body>{cdata h} :: {delist t}</body>
-
-val main : unit -> page = fn () => <html><body>
-        {cdata (show (isNil (Nil : list bool)))},
-        {cdata (show (isNil (Cons (1, Nil))))},
-        {cdata (show (isNil (Cons ("A", Cons ("B", Nil)))))}
-
-        <p>{delist (Cons ("X", Cons ("Y", Cons ("Z", Nil))))}</p>
-</body></html>
+  <p>{delist (Cons ("X", Cons ("Y", Cons ("Z", Nil))))}</p>
+</body></xml>

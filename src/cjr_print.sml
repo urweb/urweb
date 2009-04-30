@@ -102,6 +102,11 @@ fun p_typ' par env (t, loc) =
         else
             box [p_typ' par env t,
                  string "*"]
+      | TList (_, i) => box [string "struct",
+                             space,
+                             string "__uws_",
+                             string (Int.toString i),
+                             string "*"]
 
 and p_typ env = p_typ' false env
 
@@ -147,7 +152,7 @@ fun p_patCon env pc =
         PConVar n => p_con_named env n
       | PConFfi {mod = m, con, ...} => string ("uw_" ^ ident m ^ "_" ^ ident con)
 
-fun p_pat (env, exit, depth) (p, _) =
+fun p_pat (env, exit, depth) (p, loc) =
     case p of
         PWild =>
         (box [], env)
@@ -327,6 +332,10 @@ fun p_pat (env, exit, depth) (p, _) =
                     val (p, env) = p_pat (env, exit, depth + 1) p
                 in
                     (box [string "{",
+                          newline,
+                          string "/* ",
+                          string (ErrorMsg.spanToString loc),
+                          string "*/",
                           newline,
                           p_typ env t,
                           space,
@@ -574,6 +583,7 @@ fun notLeaky env allowHeapAllocated =
               | TFfi ("Basis", "blob") => allowHeapAllocated
               | TFfi _ => true
               | TOption t => allowHeapAllocated andalso nl ok t
+              | TList (t, _) => allowHeapAllocated andalso nl ok t
     in
         nl IS.empty
     end

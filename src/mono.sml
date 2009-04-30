@@ -37,6 +37,7 @@ datatype typ' =
        | TDatatype of int * (datatype_kind * (string * int * typ option) list) ref
        | TFfi of string * string
        | TOption of typ
+       | TList of typ
        | TSource
        | TSignal of typ
 

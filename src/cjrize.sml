@@ -37,6 +37,7 @@ structure Sm :> sig
 
     val empty : t
     val find : t * (string * L.typ) list * (string * L'.typ) list -> t * int
+    val findList : t * L.typ * L'.typ -> t * int
 
     val declares : t -> (int * (string * L'.typ) list) list
     val clearDeclares : t -> t
@@ -47,22 +48,54 @@ structure FM = BinaryMapFn(struct
                            val compare = MonoUtil.Typ.compare
                            end)
 
-type t = int * int FM.map * (int * (string * L'.typ) list) list
+type t = {
+     count : int,
+     normal : int FM.map,
+     lists : int FM.map,
+     decls : (int * (string * L'.typ) list) list
+}
 
-val empty : t = (1, FM.insert (FM.empty, (L.TRecord [], ErrorMsg.dummySpan), 0), [])
+val empty : t = {
+    count = 1,
+    normal = FM.insert (FM.empty, (L.TRecord [], ErrorMsg.dummySpan), 0),
+    lists = FM.empty,
+    decls = []
+}
 
-fun find ((n, m, ds), xts, xts') =
+fun find (v as {count, normal, decls, lists}, xts, xts') =
     let
         val t = (L.TRecord xts, ErrorMsg.dummySpan)
     in
-        case FM.find (m, t) of
-            NONE => ((n+1, FM.insert (m, t, n), (n, xts') :: ds), n)
-          | SOME i => ((n, m, ds), i)
+        case FM.find (normal, t) of
+            SOME i => (v, i)
+          | NONE => ({count = count+1,
+                      normal = FM.insert (normal, t, count),
+                      lists = lists,
+                      decls = (count, xts') :: decls},
+                     count)
     end
 
-fun declares (_, _, ds) = ds
+fun findList (v as {count, normal, decls, lists}, t, t') =
+    case FM.find (lists, t) of
+        SOME i => (v, i)
+      | NONE =>
+        let
+            val xts = [("1", t), ("2", (L.TList t, #2 t))]
+            val xts' = [("1", t'), ("2", (L'.TList (t', count), #2 t'))]
+        in
+            ({count = count+1,
+              normal = FM.insert (normal, (L.TRecord xts, ErrorMsg.dummySpan), count),
+              lists = FM.insert (lists, t, count),
+              decls = (count, xts') :: decls},
+             count)
+    end
 
-fun clearDeclares (n, m, _) = (n, m, [])
+fun declares (v : t) = #decls v
+
+fun clearDeclares (v : t) = {count = #count v,
+                             normal = #normal v,
+                             lists = #lists v,
+                             decls = []}
 
 end
 
@@ -119,6 +152,13 @@ fun cifyTyp x =
                     val (t, sm) = cify dtmap (t, sm)
                 in
                     ((L'.TOption t, loc), sm)
+                end
+              | L.TList t =>
+                let
+                    val (t', sm) = cify dtmap (t, sm)
+                    val (sm, si) = Sm.findList (sm, t, t')
+                in
+                    ((L'.TList (t', si), loc), sm)
                 end
               | L.TSource => ((L'.TFfi ("Basis", "int"), loc), sm)
               | L.TSignal _ => raise Fail "Cjrize: TSignal remains"

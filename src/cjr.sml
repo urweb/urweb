@@ -37,6 +37,7 @@ datatype typ' =
        | TDatatype of datatype_kind * int * (string * int * typ option) list ref
        | TFfi of string * string
        | TOption of typ
+       | TList of typ * int
 
 withtype typ = typ' located
 

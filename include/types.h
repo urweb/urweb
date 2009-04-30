@@ -21,6 +21,7 @@ typedef struct uw_context *uw_context;
 
 typedef uw_Basis_string uw_Basis_xhtml;
 typedef uw_Basis_string uw_Basis_page;
+typedef uw_Basis_string uw_Basis_xbody;
 typedef uw_Basis_string uw_Basis_css_class;
 
 typedef unsigned uw_Basis_client;

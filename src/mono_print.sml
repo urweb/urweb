@@ -65,6 +65,9 @@ fun p_typ' par env (t, _) =
       | TOption t => box [string "option(",
                           p_typ env t,
                           string ")"]
+      | TList t => box [string "list(",
+                        p_typ env t,
+                        string ")"]
       | TSource => string "source"
       | TSignal t => box [string "signal(",
                           p_typ env t,
@@ -114,9 +117,17 @@ fun p_pat' par env (p, _) =
                                                            p_pat env p]) xps,
              string "}"]
       | PNone _ => string "None"
-      | PSome (_, p) => box [string "Some",
-                             space,
-                             p_pat' true env p]
+      | PSome (t, p) =>
+        if !debug then
+            box [string "Some[",
+                 p_typ env t,
+                 string "]",
+                 space,
+                 p_pat' true env p]
+        else
+            box [string "Some",
+                 space,
+                 p_pat' true env p]
 
 and p_pat x = p_pat' false x
 

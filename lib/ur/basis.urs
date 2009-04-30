@@ -10,6 +10,8 @@ datatype bool = False | True
 
 datatype option t = None | Some of t
 
+datatype list t = Nil | Cons of t * list t
+
 
 (** Basic type classes *)
 

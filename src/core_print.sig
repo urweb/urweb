@@ -30,6 +30,7 @@
 signature CORE_PRINT = sig
     val p_kind : CoreEnv.env -> Core.kind Print.printer
     val p_con : CoreEnv.env -> Core.con Print.printer
+    val p_patCon : CoreEnv.env -> Core.patCon Print.printer
     val p_pat : CoreEnv.env -> Core.pat Print.printer
     val p_exp : CoreEnv.env -> Core.exp Print.printer
     val p_decl : CoreEnv.env -> Core.decl Print.printer
