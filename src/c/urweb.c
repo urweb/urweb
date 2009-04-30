@@ -591,28 +591,28 @@ static input *INP(uw_context ctx) {
   else if (ctx->cur_container->kind == ENTRY)
     return ctx->cur_container->data.entry.fields;
   else
-    uw_error(ctx, FATAL, "INP: Wrong kind");
+    uw_error(ctx, FATAL, "INP: Wrong kind (%d, %p)", ctx->cur_container->kind, ctx->cur_container);
 }
 
-static void adjust_input(input *x, size_t offset) {
+static void adjust_pointer(input **ptr, input *old_start, input *new_start, size_t len) {
+  if (*ptr != NULL && *ptr >= old_start && *ptr < old_start + len)
+    *ptr += new_start - old_start;
+}
+
+static void adjust_input(input *x, input *old_start, input *new_start, size_t len) {
   switch (x->kind) {
   case SUBFORM:
-    x->data.subform.fields += offset;
-    if (x->data.subform.parent != NULL)
-      x->data.subform.parent += offset;
+    adjust_pointer(&x->data.subform.fields, old_start, new_start, len);
+    adjust_pointer(&x->data.subform.parent, old_start, new_start, len);
     break;
   case SUBFORMS:
-    if (x->data.subforms.entries != NULL)
-      x->data.subforms.entries += offset;
-    if (x->data.subforms.parent != NULL)
-      x->data.subforms.parent += offset;
+    adjust_pointer(&x->data.subforms.entries, old_start, new_start, len);
+    adjust_pointer(&x->data.subforms.parent, old_start, new_start, len);
     break;
   case ENTRY:
-    x->data.entry.fields += offset;
-    if (x->data.entry.next != NULL)
-      x->data.entry.next += offset;
-    if (x->data.entry.parent != NULL)
-      x->data.entry.parent += offset;
+    adjust_pointer(&x->data.entry.fields, old_start, new_start, len);
+    adjust_pointer(&x->data.entry.next, old_start, new_start, len);
+    adjust_pointer(&x->data.entry.parent, old_start, new_start, len);
   }  
 }
 
@@ -624,16 +624,17 @@ static input *check_input_space(uw_context ctx, size_t len) {
     input *new_subinputs = realloc(ctx->subinputs, sizeof(input) * (ctx->used_subinputs + len));
     size_t offset = new_subinputs - ctx->subinputs;
 
-    for (i = 0; i < ctx->used_subinputs; ++i)
-      adjust_input(&new_subinputs[i], offset);
-    for (i = 0; i < uw_inputs_len; ++i)
-      adjust_input(&ctx->inputs[i], offset);
+    if (ctx->subinputs != new_subinputs) {
+      for (i = 0; i < ctx->used_subinputs; ++i)
+        adjust_input(&new_subinputs[i], ctx->subinputs, new_subinputs, ctx->used_subinputs);
+      for (i = 0; i < uw_inputs_len; ++i)
+        adjust_input(&ctx->inputs[i], ctx->subinputs, new_subinputs, ctx->used_subinputs);
 
-    if (ctx->cur_container >= ctx->subinputs && ctx->cur_container < ctx->subinputs + ctx->n_subinputs)
-      ctx->cur_container += offset;
+      adjust_pointer(&ctx->cur_container, ctx->subinputs, new_subinputs, ctx->used_subinputs);
 
-    ctx->n_subinputs = ctx->used_subinputs + len;
-    ctx->subinputs = new_subinputs;
+      ctx->n_subinputs = ctx->used_subinputs + len;
+      ctx->subinputs = new_subinputs;
+    }
   }
 
   r = &ctx->subinputs[ctx->used_subinputs];
@@ -791,6 +792,35 @@ void uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
 
 void *uw_malloc(uw_context ctx, size_t len);
 
+
+static void parents(input *inp) {
+  printf("Stack: %p\n", inp);
+  while (inp) {
+    switch (inp->kind) {
+    case NORMAL:
+      printf("Normal(%p)\n", inp);
+      break;
+    case FIL:
+      printf("File(%p)\n", inp);
+      break;
+    case SUBFORM:
+      printf("Subform; fields = %p\n", inp->data.subform.fields);
+      inp = inp->data.subform.parent;
+      break;
+    case SUBFORMS:
+      printf("Subforms; entries = %p\n", inp->data.subforms.entries);
+      inp = inp->data.subforms.parent;
+      break;
+    case ENTRY:
+      printf("Entry; fields = %p; next = %p\n", inp->data.entry.fields, inp->data.entry.next);
+      inp = inp->data.entry.parent;
+      break;
+    default:
+      inp = NULL;
+    }
+  }
+}
+
 uw_Basis_file uw_get_file_input(uw_context ctx, int n) {
   if (n < 0)
     uw_error(ctx, FATAL, "Negative file input index %d", n);
@@ -838,7 +868,7 @@ void uw_enter_subform(uw_context ctx, int n) {
     uw_error(ctx, FATAL, "Tried to read an entry form input as subform");
   case SUBFORM:
     INP(ctx)[n].data.subform.parent = ctx->cur_container;
-    ctx->cur_container = INP(ctx)[n].data.subform.fields;
+    ctx->cur_container = &INP(ctx)[n];
     return;
   default:
     uw_error(ctx, FATAL, "Impossible input kind");

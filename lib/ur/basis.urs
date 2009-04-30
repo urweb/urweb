@@ -508,6 +508,7 @@ con html = [Html]
 con head = [Head]
 con body = [Body]
 con form = [Body, Form]
+con subform = [Body, Subform]
 con tabl = [Body, Table]
 con tr = [Body, Tr]
 
@@ -570,7 +571,7 @@ val subform : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
 val subforms : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
               -> [[Form] ~ ctx] =>
     nm :: Name -> [[nm] ~ use] =>
-    xml [Body, Subform] [Entry = $bind] []
+    xml subform [Entry = $bind] []
     -> xml ([Form] ++ ctx) use [nm = list ($bind)]
 
 val entry : ctx ::: {Unit} -> bind ::: {Type}
