@@ -1,4 +1,6 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* -*- mode: sml-lex -*- *)
+
+(* Copyright (c) 2008-2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -105,6 +107,55 @@ fun exitBrace () =
 fun initialize () = (xmlTag := [];
 		     xmlString := false)
 
+
+fun unescape loc s =
+    let
+        fun process (s, acc) =
+            let
+                val (befor, after) = Substring.splitl (fn ch => ch <> #"&") s
+            in
+                if Substring.size after = 0 then
+                    Substring.concat (rev (s :: acc))
+                else
+                    let
+                        val after = Substring.slice (after, 1, NONE)
+                        val (befor', after') = Substring.splitl (fn ch => ch <> #";") after
+                    in
+                        if Substring.size after' = 0 then
+                            (ErrorMsg.errorAt' loc "Missing ';' after '&'";
+                             "")
+                        else
+                            let
+                                val pre = befor
+                                val code = befor'
+                                val s = Substring.slice (after', 1, NONE)
+
+                                val special =
+                                    if Substring.size code > 0 andalso Substring.sub (code, 0) = #"#"
+                                       andalso CharVectorSlice.all Char.isDigit (Substring.slice (code, 1, NONE)) then
+                                        let
+                                            val code = Substring.string (Substring.slice (code, 1, NONE))
+                                        in
+                                            Option.map chr (Int.fromString code)
+                                        end
+                                    else case Substring.string code of
+                                             "amp" => SOME #"&"
+                                           | "lt" => SOME #"<"
+                                           | "gt" => SOME #">"
+                                           | "quot" => SOME #"\""
+                                           | _ => NONE
+                            in
+                                case special of
+                                    NONE => (ErrorMsg.errorAt' loc ("Unsupported XML character entity "
+                                                                        ^ Substring.string code);
+                                             "")
+                                  | SOME ch => process (s, Substring.full (String.str ch) :: pre :: acc)
+                            end
+                    end
+            end
+    in
+        process (Substring.full s, [])
+    end
 
 %%
 %header (functor UrwebLexFn(structure Tokens : Urweb_TOKENS));
@@ -231,7 +282,7 @@ notags = [^<{\n]+;
 			  pushLevel (fn () => YYBEGIN XML);
 			  Tokens.LBRACE (yypos, yypos + 1));
 
-<XML> {notags}        => (Tokens.NOTAGS (yytext, yypos, yypos + size yytext));
+<XML> {notags}        => (Tokens.NOTAGS (unescape (yypos, yypos + size yytext) yytext, yypos, yypos + size yytext));
 
 <XML> .               => (ErrorMsg.errorAt' (yypos, yypos)
                           ("illegal XML character: \"" ^ yytext ^ "\"");
