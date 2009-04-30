@@ -37,11 +37,14 @@ signature COMPILER = sig
          sql : string option,
          debug : bool,
          profile : bool,
-         timeout : int
+         timeout : int,
+         ffi : string list,
+         link : string list,
+         headers : string list
     }
     val compile : string -> unit
     val compileC : {cname : string, oname : string, ename : string, libs : string,
-                    profile : bool, debug : bool} -> unit
+                    profile : bool, debug : bool, link : string list} -> unit
 
     type ('src, 'dst) phase
     type ('src, 'dst) transform

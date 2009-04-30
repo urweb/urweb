@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-(* Ur/Web language parser *)
-
 structure Compiler :> COMPILER = struct 
 
 structure UrwebLrVals = UrwebLrValsFn(structure Token = LrParser.Token)
@@ -43,7 +41,10 @@ type job = {
      sql : string option,
      debug : bool,
      profile : bool,
-     timeout : int
+     timeout : int,
+     ffi : string list,
+     link : string list,
+     headers : string list
 }
 
 type ('src, 'dst) phase = {
@@ -201,7 +202,7 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}    
 
-fun p_job {prefix, database, exe, sql, sources, debug, profile, timeout} =
+fun p_job {prefix, database, exe, sql, sources, debug, profile, timeout, ffi, link, headers} =
     let
         open Print.PD
         open Print
@@ -228,6 +229,9 @@ fun p_job {prefix, database, exe, sql, sources, debug, profile, timeout} =
              string "Timeout: ",
              string (Int.toString timeout),
              newline,
+             p_list_sep (box []) (fn s => box [string "Ffi", space, string s, newline]) ffi,
+             p_list_sep (box []) (fn s => box [string "Header", space, string s, newline]) headers,
+             p_list_sep (box []) (fn s => box [string "Link", space, string s, newline]) link,
              string "Sources:",
              p_list string sources,
              newline]
@@ -251,6 +255,10 @@ val parseUrp = {
                       OS.Path.concat (dir, fname)
                       handle OS.Path.Path => fname
 
+                  val absDir = OS.Path.mkAbsolute {path = dir, relativeTo = OS.FileSys.getDir ()}
+
+                  fun relifyA fname = OS.Path.mkAbsolute {path = fname, relativeTo = absDir}
+
                   fun readSources acc =
                       case TextIO.inputLine inf of
                           NONE => rev acc
@@ -270,21 +278,35 @@ val parseUrp = {
                               readSources acc
                           end
 
-                  fun finish (prefix, database, exe, sql, debug, profile, timeout, sources) =
-                      {prefix = Option.getOpt (prefix, "/"),
-                       database = database,
-                       exe = Option.getOpt (exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
-                                                                      ext = SOME "exe"}),
-                       sql = sql,
-                       debug = debug,
-                       profile = profile,
-                       timeout = Option.getOpt (timeout, 60),
+                  val prefix = ref NONE
+                  val database = ref NONE
+                  val exe = ref NONE
+                  val sql = ref NONE
+                  val debug = ref false
+                  val profile = ref false
+                  val timeout = ref NONE
+                  val ffi = ref []
+                  val link = ref []
+                  val headers = ref []
+
+                  fun finish sources =
+                      {prefix = Option.getOpt (!prefix, "/"),
+                       database = !database,
+                       exe = Option.getOpt (!exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
+                                                                       ext = SOME "exe"}),
+                       sql = !sql,
+                       debug = !debug,
+                       profile = !profile,
+                       timeout = Option.getOpt (!timeout, 60),
+                       ffi = !ffi,
+                       link = !link,
+                       headers = !headers,
                        sources = sources}
 
-                  fun read (prefix, database, exe, sql, debug, profile, timeout) =
+                  fun read () =
                       case TextIO.inputLine inf of
-                          NONE => finish (prefix, database, exe, sql, debug, profile, timeout, [])
-                        | SOME "\n" => finish (prefix, database, exe, sql, debug, profile, timeout, readSources [])
+                          NONE => finish []
+                        | SOME "\n" => finish (readSources [])
                         | SOME line =>
                           let
                               val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
@@ -293,41 +315,45 @@ val parseUrp = {
                           in
                               case cmd of
                                   "prefix" =>
-                                  (case prefix of
+                                  (case !prefix of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
-                                   read (SOME arg, database, exe, sql, debug, profile, timeout))
+                                   prefix := SOME arg)
                                 | "database" =>
-                                  (case database of
+                                  (case !database of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
-                                   read (prefix, SOME arg, exe, sql, debug, profile, timeout))
+                                   database := SOME arg)
                                 | "exe" =>
-                                  (case exe of
+                                  (case !exe of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'exe' directive";
-                                   read (prefix, database, SOME (relify arg), sql, debug, profile, timeout))
+                                   exe := SOME (relify arg))
                                 | "sql" =>
-                                  (case sql of
+                                  (case !sql of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'sql' directive";
-                                   read (prefix, database, exe, SOME (relify arg), debug, profile, timeout))
-                                | "debug" => read (prefix, database, exe, sql, true, profile, timeout)
-                                | "profile" => read (prefix, database, exe, sql, debug, true, timeout)
+                                   sql := SOME (relify arg))
+                                | "debug" => debug := true
+                                | "profile" => profile := true
                                 | "timeout" =>
-                                  (case timeout of
+                                  (case !timeout of
                                        NONE => ()
                                      | SOME _ => ErrorMsg.error "Duplicate 'timeout' directive";
-                                   read (prefix, database, exe, sql, debug, profile, SOME (valOf (Int.fromString arg))))
-                                | _ => (ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
-                                        read (prefix, database, exe, sql, debug, profile, timeout))
+                                   timeout := SOME (valOf (Int.fromString arg)))
+                                | "ffi" => ffi := relify arg :: !ffi
+                                | "link" => link := relifyA arg :: !link
+                                | "include" => headers := relifyA arg :: !headers
+                                | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
+                              read ()
                           end
 
-                  val job = read (NONE, NONE, NONE, NONE, false, false, NONE)
+                  val job = read ()
               in
                   TextIO.closeIn inf;
-                  Monoize.urlPrefix := #prefix job;
-                  CjrPrint.timeout := #timeout job;
+                  Settings.setUrlPrefix (#prefix job);
+                  Settings.setTimeout (#timeout job);
+                  Settings.setHeaders (#headers job);
                   job
               end,
     print = p_job
@@ -339,9 +365,23 @@ fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
 val parse = {
-    func = fn {database, sources = fnames, ...} : job =>
+    func = fn {database, sources = fnames, ffi, ...} : job =>
               let
                   fun nameOf fname = capitalize (OS.Path.file fname)
+
+                  fun parseFfi fname =
+                      let
+                          val mname = nameOf fname
+                          val urs = OS.Path.joinBaseExt {base = fname, ext = SOME "urs"}
+
+                          val loc = {file = urs,
+                                     first = ErrorMsg.dummyPos,
+                                     last = ErrorMsg.dummyPos}
+
+                          val sgn = (Source.SgnConst (#func parseUrs urs), loc)
+                      in
+                          (Source.DFfiStr (mname, sgn), loc)
+                      end
 
                   fun parseOne fname =
                       let
@@ -367,12 +407,14 @@ val parse = {
                           (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
                       end
 
+                  val dsFfi = map parseFfi ffi
                   val ds = map parseOne fnames
               in
                   let
                       val final = nameOf (List.last fnames)
 
-                      val ds = ds @ [(Source.DExport (Source.StrVar final, ErrorMsg.dummySpan), ErrorMsg.dummySpan)]
+                      val ds = dsFfi @ ds
+                               @ [(Source.DExport (Source.StrVar final, ErrorMsg.dummySpan), ErrorMsg.dummySpan)]
                   in
                       case database of
                           NONE => ds
@@ -605,7 +647,7 @@ val sqlify = {
 
 val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
-fun compileC {cname, oname, ename, libs, profile, debug} =
+fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
     let
         val urweb_o = clibFile "urweb.o"
         val driver_o = clibFile "driver.o"
@@ -624,6 +666,8 @@ fun compileC {cname, oname, ename, libs, profile, debug} =
                 (compile ^ " -g", link ^ " -g")
             else
                 (compile, link)
+
+        val link = foldl (fn (s, link) => link ^ " " ^ s) link link'
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
             print "C compilation failed\n"
@@ -689,7 +733,7 @@ fun compile job =
                     end;
 
                 compileC {cname = cname, oname = oname, ename = ename, libs = libs,
-                          profile = #profile job, debug = #debug job};
+                          profile = #profile job, debug = #debug job, link = #link job};
                 
                 cleanup ()
             end

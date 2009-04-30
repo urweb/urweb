@@ -965,7 +965,7 @@ fun process file =
                                 val (ek, st) = jsE inner (ek, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str ("rc(cat(\"" ^ !Monoize.urlPrefix ^ "\","),
+                                (strcat [str ("rc(cat(\"" ^ Settings.getUrlPrefix () ^ "\","),
                                          e,
                                          str ("), function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ unurl ^ "},"),

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,10 +25,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature MONOIZE = sig
+structure Settings :> SETTINGS = struct
 
-    val monoize : CoreEnv.env -> Core.file -> Mono.file
+val urlPrefix = ref "/"
+val timeout = ref 0
+val headers = ref ([] : string list)
 
-    val liftExpInExp : int -> Mono.exp -> Mono.exp
+fun getUrlPrefix () = !urlPrefix
+fun setUrlPrefix p =
+    urlPrefix := (if p = "" then
+                      "/"
+                  else if String.sub (p, size p - 1) <> #"/" then
+                      p ^ "/"
+                  else
+                      p)
+
+fun getTimeout () = !timeout
+fun setTimeout n = timeout := n
+
+fun getHeaders () = !headers
+fun setHeaders ls = headers := ls
 
 end

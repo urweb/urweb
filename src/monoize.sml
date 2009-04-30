@@ -36,8 +36,6 @@ structure L' = Mono
 structure IM = IntBinaryMap
 structure IS = IntBinarySet
 
-val urlPrefix = ref "/"
-
 val dummyTyp = (L'.TDatatype (0, ref (L'.Enum, [])), E.dummySpan)
 
 structure U = MonoUtil
@@ -376,7 +374,7 @@ fun fooifyExp fk env =
                 let
                     val (_, _, _, s) = Env.lookupENamed env fnam
                 in
-                    ((L'.EPrim (Prim.String (!urlPrefix ^ s)), loc), fm)
+                    ((L'.EPrim (Prim.String (Settings.getUrlPrefix () ^ s)), loc), fm)
                 end
               | L'.EClosure (fnam, args) =>
                 let
@@ -399,7 +397,7 @@ fun fooifyExp fk env =
                           | _ => (E.errorAt loc "Type mismatch encoding attribute";
                                   (e, fm))
                 in
-                    attrify (args, ft, (L'.EPrim (Prim.String (!urlPrefix ^ s)), loc), fm)
+                    attrify (args, ft, (L'.EPrim (Prim.String (Settings.getUrlPrefix () ^ s)), loc), fm)
                 end
               | _ =>
                 case t of
@@ -1257,7 +1255,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("c", s, (L'.TFun (t, (L'.TFun (un, un), loc)), loc),
                            (L'.EAbs ("v", t, (L'.TFun (un, un), loc),
                                      (L'.EAbs ("_", un, un,
-                                               (L'.EFfiApp ("Basis", "set_cookie", [(L'.EPrim (Prim.String (!urlPrefix)),
+                                               (L'.EFfiApp ("Basis", "set_cookie", [(L'.EPrim (Prim.String
+                                                                                                   (Settings.getUrlPrefix ())),
                                                                                      loc),
                                                                                     (L'.ERel 2, loc),
                                                                                     e]), loc)),
@@ -3138,14 +3137,7 @@ datatype expungable = Client | Channel
 
 fun monoize env file =
     let
-        val p = !urlPrefix
-        val () =
-            if p = "" then
-                urlPrefix := "/"
-            else if String.sub (p, size p - 1) <> #"/" then
-                urlPrefix := p ^ "/"
-            else
-                ()
+
 
         (* Calculate which exported functions need cookie signature protection *)
         val rcook = foldl (fn ((d, _), rcook) =>

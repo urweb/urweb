@@ -890,7 +890,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
 
                  val st = St.bindStr st m n (St.ffi m cmap conmap)
              in
-                 (rev ds, St.basisIs (st, n))
+                 (rev ds, if m = "Basis" then St.basisIs (st, n) else st)
              end
            | _ => raise Fail "Non-const signature for FFI structure")
 

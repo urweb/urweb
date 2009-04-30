@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,10 +25,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature MONOIZE = sig
+signature SETTINGS = sig
+    
+    val setUrlPrefix : string -> unit
+    val getUrlPrefix : unit -> string
 
-    val monoize : CoreEnv.env -> Core.file -> Mono.file
+    val setTimeout : int -> unit
+    val getTimeout : unit -> int
 
-    val liftExpInExp : int -> Mono.exp -> Mono.exp
+    val setHeaders : string list -> unit
+    val getHeaders : unit -> string list
 
 end

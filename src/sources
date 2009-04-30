@@ -13,6 +13,9 @@ order.sml
 errormsg.sig
 errormsg.sml
 
+settings.sig
+settings.sml
+
 print.sig
 print.sml
 

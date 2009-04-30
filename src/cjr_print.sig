@@ -36,6 +36,4 @@ signature CJR_PRINT = sig
     val p_sql : CjrEnv.env -> Cjr.file Print.printer
 
     val debug : bool ref
-
-    val timeout : int ref
 end

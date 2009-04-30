@@ -13,7 +13,6 @@ src/urweb.mlb
 *.grm.*
 *.o
 
-./Makefile
 src/config.sml
 
 *.exe
@@ -37,3 +36,8 @@ demo/demo.*
 .depend
 Makefile.coq
 *.vo
+
+syntax: regexp
+
+^Makefile
+^src/coq/Makefile

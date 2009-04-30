@@ -1250,8 +1250,6 @@ fun urlify env t =
         urlify' IS.empty 0 t
     end
 
-val timeout = ref 0
-
 fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t_GCC p
@@ -2832,7 +2830,7 @@ fun p_file env (ds, ps) =
                                     string (case side of
                                                 ServerOnly => ""
                                               | _ => "<script src=\\\""
-                                                     ^ OS.Path.joinDirFile {dir = !Monoize.urlPrefix,
+                                                     ^ OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
                                                                             file = "app.js"}
                                                      ^ "\\\"></script>\\n"),
                                     string "\");",
@@ -2844,7 +2842,7 @@ fun p_file env (ds, ps) =
                                     string ");",
                                     newline,
                                     string "uw_set_url_prefix(ctx, \"",
-                                    string (!Monoize.urlPrefix),
+                                    string (Settings.getUrlPrefix ()),
                                     string "\");",
                                     newline]),
                      string "uw_set_needs_sig(ctx, ",
@@ -3185,6 +3183,10 @@ fun p_file env (ds, ps) =
              else
                  box [],
              newline,
+             p_list_sep (box []) (fn s => box [string "#include \"",
+                                               string s,
+                                               string "\"",
+                                               newline]) (Settings.getHeaders ()),
              string "#include \"",
              string (OS.Path.joinDirFile {dir = Config.includ,
                                           file = "urweb.h"}),
@@ -3198,7 +3200,7 @@ fun p_file env (ds, ps) =
              string ";",
              newline,
              string "int uw_timeout = ",
-             string (Int.toString (!timeout)),
+             string (Int.toString (Settings.getTimeout ())),
              string ";",
              newline,
              newline,

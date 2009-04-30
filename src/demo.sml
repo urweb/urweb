@@ -94,7 +94,10 @@ fun make {prefix, dirname, guided} =
                                              file = "demo.sql"}),
             debug = false,
             timeout = Int.max (#timeout combined, #timeout urp),
-            profile = false
+            profile = false,
+            ffi = [],
+            link = [],
+            headers = []
         }
 
         val parse = Compiler.run (Compiler.transform Compiler.parseUrp "Demo parseUrp")

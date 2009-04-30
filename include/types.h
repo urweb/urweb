@@ -1,3 +1,6 @@
+#ifndef URWEB_TYPES_H
+#define URWEB_TYPES_H
+
 #include <time.h>
 
 typedef long long uw_Basis_int;
@@ -42,3 +45,4 @@ typedef struct input *uw_input;
 #define FLOATS_MAX 100
 #define TIMES_MAX 100
 
+#endif
