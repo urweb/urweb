@@ -1,7 +1,7 @@
 fun handler' ls =
     case ls of
         Nil => <xml/>
-      | Cons (r, ls) => <xml><li>{[r.A]}, {[r.B]}, {[r.Sub]}</li>{handler' ls}</xml>
+      | Cons (r, ls) => <xml><li>{[r.Nam]}, {[r.A]}, {[r.B]}, {[r.Sub]}</li>{handler' ls}</xml>
 
 fun handler r = return <xml><body>
   {[r.A]}<br/>
@@ -14,12 +14,14 @@ fun main () = return <xml><body>
     <textbox{#A}/><br/>
     <subforms{#Sub}>
       <entry>
+        <hidden{#Nam} value="Sparky"/>
         <textbox{#A}/><br/>
         <textbox{#B}/><br/>
         <textbox{#Sub}/><br/>
       </entry>
 
       <entry>
+        <hidden{#Nam} value="Snarky"/>
         <textbox{#A}/><br/>
         <textbox{#B}/><br/>
         <textbox{#Sub}/><br/>

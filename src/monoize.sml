@@ -2533,6 +2533,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     
                   | "submit" => normal ("input type=\"submit\"", NONE, NONE)
                   | "button" => normal ("input type=\"submit\"", NONE, NONE)
+                  | "hidden" => input "hidden"
 
                   | "textbox" =>
                     (case targs of
