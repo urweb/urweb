@@ -1,22 +1,22 @@
 fun isNil (t ::: Type) (ls : list t) =
     case ls of
-        Nil => True
+        [] => True
       | _ => False
 
 fun delist (ls : list string) : xbody =
         case ls of
-            Nil => <xml>Nil</xml>
-          | Cons (h, t) => <xml>{[h]} :: {delist t}</xml>
+            [] => <xml>Nil</xml>
+          | h :: t => <xml>{[h]} :: {delist t}</xml>
 
 fun callback ls = return <xml><body>
   {delist ls}
 </body></xml>
 
 fun main () = return <xml><body>
-  {[isNil (Nil : list bool)]},
-  {[isNil (Cons (1, Nil))]},
-  {[isNil (Cons ("A", Cons ("B", Nil)))]}
+  {[isNil ([] : list bool)]},
+  {[isNil (1 :: [])]},
+  {[isNil ("A" :: "B" :: [])]}
 
-  <p>{delist (Cons ("X", Cons ("Y", Cons ("Z", Nil))))}</p>
-  <a link={callback (Cons ("A", Cons ("B", Nil)))}>Go!</a>
+  <p>{delist ("X" :: "Y" :: "Z" :: [])}</p>
+  <a link={callback ("A" :: "B" :: [])}>Go!</a>
 </body></xml>

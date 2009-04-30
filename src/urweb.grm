@@ -933,6 +933,16 @@ eexp   : eapps                          (eapps)
 
        | eexp CARET eexp                (native_op ("strcat", eexp1, eexp2, s (eexp1left, eexp2right)))
 
+       | eterm DCOLON eexp              (let
+                                             val loc = s (etermleft, eexpright)
+                                         in
+                                             (EApp ((EVar (["Basis"], "Cons", Infer), loc),
+                                                    (ERecord [((CName "1", loc),
+                                                               eterm),
+                                                              ((CName "2", loc),
+                                                               eexp)], loc)), loc)
+                                         end)
+
 bind   : SYMBOL LARROW eapps            (SYMBOL, NONE, eapps)
        | UNIT LARROW eapps              (let
                                              val loc = s (UNITleft, eappsright)
@@ -1161,6 +1171,8 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
        | LET edecls IN eexp END         (ELet (edecls, eexp), s (LETleft, ENDright))
 
+       | LBRACK RBRACK                  (EVar (["Basis"], "Nil", Infer), s (LBRACKleft, RBRACKright))
+
 edecls :                                ([])
        | edecl edecls                   (edecl :: edecls)
 
@@ -1196,6 +1208,13 @@ branchs:                                ([])
 
 pat    : pterm                          (pterm)
        | cpath pterm                    (PCon (#1 cpath, #2 cpath, SOME pterm), s (cpathleft, ptermright))
+       | pterm DCOLON pat               (let
+                                             val loc = s (ptermleft, patright)
+                                         in
+                                             (PCon (["Basis"], "Cons", SOME (PRecord ([("1", pterm),
+                                                                                       ("2", pat)], false), loc)),
+                                              loc)
+                                         end)
 
 pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright))
        | cpath                          (PCon (#1 cpath, #2 cpath, NONE), s (cpathleft, cpathright))
@@ -1209,6 +1228,7 @@ pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright
        | LPAREN ptuple RPAREN           (PRecord (ListUtil.mapi (fn (i, p) => (Int.toString (i + 1), p)) ptuple,
                                                   false),
                                          s (LPARENleft, RPARENright))
+       | LBRACK RBRACK                  (PCon (["Basis"], "Nil", NONE), s (LBRACKleft, RBRACKright))
 
 rpat   : CSYMBOL EQ pat                 ([(CSYMBOL, pat)], false)
        | INT EQ pat                     ([(Int64.toString INT, pat)], false)
