@@ -284,7 +284,7 @@ typedef struct {
 } delta;
 
 typedef enum {
-  UNSET, NORMAL, FIL, SUBFORM
+  UNSET, NORMAL, FIL, SUBFORM, SUBFORMS, ENTRY
 } input_kind;
 
 typedef struct input {
@@ -293,8 +293,14 @@ typedef struct input {
     char *normal;
     uw_Basis_file file;
     struct {
-      struct input *fields, *prev;
+      struct input *fields, *parent;
     } subform;
+    struct {
+      struct input *entries, *parent;
+    } subforms;
+    struct {
+      struct input *fields, *next, *parent;
+    } entry;
   } data;
 } input;
 
@@ -302,7 +308,7 @@ struct uw_context {
   char *headers, *headers_end;
 
   buf outHeaders, page, heap, script;
-  input *inputs, *subinputs, *cur_inputs;
+  input *inputs, *subinputs, *cur_container;
   size_t n_subinputs, used_subinputs;
 
   int source_count;
@@ -343,7 +349,7 @@ uw_context uw_init() {
   ctx->script.start[0] = 0;
 
   ctx->inputs = calloc(uw_inputs_len, sizeof(input));
-  ctx->cur_inputs = NULL;
+  ctx->cur_container = NULL;
   ctx->subinputs = malloc(0);
   ctx->n_subinputs = ctx->used_subinputs = 0;
 
@@ -412,6 +418,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->source_count = 0;
   ctx->used_deltas = 0;
   ctx->client = NULL;
+  ctx->cur_container = NULL;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -423,7 +430,6 @@ void uw_reset(uw_context ctx) {
   uw_reset_keep_request(ctx);
   memset(ctx->inputs, 0, uw_inputs_len * sizeof(input));
   memset(ctx->subinputs, 0, ctx->n_subinputs * sizeof(input));
-  ctx->cur_inputs = NULL;
   ctx->used_subinputs = 0;
 }
 
@@ -577,11 +583,69 @@ char *uw_error_message(uw_context ctx) {
 
 extern int uw_input_num(const char*);
 
-#define INP(ctx) (ctx->cur_inputs ? ctx->cur_inputs : ctx->inputs)
+static input *INP(uw_context ctx) {
+  if (ctx->cur_container == NULL)
+    return ctx->inputs;
+  else if (ctx->cur_container->kind == SUBFORM)
+    return ctx->cur_container->data.subform.fields;
+  else if (ctx->cur_container->kind == ENTRY)
+    return ctx->cur_container->data.entry.fields;
+  else
+    uw_error(ctx, FATAL, "INP: Wrong kind");
+}
+
+static void adjust_input(input *x, size_t offset) {
+  switch (x->kind) {
+  case SUBFORM:
+    x->data.subform.fields += offset;
+    if (x->data.subform.parent != NULL)
+      x->data.subform.parent += offset;
+    break;
+  case SUBFORMS:
+    if (x->data.subforms.entries != NULL)
+      x->data.subforms.entries += offset;
+    if (x->data.subforms.parent != NULL)
+      x->data.subforms.parent += offset;
+    break;
+  case ENTRY:
+    x->data.entry.fields += offset;
+    if (x->data.entry.next != NULL)
+      x->data.entry.next += offset;
+    if (x->data.entry.parent != NULL)
+      x->data.entry.parent += offset;
+  }  
+}
+
+static input *check_input_space(uw_context ctx, size_t len) {
+  size_t i;
+  input *r;
+
+  if (ctx->used_subinputs + len >= ctx->n_subinputs) {
+    input *new_subinputs = realloc(ctx->subinputs, sizeof(input) * (ctx->used_subinputs + len));
+    size_t offset = new_subinputs - ctx->subinputs;
+
+    for (i = 0; i < ctx->used_subinputs; ++i)
+      adjust_input(&new_subinputs[i], offset);
+    for (i = 0; i < uw_inputs_len; ++i)
+      adjust_input(&ctx->inputs[i], offset);
+
+    if (ctx->cur_container >= ctx->subinputs && ctx->cur_container < ctx->subinputs + ctx->n_subinputs)
+      ctx->cur_container += offset;
+
+    ctx->n_subinputs = ctx->used_subinputs + len;
+    ctx->subinputs = new_subinputs;
+  }
+
+  r = &ctx->subinputs[ctx->used_subinputs];
+
+  for (i = 0; i < len; ++i)
+    ctx->subinputs[ctx->used_subinputs++].kind = UNUSED;
+
+  return r;
+}
 
 void uw_set_input(uw_context ctx, const char *name, char *value) {
   if (!strcasecmp(name, ".b")) {
-    size_t i;
     int n = uw_input_num(value);
     input *inps;
 
@@ -591,46 +655,65 @@ void uw_set_input(uw_context ctx, const char *name, char *value) {
     if (n >= uw_inputs_len)
       uw_error(ctx, FATAL, "For subform name %s, index %d is out of range", value, n);
 
-    if (ctx->used_subinputs + uw_inputs_len >= ctx->n_subinputs) {
-      input *new_subinputs = realloc(ctx->subinputs, sizeof(input) * (ctx->used_subinputs + uw_inputs_len));
-      size_t offset = new_subinputs - ctx->subinputs;
+    inps = check_input_space(ctx, uw_inputs_len);
 
-      for (i = 0; i < ctx->used_subinputs; ++i)
-        if (new_subinputs[i].kind == SUBFORM) {
-          new_subinputs[i].data.subform.fields += offset;
-          if (new_subinputs[i].data.subform.prev != NULL)
-            new_subinputs[i].data.subform.prev += offset;
-        }
-
-      for (i = 0; i < uw_inputs_len; ++i)
-        if (ctx->inputs[i].kind == SUBFORM) {
-          ctx->inputs[i].data.subform.fields += offset;
-          if (ctx->inputs[i].data.subform.prev != NULL)
-            ctx->inputs[i].data.subform.prev += offset;
-        }
-
-      if (ctx->cur_inputs != NULL)
-        ctx->cur_inputs += offset;
-
-      ctx->n_subinputs = ctx->used_subinputs + uw_inputs_len;
-      ctx->subinputs = new_subinputs;
-    }
-
-    ctx->inputs[n].kind = SUBFORM;
-    ctx->inputs[n].data.subform.prev = ctx->cur_inputs;
-    ctx->cur_inputs = ctx->inputs[n].data.subform.fields = &ctx->subinputs[ctx->used_subinputs];
-
-    for (i = 0; i < uw_inputs_len; ++i)
-      ctx->subinputs[ctx->used_subinputs++].kind = UNUSED;
+    INP(ctx)[n].kind = SUBFORM;
+    INP(ctx)[n].data.subform.parent = ctx->cur_container;
+    INP(ctx)[n].data.subform.fields = inps;
+    ctx->cur_container = &INP(ctx)[n];
   } else if (!strcasecmp(name, ".e")) {
     input *tmp;
 
-    if (ctx->cur_inputs == NULL)
+    if (ctx->cur_container == NULL)
       uw_error(ctx, FATAL, "Unmatched subform closer");
 
-    tmp = ctx->cur_inputs;
-    ctx->cur_inputs = tmp->data.subform.prev;
-    tmp->data.subform.prev = NULL;
+    tmp = ctx->cur_container;
+    switch (tmp->kind) {
+    case SUBFORM:
+      ctx->cur_container = tmp->data.subform.parent;
+      tmp->data.subform.parent = NULL;
+      break;
+    case SUBFORMS:
+      ctx->cur_container = tmp->data.subforms.parent;
+      tmp->data.subforms.parent = NULL;
+      break;
+    case ENTRY:
+      ctx->cur_container = tmp->data.entry.parent;
+      break;
+    default:
+      uw_error(ctx, FATAL, "uw_set_input: Wrong kind");
+    }
+  } else if (!strcasecmp(name, ".s")) {
+    int n = uw_input_num(value);
+
+    if (n < 0)
+      uw_error(ctx, FATAL, "Bad subforms name %s", value);
+
+    if (n >= uw_inputs_len)
+      uw_error(ctx, FATAL, "For subforms name %s, index %d is out of range", value, n);
+
+    INP(ctx)[n].kind = SUBFORMS;
+    INP(ctx)[n].data.subforms.parent = ctx->cur_container;
+    INP(ctx)[n].data.subforms.entries = NULL;
+    ctx->cur_container = &INP(ctx)[n];
+  } else if (!strcasecmp(name, ".i")) {
+    input *inps;
+
+    if (!ctx->cur_container)
+      uw_error(ctx, FATAL, "New entry without container");
+
+    if (ctx->cur_container->kind != SUBFORMS)
+      uw_error(ctx, FATAL, "Bad kind for entry parent");
+
+    inps = check_input_space(ctx, uw_inputs_len + 1);
+
+    inps->kind = ENTRY;
+    inps->data.entry.parent = ctx->cur_container;
+    inps->data.entry.next = ctx->cur_container->data.subforms.entries;
+    ctx->cur_container->data.subforms.entries = inps;
+
+    inps->data.entry.fields = inps+1;
+    ctx->cur_container = inps;
   } else {
     int n = uw_input_num(name);
 
@@ -658,6 +741,10 @@ char *uw_get_input(uw_context ctx, int n) {
     uw_error(ctx, FATAL, "Tried to read a file form input as normal");
   case SUBFORM:
     uw_error(ctx, FATAL, "Tried to read a subform form input as normal");
+  case SUBFORMS:
+    uw_error(ctx, FATAL, "Tried to read a subforms form input as normal");
+  case ENTRY:
+    uw_error(ctx, FATAL, "Tried to read an entry form input as normal");
   case NORMAL:
     return INP(ctx)[n].data.normal;
   default:
@@ -678,6 +765,10 @@ char *uw_get_optional_input(uw_context ctx, int n) {
     uw_error(ctx, FATAL, "Tried to read a file form input as normal");
   case SUBFORM:
     uw_error(ctx, FATAL, "Tried to read a subform form input as normal");
+  case SUBFORMS:
+    uw_error(ctx, FATAL, "Tried to read a subforms form input as normal");
+  case ENTRY:
+    uw_error(ctx, FATAL, "Tried to read an entry form input as normal");
   case NORMAL:
     return INP(ctx)[n].data.normal;
   default:
@@ -719,6 +810,10 @@ uw_Basis_file uw_get_file_input(uw_context ctx, int n) {
     uw_error(ctx, FATAL, "Tried to read a normal form input as files");
   case SUBFORM:
     uw_error(ctx, FATAL, "Tried to read a subform form input as files");
+  case SUBFORMS:
+    uw_error(ctx, FATAL, "Tried to read a subforms form input as files");
+  case ENTRY:
+    uw_error(ctx, FATAL, "Tried to read an entry form input as files");
   default:
     uw_error(ctx, FATAL, "Impossible input kind");
   }
@@ -737,9 +832,13 @@ void uw_enter_subform(uw_context ctx, int n) {
     uw_error(ctx, FATAL, "Tried to read a file form input as subform");
   case NORMAL:
     uw_error(ctx, FATAL, "Tried to read a normal form input as subform");
+  case SUBFORMS:
+    uw_error(ctx, FATAL, "Tried to read a subforms form input as subform");
+  case ENTRY:
+    uw_error(ctx, FATAL, "Tried to read an entry form input as subform");
   case SUBFORM:
-    INP(ctx)[n].data.subform.prev = ctx->cur_inputs;
-    ctx->cur_inputs = INP(ctx)[n].data.subform.fields;
+    INP(ctx)[n].data.subform.parent = ctx->cur_container;
+    ctx->cur_container = INP(ctx)[n].data.subform.fields;
     return;
   default:
     uw_error(ctx, FATAL, "Impossible input kind");
@@ -749,12 +848,72 @@ void uw_enter_subform(uw_context ctx, int n) {
 void uw_leave_subform(uw_context ctx) {
   input *tmp;
 
-  if (ctx->cur_inputs == NULL)
+  if (ctx->cur_container == NULL)
     uw_error(ctx, FATAL, "Unmatched uw_leave_subform");
 
-  tmp = ctx->cur_inputs;
-  ctx->cur_inputs = tmp->data.subform.prev;
-  tmp->data.subform.prev = NULL;
+  tmp = ctx->cur_container;
+  ctx->cur_container = tmp->data.subform.parent;
+  tmp->data.subform.parent = NULL;
+}
+
+int uw_enter_subforms(uw_context ctx, int n) {
+  input *inps;
+
+  if (n < 0)
+    uw_error(ctx, FATAL, "Negative subforms index %d", n);
+  if (n >= uw_inputs_len)
+    uw_error(ctx, FATAL, "Out-of-bounds subforms index %d", n);
+
+  switch (INP(ctx)[n].kind) {
+  case UNSET:
+    uw_error(ctx, FATAL, "Missing subforms");
+  case FIL:
+    uw_error(ctx, FATAL, "Tried to read a file form input as subforms");
+  case NORMAL:
+    uw_error(ctx, FATAL, "Tried to read a normal form input %p as subforms", &INP(ctx)[n]);
+  case SUBFORM:
+    uw_error(ctx, FATAL, "Tried to read a subform form input as subforms");
+  case ENTRY:
+    uw_error(ctx, FATAL, "Tried to read an entry form input as subforms");
+  case SUBFORMS:
+    inps = INP(ctx)[n].data.subforms.entries;
+    if (inps) {
+      INP(ctx)[n].data.subforms.parent = ctx->cur_container;
+      ctx->cur_container = INP(ctx)[n].data.subforms.entries;
+      return 1;
+    } else
+      return 0;
+  default:
+    uw_error(ctx, FATAL, "Impossible input kind");
+  }
+}
+
+int uw_next_entry(uw_context ctx) {
+  if (ctx->cur_container == NULL)
+    uw_error(ctx, FATAL, "uw_next_entry(NULL)");
+
+  switch (ctx->cur_container->kind) {
+  case UNSET:
+    uw_error(ctx, FATAL, "Missing entry");
+  case FIL:
+    uw_error(ctx, FATAL, "Tried to read a file form input as entry");
+  case NORMAL:
+    uw_error(ctx, FATAL, "Tried to read a normal form input as entry");
+  case SUBFORM:
+    uw_error(ctx, FATAL, "Tried to read a subform form input as entry");
+  case SUBFORMS:
+    uw_error(ctx, FATAL, "Tried to read a subforms form input as entry");
+  case ENTRY:
+    if (ctx->cur_container->data.entry.next) {
+      ctx->cur_container = ctx->cur_container->data.entry.next;
+      return 1;
+    } else {
+      ctx->cur_container = ctx->cur_container->data.entry.parent->data.subforms.parent;
+      return 0;
+    }
+  default:
+    uw_error(ctx, FATAL, "Impossible input kind");
+  }
 }
 
 void uw_set_script_header(uw_context ctx, const char *s) {

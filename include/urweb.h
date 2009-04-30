@@ -48,6 +48,8 @@ char *uw_get_optional_input(uw_context, int name);
 uw_Basis_file uw_get_file_input(uw_context, int name);
 void uw_enter_subform(uw_context, int name);
 void uw_leave_subform(uw_context);
+int uw_enter_subforms(uw_context, int name);
+int uw_next_entry(uw_context);
 
 void uw_write(uw_context, const char*);
 

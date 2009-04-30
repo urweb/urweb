@@ -2425,6 +2425,14 @@ fun p_file env (ds, ps) =
                 in
                     SOME (map #1 xts :: List.concat (List.mapPartial (flatFields o #2) xts))
                 end
+              | TList (_, i) =>
+                let
+                    val ts = E.lookupStruct env i
+                in
+                    case ts of
+                        [("1", t'), ("2", _)] => flatFields t'
+                      | _ => raise Fail "CjrPrint: Bad struct for TList"
+                end
               | _ => NONE
 
         val fields = foldl (fn ((ek, _, _, ts, _, _), fields) =>
@@ -2566,7 +2574,7 @@ fun p_file env (ds, ps) =
         fun getInput (x, t) =
             let
                 val n = case SM.find (fnums, x) of
-                            NONE => raise Fail "CjrPrint: Can't find in fnums"
+                            NONE => raise Fail ("CjrPrint: Can't find " ^ x ^ " in fnums")
                           | SOME n => n
 
                 val f = case t of
@@ -2630,6 +2638,76 @@ fun p_file env (ds, ps) =
                                   string "});",
                                   newline,
                                   string "uw_leave_subform(ctx);"]
+                         end
+                       | TList (t', i) =>
+                         let
+                             val xts = E.lookupStruct env i
+                             val i' = case xts of
+                                          [("1", (TRecord i', loc)), ("2", _)] => i'
+                                        | _ => raise Fail "CjrPrint: Bad TList record [2]"
+                             val xts = E.lookupStruct env i'
+                         in
+                             box [string "{",
+                                  newline,
+                                  string "int status;",
+                                  newline,
+                                  string "uw_input_",
+                                  p_ident x,
+                                  space,
+                                  string "=",
+                                  space,
+                                  string "NULL;",
+                                  newline,
+                                  string "for (status = uw_enter_subforms(ctx, ",
+                                  string (Int.toString n),
+                                  string "); status; status = uw_next_entry(ctx)) {",
+                                  newline,
+                                  box [p_typ env t,
+                                       space,
+                                       string "result",
+                                       space,
+                                       string "=",
+                                       space,
+                                       string "uw_malloc(ctx, sizeof(struct __uws_",
+                                       string (Int.toString i),
+                                       string "));",
+                                       newline,
+                                       box [string "{",
+                                            p_list_sep (box [])
+                                                       (fn (x, t) =>
+                                                           box [p_typ env t,
+                                                                space,
+                                                                string "uw_input_",
+                                                                string x,
+                                                                string ";",
+                                                                newline])
+                                                       xts,
+                                            newline,
+                                            p_list_sep (box []) (fn (x, t) =>
+                                                                    box [getInput (x, t),
+                                                                         string "result->__uwf_1.__uwf_",
+                                                                         string x,
+                                                                         space,
+                                                                         string "=",
+                                                                         space,
+                                                                         string "uw_input_",
+                                                                         string x,
+                                                                         string ";",
+                                                                         newline])
+                                                       xts,
+                                            string "}",
+                                            newline],
+                                       newline,
+                                       string "result->__uwf_2 = uw_input_",
+                                       p_ident x,
+                                       string ";",
+                                       newline,
+                                       string "uw_input_",
+                                       p_ident x,
+                                       string " = result;",
+                                       newline],
+                                  string "}}",
+                                  newline]
                          end
                        | _ =>
                          box [string "request = uw_get_",
