@@ -566,7 +566,18 @@ val subform : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
     nm :: Name -> [[nm] ~ use] =>
     xml form [] bind
     -> xml ([Form] ++ ctx) use [nm = $bind]
-       
+
+val subforms : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
+              -> [[Form] ~ ctx] =>
+    nm :: Name -> [[nm] ~ use] =>
+    xml [Body, Subform] [Entry = $bind] []
+    -> xml ([Form] ++ ctx) use [nm = list ($bind)]
+
+val entry : ctx ::: {Unit} -> bind ::: {Type}
+              -> [[Subform] ~ ctx] =>
+    xml form [] bind
+    -> xml ([Subform] ++ ctx) [Entry = $bind] []
+
 con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   ctx ::: {Unit}
                   -> [[Form] ~ ctx] =>

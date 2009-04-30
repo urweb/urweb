@@ -274,6 +274,7 @@ structure Fm :> sig
     val empty : int -> t
 
     val lookup : t -> foo_kind -> int -> (int -> t -> L'.decl * t) -> t * int
+    val lookupList : t -> foo_kind -> L'.typ -> (int -> t -> L'.decl * t) -> t * int
     val enter : t -> t
     val decls : t -> L'.decl list
 
@@ -291,23 +292,30 @@ structure M = BinaryMapFn(struct
                                 | (Url, Url) => EQUAL
                           end)
 
+structure TM = BinaryMapFn(struct
+                           type ord_key = L'.typ
+                           val compare = MonoUtil.Typ.compare
+                           end)
+
 type t = {
      count : int,
      map : int IM.map M.map,
+     listMap : int TM.map M.map,
      decls : L'.decl list
 }
 
 fun empty count = {
     count = count,
     map = M.empty,
+    listMap = M.empty,
     decls = []
 }
 
-fun enter ({count, map, ...} : t) = {count = count, map = map, decls = []}
-fun freshName {count, map, decls} = (count, {count = count + 1, map = map, decls = decls})
+fun enter ({count, map, listMap, ...} : t) = {count = count, map = map, listMap = listMap, decls = []}
+fun freshName {count, map, listMap, decls} = (count, {count = count + 1, map = map, listMap = listMap, decls = decls})
 fun decls ({decls, ...} : t) = decls
 
-fun lookup (t as {count, map, decls}) k n thunk =
+fun lookup (t as {count, map, listMap, decls}) k n thunk =
     let
         val im = Option.getOpt (M.find (map, k), IM.empty)
     in
@@ -315,12 +323,37 @@ fun lookup (t as {count, map, decls}) k n thunk =
             NONE =>
             let
                 val n' = count
-                val (d, {count, map, decls}) = thunk count {count = count + 1,
-                                                            map = M.insert (map, k, IM.insert (im, n, n')),
-                                                            decls = decls}
+                val (d, {count, map, listMap, decls}) =
+                    thunk count {count = count + 1,
+                                 map = M.insert (map, k, IM.insert (im, n, n')),
+                                 listMap = listMap,
+                                 decls = decls}
             in
                 ({count = count,
                   map = map,
+                  listMap = listMap,
+                  decls = d :: decls}, n')
+            end
+          | SOME n' => (t, n')
+    end
+
+fun lookupList (t as {count, map, listMap, decls}) k tp thunk =
+    let
+        val tm = Option.getOpt (M.find (listMap, k), TM.empty)
+    in
+        case TM.find (tm, tp) of
+            NONE =>
+            let
+                val n' = count
+                val (d, {count, map, listMap, decls}) =
+                    thunk count {count = count + 1,
+                                 map = map,
+                                 listMap = M.insert (listMap, k, TM.insert (tm, tp, n')),
+                                 decls = decls}
+            in
+                ({count = count,
+                  map = map,
+                  listMap = listMap,
                   decls = d :: decls}, n')
             end
           | SOME n' => (t, n')
@@ -450,6 +483,41 @@ fun fooifyExp fk env =
                                     {disc = tAll,
                                      result = (L'.TFfi ("Basis", "string"), loc)}), loc),
                          fm)
+                    end
+
+                  | L'.TList t =>
+                    let
+                        fun makeDecl n fm =
+                            let
+                                val rt = (L'.TRecord [("1", t), ("2", (L'.TList t, loc))], loc)
+                                val (arg, fm) = fooify fm ((L'.ERel 0, loc), rt)
+
+                                val branches = [((L'.PNone rt, loc),
+                                                 (L'.EPrim (Prim.String "Nil"), loc)),
+                                                ((L'.PSome (rt, (L'.PVar ("a", rt), loc)), loc),
+                                                 (L'.EStrcat ((L'.EPrim (Prim.String "Cons/"), loc),
+                                                              arg), loc))]
+
+                                val dom = tAll
+                                val ran = (L'.TFfi ("Basis", "string"), loc)
+                            in
+                                ((L'.DValRec [(fk2s fk ^ "ify_list",
+                                               n,
+                                               (L'.TFun (dom, ran), loc),
+                                               (L'.EAbs ("x",
+                                                         dom,
+                                                         ran,
+                                                         (L'.ECase ((L'.ERel 0, loc),
+                                                                    branches,
+                                                                    {disc = dom,
+                                                                     result = ran}), loc)), loc),
+                                               "")], loc),
+                                 fm)
+                            end
+
+                        val (fm, n) = Fm.lookupList fm fk t makeDecl
+                    in
+                        ((L'.EApp ((L'.ENamed n, loc), e), loc), fm)
                     end
 
                   | _ => (E.errorAt loc "Don't know how to encode attribute/URL type";
@@ -2712,6 +2780,34 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("xml", s, s,
                            strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".b\" value=\""
                                                            ^ nm ^ "\">")), loc),
+                                   (L'.ERel 0, loc),
+                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\">")), loc)]),
+                  loc),
+                 fm)
+            end
+
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.ECApp (
+                                          (L.EFfi ("Basis", "subforms"), _), _), _), _),
+                                _), _), _), (L.CName nm, loc)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("xml", s, s,
+                           strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".s\" value=\""
+                                                           ^ nm ^ "\">")), loc),
+                                   (L'.ERel 0, loc),
+                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\">")), loc)]),
+                  loc),
+                 fm)
+            end
+
+          | L.ECApp ((L.ECApp (
+                      (L.EFfi ("Basis", "entry"), _), _), _), _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("xml", s, s,
+                           strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".i\" value=\"1\">")), loc),
                                    (L'.ERel 0, loc),
                                    (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\">")), loc)]),
                   loc),

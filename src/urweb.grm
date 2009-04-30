@@ -1268,6 +1268,12 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                  else if et = "subform" then
                                                      (EApp ((EDisjointApp (#2 (#1 tag)), pos),
                                                             xml), pos)
+                                                 else if et = "subforms" then
+                                                     (EApp ((EDisjointApp (#2 (#1 tag)), pos),
+                                                            xml), pos)
+                                                 else if et = "entry" then
+                                                     (EApp ((EVar (["Basis"], "entry", Infer), pos),
+                                                            xml), pos)
                                                  else
                                                      (EApp (#2 tag, xml), pos)
                                              else
