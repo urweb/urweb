@@ -51,7 +51,9 @@ type job = {
      clientOnly : Settings.ffi list,
      serverOnly : Settings.ffi list,
      jsFuncs : (Settings.ffi * string) list,
-     rewrites : Settings.rewrite list
+     rewrites : Settings.rewrite list,
+     filterUrl : Settings.rule list,
+     filterMime : Settings.rule list
 }
 
 type ('src, 'dst) phase = {
@@ -314,6 +316,8 @@ fun parseUrp' filename =
         val serverOnly = ref []
         val jsFuncs = ref []
         val rewrites = ref []
+        val url = ref []
+        val mime = ref []
         val libs = ref []
 
         fun finish sources =
@@ -337,6 +341,8 @@ fun parseUrp' filename =
                     serverOnly = rev (!serverOnly),
                     jsFuncs = rev (!jsFuncs),
                     rewrites = rev (!rewrites),
+                    filterUrl = rev (!url),
+                    filterMime = rev (!mime),
                     sources = sources
                 }
 
@@ -372,6 +378,8 @@ fun parseUrp' filename =
                     serverOnly = #serverOnly old @ #serverOnly new,
                     jsFuncs = #jsFuncs old @ #jsFuncs new,
                     rewrites = #rewrites old @ #rewrites new,
+                    filterUrl = #filterUrl old @ #filterUrl new,
+                    filterMime = #filterMime old @ #filterMime new,
                     sources = #sources old @ #sources new
                 }
             in
@@ -393,6 +401,19 @@ fun parseUrp' filename =
 
         fun parseFrom s =
             if size s > 1 andalso String.sub (s, size s - 2) = #"/" andalso String.sub (s, size s - 1) = #"*" then
+                (Settings.Prefix, String.substring (s, 0, size s - 1))
+            else
+                (Settings.Exact, s)
+
+        fun parseFkind s =
+            case s of
+                "url" => url
+              | "mime" => mime
+              | _ => (ErrorMsg.error "Bad filter kind";
+                      url)
+
+        fun parsePattern s =
+            if size s > 0 andalso String.sub (s, size s - 1) = #"*" then
                 (Settings.Prefix, String.substring (s, 0, size s - 1))
             else
                 (Settings.Exact, s)
@@ -475,6 +496,26 @@ fun parseUrp' filename =
                               | [pkind, from] => doit (pkind, from, "")
                               | _ => ErrorMsg.error "Bad 'rewrite' syntax"
                         end
+                      | "allow" =>
+                        (case String.tokens Char.isSpace arg of
+                             [fkind, pattern] =>
+                             let
+                                 val fkind = parseFkind fkind
+                                 val (kind, pattern) = parsePattern pattern
+                             in
+                                 fkind := {action = Settings.Allow, kind = kind, pattern = pattern} :: !fkind
+                             end
+                           | _ => ErrorMsg.error "Bad 'allow' syntax")
+                      | "deny" =>
+                        (case String.tokens Char.isSpace arg of
+                             [fkind, pattern] =>
+                             let
+                                 val fkind = parseFkind fkind
+                                 val (kind, pattern) = parsePattern pattern
+                             in
+                                 fkind := {action = Settings.Deny, kind = kind, pattern = pattern} :: !fkind
+                             end
+                           | _ => ErrorMsg.error "Bad 'deny' syntax")
                       | "library" => libs := relify arg :: !libs
                       | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                     read ()
@@ -493,6 +534,8 @@ fun parseUrp' filename =
         Settings.setServerOnly (#serverOnly job);
         Settings.setJsFuncs (#jsFuncs job);
         Settings.setRewriteRules (#rewrites job);
+        Settings.setUrlRules (#filterUrl job);
+        Settings.setMimeRules (#filterMime job);
         job
     end
 

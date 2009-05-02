@@ -47,7 +47,9 @@ signature COMPILER = sig
          clientOnly : Settings.ffi list,
          serverOnly : Settings.ffi list,
          jsFuncs : (Settings.ffi * string) list,
-         rewrites : Settings.rewrite list
+         rewrites : Settings.rewrite list,
+         filterUrl : Settings.rule list,
+         filterMime : Settings.rule list
     }
     val compile : string -> unit
     val compileC : {cname : string, oname : string, ename : string, libs : string,

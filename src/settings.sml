@@ -191,4 +191,38 @@ fun rewrite pk s =
         rew (!rewrites)
     end
 
+val url = ref ([] : rule list)
+val mime = ref ([] : rule list)
+
+fun setUrlRules ls = url := ls
+fun setMimeRules ls = mime := ls
+
+fun check f rules s =
+    let
+        fun chk (ls : rule list) =
+            case ls of
+                [] => false
+              | rule :: ls =>
+                let
+                    val matches =
+                        case #kind rule of
+                            Exact => #pattern rule = s
+                          | Prefix => String.isPrefix (#pattern rule) s
+                in
+                    if matches then
+                        case #action rule of
+                            Allow => true
+                          | Deny => false
+                    else
+                        chk ls
+                end
+    in
+        f s andalso chk (!rules)
+    end
+
+val checkUrl = check (fn _ => true) url
+val checkMime = check
+                    (CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"/" orelse ch = #"-" orelse ch = #"."))
+                    mime
+
 end

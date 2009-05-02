@@ -1,3 +1,4 @@
 debug
+allow url http://*
 
 url

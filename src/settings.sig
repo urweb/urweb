@@ -76,4 +76,11 @@ signature SETTINGS = sig
     val setRewriteRules : rewrite list -> unit
     val rewrite : path_kind -> string -> string
 
+    (* Validating URLs and MIME types *)
+    val setUrlRules : rule list -> unit
+    val checkUrl : string -> bool
+
+    val setMimeRules : rule list -> unit
+    val checkMime : string -> bool
+
 end

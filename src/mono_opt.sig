@@ -30,7 +30,4 @@ signature MONO_OPT = sig
     val optimize : Mono.file -> Mono.file
     val optExp : Mono.exp -> Mono.exp
 
-    val bless : (string -> bool) ref
-    val blessMime : (string -> bool) ref
-
 end

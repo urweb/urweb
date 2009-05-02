@@ -30,9 +30,6 @@ structure MonoOpt :> MONO_OPT = struct
 open Mono
 structure U = MonoUtil
 
-val bless = ref (fn _ : string => true)
-val blessMime = ref (CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"-" orelse ch = #"/" orelse ch = #"."))
-
 fun typ t = t
 fun decl d = d
 
@@ -382,16 +379,16 @@ fun exp e =
       | EJavaScript (_, _, SOME (e, _)) => e
 
       | EFfiApp ("Basis", "bless", [(se as EPrim (Prim.String s), loc)]) =>
-        (if !bless s then
+        (if Settings.checkUrl s then
              ()
          else
-             ErrorMsg.errorAt loc "Invalid URL passed to 'bless'";
+             ErrorMsg.errorAt loc ("Invalid URL " ^ s ^ " passed to 'bless'");
          se)
       | EFfiApp ("Basis", "blessMime", [(se as EPrim (Prim.String s), loc)]) =>
-        (if !blessMime s then
+        (if Settings.checkMime s then
              ()
          else
-             ErrorMsg.errorAt loc "Invalid string passed to 'blessMime'";
+             ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessMime'");
          se)
 
       | EFfiApp ("Basis", "checkString", [(EPrim (Prim.String s), loc)]) => 

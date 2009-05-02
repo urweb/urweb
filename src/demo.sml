@@ -104,7 +104,9 @@ fun make {prefix, dirname, guided} =
             clientOnly = [],
             serverOnly = [],
             jsFuncs = [],
-            rewrites = []
+            rewrites = [],
+            filterUrl = #filterUrl combined @ #filterUrl urp,
+            filterMime = #filterMime combined @ #filterMime urp
         }
 
         val parse = Compiler.run (Compiler.transform Compiler.parseUrp "Demo parseUrp")
