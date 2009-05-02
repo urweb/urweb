@@ -304,6 +304,11 @@ typedef struct input {
   } data;
 } input;
 
+typedef struct {
+  void *data;
+  uw_callback commit, rollback, free;
+} transactional;
+
 struct uw_context {
   char *headers, *headers_end;
 
@@ -331,6 +336,9 @@ struct uw_context {
   int timeout;
 
   client *client;
+
+  transactional *transactionals;
+  size_t n_transactionals, used_transactionals;
 
   char error_message[ERROR_BUF_LEN];
 };
@@ -377,6 +385,9 @@ uw_context uw_init() {
 
   ctx->error_message[0] = 0;
 
+  ctx->transactionals = malloc(0);
+  ctx->n_transactionals = ctx->used_transactionals = 0;
+
   return ctx;
 }
 
@@ -398,6 +409,7 @@ void uw_free(uw_context ctx) {
   free(ctx->inputs);
   free(ctx->subinputs);
   free(ctx->cleanup);
+  free(ctx->transactionals);
 
   for (i = 0; i < ctx->n_deltas; ++i)
     buf_free(&ctx->deltas[i].msgs);
@@ -419,6 +431,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->used_deltas = 0;
   ctx->client = NULL;
   ctx->cur_container = NULL;
+  ctx->used_transactionals = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -2339,7 +2352,15 @@ int uw_db_rollback(uw_context);
 void uw_commit(uw_context ctx) {
   unsigned i;
 
-  if (uw_db_commit(ctx)) 
+  for (i = 0; i < ctx->used_transactionals; ++i)
+    if (ctx->transactionals[i].rollback != NULL)
+      ctx->transactionals[i].commit(ctx->transactionals[i].data);
+
+  for (i = 0; i < ctx->used_transactionals; ++i)
+    if (ctx->transactionals[i].rollback == NULL)
+      ctx->transactionals[i].commit(ctx->transactionals[i].data);
+
+  if (uw_db_commit(ctx))
     uw_error(ctx, FATAL, "Error running SQL COMMIT");
 
   for (i = 0; i < ctx->used_deltas; ++i) {
@@ -2353,13 +2374,41 @@ void uw_commit(uw_context ctx) {
 
   if (ctx->client)
     release_client(ctx->client);
+
+  for (i = 0; i < ctx->used_transactionals; ++i)
+    ctx->transactionals[i].free(ctx->transactionals[i].data);
 }
 
 int uw_rollback(uw_context ctx) {
+  size_t i;
+
   if (ctx->client)
     release_client(ctx->client);
 
+  for (i = 0; i < ctx->used_transactionals; ++i)
+    if (ctx->transactionals[i].rollback != NULL)
+      ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+
+  for (i = 0; i < ctx->used_transactionals; ++i)
+    ctx->transactionals[i].free(ctx->transactionals[i].data);
+
   return uw_db_rollback(ctx);
+}
+
+void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
+                               uw_callback free) {
+  if (commit == NULL)
+    uw_error(ctx, FATAL, "uw_register_transactional: NULL commit callback");
+
+  if (ctx->used_transactionals >= ctx->n_transactionals) {
+    ctx->transactionals = realloc(ctx->transactionals, ctx->used_transactionals+1);
+    ++ctx->n_transactionals;
+  }
+
+  ctx->transactionals[ctx->used_transactionals].data = data;
+  ctx->transactionals[ctx->used_transactionals].commit = commit;
+  ctx->transactionals[ctx->used_transactionals].rollback = rollback;
+  ctx->transactionals[ctx->used_transactionals++].free = free;
 }
 
 

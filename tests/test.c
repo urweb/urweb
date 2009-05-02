@@ -25,3 +25,18 @@ uw_Basis_unit uw_Test_foo(uw_context ctx) {
   printf("FOO!\n");
   return uw_unit_v;
 }
+
+static void commit(void *data) {
+  printf("Commit: %s\n", data);
+}
+static void rollback(void *data) {
+  printf("Rollback: %s\n", data);
+}
+static void free(void *data) {
+  printf("Free: %s\n", data);
+}
+
+uw_Basis_unit uw_Test_transactional(uw_context ctx) {
+  uw_register_transactional(ctx, "Beppo", commit, rollback, free);
+  return uw_unit_v;
+}

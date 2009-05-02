@@ -45,4 +45,6 @@ typedef struct input *uw_input;
 #define FLOATS_MAX 100
 #define TIMES_MAX 100
 
+typedef void (*uw_callback)(void *);
+
 #endif

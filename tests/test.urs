@@ -7,3 +7,5 @@ val print : transaction unit
 
 val foo : transaction unit
 val bar : string -> transaction unit
+
+val transactional : transaction unit
