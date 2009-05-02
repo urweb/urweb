@@ -264,157 +264,201 @@ fun trim s =
         s
     end
 
+fun parseUrp' filename =
+    let
+        val dir = OS.Path.dir filename
+        val inf = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
+
+        fun relify fname =
+            OS.Path.concat (dir, fname)
+            handle OS.Path.Path => fname
+
+        val absDir = OS.Path.mkAbsolute {path = dir, relativeTo = OS.FileSys.getDir ()}
+
+        fun relifyA fname = OS.Path.mkAbsolute {path = fname, relativeTo = absDir}
+
+        fun readSources acc =
+            case TextIO.inputLine inf of
+                NONE => rev acc
+              | SOME line =>
+                let
+                    val acc = if CharVector.all Char.isSpace line then
+                                  acc
+                              else
+                                  let
+                                      val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
+                                                                              (String.explode line))
+                                      val fname = relify fname
+                                  in
+                                      fname :: acc
+                                  end
+                in
+                    readSources acc
+                end
+
+        val prefix = ref NONE
+        val database = ref NONE
+        val exe = ref NONE
+        val sql = ref NONE
+        val debug = ref false
+        val profile = ref false
+        val timeout = ref NONE
+        val ffi = ref []
+        val link = ref []
+        val headers = ref []
+        val scripts = ref []
+        val clientToServer = ref []
+        val effectful = ref []
+        val clientOnly = ref []
+        val serverOnly = ref []
+        val jsFuncs = ref []
+        val libs = ref []
+
+        fun finish sources =
+            let
+                val job = {
+                    prefix = Option.getOpt (!prefix, "/"),
+                    database = !database,
+                    exe = Option.getOpt (!exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
+                                                                    ext = SOME "exe"}),
+                    sql = !sql,
+                    debug = !debug,
+                    profile = !profile,
+                    timeout = Option.getOpt (!timeout, 60),
+                    ffi = rev (!ffi),
+                    link = rev (!link),
+                    headers = rev (!headers),
+                    scripts = rev (!scripts),
+                    clientToServer = rev (!clientToServer),
+                    effectful = rev (!effectful),
+                    clientOnly = rev (!clientOnly),
+                    serverOnly = rev (!serverOnly),
+                    jsFuncs = rev (!jsFuncs),
+                    sources = sources
+                }
+
+                fun mergeO f (old, new) =
+                    case (old, new) of
+                        (NONE, _) => new
+                      | (_, NONE) => old
+                      | (SOME v1, SOME v2) => SOME (f (v1, v2))
+
+                fun same desc = mergeO (fn (x : string, y) =>
+                                           (if x = y then
+                                                ()
+                                            else
+                                                ErrorMsg.error ("Multiple "
+                                                                ^ desc ^ " values that don't agree");
+                                            x))
+
+                fun merge (old : job, new : job) = {
+                    prefix = #prefix old,
+                    database = #database old,
+                    exe = #exe old,
+                    sql = #sql old,
+                    debug = #debug old orelse #debug new,
+                    profile = #profile old orelse #profile new,
+                    timeout = #timeout old,
+                    ffi = #ffi old @ #ffi new,
+                    link = #link old @ #link new,
+                    headers = #headers old @ #headers new,
+                    scripts = #scripts old @ #scripts new,
+                    clientToServer = #clientToServer old @ #clientToServer new,
+                    effectful = #effectful old @ #effectful new,
+                    clientOnly = #clientOnly old @ #clientOnly new,
+                    serverOnly = #serverOnly old @ #serverOnly new,
+                    jsFuncs = #jsFuncs old @ #jsFuncs new,
+                    sources = #sources old @ #sources new
+                }
+            in
+                foldr (fn (fname, job) => merge (job, parseUrp' fname)) job (!libs)
+            end
+
+        fun read () =
+            case TextIO.inputLine inf of
+                NONE => finish []
+              | SOME "\n" => finish (readSources [])
+              | SOME line =>
+                let
+                    val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
+                    val cmd = Substring.string (trim cmd)
+                    val arg = Substring.string (trim arg)
+
+                    fun ffiS () =
+                        case String.fields (fn ch => ch = #".") arg of
+                            [m, x] => (m, x)
+                          | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func");
+                                  ("", ""))
+
+                    fun ffiM () =
+                        case String.fields (fn ch => ch = #"=") arg of
+                            [f, s] =>
+                            (case String.fields (fn ch => ch = #".") f of
+                                 [m, x] => ((m, x), s)
+                               | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
+                                       (("", ""), "")))
+                          | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
+                                  (("", ""), ""))
+                in
+                    case cmd of
+                        "prefix" =>
+                        (case !prefix of
+                             NONE => ()
+                           | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
+                         prefix := SOME arg)
+                      | "database" =>
+                        (case !database of
+                             NONE => ()
+                           | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
+                         database := SOME arg)
+                      | "exe" =>
+                        (case !exe of
+                             NONE => ()
+                           | SOME _ => ErrorMsg.error "Duplicate 'exe' directive";
+                         exe := SOME (relify arg))
+                      | "sql" =>
+                        (case !sql of
+                             NONE => ()
+                           | SOME _ => ErrorMsg.error "Duplicate 'sql' directive";
+                         sql := SOME (relify arg))
+                      | "debug" => debug := true
+                      | "profile" => profile := true
+                      | "timeout" =>
+                        (case !timeout of
+                             NONE => ()
+                           | SOME _ => ErrorMsg.error "Duplicate 'timeout' directive";
+                         timeout := SOME (valOf (Int.fromString arg)))
+                      | "ffi" => ffi := relify arg :: !ffi
+                      | "link" => link := relifyA arg :: !link
+                      | "include" => headers := relifyA arg :: !headers
+                      | "script" => scripts := arg :: !scripts
+                      | "clientToServer" => clientToServer := ffiS () :: !clientToServer
+                      | "effectful" => effectful := ffiS () :: !effectful
+                      | "clientOnly" => clientOnly := ffiS () :: !clientOnly
+                      | "serverOnly" => serverOnly := ffiS () :: !serverOnly
+                      | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
+                      | "library" => libs := relify arg :: !libs
+                      | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
+                    read ()
+                end
+
+        val job = read ()
+    in
+        TextIO.closeIn inf;
+        Settings.setUrlPrefix (#prefix job);
+        Settings.setTimeout (#timeout job);
+        Settings.setHeaders (#headers job);
+        Settings.setScripts (#scripts job);
+        Settings.setClientToServer (#clientToServer job);
+        Settings.setEffectful (#effectful job);
+        Settings.setClientOnly (#clientOnly job);
+        Settings.setServerOnly (#serverOnly job);
+        Settings.setJsFuncs (#jsFuncs job);
+        job
+    end
+
 val parseUrp = {
-    func = fn filename =>
-              let
-                  val dir = OS.Path.dir filename
-                  val inf = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
-
-                  fun relify fname =
-                      OS.Path.concat (dir, fname)
-                      handle OS.Path.Path => fname
-
-                  val absDir = OS.Path.mkAbsolute {path = dir, relativeTo = OS.FileSys.getDir ()}
-
-                  fun relifyA fname = OS.Path.mkAbsolute {path = fname, relativeTo = absDir}
-
-                  fun readSources acc =
-                      case TextIO.inputLine inf of
-                          NONE => rev acc
-                        | SOME line =>
-                          let
-                              val acc = if CharVector.all Char.isSpace line then
-                                            acc
-                                        else
-                                            let
-                                                val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
-                                                                                        (String.explode line))
-                                                val fname = relify fname
-                                            in
-                                                fname :: acc
-                                            end
-                          in
-                              readSources acc
-                          end
-
-                  val prefix = ref NONE
-                  val database = ref NONE
-                  val exe = ref NONE
-                  val sql = ref NONE
-                  val debug = ref false
-                  val profile = ref false
-                  val timeout = ref NONE
-                  val ffi = ref []
-                  val link = ref []
-                  val headers = ref []
-                  val scripts = ref []
-                  val clientToServer = ref []
-                  val effectful = ref []
-                  val clientOnly = ref []
-                  val serverOnly = ref []
-                  val jsFuncs = ref []
-
-                  fun finish sources =
-                      {prefix = Option.getOpt (!prefix, "/"),
-                       database = !database,
-                       exe = Option.getOpt (!exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
-                                                                       ext = SOME "exe"}),
-                       sql = !sql,
-                       debug = !debug,
-                       profile = !profile,
-                       timeout = Option.getOpt (!timeout, 60),
-                       ffi = rev (!ffi),
-                       link = rev (!link),
-                       headers = rev (!headers),
-                       scripts = rev (!scripts),
-                       clientToServer = rev (!clientToServer),
-                       effectful = rev (!effectful),
-                       clientOnly = rev (!clientOnly),
-                       serverOnly = rev (!serverOnly),
-                       jsFuncs = rev (!jsFuncs),
-                       sources = sources}
-
-                  fun read () =
-                      case TextIO.inputLine inf of
-                          NONE => finish []
-                        | SOME "\n" => finish (readSources [])
-                        | SOME line =>
-                          let
-                              val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
-                              val cmd = Substring.string (trim cmd)
-                              val arg = Substring.string (trim arg)
-
-                              fun ffiS () =
-                                  case String.fields (fn ch => ch = #".") arg of
-                                      [m, x] => (m, x)
-                                    | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func");
-                                            ("", ""))
-
-                              fun ffiM () =
-                                  case String.fields (fn ch => ch = #"=") arg of
-                                      [f, s] =>
-                                      (case String.fields (fn ch => ch = #".") f of
-                                           [m, x] => ((m, x), s)
-                                         | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
-                                                 (("", ""), "")))
-                                    | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
-                                            (("", ""), ""))
-                          in
-                              case cmd of
-                                  "prefix" =>
-                                  (case !prefix of
-                                       NONE => ()
-                                     | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
-                                   prefix := SOME arg)
-                                | "database" =>
-                                  (case !database of
-                                       NONE => ()
-                                     | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
-                                   database := SOME arg)
-                                | "exe" =>
-                                  (case !exe of
-                                       NONE => ()
-                                     | SOME _ => ErrorMsg.error "Duplicate 'exe' directive";
-                                   exe := SOME (relify arg))
-                                | "sql" =>
-                                  (case !sql of
-                                       NONE => ()
-                                     | SOME _ => ErrorMsg.error "Duplicate 'sql' directive";
-                                   sql := SOME (relify arg))
-                                | "debug" => debug := true
-                                | "profile" => profile := true
-                                | "timeout" =>
-                                  (case !timeout of
-                                       NONE => ()
-                                     | SOME _ => ErrorMsg.error "Duplicate 'timeout' directive";
-                                   timeout := SOME (valOf (Int.fromString arg)))
-                                | "ffi" => ffi := relify arg :: !ffi
-                                | "link" => link := relifyA arg :: !link
-                                | "include" => headers := relifyA arg :: !headers
-                                | "script" => scripts := arg :: !scripts
-                                | "clientToServer" => clientToServer := ffiS () :: !clientToServer
-                                | "effectful" => effectful := ffiS () :: !effectful
-                                | "clientOnly" => clientOnly := ffiS () :: !clientOnly
-                                | "serverOnly" => serverOnly := ffiS () :: !serverOnly
-                                | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
-                                | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
-                              read ()
-                          end
-
-                  val job = read ()
-              in
-                  TextIO.closeIn inf;
-                  Settings.setUrlPrefix (#prefix job);
-                  Settings.setTimeout (#timeout job);
-                  Settings.setHeaders (#headers job);
-                  Settings.setScripts (#scripts job);
-                  Settings.setClientToServer (#clientToServer job);
-                  Settings.setEffectful (#effectful job);
-                  Settings.setClientOnly (#clientOnly job);
-                  Settings.setServerOnly (#serverOnly job);
-                  Settings.setJsFuncs (#jsFuncs job);
-                  job
-              end,
+    func = parseUrp',
     print = p_job
 }
 
