@@ -164,7 +164,7 @@ uw_unit uw_Basis_set_cookie(uw_context, uw_Basis_string prefix, uw_Basis_string 
 uw_Basis_channel uw_Basis_new_channel(uw_context, uw_unit);
 uw_unit uw_Basis_send(uw_context, uw_Basis_channel, uw_Basis_string);
 
-uw_Basis_client uw_Basis_self(uw_context, uw_unit);
+uw_Basis_client uw_Basis_self(uw_context);
 
 uw_Basis_string uw_Basis_bless(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_blessMime(uw_context, uw_Basis_string);

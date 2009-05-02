@@ -575,7 +575,7 @@ failure_kind uw_begin(uw_context ctx, char *path) {
   return r;
 }
 
-uw_Basis_client uw_Basis_self(uw_context ctx, uw_unit u) {
+uw_Basis_client uw_Basis_self(uw_context ctx) {
   if (ctx->client == NULL)
     uw_error(ctx, FATAL, "Call to Basis.self() from page that has only server-side code");
 
