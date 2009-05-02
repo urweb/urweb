@@ -4,7 +4,7 @@ Next
 
 - Reimplement constructor class resolution to be more general and Prolog-like
 - SQL table constraints
-- URLs, with configurable gatekeeper function Basis.bless
+- URLs
 - Client-side error handling callbacks
 - CSS
 - Signing cookie values cryptographically to thwart cross site request forgery

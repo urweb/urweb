@@ -78,9 +78,11 @@ signature SETTINGS = sig
 
     (* Validating URLs and MIME types *)
     val setUrlRules : rule list -> unit
+    val getUrlRules : unit -> rule list
     val checkUrl : string -> bool
 
     val setMimeRules : rule list -> unit
+    val getMimeRules : unit -> rule list
     val checkMime : string -> bool
 
 end

@@ -1,4 +1,5 @@
 debug
-allow url http://*
+deny url http://en.wikipedia.org/wiki/Perl
+allow url http://en.wikipedia.org/*
 
 url

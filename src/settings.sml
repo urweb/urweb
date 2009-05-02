@@ -197,6 +197,9 @@ val mime = ref ([] : rule list)
 fun setUrlRules ls = url := ls
 fun setMimeRules ls = mime := ls
 
+fun getUrlRules () = !url
+fun getMimeRules () = !mime
+
 fun check f rules s =
     let
         fun chk (ls : rule list) =

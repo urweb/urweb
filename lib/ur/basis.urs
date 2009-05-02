@@ -514,6 +514,7 @@ con tr = [Body, Tr]
 
 type url
 val bless : string -> url
+val checkUrl : string -> option url
 
 val dyn : use ::: {Type} -> bind ::: {Type} -> unit
           -> tag [Signal = signal (xml body use bind)] body [] use bind
@@ -600,6 +601,7 @@ val upload : formTag file [] [Value = string, Size = int]
 
 type mimeType
 val blessMime : string -> mimeType
+val checkMime : string -> option mimeType
 val returnBlob : t ::: Type -> blob -> mimeType -> transaction t
 val blobSize : blob -> int
 

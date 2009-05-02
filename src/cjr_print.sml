@@ -3176,6 +3176,34 @@ fun p_file env (ds, ps) =
                                                               acc,
                                                               string "))"]))
                          NONE cookies
+
+        fun makeChecker (name, rules : Settings.rule list) =
+            box [string "int ",
+                 string name,
+                 string "(const char *s) {",
+                 newline,
+                 box [p_list_sep (box [])
+                      (fn rule =>
+                          box [string "if (!str",
+                               case #kind rule of
+                                   Settings.Exact => box [string "cmp(s, \"",
+                                                          string (String.toString (#pattern rule)),
+                                                          string "\"))"]
+                                 | Settings.Prefix => box [string "ncmp(s, \"",
+                                                           string (String.toString (#pattern rule)),
+                                                           string "\", ",
+                                                           string (Int.toString (size (#pattern rule))),
+                                                           string "))"],
+                               string " return ",
+                               string (case #action rule of
+                                           Settings.Allow => "1"
+                                         | Settings.Deny => "0"),
+                               string ";",
+                               newline]) rules,
+                      string "return 0;",
+                      newline],
+                 string "}",
+                 newline]
     in
         box [string "#include <stdio.h>",
              newline,
@@ -3217,6 +3245,12 @@ fun p_file env (ds, ps) =
              makeSwitch (fnums, 0),
              string "}",
              newline,
+             newline,
+
+             makeChecker ("uw_check_url", Settings.getUrlRules ()),
+             newline,
+
+             makeChecker ("uw_check_mime", Settings.getMimeRules ()),
              newline,
              
              string "extern void uw_sign(const char *in, char *out);",

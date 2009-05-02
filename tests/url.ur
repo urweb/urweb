@@ -1,12 +1,11 @@
-val url = "http://www.yahoo.com/"
-
 fun readersChoice r = return <xml><body>
-  <a href={bless r.Url}>Your pick, boss</a>
+  {case checkUrl r.Url of
+       None => <xml>I can't do that, Dave.</xml>
+     | Some url => <xml><a href={url}>Your pick, boss</a></xml>}
 </body></xml>
 
 fun main () : transaction page = return <xml><body>
-  <a href="http://www.google.com/">Google!</a>
-  <a href={bless url}>Yahoo!</a><br/>
+  <a href="http://en.wikipedia.org/wiki/Wikipedia:About">Learn</a>
   <br/>
 
   <form><textbox{#Url}/> <submit action={readersChoice}/></form>

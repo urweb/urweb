@@ -2437,18 +2437,49 @@ failure_kind uw_initialize(uw_context ctx) {
   return r;
 }
 
+extern int uw_check_url(const char *);
+extern int uw_check_mime(const char *);
+
 uw_Basis_string uw_Basis_bless(uw_context ctx, uw_Basis_string s) {
-  return s;
+  if (uw_check_url(s))
+    return s;
+  else
+    uw_error(ctx, FATAL, "Disallowed URL %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_string uw_Basis_checkUrl(uw_context ctx, uw_Basis_string s) {
+  if (uw_check_url(s))
+    return s;
+  else
+    return NULL;
+}
+
+int mime_format(const char *s) {
+  for (; *s; ++s)
+    if (!isalnum(*s) && *s != '/' && *s != '-' && *s != '.')
+      return 0;
+
+  return 1;
 }
 
 uw_Basis_string uw_Basis_blessMime(uw_context ctx, uw_Basis_string s) {
-  char *s2;
+  if (!mime_format(s))
+    uw_error(ctx, FATAL, "MIME type \"%s\" contains invalid character", uw_Basis_htmlifyString(ctx, s));
 
-  for (s2 = s; *s2; ++s2)
-    if (!isalnum(*s2) && *s2 != '/' && *s2 != '-' && *s2 != '.')
-      uw_error(ctx, FATAL, "MIME type \"%s\" contains invalid character %c\n", s, *s2);
-  
-  return s;
+  if (uw_check_mime(s))
+    return s;
+  else
+    uw_error(ctx, FATAL, "Disallowed MIME type %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_string uw_Basis_checkMime(uw_context ctx, uw_Basis_string s) {
+  if (!mime_format(s))
+    return NULL;
+
+  if (uw_check_mime(s))
+    return s;
+  else
+    return NULL;
 }
 
 uw_Basis_string uw_unnull(uw_Basis_string s) {
