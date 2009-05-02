@@ -50,7 +50,8 @@ type job = {
      effectful : Settings.ffi list,
      clientOnly : Settings.ffi list,
      serverOnly : Settings.ffi list,
-     jsFuncs : (Settings.ffi * string) list
+     jsFuncs : (Settings.ffi * string) list,
+     rewrites : Settings.rewrite list
 }
 
 type ('src, 'dst) phase = {
@@ -208,9 +209,9 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}    
 
-fun p_job {prefix, database, exe, sql, sources, debug, profile,
-           timeout, ffi, link, headers, scripts,
-           clientToServer, effectful, clientOnly, serverOnly, jsFuncs} =
+fun p_job ({prefix, database, exe, sql, sources, debug, profile,
+            timeout, ffi, link, headers, scripts,
+            clientToServer, effectful, clientOnly, serverOnly, jsFuncs, ...} : job) =
     let
         open Print.PD
         open Print
@@ -312,6 +313,7 @@ fun parseUrp' filename =
         val clientOnly = ref []
         val serverOnly = ref []
         val jsFuncs = ref []
+        val rewrites = ref []
         val libs = ref []
 
         fun finish sources =
@@ -334,6 +336,7 @@ fun parseUrp' filename =
                     clientOnly = rev (!clientOnly),
                     serverOnly = rev (!serverOnly),
                     jsFuncs = rev (!jsFuncs),
+                    rewrites = rev (!rewrites),
                     sources = sources
                 }
 
@@ -368,11 +371,31 @@ fun parseUrp' filename =
                     clientOnly = #clientOnly old @ #clientOnly new,
                     serverOnly = #serverOnly old @ #serverOnly new,
                     jsFuncs = #jsFuncs old @ #jsFuncs new,
+                    rewrites = #rewrites old @ #rewrites new,
                     sources = #sources old @ #sources new
                 }
             in
                 foldr (fn (fname, job) => merge (job, parseUrp' fname)) job (!libs)
             end
+
+        fun parsePkind s =
+            case s of
+                "all" => Settings.Any
+              | "url" => Settings.Url
+              | "table" => Settings.Table
+              | "sequence" => Settings.Sequence
+              | "view" => Settings.View
+              | "relation" => Settings.Relation
+              | "cookie" => Settings.Cookie
+              | "style" => Settings.Style
+              | _ => (ErrorMsg.error "Bad path kind spec";
+                      Settings.Any)
+
+        fun parseFrom s =
+            if size s > 1 andalso String.sub (s, size s - 2) = #"/" andalso String.sub (s, size s - 1) = #"*" then
+                (Settings.Prefix, String.substring (s, 0, size s - 1))
+            else
+                (Settings.Exact, s)
 
         fun read () =
             case TextIO.inputLine inf of
@@ -437,6 +460,21 @@ fun parseUrp' filename =
                       | "clientOnly" => clientOnly := ffiS () :: !clientOnly
                       | "serverOnly" => serverOnly := ffiS () :: !serverOnly
                       | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
+                      | "rewrite" =>
+                        let
+                            fun doit (pkind, from, to) =
+                                let
+                                    val pkind = parsePkind pkind
+                                    val (kind, from) = parseFrom from
+                                in
+                                    rewrites := {pkind = pkind, kind = kind, from = from, to = to} :: !rewrites
+                                end
+                        in
+                            case String.tokens Char.isSpace arg of
+                                [pkind, from, to] => doit (pkind, from, to)
+                              | [pkind, from] => doit (pkind, from, "")
+                              | _ => ErrorMsg.error "Bad 'rewrite' syntax"
+                        end
                       | "library" => libs := relify arg :: !libs
                       | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                     read ()
@@ -454,6 +492,7 @@ fun parseUrp' filename =
         Settings.setClientOnly (#clientOnly job);
         Settings.setServerOnly (#serverOnly job);
         Settings.setJsFuncs (#jsFuncs job);
+        Settings.setRewriteRules (#rewrites job);
         job
     end
 

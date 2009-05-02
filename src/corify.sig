@@ -27,9 +27,6 @@
 
 signature CORIFY = sig
 
-    val restify : (string -> string) ref
-    (** Consulted to determine how to rewrite persistent paths *)
-
     val corify : Expl.file -> Core.file
 
 end

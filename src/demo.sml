@@ -103,7 +103,8 @@ fun make {prefix, dirname, guided} =
             effectful = [],
             clientOnly = [],
             serverOnly = [],
-            jsFuncs = []
+            jsFuncs = [],
+            rewrites = []
         }
 
         val parse = Compiler.run (Compiler.transform Compiler.parseUrp "Demo parseUrp")

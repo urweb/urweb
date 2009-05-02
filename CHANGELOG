@@ -12,6 +12,8 @@ Next
 - SQL outer joins
 - SQL views
 - Subforms
+- C and JavaScript FFI
+- Path rewriting
 
 ========
 20090405

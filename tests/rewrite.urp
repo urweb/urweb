@@ -1,0 +1,8 @@
+debug
+database dbname=rewrite
+sql rewrite.sql
+rewrite url Rewrite/other Schrewrite/brother
+rewrite url Rewrite/* 
+rewrite relation Rewrite/t mytab
+
+rewrite

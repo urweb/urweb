@@ -65,4 +65,15 @@ signature SETTINGS = sig
     val setJsFuncs : (ffi * string) list -> unit
     val jsFunc : ffi -> string option
 
+    datatype pattern_kind = Exact | Prefix
+    datatype action = Allow | Deny
+    type rule = { action : action, kind : pattern_kind, pattern : string }
+
+    datatype path_kind = Any | Url | Table | Sequence | View | Relation | Cookie | Style
+    type rewrite = { pkind : path_kind, kind : pattern_kind, from : string, to : string }
+
+    (* Rules for rewriting URLs from canonical forms *)
+    val setRewriteRules : rewrite list -> unit
+    val rewrite : path_kind -> string -> string
+
 end

@@ -147,4 +147,48 @@ val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)
 
+datatype pattern_kind = Exact | Prefix
+datatype action = Allow | Deny
+type rule = { action : action, kind : pattern_kind, pattern : string }
+
+datatype path_kind = Any | Url | Table | Sequence | View | Relation | Cookie | Style
+type rewrite = { pkind : path_kind, kind : pattern_kind, from : string, to : string }
+
+val rewrites = ref ([] : rewrite list)
+
+fun subsume (pk1, pk2) =
+    pk1 = pk2
+    orelse pk2 = Any
+    orelse pk2 = Relation andalso (pk1 = Table orelse pk1 = Sequence orelse pk1 = View)
+
+fun setRewriteRules ls = rewrites := ls
+fun rewrite pk s =
+    let
+        fun rew (ls : rewrite list) =
+            case ls of
+                [] => s
+              | rewr :: ls =>
+                let
+                    fun match () =
+                        case #kind rewr of
+                            Exact => if #from rewr = s then
+                                         SOME (size s)
+                                     else
+                                         NONE
+                          | Prefix => if String.isPrefix (#from rewr) s then
+                                          SOME (size (#from rewr))
+                                      else
+                                          NONE
+                in
+                    if subsume (pk, #pkind rewr) then
+                        case match () of
+                            NONE => rew ls
+                          | SOME suffixStart => #to rewr ^ String.extract (s, suffixStart, NONE)
+                    else
+                        rew ls
+                end
+    in
+        rew (!rewrites)
+    end
+
 end

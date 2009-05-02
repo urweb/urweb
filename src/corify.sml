@@ -37,16 +37,14 @@ structure SM = BinaryMapFn(struct
                            val compare = String.compare
                            end)
 
-val restify = ref (fn s : string => s)
-
-fun doRestify (mods, s) =
+fun doRestify k (mods, s) =
     let
         val s = if String.isPrefix "wrap_" s then
                     String.extract (s, 5, NONE)
                 else
                     s
     in
-        !restify (String.concatWith "/" (rev (s :: mods)))
+        Settings.rewrite k (String.concatWith "/" (rev (s :: mods)))
     end
 
 val relify = CharVector.map (fn #"/" => #"_"
@@ -702,7 +700,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
       | L.DVal (x, n, t, e) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = doRestify (mods, x)
+            val s = doRestify Settings.Url (mods, x)
         in
             ([(L'.DVal (x, n, corifyCon st t, corifyExp st e, s), loc)], st)
         end
@@ -720,7 +718,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
             val vis = map
                           (fn (x, n, t, e) =>
                               let
-                                  val s = doRestify (mods, x)
+                                  val s = doRestify Settings.Url (mods, x)
                               in
                                   (x, n, corifyCon st t, corifyExp st e, s)
                               end)
@@ -982,7 +980,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
       | L.DTable (_, x, n, c, pe, pc, ce, cc) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = relify (doRestify (mods, x))
+            val s = relify (doRestify Settings.Table (mods, x))
         in
             ([(L'.DTable (x, n, corifyCon st c, s,
                           corifyExp st pe, corifyCon st pc,
@@ -991,14 +989,14 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
       | L.DSequence (_, x, n) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = relify (doRestify (mods, x))
+            val s = relify (doRestify Settings.Sequence (mods, x))
         in
             ([(L'.DSequence (x, n, s), loc)], st)
         end
       | L.DView (_, x, n, e, c) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = relify (doRestify (mods, x))
+            val s = relify (doRestify Settings.View (mods, x))
         in
             ([(L'.DView (x, n, s, corifyExp st e, corifyCon st c), loc)], st)
         end
@@ -1008,14 +1006,14 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
       | L.DCookie (_, x, n, c) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = doRestify (mods, x)
+            val s = doRestify Settings.Cookie (mods, x)
         in
             ([(L'.DCookie (x, n, corifyCon st c, s), loc)], st)
         end
       | L.DStyle (_, x, n) =>
         let
             val (st, n) = St.bindVal st x n
-            val s = relify (doRestify (mods, x))
+            val s = relify (doRestify Settings.Style (mods, x))
         in
             ([(L'.DStyle (x, n, s), loc)], st)
         end
