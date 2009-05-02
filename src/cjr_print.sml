@@ -1396,6 +1396,12 @@ fun p_exp' par env (e, loc) =
       | EApp ((EReturnBlob {blob, mimeType, t = (TFun (_, ran), _)}, loc), _) =>
         p_exp env (EReturnBlob {blob = blob, mimeType = mimeType, t = ran}, loc)
 
+      | EFfiApp (m, x, []) => box [string "uw_",
+                                   p_ident m,
+                                   string "_",
+                                   p_ident x,
+                                   string "(ctx)"]
+
       | EFfiApp (m, x, es) => box [string "uw_",
                                    p_ident m,
                                    string "_",

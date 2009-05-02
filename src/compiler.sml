@@ -44,7 +44,12 @@ type job = {
      timeout : int,
      ffi : string list,
      link : string list,
-     headers : string list
+     headers : string list,
+     clientToServer : Settings.ffi list,
+     effectful : Settings.ffi list,
+     clientOnly : Settings.ffi list,
+     serverOnly : Settings.ffi list,
+     jsFuncs : (Settings.ffi * string) list
 }
 
 type ('src, 'dst) phase = {
@@ -202,10 +207,15 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}    
 
-fun p_job {prefix, database, exe, sql, sources, debug, profile, timeout, ffi, link, headers} =
+fun p_job {prefix, database, exe, sql, sources, debug, profile,
+           timeout, ffi, link, headers,
+           clientToServer, effectful, clientOnly, serverOnly, jsFuncs} =
     let
         open Print.PD
         open Print
+
+        fun p_ffi name = p_list_sep (box []) (fn (m, s) =>
+                                                 box [string name, space, string m, string ".", string s, newline])
     in
         box [if debug then
                  box [string "DEBUG", newline]
@@ -232,6 +242,13 @@ fun p_job {prefix, database, exe, sql, sources, debug, profile, timeout, ffi, li
              p_list_sep (box []) (fn s => box [string "Ffi", space, string s, newline]) ffi,
              p_list_sep (box []) (fn s => box [string "Header", space, string s, newline]) headers,
              p_list_sep (box []) (fn s => box [string "Link", space, string s, newline]) link,
+             p_ffi "ClientToServer" clientToServer,
+             p_ffi "Effectful" effectful,
+             p_ffi "ClientOnly" clientOnly,
+             p_ffi "ServerOnly" serverOnly,
+             p_list_sep (box []) (fn ((m, s), s') =>
+                                     box [string "JsFunc", space, string m, string ".", string s,
+                                          space, string "=", space, string s', newline]) jsFuncs,
              string "Sources:",
              p_list string sources,
              newline]
@@ -288,6 +305,11 @@ val parseUrp = {
                   val ffi = ref []
                   val link = ref []
                   val headers = ref []
+                  val clientToServer = ref []
+                  val effectful = ref []
+                  val clientOnly = ref []
+                  val serverOnly = ref []
+                  val jsFuncs = ref []
 
                   fun finish sources =
                       {prefix = Option.getOpt (!prefix, "/"),
@@ -298,9 +320,14 @@ val parseUrp = {
                        debug = !debug,
                        profile = !profile,
                        timeout = Option.getOpt (!timeout, 60),
-                       ffi = !ffi,
-                       link = !link,
-                       headers = !headers,
+                       ffi = rev (!ffi),
+                       link = rev (!link),
+                       headers = rev (!headers),
+                       clientToServer = rev (!clientToServer),
+                       effectful = rev (!effectful),
+                       clientOnly = rev (!clientOnly),
+                       serverOnly = rev (!serverOnly),
+                       jsFuncs = rev (!jsFuncs),
                        sources = sources}
 
                   fun read () =
@@ -312,6 +339,22 @@ val parseUrp = {
                               val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
                               val cmd = Substring.string (trim cmd)
                               val arg = Substring.string (trim arg)
+
+                              fun ffiS () =
+                                  case String.fields (fn ch => ch = #".") arg of
+                                      [m, x] => (m, x)
+                                    | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func");
+                                            ("", ""))
+
+                              fun ffiM () =
+                                  case String.fields (fn ch => ch = #"=") arg of
+                                      [f, s] =>
+                                      (case String.fields (fn ch => ch = #".") f of
+                                           [m, x] => ((m, x), s)
+                                         | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
+                                                 (("", ""), "")))
+                                    | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
+                                            (("", ""), ""))
                           in
                               case cmd of
                                   "prefix" =>
@@ -344,6 +387,11 @@ val parseUrp = {
                                 | "ffi" => ffi := relify arg :: !ffi
                                 | "link" => link := relifyA arg :: !link
                                 | "include" => headers := relifyA arg :: !headers
+                                | "clientToServer" => clientToServer := ffiS () :: !clientToServer
+                                | "effectful" => effectful := ffiS () :: !effectful
+                                | "clientOnly" => clientOnly := ffiS () :: !clientOnly
+                                | "serverOnly" => serverOnly := ffiS () :: !serverOnly
+                                | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
                                 | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                               read ()
                           end
@@ -354,6 +402,11 @@ val parseUrp = {
                   Settings.setUrlPrefix (#prefix job);
                   Settings.setTimeout (#timeout job);
                   Settings.setHeaders (#headers job);
+                  Settings.setClientToServer (#clientToServer job);
+                  Settings.setEffectful (#effectful job);
+                  Settings.setClientOnly (#clientOnly job);
+                  Settings.setServerOnly (#serverOnly job);
+                  Settings.setJsFuncs (#jsFuncs job);
                   job
               end,
     print = p_job

@@ -37,15 +37,14 @@ structure SS = BinarySetFn(struct
                            val compare = String.compare
                            end)
 
-val effectful = ["dml", "nextval", "send", "setCookie"]
-val effectful = SS.addList (SS.empty, effectful)
+fun effectful x = Settings.isEffectful x andalso not (Settings.isClientOnly x)
 
 fun effectize file =
     let
         fun exp evs e =
             case e of
-                EFfi ("Basis", s) => SS.member (effectful, s)
-              | EFfiApp ("Basis", s, _) => SS.member (effectful, s)
+                EFfi f => effectful f
+              | EFfiApp (m, x, _) => effectful (m, x)
               | ENamed n => IM.inDomain (evs, n)
               | EServerCall (n, _, _, _) => IM.inDomain (evs, n)
               | _ => false

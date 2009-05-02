@@ -46,23 +46,6 @@ fun multiLiftExpInExp n e =
     else
         multiLiftExpInExp (n - 1) (E.liftExpInExp 0 e)
 
-val ssBasis = SS.addList (SS.empty,
-                          ["requestHeader",
-                           "query",
-                           "dml",
-                           "nextval",
-                           "channel",
-                           "subscribe",
-                           "send"])
-
-val csBasis = SS.addList (SS.empty,
-                          ["get",
-                           "set",
-                           "alert",
-                           "recv",
-                           "sleep",
-                           "spawn"])
-
 type state = {
      cpsed : int IM.map,
      cpsed_range : con IM.map,
@@ -80,8 +63,8 @@ fun frob file =
             U.Exp.exists {kind = fn _ => false,
                           con = fn _ => false,
                           exp = fn ENamed n => IS.member (ssids, n)
-                                 | EFfi ("Basis", x) => SS.member (basis, x)
-                                 | EFfiApp ("Basis", x, _) => SS.member (basis, x)
+                                 | EFfi x => basis x
+                                 | EFfiApp (m, x, _) => basis (m, x)
                                  | _ => false}
                          (U.Exp.map {kind = fn x => x,
                                      con = fn x => x,
@@ -110,14 +93,14 @@ fun frob file =
                 foldl decl IS.empty file
             end
 
-        val ssids = whichIds ssBasis
-        val csids = whichIds csBasis
+        val ssids = whichIds Settings.isServerOnly
+        val csids = whichIds Settings.isClientOnly
 
         fun sideish' (basis, ids) extra =
             sideish (basis, IM.foldli (fn (id, _, ids) => IS.add (ids, id)) ids extra)
 
-        val serverSide = sideish' (ssBasis, ssids)
-        val clientSide = sideish' (csBasis, csids)
+        val serverSide = sideish' (Settings.isServerOnly, ssids)
+        val clientSide = sideish' (Settings.isClientOnly, csids)
 
         val tfuncs = foldl
                      (fn ((d, _), tfuncs) =>

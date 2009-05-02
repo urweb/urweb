@@ -97,7 +97,12 @@ fun make {prefix, dirname, guided} =
             profile = false,
             ffi = [],
             link = [],
-            headers = []
+            headers = [],
+            clientToServer = [],
+            effectful = [],
+            clientOnly = [],
+            serverOnly = [],
+            jsFuncs = []
         }
 
         val parse = Compiler.run (Compiler.transform Compiler.parseUrp "Demo parseUrp")

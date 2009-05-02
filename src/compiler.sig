@@ -40,7 +40,12 @@ signature COMPILER = sig
          timeout : int,
          ffi : string list,
          link : string list,
-         headers : string list
+         headers : string list,
+         clientToServer : Settings.ffi list,
+         effectful : Settings.ffi list,
+         clientOnly : Settings.ffi list,
+         serverOnly : Settings.ffi list,
+         jsFuncs : (Settings.ffi * string) list
     }
     val compile : string -> unit
     val compileC : {cname : string, oname : string, ename : string, libs : string,

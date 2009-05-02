@@ -53,18 +53,6 @@ end
 
 structure IM = IntBinaryMap
 
-val clientToServer = [("Basis", "int"),
-                      ("Basis", "float"),
-                      ("Basis", "string"),
-                      ("Basis", "time"),
-                      ("Basis", "file"),
-                      ("Basis", "unit"),
-                      ("Basis", "option"),
-                      ("Basis", "list"),
-                      ("Basis", "bool")]
-
-val clientToServer = PS.addList (PS.empty, clientToServer)
-
 fun check file =
     let
         fun kind (_, st) = st
@@ -72,7 +60,7 @@ fun check file =
         fun con cmap (c, st) =
             case c of
                 CFfi mx =>
-                if PS.member (clientToServer, mx) then
+                if Settings.mayClientToServer mx then
                     st
                 else
                     PS.add (st, mx)

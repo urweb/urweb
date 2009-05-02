@@ -2,5 +2,6 @@ debug
 ffi test
 include test.h
 link test.o
+effectful Test.print
 
 cffi

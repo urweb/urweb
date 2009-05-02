@@ -46,4 +46,101 @@ fun setTimeout n = timeout := n
 fun getHeaders () = !headers
 fun setHeaders ls = headers := ls
 
+type ffi = string * string
+
+structure K = struct
+type ord_key = ffi
+fun compare ((m1, x1), (m2, x2)) =
+    Order.join (String.compare (m1, m2),
+             fn () => String.compare (x1, x2))
+end
+
+structure S = BinarySetFn(K)
+structure M = BinaryMapFn(K)
+
+fun basis x = S.addList (S.empty, map (fn x : string => ("Basis", x)) x)
+
+val clientToServerBase = basis ["int",
+                                "float",
+                                "string",
+                                "time",
+                                "file",
+                                "unit",
+                                "option",
+                                "list",
+                                "bool"]
+val clientToServer = ref clientToServerBase
+fun setClientToServer ls = clientToServer := S.addList (clientToServerBase, ls)
+fun mayClientToServer x = S.member (!clientToServer, x)
+
+val effectfulBase = basis ["set_cookie",
+                           "new_client_source",
+                           "get_client_source",
+                           "set_client_source",
+                           "alert",
+                           "new_channel",
+                           "send",
+                           "onError",
+                           "onFail",
+                           "onConnectFail",
+                           "onDisconnect",
+                           "onServerError"]
+
+val effectful = ref effectfulBase
+fun setEffectful ls = effectful := S.addList (effectfulBase, ls)
+fun isEffectful x = S.member (!effectful, x)
+
+val clientBase = basis ["get",
+                        "set",
+                        "alert",
+                        "recv",
+                        "sleep",
+                        "spawn",
+                        "onError",
+                        "onFail",
+                        "onConnectFail",
+                        "onDisconnect",
+                        "onServerError"]
+val client = ref clientBase
+fun setClientOnly ls = client := S.addList (clientBase, ls)
+fun isClientOnly x = S.member (!client, x)
+
+val serverBase = basis ["requestHeader",
+                        "query",
+                        "dml",
+                        "nextval",
+                        "channel",
+                        "send"]
+val server = ref serverBase
+fun setServerOnly ls = server := S.addList (serverBase, ls)
+fun isServerOnly x = S.member (!server, x)
+
+val basisM = foldl (fn ((k, v : string), m) => M.insert (m, ("Basis", k), v)) M.empty
+
+val jsFuncsBase = basisM [("alert", "alert"),
+                          ("get_client_source", "sg"),
+                          ("htmlifyBool", "bs"),
+                          ("htmlifyFloat", "ts"),
+                          ("htmlifyInt", "ts"),
+                          ("htmlifyString", "eh"),
+                          ("new_client_source", "sc"),
+                          ("set_client_source", "sv"),
+                          ("stringToFloat_error", "pfl"),
+                          ("stringToInt_error", "pi"),
+                          ("urlifyInt", "ts"),
+                          ("urlifyFloat", "ts"),
+                          ("urlifyString", "uf"),
+                          ("recv", "rv"),
+                          ("strcat", "cat"),
+                          ("intToString", "ts"),
+                          ("floatToString", "ts"),
+                          ("onError", "onError"),
+                          ("onFail", "onFail"),
+                          ("onConnectFail", "onConnectFail"),
+                          ("onDisconnect", "onDisconnect"),
+                          ("onServerError", "onServerError")]
+val jsFuncs = ref jsFuncsBase
+fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
+fun jsFunc x = M.find (!jsFuncs, x)
+
 end

@@ -36,40 +36,6 @@ structure U = MonoUtil
 structure IS = IntBinarySet
 structure IM = IntBinaryMap
 
-val funcs = [(("Basis", "alert"), "alert"),
-             (("Basis", "get_client_source"), "sg"),
-             (("Basis", "htmlifyBool"), "bs"),
-             (("Basis", "htmlifyFloat"), "ts"),
-             (("Basis", "htmlifyInt"), "ts"),
-             (("Basis", "htmlifyString"), "eh"),
-             (("Basis", "new_client_source"), "sc"),
-             (("Basis", "set_client_source"), "sv"),
-             (("Basis", "stringToFloat_error"), "pfl"),
-             (("Basis", "stringToInt_error"), "pi"),
-             (("Basis", "urlifyInt"), "ts"),
-             (("Basis", "urlifyFloat"), "ts"),
-             (("Basis", "urlifyString"), "uf"),
-             (("Basis", "recv"), "rv"),
-             (("Basis", "strcat"), "cat"),
-             (("Basis", "intToString"), "ts"),
-             (("Basis", "floatToString"), "ts"),
-             (("Basis", "onError"), "onError"),
-             (("Basis", "onFail"), "onFail"),
-             (("Basis", "onConnectFail"), "onConnectFail"),
-             (("Basis", "onDisconnect"), "onDisconnect"),
-             (("Basis", "onServerError"), "onServerError")]
-
-structure FM = BinaryMapFn(struct
-                           type ord_key = string * string
-                           fun compare ((m1, x1), (m2, x2)) =
-                               Order.join (String.compare (m1, m2),
-                                           fn () => String.compare (x1, x2))
-                           end)
-
-val funcs = foldl (fn ((k, v), m) => FM.insert (m, k, v)) FM.empty funcs
-
-fun ffi k = FM.find (funcs, k)
-
 type state = {
      decls : decl list,
      script : string list,
@@ -684,7 +650,7 @@ fun process file =
 
                           | EFfi k =>
                             let
-                                val name = case ffi k of
+                                val name = case Settings.jsFunc k of
                                                NONE => (EM.errorAt loc ("Unsupported FFI identifier " ^ #2 k
                                                                         ^ " in JavaScript");
                                                         "ERROR")
@@ -700,7 +666,7 @@ fun process file =
                                       | ("Basis", "set_client_source", [e1, (EJavaScript (_, e2, _), _)]) => [e1, e2]
                                       | _ => args
 
-                                val name = case ffi (m, x) of
+                                val name = case Settings.jsFunc (m, x) of
                                                NONE => (EM.errorAt loc ("Unsupported FFI function "
                                                                         ^ x ^ " in JavaScript");
                                                         "ERROR")

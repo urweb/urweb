@@ -27,13 +27,38 @@
 
 signature SETTINGS = sig
     
+    (* How do all application URLs begin? *)
     val setUrlPrefix : string -> unit
     val getUrlPrefix : unit -> string
 
+    (* How many seconds should the server wait before assuming a Comet client has left? *)
     val setTimeout : int -> unit
     val getTimeout : unit -> int
 
+    (* Which C header files are needed? *)
     val setHeaders : string list -> unit
     val getHeaders : unit -> string list
+
+    type ffi = string * string
+
+    (* Which FFI types may be sent from clients to servers? *)
+    val setClientToServer : ffi list -> unit
+    val mayClientToServer : ffi -> bool
+
+    (* Which FFI functions have side effects? *)
+    val setEffectful : ffi list -> unit
+    val isEffectful : ffi -> bool
+
+    (* Which FFI functions may only be run in clients? *)
+    val setClientOnly : ffi list -> unit
+    val isClientOnly : ffi -> bool
+
+    (* Which FFI functions may only be run on servers? *)
+    val setServerOnly : ffi list -> unit
+    val isServerOnly : ffi -> bool
+
+    (* Which FFI functions may be run in JavaScript?  (JavaScript function names included) *)
+    val setJsFuncs : (ffi * string) list -> unit
+    val jsFunc : ffi -> string option
 
 end

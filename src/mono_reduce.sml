@@ -53,20 +53,7 @@ fun impure (e, _) =
       | ENone _ => false
       | ESome (_, e) => impure e
       | EFfi _ => false
-      | EFfiApp ("Basis", "set_cookie", _) => true
-      | EFfiApp ("Basis", "new_client_source", _) => true
-      | EFfiApp ("Basis", "get_client_source", _) => true
-      | EFfiApp ("Basis", "set_client_source", _) => true
-      | EFfiApp ("Basis", "alert", _) => true
-      | EFfiApp ("Basis", "new_channel", _) => true
-      | EFfiApp ("Basis", "subscribe", _) => true
-      | EFfiApp ("Basis", "send", _) => true
-      | EFfiApp ("Basis", "onError", _) => true
-      | EFfiApp ("Basis", "onFail", _) => true
-      | EFfiApp ("Basis", "onConnectFail", _) => true
-      | EFfiApp ("Basis", "onDisconnect", _) => true
-      | EFfiApp ("Basis", "onServerError", _) => true
-      | EFfiApp _ => false
+      | EFfiApp (m, x, _) => Settings.isEffectful (m, x)
       | EApp ((EFfi _, _), _) => false
       | EApp _ => true
 
@@ -271,8 +258,6 @@ fun reduce file =
 
         fun summarize d (e, _) =
             let
-                fun ffi es = List.concat (map (summarize d) es) @ [Unsure]
-
                 val s =
                     case e of
                         EPrim _ => []
@@ -283,20 +268,11 @@ fun reduce file =
                       | ENone _ => []
                       | ESome (_, e) => summarize d e
                       | EFfi _ => []
-                      | EFfiApp ("Basis", "set_cookie", es) => ffi es
-                      | EFfiApp ("Basis", "new_client_source", es) => ffi es
-                      | EFfiApp ("Basis", "get_client_source", es) => ffi es
-                      | EFfiApp ("Basis", "set_client_source", es) => ffi es
-                      | EFfiApp ("Basis", "alert", es) => ffi es
-                      | EFfiApp ("Basis", "new_channel", es) => ffi es
-                      | EFfiApp ("Basis", "subscribe", es) => ffi es
-                      | EFfiApp ("Basis", "send", es) => ffi es
-                      | EFfiApp ("Basis", "onError", es) => ffi es
-                      | EFfiApp ("Basis", "onFail", es) => ffi es
-                      | EFfiApp ("Basis", "onConnectFail", es) => ffi es
-                      | EFfiApp ("Basis", "onDisconnect", es) => ffi es
-                      | EFfiApp ("Basis", "onServerError", es) => ffi es
-                      | EFfiApp (_, _, es) => List.concat (map (summarize d) es)
+                      | EFfiApp (m, x, es) =>
+                        if Settings.isEffectful (m, x) then
+                            List.concat (map (summarize d) es) @ [Unsure]
+                        else
+                            List.concat (map (summarize d) es)
                       | EApp ((EFfi _, _), e) => summarize d e
                       | EApp _ =>
                         let
