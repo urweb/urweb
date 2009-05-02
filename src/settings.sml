@@ -30,6 +30,7 @@ structure Settings :> SETTINGS = struct
 val urlPrefix = ref "/"
 val timeout = ref 0
 val headers = ref ([] : string list)
+val scripts = ref ([] : string list)
 
 fun getUrlPrefix () = !urlPrefix
 fun setUrlPrefix p =
@@ -45,6 +46,9 @@ fun setTimeout n = timeout := n
 
 fun getHeaders () = !headers
 fun setHeaders ls = headers := ls
+
+fun getScripts () = !scripts
+fun setScripts ls = scripts := ls
 
 type ffi = string * string
 

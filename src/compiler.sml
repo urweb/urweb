@@ -45,6 +45,7 @@ type job = {
      ffi : string list,
      link : string list,
      headers : string list,
+     scripts : string list,
      clientToServer : Settings.ffi list,
      effectful : Settings.ffi list,
      clientOnly : Settings.ffi list,
@@ -208,7 +209,7 @@ val parseUr = {
      print = SourcePrint.p_file}    
 
 fun p_job {prefix, database, exe, sql, sources, debug, profile,
-           timeout, ffi, link, headers,
+           timeout, ffi, link, headers, scripts,
            clientToServer, effectful, clientOnly, serverOnly, jsFuncs} =
     let
         open Print.PD
@@ -241,6 +242,7 @@ fun p_job {prefix, database, exe, sql, sources, debug, profile,
              newline,
              p_list_sep (box []) (fn s => box [string "Ffi", space, string s, newline]) ffi,
              p_list_sep (box []) (fn s => box [string "Header", space, string s, newline]) headers,
+             p_list_sep (box []) (fn s => box [string "Script", space, string s, newline]) scripts,
              p_list_sep (box []) (fn s => box [string "Link", space, string s, newline]) link,
              p_ffi "ClientToServer" clientToServer,
              p_ffi "Effectful" effectful,
@@ -305,6 +307,7 @@ val parseUrp = {
                   val ffi = ref []
                   val link = ref []
                   val headers = ref []
+                  val scripts = ref []
                   val clientToServer = ref []
                   val effectful = ref []
                   val clientOnly = ref []
@@ -323,6 +326,7 @@ val parseUrp = {
                        ffi = rev (!ffi),
                        link = rev (!link),
                        headers = rev (!headers),
+                       scripts = rev (!scripts),
                        clientToServer = rev (!clientToServer),
                        effectful = rev (!effectful),
                        clientOnly = rev (!clientOnly),
@@ -387,6 +391,7 @@ val parseUrp = {
                                 | "ffi" => ffi := relify arg :: !ffi
                                 | "link" => link := relifyA arg :: !link
                                 | "include" => headers := relifyA arg :: !headers
+                                | "script" => scripts := arg :: !scripts
                                 | "clientToServer" => clientToServer := ffiS () :: !clientToServer
                                 | "effectful" => effectful := ffiS () :: !effectful
                                 | "clientOnly" => clientOnly := ffiS () :: !clientOnly
@@ -402,6 +407,7 @@ val parseUrp = {
                   Settings.setUrlPrefix (#prefix job);
                   Settings.setTimeout (#timeout job);
                   Settings.setHeaders (#headers job);
+                  Settings.setScripts (#scripts job);
                   Settings.setClientToServer (#clientToServer job);
                   Settings.setEffectful (#effectful job);
                   Settings.setClientOnly (#clientOnly job);

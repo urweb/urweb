@@ -20,3 +20,8 @@ uw_Basis_unit uw_Test_print(uw_context ctx) {
   printf("Hi there!\n");
   return uw_unit_v;
 }
+
+uw_Basis_unit uw_Test_foo(uw_context ctx) {
+  printf("FOO!\n");
+  return uw_unit_v;
+}

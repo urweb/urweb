@@ -2839,6 +2839,8 @@ fun p_file env (ds, ps) =
                                                      ^ OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
                                                                             file = "app.js"}
                                                      ^ "\\\"></script>\\n"),
+                                    p_list (fn x => string ("<script src=\\\"" ^ x ^ "\\\"></script>"))
+                                           (Settings.getScripts ()),
                                     string "\");",
                                     newline,
                                     string "uw_set_needs_push(ctx, ",

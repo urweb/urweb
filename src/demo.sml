@@ -98,6 +98,7 @@ fun make {prefix, dirname, guided} =
             ffi = [],
             link = [],
             headers = [],
+            scripts = [],
             clientToServer = [],
             effectful = [],
             clientOnly = [],

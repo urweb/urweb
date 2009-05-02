@@ -39,6 +39,10 @@ signature SETTINGS = sig
     val setHeaders : string list -> unit
     val getHeaders : unit -> string list
 
+    (* Which extra JavaScript URLs should be included? *)
+    val setScripts : string list -> unit
+    val getScripts : unit -> string list
+
     type ffi = string * string
 
     (* Which FFI types may be sent from clients to servers? *)

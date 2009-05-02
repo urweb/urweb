@@ -41,6 +41,7 @@ signature COMPILER = sig
          ffi : string list,
          link : string list,
          headers : string list,
+         scripts : string list,
          clientToServer : Settings.ffi list,
          effectful : Settings.ffi list,
          clientOnly : Settings.ffi list,
