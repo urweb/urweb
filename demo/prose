@@ -64,6 +64,12 @@ cookie.urp
 
 <p>After setting the cookie, try browsing back to this demo from the main index.  The data you entered should still be there.</p>
 
+url.urp
+
+<p>Up to this point, we haven't included a single URL in our source code.  This may be very surprising to programmers used to working with traditional web frameworks!  In Ur/Web, we avoid writing URLs explicitly wherever possible.  To link to an external web page, we rely on an abstract type <tt>url</tt>.  Strings can't be treated implicitly as URLs; rather, they must be "blessed" explicitly.  This helps avoid some classes of code injection attacks.</p>
+
+<p>Further, each Ur/Web application enforces a global condition on which strings are allowed as URLs.  The <tt>.urp</tt> file for this demo shows an example that specifies particular rules about which URLs are allowed.  You can try entering a variety of URLs on the form on the front page.  Only those satisfying the <tt>allow url</tt>/<tt>deny url</tt> conditions should be permitted.</p>
+
 listShop.urp
 
 <p>This example shows off algebraic datatypes, parametric polymorphism, and functors.</p>

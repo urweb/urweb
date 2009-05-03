@@ -1,0 +1,4 @@
+deny url http://en.wikipedia.org/wiki/PHP
+allow url http://en.wikipedia.org/wiki/*
+
+url

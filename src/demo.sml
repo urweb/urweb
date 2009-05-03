@@ -104,7 +104,7 @@ fun make {prefix, dirname, guided} =
             clientOnly = [],
             serverOnly = [],
             jsFuncs = [],
-            rewrites = [],
+            rewrites = #rewrites combined @ #rewrites urp,
             filterUrl = #filterUrl combined @ #filterUrl urp,
             filterMime = #filterMime combined @ #filterMime urp
         }
@@ -372,6 +372,35 @@ fun make {prefix, dirname, guided} =
                 TextIO.output (outf, "prefix ");
                 TextIO.output (outf, prefix);
                 TextIO.output (outf, "\n");
+                app (fn rule =>
+                        (TextIO.output (outf, "rewrite ");
+                         TextIO.output (outf, case #pkind rule of
+                                                  Settings.Any => "any"
+                                                | Settings.Url => "url"
+                                                | Settings.Table => "table"
+                                                | Settings.Sequence => "sequence"
+                                                | Settings.View => "view"
+                                                | Settings.Relation => "relation"
+                                                | Settings.Cookie => "cookie"
+                                                | Settings.Style => "style");
+                         TextIO.output (outf, " ");
+                         TextIO.output (outf, #from rule);
+                         case #kind rule of
+                             Settings.Exact => ()
+                           | Settings.Prefix => TextIO.output (outf, "*");
+                         TextIO.output (outf, " ");
+                         TextIO.output (outf, #to rule);
+                         TextIO.output (outf, "\n"))) (#rewrites combined);
+                app (fn rule =>
+                        (TextIO.output (outf, case #action rule of
+                                                  Settings.Allow => "allow"
+                                                | Settings.Deny => "deny");
+                         TextIO.output (outf, " url ");
+                         TextIO.output (outf, #pattern rule);
+                         case #kind rule of
+                             Settings.Exact => ()
+                           | Settings.Prefix => TextIO.output (outf, "*");
+                         TextIO.output (outf, "\n"))) (#filterUrl combined);
                 TextIO.output (outf, "\n");
 
                 app (fn s =>
