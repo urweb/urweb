@@ -70,6 +70,10 @@ url.urp
 
 <p>Further, each Ur/Web application enforces a global condition on which strings are allowed as URLs.  The <tt>.urp</tt> file for this demo shows an example that specifies particular rules about which URLs are allowed.  You can try entering a variety of URLs on the form on the front page.  Only those satisfying the <tt>allow url</tt>/<tt>deny url</tt> conditions should be permitted.</p>
 
+css.urp
+
+<p>Ur/Web supports a structured approach to Cascading Style Sheets, where each style is a first-class value within a module.  This demo shows the importing of an external style sheet with one style.  By default, like other Ur/Web entities, the name of the style would be <tt>Css_quote</tt>.  We use the <tt>rewrite</tt> directive in the <tt>.urp</tt> file to specify an alternate name for a particular canonical module path.  The external style sheet contains a definition of a style with the alternate name that we give.</p>
+
 listShop.urp
 
 <p>This example shows off algebraic datatypes, parametric polymorphism, and functors.</p>

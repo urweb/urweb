@@ -811,7 +811,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("r", numTy t, (L'.TFun (t, (L'.TFun (t, t), loc)), loc),
                            (L'.EField ((L'.ERel 0, loc), "Times"), loc)), loc), fm)
             end
-          | L.ECApp ((L.EFfi ("Basis", "div"), _), t) =>
+          | L.ECApp ((L.EFfi ("Basis", "divide"), _), t) =>
             let
                 val t = monoType env t
             in

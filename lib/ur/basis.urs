@@ -31,7 +31,7 @@ val neg : t ::: Type -> num t -> t -> t
 val plus : t ::: Type -> num t -> t -> t -> t
 val minus : t ::: Type -> num t -> t -> t -> t
 val times : t ::: Type -> num t -> t -> t -> t
-val div : t ::: Type -> num t -> t -> t -> t
+val divide : t ::: Type -> num t -> t -> t -> t
 val mod : t ::: Type -> num t -> t -> t -> t
 val num_int : num int
 val num_float : num float
@@ -536,6 +536,7 @@ con bodyTagStandalone = fn (attrs :: {Type}) =>
 val br : bodyTagStandalone []
 
 val span : bodyTag []
+val div : bodyTag []
 
 val p : bodyTag []
 val b : bodyTag []
