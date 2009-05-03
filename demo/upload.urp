@@ -1,0 +1,5 @@
+allow mime text/plain
+allow mime image/png
+allow mime image/gif
+
+upload

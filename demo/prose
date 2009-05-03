@@ -74,6 +74,12 @@ css.urp
 
 <p>Ur/Web supports a structured approach to Cascading Style Sheets, where each style is a first-class value within a module.  This demo shows the importing of an external style sheet with one style.  By default, like other Ur/Web entities, the name of the style would be <tt>Css_quote</tt>.  We use the <tt>rewrite</tt> directive in the <tt>.urp</tt> file to specify an alternate name for a particular canonical module path.  The external style sheet contains a definition of a style with the alternate name that we give.</p>
 
+upload.urp
+
+<p>HTTP file upload is made convenient, via the abstract types <tt>blob</tt> and <tt>file</tt> in the standard library.  A <tt>blob</tt> is a binary sequence, and a <tt>file</tt> combines a <tt>blob</tt> with MIME type information.  An <tt>upload</tt> form input can be used to accept <tt>file</tt>s from the user.</p>
+
+<p>In the <tt>.urp</tt> file for this example, we give a whitelist of MIME types to be accepted.  The application will echo back to the user any file he uploads as one of those types.  You can try submitting other kinds of files to verify that they are rejected.</p>
+
 listShop.urp
 
 <p>This example shows off algebraic datatypes, parametric polymorphism, and functors.</p>

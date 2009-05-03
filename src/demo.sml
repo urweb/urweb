@@ -363,6 +363,20 @@ fun make {prefix, dirname, guided} =
                 val fname = OS.Path.joinDirFile {dir = dirname,
                                                  file = "demo.urp"}
                 val outf = TextIO.openOut fname
+
+                fun filters kind =
+                    app (fn rule : Settings.rule =>
+                            (TextIO.output (outf, case #action rule of
+                                                      Settings.Allow => "allow"
+                                                    | Settings.Deny => "deny");
+                             TextIO.output (outf, " ");
+                             TextIO.output (outf, kind);
+                             TextIO.output (outf, " ");
+                             TextIO.output (outf, #pattern rule);
+                             case #kind rule of
+                                 Settings.Exact => ()
+                               | Settings.Prefix => TextIO.output (outf, "*");
+                             TextIO.output (outf, "\n")))                  
             in
                 Option.app (fn db => (TextIO.output (outf, "database ");
                                       TextIO.output (outf, db);
@@ -391,16 +405,8 @@ fun make {prefix, dirname, guided} =
                          TextIO.output (outf, " ");
                          TextIO.output (outf, #to rule);
                          TextIO.output (outf, "\n"))) (#rewrites combined);
-                app (fn rule =>
-                        (TextIO.output (outf, case #action rule of
-                                                  Settings.Allow => "allow"
-                                                | Settings.Deny => "deny");
-                         TextIO.output (outf, " url ");
-                         TextIO.output (outf, #pattern rule);
-                         case #kind rule of
-                             Settings.Exact => ()
-                           | Settings.Prefix => TextIO.output (outf, "*");
-                         TextIO.output (outf, "\n"))) (#filterUrl combined);
+                filters "url" (#filterUrl combined);
+                filters "mime" (#filterMime combined);
                 TextIO.output (outf, "\n");
 
                 app (fn s =>
