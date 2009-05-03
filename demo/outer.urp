@@ -1,0 +1,4 @@
+database dbname=test
+sql outer.sql
+
+outer

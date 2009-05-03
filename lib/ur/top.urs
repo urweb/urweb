@@ -39,6 +39,9 @@ val ex : tf :: (Type -> Type) -> choice :: Type -> tf choice -> ex tf
 val compose : t1 ::: Type -> t2 ::: Type -> t3 ::: Type
               -> (t2 -> t3) -> (t1 -> t2) -> (t1 -> t3)
 
+val show_option : t ::: Type -> show t -> show (option t)
+val read_option : t ::: Type -> read t -> read (option t)
+
 val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> show t -> t
           -> xml ctx use []
 

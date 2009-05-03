@@ -71,6 +71,24 @@ fun ex (tf :: (Type -> Type)) (choice :: Type) (body : tf choice) : ex tf =
 fun compose (t1 ::: Type) (t2 ::: Type) (t3 ::: Type)
             (f1 : t2 -> t3) (f2 : t1 -> t2) (x : t1) = f1 (f2 x)
 
+fun show_option (t ::: Type) (_ : show t) =
+    mkShow (fn opt : option t =>
+               case opt of
+                   None => ""
+                 | Some x => show x)
+
+fun read_option (t ::: Type) (_ : read t) =
+    mkRead (fn s =>
+               case s of
+                   "" => None
+                 | _ => Some (readError s : t))
+           (fn s =>
+               case s of
+                   "" => Some None
+                 | _ => case read s of
+                            None => None
+                          | v => Some v)
+
 fun txt (t ::: Type) (ctx ::: {Unit}) (use ::: {Type}) (_ : show t) (v : t) =
     cdata (show v)
 

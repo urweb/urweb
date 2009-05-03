@@ -497,24 +497,6 @@
       others : L'.con list
  }
 
- fun normalizeRecordSummary env (r : record_summary) =
-     let
-         val (fields, unifs, others) =
-             foldl (fn (u as (uc, _), (fields, unifs, others)) =>
-                       let
-                           val uc' = hnormCon env uc
-                       in
-                           case #1 uc' of
-                               L'.CUnif _ => (fields, u :: unifs, others)
-                             | L'.CRecord (_, fs) => (fs @ fields, unifs, others)
-                             | L'.CConcat ((L'.CRecord (_, fs), _), rest) => (fs @ fields, unifs, rest :: others)
-                             | _ => (fields, unifs, uc' :: others)
-                       end)
-             (#fields r, [], #others r) (#unifs r)
-     in
-         {fields = fields, unifs = unifs, others = others}
-     end
-
  fun summaryToCon {fields, unifs, others} =
      let
          val c = (L'.CRecord (ktype, []), dummy)
@@ -639,9 +621,9 @@
  val recdCounter = ref 0
 
  val mayDelay = ref false
- val delayedUnifs = ref ([] : (E.env * L'.kind * record_summary * record_summary) list)
+ val delayedUnifs = ref ([] : (ErrorMsg.span * E.env * L'.kind * record_summary * record_summary) list)
 
- fun unifyRecordCons env (c1, c2) =
+ fun unifyRecordCons env (loc, c1, c2) =
      let
          fun rkindof c =
              case hnormKind (kindof env c) of
@@ -663,8 +645,11 @@
          val r2 = recordSummary env c2
      in
          unifyKinds env k1 k2;
-         unifySummaries env (k1, r1, r2)
+         unifySummaries env (loc, k1, r1, r2)
      end
+
+ and normalizeRecordSummary env (r : record_summary) =
+     recordSummary env (summaryToCon r)
 
  and recordSummary env c =
      let
@@ -690,18 +675,26 @@
      end
 
  and consEq env (c1, c2) =
-     (unifyCons env c1 c2;
-      true)
-     handle CUnify _ => false
+     let
+         val mayDelay' = !mayDelay
+     in
+         (mayDelay := false;
+          unifyCons env c1 c2;
+          mayDelay := mayDelay';
+          true)
+         handle CUnify _ => (mayDelay := mayDelay'; false)
+     end
 
  and consNeq env (c1, c2) =
      case (#1 (hnormCon env c1), #1 (hnormCon env c2)) of
          (L'.CName x1, L'.CName x2) => x1 <> x2
        | _ => false
 
- and unifySummaries env (k, s1 : record_summary, s2 : record_summary) =
+ and unifySummaries env (loc, k, s1 : record_summary, s2 : record_summary) =
      let
          val loc = #2 k
+         val pdescs = [("#1", p_summary env s1),
+                       ("#2", p_summary env s2)]
          (*val () = eprefaces "Summaries" [("#1", p_summary env s1),
                                          ("#2", p_summary env s2)]*)
 
@@ -791,7 +784,7 @@
                | orig => orig
 
          (*val () = eprefaces "Summaries4" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
-                                            ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
+                                          ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
          fun isGuessable (other, fs, unifs) =
              let
@@ -811,13 +804,10 @@
                  else
                      (fs1, fs2, others1, others2, unifs1, unifs2)
                | (_, [], [], [other2], _, []) =>
-                 if isGuessable (other2, fs1, unifs1) then
-                     ([], [], [], [], [], [])
-                 else
-                     (prefaces "Not guessable" [("other2", p_con env other2),
-                                                ("fs1", p_con env (L'.CRecord (k, fs1), loc)),
-                                                ("#unifs1", PD.string (Int.toString (length unifs1)))];
-                      (fs1, fs2, others1, others2, unifs1, unifs2))
+                  if isGuessable (other2, fs1, unifs1) then
+                      ([], [], [], [], [], [])
+                  else
+                      (fs1, fs2, others1, others2, unifs1, unifs2)
                | _ => (fs1, fs2, others1, others2, unifs1, unifs2)
 
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
@@ -826,23 +816,19 @@
          val empty = (L'.CRecord (k, []), dummy)
          fun failure () = raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
      in
-         case (unifs1, fs1, others1, unifs2, fs2, others2) of
-             (_, [], [], [], [], []) =>
-             app (fn (_, r) => r := SOME empty) unifs1
-           | ([], [], [], _, [], []) =>
-             app (fn (_, r) => r := SOME empty) unifs2
-           | ([], _, _, _, _ :: _, _) => failure ()
-           | ([], _, _, _, _, _ :: _) => failure ()
-           | (_, _ :: _, _, [], _, _) => failure ()
-           | (_, _, _ :: _, [], _, _) => failure ()
-           | _ =>
-             if !mayDelay then
-                 delayedUnifs := (env, k, s1, s2) :: !delayedUnifs
-             else
-                 failure ()
-                      
-         (*before eprefaces "Summaries'" [("#1", p_summary env s1),
-                                       ("#2", p_summary env s2)]*)
+         (case (unifs1, fs1, others1, unifs2, fs2, others2) of
+              (_, [], [], [], [], []) =>
+              app (fn (_, r) => r := SOME empty) unifs1
+            | ([], [], [], _, [], []) =>
+              app (fn (_, r) => r := SOME empty) unifs2
+            | _ =>
+              if !mayDelay then
+                  delayedUnifs := (loc, env, k, s1, s2) :: !delayedUnifs
+              else
+                  failure ())
+         
+         (*before eprefaces "Summaries'" [("#1", p_summary env (normalizeRecordSummary env s1)),
+                                        ("#2", p_summary env (normalizeRecordSummary env s2))]*)
      end
 
  and guessMap env (c1, c2, ex) =
@@ -882,11 +868,7 @@
                              unifyCons env r (L'.CConcat (r1, r2), loc)
                          end
                        | L'.CUnif (_, _, _, ur) =>
-                         let
-                             val ur' = cunif (loc, (L'.KRecord dom, loc))
-                         in
-                             ur := SOME (L'.CApp ((L'.CApp ((L'.CMap (dom, ran), loc), f), loc), ur'), loc)
-                         end
+                         ur := SOME (L'.CApp ((L'.CApp ((L'.CMap (dom, ran), loc), f), loc), r), loc)
                        | _ => raise ex
              in
                  unfold (r, c)
@@ -978,7 +960,7 @@
                     | _ => onFail ())
                | _ => onFail ()
 
-         fun isRecord' () = unifyRecordCons env (c1All, c2All)
+         fun isRecord' () = unifyRecordCons env (loc, c1All, c2All)
 
          fun isRecord () =
              case (c1, c2) of
@@ -3737,12 +3719,20 @@ fun elabFile basis topStr topSgn env file =
 
         val (file, (_, gs)) = ListUtil.foldlMapConcat elabDecl' (env', []) file
 
-        val delayed = !delayedUnifs
+        fun oneSummaryRound () =
+            if ErrorMsg.anyErrors () then
+                ()
+            else
+                let
+                    val delayed = !delayedUnifs
+                in
+                    delayedUnifs := [];
+                    app (fn (loc, env, k, s1, s2) =>
+                            unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2))
+                        delayed
+                end
     in
-        delayedUnifs := [];
-        app (fn (env, k, s1, s2) =>
-                unifySummaries env (k, normalizeRecordSummary env s1, normalizeRecordSummary env s2))
-            delayed;
+        oneSummaryRound ();
 
         if ErrorMsg.anyErrors () then
             ()
@@ -3808,7 +3798,7 @@ fun elabFile basis topStr topSgn env file =
                     in
                         case (gs, solved) of
                             ([], _) => ()
-                          | (_, true) => solver gs
+                          | (_, true) => (oneSummaryRound (); solver gs)
                           | _ =>
                             app (fn Disjoint (loc, env, denv, c1, c2) =>
                                     ((ErrorMsg.errorAt loc "Couldn't prove field name disjointness";
@@ -3826,12 +3816,15 @@ fun elabFile basis topStr topSgn env file =
 
         mayDelay := false;
 
-        app (fn (env, k, s1, s2) =>
-                unifySummaries env (k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)
-                handle CUnify' err => (ErrorMsg.errorAt (#2 k) "Error in final record unification";
-                                       cunifyError env err))
-            (!delayedUnifs);
-        delayedUnifs := [];
+        if ErrorMsg.anyErrors () then
+            ()
+        else
+            (app (fn (loc, env, k, s1, s2) =>
+                     unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)
+                     handle CUnify' err => (ErrorMsg.errorAt loc "Error in final record unification";
+                                            cunifyError env err))
+                 (!delayedUnifs);
+             delayedUnifs := []);
 
         if ErrorMsg.anyErrors () then
             ()

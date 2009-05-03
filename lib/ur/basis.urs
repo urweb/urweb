@@ -70,6 +70,7 @@ val read_float : read float
 val read_string : read string
 val read_bool : read bool
 val read_time : read time
+val mkRead : t ::: Type -> (string -> t) -> (string -> option t) -> read t
 
 
 (** * Monads *)

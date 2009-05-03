@@ -135,6 +135,10 @@ constraints.urp
         <li>The <tt>FOREIGN KEY</tt> constraint declares that a row of the table references a particular column of another table, or of the same table, as we see in this example.  It's a static type error to reference a foreign key column that has no <tt>PRIMARY KEY</tt> or <tt>UNIQUE</tt> constraint.</li>
 </ol>
 
+outer.urp
+
+<p>SQL outer joins are no problem, as this demo shows.  Unlike with SQL, here we have static type inference determining for us which columns may become nullable as a result of an outer join, and the compiler will reject programs that make the wrong assumptions about that process.  The details of that nullification don't appear in this example, where the magic of type classes determines both the post-join type of each field and the right pretty-printing and parsing function for each of those types.</p>
+
 sum.urp
 
 <p>Metaprogramming is one of the most important facilities of Ur.  This example shows how to write a function that is able to sum up the fields of records of integers, no matter which set of fields the particular record has.</p>

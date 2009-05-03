@@ -1036,6 +1036,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("f", readType (t, loc), readErrType (t, loc),
                            (L'.EField ((L'.ERel 0, loc), "ReadError"), loc)), loc), fm)
             end
+          | L.ECApp ((L.EFfi ("Basis", "mkRead"), _), t) =>
+            let
+                val t = monoType env t
+                val b = (L'.TFfi ("Basis", "string"), loc)
+                val b' = (L'.TOption b, loc)
+                val dom = (L'.TFun (t, b), loc)
+                val dom' = (L'.TFun (t, b'), loc)
+            in
+                ((L'.EAbs ("f", dom, (L'.TFun (dom', readType (t, loc)), loc),
+                           (L'.EAbs ("f'", dom', readType (t, loc),
+                                     (L'.ERecord [("Read", (L'.ERel 0, loc), dom),
+                                                  ("ReadError", (L'.ERel 1, loc), dom')], loc)), loc)), loc),
+                 fm)
+            end
           | L.EFfi ("Basis", "read_int") =>
             let
                 val t = (L'.TFfi ("Basis", "int"), loc)
