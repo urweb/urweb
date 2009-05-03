@@ -80,6 +80,10 @@ upload.urp
 
 <p>In the <tt>.urp</tt> file for this example, we give a whitelist of MIME types to be accepted.  The application will echo back to the user any file he uploads as one of those types.  You can try submitting other kinds of files to verify that they are rejected.</p>
 
+subforms.urp
+
+<p>In the examples so far, the number of inputs per form has been constant.  Often it is useful to have a varying set of form inputs.  Ur/Web provides the <tt>&lt;subforms&gt;</tt> and <tt>&lt;entry&gt;</tt> tags for grouping a list of forms with the same field names and types into a single, list-valued composite form.  This demo shows those tags in action, in a simple form echoing application that lets the user add and remove inputs.</p>
+
 listShop.urp
 
 <p>This example shows off algebraic datatypes, parametric polymorphism, and functors.</p>
