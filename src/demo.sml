@@ -44,7 +44,7 @@ fun make {prefix, dirname, guided} =
                                          file = "index.html"}
 
         val out = TextIO.openOut fname
-        val () = (TextIO.output (out, "<frameset cols=\"10%,90%\">\n");
+        val () = (TextIO.output (out, "<frameset cols=\"15%,85%\">\n");
                   TextIO.output (out, "<frame src=\"demos.html\">\n");
                   TextIO.output (out, "<frame src=\"intro.html\" name=\"staging\">\n");
                   TextIO.output (out, "</frameset>\n");

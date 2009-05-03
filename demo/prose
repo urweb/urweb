@@ -100,12 +100,23 @@ tree.urp
 
 <p>The signature of <tt>TreeFun.Make</tt> tells us that, to instantiate the functor, we must provide</p>
 <ol>
-        <li> A primary key type <tt>key</tt></li>
-        <li> SQL field names <tt>id</tt> (for primary keys) and <tt>parent</tt> (for parent links)</li>
-        <li> A type-level record <tt>cols</tt> of field names besides <tt>id</tt> and <tt>parent</tt></li>
-        <li> "Proofs" that <tt>id</tt> is distinct from <tt>parent</tt> and that neither of <tt>id</tt> and <tt>parent</tt> appears in <tt>cols</tt></li>
-        <li> A witness that <tt>key</tt> belongs to the type class <tt>sql_injectable_prim</tt>, which indicates that both <tt>key</tt> and <tt>option key</tt> are fair game to use with SQL</li>
-        <li> An SQL table <tt>tab</tt>, containing a field <tt>id</tt> of type <tt>key</tt>, a field <tt>parent</tt> of type <tt>option key</tt>, and every field of <tt>cols</tt></li>
+        <li>A primary key type <tt>key</tt></li>
+        <li>SQL field names <tt>id</tt> (for primary keys) and <tt>parent</tt> (for parent links)</li>
+        <li>A type-level record <tt>cols</tt> of field names besides <tt>id</tt> and <tt>parent</tt></li>
+        <li>"Proofs" that <tt>id</tt> is distinct from <tt>parent</tt> and that neither of <tt>id</tt> and <tt>parent</tt> appears in <tt>cols</tt></li>
+        <li>A witness that <tt>key</tt> belongs to the type class <tt>sql_injectable_prim</tt>, which indicates that both <tt>key</tt> and <tt>option key</tt> are fair game to use with SQL</li>
+        <li>An SQL table <tt>tab</tt>, containing a field <tt>id</tt> of type <tt>key</tt>, a field <tt>parent</tt> of type <tt>option key</tt>, and every field of <tt>cols</tt></li>
+</ol>
+
+constraints.urp
+
+<p>Ur/Web supports attaching SQL table constraints to table definitions.  We've sprinkled a few such constraints throughout our examples so far, without mentioning them.  This example shows a table with all four of the supported kinds of constraints.  An application would generally try to avoid inserting data that violates constraints, but, in this example, we let you insert arbitrary data, so that you can see each of the constraints failing.</p>
+
+<ol>
+        <li>The <tt>PRIMARY KEY</tt> constraint establishes the field of the table that we expect to use as a key in looking up specific rows.  It is an error for two rows to share the same primary key.</li>
+        <li>The <tt>UNIQUE</tt> constraint is like <tt>PRIMARY KEY</tt>, with the difference being that a table may have many <tt>UNIQUE</tt> constraints but no more than one primary key.</li>
+        <li>The <tt>CHECK</tt> constraint declares a boolean assertion that must hold for every row of the table.</li>
+        <li>The <tt>FOREIGN KEY</tt> constraint declares that a row of the table references a particular column of another table, or of the same table, as we see in this example.  It's a static type error to reference a foreign key column that has no <tt>PRIMARY KEY</tt> or <tt>UNIQUE</tt> constraint.</li>
 </ol>
 
 sum.urp
@@ -121,13 +132,13 @@ sum.urp
 <p>Another library function <tt>foldUR</tt> is defined at the level of expressions, while <tt>mapU</tt> is a type-level function.  <tt>foldUR</tt> takes 7 arguments, some of them types and some values.  Type arguments are distinguished by being written within brackets.  The arguments to <tt>foldUR</tt> respectively tell us:
 
 <ol>
-<li> The type we will assign to each record field</li>
-<li> The type of the final and all intermediate results of the fold, expressed as a function over the portion of the <tt>{Unit}</tt> that has been traversed so far</li>
-<li> A function that updates the accumulator based on the current record field name, the rest of the input record type, the current record field value, and the current accumulator</li>
-<li> The initial accumulator value</li>
-<li> The input record type</li>
-<li> A folder for that type</li>
-<li> The input record value</li>
+<li>The type we will assign to each record field</li>
+<li>The type of the final and all intermediate results of the fold, expressed as a function over the portion of the <tt>{Unit}</tt> that has been traversed so far</li>
+<li>A function that updates the accumulator based on the current record field name, the rest of the input record type, the current record field value, and the current accumulator</li>
+<li>The initial accumulator value</li>
+<li>The input record type</li>
+<li>A folder for that type</li>
+<li>The input record value</li>
 </ol>
 
 An unusual part of the third argument is the syntax <tt>[t1 ~ t2]</tt> within a multi-argument <tt>fn</tt>.  This syntax denotes a proof that row types <tt>t1</tt> and <tt>t2</tt> have no field names in common.  The proof is not named, because it is applied automatically as needed.  Indeed, the proof appears unused in this case, though it is actually needed to ensure the validity of some inferred types, as well as to unify with the type of <tt>foldUR</tt>.</p>
@@ -158,12 +169,12 @@ crud1.urp
 <p>The signature of <tt>Crud.Make</tt> is based around a type function <tt>colMeta</tt>, which describes which supporting values we need for each column.  This function is declared with the keyword <tt>con</tt>, which stands for "constructor," the general class of "compile-time things" that includes types.  An argument to <tt>colMeta</tt> has kind <tt>(Type * Type)</tt>, which means that it must be a type-level tuple.  The first type is how the column is represented in SQL, and the second is how we represent it in HTML forms.  In order, the components of the resulting record give:
 
 <ol>
-<li> A display name</li>
-<li> A way of pretty-printing values of the column</li>
-<li> A way of generating an HTML form widget to input this column</li>
-<li> A way of generating an HTML form widget with an initial value specified</li>
-<li> A way of parsing values of the column from strings</li>
-<li> A type class witness, showing that the SQL representation can really be included in SQL</li>
+<li>A display name</li>
+<li>A way of pretty-printing values of the column</li>
+<li>A way of generating an HTML form widget to input this column</li>
+<li>A way of generating an HTML form widget with an initial value specified</li>
+<li>A way of parsing values of the column from strings</li>
+<li>A type class witness, showing that the SQL representation can really be included in SQL</li>
 </ol></p>
 
 <p>The function <tt>colsMeta</tt> lifts <tt>colMeta</tt> over type-level records of type pairs.  The <tt>Crud</tt> module also defines reasonable default <tt>colMeta</tt> values for some primitive types.</p>
@@ -171,11 +182,11 @@ crud1.urp
 <p>The functor signature tells us (in order) that an input must contain:
 
 <ol>
-<li> A type pair record <tt>cols</tt></li>
-<li> A proof that <tt>cols</tt> does not contain a field named <tt>Id</tt></li>
-<li> A SQL table <tt>tab</tt> with an <tt>Id</tt> field of type <tt>int</tt> and other fields whose names and types are read off of <tt>cols</tt></li>
-<li> A display title for the admin interface</li>
-<li> A record of meta-data for the columns</li>
+<li>A type pair record <tt>cols</tt></li>
+<li>A proof that <tt>cols</tt> does not contain a field named <tt>Id</tt></li>
+<li>A SQL table <tt>tab</tt> with an <tt>Id</tt> field of type <tt>int</tt> and other fields whose names and types are read off of <tt>cols</tt></li>
+<li>A display title for the admin interface</li>
+<li>A record of meta-data for the columns</li>
 </ol></p>
 
 <p>Looking at <tt>crud1.ur</tt>, we see that a use of the functor is almost trivial.  Only the value components of the argument structure must be provided.  The column row type is inferred, and the disjointness constraint is proved automatically.</p>
@@ -226,9 +237,9 @@ batchG.urp
 
 <p>The first three fields of a <tt>colMeta</tt> record are the same as for <tt>Crud</tt>.  The rest of the fields are:</p>
 <ol>
-        <li> <tt>NewState</tt>, which allocates some new widget local state</li>
-        <li> <tt>Widget</tt>, which produces a reactive widget from some state</li>
-        <li> <tt>ReadState</tt>, which reads the current value of some state to determine which SQL value it encodes</li>
+        <li><tt>NewState</tt>, which allocates some new widget local state</li>
+        <li><tt>Widget</tt>, which produces a reactive widget from some state</li>
+        <li><tt>ReadState</tt>, which reads the current value of some state to determine which SQL value it encodes</li>
 </ol>
 
 <p><tt>BatchFun.Make</tt> handles the plumbing of allocating the local state, using it to create widgets, and reading the state values when the user clicks "Batch it."</p>
