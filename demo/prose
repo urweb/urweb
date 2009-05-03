@@ -231,6 +231,12 @@ crud2.urp
 
 <p>This example shows another application of <tt>Crud.Make</tt>.  We mix one standard column with one customized column.  We write an underscore for the <tt>Inject</tt> field of meta-data, since the type class facility can infer that witness.</p>
 
+crud3.urp
+
+<p>One thing that is unclear from the previous examples is how to provide more complex, multi-input widgets for taking input meant for particular fields.  The signature of <tt>Crud.Make</tt> forces every widget to define exactly one input.  The <tt>&lt;subform&gt;</tt> tag, the simpler cousin of the <tt>&lt;subforms&gt;</tt> tag that we saw earlier, provides a fix for this problem.  Via <tt>&lt;subform&gt;</tt>, an arbitrary form can be turned into a single record-valued input.</p>
+
+<p>We use that possibility here to define a silly widget for a <tt>string</tt> column, which concatenates the values entered into two different textboxes.</p>
+
 alert.urp
 
 <p>Ur/Web makes it easy to write code whose execution should be distributed between the web server and client web browsers.  Server-side code is compiled to efficient native code, and client-side code is compiled to JavaScript.  Ur/Web programmers don't need to worry about these details, because the language and standard library provide a uniform ML-like interface for the whole process.</p>
