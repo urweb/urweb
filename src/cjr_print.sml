@@ -2421,20 +2421,20 @@ fun p_file env (ds, ps) =
                                                 E.declBinds env d))
                              env ds
 
-        fun flatFields (t : typ) =
+        fun flatFields always (t : typ) =
             case #1 t of
                 TRecord i =>
                 let
                     val xts = E.lookupStruct env i
                 in
-                    SOME (map #1 xts :: List.concat (List.mapPartial (flatFields o #2) xts))
+                    SOME ((always @ map #1 xts) :: List.concat (List.mapPartial (flatFields [] o #2) xts))
                 end
               | TList (_, i) =>
                 let
                     val ts = E.lookupStruct env i
                 in
                     case ts of
-                        [("1", t'), ("2", _)] => flatFields t'
+                        [("1", t'), ("2", _)] => flatFields [] t'
                       | _ => raise Fail "CjrPrint: Bad struct for TList"
                 end
               | _ => NONE
@@ -2448,12 +2448,11 @@ fun p_file env (ds, ps) =
                                        (TRecord i, loc) =>
                                        let
                                            val xts = E.lookupStruct env i
-                                           val xts = case eff of
-                                                         ReadCookieWrite =>
-                                                         (sigName xts, (TRecord 0, ErrorMsg.dummySpan)) :: xts
-                                                       | _ => xts
+                                           val extra = case eff of
+                                                           ReadCookieWrite => [sigName xts]
+                                                       | _ => []
                                        in
-                                           case flatFields (TRecord i, loc) of
+                                           case flatFields extra (TRecord i, loc) of
                                                NONE => raise Fail "CjrPrint: flatFields impossible"
                                              | SOME fields' => List.revAppend (fields', fields)
                                        end

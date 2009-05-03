@@ -143,6 +143,12 @@ view.urp
 
 <p>SQL views are also supported with a special declaration form, analogous to <tt>table</tt>.  A multi-parameter type class <tt>fieldsOf</tt> is used to characterize places where both tables and views are allowed.  For instance, the polymorphic function <tt>list</tt> shown here lists the contents of any table or view containing just a single <tt>int</tt> column named <tt>A</tt>.</p>
 
+cookieSec.urp
+
+<p>Ur/Web guarantees that compiled applications are immune to certain kinds of <a href="http://www.owasp.org/index.php/Top_10_2007-A5">cross site request forgery</a>.  For instance, a "phisher" might send many e-mails linking to a form that he has set up to look like your web site.  The form is connected to your web site, where it might, say, transfer money from your bank account to the phisher's account.  The phisher doesn't know your username, but, if that username is stored in a cookie, it will be sent automatically by your browser.  Ur/Web automatically signs cookie values cryptographically, with the signature included as a POST parameter and not part of a cookie, to prevent such attacks.</p>
+
+<p>This demo shows a simple mock-up of a situation where such an attack is often possible with traditional web frameworks.  You can set an arbitrary username for yourself in a cookie, and you can modify the database in a way that depends on the current cookie value.  Try getting the latter action to succeed without first setting your desired username in the cookie.  This should be roughly as impossible as cracking the particular cryptographic hash function that is used.</p>
+
 sum.urp
 
 <p>Metaprogramming is one of the most important facilities of Ur.  This example shows how to write a function that is able to sum up the fields of records of integers, no matter which set of fields the particular record has.</p>

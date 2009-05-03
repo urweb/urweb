@@ -77,7 +77,9 @@ val clientToServer = ref clientToServerBase
 fun setClientToServer ls = clientToServer := S.addList (clientToServerBase, ls)
 fun mayClientToServer x = S.member (!clientToServer, x)
 
-val effectfulBase = basis ["set_cookie",
+val effectfulBase = basis ["dml",
+                           "nextval",
+                           "set_cookie",
                            "new_client_source",
                            "get_client_source",
                            "set_client_source",
