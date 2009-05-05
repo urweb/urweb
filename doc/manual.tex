@@ -1739,6 +1739,21 @@ Ur/Web features some syntactic shorthands for building values using the function
 
 \subsubsection{\label{tables}Table Declarations}
 
+$\mt{table}$ declarations may include constraints, via these grammar rules.
+$$\begin{array}{rrcll}
+  \textrm{Declarations} & d &::=& \mt{table} \; x : c \; [pk[,]] \; cts \\
+  \textrm{Primary key constraints} & pk &::=& \mt{PRIMARY} \; \mt{KEY} \; K \\
+  \textrm{Keys} & K &::=& f \mid (f, (f,)^+) \\
+  \textrm{Constraint sets} & cts &::=& \mt{CONSTRAINT} f \; ct \mid cts, cts \mid \{\{e\}\} \\
+  \textrm{Constraints} & ct &::=& \mt{UNIQUE} \; K \mid \mt{CHECK} \; E \\
+  &&& \mid \mt{FOREIGN} \; \mt{KEY} \; K \; \mt{REFERENCES} \; F \; (K) \; [\mt{ON} \; \mt{DELETE} \; pr] \; [\mt{ON} \; \mt{UPDATE} \; pr] \\
+  \textrm{Foreign tables} & F &::=& x \mid \{\{e\}\} \\
+  \textrm{Propagation modes} & pr &::=& \mt{NO} \; \mt{ACTION} \mid \mt{RESTRICT} \mid \mt{CASCADE} \mid \mt{SET} \; \mt{NULL}
+\end{array}$$
+
+A signature item $\mt{table} \; \mt{x} : \mt{c}$ is actually elaborated into two signature items: $\mt{con} \; \mt{x\_hidden\_constraints} :: \{\{\mt{Unit}\}\}$ and $\mt{val} \; \mt{x} : \mt{sql\_table} \; \mt{c} \; \mt{x\_hidden\_constraints}$.  This is appropriate for common cases where client code doesn't care which keys a table has.  It's also possible to include constraints after a $\mt{table}$ signature item, with the same syntax as for $\mt{table}$ declarations.  This may look like dependent typing, but it's just a convenience.  The constraints are type-checked to determine a constructor $u$ to include in $\mt{val} \; \mt{x} : \mt{sql\_table} \; \mt{c} \; (u \rc \mt{x\_hidden\_constraints})$, and then the expressions are thrown away.  Nonetheless, it can be useful for documentation purposes to include table constraint details in signatures.  Note that the automatic generation of $\mt{x\_hidden\_constraints}$ leads to a kind of free subtyping with respect to which constraints are defined.
+
+
 \subsubsection{Queries}
 
 Queries $Q$ are added to the rules for expressions $e$.
