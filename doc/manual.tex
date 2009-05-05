@@ -56,10 +56,10 @@ make
 sudo make install
 \end{verbatim}
 
-Some other packages must be installed for the above to work.  At a minimum, you need a standard UNIX shell, with standard UNIX tools like sed and GCC in your execution path; and MLton, the whole-program optimizing compiler for Standard ML.  To build programs that access SQL databases, you also need libpq, the PostgreSQL client library.  As of this writing, in the ``testing'' version of Debian Linux, this command will install the more uncommon of these dependencies:
+Some other packages must be installed for the above to work.  At a minimum, you need a standard UNIX shell, with standard UNIX tools like sed and GCC in your execution path; MLton, the whole-program optimizing compiler for Standard ML; and the mhash C library.  To build programs that access SQL databases, you also need libpq, the PostgreSQL client library.  As of this writing, in the ``testing'' version of Debian Linux, this command will install the more uncommon of these dependencies:
 
 \begin{verbatim}
-apt-get install mlton libpq-dev
+apt-get install mlton libmhash-dev libpq-dev
 \end{verbatim}
 
 It is also possible to access the modules of the Ur/Web compiler interactively, within Standard ML of New Jersey.  To install the prerequisites in Debian testing:
@@ -127,9 +127,27 @@ A blank line always separates the named directives from a list of modules to inc
 
 For each entry \texttt{M} in the module list, the file \texttt{M.urs} is included in the project if it exists, and the file \texttt{M.ur} must exist and is always included.
 
-A few other named directives are supported.  \texttt{prefix PREFIX} sets the prefix included before every URI within the generated application; the default is \texttt{/}.  \texttt{exe FILENAME} sets the filename to which to write the output executable; the default for file \texttt{P.urp} is \texttt{P.exe}.  \texttt{debug} saves some intermediate C files, which is mostly useful to help in debugging the compiler itself.  \texttt{profile} generates an executable that may be used with gprof.
-
-\texttt{timeout N} sets to \texttt{N} seconds the amount of time that the generated server will wait after the last contact from a client before determining that that client has exited the application.  Clients that remain active will take the timeout setting into account in determining how often to ping the server, so it only makes sense to set a high timeout to cope with browser and network delays and failures.  Higher timeouts can lead to more unnecessary client information taking up memory on the server.  The timeout goes unused by any page that doesn't involve the \texttt{recv} function, since the server only needs to store per-client information for clients that receive asynchronous messages.
+Here is the complete list of directive forms.  ``FFI'' stands for ``foreign function interface,'' Ur's facility for interaction between Ur programs and C and JavaScript libraries.
+\begin{itemize}
+\item \texttt{[allow|deny] [url|mime] PATTERN} registers a rule governing which URLs or MIME types are allowed in this application.  The first such rule to match a URL or MIME type determines the verdict.  If \texttt{PATTERN} ends in \texttt{*}, it is interpreted as a prefix rule.  Otherwise, a string must match it exactly.
+\item \texttt{clientOnly Module.ident} registers an FFI function or transaction that may only be run in client browsers.
+\item \texttt{clientToServer Module.ident} adds FFI type \texttt{Module.ident} to the list of types that are OK to marshal from clients to servers.  Values like XML trees and SQL queries are hard to marshal without introducing expensive validity checks, so it's easier to ensure that the server never trusts clients to send such values.  The file \texttt{include/urweb.h} shows examples of the C support functions that are required of any type that may be marshalled.  These include \texttt{attrify}, \texttt{urlify}, and \texttt{unurlify} functions.
+\item \texttt{database DBSTRING} sets the string to pass to libpq to open a database connection.
+\item \texttt{debug} saves some intermediate C files, which is mostly useful to help in debugging the compiler itself.
+\item \texttt{effectful Module.ident} registers an FFI function or transaction as having side effects.  The optimizer avoids removing, moving, or duplicating calls to such functions.  Every effectful FFI function must be registered, or the optimizer may make invalid transformations.
+\item \texttt{exe FILENAME} sets the filename to which to write the output executable.  The default for file \texttt{P.urp} is \texttt{P.exe}.  
+\item \texttt{ffi FILENAME} reads the file \texttt{FILENAME.urs} to determine the interface to a new FFI module.  The name of the module is calculated from \texttt{FILENAME} in the same way as for normal source files.  See the files \texttt{include/urweb.h} and \texttt{src/c/urweb.c} for examples of C headers and implementations for FFI modules.  In general, every type or value \texttt{Module.ident} becomes \texttt{uw\_Module\_ident} in C.
+\item \texttt{jsFunc Module.ident=name} gives the JavaScript name of an FFI value.
+\item \texttt{library FILENAME} parses \texttt{FILENAME.urp} and merges its contents with the rest of the current file's contents.
+\item \texttt{link FILENAME} adds \texttt{FILENAME} to the list of files to be passed to the GCC linker at the end of compilation.  This is most useful for importing extra libraries needed by new FFI modules.
+\item \texttt{prefix PREFIX} sets the prefix included before every URI within the generated application.  The default is \texttt{/}.
+\item \texttt{profile} generates an executable that may be used with gprof.
+\item \texttt{rewrite KIND FROM TO} gives a rule for rewriting canonical module paths.  For instance, the canonical path of a page may be \texttt{Mod1.Mod2.mypage}, while you would rather the page were accessed via a URL containing only \texttt{page}.  The directive \texttt{rewrite url Mod1/Mod2/mypage page} would accomplish that.  The possible values of \texttt{KIND} determine which kinds of objects are affected.  The kind \texttt{all} matches any object, and \texttt{url} matches page URLs.  The kinds \texttt{table}, \texttt{sequence}, and \texttt{view} match those sorts of SQL entities, and \texttt{relation} matches any of those three.  \texttt{cookie} matches HTTP cookies, and \texttt{style} matches CSS class names.  If \texttt{FROM} ends in \texttt{/*}, it is interpreted as a prefix matching rule, and rewriting occurs by replacing only the appropriate prefix of a path with \texttt{TO}.  While the actual external names of relations and styles have parts separated by underscores instead of slashes, all rewrite rules must be written in terms of slashes.
+\item \texttt{script URL} adds \texttt{URL} to the list of extra JavaScript files to be included at the beginning of any page that uses JavaScript.  This is most useful for importing JavaScript versions of functions found in new FFI modules.
+\item \texttt{serverOnly Module.ident} registers an FFI function or transaction that may only be run on the server.
+\item \texttt{sql FILENAME} sets where to write an SQL file with the commands to create the expected database schema.  The default is not to create such a file.
+\item \texttt{timeout N} sets to \texttt{N} seconds the amount of time that the generated server will wait after the last contact from a client before determining that that client has exited the application.  Clients that remain active will take the timeout setting into account in determining how often to ping the server, so it only makes sense to set a high timeout to cope with browser and network delays and failures.  Higher timeouts can lead to more unnecessary client information taking up memory on the server.  The timeout goes unused by any page that doesn't involve the \texttt{recv} function, since the server only needs to store per-client information for clients that receive asynchronous messages.
+\end{itemize}
 
 
 \subsection{Building an Application}
