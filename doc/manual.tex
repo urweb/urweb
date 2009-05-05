@@ -166,7 +166,7 @@ urweb -timing P
 
 \section{Ur Syntax}
 
-In this section, we describe the syntax of Ur, deferring to a later section discussion of most of the syntax specific to SQL and XML.  The sole exceptions are the declaration forms for tables, sequences, and cookies.
+In this section, we describe the syntax of Ur, deferring to a later section discussion of most of the syntax specific to SQL and XML.  The sole exceptions are the declaration forms for relations, cookies, and styles.
 
 \subsection{Lexical Conventions}
 
@@ -343,8 +343,10 @@ $$\begin{array}{rrcll}
   &&& \mt{constraint} \; c \sim c & \textrm{record disjointness constraint} \\
   &&& \mt{open} \; \mt{constraints} \; M & \textrm{inclusion of just the constraints from a module} \\
   &&& \mt{table} \; x : c & \textrm{SQL table} \\
+  &&& \mt{view} \; x : c & \textrm{SQL view} \\
   &&& \mt{sequence} \; x & \textrm{SQL sequence} \\
   &&& \mt{cookie} \; x : \tau & \textrm{HTTP cookie} \\
+  &&& \mt{style} \; x : \tau & \textrm{CSS class} \\
   &&& \mt{class} \; x :: \kappa = c & \textrm{concrete constructor class} \\
   \\
   \textrm{Modules} & M &::=& \mt{struct} \; d^* \; \mt{end} & \textrm{constant} \\
@@ -355,6 +357,8 @@ $$\begin{array}{rrcll}
 \end{array}$$
 
 There are two kinds of Ur files.  A file named $M\texttt{.ur}$ is an \emph{implementation file}, and it should contain a sequence of declarations $d^*$.  A file named $M\texttt{.urs}$ is an \emph{interface file}; it must always have a matching $M\texttt{.ur}$ and should contain a sequence of signature items $s^*$.  When both files are present, the overall effect is the same as a monolithic declaration $\mt{structure} \; M : \mt{sig} \; s^* \; \mt{end} = \mt{struct} \; d^* \; \mt{end}$.  When no interface file is included, the overall effect is similar, with a signature for module $M$ being inferred rather than just checked against an interface.
+
+We omit some extra possibilities in $\mt{table}$ syntax, deferring them to Section \ref{tables}.
 
 \subsection{Shorthands}
 
@@ -392,7 +396,7 @@ The syntax $\mt{if} \; e \; \mt{then} \; e_1 \; \mt{else} \; e_2$ expands to $\m
 
 There are infix operator syntaxes for a number of functions defined in the $\mt{Basis}$ module.  There is $=$ for $\mt{eq}$, $\neq$ for $\mt{neq}$, $-$ for $\mt{neg}$ (as a prefix operator) and $\mt{minus}$, $+$ for $\mt{plus}$, $\times$ for $\mt{times}$, $/$ for $\mt{div}$, $\%$ for $\mt{mod}$, $<$ for $\mt{lt}$, $\leq$ for $\mt{le}$, $>$ for $\mt{gt}$, and $\geq$ for $\mt{ge}$.
 
-A signature item $\mt{table} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_table} \; c$.  $\mt{sequence} \; x$ is short for $\mt{val} \; x : \mt{Basis}.\mt{sql\_sequence}$, and $\mt{cookie} \; x : \tau$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{http\_cookie} \; \tau$.
+A signature item $\mt{table} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_table} \; c \; []$.  $\mt{view} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_view} \; c$, $\mt{sequence} \; x$ is short for $\mt{val} \; x : \mt{Basis}.\mt{sql\_sequence}$.  $\mt{cookie} \; x : \tau$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{http\_cookie} \; \tau$, and $\mt{style} \; x$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{css\_class}$.
 
 
 \section{Static Semantics}
@@ -790,17 +794,22 @@ $$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leadsto \Gamma}{
   \Gamma \vdash M : \mt{sig} \; \overline{s} \; \mt{end}
 }$$
 
-$$\infer{\Gamma \vdash \mt{table} \; x : c \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_table} \; c}{
+$$\infer{\Gamma \vdash \mt{table} \; x : c \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_table} \; c \; []}{
   \Gamma \vdash c :: \{\mt{Type}\}
 }
-\quad \infer{\Gamma \vdash \mt{sequence} \; x \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_sequence}}{}$$
+\quad \infer{\Gamma \vdash \mt{view} \; x : c \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_view} \; c}{
+  \Gamma \vdash c :: \{\mt{Type}\}
+}$$
+
+$$\infer{\Gamma \vdash \mt{sequence} \; x \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_sequence}}{}$$
 
 $$\infer{\Gamma \vdash \mt{cookie} \; x : \tau \leadsto \Gamma, x : \mt{Basis}.\mt{http\_cookie} \; \tau}{
   \Gamma \vdash \tau :: \mt{Type}
-}$$
+}
+\quad \infer{\Gamma \vdash \mt{style} \; x \leadsto \Gamma, x : \mt{Basis}.\mt{css\_class}}{}$$
 
-$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa \to \mt{Type} = c}{
-  \Gamma \vdash c :: \kappa \to \mt{Type}
+$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa = c}{
+  \Gamma \vdash c :: \kappa
 }$$
 
 $$\infer{\overline{y}; x; \Gamma \vdash \cdot \leadsto \Gamma}{}
@@ -856,10 +865,10 @@ $$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leadsto \Gamma, c_1 \sim
   & \Gamma \vdash c_2 :: \{\kappa\}
 }$$
 
-$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa \to \mt{Type} = c}{
-  \Gamma \vdash c :: \kappa \to \mt{Type}
+$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa = c}{
+  \Gamma \vdash c :: \kappa
 }
-\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa \leadsto \Gamma, x :: \kappa \to \mt{Type}}{}$$
+\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa \leadsto \Gamma, x :: \kappa}{}$$
 
 \subsection{Signature Compatibility}
 
@@ -919,13 +928,13 @@ $$\infer{\Gamma \vdash \mt{datatype} \; x = \mt{datatype} \; M.z \leq \mt{con} \
   & \mt{proj}(M, \overline{s}, \mt{datatype} \; z) = (\overline{y}, \overline{dc})
 }$$
 
-$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa \leq \mt{con} \; x :: \kappa \to \mt{Type}}{}
-\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leq \mt{con} \; x :: \kappa \to \mt{Type}}{}$$
+$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa \leq \mt{con} \; x :: \kappa}{}
+\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leq \mt{con} \; x :: \kappa}{}$$
 
 $$\infer{\Gamma \vdash \mt{con} \; x :: \kappa = c_1 \leq \mt{con} \; x :: \mt{\kappa} = c_2}{
   \Gamma \vdash c_1 \equiv c_2
 }
-\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa = c_1 \leq \mt{con} \; x :: \kappa \to \mt{Type} = c_2}{
+\quad \infer{\Gamma \vdash \mt{class} \; x :: \kappa = c_1 \leq \mt{con} \; x :: \kappa = c_2}{
   \Gamma \vdash c_1 \equiv c_2
 }$$
 
@@ -1019,8 +1028,10 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{sigOf}(\mt{constraint} \; c_1 \sim c_2) &=& \mt{constraint} \; c_1 \sim c_2 \\
   \mt{sigOf}(\mt{open} \; \mt{constraints} \; M) &=& \cdot \\
   \mt{sigOf}(\mt{table} \; x : c) &=& \mt{table} \; x : c \\
+  \mt{sigOf}(\mt{view} \; x : c) &=& \mt{view} \; x : c \\
   \mt{sigOf}(\mt{sequence} \; x) &=& \mt{sequence} \; x \\
   \mt{sigOf}(\mt{cookie} \; x : \tau) &=& \mt{cookie} \; x : \tau \\
+  \mt{sigOf}(\mt{style} \; x) &=& \mt{style} \; x \\
   \mt{sigOf}(\mt{class} \; x :: \kappa = c) &=& \mt{class} \; x :: \kappa = c \\
 \end{eqnarray*}
 \begin{eqnarray*}
@@ -1098,9 +1109,9 @@ The type inference engine tries to take advantage of the algebraic rules governi
 
 \subsection{\label{typeclasses}Constructor Classes}
 
-Ur includes a constructor class facility inspired by Haskell's.  The current version is very rudimentary, only supporting instances for particular constructors built up from abstract constructors and datatypes and type-level application.
+Ur includes a constructor class facility inspired by Haskell's.  The current version is experimental, with very general Prolog-like facilities that can lead to compile-time non-termination.
 
-Constructor classes are integrated with the module system.  A constructor class of kind $\kappa$ is just a constructor of kind $\kappa \to \mt{Type}$.  By marking such a constructor $c$ as a constructor class, the programmer instructs the type inference engine to, in each scope, record all values of types $c \; c'$ as \emph{instances}.  Any function argument whose type is of such a form is treated as implicit, to be determined by examining the current instance database.
+Constructor classes are integrated with the module system.  A constructor class of kind $\kappa$ is just a constructor of kind $\kappa$.  By marking such a constructor $c$ as a constructor class, the programmer instructs the type inference engine to, in each scope, record all values of types $c \; c_1 \; \ldots \; c_n$ as \emph{instances}.  Any function argument whose type is of such a form is treated as implicit, to be determined by examining the current instance database.
 
 The ``dictionary encoding'' often used in Haskell implementations is made explicit in Ur.  Constructor class instances are just properly-typed values, and they can also be considered as ``proofs'' of membership in the class.  In some cases, it is useful to pass these proofs around explicitly.  An underscore written where a proof is expected will also be inferred, if possible, from the current instance database.
 
@@ -1194,6 +1205,8 @@ The fundamental unit of interest in the embedding of SQL is tables, described by
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_table} :: \{\mt{Type}\} \to \mt{Type}
 \end{array}$$
+
+\subsubsection{\label{tables}Tables}
 
 \subsubsection{Queries}
 
