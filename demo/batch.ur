@@ -37,7 +37,7 @@ fun show withDel lss =
         </table></xml>}/></xml>
     end
 
-fun action () =
+fun main () =
     lss <- source Nil;
     batched <- source Nil;
 
@@ -79,7 +79,3 @@ fun action () =
           <button value="Execute" onclick={exec ()}/>
         </body></xml>
     end
-
-fun main () = return <xml><body>
-  <form><submit value="Begin demo" action={action}/></form>
-</body></xml>

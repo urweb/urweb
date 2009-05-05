@@ -41,12 +41,25 @@ fun effectful x = Settings.isEffectful x andalso not (Settings.isClientOnly x)
 
 fun effectize file =
     let
-        fun exp evs e =
+        fun expOnload evs e =
             case e of
                 EFfi f => effectful f
               | EFfiApp (m, x, _) => effectful (m, x)
               | ENamed n => IM.inDomain (evs, n)
               | EServerCall (n, _, _, _) => IM.inDomain (evs, n)
+              | _ => false
+
+        fun couldWriteOnload evs = U.Exp.exists {kind = fn _ => false,
+                                                 con = fn _ => false,
+                                                 exp = expOnload evs}
+
+        fun exp evs e =
+            case e of
+                EFfi f => effectful f
+              | EFfiApp (m, x, _) => effectful (m, x)
+              | ENamed n => IM.inDomain (evs, n)
+              | ERecord xets => List.exists (fn ((CName "Onload", _), e, _) => couldWriteOnload evs e
+                                              | _ => false) xets
               | _ => false
 
         fun couldWrite evs = U.Exp.exists {kind = fn _ => false,
