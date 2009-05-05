@@ -1621,10 +1621,13 @@ There is a function for producing an XML tree with a particular tag at its root.
 $$\begin{array}{l}
   \mt{val} \; \mt{tag} : \mt{attrsGiven} ::: \{\mt{Type}\} \to \mt{attrsAbsent} ::: \{\mt{Type}\} \to \mt{ctxOuter} ::: \{\mt{Unit}\} \to \mt{ctxInner} ::: \{\mt{Unit}\} \\
   \hspace{.1in} \to \mt{useOuter} ::: \{\mt{Type}\} \to \mt{useInner} ::: \{\mt{Type}\} \to \mt{bindOuter} ::: \{\mt{Type}\} \to \mt{bindInner} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \lambda [\mt{attrsGiven} \sim \mt{attrsAbsent}] \; [\mt{useOuter} \sim \mt{useInner}] \; [\mt{bindOuter} \sim \mt{bindInner}] \Rightarrow \$\mt{attrsGiven} \\
+  \hspace{.1in} \to \lambda [\mt{attrsGiven} \sim \mt{attrsAbsent}] \; [\mt{useOuter} \sim \mt{useInner}] \; [\mt{bindOuter} \sim \mt{bindInner}] \\
+  \hspace{.1in} \Rightarrow \mt{option} \; \mt{css\_class} \\
+  \hspace{.1in} \to \$\mt{attrsGiven} \\
   \hspace{.1in} \to \mt{tag} \; (\mt{attrsGiven} \rc \mt{attrsAbsent}) \; \mt{ctxOuter} \; \mt{ctxInner} \; \mt{useOuter} \; \mt{bindOuter} \\
   \hspace{.1in} \to \mt{xml} \; \mt{ctxInner} \; \mt{useInner} \; \mt{bindInner} \to \mt{xml} \; \mt{ctxOuter} \; (\mt{useOuter} \rc \mt{useInner}) \; (\mt{bindOuter} \rc \mt{bindInner})
 \end{array}$$
+Note that any tag may be assigned a CSS class.  This is the sole way of making use of the values produced by $\mt{style}$ declarations.  Ur/Web itself doesn't deal with the syntax or semantics of style sheets; they can be linked via URLs with \texttt{link} tags.  However, Ur/Web does make it easy to calculate upper bounds on usage of CSS classes through program analysis.
 
 Two XML fragments may be concatenated.
 $$\begin{array}{l}
@@ -1666,6 +1669,15 @@ $$\begin{array}{l}
 The current thread can be paused for at least a specified number of milliseconds.
 $$\begin{array}{l}
   \mt{val} \; \mt{sleep} : \mt{int} \to \mt{transaction} \; \mt{unit}
+\end{array}$$
+
+A few functions are available to registers callbacks for particular error events.  Respectively, they are triggered on calls to $\mt{error}$, uncaught JavaScript exceptions, failure of remote procedure calls, the severance of the connection serving asynchronous messages, or the occurrence of some other error with that connection.  If no handlers are registered for a kind of error, then occurrences of that error are ignored silently.
+$$\begin{array}{l}
+  \mt{val} \; \mt{onError} : (\mt{xbody} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+  \mt{val} \; \mt{onFail} : (\mt{string} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+  \mt{val} \; \mt{onConnectFail} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit} \\
+  \mt{val} \; \mt{onDisconnect} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit} \\
+  \mt{val} \; \mt{onServerError} : (\mt{string} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
 \subsubsection{Functional-Reactive Page Generation}
