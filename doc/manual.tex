@@ -1197,11 +1197,35 @@ $$\begin{array}{l}
 
 There are transactions for reading an HTTP header by name and for getting and setting strongly-typed cookies.  Cookies may only be created by the $\mt{cookie}$ declaration form, ensuring that they be named consistently based on module structure.
 $$\begin{array}{l}
-\mt{val} \; \mt{requestHeader} : \mt{string} \to \mt{transaction} \; (\mt{option} \; \mt{string}) \\
-\\
-\mt{con} \; \mt{http\_cookie} :: \mt{Type} \to \mt{Type} \\
-\mt{val} \; \mt{getCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{transaction} \; (\mt{option} \; \mt{t}) \\
-\mt{val} \; \mt{setCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{t} \to \mt{transaction} \; \mt{unit}
+  \mt{val} \; \mt{requestHeader} : \mt{string} \to \mt{transaction} \; (\mt{option} \; \mt{string}) \\
+  \\
+  \mt{con} \; \mt{http\_cookie} :: \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{getCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{transaction} \; (\mt{option} \; \mt{t}) \\
+  \mt{val} \; \mt{setCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{t} \to \mt{transaction} \; \mt{unit}
+\end{array}$$
+
+There are also an abstract $\mt{url}$ type and functions for converting to it, based on the policy defined by \texttt{[allow|deny] url} directives in the project file.
+$$\begin{array}{l}
+  \mt{type} \; \mt{url} \\
+  \mt{val} \; \mt{bless} : \mt{string} \to \mt{url} \\
+  \mt{val} \; \mt{checkUrl} : \mt{string} \to \mt{option} \; \mt{url}
+\end{array}$$
+$\mt{bless}$ raises a runtime error if the string passed to it fails the URL policy.
+
+It's possible for pages to return files of arbitrary MIME types.  A file can be input from the user using this data type, along with the $\mt{upload}$ form tag.
+$$\begin{array}{l}
+  \mt{type} \; \mt{file} \\
+  \mt{val} \; \mt{fileName} : \mt{file} \to \mt{option} \; \mt{string} \\
+  \mt{val} \; \mt{fileMimeType} : \mt{file} \to \mt{string} \\
+  \mt{val} \; \mt{fileData} : \mt{file} \to \mt{blob}
+\end{array}$$
+
+A blob can be extracted from a file and returned as the page result.  There are bless and check functions for MIME types analogous to those for URLs.
+$$\begin{array}{l}
+  \mt{type} \; \mt{mimeType} \\
+  \mt{val} \; \mt{blessMime} : \mt{string} \to \mt{mimeType} \\
+  \mt{val} \; \mt{checkMime} : \mt{string} \to \mt{option} \; \mt{mimeType} \\
+  \mt{val} \; \mt{returnBlob} : \mt{t} ::: \mt{Type} \to \mt{blob} \to \mt{mimeType} \to \mt{transaction} \; \mt{t}
 \end{array}$$
 
 \subsection{SQL}
@@ -1358,7 +1382,7 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{grouped} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \{\mt{From} : \$(\mt{map} \; \mt{sql\_table} \; \mt{tables}), \\
+  \hspace{.1in} \to \{\mt{From} : \mt{sql\_from\_items} \; \mt{tables}, \\
   \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; \mt{tables} \; [] \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{GroupBy} : \mt{sql\_subset} \; \mt{tables} \; \mt{grouped}, \\
   \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; [] \; \mt{bool}, \\
@@ -1399,17 +1423,20 @@ $$\begin{array}{l}
 
 Ur values of appropriate types may be injected into SQL expressions.
 $$\begin{array}{l}
+  \mt{class} \; \mt{sql\_injectable\_prim} \\
+  \mt{val} \; \mt{sql\_bool} : \mt{sql\_injectable\_prim} \; \mt{bool} \\
+  \mt{val} \; \mt{sql\_int} : \mt{sql\_injectable\_prim} \; \mt{int} \\
+  \mt{val} \; \mt{sql\_float} : \mt{sql\_injectable\_prim} \; \mt{float} \\
+  \mt{val} \; \mt{sql\_string} : \mt{sql\_injectable\_prim} \; \mt{string} \\
+  \mt{val} \; \mt{sql\_time} : \mt{sql\_injectable\_prim} \; \mt{time} \\
+  \mt{val} \; \mt{sql\_blob} : \mt{sql\_injectable\_prim} \; \mt{blob} \\
+  \mt{val} \; \mt{sql\_channel} : \mt{t} ::: \mt{Type} \to \mt{sql\_injectable\_prim} \; (\mt{channel} \; \mt{t}) \\
+  \mt{val} \; \mt{sql\_client} : \mt{sql\_injectable\_prim} \; \mt{client} \\
+  \\
   \mt{class} \; \mt{sql\_injectable} \\
-  \mt{val} \; \mt{sql\_bool} : \mt{sql\_injectable} \; \mt{bool} \\
-  \mt{val} \; \mt{sql\_int} : \mt{sql\_injectable} \; \mt{int} \\
-  \mt{val} \; \mt{sql\_float} : \mt{sql\_injectable} \; \mt{float} \\
-  \mt{val} \; \mt{sql\_string} : \mt{sql\_injectable} \; \mt{string} \\
-  \mt{val} \; \mt{sql\_time} : \mt{sql\_injectable} \; \mt{time} \\
-  \mt{val} \; \mt{sql\_option\_bool} : \mt{sql\_injectable} \; (\mt{option} \; \mt{bool}) \\
-  \mt{val} \; \mt{sql\_option\_int} : \mt{sql\_injectable} \; (\mt{option} \; \mt{int}) \\
-  \mt{val} \; \mt{sql\_option\_float} : \mt{sql\_injectable} \; (\mt{option} \; \mt{float}) \\
-  \mt{val} \; \mt{sql\_option\_string} : \mt{sql\_injectable} \; (\mt{option} \; \mt{string}) \\
-  \mt{val} \; \mt{sql\_option\_time} : \mt{sql\_injectable} \; (\mt{option} \; \mt{time}) \\
+  \mt{val} \; \mt{sql\_prim} : \mt{t} ::: \mt{Type} \to \mt{sql\_injectable\_prim} \; \mt{t} \to \mt{sql\_injectable} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_option\_prim} : \mt{t} ::: \mt{Type} \to \mt{sql\_injectable\_prim} \; \mt{t} \to \mt{sql\_injectable} \; (\mt{option} \; \mt{t}) \\
+  \\
   \mt{val} \; \mt{sql\_inject} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \to \mt{sql\_injectable} \; \mt{t} \\
   \hspace{.1in} \to \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
 \end{array}$$
@@ -1455,7 +1482,6 @@ $$\begin{array}{l}
 \end{array}$$
 
 Finally, we have aggregate functions.  The $\mt{COUNT(\ast)}$ syntax is handled specially, since it takes no real argument.  The other aggregate functions are placed into a general type family, using constructor classes to restrict usage to properly-typed arguments.  The key aspect of the $\mt{sql\_aggregate}$ function's type is the shift of aggregate-function-only fields into unrestricted fields.
-
 $$\begin{array}{l}
   \mt{val} \; \mt{sql\_count} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{int}
 \end{array}$$
@@ -1482,6 +1508,36 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_maxable\_time} : \mt{sql\_maxable} \; \mt{time} \\
   \mt{val} \; \mt{sql\_max} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \\
   \mt{val} \; \mt{sql\_min} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t}
+\end{array}$$
+
+\texttt{FROM} clauses are specified using a type family.
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_from\_items} :: \{\{\mt{Type}\}\} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_from\_table} : \mt{t} ::: \mt{Type} \to \mt{fs} ::: \{\mt{Type}\} \to \mt{fieldsOf} \; \mt{t} \; \mt{fs} \to \mt{name} :: \mt{Name} \to \mt{t} \to \mt{sql\_from\_items} \; [\mt{name} = \mt{fs}] \\
+  \mt{val} \; \mt{sql\_from\_comma} : \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{\mt{Type}\}\} \to [\mt{tabs1} \sim \mt{tabs2}] \\
+  \hspace{.1in} \Rightarrow \mt{sql\_from\_items} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{tabs2} \\
+  \hspace{.1in} \to \mt{sql\_from\_items} \; (\mt{tabs1} \rc \mt{tabs2}) \\
+  \mt{val} \; \mt{sql\_inner\_join} : \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{\mt{Type}\}\} \to [\mt{tabs1} \sim \mt{tabs2}] \\
+  \hspace{.1in} \Rightarrow \mt{sql\_from\_items} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{tabs2} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; (\mt{tabs1} \rc \mt{tabs2}) \; [] \; [] \; \mt{bool} \\
+  \hspace{.1in} \to \mt{sql\_from\_items} \; (\mt{tabs1} \rc \mt{tabs2})
+\end{array}$$
+
+Besides these basic cases, outer joins are supported, which requires a type class for turning non-$\mt{option}$ columns into $\mt{option}$ columns.
+$$\begin{array}{l}
+  \mt{class} \; \mt{nullify} :: \mt{Type} \to \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{nullify\_option} : \mt{t} ::: \mt{Type} \to \mt{nullify} \; (\mt{option} \; \mt{t}) \; (\mt{option} \; \mt{t}) \\
+  \mt{val} \; \mt{nullify\_prim} : \mt{t} ::: \mt{Type} \to \mt{sql\_injectable\_prim} \; \mt{t} \to \mt{nullify} \; \mt{t} \; (\mt{option} \; \mt{t})
+\end{array}$$
+
+Left, right, and full outer joins can now be expressed using functions that accept records of $\mt{nullify}$ instances.  Here, we give only the type for a left join as an example.
+
+$$\begin{array}{l}
+ \mt{val} \; \mt{sql\_left\_join} : \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{(\mt{Type} \times \mt{Type})\}\} \to [\mt{tabs1} \sim \mt{tabs2}] \\
+ \hspace{.1in} \Rightarrow \$(\mt{map} \; (\lambda \mt{r} \Rightarrow \$(\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{nullify} \; \mt{p}.1 \; \mt{p}.2) \; \mt{r})) \; \mt{tabs2}) \\
+ \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{tabs1} \to \mt{sql\_from\_items} \; (\mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \\
+ \hspace{.1in} \to \mt{sql\_exp} \; (\mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \; [] \; [] \; \mt{bool} \\
+ \hspace{.1in} \to \mt{sql\_from\_items} \; (\mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.2)) \; \mt{tabs2})
 \end{array}$$
 
 We wrap up the definition of query syntax with the types used in representing $\mt{ORDER} \; \mt{BY}$, $\mt{LIMIT}$, and $\mt{OFFSET}$ clauses.
@@ -1668,6 +1724,8 @@ Clients and channels live only as long as the web browser page views that they a
 Ur/Web features some syntactic shorthands for building values using the functions from the last section.  This section sketches the grammar of those extensions.  We write spans of syntax inside brackets to indicate that they are optional.
 
 \subsection{SQL}
+
+\subsubsection{\label{tables}Table Declarations}
 
 \subsubsection{Queries}
 
