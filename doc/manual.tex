@@ -1138,13 +1138,18 @@ $$\begin{array}{l}
   \mt{type} \; \mt{float} \\
   \mt{type} \; \mt{string} \\
   \mt{type} \; \mt{time} \\
+  \mt{type} \; \mt{blob} \\
   \\
   \mt{type} \; \mt{unit} = \{\} \\
   \\
   \mt{datatype} \; \mt{bool} = \mt{False} \mid \mt{True} \\
   \\
-  \mt{datatype} \; \mt{option} \; \mt{t} = \mt{None} \mid \mt{Some} \; \mt{of} \; \mt{t}
+  \mt{datatype} \; \mt{option} \; \mt{t} = \mt{None} \mid \mt{Some} \; \mt{of} \; \mt{t} \\
+  \\
+  \mt{datatype} \; \mt{list} \; \mt{t} = \mt{Nil} \mid \mt{Cons} \; \mt{of} \; \mt{t} \times \mt{list} \; \mt{t}
 \end{array}$$
+
+The only unusual element of this list is the $\mt{blob}$ type, which stands for binary sequences.
 
 Another important generic Ur element comes at the beginning of \texttt{top.urs}.
 
@@ -1203,10 +1208,109 @@ $$\begin{array}{l}
 
 The fundamental unit of interest in the embedding of SQL is tables, described by a type family and creatable only via the $\mt{table}$ declaration form.
 $$\begin{array}{l}
-  \mt{con} \; \mt{sql\_table} :: \{\mt{Type}\} \to \mt{Type}
+  \mt{con} \; \mt{sql\_table} :: \{\mt{Type}\} \to \{\{\mt{Unit}\}\} \to \mt{Type}
+\end{array}$$
+The first argument to this constructor gives the names and types of a table's columns, and the second argument gives the set of valid keys.  Keys are the only subsets of the columns that may be referenced as foreign keys.  Each key has a name.
+
+We also have the simpler type family of SQL views, which have no keys.
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_view} :: \{\mt{Type}\} \to \mt{Type}
 \end{array}$$
 
-\subsubsection{\label{tables}Tables}
+A multi-parameter type class is used to allow tables and views to be used interchangeably, with a way of extracting the set of columns from each.
+$$\begin{array}{l}
+  \mt{class} \; \mt{fieldsOf} :: \mt{Type} \to \{\mt{Type}\} \to \mt{Type} \\
+  \mt{val} \; \mt{fieldsOf\_table} : \mt{fs} ::: \{\mt{Type}\} \to \mt{keys} ::: \{\{\mt{Unit}\}\} \to \mt{fieldsOf} \; (\mt{sql\_table} \; \mt{fs} \; \mt{keys}) \; \mt{fs} \\
+  \mt{val} \; \mt{fieldsOf\_view} : \mt{fs} ::: \{\mt{Type}\} \to \mt{fieldsOf} \; (\mt{sql\_view} \; \mt{fs}) \; \mt{fs}
+\end{array}$$
+
+\subsubsection{Table Constraints}
+
+Tables may be declared with constraints, such that database modifications that violate the constraints are blocked.  A table may have at most one \texttt{PRIMARY KEY} constraint, which gives the subset of columns that will most often be used to look up individual rows in the table.
+
+$$\begin{array}{l}
+  \mt{con} \; \mt{primary\_key} :: \{\mt{Type}\} \to \{\{\mt{Unit}\}\} \to \mt{Type} \\
+  \mt{val} \; \mt{no\_primary\_key} : \mt{fs} ::: \{\mt{Type}\} \to \mt{primary\_key} \; \mt{fs} \; [] \\
+  \mt{val} \; \mt{primary\_key} : \mt{rest} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \to \mt{key1} :: \mt{Name} \to \mt{keys} :: \{\mt{Type}\} \\
+  \hspace{.1in} \to [[\mt{key1}] \sim \mt{keys}] \Rightarrow [[\mt{key1} = \mt{t}] \rc \mt{keys} \sim \mt{rest}] \\
+  \hspace{.1in} \Rightarrow \$([\mt{key1} = \mt{sql\_injectable\_prim} \; \mt{t}] \rc \mt{map} \; \mt{sql\_injectable\_prim} \; \mt{keys}) \\
+  \hspace{.1in} \to \mt{primary\_key} \; ([\mt{key1} = \mt{t}] \rc \mt{keys} \rc \mt{rest}) \; [\mt{Pkey} = [\mt{key1}] \rc \mt{map} \; (\lambda \_ \Rightarrow ()) \; \mt{keys}]
+\end{array}$$
+The type class $\mt{sql\_injectable\_prim}$ characterizes which types are allowed in SQL and are not $\mt{option}$ types.  In SQL, a \texttt{PRIMARY KEY} constraint enforces after-the-fact that a column may not contain \texttt{NULL}s, but Ur/Web forces that information to be included in table types from the beginning.  Thus, the only effect of this kind of constraint in Ur/Web is to enforce uniqueness of the given key within the table.
+
+A type family stands for sets of named constraints of the remaining varieties.
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_constraints} :: \{\mt{Type}\} \to \{\{\mt{Unit}\}\} \to \mt{Type}
+\end{array}$$
+The first argument gives the column types of the table being constrained, and the second argument maps constraint names to the keys that they define.  Constraints that don't define keys are mapped to ``empty keys.''
+
+There is a type family of individual, unnamed constraints.
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_constraint} :: \{\mt{Type}\} \to \{\mt{Unit}\} \to \mt{Type}
+\end{array}$$
+The first argument is the same as above, and the second argument gives the key columns for just this constraint.
+
+We have operations for assembling constraints into constraint sets.
+$$\begin{array}{l}
+  \mt{val} \; \mt{no\_constraint} : \mt{fs} ::: \{\mt{Type}\} \to \mt{sql\_constraints} \; \mt{fs} \; [] \\
+  \mt{val} \; \mt{one\_constraint} : \mt{fs} ::: \{\mt{Type}\} \to \mt{unique} ::: \{\mt{Unit}\} \to \mt{name} :: \mt{Name} \\
+  \hspace{.1in} \to \mt{sql\_constraint} \; \mt{fs} \; \mt{unique} \to \mt{sql\_constraints} \; \mt{fs} \; [\mt{name} = \mt{unique}] \\
+  \mt{val} \; \mt{join\_constraints} : \mt{fs} ::: \{\mt{Type}\} \to \mt{uniques1} ::: \{\{\mt{Unit}\}\} \to \mt{uniques2} ::: \{\{\mt{Unit}\}\} \to [\mt{uniques1} \sim \mt{uniques2}] \\
+  \hspace{.1in} \Rightarrow \mt{sql\_constraints} \; \mt{fs} \; \mt{uniques1} \to \mt{sql\_constraints} \; \mt{fs} \; \mt{uniques2} \to \mt{sql\_constraints} \; \mt{fs} \; (\mt{uniques1} \rc \mt{uniques2})
+\end{array}$$
+
+A \texttt{UNIQUE} constraint forces a set of columns to be a key, which means that no combination of column values may occur more than once in the table.  The $\mt{unique1}$ and $\mt{unique}$ arguments are separated out only to ensure that empty \texttt{UNIQUE} constraints are rejected.
+$$\begin{array}{l}
+  \mt{val} \; \mt{unique} : \mt{rest} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \to \mt{unique1} :: \mt{Name} \to \mt{unique} :: \{\mt{Type}\} \\
+  \hspace{.1in} \to [[\mt{unique1}] \sim \mt{unique}] \Rightarrow [[\mt{unique1} = \mt{t}] \rc \mt{unique} \sim \mt{rest}] \\
+  \hspace{.1in} \Rightarrow \mt{sql\_constraint} \; ([\mt{unique1} = \mt{t}] \rc \mt{unique} \rc \mt{rest}) \; ([\mt{unique1}] \rc \mt{map} \; (\lambda \_ \Rightarrow ()) \; \mt{unique})
+\end{array}$$
+
+A \texttt{FOREIGN KEY} constraint connects a set of local columns to a local or remote key, enforcing that the local columns always reference an existent row of the foreign key's table.  A local column of type $\mt{t}$ may be linked to a foreign column of type $\mt{option} \; \mt{t}$, and vice versa.  We formalize that notion with a type class.
+$$\begin{array}{l}
+  \mt{class} \; \mt{linkable} :: \mt{Type} \to \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{linkable\_same} : \mt{t} ::: \mt{Type} \to \mt{linkable} \; \mt{t} \; \mt{t} \\
+  \mt{val} \; \mt{linkable\_from\_nullable} : \mt{t} ::: \mt{Type} \to \mt{linkable} \; (\mt{option} \; \mt{t}) \; \mt{t} \\
+  \mt{val} \; \mt{linkable\_to\_nullable} : \mt{t} ::: \mt{Type} \to \mt{linkable} \; \mt{t} \; (\mt{option} \; \mt{t})
+\end{array}$$
+
+The $\mt{matching}$ type family uses $\mt{linkable}$ to define when two keys match up type-wise.
+$$\begin{array}{l}
+  \mt{con} \; \mt{matching} :: \{\mt{Type}\} \to \{\mt{Type}\} \to \mt{Type} \\
+  \mt{val} \; \mt{mat\_nil} : \mt{matching} \; [] \; [] \\
+  \mt{val} \; \mt{mat\_cons} : \mt{t1} ::: \mt{Type} \to \mt{rest1} ::: \{\mt{Type}\} \to \mt{t2} ::: \mt{Type} \to \mt{rest2} ::: \{\mt{Type}\} \to \mt{nm1} :: \mt{Name} \to \mt{nm2} :: \mt{Name} \\
+  \hspace{.1in} \to [[\mt{nm1}] \sim \mt{rest1}] \Rightarrow [[\mt{nm2}] \sim \mt{rest2}] \Rightarrow \mt{linkable} \; \mt{t1} \; \mt{t2} \to \mt{matching} \; \mt{rest1} \; \mt{rest2} \\
+  \hspace{.1in} \to \mt{matching} \; ([\mt{nm1} = \mt{t1}] \rc \mt{rest1}) \; ([\mt{nm2} = \mt{t2}] \rc \mt{rest2})
+\end{array}$$
+
+SQL provides a number of different propagation modes for \texttt{FOREIGN KEY} constraints, governing what happens when a row containing a still-referenced foreign key value is deleted or modified to have a different key value.  The argument of a propagation mode's type gives the local key type.
+$$\begin{array}{l}
+  \mt{con} \; \mt{propagation\_mode} :: \{\mt{Type}\} \to \mt{Type} \\
+  \mt{val} \; \mt{restrict} : \mt{fs} ::: \{\mt{Type}\} \to \mt{propagation\_mode} \; \mt{fs} \\
+  \mt{val} \; \mt{cascade} : \mt{fs} ::: \{\mt{Type}\} \to \mt{propagation\_mode} \; \mt{fs} \\
+  \mt{val} \; \mt{no\_action} : \mt{fs} ::: \{\mt{Type}\} \to \mt{propagation\_mode} \; \mt{fs} \\
+  \mt{val} \; \mt{set\_null} : \mt{fs} ::: \{\mt{Type}\} \to \mt{propagation\_mode} \; (\mt{map} \; \mt{option} \; \mt{fs})
+\end{array}$$
+
+Finally, we put these ingredient together to define the \texttt{FOREIGN KEY} constraint function.
+$$\begin{array}{l}
+  \mt{val} \; \mt{foreign\_key} : \mt{mine1} ::: \mt{Name} \to \mt{t} ::: \mt{Type} \to \mt{mine} ::: \{\mt{Type}\} \to \mt{munused} ::: \{\mt{Type}\} \to \mt{foreign} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \mt{funused} ::: \{\mt{Type}\} \to \mt{nm} ::: \mt{Name} \to \mt{uniques} ::: \{\{\mt{Unit}\}\} \\
+  \hspace{.1in} \to [[\mt{mine1}] \sim \mt{mine}] \Rightarrow [[\mt{mine1} = \mt{t}] \rc \mt{mine} \sim \mt{munused}] \Rightarrow [\mt{foreign} \sim \mt{funused}] \Rightarrow [[\mt{nm}] \sim \mt{uniques}] \\
+  \hspace{.1in} \Rightarrow \mt{matching} \; ([\mt{mine1} = \mt{t}] \rc \mt{mine}) \; \mt{foreign} \\
+  \hspace{.1in} \to \mt{sql\_table} \; (\mt{foreign} \rc \mt{funused}) \; ([\mt{nm} = \mt{map} \; (\lambda \_ \Rightarrow ()) \; \mt{foreign}] \rc \mt{uniques}) \\
+  \hspace{.1in} \to \{\mt{OnDelete} : \mt{propagation\_mode} \; ([\mt{mine1} = \mt{t}] \rc \mt{mine}), \\
+  \hspace{.2in} \mt{OnUpdate} : \mt{propagation\_mode} \; ([\mt{mine1} = \mt{t}] \rc \mt{mine})\} \\
+  \hspace{.1in} \to \mt{sql\_constraint} \; ([\mt{mine1} = \mt{t}] \rc \mt{mine} \rc \mt{munused}) \; []
+\end{array}$$
+
+The last kind of constraint is a \texttt{CHECK} constraint, which attaches a boolean invariant over a row's contents.  It is defined using the $\mt{sql\_exp}$ type family, which we discuss in more detail below.
+$$\begin{array}{l}
+  \mt{val} \; \mt{check} : \mt{fs} ::: \{\mt{Type}\} \to \mt{sql\_exp} \; [] \; [] \; \mt{fs} \; \mt{bool} \to \mt{sql\_constraint} \; \mt{fs} \; []
+\end{array}$$
+
+Section \ref{tables} shows the expanded syntax of the $\mt{table}$ declaration and signature item that includes constraints.  There is no other way to use constraints with SQL in Ur/Web.
+
 
 \subsubsection{Queries}
 
