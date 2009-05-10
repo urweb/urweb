@@ -35,7 +35,7 @@ src/urweb.mlb: src/prefix.mlb src/sources src/suffix.mlb
 	cat src/prefix.mlb src/sources src/suffix.mlb \
 	| sed 's/^\(.*\).grm$$/\1.mlton.grm.sig:\1.mlton.grm.sml/; y/:/\n/' \
 	| sed 's/^\(.*\).lex$$/\1.mlton.lex.sml/' \
-	>src/urweb.mlb
+	>$@
 
 %.mlton.lex: %.lex
 	cp $< $@
@@ -58,10 +58,10 @@ ifdef PROFILE
 	MLTON += -profile $(PROFILE)
 endif
 
-bin/urweb: src/urweb.mlb src/*.sig src/*.sml \
+bin/urweb: src/compiler.mlb src/urweb.mlb src/*.sig src/*.sml \
 		src/urweb.mlton.lex.sml \
 		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
-	$(MLTON) -output $@ src/urweb.mlb
+	$(MLTON) -output $@ src/compiler.mlb
 
 install:
 	mkdir -p $(BIN)
