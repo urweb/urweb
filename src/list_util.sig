@@ -46,4 +46,8 @@ signature LIST_UTIL = sig
 
     val foldliMap : (int * 'data1 * 'state -> 'data2 * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
 
+    val appi : (int * 'a -> unit) -> 'a list -> unit
+
+    val appn : (int -> unit) -> int -> unit
+
 end

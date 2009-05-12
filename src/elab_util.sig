@@ -45,7 +45,7 @@ structure Con : sig
     datatype binder =
              RelK of string
            | RelC of string * Elab.kind
-           | NamedC of string * int * Elab.kind
+           | NamedC of string * int * Elab.kind * Elab.con option
 
     val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
@@ -79,7 +79,7 @@ structure Exp : sig
     datatype binder =
              RelK of string
            | RelC of string * Elab.kind
-           | NamedC of string * int * Elab.kind
+           | NamedC of string * int * Elab.kind * Elab.con option
            | RelE of string * Elab.con
            | NamedE of string * Elab.con
 
@@ -112,9 +112,9 @@ structure Sgn : sig
     datatype binder =
              RelK of string
            | RelC of string * Elab.kind
-           | NamedC of string * int * Elab.kind
-           | Str of string * Elab.sgn
-           | Sgn of string * Elab.sgn
+           | NamedC of string * int * Elab.kind * Elab.con option
+           | Str of string * int * Elab.sgn
+           | Sgn of string * int * Elab.sgn
 
     val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
@@ -136,13 +136,20 @@ structure Sgn : sig
                sgn : Elab.sgn' -> Elab.sgn'}
               -> Elab.sgn -> Elab.sgn
 
+    val mapB : {kind : 'context -> Elab.kind' -> Elab.kind',
+                con : 'context -> Elab.con' -> Elab.con',
+                sgn_item : 'context -> Elab.sgn_item' -> Elab.sgn_item',
+                sgn : 'context -> Elab.sgn' -> Elab.sgn',
+                bind : 'context * binder -> 'context}
+               -> 'context -> Elab.sgn -> Elab.sgn
+                              
 end
 
 structure Decl : sig
     datatype binder =
              RelK of string
            | RelC of string * Elab.kind
-           | NamedC of string * int * Elab.kind
+           | NamedC of string * int * Elab.kind * Elab.con option
            | RelE of string * Elab.con
            | NamedE of string * Elab.con
            | Str of string * Elab.sgn

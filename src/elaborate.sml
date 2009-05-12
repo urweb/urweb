@@ -1171,7 +1171,7 @@
                | (L'.TDisjoint (r1, r2, t'), loc) =>
                  if infer <> L.TypesOnly then
                      let
-                         val gs = D.prove env denv (r1, r2, loc)
+                         val gs = D.prove env denv (r1, r2, #2 e)
                          val (e, t, gs') = unravel (t', e)
                      in
                          (e, t, enD gs @ gs')

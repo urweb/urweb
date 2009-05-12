@@ -242,32 +242,30 @@ val specDecl = U.Decl.foldMap {kind = kind, con = con, exp = exp, decl = decl}
 
 fun specialize file =
     let
-        fun doDecl (all as (d, _), st : state) =
+        fun doDecl (d, st) =
             let
                 (*val () = Print.preface ("decl:", CorePrint.p_decl CoreEnv.empty all)*)
+                val (d, st) = specDecl st d
             in
-                case d of
+                case #1 d of
                     DDatatype (x, n, xs, xnts) =>
-                    ([all], {count = #count st,
-                             datatypes = IM.insert (#datatypes st, n,
-                                                    {name = x,
-                                                     params = length xs,
-                                                     constructors = xnts,
-                                                     specializations = CM.empty}),
-                             constructors = foldl (fn ((_, n', _), constructors) =>
-                                                      IM.insert (constructors, n', n))
-                                                  (#constructors st) xnts,
-                             decls = []})
+                    (rev (d :: #decls st),
+                     {count = #count st,
+                      datatypes = IM.insert (#datatypes st, n,
+                                             {name = x,
+                                              params = length xs,
+                                              constructors = xnts,
+                                              specializations = CM.empty}),
+                      constructors = foldl (fn ((_, n', _), constructors) =>
+                                               IM.insert (constructors, n', n))
+                                           (#constructors st) xnts,
+                      decls = []})
                   | _ =>
-                    let
-                        val (d, st) = specDecl st all
-                    in
-                        (rev (d :: #decls st),
-                         {count = #count st,
-                          datatypes = #datatypes st,
-                          constructors = #constructors st,
-                          decls = []})
-                    end
+                    (rev (d :: #decls st),
+                     {count = #count st,
+                      datatypes = #datatypes st,
+                      constructors = #constructors st,
+                      decls = []})
             end
 
         val (ds, _) = ListUtil.foldlMapConcat doDecl

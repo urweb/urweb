@@ -380,7 +380,7 @@ fun parseUrp' filename =
                     rewrites = #rewrites old @ #rewrites new,
                     filterUrl = #filterUrl old @ #filterUrl new,
                     filterMime = #filterMime old @ #filterMime new,
-                    sources = #sources old @ #sources new
+                    sources = #sources new @ #sources old
                 }
             in
                 foldr (fn (fname, job) => merge (job, parseUrp' fname)) job (!libs)

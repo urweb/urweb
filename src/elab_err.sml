@@ -47,7 +47,7 @@ val simplCon = U.Con.mapB {kind = fn _ => fn k => k,
                                                   #1 c'
                                               end,
                            bind = fn (env, U.Con.RelC (x, k)) => E.pushCRel env x k
-                                   | (env, U.Con.NamedC (x, n, k)) => E.pushCNamedAs env x n k NONE
+                                   | (env, U.Con.NamedC (x, n, k, co)) => E.pushCNamedAs env x n k co
                                    | (env, _) => env}
 
 val p_kind = P.p_kind

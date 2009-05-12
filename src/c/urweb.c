@@ -2289,6 +2289,8 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
         return NULL;
     }
   }
+
+  return NULL;
 }
 
 uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v) {

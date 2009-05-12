@@ -146,6 +146,16 @@ fun mapi f =
         m 0 []
     end
 
+fun appi f =
+    let
+        fun m i ls =
+            case ls of
+                [] => ()
+              | h :: t => (f (i, h); m (i + 1) t)
+    in
+        m 0
+    end
+
 fun foldli f =
     let
         fun m i acc ls =
@@ -176,6 +186,18 @@ fun foldliMap f s =
                 end
     in
         fm (0, [], s)
+    end
+
+fun appn f n =
+    let
+        fun iter m =
+            if m >= n then
+                ()
+            else
+                (f m;
+                 iter (m + 1))
+    in
+        iter 0
     end
 
 end
