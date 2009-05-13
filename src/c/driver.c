@@ -150,6 +150,8 @@ static void *worker(void *data) {
   uw_context ctx = new_context();
   size_t buf_size = 2;
   char *buf = malloc(buf_size);
+  size_t path_copy_size = 0;
+  char *path_copy = malloc(path_copy_size);
 
   while (1) {
     char *back = buf, *s, *post;
@@ -197,7 +199,7 @@ static void *worker(void *data) {
         int is_post = 0, do_normal_send = 1;
         char *boundary = NULL;
         size_t boundary_len;
-        char *cmd, *path, *headers, path_copy[uw_bufsize+1], *inputs, *after_headers;
+        char *cmd, *path, *headers, *inputs, *after_headers;
 
         //printf("All: %s\n", buf);
 
@@ -435,8 +437,14 @@ static void *worker(void *data) {
         printf("Serving URI %s....\n", path);
 
         while (1) {
+          size_t path_len = strlen(path);
+
           uw_write_header(ctx, "HTTP/1.1 200 OK\r\n");
 
+          if (path_len + 1 > path_copy_size) {
+            path_copy_size = path_len + 1;
+            path_copy = realloc(path_copy, path_copy_size);
+          }
           strcpy(path_copy, path);
           fk = uw_begin(ctx, path_copy);
           if (fk == SUCCESS || fk == RETURN_BLOB) {
