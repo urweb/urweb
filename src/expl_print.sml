@@ -219,9 +219,19 @@ fun p_pat' par env (p, _) =
       | PVar (s, _) => string s
       | PPrim p => Prim.p_t p
       | PCon (_, pc, _, NONE) => p_patCon env pc
-      | PCon (_, pc, _, SOME p) => parenIf par (box [p_patCon env pc,
-                                                     space,
-                                                     p_pat' true env p])
+      | PCon (_, pc, cs, SOME p) =>
+        if !debug then
+            parenIf par (box [p_patCon env pc,
+                              string "[",
+                              p_list (p_con env) cs,
+                              string "]",
+                              space,
+                              p_pat' true env p])
+        else
+            parenIf par (box [p_patCon env pc,
+                              space,
+                              p_pat' true env p])
+
       | PRecord xps =>
         box [string "{",
              p_list_sep (box [string ",", space]) (fn (x, p, _) =>

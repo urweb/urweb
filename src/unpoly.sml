@@ -138,14 +138,7 @@ fun exp (e, st : state) =
                                                 in
                                                     trim (t, e, cargs)
                                                 end
-                                              | (_, _, []) =>
-                                                (*let
-                                                    val e = foldl (fn ((_, n, n_old, _, _, _), e) =>
-                                                                      unpolyNamed (n_old, ENamed n) e)
-                                                                  e vis
-                                                in*)
-                                                    SOME (t, e)
-                                                (*end*)
+                                              | (_, _, []) => SOME (t, e)
                                               | _ => NONE
                                     in
                                         (*Print.prefaces "specialize"

@@ -198,12 +198,18 @@ fun p_con_named env n =
 fun p_patCon env pc =
     case pc of
         PConVar n => p_con_named env n
-      | PConFfi {mod = m, con, arg, ...} =>
+      | PConFfi {mod = m, con, arg, params, ...} =>
         if !debug then
             box [string "FFIC[",
                  case arg of
                      NONE => box []
-                   | SOME t => p_con env t,
+                   | SOME t =>
+                     let
+                         val k = (KType, ErrorMsg.dummySpan)
+                         val env' = foldl (fn (x, env) => E.pushCRel env x k) env params
+                     in
+                         p_con env' t
+                     end,
                  string "](",
                  string m,
                  string ".",

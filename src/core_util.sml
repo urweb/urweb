@@ -772,7 +772,13 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
               | PConFfi {mod = m, datatyp, params, con, arg, kind} =>
                 S.map2 ((case arg of
                              NONE => S.return2 NONE
-                           | SOME c => S.map2 (mfc ctx c, SOME)),
+                           | SOME c =>
+                             let
+                                 val k = (KType, ErrorMsg.dummySpan)
+                                 val ctx' = foldl (fn (x, ctx) => bind (ctx, RelC (x, k))) ctx params
+                             in
+                                 S.map2 (mfc ctx' c, SOME)
+                             end),
                         fn arg' =>
                            PConFfi {mod = m, datatyp = datatyp, params = params,
                                     con = con, arg = arg', kind = kind})

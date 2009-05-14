@@ -29,3 +29,13 @@ fun mp (a ::: Type) (b ::: Type) f =
     in
         mp' []
     end
+
+fun mapX (a ::: Type) (ctx ::: {Unit}) f =
+    let
+        fun mapX' ls =
+            case ls of
+                [] => <xml/>
+              | x :: ls => <xml>{f x}{mapX' ls}</xml>
+    in
+        mapX'
+    end

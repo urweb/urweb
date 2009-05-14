@@ -4,5 +4,6 @@ val y = List.mp (plus 2) x
 fun main () : transaction page = return <xml><body>
   {[x]}<br/>
   {[y]}<br/>
-  {[Aux.hello]}
+  {[Aux.hello]}<br/>
+  {List.mapX (fn n => <xml>{[n]}!</xml>) x}
 </body></xml>
