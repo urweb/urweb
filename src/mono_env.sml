@@ -70,11 +70,25 @@ fun lookupConstructor (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
+structure U = MonoUtil
+
+val liftExpInExp =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn bound => fn e =>
+                                     case e of
+                                         ERel xn =>
+                                         if xn < bound then
+                                             e
+                                         else
+                                             ERel (xn + 1)
+                                       | _ => e,
+                bind = fn (bound, U.Exp.RelE _) => bound + 1
+                        | (bound, _) => bound}
+
 fun pushERel (env : env) x t eo =
     {datatypes = #datatypes env,
      constructors = #constructors env,
-
-     relE = (x, t, eo) :: #relE env,
+     relE = (x, t, eo) :: map (fn (x, t, eo) => (x, t, Option.map (liftExpInExp 0) eo)) (#relE env),
      namedE = #namedE env}
 
 fun lookupERel (env : env) n =

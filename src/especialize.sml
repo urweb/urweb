@@ -112,6 +112,13 @@ type state = {
 
 fun default (_, x, st) = (x, st)
 
+structure SS = BinarySetFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
+val mayNotSpec = ref SS.empty
+
 fun specialize' file =
     let
         fun bind (env, b) =
@@ -179,13 +186,14 @@ fun specialize' file =
                                     (ERel _, _) :: _ => true
                                   | _ => false
                         in
+                            (*Print.preface ("fxs'", Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs');*)
                             if firstRel ()
                                orelse List.all (fn (ERel _, _) => true
                                                  | _ => false) fxs' then
                                 (e, st)
                             else
-                                case KM.find (args, fxs') of
-                                    SOME f' =>
+                                case (KM.find (args, fxs'), SS.member (!mayNotSpec, name)) of
+                                    (SOME f', _) =>
                                     let
                                         val e = (ENamed f', loc)
                                         val e = IS.foldr (fn (arg, e) => (EApp (e, (ERel arg, loc)), loc))
@@ -197,8 +205,14 @@ fun specialize' file =
                                                        [("e'", CorePrint.p_exp CoreEnv.empty e)];*)
                                         (#1 e, st)
                                     end
-                                  | NONE =>
+                                  | (_, true) => (e, st)
+                                  | (NONE, false) =>
                                     let
+                                        (*val () = Print.prefaces "New one"
+                                                 [("f", Print.PD.string (Int.toString f)),
+                                                  ("mns", Print.p_list Print.PD.string
+                                                                       (SS.listItems (!mayNotSpec)))]*)
+
                                         fun subBody (body, typ, fxs') =
                                             case (#1 body, #1 typ, fxs') of
                                                 (_, _, []) => SOME (body, typ)
@@ -245,7 +259,11 @@ fun specialize' file =
                                                                                       (TFun (xt, typ'), loc))
                                                                                  end)
                                                                              (body', typ') fvs
+                                                val mns = !mayNotSpec
+                                                val () = mayNotSpec := SS.add (mns, name)
+                                                (*val () = Print.preface ("body'", CorePrint.p_exp CoreEnv.empty body')*)
                                                 val (body', st) = specExp env st body'
+                                                val () = mayNotSpec := mns
 
                                                 val e' = (ENamed f', loc)
                                                 val e' = IS.foldr (fn (arg, e) => (EApp (e, (ERel arg, loc)), loc))
@@ -297,7 +315,13 @@ fun specialize' file =
                     if isPoly d then
                         (d, st)
                     else
-                        specDecl [] st d
+                        (mayNotSpec := (case #1 d of
+                                            DValRec vis => foldl (fn ((x, _, _, _, _), mns) =>
+                                                                     SS.add (mns, x)) SS.empty vis
+                                          | DVal (x, _, _, _, _) => SS.singleton x
+                                          | _ => SS.empty);
+                         specDecl [] st d
+                         before mayNotSpec := SS.empty)
 
                 (*val () = print "/decl\n"*)
 
@@ -324,9 +348,7 @@ fun specialize' file =
                                    (DValRec vis', _) => [(DValRec (vis @ vis'), ErrorMsg.dummySpan)]
                                  | _ => [(DValRec vis, ErrorMsg.dummySpan), d'])
             in
-                (*Print.prefaces "doDecl" [("d", CorePrint.p_decl E.empty d),
-                                         ("t", Print.PD.string (Real.toString (Time.toReal
-                                                                                   (Time.- (Time.now (), befor)))))];*)
+                (*Print.prefaces "doDecl" [("d", CorePrint.p_decl E.empty d)];*)
                 (ds, ({maxName = #maxName st,
                        funcs = funcs,
                        decls = []}, changed))

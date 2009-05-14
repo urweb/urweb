@@ -409,7 +409,15 @@ fun reduce file =
                                     case match (env, p, e') of
                                         No => search pes
                                       | Maybe => push ()
-                                      | Yes env => #1 (reduceExp env body)
+                                      | Yes env' =>
+                                        let
+                                            val r = reduceExp env' body
+                                        in
+                                            (*Print.prefaces "ECase"
+                                                           [("body", MonoPrint.p_exp env' body),
+                                                            ("r", MonoPrint.p_exp env r)];*)
+                                            #1 r
+                                        end
                         in
                             search pes
                         end
@@ -443,7 +451,14 @@ fun reduce file =
                       | ELet (x, t, e', b) =>
                         let
                             fun doSub () =
-                                #1 (reduceExp env (subExpInExp (0, e') b))
+                                let
+                                    val r = subExpInExp (0, e') b
+                                in
+                                    (*Print.prefaces "doSub" [("e'", MonoPrint.p_exp env e'),
+                                                            ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                                            ("r", MonoPrint.p_exp env r)];*)
+                                    #1 (reduceExp env r)
+                                end
 
                             fun trySub () =
                                 case t of

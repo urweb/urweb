@@ -39,3 +39,13 @@ fun mapX (a ::: Type) (ctx ::: {Unit}) f =
     in
         mapX'
     end
+
+fun mapM (m ::: (Type -> Type)) (_ : monad m) (a ::: Type) (b ::: Type) f =
+    let
+        fun mapM' acc ls =
+            case ls of
+                [] => acc
+              | x :: ls => mapM' (x' <- f x; ls' <- acc; return (x' :: ls')) ls
+    in
+        mapM' (return [])
+    end

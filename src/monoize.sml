@@ -2498,6 +2498,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                         val assgns = List.mapPartial
                                      (fn ("Source", _, _) => NONE
+                                       | ("Onchange", e, _) =>
+                                         SOME (strcat [str "addOnChange(d,",
+                                                       (L'.EJavaScript (L'.Script, e, NONE), loc),
+                                                       str ")"])
                                        | (x, e, _) =>
                                          SOME (strcat [str ("d." ^ lowercaseFirst x ^ "="),
                                                        (L'.EJavaScript (L'.Script, e, NONE), loc),

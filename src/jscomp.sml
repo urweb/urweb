@@ -36,11 +36,17 @@ structure U = MonoUtil
 structure IS = IntBinarySet
 structure IM = IntBinaryMap
 
+structure TM = BinaryMapFn(struct
+                           type ord_key = typ
+                           val compare = U.Typ.compare
+                           end)
+
 type state = {
      decls : decl list,
      script : string list,
      included : IS.set,
      injectors : int IM.map,
+     listInjectors : int TM.map,
      decoders : int IM.map,
      maxName : int
 }
@@ -231,6 +237,52 @@ fun process file =
                      st)
                 end
 
+              | TList t' =>
+                (case TM.find (#listInjectors st, t') of
+                     SOME n' => ((EApp ((ENamed n', loc), e), loc), st)
+                   | NONE =>
+                     let
+                         val rt = (TRecord [("1", t'), ("2", t)], loc)
+
+                         val n' = #maxName st
+                         val st = {decls = #decls st,
+                                   script = #script st,
+                                   included = #included st,
+                                   injectors = #injectors st,
+                                   listInjectors = TM.insert (#listInjectors st, t', n'),
+                                   decoders = #decoders st,
+                                   maxName = n' + 1}
+
+                         val s = (TFfi ("Basis", "string"), loc)
+                         val (e', st) = quoteExp loc t ((EField ((ERel 0, loc), "1"), loc), st)
+
+                         val body = (ECase ((ERel 0, loc),
+                                            [((PNone rt, loc),
+                                              str loc "null"),
+                                             ((PSome (rt, (PVar ("x", rt), loc)), loc),
+                                              strcat loc [str loc "{v:{_1:",
+                                                          e',
+                                                          str loc ",_2:",
+                                                          (EApp ((ENamed n', loc),
+                                                                 (EField ((ERel 0, loc), "2"), loc)), loc),
+                                                          str loc "}}"])],
+                                            {disc = t, result = s}), loc)
+                         val body = (EAbs ("x", t, s, body), loc)
+                                    
+                         val st = {decls = (DValRec [("jsify", n', (TFun (t, s), loc),
+                                                      body, "jsify")], loc) :: #decls st,
+                                   script = #script st,
+                                   included = #included st,
+                                   injectors = #injectors st,
+                                   listInjectors = #listInjectors st,
+                                   decoders= #decoders st,
+                                   maxName = #maxName st}
+
+
+                     in
+                         ((EApp ((ENamed n', loc), e), loc), st)
+                     end)
+
               | TDatatype (n, ref (dk, cs)) =>
                 (case IM.find (#injectors st, n) of
                      SOME n' => ((EApp ((ENamed n', loc), e), loc), st)
@@ -241,6 +293,7 @@ fun process file =
                                    script = #script st,
                                    included = #included st,
                                    injectors = IM.insert (#injectors st, n, n'),
+                                   listInjectors = #listInjectors st,
                                    decoders = #decoders st,
                                    maxName = n' + 1}
 
@@ -282,6 +335,7 @@ fun process file =
                                    script = #script st,
                                    included = #included st,
                                    injectors = #injectors st,
+                                   listInjectors = #listInjectors st,
                                    decoders= #decoders st,
                                    maxName = #maxName st}
                      in
@@ -350,6 +404,7 @@ fun process file =
                                    script = #script st,
                                    included = #included st,
                                    injectors = #injectors st,
+                                   listInjectors = #listInjectors st,
                                    decoders = IM.insert (#decoders st, n, n'),
                                    maxName = n' + 1}
 
@@ -384,6 +439,7 @@ fun process file =
                                    script = body :: #script st,
                                    included = #included st,
                                    injectors = #injectors st,
+                                   listInjectors = #listInjectors st,
                                    decoders = #decoders st,
                                    maxName = #maxName st}
                      in
@@ -402,7 +458,7 @@ fun process file =
 
         val foundJavaScript = ref false
 
-        fun jsExp mode skip outer =
+        fun jsExp mode outer =
             let
                 val len = length outer
 
@@ -575,7 +631,7 @@ fun process file =
                                 let
                                     val n = n - inner
                                 in
-                                    quoteExp (List.nth (outer, n)) ((ERel (n - skip), loc), st)
+                                    quoteExp (List.nth (outer, n)) ((ERel n, loc), st)
                                 end
 
                           | ENamed n =>
@@ -592,10 +648,11 @@ fun process file =
                                                           script = #script st,
                                                           included = IS.add (#included st, n),
                                                           injectors = #injectors st,
+                                                          listInjectors = #listInjectors st,
                                                           decoders = #decoders st,
                                                           maxName = #maxName st}
 
-                                                val (e, st) = jsExp mode skip [] 0 (e, st)
+                                                val (e, st) = jsExp mode [] 0 (e, st)
                                                 val e = deStrcat 0 e
                                                 
                                                 val sc = "_n" ^ Int.toString n ^ "=" ^ e ^ ";\n"
@@ -604,6 +661,7 @@ fun process file =
                                                  script = sc :: #script st,
                                                  included = #included st,
                                                  injectors = #injectors st,
+                                                 listInjectors = #listInjectors st,
                                                  decoders= #decoders st,
                                                  maxName = #maxName st}
                                             end
@@ -988,7 +1046,7 @@ fun process file =
             U.Decl.foldMapB {typ = fn x => x,
                              exp = fn (env, e, st) =>
                                       let
-                                          fun doCode m skip env orig e =
+                                          fun doCode m env orig e =
                                               let
                                                   val len = length env
                                                   fun str s = (EPrim (Prim.String s), #2 e)
@@ -996,7 +1054,7 @@ fun process file =
                                                   val locals = List.tabulate
                                                                    (varDepth e,
                                                                  fn i => str ("var _" ^ Int.toString (len + i) ^ ";"))
-                                                  val (e, st) = jsExp m skip env 0 (e, st)
+                                                  val (e, st) = jsExp m env 0 (e, st)
                                               in
                                                   (EJavaScript (m, orig, SOME (strcat (#2 e) (locals @ [e]))), st)
                                               end
@@ -1004,7 +1062,7 @@ fun process file =
                                           case e of
                                               EJavaScript (m, orig, NONE) =>
                                               (foundJavaScript := true;
-                                               doCode m 0 env orig orig)
+                                               doCode m env orig orig)
                                             | _ => (e, st)
                                       end,
                              decl = fn (_, e, st) => (e, st),
@@ -1021,6 +1079,7 @@ fun process file =
                   script = #script st,
                   included = #included st,
                   injectors = #injectors st,
+                  listInjectors = #listInjectors st,
                   decoders = #decoders st,
                   maxName = #maxName st})
             end
@@ -1030,6 +1089,7 @@ fun process file =
                         script = [],
                         included = IS.empty,
                         injectors = IM.empty,
+                        listInjectors = TM.empty,
                         decoders = IM.empty,
                         maxName = U.File.maxName file + 1}
                        file
