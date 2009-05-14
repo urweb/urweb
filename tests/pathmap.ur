@@ -3,5 +3,6 @@ val y = List.mp (plus 2) x
 
 fun main () : transaction page = return <xml><body>
   {[x]}<br/>
-  {[y]}
+  {[y]}<br/>
+  {[Aux.hello]}
 </body></xml>

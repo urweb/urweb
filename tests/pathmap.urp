@@ -1,3 +1,5 @@
+path extra=aux
 
 $/list
+$extra/aux
 pathmap
