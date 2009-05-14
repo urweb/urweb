@@ -632,7 +632,8 @@ val ctextbox : cformTag [Value = string, Size = int, Source = source string] []
 val button : cformTag [Value = string, Onclick = transaction unit] []
 
 con cselect = [Cselect]
-val cselect : cformTag [Source = source string] cselect
+val cselect : cformTag [Source = source string,
+                        Onchange = transaction unit] cselect
 val coption : unit -> tag [Value = string, Selected = bool] cselect [] [] []
 
 (*** Tables *)

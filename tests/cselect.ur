@@ -1,7 +1,7 @@
 fun main () =
     s <- source "";
     return <xml><body>
-      <cselect source={s}>
+      <cselect source={s} onchange={v <- get s; alert ("Now it's " ^ v)}>
         <coption>Wilbur</coption>
         <coption>Walbur</coption>
       </cselect>

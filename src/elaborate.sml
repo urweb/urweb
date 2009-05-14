@@ -3831,6 +3831,8 @@ fun elabFile basis topStr topSgn env file =
         else
             app (fn f => f ()) (!checks);
 
+        (*preface ("file", p_file env' file);*)
+
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
         :: ds
         @ (L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan)

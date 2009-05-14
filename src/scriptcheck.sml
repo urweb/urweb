@@ -43,9 +43,31 @@ val pullBasis = SS.addList (SS.empty,
 val pushBasis = SS.addList (SS.empty,
                             ["new_channel",
                              "self"])
+
+val events = ["abort",
+              "blur",
+              "change",
+              "click",
+              "dblclick",
+              "error",
+              "focus",
+              "keydown",
+              "keypress",
+              "keyup",
+              "load",
+              "mousedown",
+              "mousemove",
+              "mouseout",
+              "mouseover",
+              "mouseup",
+              "reset",
+              "resize",
+              "select",
+              "submit",
+              "unload"]
                 
-val scriptWords = ["<script",
-                   " onclick='"]
+val scriptWords = "<script"
+                   :: map (fn s => "on" ^ s ^ " ='") events
 
 val pushWords = ["rv("]
 
