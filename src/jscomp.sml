@@ -400,6 +400,8 @@ fun process file =
             else
                 s
 
+        val foundJavaScript = ref false
+
         fun jsExp mode skip outer =
             let
                 val len = length outer
@@ -662,8 +664,10 @@ fun process file =
                             let
                                 val args =
                                     case (m, x, args) of
-                                        ("Basis", "new_client_source", [(EJavaScript (_, e, _), _)]) => [e]
-                                      | ("Basis", "set_client_source", [e1, (EJavaScript (_, e2, _), _)]) => [e1, e2]
+                                        ("Basis", "new_client_source", [(EJavaScript (_, e, _), _)]) =>
+                                        (foundJavaScript := true; [e])
+                                      | ("Basis", "set_client_source", [e1, (EJavaScript (_, e2, _), _)]) =>
+                                        (foundJavaScript := true; [e1, e2])
                                       | _ => args
 
                                 val name = case Settings.jsFunc (m, x) of
@@ -871,12 +875,15 @@ fun process file =
                                          str ")"], st)
                             end
 
-                          | EJavaScript (Source _, _, SOME _) => (e, st)
+                          | EJavaScript (Source _, _, SOME _) =>
+                            (foundJavaScript := true;
+                             (e, st))
                           | EJavaScript (_, _, SOME e) =>
-                            (strcat [str "cs(function(){return ",
-                                     e,
-                                     str "})"],
-                             st)
+                            (foundJavaScript := true;
+                             (strcat [str "cs(function(){return ",
+                                      e,
+                                      str "})"],
+                              st))
 
                           | EClosure _ => unsupported "EClosure"
                           | EQuery _ => unsupported "Query"
@@ -888,6 +895,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
+                                foundJavaScript := true;
                                 (strcat [str "cs(function(){return ",
                                          e,
                                          str "})"],
@@ -995,7 +1003,8 @@ fun process file =
                                       in
                                           case e of
                                               EJavaScript (m, orig, NONE) =>
-                                              doCode m 0 env orig orig
+                                              (foundJavaScript := true;
+                                               doCode m 0 env orig orig)
                                             | _ => (e, st)
                                       end,
                              decl = fn (_, e, st) => (e, st),
@@ -1031,9 +1040,15 @@ fun process file =
                 NONE => String.concat (rev acc)
               | SOME line => lines (line :: acc)
         val lines = lines []
+
+        val script =
+            if !foundJavaScript then
+                lines ^ String.concat (rev (#script st))
+            else
+                ""
     in
         TextIO.closeIn inf;
-        (DJavaScript (lines ^ String.concat (rev (#script st))), ErrorMsg.dummySpan) :: ds
+        (DJavaScript script, ErrorMsg.dummySpan) :: ds
     end
 
 end

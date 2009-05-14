@@ -933,12 +933,12 @@ eexp   : eapps                          (eapps)
 
        | eexp CARET eexp                (native_op ("strcat", eexp1, eexp2, s (eexp1left, eexp2right)))
 
-       | eterm DCOLON eexp              (let
-                                             val loc = s (etermleft, eexpright)
+       | eapps DCOLON eexp              (let
+                                             val loc = s (eappsleft, eexpright)
                                          in
                                              (EApp ((EVar (["Basis"], "Cons", Infer), loc),
                                                     (ERecord [((CName "1", loc),
-                                                               eterm),
+                                                               eapps),
                                                               ((CName "2", loc),
                                                                eexp)], loc)), loc)
                                          end)

@@ -1,0 +1,31 @@
+datatype t = datatype Basis.list
+
+val show (a ::: Type) (_ : show a) =
+    let
+        fun show' (ls : list a) =
+            case ls of
+                [] => "[]"
+              | x :: ls => show x ^ " :: " ^ show' ls
+    in
+        mkShow show'
+    end
+
+val rev (a ::: Type) =
+    let
+        fun rev' acc (ls : list a) =
+            case ls of
+                [] => acc
+              | x :: ls => rev' (x :: acc) ls
+    in
+        rev' []
+    end
+
+fun mp (a ::: Type) (b ::: Type) f =
+    let
+        fun mp' acc ls =
+            case ls of
+                [] => rev acc
+              | x :: ls => mp' (f x :: acc) ls
+    in
+        mp' []
+    end

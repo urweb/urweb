@@ -77,7 +77,6 @@ signature COMPILER = sig
     val termination : (Elab.file, Elab.file) phase
     val explify : (Elab.file, Expl.file) phase
     val corify : (Expl.file, Core.file) phase
-    val especialize : (Core.file, Core.file) phase
     val core_untangle : (Core.file, Core.file) phase
     val shake : (Core.file, Core.file) phase
     val rpcify : (Core.file, Core.file) phase
@@ -107,7 +106,6 @@ signature COMPILER = sig
     val toTermination : (string, Elab.file) transform
     val toExplify : (string, Expl.file) transform
     val toCorify : (string, Core.file) transform
-    val toEspecialize : (string, Core.file) transform 
     val toCore_untangle : (string, Core.file) transform
     val toShake1 : (string, Core.file) transform
     val toRpcify : (string, Core.file) transform
@@ -118,6 +116,8 @@ signature COMPILER = sig
     val toUnpoly : (string, Core.file) transform 
     val toSpecialize : (string, Core.file) transform 
     val toShake3 : (string, Core.file) transform
+    val toEspecialize : (string, Core.file) transform 
+    val toShake4 : (string, Core.file) transform
     val toMarshalcheck : (string, Core.file) transform
     val toEffectize : (string, Core.file) transform
     val toMonoize : (string, Mono.file) transform

@@ -148,6 +148,13 @@ fun specialize' file =
                             val functionInside = U.Con.exists {kind = fn _ => false,
                                                                con = fn TFun _ => true
                                                                       | CFfi ("Basis", "transaction") => true
+                                                                      | CFfi ("Basis", "eq") => true
+                                                                      | CFfi ("Basis", "num") => true
+                                                                      | CFfi ("Basis", "ord") => true
+                                                                      | CFfi ("Basis", "show") => true
+                                                                      | CFfi ("Basis", "read") => true
+                                                                      | CFfi ("Basis", "sql_injectable_prim") => true
+                                                                      | CFfi ("Basis", "sql_injectable") => true
                                                                       | _ => false}
                             val loc = ErrorMsg.dummySpan
 
