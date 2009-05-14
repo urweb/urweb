@@ -536,7 +536,8 @@ fun reduce file =
 
         and reduceExp env = U.Exp.mapB {typ = typ, exp = exp, bind = bind} env
 
-        fun decl env d = d
+        fun decl env d = ((*Print.preface ("d", MonoPrint.p_decl env (d, ErrorMsg.dummySpan));*)
+                          d)
     in
         U.File.mapB {typ = typ, exp = exp, decl = decl, bind = bind} E.empty file
     end

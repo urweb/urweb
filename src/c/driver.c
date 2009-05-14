@@ -403,9 +403,14 @@ static void *worker(void *data) {
             if (filename) {
               uw_Basis_file f = {filename, type, {part_len, after_sub_headers}};
 
-              uw_set_file_input(ctx, name, f);
-            } else
-              uw_set_input(ctx, name, after_sub_headers);
+              if (uw_set_file_input(ctx, name, f)) {
+                puts(uw_error_message(ctx));
+                goto done;
+              }
+            } else if (uw_set_input(ctx, name, after_sub_headers)) {
+              puts(uw_error_message(ctx));
+              goto done;
+            }
           }
         }
         else {
@@ -426,10 +431,15 @@ static void *worker(void *data) {
 
               if (value = strchr(name, '=')) {
                 *value++ = 0;
-                uw_set_input(ctx, name, value);
+                if (uw_set_input(ctx, name, value)) {
+                  puts(uw_error_message(ctx));
+                  goto done;
+                }
               }
-              else
-                uw_set_input(ctx, name, "");
+              else if (uw_set_input(ctx, name, "")) {
+                puts(uw_error_message(ctx));
+                goto done;
+              }
             }
           }
         }

@@ -482,6 +482,13 @@ void uw_headers_moved(uw_context ctx, char *headers) {
 
 int uw_db_begin(uw_context);
 
+static void uw_set_error(uw_context ctx, const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  vsnprintf(ctx->error_message, ERROR_BUF_LEN, fmt, ap);
+}
+
 __attribute__((noreturn)) void uw_error(uw_context ctx, failure_kind fk, const char *fmt, ...) {
   cleanup *cl;
 
@@ -658,16 +665,20 @@ static input *check_input_space(uw_context ctx, size_t len) {
   return r;
 }
 
-void uw_set_input(uw_context ctx, const char *name, char *value) {
+int uw_set_input(uw_context ctx, const char *name, char *value) {
   if (!strcasecmp(name, ".b")) {
     int n = uw_input_num(value);
     input *inps;
 
-    if (n < 0)
-      uw_error(ctx, FATAL, "Bad subform name %s", value);
+    if (n < 0) {
+      uw_set_error(ctx, "Bad subform name %s", value);
+      return -1;
+    }
 
-    if (n >= uw_inputs_len)
-      uw_error(ctx, FATAL, "For subform name %s, index %d is out of range", value, n);
+    if (n >= uw_inputs_len) {
+      uw_set_error(ctx, "For subform name %s, index %d is out of range", value, n);
+      return -1;
+    }
 
     inps = check_input_space(ctx, uw_inputs_len);
 
@@ -678,8 +689,10 @@ void uw_set_input(uw_context ctx, const char *name, char *value) {
   } else if (!strcasecmp(name, ".e")) {
     input *tmp;
 
-    if (ctx->cur_container == NULL)
-      uw_error(ctx, FATAL, "Unmatched subform closer");
+    if (ctx->cur_container == NULL) {
+      uw_set_error(ctx, "Unmatched subform closer");
+      return -1;
+    }
 
     tmp = ctx->cur_container;
     switch (tmp->kind) {
@@ -695,16 +708,21 @@ void uw_set_input(uw_context ctx, const char *name, char *value) {
       ctx->cur_container = tmp->data.entry.parent;
       break;
     default:
-      uw_error(ctx, FATAL, "uw_set_input: Wrong kind");
+      uw_set_error(ctx, "uw_set_input: Wrong kind");
+      return -1;
     }
   } else if (!strcasecmp(name, ".s")) {
     int n = uw_input_num(value);
 
-    if (n < 0)
-      uw_error(ctx, FATAL, "Bad subforms name %s", value);
+    if (n < 0) {
+      uw_set_error(ctx, "Bad subforms name %s", value);
+      return -1;
+    }
 
-    if (n >= uw_inputs_len)
-      uw_error(ctx, FATAL, "For subforms name %s, index %d is out of range", value, n);
+    if (n >= uw_inputs_len) {
+      uw_set_error(ctx, "For subforms name %s, index %d is out of range", value, n);
+      return -1;
+    }
 
     INP(ctx)[n].kind = SUBFORMS;
     INP(ctx)[n].data.subforms.parent = ctx->cur_container;
@@ -713,11 +731,15 @@ void uw_set_input(uw_context ctx, const char *name, char *value) {
   } else if (!strcasecmp(name, ".i")) {
     input *inps;
 
-    if (!ctx->cur_container)
-      uw_error(ctx, FATAL, "New entry without container");
+    if (!ctx->cur_container) {
+      uw_set_error(ctx, "New entry without container");
+      return -1;
+    }
 
-    if (ctx->cur_container->kind != SUBFORMS)
-      uw_error(ctx, FATAL, "Bad kind for entry parent");
+    if (ctx->cur_container->kind != SUBFORMS) {
+      uw_set_error(ctx, "Bad kind for entry parent");
+      return -1;
+    }
 
     inps = check_input_space(ctx, uw_inputs_len + 1);
 
@@ -731,15 +753,21 @@ void uw_set_input(uw_context ctx, const char *name, char *value) {
   } else {
     int n = uw_input_num(name);
 
-    if (n < 0)
-      uw_error(ctx, FATAL, "Bad input name %s", name);
+    if (n < 0) {
+      uw_set_error(ctx, "Bad input name %s", name);
+      return -1;
+    }
 
-    if (n >= uw_inputs_len)
-      uw_error(ctx, FATAL, "For input name %s, index %d is out of range", name, n);
+    if (n >= uw_inputs_len) {
+      uw_set_error(ctx, "For input name %s, index %d is out of range", name, n);
+      return -1;
+    }
 
     INP(ctx)[n].kind = NORMAL;
     INP(ctx)[n].data.normal = value;
   }
+
+  return 0;
 }
 
 char *uw_get_input(uw_context ctx, int n) {
@@ -790,17 +818,23 @@ char *uw_get_optional_input(uw_context ctx, int n) {
   }
 }
 
-void uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
+int uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
   int n = uw_input_num(name);
 
-  if (n < 0)
-    uw_error(ctx, FATAL, "Bad file input name %s", name);
+  if (n < 0) {
+    uw_set_error(ctx, "Bad file input name %s", name);
+    return -1;
+  }
 
-  if (n >= uw_inputs_len)
-    uw_error(ctx, FATAL, "For file input name %s, index %d is out of range", name, n);
+  if (n >= uw_inputs_len) {
+    uw_set_error(ctx, "For file input name %s, index %d is out of range", name, n);
+    return -1;
+  }
 
   ctx->inputs[n].kind = FIL;
   ctx->inputs[n].data.file = f;
+
+  return 0;
 }
 
 void *uw_malloc(uw_context ctx, size_t len);

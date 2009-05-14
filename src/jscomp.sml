@@ -143,6 +143,32 @@ fun strcat loc es =
       | [x] => x
       | x :: es' => (EStrcat (x, strcat loc es'), loc)
 
+fun patDepth (p, _) =
+    case p of
+        PWild => 0
+      | PVar _ => 0
+      | PPrim _ => 0
+      | PCon (_, _, NONE) => 0
+      | PCon (_, _, SOME p) => 1 + patDepth p
+      | PRecord xpts => foldl Int.max 0 (map (fn (_, p, _) => 1 + patDepth p) xpts)
+      | PNone _ => 0
+      | PSome (_, p) => 1 + patDepth p
+
+val compact =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn inner => fn e =>
+                                     case e of
+                                         ERel n =>
+                                         if n >= inner then
+                                             ERel (n - inner)
+                                         else
+                                             e
+                                       | _ => e,
+                bind = fn (inner, b) =>
+                          case b of
+                              U.Exp.RelE _ => inner+1
+                            | _ => inner}
+    
 fun process file =
     let
         val (someTs, nameds) =
@@ -254,7 +280,7 @@ fun process file =
                                    maxName = n' + 1}
 
                          val s = (TFfi ("Basis", "string"), loc)
-                         val (e', st) = quoteExp loc t ((EField ((ERel 0, loc), "1"), loc), st)
+                         val (e', st) = quoteExp loc t' ((EField ((ERel 0, loc), "1"), loc), st)
 
                          val body = (ECase ((ERel 0, loc),
                                             [((PNone rt, loc),
@@ -620,7 +646,8 @@ fun process file =
 
                         val quoteExp = quoteExp loc
                     in
-                        (*Print.prefaces "jsE" [("e", MonoPrint.p_exp MonoEnv.empty e)];*)
+                        (*Print.prefaces "jsE" [("e", MonoPrint.p_exp MonoEnv.empty e),
+                                              ("inner", Print.PD.string (Int.toString inner))];*)
 
                         case #1 e of
                             EPrim p => (jsPrim p, st)
@@ -629,6 +656,12 @@ fun process file =
                                 (str ("_" ^ var n), st)
                             else
                                 let
+                                    (*val () = Print.prefaces "ERel"
+                                             [("n", Print.PD.string (Int.toString n)),
+                                              ("inner", Print.PD.string (Int.toString inner)),
+                                              ("eq", MonoPrint.p_exp MonoEnv.empty
+                                                                     (#1 (quoteExp (List.nth (outer, n - inner))
+                                                                                   ((ERel (n - inner), loc), st))))]*)
                                     val n = n - inner
                                 in
                                     quoteExp (List.nth (outer, n)) ((ERel n, loc), st)
@@ -652,11 +685,15 @@ fun process file =
                                                           decoders = #decoders st,
                                                           maxName = #maxName st}
 
+                                                val old = e
                                                 val (e, st) = jsExp mode [] 0 (e, st)
+                                                val new = e
                                                 val e = deStrcat 0 e
                                                 
                                                 val sc = "_n" ^ Int.toString n ^ "=" ^ e ^ ";\n"
                                             in
+                                                (*Print.prefaces "jsify'" [("old", MonoPrint.p_exp MonoEnv.empty old),
+                                                                         ("new", MonoPrint.p_exp MonoEnv.empty new)];*)
                                                 {decls = #decls st,
                                                  script = sc :: #script st,
                                                  included = #included st,
@@ -851,43 +888,42 @@ fun process file =
                             end
 
                           | ECase (e', pes, {result, ...}) =>
-                            (*if closedUpto inner e andalso List.all (fn (_, e) => closedUpto inner e) pes then
-                                let
-                                    val (e', st) = quoteExp result ((ERel 0, loc), st)
-                                in
-                                    ((ELet ("js", result, e, e'), loc),
-                                     st)
-                                end
-                            else*)
-                                let
-                                    val plen = length pes
+                            let
+                                val plen = length pes
 
-                                    val (cases, st) = ListUtil.foldliMap
-                                                          (fn (i, (p, e), st) =>
-                                                              let
-                                                                  val (e, st) = jsE (inner + E.patBindsN p) (e, st)
-                                                                  val fail =
-                                                                      if i = plen - 1 then
-                                                                          str "pf()"
-                                                                      else
-                                                                          str ("c" ^ Int.toString (i+1) ^ "()")
-                                                                  val c = jsPat 0 inner p e fail
-                                                              in
-                                                                  (strcat [str ("c" ^ Int.toString i ^ "=function(){return "),
-                                                                           c,
-                                                                           str "},"],
-                                                                   st)
-                                                              end)
-                                                          st pes
+                                val (cases, st) = ListUtil.foldliMap
+                                                      (fn (i, (p, e), st) =>
+                                                          let
+                                                              val (e, st) = jsE (inner + E.patBindsN p) (e, st)
+                                                              val fail =
+                                                                  if i = plen - 1 then
+                                                                      str "pf()"
+                                                                  else
+                                                                      str ("c" ^ Int.toString (i+1) ^ "()")
+                                                              val c = jsPat 0 inner p e fail
+                                                          in
+                                                              (strcat [str ("c" ^ Int.toString i ^ "=function(){return "),
+                                                                       c,
+                                                                       str "},"],
+                                                               st)
+                                                          end)
+                                                      st pes
 
-                                    val (e, st) = jsE inner (e', st)
-                                in
-                                    (strcat (str "(d0="
-                                             :: e
-                                             :: str ","
-                                             :: List.revAppend (cases,
-                                                                [str "c0())"])), st)
-                                end
+                                val depth = foldl Int.max 0 (map (fn (p, _) => 1 + patDepth p) pes)
+                                val normalDepth = foldl Int.max 0 (map (fn (_, e) => 1 + varDepth e) pes)
+                                val (e, st) = jsE inner (e', st)
+
+                                val len = inner + len
+                                val normalVars = List.tabulate (normalDepth, fn n => "_" ^ Int.toString (n + len))
+                                val patVars = List.tabulate (depth, fn n => "d" ^ Int.toString n)
+                            in
+                                (strcat (str "(function (){ var "
+                                         :: str (String.concatWith "," (normalVars @ patVars) ^ ";d0=")
+                                         :: e
+                                         :: str ";\nreturn ("
+                                         :: List.revAppend (cases,
+                                                            [str "c0()) } ())"])), st)
+                            end
 
                           | EStrcat (e1, e2) =>
                             let
@@ -939,7 +975,7 @@ fun process file =
                           | EJavaScript (_, _, SOME e) =>
                             (foundJavaScript := true;
                              (strcat [str "cs(function(){return ",
-                                      e,
+                                      compact inner e,
                                       str "})"],
                               st))
 
@@ -1054,8 +1090,11 @@ fun process file =
                                                   val locals = List.tabulate
                                                                    (varDepth e,
                                                                  fn i => str ("var _" ^ Int.toString (len + i) ^ ";"))
+                                                  val old = e
                                                   val (e, st) = jsExp m env 0 (e, st)
                                               in
+                                                  (*Print.prefaces "jsify" [("old", MonoPrint.p_exp MonoEnv.empty old),
+                                                                          ("new", MonoPrint.p_exp MonoEnv.empty e)];*)
                                                   (EJavaScript (m, orig, SOME (strcat (#2 e) (locals @ [e]))), st)
                                               end
                                       in

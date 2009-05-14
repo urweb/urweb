@@ -43,8 +43,8 @@ void uw_memstats(uw_context);
 
 int uw_send(uw_context, int sock);
 
-void uw_set_input(uw_context, const char *name, char *value);
-void uw_set_file_input(uw_context, char *name, uw_Basis_file);
+int uw_set_input(uw_context, const char *name, char *value);
+int uw_set_file_input(uw_context, char *name, uw_Basis_file);
 
 char *uw_get_input(uw_context, int name);
 char *uw_get_optional_input(uw_context, int name);
