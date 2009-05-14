@@ -824,11 +824,11 @@ fun process file =
 
                                     val (e, st) = jsE inner (e', st)
                                 in
-                                    (strcat (str "("
+                                    (strcat (str "(d0="
+                                             :: e
+                                             :: str ","
                                              :: List.revAppend (cases,
-                                                                [str "d0=",
-                                                                 e,
-                                                                 str ",c0())"])), st)
+                                                                [str "c0())"])), st)
                                 end
 
                           | EStrcat (e1, e2) =>

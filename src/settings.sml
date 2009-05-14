@@ -144,7 +144,11 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("onFail", "onFail"),
                           ("onConnectFail", "onConnectFail"),
                           ("onDisconnect", "onDisconnect"),
-                          ("onServerError", "onServerError")]
+                          ("onServerError", "onServerError"),
+                          ("attrifyString", "escape"),
+                          ("attrifyInt", "ts"),
+                          ("attrifyFloat", "ts"),
+                          ("attrifyBool", "bs")]
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)
