@@ -623,13 +623,17 @@ val submit : ctx ::: {Unit} -> use ::: {Type}
 
 (*** AJAX-oriented widgets *)
 
-con cformTag = fn (attrs :: {Type}) =>
+con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
                   ctx ::: {Unit}
                   -> [[Body] ~ ctx] =>
-                        unit -> tag attrs ([Body] ++ ctx) [] [] []
+                        unit -> tag attrs ([Body] ++ ctx) inner [] []
 
-val ctextbox : cformTag [Value = string, Size = int, Source = source string]
-val button : cformTag [Value = string, Onclick = transaction unit]
+val ctextbox : cformTag [Value = string, Size = int, Source = source string] []
+val button : cformTag [Value = string, Onclick = transaction unit] []
+
+con cselect = [Cselect]
+val cselect : cformTag [Source = source string] cselect
+val coption : unit -> tag [Value = string, Selected = bool] cselect [] [] []
 
 (*** Tables *)
 

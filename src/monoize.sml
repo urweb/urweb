@@ -2563,7 +2563,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             | SOME (_, src, _) =>
                               (strcat [str "<span><script type=\"text/javascript\">inp(\"input\",",
                                        (L'.EJavaScript (L'.Script, src, NONE), loc),
-                                       str ")</script></span>"],
+                                       str ",\"\")</script></span>"],
                                fm))
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to textbox tag"))
@@ -2635,6 +2635,33 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          let
                              val sc = strcat [str "inp(\"input\",",
                                               (L'.EJavaScript (L'.Script, src, NONE), loc),
+                                              str ",\"\")"]
+                             val sc = setAttrs sc
+                         in
+                             (strcat [str "<span><script type=\"text/javascript\">",
+                                      sc,
+                                      str "</script></span>"],
+                              fm)
+                         end)
+
+                  | "cselect" =>
+                    (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                         NONE =>
+                         let
+                             val (ts, fm) = tagStart "select"
+                         in
+                             ((L'.EStrcat (ts,
+                                           (L'.EPrim (Prim.String "/>"), loc)),
+                               loc), fm)
+                         end
+                       | SOME (_, src, _) =>
+                         let
+                             val (xml, fm) = monoExp (env, st, fm) xml
+
+                             val sc = strcat [str "inp(\"select\",",
+                                              (L'.EJavaScript (L'.Script, src, NONE), loc),
+                                              str ",",
+                                              (L'.EJavaScript (L'.Script, xml, NONE), loc),
                                               str ")"]
                              val sc = setAttrs sc
                          in
@@ -2643,6 +2670,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                       str "</script></span>"],
                               fm)
                          end)
+
+                  | "coption" => normal ("option", NONE, NONE)
 
                   | "tabl" => normal ("table", NONE, NONE)
                   | _ => normal (tag, NONE, NONE)
