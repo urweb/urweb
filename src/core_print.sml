@@ -576,7 +576,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                   space,
                                                   string "constraints",
                                                   space,
-                                                  p_exp env ce]
+                                                  p_exp (E.declBinds env dAll) ce]
       | DSequence (x, n, s) => box [string "sequence",
                                     space,
                                     p_named x n,

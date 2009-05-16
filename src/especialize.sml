@@ -348,7 +348,8 @@ fun specialize' file =
                                    (DValRec vis', _) => [(DValRec (vis @ vis'), ErrorMsg.dummySpan)]
                                  | _ => [(DValRec vis, ErrorMsg.dummySpan), d'])
             in
-                (*Print.prefaces "doDecl" [("d", CorePrint.p_decl E.empty d)];*)
+                (*Print.prefaces "doDecl" [("d", CorePrint.p_decl E.empty d),
+                                         ("d'", CorePrint.p_decl E.empty d')];*)
                 (ds, ({maxName = #maxName st,
                        funcs = funcs,
                        decls = []}, changed))
@@ -378,7 +379,9 @@ fun specialize file =
         if changed then
             let
                 (*val file = ReduceLocal.reduce file*)
+                (*val () = Print.prefaces "Pre-untangle" [("file", CorePrint.p_file CoreEnv.empty file)]*)
                 val file = CoreUntangle.untangle file
+                (*val () = Print.prefaces "Post-untangle" [("file", CorePrint.p_file CoreEnv.empty file)]*)
                 val file = Shake.shake file
             in
                 (*print "Again!\n";*)

@@ -2829,7 +2829,7 @@ fun p_file env (ds, ps) =
                                     newline,
                                     string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
                                     newline,
-                                    string "uw_write(ctx, \"<html>\");",
+                                    string "uw_write(ctx, \"<!DOCTYPE html PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional//EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">\\n<html>\");",
                                     newline,
                                     string "uw_set_script_header(ctx, \"",
                                     string (case side of

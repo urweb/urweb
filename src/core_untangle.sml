@@ -44,6 +44,11 @@ fun exp thisGroup (e, s) =
             IS.add (s, n)
         else
             s
+      | EClosure (n, _) =>
+        if IS.member (thisGroup, n) then
+            IS.add (s, n)
+        else
+            s
 
       | _ => s
 

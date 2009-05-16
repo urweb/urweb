@@ -2450,7 +2450,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             val (ts, fm) = tagStart "input"
                         in
                             ((L'.EStrcat (ts,
-                                          (L'.EPrim (Prim.String (" type=\"" ^ typ ^ "\" name=\"" ^ name ^ "\"/>")),
+                                          (L'.EPrim (Prim.String (" type=\"" ^ typ ^ "\" name=\"" ^ name ^ "\" />")),
                                            loc)), loc), fm)
                         end
                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
@@ -2486,7 +2486,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                       _), _),
                                      (L.EPrim (Prim.String s), _)), _) =>
                             if CharVector.all Char.isSpace s then
-                                ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String "/>"), loc)), loc), fm)
+                                ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String " />"), loc)), loc), fm)
                             else
                                 normal ()
                           | _ => normal ()
@@ -2561,7 +2561,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                   val (ts, fm) = tagStart "input"
                               in
                                   ((L'.EStrcat (ts,
-                                                (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\"/>")),
+                                                (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\" />")),
                                                  loc)), loc), fm)
                               end
                             | SOME (_, src, _) =>
@@ -2632,7 +2632,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              val (ts, fm) = tagStart "input"
                          in
                              ((L'.EStrcat (ts,
-                                           (L'.EPrim (Prim.String "/>"), loc)),
+                                           (L'.EPrim (Prim.String " />"), loc)),
                                loc), fm)
                          end
                        | SOME (_, src, _) =>
@@ -2655,7 +2655,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              val (ts, fm) = tagStart "select"
                          in
                              ((L'.EStrcat (ts,
-                                           (L'.EPrim (Prim.String "/>"), loc)),
+                                           (L'.EPrim (Prim.String " />"), loc)),
                                loc), fm)
                          end
                        | SOME (_, src, _) =>

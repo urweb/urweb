@@ -940,17 +940,25 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                 end
               | DExport _ => S.return2 dAll
               | DTable (x, n, c, s, pe, pc, ce, cc) =>
-                S.bind2 (mfc ctx c,
-                     fn c' =>
-                        S.bind2 (mfe ctx pe,
-                                fn pe' =>
-                                   S.bind2 (mfc ctx pc,
-                                           fn pc' =>
-                                              S.bind2 (mfe ctx ce,
-                                                    fn ce' =>
-                                                       S.map2 (mfc ctx cc,
-                                                            fn cc' =>
-                                                               (DTable (x, n, c', s, pe', pc', ce', cc'), loc))))))
+                let
+                    val loc = #2 ce
+                    val ct = (CFfi ("Basis", "sql_table"), loc)
+                    val ct = (CApp (ct, (CConcat (pc, cc), loc)), loc)
+                    val ct = (CApp (ct, cc), loc)
+                    val ctx' = bind (ctx, NamedE (x, n, ct, NONE, s))
+                in
+                    S.bind2 (mfc ctx c,
+                          fn c' =>
+                             S.bind2 (mfe ctx' pe,
+                                   fn pe' =>
+                                      S.bind2 (mfc ctx pc,
+                                            fn pc' =>
+                                               S.bind2 (mfe ctx' ce,
+                                                     fn ce' =>
+                                                        S.map2 (mfc ctx cc,
+                                                             fn cc' =>
+                                                                (DTable (x, n, c', s, pe', pc', ce', cc'), loc))))))
+                end
               | DSequence _ => S.return2 dAll
               | DView (x, n, s, e, c) =>
                 S.bind2 (mfe ctx e,
