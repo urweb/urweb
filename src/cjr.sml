@@ -100,7 +100,7 @@ withtype exp = exp' located
 
 datatype decl' =
          DStruct of int * (string * typ) list
-       | DDatatype of datatype_kind * string * int * (string * int * typ option) list
+       | DDatatype of (datatype_kind * string * int * (string * int * typ option) list) list
        | DDatatypeForward of datatype_kind * string * int
        | DVal of string * int * typ * exp
        | DFun of string * int * (string * typ) list * typ * exp

@@ -137,15 +137,16 @@ fun classifyDatatype xncs =
 
 fun declBinds env (d, loc) =
     case d of
-        DDatatype (_, x, n, xncs) =>
-        let
-            val env = pushDatatype env x n xncs
-            val dt = (TDatatype (classifyDatatype xncs, n, ref xncs), loc)
-        in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' dt
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, dt), loc))
-            env xncs
-        end
+        DDatatype dts =>
+        foldl (fn ((_, x, n, xncs), env) =>
+                  let
+                      val env = pushDatatype env x n xncs
+                      val dt = (TDatatype (classifyDatatype xncs, n, ref xncs), loc)
+                  in
+                      foldl (fn ((x', n', NONE), env) => pushENamed env x' n' dt
+                              | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, dt), loc))
+                            env xncs
+                  end) env dts
       | DDatatypeForward (_, x, n) => pushDatatype env x n []
       | DStruct (n, xts) => pushStruct env n xts
       | DVal (x, n, t, _) => pushENamed env x n t

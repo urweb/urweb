@@ -483,22 +483,28 @@ fun cifyExp (eAll as (e, loc), sm) =
 
 fun cifyDecl ((d, loc), sm) =
     case d of
-        L.DDatatype _ => raise Fail "Cjrize DDatatype"
-        (*L.DDatatype (x, n, xncs) =>
+        L.DDatatype dts =>
         let
-            val dk = ElabUtil.classifyDatatype xncs
-            val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
-                                                   case to of
-                                                       NONE => ((x, n, NONE), sm)
-                                                     | SOME t =>
-                                                       let
-                                                           val (t, sm) = cifyTyp (t, sm)
-                                                       in
-                                                           ((x, n, SOME t), sm)
-                                                       end) sm xncs
+            val (dts, sm) = ListUtil.foldlMap
+                                (fn ((x, n, xncs), sm) =>
+                                    let
+                                        val dk = ElabUtil.classifyDatatype xncs
+                                        val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
+                                                                               case to of
+                                                                                   NONE => ((x, n, NONE), sm)
+                                                                                 | SOME t =>
+                                                                                   let
+                                                                                       val (t, sm) = cifyTyp (t, sm)
+                                                                                   in
+                                                                                       ((x, n, SOME t), sm)
+                                                                                   end) sm xncs
+                                    in
+                                        ((dk, x, n, xncs), sm)
+                                    end)
+                                sm dts
         in
-            (SOME (L'.DDatatype (dk, x, n, xncs), loc), NONE, sm)
-        end*)
+            (SOME (L'.DDatatype dts, loc), NONE, sm)
+        end
 
       | L.DVal (x, n, t, e, _) =>
         let
@@ -643,8 +649,9 @@ fun cjrize ds =
                                               val (dop, pop, sm) = cifyDecl (d, sm)
 
                                               val dsF = case dop of
-                                                            SOME (L'.DDatatype (dk, x, n, _), loc) =>
-                                                            (L'.DDatatypeForward (dk, x, n), loc) :: dsF
+                                                            SOME (L'.DDatatype dts, loc) =>
+                                                            map (fn (dk, x, n, _) =>
+                                                                    (L'.DDatatypeForward (dk, x, n), loc)) dts @ dsF
                                                           | _ => dsF
 
                                               val dsF = map (fn v => (L'.DStruct v, ErrorMsg.dummySpan)) (Sm.declares sm)

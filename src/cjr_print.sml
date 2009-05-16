@@ -2037,63 +2037,72 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                         newline]) xts,
                  string "};"]
         end
-      | DDatatype (Enum, x, n, xncs) =>
-        box [string "enum",
-             space,
-             string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
-             space,
-             string "{",
-             space,
-             p_list_sep (box [string ",", space]) (fn (x, n, _) =>
-                                                      string ("__uwc_" ^ ident x ^ "_" ^ Int.toString n)) xncs,
-             space,
-             string "};"]
-      | DDatatype (Option, _, _, _) => box []
-      | DDatatype (Default, x, n, xncs) =>
+      | DDatatype dts =>
         let
-            val xncsArgs = List.mapPartial (fn (x, n, NONE) => NONE
-                                             | (x, n, SOME t) => SOME (x, n, t)) xncs
+            val dts = ListMergeSort.sort (fn ((dk1, _, _, _), (dk2, _, _, _)) =>
+                                             dk1 = Enum andalso dk2 <> Enum) dts
+
+            fun p_one (Enum, x, n, xncs) =
+                box [string "enum",
+                     space,
+                     string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
+                     space,
+                     string "{",
+                     space,
+                     p_list_sep (box [string ",", space]) (fn (x, n, _) =>
+                                                              string ("__uwc_" ^ ident x ^ "_" ^ Int.toString n)) xncs,
+                     space,
+                     string "};"]
+              | p_one (Option, _, _, _) = box []
+              | p_one (Default, x, n, xncs) =
+                let
+                    val xncsArgs = List.mapPartial (fn (x, n, NONE) => NONE
+                                                     | (x, n, SOME t) => SOME (x, n, t)) xncs
+                in
+                    box [string "enum",
+                         space,
+                         string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
+                         space,
+                         string "{",
+                         space,
+                         p_list_sep (box [string ",", space]) (fn (x, n, _) =>
+                                                                  string ("__uwc_" ^ ident x ^ "_" ^ Int.toString n))
+                                    xncs,
+                         space,
+                         string "};",
+                         newline,
+                         newline,
+                         string "struct",
+                         space,
+                         string ("__uwd_" ^ ident x ^ "_" ^ Int.toString n),
+                         space,
+                         string "{",
+                         newline,
+                         string "enum",
+                         space,
+                         string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
+                         space,
+                         string "tag;",
+                         newline,
+                         box (case xncsArgs of
+                                  [] => []
+                                | _ => [string "union",
+                                        space,
+                                        string "{",
+                                        newline,
+                                        p_list_sep newline (fn (x, n, t) => box [p_typ env t,
+                                                                                 space,
+                                                                                 string ("uw_" ^ ident x),
+                                                                                 string ";"]) xncsArgs,
+                                        newline,
+                                        string "}",
+                                        space,
+                                        string "data;",
+                                        newline]),
+                         string "};"]
+                end
         in
-            box [string "enum",
-                 space,
-                 string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
-                 space,
-                 string "{",
-                 space,
-                 p_list_sep (box [string ",", space]) (fn (x, n, _) =>
-                                                          string ("__uwc_" ^ ident x ^ "_" ^ Int.toString n)) xncs,
-                 space,
-                 string "};",
-                 newline,
-                 newline,
-                 string "struct",
-                 space,
-                 string ("__uwd_" ^ ident x ^ "_" ^ Int.toString n),
-                 space,
-                 string "{",
-                 newline,
-                 string "enum",
-                 space,
-                 string ("__uwe_" ^ ident x ^ "_" ^ Int.toString n),
-                 space,
-                 string "tag;",
-                 newline,
-                 box (case xncsArgs of
-                          [] => []
-                        | _ => [string "union",
-                                space,
-                                string "{",
-                                newline,
-                                p_list_sep newline (fn (x, n, t) => box [p_typ env t,
-                                                                         space,
-                                                                         string ("uw_" ^ ident x),
-                                                                         string ";"]) xncsArgs,
-                                newline,
-                                string "}",
-                                space,
-                                string "data;",
-                                newline]),
-                 string "};"]
+            p_list_sep (box []) p_one dts
         end
 
       | DDatatypeForward _ => box []
