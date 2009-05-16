@@ -457,7 +457,7 @@ fun process file =
                                                       ^ ":" ^ e,
                                                       st)
                                                  end)
-                                             ("pf()", st) cs
+                                             ("pf(\"" ^ ErrorMsg.spanToString loc ^ "\")", st) cs
 
                          val body = "function _n" ^ Int.toString n' ^ "(t,i){var x=t[i++];var r="
                                     ^ e ^ ";return {_1:i,_2:r}}\n\n"
@@ -573,13 +573,13 @@ fun process file =
                                 (case IM.find (someTs, n) of
                                      NONE => raise Fail "Jscomp: Not in someTs"
                                    | SOME t =>
-                                     strcat [str ("(d" ^ Int.toString depth ^ "?("
+                                     strcat [str ("(d" ^ Int.toString depth ^ "?(d"
+                                                  ^ Int.toString (depth+1) ^ "=d" ^ Int.toString depth
                                                   ^ (if isNullable t then
-                                                         "d" ^ Int.toString depth ^ "=d"
-                                                         ^ Int.toString depth ^ ".v,"
+                                                         ".v,"
                                                      else
                                                          "")),
-                                             jsPat depth inner p succ fail,
+                                             jsPat (depth+1) inner p succ fail,
                                              str "):",
                                              fail,
                                              str ")"])
@@ -594,8 +594,8 @@ fun process file =
                               | PCon (_, pc, SOME p) =>
                                 strcat [str ("(d" ^ Int.toString depth ^ ".n=="),
                                         patCon pc,
-                                        str ("?(d" ^ Int.toString depth ^ "=d" ^ Int.toString depth ^ ".v,"),
-                                        jsPat depth inner p succ fail,
+                                        str ("?(d" ^ Int.toString (depth+1) ^ "=d" ^ Int.toString depth ^ ".v,"),
+                                        jsPat (depth+1) inner p succ fail,
                                         str "):",
                                         fail,
                                         str ")"]
@@ -898,7 +898,7 @@ fun process file =
                                                               val (e, st) = jsE (inner + E.patBindsN p) (e, st)
                                                               val fail =
                                                                   if i = plen - 1 then
-                                                                      str "pf()"
+                                                                      str ("pf(\"" ^ ErrorMsg.spanToString loc ^ "\")")
                                                                   else
                                                                       str ("c" ^ Int.toString (i+1) ^ "()")
                                                               val c = jsPat 0 inner p e fail
