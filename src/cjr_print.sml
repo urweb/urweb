@@ -2829,7 +2829,7 @@ fun p_file env (ds, ps) =
                                     newline,
                                     string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
                                     newline,
-                                    string "uw_write(ctx, \"<!DOCTYPE html PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional//EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">\\n<html>\");",
+                                    string "uw_write(ctx, begin_xhtml);",
                                     newline,
                                     string "uw_set_script_header(ctx, \"",
                                     string (case side of
@@ -3228,6 +3228,11 @@ fun p_file env (ds, ps) =
              string "\"",
              newline,
              newline,
+
+             string "static const char begin_xhtml[] = \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" ?>\\n<!DOCTYPE html PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional//EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">\\n<html xmlns=\\\"http://www.w3.org/1999/xhtml\\\" xml:lang=\\\"en\\\" lang=\\\"en\\\">\";",
+             newline,
+             newline,
+
              p_list_sep newline (fn x => x) pds,
              newline,
              string "int uw_inputs_len = ",
