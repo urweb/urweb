@@ -2796,7 +2796,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                               ^ "\" value=\"")), loc),
                                                       sigSet), loc)
                             val sigSet = (L'.EStrcat (sigSet,
-                                                      (L'.EPrim (Prim.String "\">"), loc)), loc)
+                                                      (L'.EPrim (Prim.String "\" />"), loc)), loc)
                         in
                             (L'.EStrcat (sigSet, xml), loc)
                         end
@@ -2826,9 +2826,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("xml", s, s,
                            strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".b\" value=\""
-                                                           ^ nm ^ "\">")), loc),
+                                                           ^ nm ^ "\" />")), loc),
                                    (L'.ERel 0, loc),
-                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\">")), loc)]),
+                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\" />")), loc)]),
                   loc),
                  fm)
             end
@@ -2841,9 +2841,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("xml", s, s,
                            strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".s\" value=\""
-                                                           ^ nm ^ "\">")), loc),
+                                                           ^ nm ^ "\" />")), loc),
                                    (L'.ERel 0, loc),
-                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\">")), loc)]),
+                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\" />")), loc)]),
                   loc),
                  fm)
             end
@@ -2854,9 +2854,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
             in
                 ((L'.EAbs ("xml", s, s,
-                           strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".i\" value=\"1\">")), loc),
+                           strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".i\" value=\"1\" />")), loc),
                                    (L'.ERel 0, loc),
-                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\">")), loc)]),
+                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\" />")), loc)]),
                   loc),
                  fm)
             end
