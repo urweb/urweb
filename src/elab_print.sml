@@ -486,9 +486,7 @@ fun p_datatype env (x, n, xs, cons) =
         val env = E.pushCNamedAs env x n k NONE
         val env = foldl (fn (x, env) => E.pushCRel env x k) env xs
     in
-        box [string "datatype",
-             space,
-             string x,
+        box [string x,
              p_list_sep (box []) (fn x => box [space, string x]) xs,
              space,
              string "=",
@@ -507,7 +505,7 @@ fun p_named x n =
     else
         string x
 
-fun p_sgn_item env (sgi, _) =
+fun p_sgn_item env (sgiAll as (sgi, _)) =
     case sgi of
         SgiConAbs (x, n, k) => box [string "con",
                                     space,
@@ -527,7 +525,9 @@ fun p_sgn_item env (sgi, _) =
                                     string "=",
                                     space,
                                     p_con env c]
-      | SgiDatatype x => p_datatype env x
+      | SgiDatatype x => box [string "datatype",
+                              space,
+                              p_list_sep (box [space, string "and", space]) (p_datatype (E.sgiBinds env sgiAll)) x]
       | SgiDatatypeImp (x, _, m1, ms, x', _, _) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)
@@ -669,7 +669,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                                   string "=",
                                   space,
                                   p_con env c]
-      | DDatatype x => p_datatype env x
+      | DDatatype x => box [string "datatype",
+                            space,
+                            p_list_sep (box [space, string "and", space]) (p_datatype (E.declBinds env dAll)) x]
       | DDatatypeImp (x, _, m1, ms, x', _, _) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)

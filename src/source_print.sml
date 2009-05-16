@@ -360,9 +360,7 @@ and p_vali (x, co, e) =
 
 
 fun p_datatype (x, xs, cons) =
-    box [string "datatype",
-         space,
-         string x,
+    box [string x,
          p_list_sep (box []) (fn x => box [space, string x]) xs,
          space,
          string "=",
@@ -399,7 +397,9 @@ fun p_sgn_item (sgi, _) =
                                       string "=",
                                       space,
                                       p_con c]
-      | SgiDatatype x => p_datatype x
+      | SgiDatatype x => box [string "datatype",
+                              space,
+                              p_list_sep (box [space, string "and", space]) p_datatype x]
       | SgiDatatypeImp (x, ms, x') =>
         box [string "datatype",
              space,
@@ -530,7 +530,9 @@ fun p_decl ((d, _) : decl) =
                                     string "=",
                                     space,
                                     p_con c]
-      | DDatatype x => p_datatype x
+      | DDatatype x => box [string "datatype",
+                            space,
+                            p_list_sep (box [space, string "and", space]) p_datatype x]
       | DDatatypeImp (x, ms, x') =>
         box [string "datatype",
              space,

@@ -85,7 +85,7 @@ datatype inference =
 datatype sgn_item' =
          SgiConAbs of string * kind
        | SgiCon of string * kind option * con
-       | SgiDatatype of string * string list * (string * con option) list
+       | SgiDatatype of (string * string list * (string * con option) list) list
        | SgiDatatypeImp of string * string list * string
        | SgiVal of string * con
        | SgiTable of string * con * exp * exp
@@ -148,7 +148,7 @@ and edecl = edecl' located
 
 datatype decl' =
          DCon of string * kind option * con
-       | DDatatype of string * string list * (string * con option) list
+       | DDatatype of (string * string list * (string * con option) list) list
        | DDatatypeImp of string * string list * string
        | DVal of string * con option * exp
        | DValRec of (string * con option * exp) list

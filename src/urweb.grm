@@ -226,6 +226,8 @@ datatype attr = Class of exp | Normal of con * exp
  | dargs of string list
  | barOpt of unit
  | dcons of (string * con option) list
+ | dtype of string * string list * (string * con option) list
+ | dtypes of (string * string list * (string * con option) list) list
  | dcon of string * con option
 
  | pkopt of exp
@@ -394,7 +396,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                          end)
        | LTYPE SYMBOL EQ cexp           ([(DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                            s (LTYPEleft, cexpright))])
-       | DATATYPE SYMBOL dargs EQ barOpt dcons([(DDatatype (SYMBOL, dargs, dcons), s (DATATYPEleft, dconsright))])
+       | DATATYPE dtypes                ([(DDatatype dtypes, s (DATATYPEleft, dtypesright))])
        | DATATYPE SYMBOL dargs EQ DATATYPE CSYMBOL DOT path
                 (case dargs of
                      [] => [(DDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))]
@@ -463,6 +465,11 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                          end)
        | COOKIE SYMBOL COLON cexp       ([(DCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))])
        | STYLE SYMBOL                   ([(DStyle SYMBOL, s (STYLEleft, SYMBOLright))])
+
+dtype  : SYMBOL dargs EQ barOpt dcons   (SYMBOL, dargs, dcons)
+
+dtypes : dtype                          ([dtype])
+       | dtype AND dtypes               (dtype :: dtypes)
 
 kopt   :                                (NONE)
        | DCOLON kind                    (SOME kind)
@@ -652,7 +659,7 @@ sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, 
        | CON SYMBOL DCOLON kind EQ cexp ((SgiCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright)))
        | LTYPE SYMBOL EQ cexp           ((SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                           s (LTYPEleft, cexpright)))
-       | DATATYPE SYMBOL dargs EQ barOpt dcons((SgiDatatype (SYMBOL, dargs, dcons), s (DATATYPEleft, dconsright)))
+       | DATATYPE dtypes                ((SgiDatatype dtypes, s (DATATYPEleft, dtypesright)))
        | DATATYPE SYMBOL dargs EQ DATATYPE CSYMBOL DOT path
                 (case dargs of
                      [] => (SgiDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))

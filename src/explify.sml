@@ -137,9 +137,10 @@ fun explifySgi (sgi, loc) =
     case sgi of
         L.SgiConAbs (x, n, k) => SOME (L'.SgiConAbs (x, n, explifyKind k), loc)
       | L.SgiCon (x, n, k, c) => SOME (L'.SgiCon (x, n, explifyKind k, explifyCon c), loc)
-      | L.SgiDatatype (x, n, xs, xncs) => SOME (L'.SgiDatatype (x, n, xs,
+      (*| L.SgiDatatype (x, n, xs, xncs) => SOME (L'.SgiDatatype (x, n, xs,
                                                                 map (fn (x, n, co) =>
-                                                                        (x, n, Option.map explifyCon co)) xncs), loc)
+                                                                        (x, n, Option.map explifyCon co)) xncs), loc)*)
+      | L.SgiDatatype _ => raise Fail "Explify SgiDatatype"
       | L.SgiDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
         SOME (L'.SgiDatatypeImp (x, n, m1, ms, s, xs, map (fn (x, n, co) =>
                                                               (x, n, Option.map explifyCon co)) xncs), loc)
@@ -163,9 +164,10 @@ and explifySgn (sgn, loc) =
 fun explifyDecl (d, loc : EM.span) =
     case d of
         L.DCon (x, n, k, c) => SOME (L'.DCon (x, n, explifyKind k, explifyCon c), loc)
-      | L.DDatatype (x, n, xs, xncs) => SOME (L'.DDatatype (x, n, xs,
+      (*| L.DDatatype (x, n, xs, xncs) => SOME (L'.DDatatype (x, n, xs,
                                                             map (fn (x, n, co) =>
-                                                                    (x, n, Option.map explifyCon co)) xncs), loc)
+                                                                    (x, n, Option.map explifyCon co)) xncs), loc)*)
+      | L.DDatatype _ => raise Fail "Explify DDatatype"
       | L.DDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
         SOME (L'.DDatatypeImp (x, n, m1, ms, s, xs,
                                map (fn (x, n, co) =>
