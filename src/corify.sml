@@ -621,7 +621,8 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
         in
             ([(L'.DCon (x, n, corifyKind k, corifyCon st c), loc)], st)
         end
-      | L.DDatatype (x, n, xs, xncs) =>
+      | L.DDatatype _ => raise Fail "Corify DDatatype"
+      (*| L.DDatatype (x, n, xs, xncs) =>
         let
             val (st, n) = St.bindCon st x n
             val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
@@ -658,7 +659,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                 end) xncs
         in
             ((L'.DDatatype (x, n, xs, xncs), loc) :: dcons, st)
-        end
+        end*)
       | L.DDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
         let
             val (st, n) = St.bindCon st x n
@@ -795,7 +796,8 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                         trans)
                                    end
 
-                                 | L.SgiDatatype (x, n, xs, xnts) =>
+                                 | L.SgiDatatype _ => raise Fail "Corify SgiDatatype"
+                                 (*| L.SgiDatatype (x, n, xs, xnts) =>
                                    let
                                        val k = (L'.KType, loc)
                                        val dk = ElabUtil.classifyDatatype xnts
@@ -856,7 +858,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                         conmap,
                                         st,
                                         trans)
-                                   end
+                                   end*)
 
                                  | L.SgiVal (x, _, c) =>
                                    let
@@ -1061,7 +1063,7 @@ and corifyStr mods ((str, _), st) =
 fun maxName ds = foldl (fn ((d, _), n) =>
                            case d of
                                L.DCon (_, n', _, _) => Int.max (n, n')
-                             | L.DDatatype (_, n', _, _) => Int.max (n, n')
+                             | L.DDatatype dts => foldl (fn ((_, n', _, _), n) => Int.max (n, n')) n dts
                              | L.DDatatypeImp (_, n', _, _, _, _, _) => Int.max (n, n')
                              | L.DVal (_, n', _, _) => Int.max (n, n')
                              | L.DValRec vis => foldl (fn ((_, n', _, _), n) => Int.max (n, n)) n vis

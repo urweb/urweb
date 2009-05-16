@@ -255,22 +255,33 @@ fun lookupStrNamed (env : env) n =
 fun declBinds env (d, loc) =
     case d of
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
-      | DDatatype (x, n, xs, xncs) =>
+      | DDatatype dts =>
         let
-            val env = pushCNamed env x n (KType, loc) NONE
+            fun doOne ((x, n, xs, xncs), env) =
+                let
+                    val k = (KType, loc) 
+                    val nxs = length xs
+                    val (tb, kb) = ListUtil.foldli (fn (i, x', (tb, kb)) =>
+                                                       ((CApp (tb, (CRel (nxs - i - 1), loc)), loc),
+                                                        (KArrow (k, kb), loc)))
+                                                   ((CNamed n, loc), k) xs
+                                   
+                    val env = pushCNamed env x n kb NONE
+                in
+                    foldl (fn ((x', n', to), env) =>
+                              let
+                                  val t =
+                                      case to of
+                                          NONE => tb
+                                        | SOME t => (TFun (t, tb), loc)
+                                  val t = foldr (fn (x, t) => (TCFun (x, k, t), loc)) t xs
+                              in
+                                  pushENamed env x' n' t
+                              end)
+                          env xncs
+                end
         in
-            foldl (fn ((x', n', to), env) =>
-                      let
-                          val t =
-                              case to of
-                                  NONE => (CNamed n, loc)
-                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
-                          val k = (KType, loc)
-                          val t = foldr (fn (x, t) => (TCFun (x, k, t), loc)) t xs
-                      in
-                          pushENamed env x' n' t
-                      end)
-                  env xncs
+            foldl doOne env dts
         end
       | DDatatypeImp (x, n, m, ms, x', xs, xncs) =>
         let
@@ -337,22 +348,31 @@ fun sgiBinds env (sgi, loc) =
     case sgi of
         SgiConAbs (x, n, k) => pushCNamed env x n k NONE
       | SgiCon (x, n, k, c) => pushCNamed env x n k (SOME c)
-      | SgiDatatype (x, n, xs, xncs) =>
+      | SgiDatatype dts =>
         let
-            val env = pushCNamed env x n (KType, loc) NONE
+            fun doOne ((x, n, xs, xncs), env) =
+                let
+                    val k = (KType, loc)
+                    val k' = foldr (fn (_, k') => (KArrow (k, k'), loc)) k xs
+
+                    val env = pushCNamed env x n k' NONE
+                in
+                    foldl (fn ((x', n', to), env) =>
+                              let
+                                  val t =
+                                      case to of
+                                          NONE => (CNamed n, loc)
+                                        | SOME t => (TFun (t, (CNamed n, loc)), loc)
+
+                                  val k = (KType, loc)
+                                  val t = foldr (fn (x, t) => (TCFun (x, k, t), loc)) t xs
+                              in
+                                  pushENamed env x' n' t
+                              end)
+                          env xncs
+                end
         in
-            foldl (fn ((x', n', to), env) =>
-                      let
-                          val t =
-                              case to of
-                                  NONE => (CNamed n, loc)
-                                | SOME t => (TFun (t, (CNamed n, loc)), loc)
-                          val k = (KType, loc)
-                          val t = foldr (fn (x, t) => (TCFun (x, k, t), loc)) t xs
-                      in
-                          pushENamed env x' n' t
-                      end)
-                  env xncs
+            foldl doOne env dts
         end
       | SgiDatatypeImp (x, n, m1, ms, x', xs, xncs) =>
         let

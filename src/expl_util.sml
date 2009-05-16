@@ -453,15 +453,17 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                         S.map2 (con ctx c,
                              fn c' =>
                                 (SgiCon (x, n, k', c'), loc)))
-              | SgiDatatype (x, n, xs, xncs) =>
-                S.map2 (ListUtil.mapfold (fn (x, n, c) =>
-                                             case c of
-                                                 NONE => S.return2 (x, n, c)
-                                               | SOME c =>
-                                                 S.map2 (con ctx c,
-                                                      fn c' => (x, n, SOME c'))) xncs,
-                        fn xncs' =>
-                           (SgiDatatype (x, n, xs, xncs'), loc))
+              | SgiDatatype dts =>
+                S.map2 (ListUtil.mapfold (fn (x, n, xs, xncs) =>
+                                             S.map2 (ListUtil.mapfold (fn (x, n, c) =>
+                                                                          case c of
+                                                                              NONE => S.return2 (x, n, c)
+                                                                            | SOME c =>
+                                                                              S.map2 (con ctx c,
+                                                                                   fn c' => (x, n, SOME c'))) xncs,
+                                                  fn xncs' => (x, n, xs, xncs'))) dts,
+                        fn dts' =>
+                           (SgiDatatype dts', loc))
               | SgiDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
                 S.map2 (ListUtil.mapfold (fn (x, n, c) =>
                                              case c of
@@ -496,8 +498,15 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                    bind (ctx, NamedC (x, k))
                                                  | SgiCon (x, _, k, _) =>
                                                    bind (ctx, NamedC (x, k))
-                                                 | SgiDatatype (x, n, _, xncs) =>
-                                                   bind (ctx, NamedC (x, (KType, loc)))
+                                                 | SgiDatatype dts =>
+                                                   foldl (fn ((x, _, ks, _), ctx) =>
+                                                             let
+                                                                 val k' = (KType, loc)
+                                                                 val k = foldl (fn (_, k) => (KArrow (k', k), loc))
+                                                                               k' ks
+                                                             in
+                                                                 bind (ctx, NamedC (x, k))
+                                                             end) ctx dts
                                                  | SgiDatatypeImp (x, _, _, _, _, _, _) =>
                                                    bind (ctx, NamedC (x, (KType, loc)))
                                                  | SgiVal _ => ctx
