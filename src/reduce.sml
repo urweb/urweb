@@ -442,13 +442,14 @@ fun reduce file =
                     ((DCon (x, n, k, c), loc),
                      (IM.insert (namedC, n, c), namedE))
                 end
-              | DDatatype (x, n, ps, cs) =>
-                let
-                    val env = map (fn _ => UnknownC) ps
-                in
-                    ((DDatatype (x, n, ps, map (fn (x, n, co) => (x, n, Option.map (con namedC env) co)) cs), loc),
-                     st)
-                end
+              | DDatatype dts =>
+                ((DDatatype (map (fn (x, n, ps, cs) =>
+                                     let
+                                         val env = map (fn _ => UnknownC) ps
+                                     in
+                                         (x, n, ps, map (fn (x, n, co) => (x, n, Option.map (con namedC env) co)) cs)
+                                     end) dts), loc),
+                 st)
               | DVal (x, n, t, e, s) =>
                 let
                     val t = con namedC [] t

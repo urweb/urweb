@@ -124,7 +124,7 @@ datatype export_kind = datatype Export.export_kind
 
 datatype decl' =
          DCon of string * int * kind * con
-       | DDatatype of string * int * string list * (string * int * con option) list
+       | DDatatype of (string * int * string list * (string * int * con option) list) list
        | DVal of string * int * con * exp * string
        | DValRec of (string * int * con * exp * string) list
        | DExport of export_kind * int

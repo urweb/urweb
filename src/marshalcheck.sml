@@ -75,12 +75,13 @@ fun check file =
         ignore (foldl (fn ((d, _), (cmap, emap)) =>
                           case d of
                               DCon (_, n, _, c) => (IM.insert (cmap, n, sins cmap c), emap)
-                            | DDatatype (_, n, _, xncs) =>
-                              (IM.insert (cmap, n, foldl (fn ((_, _, co), s) =>
-                                                             case co of
-                                                                 NONE => s
-                                                               | SOME c => PS.union (s, sins cmap c))
-                                                         PS.empty xncs),
+                            | DDatatype dts =>
+                              (foldl (fn ((_, n, _, xncs), cmap) =>
+                                         IM.insert (cmap, n, foldl (fn ((_, _, co), s) =>
+                                                                       case co of
+                                                                           NONE => s
+                                                                         | SOME c => PS.union (s, sins cmap c))
+                                                                   PS.empty xncs)) cmap dts,
                                emap)
 
                             | DVal (_, n, t, _, tag) => (cmap, IM.insert (emap, n, (t, tag)))

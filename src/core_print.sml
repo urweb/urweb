@@ -496,9 +496,7 @@ fun p_datatype env (x, n, xs, cons) =
                  else
                      string x
     in
-        box [string "datatype",
-             space,
-             xp,
+        box [xp,
              p_list_sep (box []) (fn x => box [space, string x]) xs,
              space,
              string "=",
@@ -534,7 +532,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                  space,
                  p_con env c]
         end
-      | DDatatype x => p_datatype env x
+      | DDatatype x => box [string "datatype",
+                            space,
+                            p_list_sep (box [space, string "and", space]) (p_datatype (E.declBinds env dAll)) x]
       | DVal vi => box [string "val",
                         space,
                         p_vali env vi]

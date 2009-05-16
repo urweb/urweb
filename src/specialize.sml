@@ -115,10 +115,10 @@ fun considerSpecialization (st : state, n, args, dt : datatyp) =
                                                        ((x, n, SOME t), st)
                                                    end) st cons
 
-            val d = (DDatatype (#name dt ^ "_s",
-                                n',
-                                [],
-                                cons), #2 (List.hd args))
+            val d = (DDatatype [(#name dt ^ "_s",
+                                 n',
+                                 [],
+                                 cons)], #2 (List.hd args))
         in
             (n', cmap, {count = #count st,
                         datatypes = #datatypes st,
@@ -248,7 +248,7 @@ fun specialize file =
                 val (d, st) = specDecl st d
             in
                 case #1 d of
-                    DDatatype (x, n, xs, xnts) =>
+                    DDatatype [(x, n, xs, xnts)] =>
                     (rev (d :: #decls st),
                      {count = #count st,
                       datatypes = IM.insert (#datatypes st, n,

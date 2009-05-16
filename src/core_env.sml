@@ -301,15 +301,16 @@ fun lookupENamed (env : env) n =
 fun declBinds env (d, loc) =
     case d of
         DCon (x, n, k, c) => pushCNamed env x n k (SOME c)
-      | DDatatype (x, n, xs, xncs) =>
-        let
-            val env = pushDatatype env x n xs xncs
-            val env = pushCNamed env x n (KType, loc) NONE
-        in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc) NONE ""
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (CNamed n, loc)), loc) NONE "")
-            env xncs
-        end
+      | DDatatype dts =>
+        foldl (fn ((x, n, xs, xncs), env) =>
+                  let
+                      val env = pushDatatype env x n xs xncs
+                      val env = pushCNamed env x n (KType, loc) NONE
+                  in
+                      foldl (fn ((x', n', NONE), env) => pushENamed env x' n' (CNamed n, loc) NONE ""
+                              | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, (CNamed n, loc)), loc) NONE "")
+                            env xncs
+                  end) env dts
       | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
       | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t NONE s) env vis
       | DExport _ => env

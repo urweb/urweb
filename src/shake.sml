@@ -69,8 +69,9 @@ fun shake file =
                   | (_, acc) => acc) (IS.empty, IS.empty, []) file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
-                                   | ((DDatatype (_, n, _, xncs), _), (cdef, edef)) =>
-                                     (IM.insert (cdef, n, List.mapPartial #3 xncs), edef)
+                                   | ((DDatatype dts, _), (cdef, edef)) =>
+                                     (foldl (fn ((_, n, _, xncs), cdef) =>
+                                                IM.insert (cdef, n, List.mapPartial #3 xncs)) cdef dts, edef)
                                    | ((DVal (_, n, t, e, _), _), (cdef, edef)) => (cdef, IM.insert (edef, n, ([], t, e)))
                                    | ((DValRec vis, _), (cdef, edef)) =>
                                      let
@@ -157,7 +158,7 @@ fun shake file =
         val s = foldl (fn (c, s) => shakeCon s c) s table_cs
     in
         List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
-                      | (DDatatype (_, n, _, _), _) => IS.member (#con s, n)
+                      | (DDatatype dts, _) => List.exists (fn (_, n, _, _) => IS.member (#con s, n)) dts
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => true

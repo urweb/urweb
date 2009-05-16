@@ -3045,7 +3045,8 @@ fun monoDecl (env, fm) (all as (d, loc)) =
     in
         case d of
             L.DCon _ => NONE
-          | L.DDatatype (x, n, [], xncs) =>
+          | L.DDatatype _ => raise Fail "Monoize DDatatype"
+          (*| L.DDatatype (x, n, [], xncs) =>
             let
                 val env' = Env.declBinds env all
                 val d = (L'.DDatatype (x, n, map (fn (x, n, to) => (x, n, Option.map (monoType env') to)) xncs), loc)
@@ -3064,7 +3065,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                 NONE
             else
                 poly ()
-          | L.DDatatype _ => poly ()
+          | L.DDatatype _ => poly ()*)
           | L.DVal (x, n, t, e, s) =>
             let
                 val (e, fm) = monoExp (env, St.empty, fm) e

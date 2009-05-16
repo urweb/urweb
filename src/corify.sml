@@ -621,45 +621,65 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
         in
             ([(L'.DCon (x, n, corifyKind k, corifyCon st c), loc)], st)
         end
-      | L.DDatatype _ => raise Fail "Corify DDatatype"
-      (*| L.DDatatype (x, n, xs, xncs) =>
+      | L.DDatatype dts =>
         let
-            val (st, n) = St.bindCon st x n
-            val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
-                                                   let
-                                                       val st = St.bindConstructor st x n (L'.PConVar n)
-                                                       val st = St.bindConstructorVal st x n
-                                                       val co = Option.map (corifyCon st) co
-                                                   in
-                                                       ((x, n, co), st)
-                                                   end) st xncs
+            val (dts, st) = ListUtil.foldlMap (fn ((x, n, xs, xncs), st) =>
+                                                  let
+                                                      val (st, n) = St.bindCon st x n
+                                                  in
+                                                      ((x, n, xs, xncs), st)
+                                                  end)
+                                              st dts
 
-            val dk = ElabUtil.classifyDatatype xncs
-            val t = (L'.CNamed n, loc)
-            val nxs = length xs - 1
-            val t = ListUtil.foldli (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
-            val k = (L'.KType, loc)
-            val dcons = map (fn (x, n, to) =>
-                                let
-                                    val args = ListUtil.mapi (fn (i, _) => (L'.CRel (nxs - i), loc)) xs
-                                    val (e, t) =
-                                        case to of
-                                            NONE => ((L'.ECon (dk, L'.PConVar n, args, NONE), loc), t)
-                                          | SOME t' => ((L'.EAbs ("x", t', t,
-                                                                  (L'.ECon (dk, L'.PConVar n, args,
-                                                                            SOME (L'.ERel 0, loc)),
-                                                                   loc)),
-                                                         loc),
-                                                        (L'.TFun (t', t), loc))
+            val (dts, (st, dcons)) =
+                ListUtil.foldlMap
+                    (fn ((x, n, xs, xncs), (st, dcons)) =>
+                        let
+                            val (xncs, st) = ListUtil.foldlMap
+                                                 (fn ((x, n, co), st) =>
+                                                     let
+                                                         val st = St.bindConstructor st x n (L'.PConVar n)
+                                                         val st = St.bindConstructorVal st x n
+                                                         val co = Option.map (corifyCon st) co
+                                                     in
+                                                         ((x, n, co), st)
+                                                     end) st xncs
 
-                                    val t = foldr (fn (x, t) => (L'.TCFun (x, k, t), loc)) t xs
-                                    val e = foldr (fn (x, e) => (L'.ECAbs (x, k, e), loc)) e xs
-                                in
-                                    (L'.DVal (x, n, t, e, ""), loc)
-                                end) xncs
+                            val dk = ElabUtil.classifyDatatype xncs
+                            val t = (L'.CNamed n, loc)
+                            val nxs = length xs - 1
+                            val t = ListUtil.foldli
+                                        (fn (i, _, t) => (L'.CApp (t, (L'.CRel (nxs - i), loc)), loc)) t xs
+                            val k = (L'.KType, loc)
+                            val dcons' = map (fn (x, n, to) =>
+                                                 let
+                                                     val args = ListUtil.mapi
+                                                                    (fn (i, _) => (L'.CRel (nxs - i), loc)) xs
+                                                     val (e, t) =
+                                                         case to of
+                                                             NONE => ((L'.ECon (dk, L'.PConVar n, args, NONE),
+                                                                       loc), t)
+                                                           | SOME t' => ((L'.EAbs ("x", t', t,
+                                                                                   (L'.ECon (dk, L'.PConVar n,
+                                                                                             args,
+                                                                                             SOME (L'.ERel 0,
+                                                                                                   loc)),
+                                                                                    loc)),
+                                                                          loc),
+                                                                         (L'.TFun (t', t), loc))
+                                                                        
+                                                     val t = foldr (fn (x, t) => (L'.TCFun (x, k, t), loc)) t xs
+                                                     val e = foldr (fn (x, e) => (L'.ECAbs (x, k, e), loc)) e xs
+                                                 in
+                                                     (L'.DVal (x, n, t, e, ""), loc)
+                                                 end) xncs
+                        in
+                            ((x, n, xs, xncs), (st, dcons' @ dcons))
+                        end)
+                (st, []) dts
         in
-            ((L'.DDatatype (x, n, xs, xncs), loc) :: dcons, st)
-        end*)
+            ((L'.DDatatype dts, loc) :: dcons, st)
+        end
       | L.DDatatypeImp (x, n, m1, ms, s, xs, xncs) =>
         let
             val (st, n) = St.bindCon st x n
@@ -796,69 +816,86 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                         trans)
                                    end
 
-                                 | L.SgiDatatype _ => raise Fail "Corify SgiDatatype"
-                                 (*| L.SgiDatatype (x, n, xs, xnts) =>
+                                 | L.SgiDatatype dts =>
                                    let
                                        val k = (L'.KType, loc)
-                                       val dk = ElabUtil.classifyDatatype xnts
-                                       val (st, n') = St.bindCon st x n
-                                       val (xnts, (ds', st, cmap, conmap)) =
+
+                                       val (dts, (ds', st, cmap, conmap)) =
                                            ListUtil.foldlMap
-                                               (fn ((x', n, to), (ds', st, cmap, conmap)) =>
+                                               (fn ((x, n, xs, xnts), (ds', st, cmap, conmap)) =>
                                                    let
-                                                       val dt = (L'.CNamed n', loc)
-                                                       val args = ListUtil.mapi (fn (i, _) => (L'.CRel i, loc)) xs
+                                                       val dk = ElabUtil.classifyDatatype xnts
+                                                       val (st, n') = St.bindCon st x n
+                                                       val (xnts, (ds', st, cmap, conmap)) =
+                                                           ListUtil.foldlMap
+                                                               (fn ((x', n, to), (ds', st, cmap, conmap)) =>
+                                                                   let
+                                                                       val dt = (L'.CNamed n', loc)
+                                                                       val args = ListUtil.mapi (fn (i, _) => (L'.CRel i, loc)) xs
 
-                                                       val to = Option.map (corifyCon st) to
+                                                                       val to = Option.map (corifyCon st) to
 
-                                                       val pc = L'.PConFfi {mod = m,
-                                                                            datatyp = x,
-                                                                            params = xs,
-                                                                            con = x',
-                                                                            arg = to,
-                                                                            kind = dk}
+                                                                       val pc = L'.PConFfi {mod = m,
+                                                                                            datatyp = x,
+                                                                                            params = xs,
+                                                                                            con = x',
+                                                                                            arg = to,
+                                                                                            kind = dk}
 
-                                                       fun wrapT t =
-                                                           foldr (fn (x, t) => (L'.TCFun (x, k, t), loc)) t xs
-                                                       fun wrapE e =
-                                                           foldr (fn (x, e) => (L'.ECAbs (x, k, e), loc)) e xs
+                                                                       fun wrapT t =
+                                                                           foldr (fn (x, t) => (L'.TCFun (x, k, t), loc))
+                                                                                 t xs
+                                                                       fun wrapE e =
+                                                                           foldr (fn (x, e) => (L'.ECAbs (x, k, e), loc))
+                                                                                 e xs
 
-                                                       val (cmap, d) =
-                                                           case to of
-                                                               NONE => (SM.insert (cmap, x', wrapT dt),
-                                                                        (L'.DVal (x', n, wrapT dt,
-                                                                                  wrapE
-                                                                                      (L'.ECon (dk, pc, args, NONE),
-                                                                                       loc),
-                                                                                  ""), loc))
-                                                             | SOME t =>
-                                                               let
-                                                                   val tf = (L'.TFun (t, dt), loc)
-                                                                   val e = wrapE (L'.EAbs ("x", t, tf,
-                                                                                           (L'.ECon (dk, pc, args,
-                                                                                                     SOME (L'.ERel 0,
-                                                                                                           loc)),
-                                                                                            loc)), loc)
-                                                                   val d = (L'.DVal (x', n, wrapT tf,
-                                                                                     e, ""), loc)
-                                                               in
-                                                                   (SM.insert (cmap, x', wrapT tf), d)
-                                                               end
+                                                                       val (cmap, d) =
+                                                                           case to of
+                                                                               NONE => (SM.insert (cmap, x', wrapT dt),
+                                                                                        (L'.DVal (x', n, wrapT dt,
+                                                                                                  wrapE
+                                                                                                      (L'.ECon (dk, pc,
+                                                                                                                args,
+                                                                                                                NONE),
+                                                                                                       loc),
+                                                                                                  ""), loc))
+                                                                             | SOME t =>
+                                                                               let
+                                                                                   val tf = (L'.TFun (t, dt), loc)
+                                                                                   val e = wrapE
+                                                                                               (L'.EAbs ("x", t, tf,
+                                                                                                         (L'.ECon (dk,
+                                                                                                                   pc,
+                                                                                                                   args,
+                                                                                                                   SOME
+                                                                                                                       (L'.ERel 0,
+                                                                                                                        loc)),
+                                                                                                          loc)), loc)
+                                                                                   val d = (L'.DVal (x', n, wrapT tf,
+                                                                                                     e, ""), loc)
+                                                                               in
+                                                                                   (SM.insert (cmap, x', wrapT tf), d)
+                                                                               end
 
-                                                       val st = St.bindConstructor st x' n pc
-
-                                                       val conmap = SM.insert (conmap, x', (x, xs, to, dk))
+                                                                       val st = St.bindConstructor st x' n pc
+                                                                                
+                                                                       val conmap = SM.insert (conmap, x',
+                                                                                               (x, xs, to, dk))
+                                                                   in
+                                                                       ((x', n, to),
+                                                                        (d :: ds', st, cmap, conmap))
+                                                                   end) (ds', st, cmap, conmap) xnts
                                                    in
-                                                       ((x', n, to),
-                                                        (d :: ds', st, cmap, conmap))
-                                                   end) ([], st, cmap, conmap) xnts
+                                                       ((x, n', xs, xnts), (ds', st, cmap, conmap))
+                                                   end)
+                                           ([], st, cmap, conmap) dts
                                    in
-                                       (ds' @ (L'.DDatatype (x, n', xs, xnts), loc) :: ds,
+                                       (ds' @ (L'.DDatatype dts, loc) :: ds,
                                         cmap,
                                         conmap,
                                         st,
                                         trans)
-                                   end*)
+                                   end
 
                                  | L.SgiVal (x, _, c) =>
                                    let
