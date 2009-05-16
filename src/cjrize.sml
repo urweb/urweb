@@ -483,7 +483,8 @@ fun cifyExp (eAll as (e, loc), sm) =
 
 fun cifyDecl ((d, loc), sm) =
     case d of
-        L.DDatatype (x, n, xncs) =>
+        L.DDatatype _ => raise Fail "Cjrize DDatatype"
+        (*L.DDatatype (x, n, xncs) =>
         let
             val dk = ElabUtil.classifyDatatype xncs
             val (xncs, sm) = ListUtil.foldlMap (fn ((x, n, to), sm) =>
@@ -497,7 +498,7 @@ fun cifyDecl ((d, loc), sm) =
                                                        end) sm xncs
         in
             (SOME (L'.DDatatype (dk, x, n, xncs), loc), NONE, sm)
-        end
+        end*)
 
       | L.DVal (x, n, t, e, _) =>
         let

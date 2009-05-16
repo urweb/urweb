@@ -176,13 +176,14 @@ fun process file =
                     | ((DValRec vis, _), (someTs, nameds)) =>
                       (someTs, foldl (fn ((_, n, _, e, _), nameds) => IM.insert (nameds, n, e))
                                      nameds vis)
-                    | ((DDatatype (_, _, cs), _), state as (someTs, nameds)) =>
-                      if ElabUtil.classifyDatatype cs = Option then
-                          (foldl (fn ((_, n, SOME t), someTs) => IM.insert (someTs, n, t)
-                                   | (_, someTs) => someTs) someTs cs,
-                           nameds)
-                      else
-                          state
+                    | ((DDatatype dts, _), state as (someTs, nameds)) =>
+                      (foldl (fn ((_, _, cs), someTs) =>
+                                 if ElabUtil.classifyDatatype cs = Option then
+                                     foldl (fn ((_, n, SOME t), someTs) => IM.insert (someTs, n, t)
+                                             | (_, someTs) => someTs) someTs cs
+                                 else
+                                     someTs) someTs dts,
+                       nameds)
                     | (_, state) => state)
                   (IM.empty, IM.empty) file
 

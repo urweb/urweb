@@ -48,8 +48,8 @@ fun shake file =
                             | ((DDatabase {expunge = n1, initialize = n2, ...}, _), page_es) => n1 :: n2 :: page_es
                             | (_, page_es) => page_es) [] file
 
-        val (cdef, edef) = foldl (fn ((DDatatype (_, n, xncs), _), (cdef, edef)) =>
-                                     (IM.insert (cdef, n, xncs), edef)
+        val (cdef, edef) = foldl (fn ((DDatatype dts, _), (cdef, edef)) =>
+                                     (foldl (fn ((_, n, xncs), cdef) => IM.insert (cdef, n, xncs)) cdef dts, edef)
                                    | ((DVal (_, n, t, e, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, (t, e)))
                                    | ((DValRec vis, _), (cdef, edef)) =>
@@ -111,7 +111,7 @@ fun shake file =
                               NONE => raise Fail "Shake: Couldn't find 'val'"
                             | SOME (t, e) => shakeExp s e) s page_es
     in
-        List.filter (fn (DDatatype (_, n, _), _) => IS.member (#con s, n)
+        List.filter (fn (DDatatype dts, _) => List.exists (fn (_, n, _) => IS.member (#con s, n)) dts
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => true

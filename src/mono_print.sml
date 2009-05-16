@@ -377,9 +377,7 @@ fun p_datatype env (x, n, cons) =
     let
         val env = E.pushDatatype env x n cons
     in
-        box [string "datatype",
-             space,
-             string x,
+        box [string x,
              space,
              string "=",
              space,
@@ -393,7 +391,9 @@ fun p_datatype env (x, n, cons) =
 
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
-        DDatatype x => p_datatype env x
+        DDatatype x => box [string "datatype",
+                            space,
+                            p_list_sep (box [space, string "and", space]) (p_datatype (E.declBinds env dAll)) x]
       | DVal vi => box [string "val",
                         space,
                         p_vali env vi]

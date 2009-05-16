@@ -3045,27 +3045,30 @@ fun monoDecl (env, fm) (all as (d, loc)) =
     in
         case d of
             L.DCon _ => NONE
-          | L.DDatatype _ => raise Fail "Monoize DDatatype"
-          (*| L.DDatatype (x, n, [], xncs) =>
-            let
-                val env' = Env.declBinds env all
-                val d = (L'.DDatatype (x, n, map (fn (x, n, to) => (x, n, Option.map (monoType env') to)) xncs), loc)
-            in
-                SOME (env', fm, [d])
-            end
-          | L.DDatatype ("list", n, [_], [("Nil", _, NONE),
-                                          ("Cons", _, SOME (L.TRecord (L.CRecord (_,
-                                                                                  [((L.CName "1", _),
-                                                                                    (L.CRel 0, _)),
-                                                                                   ((L.CName "2", _),
-                                                                                    (L.CApp ((L.CNamed n', _),
-                                                                                             (L.CRel 0, _)),
-                                                                                     _))]), _), _))]) =>
+          | L.DDatatype [("list", n, [_], [("Nil", _, NONE),
+                                           ("Cons", _, SOME (L.TRecord (L.CRecord (_,
+                                                                                   [((L.CName "1", _),
+                                                                                     (L.CRel 0, _)),
+                                                                                    ((L.CName "2", _),
+                                                                                     (L.CApp ((L.CNamed n', _),
+                                                                                              (L.CRel 0, _)),
+                                                                                      _))]), _), _))])] =>
             if n = n' then
                 NONE
             else
                 poly ()
-          | L.DDatatype _ => poly ()*)
+          | L.DDatatype dts =>
+            let
+                val env' = Env.declBinds env all
+                val dts = map (fn (x, n, [], xncs) =>
+                                  (x, n, map (fn (x, n, to) => (x, n, Option.map (monoType env') to)) xncs)
+                                | _ => (E.errorAt loc "Polymorphic datatype needed too late";
+                                        Print.eprefaces' [("Declaration", CorePrint.p_decl env all)];
+                                        ("", 0, []))) dts
+                val d = (L'.DDatatype dts, loc)
+            in
+                SOME (env', fm, [d])
+            end
           | L.DVal (x, n, t, e, s) =>
             let
                 val (e, fm) = monoExp (env, St.empty, fm) e

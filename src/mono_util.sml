@@ -466,15 +466,17 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
 
         and mfd' ctx (dAll as (d, loc)) =
             case d of
-                DDatatype (x, n, xncs) =>
-                S.map2 (ListUtil.mapfold (fn (x, n, c) =>
-                                             case c of
-                                                 NONE => S.return2 (x, n, c)
-                                               | SOME c =>
-                                                 S.map2 (mft c,
-                                                      fn c' => (x, n, SOME c'))) xncs,
-                        fn xncs' =>
-                           (DDatatype (x, n, xncs'), loc))
+                DDatatype dts =>
+                S.map2 (ListUtil.mapfold (fn (x, n, xncs) =>
+                                             S.map2 (ListUtil.mapfold (fn (x, n, c) =>
+                                                                          case c of
+                                                                              NONE => S.return2 (x, n, c)
+                                                                            | SOME c =>
+                                                                              S.map2 (mft c,
+                                                                                   fn c' => (x, n, SOME c'))) xncs,
+                                                  fn xncs' => (x, n, xncs'))) dts,
+                        fn dts' =>
+                           (DDatatype dts', loc))
               | DVal vi =>
                 S.map2 (mfvi ctx vi,
                      fn vi' =>
@@ -566,21 +568,23 @@ fun mapfoldB (all as {bind, ...}) =
                             let
                                 val ctx' =
                                     case #1 d' of
-                                        DDatatype (x, n, xncs) =>
-                                        let
-                                            val ctx = bind (ctx, Datatype (x, n, xncs))
-                                            val t = (TDatatype (n, ref (ElabUtil.classifyDatatype xncs, xncs)), #2 d')
-                                        in
-                                            foldl (fn ((x, n, to), ctx) =>
-                                                      let
-                                                          val t = case to of
-                                                                      NONE => t
-                                                                    | SOME t' => (TFun (t', t), #2 d')
-                                                      in
-                                                          bind (ctx, NamedE (x, n, t, NONE, ""))
-                                                      end)
-                                            ctx xncs
-                                        end
+                                        DDatatype dts =>
+                                        foldl (fn ((x, n, xncs), ctx) =>
+                                                  let
+                                                      val ctx = bind (ctx, Datatype (x, n, xncs))
+                                                      val t = (TDatatype (n, ref (ElabUtil.classifyDatatype xncs, xncs)),
+                                                               #2 d')
+                                                  in
+                                                      foldl (fn ((x, n, to), ctx) =>
+                                                                let
+                                                                    val t = case to of
+                                                                                NONE => t
+                                                                              | SOME t' => (TFun (t', t), #2 d')
+                                                                in
+                                                                    bind (ctx, NamedE (x, n, t, NONE, ""))
+                                                                end)
+                                                            ctx xncs
+                                                  end) ctx dts
                                       | DVal (x, n, t, e, s) => bind (ctx, NamedE (x, n, t, SOME e, s))
                                       | DValRec vis => foldl (fn ((x, n, t, e, s), ctx) =>
                                                                  bind (ctx, NamedE (x, n, t, NONE, s))) ctx vis
@@ -631,9 +635,10 @@ fun fold {typ, exp, decl} s d =
 
 val maxName = foldl (fn ((d, _) : decl, count) =>
                         case d of
-                            DDatatype (_, n, ns) =>
-                            foldl (fn ((_, n', _), m) => Int.max (n', m))
-                                  (Int.max (n, count)) ns
+                            DDatatype dts =>
+                            foldl (fn ((_, n, ns), count) =>
+                                      foldl (fn ((_, n', _), m) => Int.max (n', m))
+                                            (Int.max (n, count)) ns) count dts
                           | DVal (_, n, _, _, _) => Int.max (n, count)
                           | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
                           | DExport _ => count

@@ -121,7 +121,7 @@ datatype exp' =
 withtype exp = exp' located
 
 datatype decl' =
-         DDatatype of string * int * (string * int * typ option) list
+         DDatatype of (string * int * (string * int * typ option) list) list
        | DVal of string * int * typ * exp * string
        | DValRec of (string * int * typ * exp * string) list
        | DExport of export_kind * string * int * typ list * typ

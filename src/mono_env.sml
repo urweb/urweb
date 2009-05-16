@@ -109,15 +109,16 @@ fun lookupENamed (env : env) n =
 
 fun declBinds env (d, loc) =
     case d of
-        DDatatype (x, n, xncs) =>
-        let
-            val env = pushDatatype env x n xncs
-            val dt = (TDatatype (n, ref (ElabUtil.classifyDatatype xncs, xncs)), loc)
-        in
-            foldl (fn ((x', n', NONE), env) => pushENamed env x' n' dt NONE ""
-                    | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, dt), loc) NONE "")
-            env xncs
-        end
+        DDatatype dts =>
+        foldl (fn ((x, n, xncs), env) =>
+                  let
+                      val env = pushDatatype env x n xncs
+                      val dt = (TDatatype (n, ref (ElabUtil.classifyDatatype xncs, xncs)), loc)
+                  in
+                      foldl (fn ((x', n', NONE), env) => pushENamed env x' n' dt NONE ""
+                              | ((x', n', SOME t), env) => pushENamed env x' n' (TFun (t, dt), loc) NONE "")
+                            env xncs
+                  end) env dts
       | DVal (x, n, t, e, s) => pushENamed env x n t (SOME e) s
       | DValRec vis => foldl (fn ((x, n, t, e, s), env) => pushENamed env x n t NONE s) env vis
       | DExport _ => env
