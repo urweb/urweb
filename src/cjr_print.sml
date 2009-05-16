@@ -2841,14 +2841,22 @@ fun p_file env (ds, ps) =
                                     string "uw_write(ctx, begin_xhtml);",
                                     newline,
                                     string "uw_set_script_header(ctx, \"",
-                                    string (case side of
+                                    let
+                                        val scripts =
+                                            case side of
                                                 ServerOnly => ""
                                               | _ => "<script src=\\\""
                                                      ^ OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
                                                                             file = "app.js"}
-                                                     ^ "\\\"></script>\\n"),
-                                    p_list (fn x => string ("<script src=\\\"" ^ x ^ "\\\"></script>"))
-                                           (Settings.getScripts ()),
+                                                     ^ "\\\"></script>\\n"
+
+                                        val scripts = foldl (fn (x, scripts) =>
+                                                                scripts
+                                                                ^ "<script src=\\\"" ^ x ^ "\\\"></script>\\n")
+                                                      scripts (Settings.getScripts ())
+                                    in
+                                        string scripts
+                                    end,
                                     string "\");",
                                     newline,
                                     string "uw_set_needs_push(ctx, ",
