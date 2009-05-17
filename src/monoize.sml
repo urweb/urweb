@@ -2538,9 +2538,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                   | "dyn" =>
                     (case attrs of
-                         [("Signal", (L'.EApp ((L'.EAbs (_, _, _, (L'.ESignalReturn (L'.ERel 0, _), _)), _),
+                         (*[("Signal", (L'.EApp ((L'.EAbs (_, _, _, (L'.ESignalReturn (L'.ERel 0, _), _)), _),
                                                e), _), _)] => (e, fm)
-                       | [("Signal", e, _)] =>
+                       |*) [("Signal", e, _)] =>
                          ((L'.EStrcat
                                ((L'.EPrim (Prim.String "<span><script type=\"text/javascript\">dyn("), loc),
                                 (L'.EStrcat ((L'.EJavaScript (L'.Script, e, NONE), loc),
@@ -3188,8 +3188,6 @@ datatype expungable = Client | Channel
 
 fun monoize env file =
     let
-
-
         (* Calculate which exported functions need cookie signature protection *)
         val rcook = foldl (fn ((d, _), rcook) =>
                               case d of

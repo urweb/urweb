@@ -824,6 +824,9 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                            ListUtil.foldlMap
                                                (fn ((x, n, xs, xnts), (ds', st, cmap, conmap)) =>
                                                    let
+                                                       val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc))
+                                                                      k xs
+
                                                        val dk = ElabUtil.classifyDatatype xnts
                                                        val (st, n') = St.bindCon st x n
                                                        val (xnts, (ds', st, cmap, conmap)) =
@@ -885,12 +888,14 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                                                        ((x', n, to),
                                                                         (d :: ds', st, cmap, conmap))
                                                                    end) (ds', st, cmap, conmap) xnts
+
+                                                       val d = (L'.DCon (x, n', k', (L'.CFfi (m, x), loc)), loc)
                                                    in
-                                                       ((x, n', xs, xnts), (ds', st, cmap, conmap))
+                                                       ((x, n', xs, xnts), (d :: ds', st, cmap, conmap))
                                                    end)
                                            ([], st, cmap, conmap) dts
                                    in
-                                       (ds' @ (L'.DDatatype dts, loc) :: ds,
+                                       (List.revAppend (ds', ds),
                                         cmap,
                                         conmap,
                                         st,

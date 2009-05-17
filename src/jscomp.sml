@@ -168,6 +168,21 @@ val compact =
                           case b of
                               U.Exp.RelE _ => inner+1
                             | _ => inner}
+
+val desourceify' =
+    U.Exp.map {typ = fn t => t,
+               exp = fn e =>
+                        case e of
+                            EJavaScript (_, e, _) => #1 e
+                          | _ => e}
+    
+val desourceify =
+    U.File.map {typ = fn t => t,
+                exp = fn e =>
+                         case e of
+                             EJavaScript (m, e, eo) => EJavaScript (m, desourceify' e, eo)
+                           | _ => e,
+                decl = fn d => d}
     
 fun process file =
     let
@@ -251,16 +266,19 @@ fun process file =
                 let
                     val (e', st) = quoteExp loc t ((ERel 0, loc), st)
                 in
-                    ((ECase (e,
-                             [((PNone t, loc),
-                               str loc "null"),
-                              ((PSome (t, (PVar ("x", t), loc)), loc),
-                               if isNullable t then
-                                   strcat loc [str loc "{v:", e', str loc "}"]
-                               else
-                                   e')],
-                             {disc = (TOption t, loc),
-                              result = (TFfi ("Basis", "string"), loc)}), loc),
+                    (case #1 e' of
+                        EPrim (Prim.String "ERROR") => raise Fail "UHOH"
+                      | _ =>
+                        (ECase (e,
+                                [((PNone t, loc),
+                                  str loc "null"),
+                                 ((PSome (t, (PVar ("x", t), loc)), loc),
+                                  if isNullable t then
+                                      strcat loc [str loc "{v:", e', str loc "}"]
+                                  else
+                                      e')],
+                                {disc = (TOption t, loc),
+                                 result = (TFfi ("Basis", "string"), loc)}), loc),
                      st)
                 end
 
@@ -578,7 +596,8 @@ fun process file =
                                                   ^ (if isNullable t then
                                                          ".v,"
                                                      else
-                                                         "")),
+                                                         "")
+                                                  ^ ","),
                                              jsPat (depth+1) inner p succ fail,
                                              str "):",
                                              fail,
@@ -657,13 +676,9 @@ fun process file =
                                 (str ("_" ^ var n), st)
                             else
                                 let
-                                    (*val () = Print.prefaces "ERel"
-                                             [("n", Print.PD.string (Int.toString n)),
-                                              ("inner", Print.PD.string (Int.toString inner)),
-                                              ("eq", MonoPrint.p_exp MonoEnv.empty
-                                                                     (#1 (quoteExp (List.nth (outer, n - inner))
-                                                                                   ((ERel (n - inner), loc), st))))]*)
                                     val n = n - inner
+                                    (*val () = Print.prefaces "quote" [("t", MonoPrint.p_typ MonoEnv.empty
+                                                                           (List.nth (outer, n)))]*)
                                 in
                                     quoteExp (List.nth (outer, n)) ((ERel n, loc), st)
                                 end
@@ -1083,7 +1098,7 @@ fun process file =
             U.Decl.foldMapB {typ = fn x => x,
                              exp = fn (env, e, st) =>
                                       let
-                                          fun doCode m env orig e =
+                                          fun doCode m env e =
                                               let
                                                   val len = length env
                                                   fun str s = (EPrim (Prim.String s), #2 e)
@@ -1093,16 +1108,32 @@ fun process file =
                                                                  fn i => str ("var _" ^ Int.toString (len + i) ^ ";"))
                                                   val old = e
                                                   val (e, st) = jsExp m env 0 (e, st)
+                                                  val e =
+                                                      case locals of
+                                                          [] => e
+                                                        | _ =>
+                                                          strcat (#2 e) (str "(function(){"
+                                                                         :: locals
+                                                                         @ [str "return ",
+                                                                            e,
+                                                                            str "}())"])
                                               in
                                                   (*Print.prefaces "jsify" [("old", MonoPrint.p_exp MonoEnv.empty old),
                                                                           ("new", MonoPrint.p_exp MonoEnv.empty e)];*)
-                                                  (EJavaScript (m, orig, SOME (strcat (#2 e) (locals @ [e]))), st)
+                                                  (EJavaScript (m, old, SOME e), st)
                                               end
                                       in
                                           case e of
-                                              EJavaScript (m, orig, NONE) =>
+                                              (*EJavaScript (m as Source t, orig, NONE) =>
+                                              let
+                                                  val loc = #2 orig
+                                                  val (e, st) = doCode m (t :: env) (ERel 0, loc)
+                                              in
+                                                  (ELet ("x", t, orig, (e, loc)), st)
+                                              end
+                                            |*) EJavaScript (m, orig, NONE) =>
                                               (foundJavaScript := true;
-                                               doCode m env orig orig)
+                                               doCode m env orig)
                                             | _ => (e, st)
                                       end,
                              decl = fn (_, e, st) => (e, st),
@@ -1132,7 +1163,7 @@ fun process file =
                         listInjectors = TM.empty,
                         decoders = IM.empty,
                         maxName = U.File.maxName file + 1}
-                       file
+                       (desourceify file)
 
         val inf = TextIO.openIn (OS.Path.joinDirFile {dir = Config.libJs, file = "urweb.js"})
         fun lines acc =
