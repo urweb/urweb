@@ -78,7 +78,7 @@ fun fuse file =
 
                                                   val (body, args) = getBody (e, args)
                                                   val body = MonoOpt.optExp (EWrite body, loc)
-                                                  val (body, _) = foldl (fn ((x, dom), (body, ran)) =>
+                                                  val (body, _) = foldr (fn ((x, dom), (body, ran)) =>
                                                                             ((EAbs (x, dom, ran, body), loc),
                                                                              (TFun (dom, ran), loc)))
                                                                         (body, (TRecord [], loc)) args

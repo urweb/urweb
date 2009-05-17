@@ -140,12 +140,12 @@ val swapExpVarsPat =
                 bind = fn ((lower, len), U.Exp.RelE _) => (lower+1, len)
                         | (st, _) => st}
 
-datatype result = Yes of E.env | No | Maybe
+datatype result = Yes of exp list | No | Maybe
 
 fun match (env, p : pat, e : exp) =
     case (#1 p, #1 e) of
         (PWild, _) => Yes env
-      | (PVar (x, t), _) => Yes (E.pushERel env x t (SOME e))
+      | (PVar (x, t), _) => Yes (e :: env)
 
       | (PPrim (Prim.String s), EStrcat ((EPrim (Prim.String s'), _), _)) =>
         if String.isPrefix s' s then
@@ -406,12 +406,13 @@ fun reduce file =
                                 case pes of
                                     [] => push ()
                                   | (p, body) :: pes =>
-                                    case match (env, p, e') of
+                                    case match ([], p, e') of
                                         No => search pes
                                       | Maybe => push ()
-                                      | Yes env' =>
+                                      | Yes subs =>
                                         let
-                                            val r = reduceExp env' body
+                                            val body = foldr (fn (e, body) => subExpInExp (0, e) body) body subs
+                                            val r = reduceExp env body
                                         in
                                             (*Print.prefaces "ECase"
                                                            [("body", MonoPrint.p_exp env' body),
