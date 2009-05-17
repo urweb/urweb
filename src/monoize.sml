@@ -1173,7 +1173,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("x", t, (L'.TFun ((L'.TRecord [], loc), (L'.TSource, loc)), loc),
                            (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TSource, loc),
                                      (L'.EFfiApp ("Basis", "new_client_source",
-                                                  [(L'.EJavaScript (L'.Source t, (L'.ERel 1, loc), NONE), loc)]),
+                                                  [(L'.EJavaScript (L'.Source t, (L'.ERel 1, loc)), loc)]),
                                       loc)), loc)),
                   loc),
                  fm)
@@ -1189,7 +1189,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                (L'.EFfiApp ("Basis", "set_client_source",
                                                             [(L'.ERel 2, loc),
                                                              (L'.EJavaScript (L'.Source t,
-                                                                              (L'.ERel 1, loc), NONE), loc)]),
+                                                                              (L'.ERel 1, loc)), loc)]),
                                                 loc)), loc)), loc)), loc),
                  fm)
             end
@@ -2410,7 +2410,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                         (L'.EStrcat (
                                                          (L'.EPrim (Prim.String s'), loc),
                                                          (L'.EStrcat (
-                                                          (L'.EJavaScript (L'.Attribute, e, NONE), loc),
+                                                          (L'.EJavaScript (L'.Attribute, e), loc),
                                                           (L'.EPrim (Prim.String "'"), loc)), loc)),
                                                          loc)), loc),
                                            fm)
@@ -2500,11 +2500,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                      (fn ("Source", _, _) => NONE
                                        | ("Onchange", e, _) =>
                                          SOME (strcat [str "addOnChange(d,",
-                                                       (L'.EJavaScript (L'.Script, e, NONE), loc),
+                                                       (L'.EJavaScript (L'.Script, e), loc),
                                                        str ")"])
                                        | (x, e, _) =>
                                          SOME (strcat [str ("d." ^ lowercaseFirst x ^ "="),
-                                                       (L'.EJavaScript (L'.Script, e, NONE), loc),
+                                                       (L'.EJavaScript (L'.Script, e), loc),
                                                        str ";"]))
                                      attrs
                     in
@@ -2524,7 +2524,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          let
                                              val e = (L'.EApp (e, (L'.ERecord [], loc)), loc)
                                          in
-                                             (L'.EJavaScript (L'.Attribute, e, NONE), loc)
+                                             (L'.EJavaScript (L'.Attribute, e), loc)
                                          end
                     in
                         normal ("body",
@@ -2543,7 +2543,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        |*) [("Signal", e, _)] =>
                          ((L'.EStrcat
                                ((L'.EPrim (Prim.String "<span><script type=\"text/javascript\">dyn("), loc),
-                                (L'.EStrcat ((L'.EJavaScript (L'.Script, e, NONE), loc),
+                                (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
                                              (L'.EPrim (Prim.String ")</script></span>"), loc)), loc)), loc),
                           fm)
                        | _ => raise Fail "Monoize: Bad dyn attributes")
@@ -2566,7 +2566,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               end
                             | SOME (_, src, _) =>
                               (strcat [str "<span><script type=\"text/javascript\">inp(\"input\",",
-                                       (L'.EJavaScript (L'.Script, src, NONE), loc),
+                                       (L'.EJavaScript (L'.Script, src), loc),
                                        str ",\"\")</script></span>"],
                                fm))
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
@@ -2638,7 +2638,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        | SOME (_, src, _) =>
                          let
                              val sc = strcat [str "inp(\"input\",",
-                                              (L'.EJavaScript (L'.Script, src, NONE), loc),
+                                              (L'.EJavaScript (L'.Script, src), loc),
                                               str ",\"\")"]
                              val sc = setAttrs sc
                          in
@@ -2663,9 +2663,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              val (xml, fm) = monoExp (env, st, fm) xml
 
                              val sc = strcat [str "inp(\"select\",",
-                                              (L'.EJavaScript (L'.Script, src, NONE), loc),
+                                              (L'.EJavaScript (L'.Script, src), loc),
                                               str ",",
-                                              (L'.EJavaScript (L'.Script, xml, NONE), loc),
+                                              (L'.EJavaScript (L'.Script, xml), loc),
                                               str ")"]
                              val sc = setAttrs sc
                          in

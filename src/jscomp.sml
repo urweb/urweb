@@ -126,7 +126,7 @@ fun closedUpto d =
               | EDml e => cu inner e
               | ENextval e => cu inner e
               | EUnurlify (e, _) => cu inner e
-              | EJavaScript (_, e, _) => cu inner e
+              | EJavaScript (_, e) => cu inner e
               | ESignalReturn e => cu inner e
               | ESignalBind (e1, e2) => cu inner e1 andalso cu inner e2
               | ESignalSource e => cu inner e
@@ -169,21 +169,8 @@ val compact =
                               U.Exp.RelE _ => inner+1
                             | _ => inner}
 
-val desourceify' =
-    U.Exp.map {typ = fn t => t,
-               exp = fn e =>
-                        case e of
-                            EJavaScript (_, e, _) => #1 e
-                          | _ => e}
-    
-val desourceify =
-    U.File.map {typ = fn t => t,
-                exp = fn e =>
-                         case e of
-                             EJavaScript (m, e, eo) => EJavaScript (m, desourceify' e, eo)
-                           | _ => e,
-                decl = fn d => d}
-    
+exception CantEmbed of typ
+
 fun process file =
     let
         val (someTs, nameds) =
@@ -387,9 +374,10 @@ fun process file =
                          ((EApp ((ENamed n', loc), e), loc), st)
                      end)
 
-              | _ => (EM.errorAt loc "Don't know how to embed type in JavaScript";
+              | _ => raise CantEmbed t
+                             (*(EM.errorAt loc "Don't know how to embed type in JavaScript";
                       Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
-                      (str loc "ERROR", st))
+                      (str loc "ERROR", st))*)
 
         fun unurlifyExp loc (t : typ, st) =
             case #1 t of
@@ -773,14 +761,6 @@ fun process file =
                             end
                           | EFfiApp (m, x, args) =>
                             let
-                                val args =
-                                    case (m, x, args) of
-                                        ("Basis", "new_client_source", [(EJavaScript (_, e, _), _)]) =>
-                                        (foundJavaScript := true; [e])
-                                      | ("Basis", "set_client_source", [e1, (EJavaScript (_, e2, _), _)]) =>
-                                        (foundJavaScript := true; [e1, e2])
-                                      | _ => args
-
                                 val name = case Settings.jsFunc (m, x) of
                                                NONE => (EM.errorAt loc ("Unsupported FFI function "
                                                                         ^ x ^ " in JavaScript");
@@ -985,15 +965,19 @@ fun process file =
                                          str ")"], st)
                             end
 
-                          | EJavaScript (Source _, _, SOME _) =>
+                          | EJavaScript (Source _, e) =>
                             (foundJavaScript := true;
-                             (e, st))
-                          | EJavaScript (_, _, SOME e) =>
-                            (foundJavaScript := true;
-                             (strcat [str "cs(function(){return ",
-                                      compact inner e,
-                                      str "})"],
-                              st))
+                             jsE inner (e, st))
+                          | EJavaScript (_, e) =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                            in
+                                foundJavaScript := true;
+                                (strcat [str "cs(function(){return ",
+                                         compact inner e,
+                                         str "})"],
+                                 st)
+                            end
 
                           | EClosure _ => unsupported "EClosure"
                           | EQuery _ => unsupported "Query"
@@ -1001,16 +985,6 @@ fun process file =
                           | ENextval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
                           | EReturnBlob _ => unsupported "EUnurlify"
-                          | EJavaScript (_, e, _) =>
-                            let
-                                val (e, st) = jsE inner (e, st)
-                            in
-                                foundJavaScript := true;
-                                (strcat [str "cs(function(){return ",
-                                         e,
-                                         str "})"],
-                                 st)
-                            end
 
                           | ESignalReturn e =>
                             let
@@ -1094,56 +1068,274 @@ fun process file =
                 jsE
             end
 
-        val decl : state -> decl -> decl * state =
-            U.Decl.foldMapB {typ = fn x => x,
-                             exp = fn (env, e, st) =>
-                                      let
-                                          fun doCode m env e =
-                                              let
-                                                  val len = length env
-                                                  fun str s = (EPrim (Prim.String s), #2 e)
 
-                                                  val locals = List.tabulate
-                                                                   (varDepth e,
-                                                                 fn i => str ("var _" ^ Int.toString (len + i) ^ ";"))
-                                                  val old = e
-                                                  val (e, st) = jsExp m env 0 (e, st)
-                                                  val e =
-                                                      case locals of
-                                                          [] => e
-                                                        | _ =>
-                                                          strcat (#2 e) (str "(function(){"
-                                                                         :: locals
-                                                                         @ [str "return ",
-                                                                            e,
-                                                                            str "}())"])
-                                              in
-                                                  (*Print.prefaces "jsify" [("old", MonoPrint.p_exp MonoEnv.empty old),
-                                                                          ("new", MonoPrint.p_exp MonoEnv.empty e)];*)
-                                                  (EJavaScript (m, old, SOME e), st)
-                                              end
-                                      in
-                                          case e of
-                                              (*EJavaScript (m as Source t, orig, NONE) =>
-                                              let
-                                                  val loc = #2 orig
-                                                  val (e, st) = doCode m (t :: env) (ERel 0, loc)
-                                              in
-                                                  (ELet ("x", t, orig, (e, loc)), st)
-                                              end
-                                            |*) EJavaScript (m, orig, NONE) =>
-                                              (foundJavaScript := true;
-                                               doCode m env orig)
-                                            | _ => (e, st)
-                                      end,
-                             decl = fn (_, e, st) => (e, st),
-                             bind = fn (env, U.Decl.RelE (_, t)) => t :: env
-                                     | (env, _) => env}
-                            []
+        fun patBinds ((p, _), env) =
+            case p of
+                PWild => env
+              | PVar (_, t) => t :: env
+              | PPrim _ => env
+              | PCon (_, _, NONE) => env
+              | PCon (_, _, SOME p) => patBinds (p, env)
+              | PRecord xpts => foldl (fn ((_, p, _), env) => patBinds (p, env)) env xpts
+              | PNone _ => env
+              | PSome (_, p) => patBinds (p, env)
+
+        fun exp outer (e as (_, loc), st) =
+            ((*Print.preface ("exp", MonoPrint.p_exp MonoEnv.empty e);*)
+             case #1 e of
+                 EPrim _ => (e, st)
+               | ERel _ => (e, st)
+               | ENamed _ => (e, st)
+               | ECon (_, _, NONE) => (e, st)
+               | ECon (dk, pc, SOME e) => 
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((ECon (dk, pc, SOME e), loc), st)
+                 end
+               | ENone _ => (e, st)
+               | ESome (t, e) =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((ESome (t, e), loc), st)
+                 end
+               | EFfi _ => (e, st)
+               | EFfiApp (m, x, es) =>
+                 let
+                     val (es, st) = ListUtil.foldlMap (exp outer) st es
+                 in
+                     ((EFfiApp (m, x, es), loc), st)
+                 end
+               | EApp (e1, e2) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((EApp (e1, e2), loc), st)
+                 end
+               | EAbs (x, dom, ran, e) =>
+                 let
+                     val (e, st) = exp (dom :: outer) (e, st)
+                 in
+                     ((EAbs (x, dom, ran, e), loc), st)
+                 end
+
+               | EUnop (s, e) =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((EUnop (s, e), loc), st)
+                 end
+               | EBinop (s, e1, e2) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((EBinop (s, e1, e2), loc), st)
+                 end
+                 
+               | ERecord xets =>
+                 let
+                     val (xets, st) = ListUtil.foldlMap (fn ((x, e, t), st) =>
+                                                            let
+                                                                val (e, st) = exp outer (e, st)
+                                                            in
+                                                                ((x, e, t), st)
+                                                            end) st xets
+                 in
+                     ((ERecord xets, loc), st)
+                 end
+               | EField (e, s) =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((EField (e, s), loc), st)
+                 end
+
+               | ECase (e, pes, ts) =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                     val (pes, st) = ListUtil.foldlMap (fn ((p, e), st) =>
+                                                           let
+                                                               val (e, st) = exp (patBinds (p, outer)) (e, st)
+                                                           in
+                                                               ((p, e), st)
+                                                           end) st pes
+                 in
+                     ((ECase (e, pes, ts), loc), st)
+                 end
+
+               | EStrcat (e1, e2) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((EStrcat (e1, e2), loc), st)
+                 end
+
+               | EError (e, t) =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((EError (e, t), loc), st)
+                 end
+               | EReturnBlob {blob, mimeType, t} =>
+                 let
+                     val (blob, st) = exp outer (blob, st)
+                     val (mimeType, st) = exp outer (mimeType, st)
+                 in
+                     ((EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), st)
+                 end
+
+               | EWrite e =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((EWrite e, loc), st)
+                 end
+               | ESeq (e1, e2) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((ESeq (e1, e2), loc), st)
+                 end
+               | ELet (x, t, e1, e2) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp (t :: outer) (e2, st)
+                 in
+                     ((ELet (x, t, e1, e2), loc), st)
+                 end
+
+               | EClosure (n, es) =>
+                 let
+                     val (es, st) = ListUtil.foldlMap (exp outer) st es
+                 in
+                     ((EClosure (n, es), loc), st)
+                 end
+
+               | EQuery {exps, tables, state, query, body, initial} =>
+                 let
+                     val (query, st) = exp outer (query, st)
+                     val (body, st) = exp outer (body, st)
+                     val (initial, st) = exp outer (initial, st)
+                 in
+                     ((EQuery {exps = exps, tables = tables, state = state,
+                               query = query, body = body, initial = initial}, loc), st)
+                 end
+               | EDml e =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((EDml e, loc), st)
+                 end
+               | ENextval e =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((ENextval e, loc), st)
+                 end
+
+               | EUnurlify (e, t) =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((EUnurlify (e, t), loc), st)
+                 end
+
+               | EJavaScript (m, e') =>
+                 (let
+                      val len = length outer
+                      fun str s = (EPrim (Prim.String s), #2 e')
+
+                      val locals = List.tabulate
+                                       (varDepth e',
+                                     fn i => str ("var _" ^ Int.toString (len + i) ^ ";"))
+
+                      val (e', st) = jsExp m outer 0 (e', st)
+
+                      val e' =
+                          case locals of
+                              [] => e'
+                            | _ =>
+                              strcat (#2 e') (str "(function(){"
+                                              :: locals
+                                              @ [str "return ",
+                                                 e',
+                                                 str "}())"])
+                  in
+                      (e', st)
+                  end handle CantEmbed _ => (e, st))
+
+               | ESignalReturn e =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((ESignalReturn e, loc), st)
+                 end
+               | ESignalBind (e1, e2) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((ESignalBind (e1, e2), loc), st)
+                 end
+               | ESignalSource e =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((ESignalSource e, loc), st)
+                 end
+                 
+               | EServerCall (e1, e2, t, ef) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((EServerCall (e1, e2, t, ef), loc), st)
+                 end
+               | ERecv (e1, e2, t) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((ERecv (e1, e2, t), loc), st)
+                 end
+               | ESleep (e1, e2) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((ESleep (e1, e2), loc), st)
+                 end)
+
+        fun decl (d as (_, loc), st) =
+            case #1 d of
+                DVal (x, n, t, e, s) =>
+                let
+                    val (e, st) = exp [] (e, st)
+                in
+                    ((DVal (x, n, t, e, s), loc), st)
+                end
+              | DValRec vis =>
+                let
+                    val (vis, st) = ListUtil.foldlMap (fn ((x, n, t, e, s), st) =>
+                                                          let
+                                                              val (e, st) = exp [] (e, st)
+                                                          in
+                                                              ((x, n, t, e, s), st)
+                                                          end) st vis
+                in
+                    ((DValRec vis, loc), st)
+                end
+              | _ => (d, st)
 
         fun doDecl (d, st) =
             let
-                val (d, st) = decl st d
+                (*val () = Print.preface ("doDecl", MonoPrint.p_decl MonoEnv.empty d)*)
+                val (d, st) = decl (d, st)
             in
                 (List.revAppend (#decls st, [d]),
                  {decls = [],
@@ -1163,7 +1355,7 @@ fun process file =
                         listInjectors = TM.empty,
                         decoders = IM.empty,
                         maxName = U.File.maxName file + 1}
-                       (desourceify file)
+                       file
 
         val inf = TextIO.openIn (OS.Path.joinDirFile {dir = Config.libJs, file = "urweb.js"})
         fun lines acc =

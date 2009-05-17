@@ -340,20 +340,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                         S.map2 (mft t,
                                 fn t' =>
                                    (EUnurlify (e', t'), loc)))
-              | EJavaScript (m, e, NONE) =>
+              | EJavaScript (m, e) =>
                 S.bind2 (mfmode ctx m,
                          fn m' =>
                             S.map2 (mfe ctx e,
                                  fn e' =>
-                                    (EJavaScript (m', e', NONE), loc)))
-              | EJavaScript (m, e, SOME e2) =>
-                S.bind2 (mfmode ctx m,
-                         fn m' =>
-                            S.bind2 (mfe ctx e,
-                                  fn e' =>
-                                     S.map2 (mfe ctx e2,
-                                          fn e2' =>
-                                             (EJavaScript (m, e', SOME e2'), loc))))
+                                    (EJavaScript (m', e'), loc)))
 
               | ESignalReturn e =>
                 S.map2 (mfe ctx e,

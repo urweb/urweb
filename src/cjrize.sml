@@ -235,7 +235,6 @@ fun cifyPat ((p, loc), sm) =
             ((L'.PSome (t, p), loc), sm)
         end
 
-
 fun cifyExp (eAll as (e, loc), sm) =
     case e of
         L.EPrim p => ((L'.EPrim p, loc), sm)
@@ -470,7 +469,6 @@ fun cifyExp (eAll as (e, loc), sm) =
             ((L'.EUnurlify (e, t), loc), sm)
         end
 
-      | L.EJavaScript (_, _, SOME e) => cifyExp (e, sm)
       | L.EJavaScript _ => raise Fail "Cjrize: EJavaScript remains"
 
       | L.ESignalReturn _ => raise Fail "Cjrize: ESignalReturn remains"

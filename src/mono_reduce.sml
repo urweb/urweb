@@ -74,7 +74,7 @@ fun impure (e, _) =
       | ELet (_, _, e1, e2) => impure e1 orelse impure e2
 
       | EClosure (_, es) => List.exists impure es
-      | EJavaScript (_, e, _) => impure e
+      | EJavaScript (_, e) => impure e
       | ESignalReturn e => impure e
       | ESignalBind (e1, e2) => impure e1 orelse impure e2
       | ESignalSource e => impure e
@@ -344,7 +344,7 @@ fun reduce file =
                       | EDml e => summarize d e @ [WriteDb]
                       | ENextval e => summarize d e @ [WriteDb]
                       | EUnurlify (e, _) => summarize d e
-                      | EJavaScript (_, e, _) => summarize d e
+                      | EJavaScript (_, e) => summarize d e
                       | ESignalReturn e => summarize d e
                       | ESignalBind (e1, e2) => summarize d e1 @ summarize d e2
                       | ESignalSource e => summarize d e

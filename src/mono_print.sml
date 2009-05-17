@@ -310,13 +310,12 @@ fun p_exp' par env (e, _) =
       | EUnurlify (e, _) => box [string "unurlify(",
                                  p_exp env e,
                                  string ")"]
-      | EJavaScript (m, e, NONE) => box [string "JavaScript(",
-                                         p_mode env m,
-                                         string ",",
-                                         space,
-                                         p_exp env e,
-                                         string ")"]
-      | EJavaScript (_, _, SOME e) => p_exp env e
+      | EJavaScript (m, e) => box [string "JavaScript(",
+                                   p_mode env m,
+                                   string ",",
+                                   space,
+                                   p_exp env e,
+                                   string ")"]
 
       | ESignalReturn e => box [string "Return(",
                                 p_exp env e,

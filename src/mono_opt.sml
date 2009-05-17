@@ -376,8 +376,6 @@ fun exp e =
       | ESignalBind ((ESignalReturn e1, loc), e2) =>
         optExp (EApp (e2, e1), loc)
 
-      | EJavaScript (_, _, SOME (e, _)) => e
-
       | EFfiApp ("Basis", "bless", [(se as EPrim (Prim.String s), loc)]) =>
         (if Settings.checkUrl s then
              ()
