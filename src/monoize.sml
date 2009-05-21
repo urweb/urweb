@@ -2565,9 +2565,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                  loc)), loc), fm)
                               end
                             | SOME (_, src, _) =>
-                              (strcat [str "<span><script type=\"text/javascript\">inp(\"input\",",
+                              (strcat [str "<span><script type=\"text/javascript\">inp(",
                                        (L'.EJavaScript (L'.Script, src), loc),
-                                       str ",\"\")</script></span>"],
+                                       str ")</script></span>"],
                                fm))
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to textbox tag"))
@@ -2637,9 +2637,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          end
                        | SOME (_, src, _) =>
                          let
-                             val sc = strcat [str "inp(\"input\",",
+                             val sc = strcat [str "inp(",
                                               (L'.EJavaScript (L'.Script, src), loc),
-                                              str ",\"\")"]
+                                              str ")"]
                              val sc = setAttrs sc
                          in
                              (strcat [str "<span><script type=\"text/javascript\">",
@@ -2662,7 +2662,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          let
                              val (xml, fm) = monoExp (env, st, fm) xml
 
-                             val sc = strcat [str "inp(\"select\",",
+                             val sc = strcat [str "sel(",
                                               (L'.EJavaScript (L'.Script, src), loc),
                                               str ",",
                                               (L'.EJavaScript (L'.Script, xml), loc),
