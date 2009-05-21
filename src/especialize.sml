@@ -205,13 +205,20 @@ fun specialize' file =
                                                        [("e'", CorePrint.p_exp CoreEnv.empty e)];*)
                                         (#1 e, st)
                                     end
-                                  | (_, true) => (e, st)
+                                  | (_, true) => ((*Print.prefaces ("No(" ^ name ^ ")")
+                                                                 [("fxs'",
+                                                                   Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
+                                                  (e, st))
                                   | (NONE, false) =>
                                     let
                                         (*val () = Print.prefaces "New one"
                                                  [("f", Print.PD.string (Int.toString f)),
                                                   ("mns", Print.p_list Print.PD.string
                                                                        (SS.listItems (!mayNotSpec)))]*)
+
+                                        (*val () = Print.prefaces ("Yes(" ^ name ^ ")")
+                                                                [("fxs'",
+                                                                  Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')]*)
 
                                         fun subBody (body, typ, fxs') =
                                             case (#1 body, #1 typ, fxs') of

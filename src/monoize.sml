@@ -2538,9 +2538,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                   | "dyn" =>
                     (case attrs of
-                         (*[("Signal", (L'.EApp ((L'.EAbs (_, _, _, (L'.ESignalReturn (L'.ERel 0, _), _)), _),
-                                               e), _), _)] => (e, fm)
-                       |*) [("Signal", e, _)] =>
+                         [("Signal", e, _)] =>
                          ((L'.EStrcat
                                ((L'.EPrim (Prim.String "<span><script type=\"text/javascript\">dyn("), loc),
                                 (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
