@@ -2648,6 +2648,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               fm)
                          end)
 
+                  | "ccheckbox" =>
+                    (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                         NONE =>
+                         let
+                             val (ts, fm) = tagStart "input type=\"checkbox\""
+                         in
+                             ((L'.EStrcat (ts,
+                                           (L'.EPrim (Prim.String " />"), loc)),
+                               loc), fm)
+                         end
+                       | SOME (_, src, _) =>
+                         let
+                             val sc = strcat [str "chk(",
+                                              (L'.EJavaScript (L'.Script, src), loc),
+                                              str ")"]
+                             val sc = setAttrs sc
+                         in
+                             (strcat [str "<span><script type=\"text/javascript\">",
+                                      sc,
+                                      str "</script></span>"],
+                              fm)
+                         end)
+
                   | "cselect" =>
                     (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
                          NONE =>

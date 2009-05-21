@@ -631,6 +631,8 @@ con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
 val ctextbox : cformTag [Value = string, Size = int, Source = source string] []
 val button : cformTag [Value = string, Onclick = transaction unit] []
 
+val ccheckbox : cformTag [Value = bool, Size = int, Source = source bool] []
+
 con cselect = [Cselect]
 val cselect : cformTag [Source = source string,
                         Onchange = transaction unit] cselect
