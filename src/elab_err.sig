@@ -71,7 +71,7 @@ signature ELAB_ERR = sig
            | UnboundConstructor of ErrorMsg.span * string list * string
            | PatHasArg of ErrorMsg.span
            | PatHasNoArg of ErrorMsg.span
-           | Inexhaustive of ErrorMsg.span
+           | Inexhaustive of ErrorMsg.span * Elab.pat
            | DuplicatePatField of ErrorMsg.span * string
            | Unresolvable of ErrorMsg.span * Elab.con
            | OutOfContext of ErrorMsg.span * (Elab.exp * Elab.con) option

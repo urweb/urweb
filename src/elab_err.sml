@@ -161,7 +161,7 @@ datatype exp_error =
      | UnboundConstructor of ErrorMsg.span * string list * string
      | PatHasArg of ErrorMsg.span
      | PatHasNoArg of ErrorMsg.span
-     | Inexhaustive of ErrorMsg.span
+     | Inexhaustive of ErrorMsg.span * pat
      | DuplicatePatField of ErrorMsg.span * string
      | Unresolvable of ErrorMsg.span * con
      | OutOfContext of ErrorMsg.span * (exp * con) option
@@ -207,8 +207,9 @@ fun expError env err =
         ErrorMsg.errorAt loc "Constructor expects no argument but is used with argument"
       | PatHasNoArg loc =>
         ErrorMsg.errorAt loc "Constructor expects argument but is used with no argument"
-      | Inexhaustive loc =>
-        ErrorMsg.errorAt loc "Inexhaustive 'case'"
+      | Inexhaustive (loc, p) =>
+        (ErrorMsg.errorAt loc "Inexhaustive 'case'";
+         eprefaces' [("Missed case", p_pat env p)])
       | DuplicatePatField (loc, s) =>
         ErrorMsg.errorAt loc ("Duplicate record field " ^ s ^ " in pattern")
       | OutOfContext (loc, co) =>
