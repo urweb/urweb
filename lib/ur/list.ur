@@ -20,12 +20,36 @@ val rev (a ::: Type) =
         rev' []
     end
 
+val revAppend (a ::: Type) =
+    let
+        fun ra (ls : list a) acc =
+            case ls of
+                [] => acc
+              | x :: ls => ra ls (x :: acc)
+    in
+        ra
+    end
+
+fun append (a ::: Type) (ls1 : t a) (ls2 : t a) = revAppend (rev ls1) ls2                
+
 fun mp (a ::: Type) (b ::: Type) f =
     let
         fun mp' acc ls =
             case ls of
                 [] => rev acc
               | x :: ls => mp' (f x :: acc) ls
+    in
+        mp' []
+    end
+
+fun mapPartial (a ::: Type) (b ::: Type) f =
+    let
+        fun mp' acc ls =
+            case ls of
+                [] => rev acc
+              | x :: ls => mp' (case f x of
+                                    None => acc
+                                  | Some y => y :: acc) ls
     in
         mp' []
     end
@@ -48,4 +72,14 @@ fun mapM (m ::: (Type -> Type)) (_ : monad m) (a ::: Type) (b ::: Type) f =
               | x :: ls => x' <- f x; mapM' (x' :: acc) ls
     in
         mapM' []
+    end
+
+fun filter (a ::: Type) f =
+    let
+        fun fil acc ls =
+            case ls of
+                [] => rev acc
+              | x :: ls => fil (if f x then x :: acc else acc) ls
+    in
+        fil []
     end

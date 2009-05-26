@@ -140,6 +140,7 @@
  val int = ref cerror
  val float = ref cerror
  val string = ref cerror
+ val char = ref cerror
  val table = ref cerror
 
  local
@@ -1096,6 +1097,7 @@
          P.Int _ => !int
        | P.Float _ => !float
        | P.String _ => !string
+       | P.Char _ => !char
                            
  datatype constraint =
           Disjoint of D.goal
@@ -3974,6 +3976,7 @@ fun elabFile basis topStr topSgn env file =
         val () = discoverC int "int"
         val () = discoverC float "float"
         val () = discoverC string "string"
+        val () = discoverC char "char"
         val () = discoverC table "sql_table"
 
         val (topSgn, gs) = elabSgn (env', D.empty) (L.SgnConst topSgn, ErrorMsg.dummySpan)

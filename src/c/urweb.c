@@ -1793,6 +1793,20 @@ uw_unit uw_Basis_htmlifyTime_w(uw_context ctx, uw_Basis_time t) {
   return uw_unit_v;
 }
 
+uw_Basis_char uw_Basis_strsub(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
+  if (n >= 0 && n < strlen(s))
+    return s[n];
+  else
+    uw_error(ctx, FATAL, "Out-of-bounds strsub");
+}
+
+uw_Basis_string uw_Basis_strsuffix(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
+  if (n >= 0 && n < strlen(s))
+    return &s[n];
+  else
+    uw_error(ctx, FATAL, "Out-of-bounds strsuffix");
+}
+
 uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_string s2) {
   int len = strlen(s1) + strlen(s2) + 1;
   char *s;
@@ -2081,6 +2095,13 @@ uw_Basis_string uw_Basis_floatToString(uw_context ctx, uw_Basis_float n) {
   return r;
 }
 
+uw_Basis_string uw_Basis_charToString(uw_context ctx, uw_Basis_char ch) {
+  char *r = uw_malloc(ctx, 2);
+  r[0] = ch;
+  r[1] = 0;
+  return r;
+}
+
 uw_Basis_string uw_Basis_boolToString(uw_context ctx, uw_Basis_bool b) {
   if (b == uw_Basis_False)
     return "False";
@@ -2125,6 +2146,20 @@ uw_Basis_float *uw_Basis_stringToFloat(uw_context ctx, uw_Basis_string s) {
     return r;
   } else
     return NULL;
+}
+
+uw_Basis_char *uw_Basis_stringToChar(uw_context ctx, uw_Basis_string s) {
+  if (s[0] == 0) {
+    uw_Basis_char *r = uw_malloc(ctx, 1);
+    r[0] = 0;
+    return r;
+  } else if (s[1] != 0)
+    return NULL;
+  else {
+    uw_Basis_char *r = uw_malloc(ctx, 1);
+    r[0] = s[0];
+    return r;
+  }
 }
 
 uw_Basis_bool *uw_Basis_stringToBool(uw_context ctx, uw_Basis_string s) {
@@ -2213,6 +2248,15 @@ uw_Basis_float uw_Basis_stringToFloat_error(uw_context ctx, uw_Basis_string s) {
     return n;
   else
     uw_error(ctx, FATAL, "Can't parse float: %s", s);
+}
+
+uw_Basis_char uw_Basis_stringToChar_error(uw_context ctx, uw_Basis_string s) {
+  if (s[0] == 0)
+    return 0;
+  else if (s[1] != 0)
+    uw_error(ctx, FATAL, "Can't parse char: %s", s);
+  else
+    return s[0];
 }
 
 uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {

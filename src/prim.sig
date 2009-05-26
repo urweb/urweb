@@ -31,6 +31,7 @@ signature PRIM = sig
              Int of Int64.int
            | Float of Real64.real
            | String of string
+           | Char of char
 
     val p_t : t Print.printer
     val p_t_GCC : t Print.printer

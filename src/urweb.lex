@@ -160,7 +160,7 @@ fun unescape loc s =
 %%
 %header (functor UrwebLexFn(structure Tokens : Urweb_TOKENS));
 %full
-%s COMMENT STRING XML XMLTAG;
+%s COMMENT STRING CHAR XML XMLTAG;
 
 id = [a-z_][A-Za-z0-9_']*;
 cid = [A-Z][A-Za-z0-9_]*;
@@ -192,6 +192,31 @@ notags = [^<{\n]+;
                           continue ());
 <COMMENT> "*)"        => (if exitComment () then YYBEGIN INITIAL else ();
 			  continue ());
+
+<INITIAL> "#\""       => (YYBEGIN CHAR; strEnder := #"\""; strStart := pos yypos; str := []; continue());
+<CHAR> "\\\""         => (str := #"\"" :: !str; continue());
+<CHAR> "\\'"          => (str := #"'" :: !str; continue());
+<CHAR> "\n"           => (newline yypos;
+			  str := #"\n" :: !str; continue());
+<CHAR> .              => (let
+                              val ch = String.sub (yytext, 0)
+                          in
+                              if ch = !strEnder then
+                                  let
+                                      val s = String.implode (List.rev (!str))
+                                  in
+			              YYBEGIN INITIAL;
+                                      if size s = 1 then
+			                  Tokens.CHAR (String.sub (s, 0), !strStart, pos yypos + 1)
+                                      else
+                                          (ErrorMsg.errorAt' (yypos, yypos)
+                                                             "Character constant is zero or multiple characters";
+                                           continue ())
+                                  end
+                              else
+                                  (str := ch :: !str;
+                                   continue ())
+                          end);
 
 <INITIAL> "\""        => (YYBEGIN STRING; strEnder := #"\""; strStart := pos yypos; str := []; continue());
 <INITIAL> "'"         => (YYBEGIN STRING; strEnder := #"'"; strStart := pos yypos; str := []; continue());

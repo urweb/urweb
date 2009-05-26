@@ -541,6 +541,7 @@ fun process file =
                                                                                 Int.fmt StringCvt.OCT (ord ch),
                                                                                 3)) s
                                      ^ "\"")
+                              | Prim.Char ch => str ("'" ^ String.str ch ^ "'")
                               | _ => str (Prim.toString p)
 
                         fun jsPat depth inner (p, _) succ fail =

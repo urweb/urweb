@@ -1,6 +1,7 @@
 type int
 type float
 type string
+type char
 type time
 type blob
 
@@ -21,6 +22,7 @@ val ne : t ::: Type -> eq t -> t -> t -> bool
 val eq_int : eq int
 val eq_float : eq float
 val eq_string : eq string
+val eq_char : eq char
 val eq_bool : eq bool
 val eq_time : eq time
 val mkEq : t ::: Type -> (t -> t -> bool) -> eq t
@@ -44,6 +46,7 @@ val ge : t ::: Type -> ord t -> t -> t -> bool
 val ord_int : ord int
 val ord_float : ord float
 val ord_string : ord string
+val ord_char : ord char
 val ord_bool : ord bool
 val ord_time : ord time
 
@@ -51,12 +54,15 @@ val ord_time : ord time
 (** String operations *)
 
 val strcat : string -> string -> string
+val strsub : string -> int -> char
+val strsuffix : string -> int -> string
 
 class show
 val show : t ::: Type -> show t -> t -> string
 val show_int : show int
 val show_float : show float
 val show_string : show string
+val show_char : show char
 val show_bool : show bool
 val show_time : show time
 val mkShow : t ::: Type -> (t -> string) -> show t
@@ -68,6 +74,7 @@ val readError : t ::: Type -> read t -> string -> t
 val read_int : read int
 val read_float : read float
 val read_string : read string
+val read_char : read char
 val read_bool : read bool
 val read_time : read time
 val mkRead : t ::: Type -> (string -> t) -> (string -> option t) -> read t

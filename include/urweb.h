@@ -111,6 +111,8 @@ uw_Basis_string uw_Basis_unurlifyString(uw_context, char **);
 uw_Basis_bool uw_Basis_unurlifyBool(uw_context, char **);
 uw_Basis_time uw_Basis_unurlifyTime(uw_context, char **);
 
+uw_Basis_char uw_Basis_strsub(uw_context, const char *, uw_Basis_int);
+uw_Basis_string uw_Basis_strsuffix(uw_context, const char *, uw_Basis_int);
 uw_Basis_string uw_Basis_strcat(uw_context, const char *, const char *);
 uw_Basis_string uw_strdup(uw_context, const char *);
 uw_Basis_string uw_maybe_strdup(uw_context, const char *);
@@ -138,16 +140,19 @@ char *uw_Basis_jsifyChannel(uw_context, uw_Basis_channel);
 
 uw_Basis_string uw_Basis_intToString(uw_context, uw_Basis_int);
 uw_Basis_string uw_Basis_floatToString(uw_context, uw_Basis_float);
+uw_Basis_string uw_Basis_charToString(uw_context, uw_Basis_char);
 uw_Basis_string uw_Basis_boolToString(uw_context, uw_Basis_bool);
 uw_Basis_string uw_Basis_timeToString(uw_context, uw_Basis_time);
 
 uw_Basis_int *uw_Basis_stringToInt(uw_context, uw_Basis_string);
 uw_Basis_float *uw_Basis_stringToFloat(uw_context, uw_Basis_string);
+uw_Basis_char *uw_Basis_stringToChar(uw_context, uw_Basis_string);
 uw_Basis_bool *uw_Basis_stringToBool(uw_context, uw_Basis_string);
 uw_Basis_time *uw_Basis_stringToTime(uw_context, uw_Basis_string);
 
 uw_Basis_int uw_Basis_stringToInt_error(uw_context, uw_Basis_string);
 uw_Basis_float uw_Basis_stringToFloat_error(uw_context, uw_Basis_string);
+uw_Basis_char uw_Basis_stringToChar_error(uw_context, uw_Basis_string);
 uw_Basis_bool uw_Basis_stringToBool_error(uw_context, uw_Basis_string);
 uw_Basis_time uw_Basis_stringToTime_error(uw_context, uw_Basis_string);
 uw_Basis_blob uw_Basis_stringToBlob_error(uw_context, uw_Basis_string, size_t);

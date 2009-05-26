@@ -762,6 +762,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                  (L'.TFfi ("Basis", "bool"), loc),
                                  (L'.EBinop ("!strcmp", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
+          | L.EFfi ("Basis", "eq_char") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "char"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "char"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "char"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+             fm)
           | L.EFfi ("Basis", "eq_time") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc),
                        (L'.TFun ((L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
@@ -971,6 +978,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        boolBin "<",
                        boolBin "<=")
             end
+          | L.EFfi ("Basis", "ord_char") =>
+            let
+                fun charBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "char"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "char"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "char"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "char"), loc),
+                       charBin "<",
+                       charBin "<=")
+            end
           | L.EFfi ("Basis", "ord_time") =>
             let
                 fun boolBin s =
@@ -1003,6 +1023,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
             end
+          | L.EFfi ("Basis", "show_char") =>
+            ((L'.EFfi ("Basis", "charToString"), loc), fm)
           | L.EFfi ("Basis", "show_bool") =>
             ((L'.EFfi ("Basis", "boolToString"), loc), fm)
           | L.EFfi ("Basis", "show_time") =>
@@ -1078,6 +1100,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ERecord [("Read", (L'.EAbs ("s", s, (L'.TOption s, loc),
                                                  (L'.ESome (s, (L'.ERel 0, loc)), loc)), loc), readType' (s, loc)),
                               ("ReadError", (L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), readErrType (s, loc))], loc),
+                 fm)
+            end
+          | L.EFfi ("Basis", "read_char") =>
+            let
+                val t = (L'.TFfi ("Basis", "char"), loc)
+            in
+                ((L'.ERecord [("Read", (L'.EFfi ("Basis", "stringToChar"), loc), readType' (t, loc)),
+                               ("ReadError", (L'.EFfi ("Basis", "stringToChar_error"), loc), readErrType (t, loc))],
+                  loc),
                  fm)
             end
           | L.EFfi ("Basis", "read_bool") =>

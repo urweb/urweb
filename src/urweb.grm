@@ -183,7 +183,7 @@ datatype attr = Class of exp | Normal of con * exp
 
 %term 
    EOF
- | STRING of string | INT of Int64.int | FLOAT of Real64.real
+ | STRING of string | INT of Int64.int | FLOAT of Real64.real | CHAR of char
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
@@ -1080,6 +1080,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
        | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
+       | CHAR                           (EPrim (Prim.Char CHAR), s (CHARleft, CHARright))
 
        | path DOT idents                (let
                                              val loc = s (pathleft, identsright)
@@ -1228,6 +1229,7 @@ pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright
        | UNDER                          (PWild, s (UNDERleft, UNDERright))
        | INT                            (PPrim (Prim.Int INT), s (INTleft, INTright))
        | STRING                         (PPrim (Prim.String STRING), s (STRINGleft, STRINGright))
+       | CHAR                           (PPrim (Prim.Char CHAR), s (CHARleft, CHARright))
        | LPAREN pat RPAREN              (pat)
        | LBRACE RBRACE                  (PRecord ([], false), s (LBRACEleft, RBRACEright))
        | UNIT                           (PRecord ([], false), s (UNITleft, UNITright))
