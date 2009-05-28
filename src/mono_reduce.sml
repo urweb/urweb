@@ -131,7 +131,7 @@ val swapExpVarsPat =
                                      case e of
                                          ERel xn =>
                                          if xn = lower then
-                                             ERel (lower + 1)
+                                             ERel (lower + len)
                                          else if xn >= lower + 1 andalso xn < lower + 1 + len then
                                              ERel (xn - 1)
                                          else
@@ -392,12 +392,20 @@ fun reduce file =
                                 case result of
                                     (TFun (dom, result), loc) =>
                                     if List.all (fn (_, (EAbs _, _)) => true | _ => false) pes then
-                                        EAbs ("_", dom, result,
-                                              (ECase (liftExpInExp 0 e',
-                                                      map (fn (p, (EAbs (_, _, _, e), _)) =>
-                                                              (p, swapExpVarsPat (0, patBinds p) e)
-                                                            | _ => raise Fail "MonoReduce ECase") pes,
-                                                      {disc = disc, result = result}), loc))
+                                        let
+                                            val r =
+                                                EAbs ("y", dom, result,
+                                                      (ECase (liftExpInExp 0 e',
+                                                              map (fn (p, (EAbs (_, _, _, e), _)) =>
+                                                                      (p, swapExpVarsPat (0, patBinds p) e)
+                                                                    | _ => raise Fail "MonoReduce ECase") pes,
+                                                              {disc = disc, result = result}), loc))
+                                        in
+                                            (*Print.prefaces "Swapped"
+                                                           [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
+                                                            ("r", MonoPrint.p_exp env (r, ErrorMsg.dummySpan))];*)
+                                            r
+                                        end
                                     else
                                         e
                                   | _ => e

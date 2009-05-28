@@ -913,9 +913,10 @@ fun process file =
                                 val len = inner + len
                                 val normalVars = List.tabulate (normalDepth, fn n => "_" ^ Int.toString (n + len))
                                 val patVars = List.tabulate (depth, fn n => "d" ^ Int.toString n)
+                                val caseVars = ListUtil.mapi (fn (i, _) => "c" ^ Int.toString i) pes
                             in
                                 (strcat (str "(function (){ var "
-                                         :: str (String.concatWith "," (normalVars @ patVars) ^ ";d0=")
+                                         :: str (String.concatWith "," (normalVars @ patVars @ caseVars) ^ ";d0=")
                                          :: e
                                          :: str ";\nreturn ("
                                          :: List.revAppend (cases,
