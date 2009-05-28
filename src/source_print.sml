@@ -207,6 +207,12 @@ fun p_pat' par (p, _) =
                  string "}"]
         end
 
+      | PAnnot (p, t) => box [p_pat p,
+                              space,
+                              string ":",
+                              space,
+                              p_con t]
+
 and p_pat x = p_pat' false x
 
 fun p_exp' par (e, _) =

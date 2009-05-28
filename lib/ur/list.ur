@@ -83,3 +83,29 @@ fun filter (a ::: Type) f =
     in
         fil []
     end
+
+fun exists (a ::: Type) f =
+    let
+        fun ex ls =
+            case ls of
+                [] => False
+              | x :: ls =>
+                if f x then
+                    True
+                else
+                    ex ls
+    in
+        ex
+    end
+
+fun foldlMap (a ::: Type) (b ::: Type) (c ::: Type) f =
+    let
+        fun fold ls' st ls =
+            case ls of
+                [] => (rev ls', st)
+              | x :: ls =>
+                case f x st of
+                    (y, st) => fold (y :: ls') st ls
+    in
+        fold []
+    end

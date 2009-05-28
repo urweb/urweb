@@ -178,6 +178,11 @@ datatype prop_kind = Delete | Update
 
 datatype attr = Class of exp | Normal of con * exp
 
+fun patType loc (p : pat) =
+    case #1 p of
+        PAnnot (_, t) => t
+      | _ => (CWild (KType, loc), loc)
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -290,6 +295,7 @@ datatype attr = Class of exp | Normal of con * exp
 
  | earg of exp * con -> exp * con
  | eargp of exp * con -> exp * con
+ | earga of exp * con -> exp * con
  | eargs of exp * con -> exp * con
  | eargl of exp * con -> exp * con
  | eargl2 of exp * con -> exp * con
@@ -297,6 +303,7 @@ datatype attr = Class of exp | Normal of con * exp
  | branch of pat * exp
  | branchs of (pat * exp) list
  | pat of pat
+ | patS of pat
  | pterm of pat
  | rpat of (string * pat) list * bool
  | ptuple of pat list
@@ -971,79 +978,53 @@ eargl  : eargp eargp                    (eargp1 o eargp2)
 eargl2 :                                (fn x => x)
        | eargp eargl2                   (eargp o eargl2)
 
-earg   : SYMBOL kcolon kind             (fn (e, t) =>
+earg   : patS                           (fn (e, t) =>
                                             let
-                                                val loc = s (SYMBOLleft, kindright)
-                                            in
-                                                ((ECAbs (kcolon, SYMBOL, kind, e), loc),
-                                                 (TCFun (kcolon, SYMBOL, kind, t), loc))
-                                            end)
-       | SYMBOL COLON cexp              (fn (e, t) =>
-                                            let
-                                                val loc = s (SYMBOLleft, cexpright)
-                                            in
-                                                ((EAbs (SYMBOL, SOME cexp, e), loc),
-                                                 (TFun (cexp, t), loc))
-                                            end)
-       | UNDER COLON cexp               (fn (e, t) =>
-                                            let
-                                                val loc = s (UNDERleft, cexpright)
-                                            in
-                                                ((EAbs ("_", SOME cexp, e), loc),
-                                                 (TFun (cexp, t), loc))
-                                            end)
-       | eargp                          (eargp)
+                                                val loc = s (patSleft, patSright)
+                                                val pt = patType loc patS
 
-eargp  : SYMBOL                         (fn (e, t) =>
-                                            let
-                                                val loc = s (SYMBOLleft, SYMBOLright)
+                                                val e' = case #1 patS of
+                                                             PVar x => (EAbs (x, NONE, e), loc)
+                                                           | _ => (EAbs ("$x", SOME pt,
+                                                                         (ECase ((EVar ([], "$x", DontInfer),
+                                                                                  loc),
+                                                                                 [(patS, e)]), loc)), loc)
                                             in
-                                                ((EAbs (SYMBOL, NONE, e), loc),
-                                                 (TFun ((CWild (KType, loc), loc), t), loc))
+                                                (e', (TFun (pt, t), loc))
                                             end)
-       | UNIT                           (fn (e, t) =>
+       | earga                          (earga)
+
+eargp  : pterm                          (fn (e, t) =>
                                             let
-                                                val loc = s (UNITleft, UNITright)
-                                                val t' = (TRecord (CRecord [], loc), loc)
+                                                val loc = s (ptermleft, ptermright)
+                                                val pt = patType loc pterm
+
+                                                val e' = case #1 pterm of
+                                                             PVar x => (EAbs (x, NONE, e), loc)
+                                                           | _ => (EAbs ("$x", SOME pt,
+                                                                         (ECase ((EVar ([], "$x", DontInfer),
+                                                                                  loc),
+                                                                                 [(pterm, e)]), loc)), loc)
                                             in
-                                                ((EAbs ("_", SOME t', e), loc),
-                                                 (TFun (t', t), loc))
+                                                (e', (TFun (pt, t), loc))
                                             end)
-       | UNDER                          (fn (e, t) =>
-                                            let
-                                                val loc = s (UNDERleft, UNDERright)
-                                            in
-                                                ((EAbs ("_", NONE, e), loc),
-                                                 (TFun ((CWild (KType, loc), loc), t), loc))
-                                            end)
-       | LPAREN SYMBOL kcolon kind RPAREN(fn (e, t) =>
+       | earga                          (earga)
+
+earga  : LBRACK SYMBOL RBRACK            (fn (e, t) =>
                                              let
-                                                 val loc = s (LPARENleft, RPARENright)
+                                                 val loc = s (LBRACKleft, RBRACKright)
+                                                 val kind = (KWild, loc)
+                                             in
+                                                 ((ECAbs (Implicit, SYMBOL, kind, e), loc),
+                                                  (TCFun (Implicit, SYMBOL, kind, t), loc))
+                                             end)
+       | LBRACK SYMBOL kcolon kind RBRACK(fn (e, t) =>
+                                             let
+                                                 val loc = s (LBRACKleft, RBRACKright)
                                              in
                                                  ((ECAbs (kcolon, SYMBOL, kind, e), loc),
                                                   (TCFun (kcolon, SYMBOL, kind, t), loc))
                                              end)
-       | LPAREN SYMBOL COLON cexp RPAREN  (fn (e, t) =>
-                                              let
-                                                  val loc = s (LPARENleft, RPARENright)
-                                              in
-                                                  ((EAbs (SYMBOL, SOME cexp, e), loc),
-                                                   (TFun (cexp, t), loc))
-                                              end)
-       | LPAREN UNDER COLON cexp RPAREN   (fn (e, t) =>
-                                            let
-                                                val loc = s (LPARENleft, RPARENright)
-                                            in
-                                                ((EAbs ("_", SOME cexp, e), loc),
-                                                 (TFun (cexp, t), loc))
-                                            end)
-       | LPAREN cexp TWIDDLE cexp RPAREN  (fn (e, t) =>
-                                            let
-                                                val loc = s (LPARENleft, RPARENright)
-                                            in
-                                                ((EDisjoint (cexp1, cexp2, e), loc),
-                                                 (TDisjoint (cexp1, cexp2, t), loc))
-                                            end)
        | LBRACK cexp TWIDDLE cexp RBRACK(fn (e, t) =>
                                             let
                                                 val loc = s (LBRACKleft, RBRACKright)
@@ -1051,7 +1032,7 @@ eargp  : SYMBOL                         (fn (e, t) =>
                                                 ((EDisjoint (cexp1, cexp2, e), loc),
                                                  (TDisjoint (cexp1, cexp2, t), loc))
                                             end)
-       | CSYMBOL                           (fn (e, t) =>
+       | LBRACK CSYMBOL RBRACK          (fn (e, t) =>
                                                let
                                                    val loc = s (CSYMBOLleft, CSYMBOLright)
                                                in
@@ -1214,15 +1195,18 @@ branch : pat DARROW eexp                (pat, eexp)
 branchs:                                ([])
        | BAR branch branchs             (branch :: branchs)
 
-pat    : pterm                          (pterm)
-       | cpath pterm                    (PCon (#1 cpath, #2 cpath, SOME pterm), s (cpathleft, ptermright))
-       | pterm DCOLON pat               (let
-                                             val loc = s (ptermleft, patright)
+patS   : pterm                          (pterm)
+       | pterm DCOLON patS              (let
+                                             val loc = s (ptermleft, patSright)
                                          in
                                              (PCon (["Basis"], "Cons", SOME (PRecord ([("1", pterm),
-                                                                                       ("2", pat)], false), loc)),
+                                                                                       ("2", patS)], false), loc)),
                                               loc)
                                          end)
+       | patS COLON cexp                (PAnnot (patS, cexp), s (patSleft, cexpright))
+
+pat    : patS                           (patS)
+       | cpath pterm                    (PCon (#1 cpath, #2 cpath, SOME pterm), s (cpathleft, ptermright))
 
 pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright))
        | cpath                          (PCon (#1 cpath, #2 cpath, NONE), s (cpathleft, cpathright))

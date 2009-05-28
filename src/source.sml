@@ -109,6 +109,7 @@ and pat' =
   | PPrim of Prim.t
   | PCon of string list * string * pat option
   | PRecord of (string * pat) list * bool
+  | PAnnot of pat * con
 
 and exp' =
     EAnnot of exp * con

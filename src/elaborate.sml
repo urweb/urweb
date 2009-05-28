@@ -1291,7 +1291,15 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
                   (L'.TRecord c, loc)),
                  (env, bound))
             end
-                                           
+
+          | L.PAnnot (p, t) =>
+            let
+                val ((p', pt), (env, bound)) = elabPat (p, (env, bound))
+                val (t', k, _) = elabCon (env, D.empty) t
+            in
+                checkPatCon env p' pt t';
+                ((p', t'), (env, bound))
+            end   
     end
 
 (* This exhaustiveness checking follows Luc Maranget's paper "Warnings for pattern matching." *)
