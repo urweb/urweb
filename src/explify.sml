@@ -123,11 +123,14 @@ fun explifyExp (e, loc) =
       | L.EUnif (ref (SOME e)) => explifyExp e
       | L.EUnif _ => raise Fail ("explifyExp: Undetermined EUnif at " ^ EM.spanToString loc)
 
-      | L.ELet (des, e) =>
+      | L.ELet (des, e, t) =>
         foldr (fn ((de, loc), e) =>
                   case de of
                       L.EDValRec _ => raise Fail "explifyExp: Local 'val rec' remains"
-                    | L.EDVal (x, t, e') => (L'.ELet (x, explifyCon t, explifyExp e', e), loc))
+                    | L.EDVal ((L.PVar (x, _), _), t', e') => (L'.ELet (x, explifyCon t', explifyExp e', e), loc)
+                    | L.EDVal (p, t', e') => (L'.ECase (explifyExp e',
+                                                        [(explifyPat p, e)],
+                                                        {disc = explifyCon t', result = explifyCon t}), loc))
         (explifyExp e) des
 
       | L.EKAbs (x, e) => (L'.EKAbs (x, explifyExp e), loc)

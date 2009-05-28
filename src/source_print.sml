@@ -338,9 +338,13 @@ and p_exp e = p_exp' false e
 
 and p_edecl (d, _) =
   case d of
-      EDVal vi => box [string "val",
-                       space,
-                       p_vali vi]
+      EDVal (p, e) => box [string "val",
+                           space,
+                           p_pat p,
+                           space,
+                           string "=",
+                           space,
+                           p_exp e]
     | EDValRec vis => box [string "val",
                            space,
                            string "rec",

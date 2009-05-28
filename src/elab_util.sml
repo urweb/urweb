@@ -306,6 +306,17 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
             end
         val mfc = Con.mapfoldB {kind = fk, con = fc, bind = bind'}
 
+        fun doVars ((p, _), ctx) =
+            case p of
+                PWild => ctx
+              | PVar xt => bind (ctx, RelE xt)
+              | PPrim _ => ctx
+              | PCon (_, _, _, NONE) => ctx
+              | PCon (_, _, _, SOME p) => doVars (p, ctx)
+              | PRecord xpcs =>
+                foldl (fn ((_, p, _), ctx) => doVars (p, ctx))
+                      ctx xpcs
+
         fun mfe ctx e acc =
             S.bindP (mfe' ctx e acc, fe ctx)
 
@@ -425,13 +436,13 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
               | EUnif (ref (SOME e)) => mfe ctx e
               | EUnif _ => S.return2 eAll
 
-              | ELet (des, e) =>
+              | ELet (des, e, t) =>
                 let
                     val (des, ctx) = foldl (fn (ed, (des, ctx)) =>
                                                let
                                                    val ctx' =
                                                        case #1 ed of
-                                                           EDVal (x, t, _) => bind (ctx, RelE (x, t))
+                                                           EDVal (p, _, _) => doVars (p, ctx)
                                                          | EDValRec vis =>
                                                            foldl (fn ((x, t, _), ctx) => bind (ctx, RelE (x, t))) ctx vis
                                                in
@@ -445,9 +456,11 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                 in
                     S.bind2 (des,
                          fn des' =>
-                            S.map2 (mfe ctx e,
+                            S.bind2 (mfe ctx e,
                                     fn e' =>
-                                       (ELet (des', e'), loc)))
+                                       S.map2 (mfc ctx t,
+                                               fn t' =>
+                                                  (ELet (des', e', t'), loc))))
                 end
 
               | EKAbs (x, e) =>
@@ -463,10 +476,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
 
         and mfed ctx (dAll as (d, loc)) =
             case d of
-                EDVal vi =>
-                S.map2 (mfvi ctx vi,
-                     fn vi' =>
-                        (EDVal vi', loc))
+                EDVal (p, t, e) =>
+                S.bind2 (mfc ctx t,
+                         fn t' =>
+                            S.map2 (mfe (doVars (p, ctx)) e,
+                                 fn e' =>
+                                    (EDVal (p, t', e'), loc)))
               | EDValRec vis =>
                 let
                     val ctx = foldl (fn ((x, t, _), ctx) => bind (ctx, RelE (x, t))) ctx vis

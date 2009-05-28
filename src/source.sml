@@ -138,7 +138,7 @@ and exp' =
   | ELet of edecl list * exp
 
 and edecl' =
-    EDVal of string * con option * exp
+    EDVal of pat * exp
   | EDValRec of (string * con option * exp) list
 
 withtype sgn_item = sgn_item' located

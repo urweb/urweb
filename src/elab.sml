@@ -120,10 +120,10 @@ datatype exp' =
        | EError
        | EUnif of exp option ref
 
-       | ELet of edecl list * exp
+       | ELet of edecl list * exp * con
 
 and edecl' =
-    EDVal of string * con * exp
+    EDVal of pat * con * exp
   | EDValRec of (string * con * exp) list
 
 withtype exp = exp' located

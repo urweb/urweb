@@ -1167,7 +1167,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 edecls :                                ([])
        | edecl edecls                   (edecl :: edecls)
 
-edecl  : VAL vali                       ((EDVal vali, s (VALleft, valiright)))
+edecl  : VAL pat EQ eexp                ((EDVal (pat, eexp), s (VALleft, eexpright)))
        | VAL REC valis                  ((EDValRec valis, s (VALleft, valisright)))
        | FUN valis                      ((EDValRec valis, s (FUNleft, valisright)))
 

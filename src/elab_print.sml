@@ -423,7 +423,7 @@ fun p_exp' par env (e, _) =
       | EUnif (ref (SOME e)) => p_exp env e
       | EUnif _ => string "_"
 
-      | ELet (ds, e) =>
+      | ELet (ds, e, _) =>
         let
             val (dsp, env) = ListUtil.foldlMap
                              (fn (d, env) =>
@@ -456,9 +456,17 @@ and p_exp env = p_exp' false env
 
 and p_edecl env (dAll as (d, _)) =
     case d of
-        EDVal vi => box [string "val",
-                         space,
-                         p_evali env vi]
+        EDVal (p, t, e) => box [string "val",
+                                space,
+                                p_pat env p,
+                                space,
+                                string ":",
+                                space,
+                                p_con env t,
+                                space,
+                                string "=",
+                                space,
+                                p_exp env e]
       | EDValRec vis =>
         let
             val env = E.edeclBinds env dAll

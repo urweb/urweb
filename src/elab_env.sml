@@ -1454,9 +1454,18 @@ fun projectConstraints env {sgn, str} =
       | SgnError => SOME []
       | _ => NONE
 
+fun patBinds env (p, loc) =
+    case p of
+        PWild => env
+      | PVar (x, t) => pushERel env x t
+      | PPrim _ => env
+      | PCon (_, _, _, NONE) => env
+      | PCon (_, _, _, SOME p) => patBinds env p
+      | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
+
 fun edeclBinds env (d, loc) =
     case d of
-        EDVal (x, t, _) => pushERel env x t
+        EDVal (p, _, _) => patBinds env p
       | EDValRec vis => foldl (fn ((x, t, _), env) => pushERel env x t) env vis
 
 fun declBinds env (d, loc) =
@@ -1564,14 +1573,5 @@ fun declBinds env (d, loc) =
         in
             pushENamedAs env x n t
         end
-
-fun patBinds env (p, loc) =
-    case p of
-        PWild => env
-      | PVar (x, t) => pushERel env x t
-      | PPrim _ => env
-      | PCon (_, _, _, NONE) => env
-      | PCon (_, _, _, SOME p) => patBinds env p
-      | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
 
 end

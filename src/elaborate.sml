@@ -2093,7 +2093,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val (eds, (env, gs1)) = ListUtil.foldlMap (elabEdecl denv) (env, []) eds
                 val (e, t, gs2) = elabExp (env, denv) e
             in
-                ((L'.ELet (eds, e), loc), t, gs1 @ gs2)
+                ((L'.ELet (eds, e, t), loc), t, gs1 @ gs2)
             end
     in
         (*prefaces "/elabExp" [("e", SourcePrint.p_exp eAll)];*)
@@ -2104,20 +2104,16 @@ and elabEdecl denv (dAll as (d, loc), (env, gs)) =
     let
         val r = 
             case d of
-                L.EDVal (x, co, e) =>
+                L.EDVal (p, e) =>
                 let
-                    val (c', _, gs1) = case co of
-                                           NONE => (cunif (loc, ktype), ktype, [])
-                                         | SOME c => elabCon (env, denv) c
+                    val ((p', pt), (env', _)) = elabPat (p, (env, SS.empty))
+                    val (e', et, gs1) = elabExp (env, denv) e
 
-                    val (e', et, gs2) = elabExp (env, denv) e
+                    val () = checkCon env e' et pt
 
-                    val () = checkCon env e' et c'
-
-                    val c' = normClassConstraint env c'
-                    val env' = E.pushERel env x c'
+                    val pt = normClassConstraint env pt
                 in
-                    ((L'.EDVal (x, c', e'), loc), (env', enD gs1 @ gs2 @ gs))
+                    ((L'.EDVal (p', pt, e'), loc), (env', gs1 @ gs))
                 end
               | L.EDValRec vis =>
                 let

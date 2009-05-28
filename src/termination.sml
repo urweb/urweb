@@ -306,7 +306,7 @@ fun declOk' env (d, loc) =
                       | EUnif (ref (SOME e)) => exp parent (penv, calls) e
                       | EUnif (ref NONE) => (Rabble, calls)
 
-                      | ELet (eds, e) =>
+                      | ELet (eds, e, _) =>
                         let
                             fun extPenv ((ed, _), penv) =
                                 case ed of

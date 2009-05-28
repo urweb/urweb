@@ -173,7 +173,7 @@ fun kind (_, k, st) = (k, st)
 
 fun exp ((ks, ts), e as old, st : state) =
     case e of
-        ELet (eds, e) =>
+        ELet (eds, e, t) =>
         let
             (*val () = Print.prefaces "Letto" [("e", ElabPrint.p_exp E.empty (old, ErrorMsg.dummySpan))]*)
 
@@ -190,12 +190,23 @@ fun exp ((ks, ts), e as old, st : state) =
                 ListUtil.foldlMapConcat
                 (fn (ed, (ts, maxName, ds, subs, by)) =>
                     case #1 ed of
-                        EDVal (x, t, e) =>
+                        EDVal (p, t, e) =>
                         let
                             val e = doSubst (e, subs, by)
+
+                            fun doVars ((p, _), ts) =
+                                case p of
+                                    PWild => ts
+                                  | PVar xt => xt :: ts
+                                  | PPrim _ => ts
+                                  | PCon (_, _, _, NONE) => ts
+                                  | PCon (_, _, _, SOME p) => doVars (p, ts)
+                                  | PRecord xpcs =>
+                                    foldl (fn ((_, p, _), ts) => doVars (p, ts))
+                                          ts xpcs
                         in
-                            ([(EDVal (x, t, e), #2 ed)],
-                             ((x, t) :: ts,
+                            ([(EDVal (p, t, e), #2 ed)],
+                             (doVars (p, ts),
                               maxName, ds,
                               ((0, (ERel 0, #2 ed))
                                :: map (fn (n, e) => (n + 1, E.liftExpInExp 0 e)) subs),
@@ -341,7 +352,7 @@ fun exp ((ks, ts), e as old, st : state) =
             (*Print.prefaces "Before" [("e", ElabPrint.p_exp ElabEnv.empty e),
                                      ("se", ElabPrint.p_exp ElabEnv.empty (doSubst' (e, subs))),
                                      ("e'", ElabPrint.p_exp ElabEnv.empty e')];*)
-            (ELet (eds, e'),
+            (ELet (eds, e', t),
              {maxName = maxName,
               decls = ds})
             (*(ELet (eds, doSubst (liftExpInExp (~(length subs - numRemaining)) (length subs) e) subs),*)
