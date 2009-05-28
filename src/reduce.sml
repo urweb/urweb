@@ -390,6 +390,9 @@ fun kindConAndExp (namedC, namedE) =
                       | _ => default ()
                 end
 
+              | ECase (_, [((PRecord [], _), e)], _) => exp env e
+              | ECase (_, [((PWild, _), e)], _) => exp env e
+
               | ECase (e, pes, {disc, result}) =>
                 let
                     fun patBinds (p, _) =

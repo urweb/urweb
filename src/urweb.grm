@@ -985,6 +985,7 @@ earg   : patS                           (fn (e, t) =>
 
                                                 val e' = case #1 patS of
                                                              PVar x => (EAbs (x, NONE, e), loc)
+                                                           | PAnnot ((PVar x, _), t) => (EAbs (x, SOME t, e), loc)
                                                            | _ => (EAbs ("$x", SOME pt,
                                                                          (ECase ((EVar ([], "$x", DontInfer),
                                                                                   loc),
@@ -1001,6 +1002,7 @@ eargp  : pterm                          (fn (e, t) =>
 
                                                 val e' = case #1 pterm of
                                                              PVar x => (EAbs (x, NONE, e), loc)
+                                                           | PAnnot ((PVar x, _), t) => (EAbs (x, SOME t, e), loc)
                                                            | _ => (EAbs ("$x", SOME pt,
                                                                          (ECase ((EVar ([], "$x", DontInfer),
                                                                                   loc),

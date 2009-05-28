@@ -148,6 +148,8 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_table"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CFfi ("Basis", "sql_view"), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "sql_sequence") =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_query"), _), _), _), _) =>

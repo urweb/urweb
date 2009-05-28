@@ -12,13 +12,13 @@ open Crud.Make(struct
                                                             <xml>Ready!</xml>
                                                         else
                                                             <xml>Not ready</xml>),
-                                        Widget = (fn (nm :: Name) => <xml>
+                                        Widget = (fn [nm :: Name] => <xml>
                                           <select{nm}>
                                             <option>Ready</option>
                                             <option>Not ready</option>
                                           </select>
                                         </xml>),
-                                        WidgetPopulated = (fn (nm :: Name) b => <xml>
+                                        WidgetPopulated = (fn [nm :: Name] b => <xml>
                                           <select{nm}>
                                             <option selected={b}>Ready</option>
                                             <option selected={not b}>Not ready</option>

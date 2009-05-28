@@ -1,6 +1,6 @@
-fun sum (t ::: Type) (_ : num t) (fs ::: {Unit}) (fl : folder fs) (x : $(mapU t fs)) =
+fun sum [t] (_ : num t) [fs ::: {Unit}] (fl : folder fs) (x : $(mapU t fs)) =
     foldUR [t] [fn _ => t]
-    (fn (nm :: Name) (rest :: {Unit}) [[nm] ~ rest] n acc => n + acc)
+    (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] n acc => n + acc)
     zero [fs] fl x
 
 fun main () = return <xml><body>

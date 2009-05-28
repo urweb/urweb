@@ -1,6 +1,6 @@
 datatype list t = Nil | Cons of t * list t
 
-fun length (t ::: Type) (ls : list t) =
+fun length [t] (ls : list t) =
     let
         fun length' (ls : list t) (acc : int) =
             case ls of
@@ -10,7 +10,7 @@ fun length (t ::: Type) (ls : list t) =
         length' ls 0
     end
 
-fun rev (t ::: Type) (ls : list t) = 
+fun rev [t] (ls : list t) = 
     let
         fun rev' (ls : list t) (acc : list t) =
             case ls of

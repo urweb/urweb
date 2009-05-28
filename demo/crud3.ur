@@ -8,13 +8,13 @@ open Crud.Make(struct
 
                    val cols = {Text = {Nam = "Text",
                                        Show = txt,
-                                       Widget = (fn (nm :: Name) => <xml>
+                                       Widget = (fn [nm :: Name] => <xml>
                                          <subform{nm}>
                                            <textbox{#A}/>
                                            <textbox{#B}/>
                                          </subform>
                                        </xml>),
-                                       WidgetPopulated = (fn (nm :: Name) s => <xml>
+                                       WidgetPopulated = (fn [nm :: Name] s => <xml>
                                          <subform{nm}>
                                            <textbox{#A} value={s}/>
                                            <textbox{#B}/>

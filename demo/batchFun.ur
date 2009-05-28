@@ -8,7 +8,7 @@ con colMeta = fn t_state :: (Type * Type) =>
                   ReadState : t_state.2 -> transaction t_state.1}
 con colsMeta = fn cols :: {(Type * Type)} => $(map colMeta cols)
 
-fun default (t ::: Type) (sh : show t) (rd : read t) (inj : sql_injectable t)
+fun default [t] (sh : show t) (rd : read t) (inj : sql_injectable t)
             name : colMeta (t, source string) =
     {Nam = name,
      Show = txt,
@@ -49,7 +49,7 @@ functor Make(M : sig
                     (foldR2 [fst] [colMeta]
                             [fn cols => $(map (fn t :: (Type * Type) =>
                                                   sql_exp [] [] [] t.1) cols)]
-                            (fn (nm :: Name) (t :: (Type * Type)) (rest :: {(Type * Type)})
+                            (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
                                              [[nm] ~ rest] input col acc =>
                                 acc ++ {nm = @sql_inject col.Inject input})
                             {} [M.cols] M.fl (r -- #Id) M.cols
@@ -74,7 +74,7 @@ functor Make(M : sig
                     <tr>
                       <td>{[r.Id]}</td>
                       {foldRX2 [colMeta] [fst] [_]
-                               (fn (nm :: Name) (p :: (Type * Type)) (rest :: {(Type * Type)})
+                               (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
                                                 [[nm] ~ rest] m v =>
                                    <xml><td>{m.Show v}</td></xml>)
                                [M.cols] M.fl M.cols (r -- #Id)}
@@ -90,7 +90,7 @@ functor Make(M : sig
               <tr>
                 <th>Id</th>
                 {foldRX [colMeta] [_]
-                        (fn (nm :: Name) (p :: (Type * Type)) (rest :: {(Type * Type)})
+                        (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
                                          [[nm] ~ rest] m =>
                             <xml><th>{[m.Nam]}</th></xml>)
                         [M.cols] M.fl M.cols}
@@ -105,7 +105,7 @@ functor Make(M : sig
 
         id <- source "";
         inps <- foldR [colMeta] [fn r => transaction ($(map snd r))]
-                (fn (nm :: Name) (p :: (Type * Type)) (rest :: {(Type * Type)}) [[nm] ~ rest] m acc =>
+                (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest] m acc =>
                     s <- m.NewState;
                     r <- acc;
                     return ({nm = s} ++ r))
@@ -116,7 +116,7 @@ functor Make(M : sig
             fun add () =
                 id <- get id;
                 vs <- foldR2 [colMeta] [snd] [fn r => transaction ($(map fst r))]
-                             (fn (nm :: Name) (p :: (Type * Type)) (rest :: {(Type * Type)})
+                             (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
                                               [[nm] ~ rest] m s acc =>
                                  v <- m.ReadState s;
                                  r <- acc;
@@ -146,7 +146,7 @@ functor Make(M : sig
               <table>
                 <tr> <th>Id:</th> <td><ctextbox source={id}/></td> </tr>
                 {foldRX2 [colMeta] [snd] [_]
-                 (fn (nm :: Name) (p :: (Type * Type)) (rest :: {(Type * Type)})
+                 (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
                                   [[nm] ~ rest] m s =>
                      <xml><tr> <th>{[m.Nam]}:</th> <td>{m.Widget s}</td> </tr></xml>)
                  [M.cols] M.fl M.cols inps}
