@@ -241,10 +241,12 @@ fun exp ((ks, ts), e as old, st : state) =
                                                        end)
                                                    (IS.empty, IS.empty) vis
 
-                            (*val () = print ("A: " ^ Int.toString (length ts) ^ ", " ^ Int.toString (length ks) ^ "\n")
-                            val () = app (fn (x, t) =>
+                            (*val () = Print.prefaces "Letto" [("e", ElabPrint.p_exp E.empty (old, ErrorMsg.dummySpan))]*)
+                            (*val () = print ("A: " ^ Int.toString (length ts) ^ ", " ^ Int.toString (length ks) ^ "\n")*)
+                            (*val () = app (fn (x, t) =>
                                              Print.prefaces "Var" [("x", Print.PD.string x),
-                                                                   ("t", ElabPrint.p_con E.empty t)]) ts*)
+                                                                   ("t", ElabPrint.p_con E.empty t)]) ts
+                            val () = IS.app (fn n => print ("Free: " ^ Int.toString n ^ "\n")) efv*)
 
                             val cfv = IS.foldl (fn (x, cfv) =>
                                                    let

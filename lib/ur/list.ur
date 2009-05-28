@@ -1,38 +1,38 @@
 datatype t = datatype Basis.list
 
-val show (a ::: Type) (_ : show a) =
-    let
-        fun show' (ls : list a) =
-            case ls of
-                [] => "[]"
-              | x :: ls => show x ^ " :: " ^ show' ls
-    in
-        mkShow show'
-    end
+val show = fn [a] (_ : show a) =>
+              let
+                  fun show' (ls : list a) =
+                      case ls of
+                          [] => "[]"
+                        | x :: ls => show x ^ " :: " ^ show' ls
+              in
+                  mkShow show'
+              end
 
-val rev (a ::: Type) =
-    let
-        fun rev' acc (ls : list a) =
-            case ls of
-                [] => acc
-              | x :: ls => rev' (x :: acc) ls
-    in
-        rev' []
-    end
+val rev = fn [a] =>
+             let
+                 fun rev' acc (ls : list a) =
+                     case ls of
+                         [] => acc
+                       | x :: ls => rev' (x :: acc) ls
+             in
+                 rev' []
+             end
 
-val revAppend (a ::: Type) =
-    let
-        fun ra (ls : list a) acc =
-            case ls of
-                [] => acc
-              | x :: ls => ra ls (x :: acc)
-    in
-        ra
-    end
+val revAppend = fn [a] =>
+                   let
+                       fun ra (ls : list a) acc =
+                           case ls of
+                               [] => acc
+                             | x :: ls => ra ls (x :: acc)
+                   in
+                       ra
+                   end
 
-fun append (a ::: Type) (ls1 : t a) (ls2 : t a) = revAppend (rev ls1) ls2                
+fun append [a] (ls1 : t a) (ls2 : t a) = revAppend (rev ls1) ls2                
 
-fun mp (a ::: Type) (b ::: Type) f =
+fun mp [a] [b] f =
     let
         fun mp' acc ls =
             case ls of
@@ -42,7 +42,7 @@ fun mp (a ::: Type) (b ::: Type) f =
         mp' []
     end
 
-fun mapPartial (a ::: Type) (b ::: Type) f =
+fun mapPartial [a] [b] f =
     let
         fun mp' acc ls =
             case ls of
@@ -54,7 +54,7 @@ fun mapPartial (a ::: Type) (b ::: Type) f =
         mp' []
     end
 
-fun mapX (a ::: Type) (ctx ::: {Unit}) f =
+fun mapX [a] [ctx ::: {Unit}] f =
     let
         fun mapX' ls =
             case ls of
@@ -64,7 +64,7 @@ fun mapX (a ::: Type) (ctx ::: {Unit}) f =
         mapX'
     end
 
-fun mapM (m ::: (Type -> Type)) (_ : monad m) (a ::: Type) (b ::: Type) f =
+fun mapM [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
     let
         fun mapM' acc ls =
             case ls of
@@ -74,7 +74,7 @@ fun mapM (m ::: (Type -> Type)) (_ : monad m) (a ::: Type) (b ::: Type) f =
         mapM' []
     end
 
-fun filter (a ::: Type) f =
+fun filter [a] f =
     let
         fun fil acc ls =
             case ls of
@@ -84,7 +84,7 @@ fun filter (a ::: Type) f =
         fil []
     end
 
-fun exists (a ::: Type) f =
+fun exists [a] f =
     let
         fun ex ls =
             case ls of
@@ -98,7 +98,7 @@ fun exists (a ::: Type) f =
         ex
     end
 
-fun foldlMap (a ::: Type) (b ::: Type) (c ::: Type) f =
+fun foldlMap [a] [b] [c] f =
     let
         fun fold ls' st ls =
             case ls of

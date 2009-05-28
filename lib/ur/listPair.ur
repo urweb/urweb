@@ -1,4 +1,4 @@
-fun mapX (a ::: Type) (b ::: Type) (ctx ::: {Unit}) f =
+fun mapX [a] [b] [ctx ::: {Unit}] f =
     let
         fun mapX' ls1 ls2 =
             case (ls1, ls2) of
