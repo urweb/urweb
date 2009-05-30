@@ -1807,8 +1807,12 @@ uw_Basis_string uw_Basis_strsuffix(uw_context ctx, uw_Basis_string s, uw_Basis_i
     uw_error(ctx, FATAL, "Out-of-bounds strsuffix");
 }
 
+uw_Basis_int uw_Basis_strlen(uw_context ctx, uw_Basis_string s) {
+  return strlen(s);
+}
+
 uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_string s2) {
-  int len = strlen(s1) + strlen(s2) + 1;
+  int len = uw_Basis_strlen(ctx, s1) + uw_Basis_strlen(ctx, s2) + 1;
   char *s;
 
   uw_check_heap(ctx, len);
@@ -1823,7 +1827,7 @@ uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_str
 }
 
 uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {
-  int len = strlen(s1) + 1;
+  int len = uw_Basis_strlen(ctx, s1) + 1;
   char *s;
 
   uw_check_heap(ctx, len);

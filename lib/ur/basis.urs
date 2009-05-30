@@ -53,6 +53,7 @@ val ord_time : ord time
 
 (** String operations *)
 
+val strlen : string -> int
 val strcat : string -> string -> string
 val strsub : string -> int -> char
 val strsuffix : string -> int -> string

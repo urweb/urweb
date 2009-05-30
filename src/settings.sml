@@ -152,7 +152,8 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("attrifyBool", "bs"),
                           ("boolToString", "ts"),
                           ("strsub", "sub"),
-                          ("strsuffix", "suf")]
+                          ("strsuffix", "suf"),
+                          ("strlen", "slen")]
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)
