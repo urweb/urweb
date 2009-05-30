@@ -625,16 +625,17 @@ fun process file =
                                                    str ":",
                                                    succ,
                                                    str ")"]
-                              | PSome (t, p) => strcat (str ("(d" ^ Int.toString depth ^ "?")
-                                                        :: (if isNullable t then
-                                                                [str ("d" ^ Int.toString depth
-                                                                      ^ "=d" ^ Int.toString depth ^ ".v")]
-                                                            else
-                                                                [])
-                                                        @ [jsPat depth inner p succ fail,
-                                                           str ":",
-                                                           fail,
-                                                           str ")"])
+                              | PSome (t, p) => strcat [str ("(d" ^ Int.toString depth ^ "?(d" ^ Int.toString (depth+1)
+                                                             ^ "=d" ^ Int.toString depth
+                                                             ^ (if isNullable t then
+                                                                    ".v"
+                                                                else
+                                                                    "")
+                                                             ^ ","),
+                                                        jsPat (depth+1) inner p succ fail,
+                                                        str "):",
+                                                        fail,
+                                                        str ")"]
 
                         val jsifyString = String.translate (fn #"\"" => "\\\""
                                                              | #"\\" => "\\\\"

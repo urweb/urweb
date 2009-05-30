@@ -115,6 +115,10 @@ uw_Basis_int uw_Basis_strlen(uw_context, const char *);
 uw_Basis_char uw_Basis_strsub(uw_context, const char *, uw_Basis_int);
 uw_Basis_string uw_Basis_strsuffix(uw_context, const char *, uw_Basis_int);
 uw_Basis_string uw_Basis_strcat(uw_context, const char *, const char *);
+uw_Basis_int *uw_Basis_strindex(uw_context, const char *, uw_Basis_char);
+uw_Basis_string uw_Basis_strchr(uw_context, const char *, uw_Basis_char);
+uw_Basis_string uw_Basis_substring(uw_context, const char *, uw_Basis_int, uw_Basis_int);
+
 uw_Basis_string uw_strdup(uw_context, const char *);
 uw_Basis_string uw_maybe_strdup(uw_context, const char *);
 char *uw_memdup(uw_context, const char *, size_t);

@@ -57,6 +57,9 @@ val strlen : string -> int
 val strcat : string -> string -> string
 val strsub : string -> int -> char
 val strsuffix : string -> int -> string
+val strchr : string -> char -> option string
+val strindex : string -> char -> option int
+val substring : string -> int -> int -> string
 
 class show
 val show : t ::: Type -> show t -> t -> string

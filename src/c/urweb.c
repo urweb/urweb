@@ -1811,6 +1811,21 @@ uw_Basis_int uw_Basis_strlen(uw_context ctx, uw_Basis_string s) {
   return strlen(s);
 }
 
+uw_Basis_string uw_Basis_strchr(uw_context ctx, uw_Basis_string s, uw_Basis_char ch) {
+  return strchr(s, ch);
+}
+
+uw_Basis_int *uw_Basis_strindex(uw_context ctx, uw_Basis_string s, uw_Basis_char ch) {
+  uw_Basis_string r = strchr(s, ch);
+  if (r == NULL)
+    return NULL;
+  else {
+    uw_Basis_int *nr = uw_malloc(ctx, sizeof(uw_Basis_int));
+    *nr = r - s;
+    return nr;
+  }
+}
+
 uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_string s2) {
   int len = uw_Basis_strlen(ctx, s1) + uw_Basis_strlen(ctx, s2) + 1;
   char *s;
@@ -1824,6 +1839,27 @@ uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_str
   ctx->heap.front += len;
 
   return s;
+}
+
+uw_Basis_string uw_Basis_substring(uw_context ctx, uw_Basis_string s, uw_Basis_int start, uw_Basis_int len) {
+  size_t full_len = uw_Basis_strlen(ctx, s);
+
+  if (start < 0)
+    uw_error(ctx, FATAL, "substring: Negative start index");
+  if (len < 0)
+    uw_error(ctx, FATAL, "substring: Negative length");
+  if (start + len > full_len)
+    uw_error(ctx, FATAL, "substring: Start index plus length is too large");
+
+  if (start + len == full_len)
+    return &s[start];
+  else {
+    uw_Basis_string r = uw_malloc(ctx, len+1);
+    memcpy(r, s, len);
+    r[len] = 0;
+    return r;
+  }
+    
 }
 
 uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {

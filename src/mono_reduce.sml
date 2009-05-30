@@ -85,6 +85,11 @@ fun impure (e, _) =
 
 val liftExpInExp = Monoize.liftExpInExp
 
+fun multiLift n e =
+    case n of
+        0 => e
+      | _ => multiLift (n - 1) (liftExpInExp 0 e)
+
 val subExpInExp' =
     U.Exp.mapB {typ = fn t => t,
                 exp = fn (xn, rep) => fn e =>
@@ -419,11 +424,16 @@ fun reduce file =
                                       | Maybe => push ()
                                       | Yes subs =>
                                         let
-                                            val body = foldr (fn (e, body) => subExpInExp (0, e) body) body subs
+                                            val (body, remaining) =
+                                                foldl (fn (e, (body, remaining)) =>
+                                                          (subExpInExp (0, multiLift remaining e) body, remaining - 1))
+                                                      (body, length subs - 1) subs
                                             val r = reduceExp env body
                                         in
+                                            (*Print.preface ("subs", Print.p_list (MonoPrint.p_exp env) subs);*)
                                             (*Print.prefaces "ECase"
-                                                           [("body", MonoPrint.p_exp env' body),
+                                                           [("old", MonoPrint.p_exp env body),
+                                                            ("body", MonoPrint.p_exp env body),
                                                             ("r", MonoPrint.p_exp env r)];*)
                                             #1 r
                                         end
@@ -533,7 +543,8 @@ fun reduce file =
 
                       | _ => e
             in
-                (*Print.prefaces "exp'" [("r", MonoPrint.p_exp env (r, ErrorMsg.dummySpan))];*)
+                (*Print.prefaces "exp'" [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
+                                       ("r", MonoPrint.p_exp env (r, ErrorMsg.dummySpan))];*)
                 r
             end
 
