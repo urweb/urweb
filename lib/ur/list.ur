@@ -74,6 +74,19 @@ fun mapM [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
         mapM' []
     end
 
+fun mapXM [m ::: (Type -> Type)] (_ : monad m) [a] [ctx ::: {Unit}] f =
+    let
+        fun mapXM' ls =
+            case ls of
+                [] => return <xml/>
+              | x :: ls =>
+                this <- f x;
+                rest <- mapXM' ls;
+                return <xml>{this}{rest}</xml>
+    in
+        mapXM'
+    end
+
 fun filter [a] f =
     let
         fun fil acc ls =

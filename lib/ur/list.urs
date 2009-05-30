@@ -15,7 +15,10 @@ val mapPartial : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> t b
 val mapX : a ::: Type -> ctx ::: {Unit} -> (a -> xml ctx [] []) -> t a -> xml ctx [] []
 
 val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
-           -> (a -> m b) -> list a -> m (list b)
+           -> (a -> m b) -> t a -> m (t b)
+
+val mapXM : m ::: (Type -> Type) -> monad m -> a ::: Type -> ctx ::: {Unit}
+            -> (a -> m (xml ctx [] [])) -> t a -> m (xml ctx [] [])
 
 val filter : a ::: Type -> (a -> bool) -> t a -> t a
 
