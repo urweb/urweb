@@ -1033,8 +1033,16 @@ static void buf_check_ctx(uw_context ctx, buf *b, size_t extra, const char *desc
   }
 }
 
-static void uw_check_heap(uw_context ctx, size_t extra) {
+void uw_check_heap(uw_context ctx, size_t extra) {
   buf_check_ctx(ctx, &ctx->heap, extra, "heap chunk");
+}
+
+char *uw_heap_front(uw_context ctx) {
+  return ctx->heap.front;
+}
+
+void uw_set_heap_front(uw_context ctx, char *fr) {
+  ctx->heap.front = fr;
 }
 
 void *uw_malloc(uw_context ctx, size_t len) {

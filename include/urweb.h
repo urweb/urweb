@@ -196,4 +196,8 @@ __attribute__((noreturn)) void uw_return_blob(uw_context, uw_Basis_blob, uw_Basi
 
 void uw_register_transactional(uw_context, void *data, uw_callback commit, uw_callback rollback, uw_callback free);
 
+void uw_check_heap(uw_context, size_t extra);
+char *uw_heap_front(uw_context);
+void uw_set_heap_front(uw_context, char*);
+
 #endif
