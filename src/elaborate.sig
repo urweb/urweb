@@ -30,4 +30,6 @@ signature ELABORATE = sig
     val elabFile : Source.sgn_item list -> Source.decl list -> Source.sgn_item list
                    -> ElabEnv.env -> Source.file -> Elab.file
 
+    val resolveClass : ElabEnv.env -> Elab.con -> Elab.exp option
+
 end

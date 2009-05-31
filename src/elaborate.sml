@@ -3763,6 +3763,8 @@ and elabStr (env, denv) (str, loc) =
                       (strerror, sgnerror, []))
         end
 
+fun resolveClass env = E.resolveClass (hnormCon env) (consEq env) env
+
 fun elabFile basis topStr topSgn env file =
     let
         val () = mayDelay := true
@@ -3815,7 +3817,7 @@ fun elabFile basis topStr topSgn env file =
                                   let
                                       val c = normClassKey env c
                                   in
-                                      case E.resolveClass (hnormCon env) (consEq env) env c of
+                                      case resolveClass env c of
                                           SOME e => r := SOME e
                                         | NONE => expError env (Unresolvable (loc, c))
                                   end) gs
@@ -3888,7 +3890,7 @@ fun elabFile basis topStr topSgn env file =
 
                                         val c = normClassKey env c
                                     in
-                                        case E.resolveClass (hnormCon env) (consEq env) env c of
+                                        case resolveClass env c of
                                             SOME e => (r := SOME e;
                                                        (NONE, true))
                                           | NONE =>
