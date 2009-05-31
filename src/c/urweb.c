@@ -1815,6 +1815,10 @@ uw_Basis_string uw_Basis_strchr(uw_context ctx, uw_Basis_string s, uw_Basis_char
   return strchr(s, ch);
 }
 
+uw_Basis_int uw_Basis_strcspn(uw_context ctx, uw_Basis_string s, uw_Basis_string chs) {
+  return strcspn(s, chs);
+}
+
 uw_Basis_int *uw_Basis_strindex(uw_context ctx, uw_Basis_string s, uw_Basis_char ch) {
   uw_Basis_string r = strchr(s, ch);
   if (r == NULL)
