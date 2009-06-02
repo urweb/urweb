@@ -3975,7 +3975,7 @@ fun elabFile basis topStr topSgn env file =
         if ErrorMsg.anyErrors () then
             ()
         else
-            app (fn all as (_, _, _, loc) =>
+            app (fn all as (env, _, _, loc) =>
                     case exhaustive all of
                         NONE => ()
                       | SOME p => expError env (Inexhaustive (loc, p)))

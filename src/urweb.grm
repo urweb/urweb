@@ -375,7 +375,8 @@ fun patType loc (p : pat) =
 %right CAND
 %nonassoc EQ NE LT LE GT GE IS
 %right ARROW
-%right CARET PLUSPLUS MINUSMINUS MINUSMINUSMINUS
+%right CARET PLUSPLUS
+%left MINUSMINUS MINUSMINUSMINUS
 %left PLUS MINUS
 %left STAR DIVIDE MOD
 %left NOT
