@@ -852,7 +852,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "{_x:", e, str "}"], st)
+                                (strcat [str ("{_" ^ x ^ ":"), e, str "}"], st)
                             end
                           | ERecord ((x, e, _) :: xes) =>
                             let
