@@ -2716,11 +2716,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
                          NONE =>
                          let
+                             val (xml, fm) = monoExp (env, st, fm) xml
                              val (ts, fm) = tagStart "select"
                          in
-                             ((L'.EStrcat (ts,
-                                           (L'.EPrim (Prim.String " />"), loc)),
-                               loc), fm)
+                             (strcat [ts,
+                                      str ">",
+                                      xml,
+                                      str "</select>"],
+                              fm)
                          end
                        | SOME (_, src, _) =>
                          let

@@ -589,6 +589,8 @@ fun capitalize "" = ""
 val parse = {
     func = fn {database, sources = fnames, ffi, ...} : job =>
               let
+                  val anyErrors = ref false
+                  fun checkErrors () = anyErrors := (!anyErrors orelse ErrorMsg.anyErrors ())
                   fun nameOf fname = capitalize (OS.Path.file fname)
 
                   fun parseFfi fname =
@@ -602,6 +604,7 @@ val parse = {
 
                           val sgn = (Source.SgnConst (#func parseUrs urs), loc)
                       in
+                          checkErrors ();
                           (Source.DFfiStr (mname, sgn), loc)
                       end
 
@@ -617,6 +620,7 @@ val parse = {
                                         {file = urs,
                                          first = ErrorMsg.dummyPos,
                                          last = ErrorMsg.dummyPos})
+                                  before checkErrors ()
                               else
                                   NONE
 
@@ -626,12 +630,18 @@ val parse = {
 
                           val ds = #func parseUr ur
                       in
+                          checkErrors ();
                           (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
                       end
 
                   val dsFfi = map parseFfi ffi
                   val ds = map parseOne fnames
               in
+                  if !anyErrors then
+                      ErrorMsg.error "Parse failure"
+                  else
+                      ();
+
                   let
                       val final = nameOf (List.last fnames)
 

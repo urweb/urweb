@@ -374,10 +374,8 @@ fun process file =
                          ((EApp ((ENamed n', loc), e), loc), st)
                      end)
 
-              | _ => raise CantEmbed t
-                             (*(EM.errorAt loc "Don't know how to embed type in JavaScript";
-                      Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];
-                      (str loc "ERROR", st))*)
+              | _ => ((*Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];*)
+                      raise CantEmbed t)
 
         fun unurlifyExp loc (t : typ, st) =
             case #1 t of

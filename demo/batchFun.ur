@@ -34,7 +34,6 @@ functor Make(M : sig
                  val cols : colsMeta cols
              end) = struct
 
-    open constraints M
     val t = M.tab
 
     datatype list t = Nil | Cons of t * list t

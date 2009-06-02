@@ -3355,6 +3355,10 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                             end
 
                     val (env', n) = E.pushStrNamed env x sgn'
+                    val denv' =
+                        case #1 str' of
+                            L'.StrConst _ => dopenConstraints (loc, env', denv) {str = x, strs = []}
+                          | _ => denv
                 in
                     case #1 (hnormSgn env sgn') of
                         L'.SgnFun _ =>
@@ -3363,7 +3367,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                            | _ => strError env (FunctorRebind loc))
                       | _ => ();
 
-                    ([(L'.DStr (x, n, sgn', str'), loc)], (env', denv, gs' @ gs))
+                    ([(L'.DStr (x, n, sgn', str'), loc)], (env', denv', gs' @ gs))
                 end
 
               | L.DFfiStr (x, sgn) =>
@@ -3721,14 +3725,15 @@ and elabStr (env, denv) (str, loc) =
         let
             val (dom', gs1) = elabSgn (env, denv) dom
             val (env', n) = E.pushStrNamed env m dom'
-            val (str', actual, gs2) = elabStr (env', denv) str
+            val denv' = dopenConstraints (loc, env', denv) {str = m, strs = []}
+            val (str', actual, gs2) = elabStr (env', denv') str
 
             val (formal, gs3) =
                 case ranO of
                     NONE => (actual, [])
                   | SOME ran =>
                     let
-                        val (ran', gs) = elabSgn (env', denv) ran
+                        val (ran', gs) = elabSgn (env', denv') ran
                     in
                         subSgn env' actual ran';
                         (ran', gs)

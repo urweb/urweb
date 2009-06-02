@@ -42,7 +42,6 @@ functor Make(M : sig
                  val cols : colsMeta cols
              end) = struct
 
-    open constraints M
     val tab = M.tab
 
     sequence seq
