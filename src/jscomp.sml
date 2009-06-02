@@ -523,9 +523,9 @@ fun process file =
                                                                 "'"
                                                           | #"\"" => "\\\""
                                                           | #"<" =>
-                                                            if mode = Script then
+                                                            (*if mode = Script then
                                                                 "<"
-                                                            else
+                                                            else*)
                                                                 "\\074"
                                                           | #"\\" => "\\\\"
                                                           | #"\n" => "\\n"

@@ -158,7 +158,7 @@
                      "U" ^ Int.toString (n - 26)
      in
          count := n + 1;
-         (L'.KUnif (loc, s, ref NONE), dummy)
+         (L'.KUnif (loc, s, ref NONE), loc)
      end
 
  end
@@ -178,7 +178,7 @@
                      "U" ^ Int.toString (n - 26)
      in
          count := n + 1;
-         (L'.CUnif (loc, k, s, ref NONE), dummy)
+         (L'.CUnif (loc, k, s, ref NONE), loc)
      end
 
  end
@@ -776,7 +776,7 @@
                | orig as ([(_, r1 as ref NONE)], _, [], [(_, r2 as ref NONE)], _, []) =>
                  if List.all (fn (x1, _) => List.all (fn (x2, _) => consNeq env (x1, x2)) fs2) fs1 then
                      let
-                         val kr = (L'.KRecord k, dummy)
+                         val kr = (L'.KRecord k, loc)
                          val u = cunif (loc, kr)
                      in
                          r1 := SOME (L'.CConcat ((L'.CRecord (k, fs2), loc), u), loc);
@@ -817,7 +817,7 @@
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
-         val empty = (L'.CRecord (k, []), dummy)
+         val empty = (L'.CRecord (k, []), loc)
          fun failure () = raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
      in
          (case (unifs1, fs1, others1, unifs2, fs2, others2) of
@@ -1652,7 +1652,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
 
                 val dom = cunif (loc, ktype)
                 val ran = cunif (loc, ktype)
-                val t = (L'.TFun (dom, ran), dummy)
+                val t = (L'.TFun (dom, ran), loc)
             in
                 checkCon env e1' t1 t;
                 checkCon env e2' t2 dom;
@@ -2507,7 +2507,7 @@ and sgiOfDecl (d, loc) =
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
       | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
 
-and subSgn env sgn1 (sgn2 as (_, loc2)) =
+and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
                         ("sgn2", p_sgn env sgn2)];*)
     case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
@@ -2520,6 +2520,18 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                         ("sgn2", p_sgn env sgn2),
                                         ("sgis1", p_sgn env (L'.SgnConst sgis1, loc2)),
                                         ("sgis2", p_sgn env (L'.SgnConst sgis2, loc2))]*)
+
+            fun cpart n = IM.find (!counterparts, n)
+            fun cparts (n2, n1) = counterparts := IM.insert (!counterparts, n2, n1)
+
+            val sub2 = U.Con.map {kind = fn k => k,
+                                  con = fn c =>
+                                           case c of
+                                               L'.CNamed n2 =>
+                                               (case cpart n2 of
+                                                    NONE => c
+                                                  | SOME n1 => L'.CNamed n1)
+                                             | _ => c}
 
             fun folder (sgi2All as (sgi, loc), env) =
                 let
@@ -2572,7 +2584,8 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                                  SOME (if n1 = n2 then
                                                            env
                                                        else
-                                                           E.pushCNamedAs env x n2 k2 (SOME (L'.CNamed n1, loc2)))
+                                                           (cparts (n2, n1);
+                                                            E.pushCNamedAs env x n2 k2 (SOME (L'.CNamed n1, loc2))))
                                              end
                                          else
                                              NONE
@@ -2616,6 +2629,8 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                      fun found (x', n1, k1, c1) =
                                          if x = x' then
                                              let
+                                                 val c2 = sub2 c2
+
                                                  fun good () =
                                                      let
                                                          val env = E.pushCNamedAs env x n2 k2 (SOME c2)
@@ -2662,8 +2677,9 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                                 val env = if n1 = n2 then
                                                               env
                                                           else
-                                                              E.pushCNamedAs env x1 n2 k'
-                                                                             (SOME (L'.CNamed n1, loc))
+                                                              (cparts (n2, n1);
+                                                               E.pushCNamedAs env x1 n2 k'
+                                                                              (SOME (L'.CNamed n1, loc)))
                                             in
                                                 SOME env
                                             end
@@ -2672,14 +2688,15 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                         val env = if n1 = n2 then
                                                       env
                                                   else
-                                                      E.pushCNamedAs env x1 n2 k' (SOME (L'.CNamed n1, loc))
+                                                      (cparts (n2, n1);
+                                                       E.pushCNamedAs env x1 n2 k' (SOME (L'.CNamed n1, loc)))
                                         val env = foldl (fn (x, env) => E.pushCRel env x k) env xs1
                                         fun xncBad ((x1, _, t1), (x2, _, t2)) =
                                             String.compare (x1, x2) <> EQUAL
                                             orelse case (t1, t2) of
                                                        (NONE, NONE) => false
                                                      | (SOME t1, SOME t2) =>
-                                                       (unifyCons env t1 t2; false)
+                                                       (unifyCons env t1 (sub2 t2); false)
                                                      | _ => true
                                     in
                                         (if xs1 <> xs2
@@ -2746,6 +2763,7 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                                      val env = E.pushCNamedAs env x n1 k' (SOME t1)
                                                      val env = E.pushCNamedAs env x n2 k' (SOME t2)
                                                  in
+                                                     cparts (n2, n1);
                                                      SOME env
                                                  end
                                          in
@@ -2765,7 +2783,12 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                  case sgi1 of
                                      L'.SgiVal (x', n1, c1) =>
                                      if x = x' then
-                                         (unifyCons env c1 c2;
+                                         ((*prefaces "val" [("x", PD.string x),
+                                                          ("n1", PD.string (Int.toString n1)),
+                                                          ("c1", p_con env c1),
+                                                          ("c2", p_con env c2),
+                                                          ("c2'", p_con env (sub2 c2))];*)
+                                          unifyCons env c1 (sub2 c2);
                                           SOME env)
                                          handle CUnify (c1, c2, err) =>
                                                 (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
@@ -2780,7 +2803,7 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                      L'.SgiStr (x', n1, sgn1) =>
                                      if x = x' then
                                          let
-                                             val () = subSgn env sgn1 sgn2
+                                             val () = subSgn' counterparts env sgn1 sgn2
                                              val env = E.pushStrNamedAs env x n1 sgn1
                                              val env = if n1 = n2 then
                                                            env
@@ -2801,14 +2824,15 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                      L'.SgiSgn (x', n1, sgn1) =>
                                      if x = x' then
                                          let
-                                             val () = subSgn env sgn1 sgn2
-                                             val () = subSgn env sgn2 sgn1
+                                             val () = subSgn' counterparts env sgn1 sgn2
+                                             val () = subSgn' counterparts env sgn2 sgn1
 
                                              val env = E.pushSgnNamedAs env x n2 sgn2
                                              val env = if n1 = n2 then
                                                            env
                                                        else
-                                                           E.pushSgnNamedAs env x n1 sgn2
+                                                           (cparts (n2, n1);
+                                                            E.pushSgnNamedAs env x n1 sgn2)
                                          in
                                              SOME env
                                          end
@@ -2841,7 +2865,8 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                                  SOME (if n1 = n2 then
                                                            env
                                                        else
-                                                           E.pushCNamedAs env x n2 k1 (SOME (L'.CNamed n1, loc2)))
+                                                           (cparts (n2, n1);
+                                                            E.pushCNamedAs env x n2 k1 (SOME (L'.CNamed n1, loc2))))
                                              end
                                          else
                                              NONE
@@ -2860,6 +2885,8 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                                                  val () = unifyKinds env k1 k2
                                                      handle KUnify (k1, k2, err) =>
                                                             sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
+
+                                                 val c2 = sub2 c2
 
                                                  fun good () =
                                                      let
@@ -2898,12 +2925,13 @@ and subSgn env sgn1 (sgn2 as (_, loc2)) =
                 else
                     subStrInSgn (n2, n1) ran2
         in
-            subSgn env dom2 dom1;
-            subSgn (E.pushStrNamedAs env m1 n1 dom2) ran1 ran2
+            subSgn' counterparts env dom2 dom1;
+            subSgn' counterparts (E.pushStrNamedAs env m1 n1 dom2) ran1 ran2
         end
 
       | _ => sgnError env (SgnWrongForm (sgn1, sgn2)))
 
+and subSgn env = subSgn' (ref IM.empty) env
 
 and positive self =
     let

@@ -193,11 +193,15 @@ notags = [^<{\n]+;
 <COMMENT> "*)"        => (if exitComment () then YYBEGIN INITIAL else ();
 			  continue ());
 
-<INITIAL> "#\""       => (YYBEGIN CHAR; strEnder := #"\""; strStart := pos yypos; str := []; continue());
-<CHAR> "\\\""         => (str := #"\"" :: !str; continue());
-<CHAR> "\\'"          => (str := #"'" :: !str; continue());
-<CHAR> "\n"           => (newline yypos;
+<STRING,CHAR> "\\\""  => (str := #"\"" :: !str; continue());
+<STRING,CHAR> "\\'"   => (str := #"'" :: !str; continue());
+<STRING,CHAR> "\\n"   => (str := #"\n" :: !str; continue());
+<STRING,CHAR> "\\t"   => (str := #"\t" :: !str; continue());
+<STRING,CHAR> "\n"    => (newline yypos;
 			  str := #"\n" :: !str; continue());
+
+<INITIAL> "#\""       => (YYBEGIN CHAR; strEnder := #"\""; strStart := pos yypos; str := []; continue());
+
 <CHAR> .              => (let
                               val ch = String.sub (yytext, 0)
                           in
@@ -220,10 +224,7 @@ notags = [^<{\n]+;
 
 <INITIAL> "\""        => (YYBEGIN STRING; strEnder := #"\""; strStart := pos yypos; str := []; continue());
 <INITIAL> "'"         => (YYBEGIN STRING; strEnder := #"'"; strStart := pos yypos; str := []; continue());
-<STRING> "\\\""       => (str := #"\"" :: !str; continue());
-<STRING> "\\'"        => (str := #"'" :: !str; continue());
-<STRING> "\n"         => (newline yypos;
-			  str := #"\n" :: !str; continue());
+
 <STRING> .            => (let
                               val ch = String.sub (yytext, 0)
                           in

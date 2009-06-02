@@ -959,11 +959,6 @@ eexp   : eapps                          (eapps)
                                          end)
 
 bind   : SYMBOL LARROW eapps            (SYMBOL, NONE, eapps)
-       | UNIT LARROW eapps              (let
-                                             val loc = s (UNITleft, eappsright)
-                                         in
-                                             ("_", SOME (TRecord (CRecord [], loc), loc), eapps)
-                                         end)
        | eapps                          (let
                                              val loc = s (eappsleft, eappsright)
                                          in
