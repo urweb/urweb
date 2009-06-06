@@ -150,3 +150,14 @@ fun search [a] [b] f =
         search'
     end
 
+fun foldlM [m] (_ : monad m) [a] [b] f =
+    let
+        fun foldlM' acc ls =
+            case ls of
+                [] => return acc
+              | x :: ls =>
+                acc <- f x acc;
+                foldlM' acc ls
+    in
+        foldlM'
+    end

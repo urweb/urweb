@@ -42,7 +42,7 @@ structure TM = BinaryMapFn(struct
                            end)
 
 type state = {
-     decls : decl list,
+     decls : (string * int * (string * int * typ option) list) list,
      script : string list,
      included : IS.set,
      injectors : int IM.map,
@@ -301,8 +301,8 @@ fun process file =
                                             {disc = t, result = s}), loc)
                          val body = (EAbs ("x", t, s, body), loc)
                                     
-                         val st = {decls = (DValRec [("jsify", n', (TFun (t, s), loc),
-                                                      body, "jsify")], loc) :: #decls st,
+                         val st = {decls = ("jsify", n', (TFun (t, s), loc),
+                                            body, "jsify") :: #decls st,
                                    script = #script st,
                                    included = #included st,
                                    injectors = #injectors st,
@@ -362,8 +362,8 @@ fun process file =
                                             {disc = t, result = s}), loc)
                          val body = (EAbs ("x", t, s, body), loc)
 
-                         val st = {decls = (DValRec [("jsify", n', (TFun (t, s), loc),
-                                                      body, "jsify")], loc) :: #decls st,
+                         val st = {decls = ("jsify", n', (TFun (t, s), loc),
+                                            body, "jsify") :: #decls st,
                                    script = #script st,
                                    included = #included st,
                                    injectors = #injectors st,
@@ -1337,8 +1337,13 @@ fun process file =
             let
                 (*val () = Print.preface ("doDecl", MonoPrint.p_decl MonoEnv.empty d)*)
                 val (d, st) = decl (d, st)
+
+                val ds =
+                    case #decls st of
+                        [] => [d]
+                      | vis => [(DValRec vis, #2 d), d]
             in
-                (List.revAppend (#decls st, [d]),
+                (ds,
                  {decls = [],
                   script = #script st,
                   included = #included st,

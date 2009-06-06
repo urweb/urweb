@@ -24,6 +24,9 @@ val filter : a ::: Type -> (a -> bool) -> t a -> t a
 
 val exists : a ::: Type -> (a -> bool) -> t a -> bool
 
+val foldlM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
+             -> (a -> b -> m b) -> b -> t a -> m b
+
 val foldlMap : a ::: Type -> b ::: Type -> c ::: Type
                -> (a -> b -> c * b) -> b -> t a -> t c * b
 
