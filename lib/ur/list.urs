@@ -26,3 +26,7 @@ val exists : a ::: Type -> (a -> bool) -> t a -> bool
 
 val foldlMap : a ::: Type -> b ::: Type -> c ::: Type
                -> (a -> b -> c * b) -> b -> t a -> t c * b
+
+val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
+
+val search : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> option b

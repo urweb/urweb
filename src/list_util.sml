@@ -136,6 +136,19 @@ fun search f =
         s
     end
 
+fun searchi f =
+    let
+        fun s n ls =
+            case ls of
+                [] => NONE
+              | h :: t =>
+                case f (n, h) of
+                    NONE => s (n + 1) t
+                  | v => v
+    in
+        s 0
+    end
+
 fun mapi f =
     let
         fun m i acc ls =

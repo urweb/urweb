@@ -73,6 +73,9 @@ structure Con : sig
                  con : 'context * Elab.con' * 'state -> 'state,
                  bind : 'context * binder -> 'context}
                 -> 'context -> 'state -> Elab.con -> 'state
+    val fold : {kind : Elab.kind' * 'state -> 'state,
+                 con : Elab.con' * 'state -> 'state}
+                -> 'state -> Elab.con -> 'state
 end
 
 structure Exp : sig

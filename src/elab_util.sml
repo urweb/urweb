@@ -280,6 +280,13 @@ fun foldB {kind, con, bind} ctx st c =
         S.Continue (_, st) => st
       | S.Return _ => raise Fail "ElabUtil.Con.foldB: Impossible"
 
+fun fold {kind, con} st c =
+    case mapfoldB {kind = fn () => fn k => fn st => S.Continue (k, kind (k, st)),
+                   con = fn () => fn c => fn st => S.Continue (c, con (c, st)),
+                   bind = fn ((), _) => ()} () c st of
+        S.Continue (_, st) => st
+      | S.Return _ => raise Fail "ElabUtil.Con.fold: Impossible"
+
 end
 
 structure Exp = struct

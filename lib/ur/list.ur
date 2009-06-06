@@ -122,3 +122,31 @@ fun foldlMap [a] [b] [c] f =
     in
         fold []
     end
+
+fun assoc [a] [b] (_ : eq a) (x : a) =
+    let
+        fun assoc' ls =
+            case ls of
+                [] => None
+              | (y, z) :: ls =>
+                if x = y then
+                    Some z
+                else
+                    assoc' ls
+    in
+        assoc'
+    end
+
+fun search [a] [b] f =
+    let
+        fun search' ls =
+            case ls of
+                [] => None
+              | x :: ls =>
+                case f x of
+                    None => search' ls
+                  | v => v
+    in
+        search'
+    end
+

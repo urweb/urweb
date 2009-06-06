@@ -2637,7 +2637,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                                          val env = if n1 = n2 then
                                                                        env
                                                                    else
-                                                                       E.pushCNamedAs env x n1 k1 (SOME c1)
+                                                                       (cparts (n2, n1);
+                                                                        E.pushCNamedAs env x n1 k1 (SOME c1))
                                                      in
                                                          SOME env
                                                      end
@@ -2894,7 +2895,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                                          val env = if n1 = n2 then
                                                                        env
                                                                    else
-                                                                       E.pushCNamedAs env x n1 k2 (SOME c1)
+                                                                       (cparts (n2, n1);
+                                                                        E.pushCNamedAs env x n1 k2 (SOME c1))
                                                      in
                                                          SOME env
                                                      end
