@@ -161,3 +161,13 @@ fun foldlM [m] (_ : monad m) [a] [b] f =
     in
         foldlM'
     end
+
+fun all [m] f =
+    let
+        fun all' ls =
+            case ls of
+                [] => True
+              | x :: ls => f x && all' ls
+    in
+        all'
+    end

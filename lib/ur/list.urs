@@ -33,3 +33,5 @@ val foldlMap : a ::: Type -> b ::: Type -> c ::: Type
 val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
 
 val search : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> option b
+
+val all : a ::: Type -> (a -> bool) -> t a -> bool

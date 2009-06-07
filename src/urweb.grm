@@ -365,9 +365,9 @@ fun patType loc (p : pat) =
 %right SEMI
 %nonassoc LARROW
 %nonassoc IF THEN ELSE
+%nonassoc DARROW
 %left ANDALSO
 %left ORELSE
-%nonassoc DARROW
 %nonassoc COLON
 %nonassoc DCOLON TCOLON
 %left UNION INTERSECT EXCEPT
