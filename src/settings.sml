@@ -98,6 +98,7 @@ fun isEffectful x = S.member (!effectful, x)
 
 val clientBase = basis ["get",
                         "set",
+                        "current",
                         "alert",
                         "recv",
                         "sleep",
@@ -125,6 +126,7 @@ val basisM = foldl (fn ((k, v : string), m) => M.insert (m, ("Basis", k), v)) M.
 
 val jsFuncsBase = basisM [("alert", "alert"),
                           ("get_client_source", "sg"),
+                          ("current", "scur"),
                           ("htmlifyBool", "bs"),
                           ("htmlifyFloat", "ts"),
                           ("htmlifyInt", "ts"),

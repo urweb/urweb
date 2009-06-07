@@ -55,9 +55,14 @@ fun p_typ' par env (t, _) =
                                             space,
                                             p_typ env t]) xcs,
                             string "}"]
-      | TDatatype (n, _) =>
+      | TDatatype (n, ref (dk, _)) =>
         ((if !debug then
-              string (#1 (E.lookupDatatype env n) ^ "__" ^ Int.toString n)
+              string (#1 (E.lookupDatatype env n) ^ "__" ^ Int.toString n  ^ "["
+                      ^ (case dk of
+                             Option => "Option"
+                           | Enum => "Enum"
+                           | Default => "Default")
+                      ^ "]")
           else
               string (#1 (E.lookupDatatype env n)))
          handle E.UnboundNamed _ => string ("UNBOUND_DATATYPE_" ^ Int.toString n))

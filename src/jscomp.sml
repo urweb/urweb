@@ -194,6 +194,8 @@ fun process file =
         fun isNullable (t, _) =
             case t of
                 TOption _ => true
+              | TList _ => true
+              | TDatatype (_, ref (Option, _)) => true
               | TRecord [] => true
               | _ => false
 

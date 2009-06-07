@@ -107,6 +107,7 @@ val get : t ::: Type -> source t -> transaction t
 con signal :: Type -> Type
 val signal_monad : monad signal
 val signal : t ::: Type -> source t -> signal t
+val current : t ::: Type -> signal t -> transaction t
 
 
 (** HTTP operations *)

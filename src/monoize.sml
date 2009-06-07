@@ -1245,6 +1245,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                       loc)), loc)), loc),
                  fm)
             end
+          | L.ECApp ((L.EFfi ("Basis", "current"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("src", (L'.TSource, loc),
+                           (L'.TFun ((L'.TRecord [], loc), t), loc),
+                           (L'.EAbs ("_", (L'.TRecord [], loc), t,
+                                     (L'.EFfiApp ("Basis", "current",
+                                                  [(L'.ERel 1, loc)]),
+                                      loc)), loc)), loc),
+                 fm)
+            end
 
           | L.EFfiApp ("Basis", "spawn", [e]) =>
             let
