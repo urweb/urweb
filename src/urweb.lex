@@ -333,6 +333,9 @@ notags = [^<{\n]+;
 <INITIAL> "---"       => (Tokens.MINUSMINUSMINUS (pos yypos, pos yypos + size yytext));
 <INITIAL> "^"         => (Tokens.CARET (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "&&"        => (Tokens.ANDALSO (pos yypos, pos yypos + size yytext));
+<INITIAL> "||"        => (Tokens.ORELSE (pos yypos, pos yypos + size yytext));
+
 <INITIAL> "="         => (Tokens.EQ (pos yypos, pos yypos + size yytext));
 <INITIAL> "<>"        => (Tokens.NE (pos yypos, pos yypos + size yytext));
 <INITIAL> "<"         => (Tokens.LT (pos yypos, pos yypos + size yytext));
@@ -376,6 +379,7 @@ notags = [^<{\n]+;
 <INITIAL> "if"        => (Tokens.IF (pos yypos, pos yypos + size yytext));
 <INITIAL> "then"      => (Tokens.THEN (pos yypos, pos yypos + size yytext));
 <INITIAL> "else"      => (Tokens.ELSE (pos yypos, pos yypos + size yytext));
+
 
 <INITIAL> "structure" => (Tokens.STRUCTURE (pos yypos, pos yypos + size yytext));
 <INITIAL> "signature" => (Tokens.SIGNATURE (pos yypos, pos yypos + size yytext));

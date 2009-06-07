@@ -202,7 +202,7 @@ fun patType loc (p : pat) =
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE | VIEW
  | COOKIE | STYLE
- | CASE | IF | THEN | ELSE
+ | CASE | IF | THEN | ELSE | ANDALSO | ORELSE
 
  | XML_BEGIN of string | XML_END | XML_BEGIN_END of string
  | NOTAGS of string 
@@ -365,6 +365,8 @@ fun patType loc (p : pat) =
 %right SEMI
 %nonassoc LARROW
 %nonassoc IF THEN ELSE
+%left ANDALSO
+%left ORELSE
 %nonassoc DARROW
 %nonassoc COLON
 %nonassoc DCOLON TCOLON
@@ -943,6 +945,23 @@ eexp   : eapps                          (eapps)
        | eexp LE eexp                   (native_op ("le", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp GT eexp                   (native_op ("gt", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp GE eexp                   (native_op ("ge", eexp1, eexp2, s (eexp1left, eexp2right)))
+
+       | eexp ANDALSO eexp              (let
+                                             val loc = s (eexp1left, eexp2right)
+                                         in
+                                             (ECase (eexp1, [((PCon (["Basis"], "True", NONE), loc),
+                                                              eexp2),
+                                                             ((PCon (["Basis"], "False", NONE), loc),
+                                                              (EVar (["Basis"], "False", Infer), loc))]), loc)
+                                         end)
+       | eexp ORELSE eexp               (let
+                                             val loc = s (eexp1left, eexp2right)
+                                         in
+                                             (ECase (eexp1, [((PCon (["Basis"], "True", NONE), loc),
+                                                              (EVar (["Basis"], "True", Infer), loc)),
+                                                             ((PCon (["Basis"], "False", NONE), loc),
+                                                              eexp2)]), loc)
+                                         end)
 
        | eexp PLUSPLUS eexp             (EConcat (eexp1, eexp2), s (eexp1left, eexp2right))
 
