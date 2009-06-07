@@ -1278,12 +1278,12 @@ uw_unit uw_Basis_set_client_source(uw_context ctx, uw_Basis_int n, uw_Basis_stri
   size_t s_len = strlen(s);
 
   uw_check_script(ctx, 6 + INTS_MAX + s_len);
-  sprintf(ctx->script.front, "s%d.v=%n", (int)n, &len);
+  sprintf(ctx->script.front, "sv(s%d,%n", (int)n, &len);
   ctx->script.front += len;
   strcpy(ctx->script.front, s);
   ctx->script.front += s_len;
-  strcpy(ctx->script.front, ";");
-  ctx->script.front++;
+  strcpy(ctx->script.front, ");");
+  ctx->script.front += 2;
 
   return uw_unit_v;
 }

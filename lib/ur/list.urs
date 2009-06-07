@@ -35,3 +35,6 @@ val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
 val search : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> option b
 
 val all : a ::: Type -> (a -> bool) -> t a -> bool
+
+val app : m ::: (Type -> Type) -> monad m -> a ::: Type
+          -> (a -> m unit) -> t a -> m unit

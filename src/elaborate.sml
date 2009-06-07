@@ -3271,6 +3271,10 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                       val env = E.pushDatatype env n' xs xncs
 
                                       val t = (L'.CNamed n', loc)
+                                      val nxs = length xs
+                                      val t = ListUtil.foldli (fn (i, _, t) =>
+                                                                  (L'.CApp (t, (L'.CRel (nxs - 1 - i), loc)), loc))
+                                                              t xs
                                       val env = foldl (fn ((x, n, to), env) =>
                                                           let
                                                               val t = case to of

@@ -171,3 +171,15 @@ fun all [m] f =
     in
         all'
     end
+
+fun app [m] (_ : monad m) [a] f =
+    let
+        fun app' ls =
+            case ls of
+                [] => return ()
+              | x :: ls =>
+                f x;
+                app' ls
+    in
+        app'
+    end
