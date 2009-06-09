@@ -61,7 +61,7 @@ type state = {
      count : int,
      datatypes : datatyp IM.map,
      constructors : int IM.map,
-     decls : decl list     
+     decls : (string * int * string list * (string * int * con option) list) list     
 }
 
 fun kind (k, st) = (k, st)
@@ -115,15 +115,15 @@ fun considerSpecialization (st : state, n, args, dt : datatyp) =
                                                        ((x, n, SOME t), st)
                                                    end) st cons
 
-            val d = (DDatatype [(#name dt ^ "_s",
-                                 n',
-                                 [],
-                                 cons)], #2 (List.hd args))
+            val dt = (#name dt ^ "_s",
+                      n',
+                      [],
+                      cons)
         in
             (n', cmap, {count = #count st,
                         datatypes = #datatypes st,
                         constructors = #constructors st,
-                        decls = d :: #decls st})
+                        decls = dt :: #decls st})
         end
 
 and con (c, st : state) =
@@ -246,22 +246,31 @@ fun specialize file =
             let
                 (*val () = Print.preface ("decl:", CorePrint.p_decl CoreEnv.empty all)*)
                 val (d, st) = specDecl st d
+
+                val ds =
+                    case #decls st of
+                        [] => []
+                      | dts => [(DDatatype dts, #2 d)]
             in
                 case #1 d of
-                    DDatatype [(x, n, xs, xnts)] =>
-                    (rev (d :: #decls st),
+                    DDatatype dts =>
+                    (rev (d :: ds),
                      {count = #count st,
-                      datatypes = IM.insert (#datatypes st, n,
-                                             {name = x,
-                                              params = length xs,
-                                              constructors = xnts,
-                                              specializations = CM.empty}),
-                      constructors = foldl (fn ((_, n', _), constructors) =>
-                                               IM.insert (constructors, n', n))
-                                           (#constructors st) xnts,
+                      datatypes = foldl (fn ((x, n, xs, xnts), dts) =>
+                                            IM.insert (dts, n,
+                                                       {name = x,
+                                                        params = length xs,
+                                                        constructors = xnts,
+                                                        specializations = CM.empty}))
+                                        (#datatypes st) dts,
+                      constructors = foldl (fn ((x, n, xs, xnts), cs) =>
+                                               foldl (fn ((_, n', _), constructors) =>
+                                                         IM.insert (constructors, n', n))
+                                                     cs xnts)
+                                           (#constructors st) dts,
                       decls = []})
                   | _ =>
-                    (rev (d :: #decls st),
+                    (rev (d :: ds),
                      {count = #count st,
                       datatypes = #datatypes st,
                       constructors = #constructors st,

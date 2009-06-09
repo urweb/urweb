@@ -10,6 +10,17 @@ val show = fn [a] (_ : show a) =>
                   mkShow show'
               end
 
+val eq = fn [a] (_ : eq a) =>
+            let
+                fun eq' (ls1 : list a) ls2 =
+                    case (ls1, ls2) of
+                        ([], []) => True
+                      | (x1 :: ls1, x2 :: ls2) => x1 = x2 && eq' ls1 ls2
+                      | _ => False
+            in
+                mkEq eq'
+            end
+
 fun foldl [a] [b] f =
     let
         fun foldl' acc ls =
@@ -18,6 +29,19 @@ fun foldl [a] [b] f =
               | x :: ls => foldl' (f x acc) ls
     in
         foldl'
+    end
+
+fun foldlPartial [a] [b] f =
+    let
+        fun foldlPartial' acc ls =
+            case ls of
+                [] => Some acc
+              | x :: ls =>
+                case f x acc of
+                    None => None
+                  | Some acc' => foldlPartial' acc' ls
+    in
+        foldlPartial'
     end
 
 val rev = fn [a] =>

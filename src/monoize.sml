@@ -778,47 +778,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                  (L'.TFfi ("Basis", "bool"), loc),
                                  (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
-          | L.ECApp ((L.EFfi ("Basis", "eq_option"), _), t) =>
-            let
-                val t = monoType env t
-                val t' = (L'.TOption t, loc)
-                val bool = (L'.TFfi ("Basis", "bool"), loc)
-            in
-                ((L'.EAbs ("f", (L'.TFun (t, (L'.TFun (t, bool), loc)), loc),
-                           (L'.TFun (t', (L'.TFun (t', bool), loc)), loc),
-                           (L'.EAbs ("x", t', (L'.TFun (t', bool), loc),
-                                     (L'.EAbs ("y", t', bool,
-                                               (L'.ECase ((L'.ERecord [("1", (L'.ERel 1, loc), t'),
-                                                                       ("2", (L'.ERel 0, loc), t')], loc),
-                                                          [((L'.PRecord [("1", (L'.PNone t, loc), t'),
-                                                                         ("2", (L'.PNone t, loc), t')], loc),
-                                                            (L'.ECon (L'.Enum, L'.PConFfi {mod = "Basis",
-                                                                                           datatyp = "bool",
-                                                                                           con = "True",
-                                                                                           arg = NONE},
-                                                                      NONE), loc)),
-                                                           ((L'.PRecord [("1", (L'.PSome (t,
-                                                                                          (L'.PVar ("x1",
-                                                                                                    t), loc)),
-                                                                                loc), t'),
-                                                                         ("2", (L'.PSome (t,
-                                                                                          (L'.PVar ("x2",
-                                                                                                    t), loc)),
-                                                                                loc), t')], loc),
-                                                            (L'.EApp ((L'.EApp ((L'.ERel 4, loc),
-                                                                                (L'.ERel 1, loc)), loc),
-                                                                      (L'.ERel 0, loc)), loc)),
-                                                           ((L'.PWild, loc),
-                                                            (L'.ECon (L'.Enum, L'.PConFfi {mod = "Basis",
-                                                                                           datatyp = "bool",
-                                                                                           con = "False",
-                                                                                           arg = NONE},
-                                                                      NONE), loc))],
-                                                          {disc = (L'.TRecord [("1", t'), ("2", t')], loc),
-                                                           result = (L'.TFfi ("Basis", "bool"), loc)}),
-                                                loc)), loc)), loc)), loc),
-                 fm)
-            end
 
           | L.ECApp ((L.EFfi ("Basis", "mkEq"), _), t) =>
             let

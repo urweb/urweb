@@ -1,8 +1,10 @@
 datatype t = datatype Basis.list
 
-val show : a ::: Type -> show a -> show (list a)
+val show : a ::: Type -> show a -> show (t a)
+val eq : a ::: Type -> eq a -> eq (t a)
 
 val foldl : a ::: Type -> b ::: Type -> (a -> b -> b) -> b -> t a -> b
+val foldlPartial : a ::: Type -> b ::: Type -> (a -> b -> option b) -> b -> t a -> option b
 
 val rev : a ::: Type -> t a -> t a
 

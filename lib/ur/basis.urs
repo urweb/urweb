@@ -25,7 +25,6 @@ val eq_string : eq string
 val eq_char : eq char
 val eq_bool : eq bool
 val eq_time : eq time
-val eq_option : t ::: Type -> eq t -> eq (option t)
 val mkEq : t ::: Type -> (t -> t -> bool) -> eq t
 
 class num

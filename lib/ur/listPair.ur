@@ -1,3 +1,17 @@
+fun foldlPartial [a] [b] [c] f =
+    let
+        fun foldlPartial' acc ls1 ls2 =
+            case (ls1, ls2) of
+                ([], []) => Some acc
+              | (x1 :: ls1, x2 :: ls2) =>
+                (case f x1 x2 acc of
+                     None => None
+                   | Some acc' => foldlPartial' acc' ls1 ls2)
+              | _ => None
+    in
+        foldlPartial'
+    end
+
 fun mapX [a] [b] [ctx ::: {Unit}] f =
     let
         fun mapX' ls1 ls2 =

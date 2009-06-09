@@ -1,3 +1,6 @@
+val foldlPartial : a ::: Type -> b ::: Type -> c ::: Type
+                   -> (a -> b -> c -> option c) -> c -> list a -> list b -> option c
+
 val mapX : a ::: Type -> b ::: Type -> ctx ::: {Unit}
            -> (a -> b -> xml ctx [] []) -> list a -> list b -> xml ctx [] []
 
