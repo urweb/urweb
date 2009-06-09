@@ -10,6 +10,16 @@ val show = fn [a] (_ : show a) =>
                   mkShow show'
               end
 
+fun foldl [a] [b] f =
+    let
+        fun foldl' acc ls =
+            case ls of
+                [] => acc
+              | x :: ls => foldl' (f x acc) ls
+    in
+        foldl'
+    end
+
 val rev = fn [a] =>
              let
                  fun rev' acc (ls : list a) =
@@ -123,20 +133,6 @@ fun foldlMap [a] [b] [c] f =
         fold []
     end
 
-fun assoc [a] [b] (_ : eq a) (x : a) =
-    let
-        fun assoc' ls =
-            case ls of
-                [] => None
-              | (y, z) :: ls =>
-                if x = y then
-                    Some z
-                else
-                    assoc' ls
-    in
-        assoc'
-    end
-
 fun search [a] [b] f =
     let
         fun search' ls =
@@ -183,3 +179,22 @@ fun app [m] (_ : monad m) [a] f =
     in
         app'
     end
+
+fun assoc [a] [b] (_ : eq a) (x : a) =
+    let
+        fun assoc' (ls : list (a * b)) =
+            case ls of
+                [] => None
+              | (y, z) :: ls =>
+                if x = y then
+                    Some z
+                else
+                    assoc' ls
+    in
+        assoc'
+    end
+
+fun assocAdd [a] [b] (_ : eq a) (x : a) (y : b) (ls : t (a * b)) =
+    case assoc x ls of
+        None => (x, y) :: ls
+      | Some _ => ls

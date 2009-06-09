@@ -2,6 +2,8 @@ datatype t = datatype Basis.list
 
 val show : a ::: Type -> show a -> show (list a)
 
+val foldl : a ::: Type -> b ::: Type -> (a -> b -> b) -> b -> t a -> b
+
 val rev : a ::: Type -> t a -> t a
 
 val revAppend : a ::: Type -> t a -> t a -> t a
@@ -30,11 +32,16 @@ val foldlM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
 val foldlMap : a ::: Type -> b ::: Type -> c ::: Type
                -> (a -> b -> c * b) -> b -> t a -> t c * b
 
-val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
-
 val search : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> option b
 
 val all : a ::: Type -> (a -> bool) -> t a -> bool
 
 val app : m ::: (Type -> Type) -> monad m -> a ::: Type
           -> (a -> m unit) -> t a -> m unit
+
+
+(** Association lists *)
+
+val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
+
+val assocAdd : a ::: Type -> b ::: Type -> eq a -> a -> b -> t (a * b) -> t (a * b)
