@@ -530,8 +530,8 @@ type url
 val bless : string -> url
 val checkUrl : string -> option url
 
-val dyn : use ::: {Type} -> bind ::: {Type} -> unit
-          -> tag [Signal = signal (xml body use bind)] body [] use bind
+val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ body] => unit
+          -> tag [Signal = signal (xml (body ++ ctx) use bind)] (body ++ ctx) [] use bind
 
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []

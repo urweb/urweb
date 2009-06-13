@@ -37,6 +37,8 @@ signature LIST_UTIL = sig
     val foldlMap : ('data1 * 'state -> 'data2 * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
     val foldlMapPartial : ('data1 * 'state -> 'data2 option * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
     val foldlMapConcat : ('data1 * 'state -> 'data2 list * 'state) -> 'state -> 'data1 list -> 'data2 list * 'state
+    val foldlMapAbort : ('data1 * 'state -> ('data2 * 'state) option)
+                        -> 'state -> 'data1 list -> ('data2 list * 'state) option
 
     val search : ('a -> 'b option) -> 'a list -> 'b option
     val searchi : (int * 'a -> 'b option) -> 'a list -> 'b option

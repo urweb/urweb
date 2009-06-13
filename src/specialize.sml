@@ -246,15 +246,12 @@ fun specialize file =
             let
                 (*val () = Print.preface ("decl:", CorePrint.p_decl CoreEnv.empty all)*)
                 val (d, st) = specDecl st d
-
-                val ds =
-                    case #decls st of
-                        [] => []
-                      | dts => [(DDatatype dts, #2 d)]
             in
                 case #1 d of
                     DDatatype dts =>
-                    (rev (d :: ds),
+                    ((case #decls st of
+                          [] => [d]
+                        | dts' => [(DDatatype (dts' @ dts), #2 d)]),
                      {count = #count st,
                       datatypes = foldl (fn ((x, n, xs, xnts), dts) =>
                                             IM.insert (dts, n,
@@ -270,7 +267,9 @@ fun specialize file =
                                            (#constructors st) dts,
                       decls = []})
                   | _ =>
-                    (rev (d :: ds),
+                    (case #decls st of
+                          [] => [d]
+                        | dts => [(DDatatype dts, #2 d), d],
                      {count = #count st,
                       datatypes = #datatypes st,
                       constructors = #constructors st,
@@ -285,6 +284,5 @@ fun specialize file =
     in
         ds
     end
-
 
 end

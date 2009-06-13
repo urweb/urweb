@@ -123,6 +123,19 @@ fun foldlMapPartial f s =
         fm ([], s)
     end
 
+fun foldlMapAbort f s =
+    let
+        fun fm (ls', s) ls =
+            case ls of
+                nil => SOME (rev ls', s)
+              | h :: t =>
+                case f (h, s) of
+                    NONE => NONE
+                  | SOME (h', s') => fm (h' :: ls', s') t
+    in
+        fm ([], s)
+    end
+
 fun search f =
     let
         fun s ls =

@@ -171,6 +171,13 @@ val compact =
 
 exception CantEmbed of typ
 
+fun inString {needle, haystack} =
+    let
+        val (_, suffix) = Substring.position needle (Substring.full haystack)
+    in
+        not (Substring.isEmpty suffix)
+    end
+
 fun process file =
     let
         val (someTs, nameds) =
@@ -1086,7 +1093,14 @@ fun process file =
         fun exp outer (e as (_, loc), st) =
             ((*Print.preface ("exp", MonoPrint.p_exp MonoEnv.empty e);*)
              case #1 e of
-                 EPrim _ => (e, st)
+                 EPrim p =>
+                 (case p of
+                      Prim.String s => if inString {needle = "<script", haystack = s} then
+                                           foundJavaScript := true
+                                       else
+                                           ()
+                    | _ => ();
+                  (e, st))
                | ERel _ => (e, st)
                | ENamed _ => (e, st)
                | ECon (_, _, NONE) => (e, st)

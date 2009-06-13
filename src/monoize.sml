@@ -2595,11 +2595,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                   | "dyn" =>
                     (case attrs of
                          [("Signal", e, _)] =>
-                         ((L'.EStrcat
-                               ((L'.EPrim (Prim.String "<span><script type=\"text/javascript\">dyn("), loc),
-                                (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                             (L'.EPrim (Prim.String ")</script></span>"), loc)), loc)), loc),
-                          fm)
+                         let
+                             val inTable = case targs of
+                                               (L.CRecord (_, ctx), _) :: _ =>
+                                               List.exists (fn ((L.CName "Table", _), _) => true
+                                                             | _ => false) ctx
+                                             | _ => false
+
+                             val tag = if inTable then
+                                           "tbody"
+                                       else
+                                           "span"
+                         in
+                             ((L'.EStrcat
+                                   ((L'.EPrim (Prim.String ("<" ^ tag ^ "><script type=\"text/javascript\">dyn(")), loc),
+                                    (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
+                                                 (L'.EPrim (Prim.String (")</script></" ^ tag ^ ">")), loc)), loc)), loc),
+                              fm)
+                         end
                        | _ => raise Fail "Monoize: Bad dyn attributes")
                     
                   | "submit" => normal ("input type=\"submit\"", NONE, NONE)
