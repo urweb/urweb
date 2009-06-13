@@ -461,11 +461,10 @@ fun reduce file =
                                                  (EApp (b, liftExpInExp 0 e'), loc)), loc))
 
                       | ELet (x, t, e', (EAbs (x', t' as (TRecord [], _), ran, e''), loc)) =>
-                        (*if impure e' then
-                              e
-                          else*)
-                        (* Seems unsound in general without the check... should revisit later *)
-                        EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
+                        if impure e' then
+                            e
+                        else
+                            EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
 
                       | ELet (x, t, e', b) =>
                         let

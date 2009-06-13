@@ -697,10 +697,9 @@
  and unifySummaries env (loc, k, s1 : record_summary, s2 : record_summary) =
      let
          val loc = #2 k
-         val pdescs = [("#1", p_summary env s1),
-                       ("#2", p_summary env s2)]
-         (*val () = eprefaces "Summaries" [("#1", p_summary env s1),
-                                         ("#2", p_summary env s2)]*)
+         (*val () = eprefaces "Summaries" [("loc", PD.string (ErrorMsg.spanToString loc)),
+                                           ("#1", p_summary env s1),
+                                           ("#2", p_summary env s2)]*)
 
          fun eatMatching p (ls1, ls2) =
              let
@@ -1595,7 +1594,7 @@ fun normClassConstraint env (c, loc) =
 
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
-        (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)];*)
+        (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)]*)
         (*val befor = Time.now ()*)
 
         val r = case e of
