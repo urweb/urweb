@@ -1070,6 +1070,9 @@ and hnormSgn env (all as (sgn, loc)) =
             end
           | _ => raise Fail "ElabEnv.hnormSgn: Can't reduce 'where' [2]"
 
+fun manifest (m, ms, loc) =
+    foldl (fn (m, str) => (StrProj (str, m), loc)) (StrVar m, loc) ms
+
 fun enrichClasses env classes (m1, ms) sgn =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
@@ -1089,10 +1092,15 @@ fun enrichClasses env classes (m1, ms) sgn =
                           in
                               case #1 sgi of
                                   SgiStr (x, _, sgn) =>
-                                  (enrichClasses env classes (m1, ms @ [x]) sgn,
-                                   newClasses,
-                                   sgiSeek (#1 sgi, fmap),
-                                   env)
+                                  let
+                                      val str = manifest (m1, ms, #2 sgi)
+                                      val sgn' = sgnSubSgn (str, fmap) sgn
+                                  in
+                                      (enrichClasses env classes (m1, ms @ [x]) sgn',
+                                       newClasses,
+                                       sgiSeek (#1 sgi, fmap),
+                                       env)
+                                  end
                                 | SgiSgn (x, n, sgn) =>
                                   (classes,
                                    newClasses,

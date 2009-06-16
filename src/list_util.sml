@@ -123,6 +123,24 @@ fun foldlMapPartial f s =
         fm ([], s)
     end
 
+fun foldlMapiPartial f s =
+    let
+        fun fm (n, ls', s) ls =
+            case ls of
+                nil => (rev ls', s)
+              | h :: t =>
+                let
+                    val (h', s') = f (n, h, s)
+                    val ls' = case h' of
+                                  NONE => ls'
+                                | SOME h' => h' :: ls'
+                in
+                    fm (n + 1, ls', s') t
+                end
+    in
+        fm (0, [], s)
+    end
+
 fun foldlMapAbort f s =
     let
         fun fm (ls', s) ls =
@@ -168,6 +186,19 @@ fun mapi f =
             case ls of
                 [] => rev acc
               | h :: t => m (i + 1) (f (i, h) :: acc) t
+    in
+        m 0 []
+    end
+
+fun mapiPartial f =
+    let
+        fun m i acc ls =
+            case ls of
+                [] => rev acc
+              | h :: t =>
+                m (i + 1) (case f (i, h) of
+                               NONE => acc
+                             | SOME v => v :: acc) t
     in
         m 0 []
     end
