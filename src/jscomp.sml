@@ -980,12 +980,18 @@ fun process file =
                              jsE inner (e, st))
                           | EJavaScript (_, e) =>
                             let
+                                val locals = List.tabulate
+                                                 (varDepth e,
+                                               fn i => str ("var _" ^ Int.toString (len + inner + i) ^ ";"))
+
                                 val (e, st) = jsE inner (e, st)
                             in
                                 foundJavaScript := true;
-                                (strcat [str "cs(function(){return ",
-                                         compact inner e,
-                                         str "})"],
+                                (strcat (str "cs(function(){"
+                                         :: locals
+                                         @ [str "return ",
+                                            compact inner e,
+                                            str "})"]),
                                  st)
                             end
 

@@ -31,17 +31,17 @@ fun foldl [a] [b] f =
         foldl'
     end
 
-fun foldlPartial [a] [b] f =
+fun foldlAbort [a] [b] f =
     let
-        fun foldlPartial' acc ls =
+        fun foldlAbort' acc ls =
             case ls of
                 [] => Some acc
               | x :: ls =>
                 case f x acc of
                     None => None
-                  | Some acc' => foldlPartial' acc' ls
+                  | Some acc' => foldlAbort' acc' ls
     in
-        foldlPartial'
+        foldlAbort'
     end
 
 val rev = fn [a] =>
@@ -53,6 +53,19 @@ val rev = fn [a] =>
              in
                  rev' []
              end
+
+fun foldlMapAbort [a] [b] [c] f =
+    let
+        fun foldlMapAbort' ls' acc ls =
+            case ls of
+                [] => Some (rev ls', acc)
+              | x :: ls =>
+                case f x acc of
+                    None => None
+                  | Some (x', acc') => foldlMapAbort' (x' :: ls') acc' ls
+    in
+        foldlMapAbort' []
+    end
 
 val revAppend = fn [a] =>
                    let
