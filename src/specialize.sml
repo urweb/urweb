@@ -190,6 +190,12 @@ fun pat (p, st) =
                               | SOME pn' => ((PCon (dk, PConVar pn', [], po), #2 p), st)
                         end
         end
+      | PCon (dk, pc, args, SOME p') =>
+        let
+            val (p', st) = pat (p', st)
+        in
+            ((PCon (dk, pc, args, SOME p'), #2 p), st)
+        end
       | PCon _ => (p, st)
       | PRecord xps =>
         let
