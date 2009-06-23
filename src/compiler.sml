@@ -884,11 +884,13 @@ val toSqlify = transform sqlify "sqlify" o toMono_opt2
 fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
     let
         val urweb_o = clibFile "urweb.o"
+        val request_o = clibFile "request.o"
         val driver_o = clibFile "driver.o"
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wstrict-prototypes -Werror -O3 -I " ^ Config.includ
                       ^ " -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ libs ^ " " ^ urweb_o ^ " " ^ oname ^ " " ^ driver_o ^ " -o " ^ ename
+        val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ libs ^ " " ^ urweb_o ^ " " ^ oname
+                   ^ " " ^ request_o ^ " " ^ driver_o ^ " -o " ^ ename
 
         val (compile, link) =
             if profile then

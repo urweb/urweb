@@ -13,7 +13,7 @@ all: smlnj mlton c
 
 smlnj: src/urweb.cm
 mlton: bin/urweb
-c: lib/c/urweb.o lib/c/driver.o
+c: lib/c/urweb.o lib/c/request.o lib/c/driver.o
 
 clean:
 	rm -f src/*.mlton.grm.* src/*.mlton.lex.* \
@@ -21,11 +21,8 @@ clean:
 		lib/c/*.o
 	rm -rf .cm src/.cm
 
-lib/c/urweb.o: src/c/urweb.c include/*.h
-	gcc -O3 -I include -c src/c/urweb.c -o lib/c/urweb.o $(CFLAGS)
-
-lib/c/driver.o: src/c/driver.c include/*.h
-	gcc -O3 -I include -c src/c/driver.c -o lib/c/driver.o $(CFLAGS)
+lib/c/%.o: src/c/%.c include/*.h
+	gcc -O3 -I include -c $< -o $@ $(CFLAGS)
 
 src/urweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \
