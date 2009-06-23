@@ -93,8 +93,7 @@ signature SETTINGS = sig
     }
     val addProtocol : protocol -> unit
     val getProtocol : string -> protocol option
-
-    val setProtocol : protocol -> unit
+    val setProtocol : string -> unit
     val currentProtocol : unit -> protocol
 
 end

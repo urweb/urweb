@@ -24,6 +24,7 @@ void uw_reset_keep_request(uw_context);
 void uw_reset_keep_error_message(uw_context);
 
 failure_kind uw_begin_init(uw_context);
+void uw_set_on_success(char *);
 void uw_set_headers(uw_context, char *(*get_header)(void *, const char *), void *get_header_data);
 failure_kind uw_begin(uw_context, char *path);
 void uw_login(uw_context);
@@ -41,6 +42,7 @@ void uw_end_region(uw_context);
 void uw_memstats(uw_context);
 
 int uw_send(uw_context, int sock);
+int uw_print(uw_context, int fd);
 
 int uw_set_input(uw_context, const char *name, char *value);
 int uw_set_file_input(uw_context, char *name, uw_Basis_file);

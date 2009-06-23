@@ -21,7 +21,21 @@ uw_unit uw_unit_v = {};
 
 int uw_really_send(int sock, const void *buf, size_t len) {
   while (len > 0) {
-    size_t n = send(sock, buf, len, 0);
+    ssize_t n = send(sock, buf, len, 0);
+
+    if (n < 0)
+      return n;
+
+    buf += n;
+    len -= n;
+  }
+
+  return 0;
+}
+
+int uw_really_write(int fd, const void *buf, size_t len) {
+  while (len > 0) {
+    ssize_t n = write(fd, buf, len);
 
     if (n < 0)
       return n;
@@ -164,7 +178,7 @@ static void release_client(client *c) {
 
 }
 
-static const char begin_msgs[] = "HTTP/1.1 200 OK\r\nContent-type: text/plain\r\n\r\n";
+static const char begin_msgs[] = "Content-type: text/plain\r\n\r\n";
 
 static client *find_client(unsigned id) {
   client *c;
@@ -180,6 +194,12 @@ static client *find_client(unsigned id) {
 
   pthread_mutex_unlock(&clients_mutex);
   return c;
+}
+
+static char *on_success = "HTTP/1.1 200 OK\r\n";
+
+void uw_set_on_success(char *s) {
+  on_success = s;
 }
 
 void uw_client_connect(unsigned id, int pass, int sock) {
@@ -215,6 +235,7 @@ void uw_client_connect(unsigned id, int pass, int sock) {
   c->last_contact = time(NULL);
 
   if (buf_used(&c->msgs) > 0) {
+    uw_really_send(sock, on_success, strlen(on_success));
     uw_really_send(sock, begin_msgs, sizeof(begin_msgs) - 1);
     uw_really_send(sock, c->msgs.start, buf_used(&c->msgs));
     buf_reset(&c->msgs);
@@ -227,8 +248,6 @@ void uw_client_connect(unsigned id, int pass, int sock) {
 }
 
 static void free_client(client *c) {
-  printf("Freeing client %u\n", c->id);
-
   c->mode = UNUSED;
   c->pass = -1;
 
@@ -245,6 +264,7 @@ static void client_send(client *c, buf *msg) {
   pthread_mutex_lock(&c->lock);
 
   if (c->sock != -1) {
+    uw_really_send(c->sock, on_success, strlen(on_success));
     uw_really_send(c->sock, begin_msgs, sizeof(begin_msgs) - 1);
     uw_really_send(c->sock, msg->start, buf_used(msg));
     close(c->sock);
@@ -1066,6 +1086,20 @@ int uw_send(uw_context ctx, int sock) {
     return n;
 
   return uw_really_send(sock, ctx->page.start, ctx->page.front - ctx->page.start);
+}
+
+int uw_print(uw_context ctx, int fd) {
+  int n = uw_really_write(fd, ctx->outHeaders.start, ctx->outHeaders.front - ctx->outHeaders.start);
+
+  if (n < 0)
+    return n;
+
+  n = uw_really_write(fd, "\r\n", 2);
+
+  if (n < 0)
+    return n;
+
+  return uw_really_write(fd, ctx->page.start, ctx->page.front - ctx->page.start);
 }
 
 static void uw_check_headers(uw_context ctx, size_t extra) {
@@ -2549,7 +2583,7 @@ void uw_prune_clients(uw_context ctx) {
         free_client(c);
       else {
         uw_db_rollback(ctx);
-        printf("Expunge blocked by error: %s\n", uw_error_message(ctx));
+        fprintf(stderr, "Expunge blocked by error: %s\n", uw_error_message(ctx));
       }
     }
     else
@@ -2664,7 +2698,8 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   buf_reset(&ctx->outHeaders);
   buf_reset(&ctx->page);
 
-  uw_write_header(ctx, "HTTP/1.1 200 OK\r\nContent-Type: ");
+  uw_write_header(ctx, on_success);
+  uw_write_header(ctx, "Content-Type: ");
   uw_write_header(ctx, mimeType);
   uw_write_header(ctx, "\r\nContent-Length: ");
   buf_check(&ctx->outHeaders, INTS_MAX);

@@ -17,11 +17,11 @@
 
 #define MAX_RETRIES 5
 
-static int try_rollback(uw_context ctx) {
+static int try_rollback(uw_context ctx, void *logger_data, uw_logger log_error) {
   int r = uw_rollback(ctx);
 
   if (r) {
-    printf("Error running SQL ROLLBACK\n");
+    log_error(logger_data, "Error running SQL ROLLBACK\n");
     uw_reset(ctx);
     uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
     uw_write(ctx, "Content-type: text/plain\r\n\r\n");
@@ -31,7 +31,7 @@ static int try_rollback(uw_context ctx) {
   return r;
 }
 
-uw_context uw_request_new_context() {
+uw_context uw_request_new_context(void *logger_data, uw_logger log_error, uw_logger log_debug) {
   uw_context ctx = uw_init();
   int retries_left = MAX_RETRIES;
 
@@ -39,25 +39,25 @@ uw_context uw_request_new_context() {
     failure_kind fk = uw_begin_init(ctx);
 
     if (fk == SUCCESS) {
-      printf("Database connection initialized.\n");
+      log_debug(logger_data, "Database connection initialized.\n");
       break;
     } else if (fk == BOUNDED_RETRY) {
       if (retries_left) {
-        printf("Initialization error triggers bounded retry: %s\n", uw_error_message(ctx));
+        log_debug(logger_data, "Initialization error triggers bounded retry: %s\n", uw_error_message(ctx));
         --retries_left;
       } else {
-        printf("Fatal initialization error (out of retries): %s\n", uw_error_message(ctx));
+        log_error(logger_data, "Fatal initialization error (out of retries): %s\n", uw_error_message(ctx));
         uw_free(ctx);
         return NULL;
       }
     } else if (fk == UNLIMITED_RETRY)
-      printf("Initialization error triggers unlimited retry: %s\n", uw_error_message(ctx));
+      log_debug(logger_data, "Initialization error triggers unlimited retry: %s\n", uw_error_message(ctx));
     else if (fk == FATAL) {
-      printf("Fatal initialization error: %s\n", uw_error_message(ctx));
+      log_error(logger_data, "Fatal initialization error: %s\n", uw_error_message(ctx));
       uw_free(ctx);
       return NULL;
     } else {
-      printf("Unknown uw_begin_init return code!\n");
+      log_error(logger_data, "Unknown uw_begin_init return code!\n");
       uw_free(ctx);
       return NULL;
     }
@@ -78,7 +78,7 @@ int uw_hash_blocksize = HASH_BLOCKSIZE;
 static int password[PASSSIZE];
 static unsigned char private_key[KEYSIZE];
 
-static void init_crypto() {
+static void init_crypto(void *logger_data, uw_logger log_error) {
   KEYGEN kg = {{HASH_ALGORITHM, HASH_ALGORITHM}};
   int i;
 
@@ -90,37 +90,37 @@ static void init_crypto() {
   if (mhash_keygen_ext(KEYGEN_ALGORITHM, kg,
                        private_key, sizeof(private_key),
                        (unsigned char*)password, sizeof(password)) < 0) {
-    printf("Key generation failed\n");
+    log_error(logger_data, "Key generation failed\n");
     exit(1);
   }
 }
 
-void uw_request_init() {
+void uw_request_init(void *logger_data, uw_logger log_error, uw_logger log_debug) {
   uw_context ctx;
   failure_kind fk;
 
   uw_global_init();
 
-  ctx = uw_request_new_context();
+  ctx = uw_request_new_context(logger_data, log_error, log_debug);
 
   if (!ctx)
     exit(1);
 
   for (fk = uw_initialize(ctx); fk == UNLIMITED_RETRY; fk = uw_initialize(ctx)) {
-    printf("Unlimited retry during init: %s\n", uw_error_message(ctx));
+    log_debug(logger_data, "Unlimited retry during init: %s\n", uw_error_message(ctx));
     uw_db_rollback(ctx);
     uw_reset(ctx);
   }
 
   if (fk != SUCCESS) {
-    printf("Failed to initialize database!  %s\n", uw_error_message(ctx));
+    log_error(logger_data, "Failed to initialize database!  %s\n", uw_error_message(ctx));
     uw_db_rollback(ctx);
     exit(1);
   }
 
   uw_free(ctx);
 
-  init_crypto();
+  init_crypto(logger_data, log_error);
 }
 
 void uw_sign(const char *in, char *out) {
@@ -131,7 +131,7 @@ void uw_sign(const char *in, char *out) {
   
   mhash(td, in, strlen(in));
   if (mhash_hmac_deinit(td, out) < 0)
-    printf("Signing failed");
+    fprintf(stderr, "Signing failed\n");
 }
 
 typedef struct uw_rc {
@@ -154,6 +154,8 @@ void uw_free_request_context(uw_request_context r) {
 request_result uw_request(uw_request_context rc, uw_context ctx,
                           char *method, char *path, char *query_string,
                           char *body, size_t body_len,
+                          void (*on_success)(uw_context), void (*on_failure)(uw_context),
+                          void *logger_data, uw_logger log_error, uw_logger log_debug,
                           int sock) {
   int retries_left = MAX_RETRIES;
   char *s;
@@ -166,17 +168,17 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   if (!strcmp(method, "POST")) {
     char *clen_s = uw_Basis_requestHeader(ctx, "Content-length");
     if (!clen_s) {
-      fprintf(stderr, "No Content-length with POST\n");
+      log_error(logger_data, "No Content-length with POST\n");
       return FAILED;
     }
     int clen = atoi(clen_s);
     if (clen < 0) {
-      fprintf(stderr, "Negative Content-length with POST\n");
+      log_error(logger_data, "Negative Content-length with POST\n");
       return FAILED;
     }
 
     if (body_len < clen) {
-      fprintf(stderr, "Request doesn't contain all POST data (according to Content-Length)\n");
+      log_error(logger_data, "Request doesn't contain all POST data (according to Content-Length)\n");
       return FAILED;
     }
 
@@ -185,7 +187,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     clen_s = uw_Basis_requestHeader(ctx, "Content-type");
     if (clen_s && !strncasecmp(clen_s, "multipart/form-data", 19)) {
       if (strncasecmp(clen_s + 19, "; boundary=", 11)) {
-        fprintf(stderr, "Bad multipart boundary spec");
+        log_error(logger_data, "Bad multipart boundary spec");
         return FAILED;
       }
 
@@ -195,7 +197,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       boundary_len = strlen(boundary);
     }
   } else if (strcmp(method, "GET")) {
-    fprintf(stderr, "Not ready for non-GET/POST command: %s\n", method);
+    log_error(logger_data, "Not ready for non-GET/POST command: %s\n", method);
     return FAILED;
   }
 
@@ -204,18 +206,18 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     char *pass = uw_Basis_requestHeader(ctx, "UrWeb-Pass");
 
     if (sock < 0) {
-      fprintf(stderr, ".msgs requested, but not socket supplied\n");
+      log_error(logger_data, ".msgs requested, but not socket supplied\n");
       return FAILED;
     }
 
     if (id && pass) {
       unsigned idn = atoi(id);
       uw_client_connect(idn, atoi(pass), sock);
-      fprintf(stderr, "Processed request for messages by client %u\n\n", idn);
+      log_error(logger_data, "Processed request for messages by client %u\n\n", idn);
       return KEEP_OPEN;
     }
     else {
-      fprintf(stderr, "Missing fields in .msgs request: %s, %s\n\n", id, pass);
+      log_error(logger_data, "Missing fields in .msgs request: %s, %s\n\n", id, pass);
       return FAILED;
     }
   }
@@ -226,7 +228,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
     part = strstr(part, boundary);
     if (!part) {
-      fprintf(stderr, "Missing first multipart boundary\n");
+      log_error(logger_data, "Missing first multipart boundary\n");
       return FAILED;
     }
     part += boundary_len;
@@ -238,18 +240,18 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         break;
 
       if (*part != '\r') {
-        fprintf(stderr, "No \\r after multipart boundary\n");
+        log_error(logger_data, "No \\r after multipart boundary\n");
         return FAILED;
       }
       ++part;
       if (*part != '\n') {
-        fprintf(stderr, "No \\n after multipart boundary\n");
+        log_error(logger_data, "No \\n after multipart boundary\n");
         return FAILED;
       }
       ++part;
             
       if (!(after_sub_headers = strstr(part, "\r\n\r\n"))) {
-        fprintf(stderr, "Missing end of headers after multipart boundary\n");
+        log_error(logger_data, "Missing end of headers after multipart boundary\n");
         return FAILED;
       }
       after_sub_headers[2] = 0;
@@ -260,18 +262,18 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
         *after_header = 0;
         if (!(colon = strchr(header, ':'))) {
-          fprintf(stderr, "Missing colon in multipart sub-header\n");
+          log_error(logger_data, "Missing colon in multipart sub-header\n");
           return FAILED;
         }
         *colon++ = 0;
         if (*colon++ != ' ') {
-          fprintf(stderr, "No space after colon in multipart sub-header\n");
+          log_error(logger_data, "No space after colon in multipart sub-header\n");
           return FAILED;
         }
         
         if (!strcasecmp(header, "Content-Disposition")) {
           if (strncmp(colon, "form-data; ", 11)) {
-            fprintf(stderr, "Multipart data is not \"form-data\"\n");
+            log_error(logger_data, "Multipart data is not \"form-data\"\n");
             return FAILED;
           }
 
@@ -279,12 +281,12 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
             char *data;
             after_colon[0] = 0;
             if (after_colon[1] != '"') {
-              fprintf(stderr, "Disposition setting is missing initial quote\n");
+              log_error(logger_data, "Disposition setting is missing initial quote\n");
               return FAILED;
             }
             data = after_colon+2;
             if (!(after_colon = strchr(data, '"'))) {
-              fprintf(stderr, "Disposition setting is missing final quote\n");
+              log_error(logger_data, "Disposition setting is missing final quote\n");
               return FAILED;
             }
             after_colon[0] = 0;
@@ -304,7 +306,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
       part = memmem(after_sub_headers, body + body_len - after_sub_headers, boundary, boundary_len);
       if (!part) {
-        fprintf(stderr, "Missing boundary after multipart payload\n");
+        log_error(logger_data, "Missing boundary after multipart payload\n");
         return FAILED;
       }
       part[-2] = 0;
@@ -316,11 +318,11 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         uw_Basis_file f = {filename, type, {part_len, after_sub_headers}};
 
         if (uw_set_file_input(ctx, name, f)) {
-          fprintf(stderr, "%s\n", uw_error_message(ctx));
+          log_error(logger_data, "%s\n", uw_error_message(ctx));
           return FAILED;
         }
       } else if (uw_set_input(ctx, name, after_sub_headers)) {
-        fprintf(stderr, "%s\n", uw_error_message(ctx));
+        log_error(logger_data, "%s\n", uw_error_message(ctx));
         return FAILED;
       }
     }
@@ -341,24 +343,24 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         if (value = strchr(name, '=')) {
           *value++ = 0;
           if (uw_set_input(ctx, name, value)) {
-            fprintf(stderr, "%s\n", uw_error_message(ctx));
+            log_error(logger_data, "%s\n", uw_error_message(ctx));
             return FAILED;
           }
         }
         else if (uw_set_input(ctx, name, "")) {
-          fprintf(stderr, "%s\n", uw_error_message(ctx));
+          log_error(logger_data, "%s\n", uw_error_message(ctx));
           return FAILED;
         }
       }
     }
   }
 
-  printf("Serving URI %s....\n", path);
+  log_debug(logger_data, "Serving URI %s....\n", path);
 
   while (1) {
     size_t path_len = strlen(path);
 
-    uw_write_header(ctx, "HTTP/1.1 200 OK\r\n");
+    on_success(ctx);
 
     if (path_len + 1 > rc->path_copy_size) {
       rc->path_copy_size = path_len + 1;
@@ -371,16 +373,16 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       return SERVED;
     } else if (fk == BOUNDED_RETRY) {
       if (retries_left) {
-        printf("Error triggers bounded retry: %s\n", uw_error_message(ctx));
+        log_debug(logger_data, "Error triggers bounded retry: %s\n", uw_error_message(ctx));
         --retries_left;
       }
       else {
-        printf("Fatal error (out of retries): %s\n", uw_error_message(ctx));
+        log_error(logger_data, "Fatal error (out of retries): %s\n", uw_error_message(ctx));
 
-        try_rollback(ctx);
+        try_rollback(ctx, logger_data, log_error);
 
         uw_reset_keep_error_message(ctx);
-        uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+        on_failure(ctx);
         uw_write_header(ctx, "Content-type: text/plain\r\n");
         uw_write(ctx, "Fatal error (out of retries): ");
         uw_write(ctx, uw_error_message(ctx));
@@ -389,14 +391,14 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         return FAILED;
       }
     } else if (fk == UNLIMITED_RETRY)
-      printf("Error triggers unlimited retry: %s\n", uw_error_message(ctx));
+      log_debug(logger_data, "Error triggers unlimited retry: %s\n", uw_error_message(ctx));
     else if (fk == FATAL) {
-      printf("Fatal error: %s\n", uw_error_message(ctx));
+      log_error(logger_data, "Fatal error: %s\n", uw_error_message(ctx));
 
-      try_rollback(ctx);
+      try_rollback(ctx, logger_data, log_error);
 
       uw_reset_keep_error_message(ctx);
-      uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\r\n");
+      on_failure(ctx);
       uw_write_header(ctx, "Content-type: text/html\r\n");
       uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
       uw_write(ctx, "Fatal error: ");
@@ -405,27 +407,33 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
       return FAILED;
     } else {
-      printf("Unknown uw_handle return code!\n");
+      log_error(logger_data, "Unknown uw_handle return code!\n");
 
-      try_rollback(ctx);
+      try_rollback(ctx, logger_data, log_error);
 
       uw_reset_keep_request(ctx);
-      uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+      on_failure(ctx);
       uw_write_header(ctx, "Content-type: text/plain\r\n");
       uw_write(ctx, "Unknown uw_handle return code!\n");
 
       return FAILED;
     }
 
-    if (try_rollback(ctx))
+    if (try_rollback(ctx, logger_data, log_error))
       return FAILED;
 
     uw_reset_keep_request(ctx);
   }
 }
 
+typedef struct {
+  void *logger_data;
+  uw_logger log_error, log_debug;
+} loggers;
+
 void *client_pruner(void *data) {
-  uw_context ctx = uw_request_new_context();
+  loggers *ls = (loggers *)data;
+  uw_context ctx = uw_request_new_context(ls->logger_data, ls->log_error, ls->log_debug);
 
   if (!ctx)
     exit(1);

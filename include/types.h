@@ -49,5 +49,6 @@ typedef struct input *uw_input;
 #define TIMES_MAX 100
 
 typedef void (*uw_callback)(void *);
+typedef void (*uw_logger)(void*, const char *fmt, ...);
 
 #endif

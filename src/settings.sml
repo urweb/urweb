@@ -266,9 +266,15 @@ val http = {name = "http",
             supportsPush = true}
 
 val () = addProtocol http
+val () = addProtocol {name = "cgi",
+                      link = clibFile "request.o" ^ " " ^ clibFile "cgi.o",
+                      supportsPush = false}
 
 val curProto = ref http
-fun setProtocol p = curProto := p
+fun setProtocol name =
+    case getProtocol name of
+        NONE => raise Fail ("Unknown protocol " ^ name)
+      | SOME p => curProto := p
 fun currentProtocol () = !curProto
 
 end

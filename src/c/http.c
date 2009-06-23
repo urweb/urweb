@@ -8,10 +8,9 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdarg.h>
 
 #include <pthread.h>
-
-#include <mhash.h>
 
 #include "urweb.h"
 #include "request.h"
@@ -73,9 +72,31 @@ static char *get_header(void *data, const char *h) {
   return NULL;
 }
 
+static void on_success(uw_context ctx) {
+  uw_write_header(ctx, "HTTP/1.1 200 OK\r\n");
+}
+
+static void on_failure(uw_context ctx) {
+  uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\r\n");
+}
+
+static void log_error(void *data, const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  vfprintf(stderr, fmt, ap);
+}
+
+static void log_debug(void *data, const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  vprintf(fmt, ap);
+}
+
 static void *worker(void *data) {
   int me = *(int *)data;
-  uw_context ctx = uw_request_new_context();
+  uw_context ctx = uw_request_new_context(NULL, log_error, log_debug);
   size_t buf_size = 2;
   char *buf = malloc(buf_size);
   uw_request_context rc = uw_new_request_context();
@@ -205,7 +226,10 @@ static void *worker(void *data) {
 
         uw_set_headers(ctx, get_header, headers);
 
-        rr = uw_request(rc, ctx, method, path, query_string, body, back - body, sock);
+        rr = uw_request(rc, ctx, method, path, query_string, body, back - body,
+                        on_success, on_failure,
+                        NULL, log_error, log_debug,
+                        sock);
         uw_send(ctx, sock);
 
         if (rr == SERVED || rr == FAILED)
@@ -230,6 +254,8 @@ static void sigint(int signum) {
   printf("Exiting....\n");
   exit(0);
 }
+
+static loggers ls = {NULL, log_error, log_debug};
 
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
@@ -277,7 +303,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  uw_request_init();
+  uw_request_init(NULL, log_error, log_debug);
 
   names = calloc(nthreads, sizeof(int));
 
@@ -316,7 +342,7 @@ int main(int argc, char *argv[]) {
     pthread_t thread;
     int name;
 
-    if (pthread_create(&thread, NULL, client_pruner, &name)) {
+    if (pthread_create(&thread, NULL, client_pruner, &ls)) {
       fprintf(stderr, "Error creating pruner thread\n");
       return 1;
     }

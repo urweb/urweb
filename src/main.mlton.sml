@@ -32,6 +32,9 @@ fun doArgs (args, (timing, demo, sources)) =
         doArgs (rest, (timing, SOME (prefix, false), sources))
       | "-guided-demo" :: prefix :: rest =>
         doArgs (rest, (timing, SOME (prefix, true), sources))
+      | "-protocol" :: name :: rest =>
+        (Settings.setProtocol name;
+         doArgs (rest, (timing, demo, sources)))
       | arg :: rest =>
         let
             val acc =

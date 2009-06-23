@@ -14,7 +14,7 @@ all: smlnj mlton c
 smlnj: src/urweb.cm
 mlton: bin/urweb
 
-OBJS := urweb request http
+OBJS := urweb request http cgi
 c: $(OBJS:%=lib/c/%.o)
 
 clean:
