@@ -24,8 +24,7 @@ void uw_reset_keep_request(uw_context);
 void uw_reset_keep_error_message(uw_context);
 
 failure_kind uw_begin_init(uw_context);
-void uw_set_headers(uw_context, char *headers);
-void uw_headers_moved(uw_context ctx, char *headers);
+void uw_set_headers(uw_context, char *(*get_header)(void *, const char *), void *get_header_data);
 failure_kind uw_begin(uw_context, char *path);
 void uw_login(uw_context);
 void uw_commit(uw_context);

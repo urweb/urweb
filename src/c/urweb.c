@@ -310,7 +310,8 @@ typedef struct {
 } transactional;
 
 struct uw_context {
-  char *headers, *headers_end;
+  char *(*get_header)(void *, const char *);
+  void *get_header_data;
 
   buf outHeaders, page, heap, script;
   input *inputs, *subinputs, *cur_container;
@@ -348,7 +349,8 @@ extern int uw_inputs_len, uw_timeout;
 uw_context uw_init() {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
-  ctx->headers = ctx->headers_end = NULL;
+  ctx->get_header = NULL;
+  ctx->get_header_data = NULL;
 
   buf_init(&ctx->outHeaders, 0);
   buf_init(&ctx->page, 0);
@@ -458,26 +460,9 @@ failure_kind uw_begin_init(uw_context ctx) {
   return r;
 }
 
-void uw_set_headers(uw_context ctx, char *headers) {
-  char *s = headers, *s2;
-  ctx->headers = headers;
-
-  while (s2 = strchr(s, '\r')) {
-    s = s2;
-
-    if (s[1] == 0)
-      break;
-
-    *s = 0;
-    s += 2;
-  }
-
-  ctx->headers_end = s;
-}
-
-void uw_headers_moved(uw_context ctx, char *headers) {
-  ctx->headers_end = headers + (ctx->headers_end - ctx->headers);
-  ctx->headers = headers;
+void uw_set_headers(uw_context ctx, char *(*get_header)(void *, const char *), void *get_header_data) {
+  ctx->get_header = get_header;
+  ctx->get_header_data = get_header_data;
 }
 
 int uw_db_begin(uw_context);
@@ -523,21 +508,7 @@ void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
 }
 
 uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
-  int len = strlen(h);
-  char *s = ctx->headers, *p;
-
-  while (p = strchr(s, ':')) {
-    if (p - s == len && !strncasecmp(s, h, len)) {
-      return p + 2;
-    } else {
-      if ((s = strchr(p, 0)) && s < ctx->headers_end)
-        s += 2;
-      else
-        return NULL;
-    }
-  }
-
-  return NULL;
+  return ctx->get_header(ctx->get_header_data, h);
 }
 
 void uw_login(uw_context ctx) {
@@ -2377,7 +2348,7 @@ uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, siz
 
 uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   int len = strlen(c);
-  char *s = ctx->headers, *p = ctx->outHeaders.start;
+  char *p = ctx->outHeaders.start;
 
   while (p = strstr(p, "\nSet-Cookie: ")) {
     char *p2;
@@ -2396,25 +2367,12 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
     }
   }
 
-  while (p = strchr(s, ':')) {
-    if (!strncasecmp(s, "Cookie: ", 8)) {
-      p += 2;
-      while (1) {
-        if (!strncmp(p, c, len)
-            && p + len < ctx->headers_end && p[len] == '=')
-          return p + 1 + len;
-        else if (p = strchr(p, ';'))
-          p += 2;
-        else if ((s = strchr(s, 0)) && s < ctx->headers_end) {
-          s += 2;
-          break;
-        }
-        else
-          return NULL;
-      }
-    } else {
-      if ((s = strchr(p, 0)) && s < ctx->headers_end)
-        s += 2;
+  if (p = uw_Basis_requestHeader(ctx, "Cookie")) {
+    while (1) {
+      if (!strncmp(p, c, len) && p[len] == '=')
+        return p + 1 + len;
+      else if (p = strchr(p, ';'))
+        p += 2;
       else
         return NULL;
     }

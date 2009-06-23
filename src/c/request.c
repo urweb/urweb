@@ -151,40 +151,19 @@ void uw_free_request_context(uw_request_context r) {
   free(r);
 }
 
-request_result uw_request(uw_request_context rc, uw_context ctx, char *request, size_t request_len, int sock) {
+request_result uw_request(uw_request_context rc, uw_context ctx,
+                          char *method, char *path, char *query_string,
+                          char *body, size_t body_len,
+                          int sock) {
   int retries_left = MAX_RETRIES;
   char *s;
   failure_kind fk;
   int is_post = 0, do_normal_send = 1;
   char *boundary = NULL;
   size_t boundary_len;
-  char *cmd, *path, *headers, *inputs, *after_headers;
+  char *inputs;
 
-  if (!(s = strstr(request, "\r\n\r\n"))) {
-    fprintf(stderr, "No end of headers found in request\n");
-    return FAILED;
-  }
-
-  s[2] = 0;
-  after_headers = s + 4;
-
-  if (!(s = strstr(request, "\r\n"))) {
-    fprintf(stderr, "No newline in request\n");
-    return FAILED;
-  }
-
-  *s = 0;
-  headers = s + 2;
-  cmd = s = request;
-
-  if (!strsep(&s, " ")) {
-    fprintf(stderr, "No first space in HTTP command\n");
-    return FAILED;
-  }
-
-  uw_set_headers(ctx, headers);
-
-  if (!strcmp(cmd, "POST")) {
+  if (!strcmp(method, "POST")) {
     char *clen_s = uw_Basis_requestHeader(ctx, "Content-length");
     if (!clen_s) {
       fprintf(stderr, "No Content-length with POST\n");
@@ -196,7 +175,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx, char *request, 
       return FAILED;
     }
 
-    if (request + request_len - after_headers < clen) {
+    if (body_len < clen) {
       fprintf(stderr, "Request doesn't contain all POST data (according to Content-Length)\n");
       return FAILED;
     }
@@ -215,14 +194,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx, char *request, 
       boundary[1] = '-';
       boundary_len = strlen(boundary);
     }
-  } else if (strcmp(cmd, "GET")) {
-    fprintf(stderr, "Not ready for non-GET/POST command: %s\n", cmd);
-    return FAILED;
-  }
-
-  path = s;
-  if (!strsep(&s, " ")) {
-    fprintf(stderr, "No second space in HTTP command\n");
+  } else if (strcmp(method, "GET")) {
+    fprintf(stderr, "Not ready for non-GET/POST command: %s\n", method);
     return FAILED;
   }
 
@@ -248,7 +221,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx, char *request, 
   }
 
   if (boundary) {
-    char *part = after_headers, *after_sub_headers, *header, *after_header;
+    char *part = body, *after_sub_headers, *header, *after_header;
     size_t part_len;
 
     part = strstr(part, boundary);
@@ -329,7 +302,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx, char *request, 
         }
       }
 
-      part = memmem(after_sub_headers, request + request_len - after_sub_headers, boundary, boundary_len);
+      part = memmem(after_sub_headers, body + body_len - after_sub_headers, boundary, boundary_len);
       if (!part) {
         fprintf(stderr, "Missing boundary after multipart payload\n");
         return FAILED;
@@ -353,10 +326,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx, char *request, 
     }
   }
   else {
-    if (is_post)
-      inputs = after_headers;
-    else if (inputs = strchr(path, '?'))
-      *inputs++ = 0;
+    inputs = is_post ? body : query_string;
 
     if (inputs) {
       char *name, *value;

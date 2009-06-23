@@ -13,7 +13,10 @@ void uw_sign(const char *in, char *out);
 uw_request_context uw_new_request_context(void);
 void uw_free_request_context(uw_request_context);
 
-request_result uw_request(uw_request_context, uw_context, char *request, size_t request_len, int sock);
+request_result uw_request(uw_request_context, uw_context,
+                          char *method, char *path, char *query_string,
+                          char *body, size_t body_len,
+                          int sock);
 
 uw_context uw_request_new_context(void);
 

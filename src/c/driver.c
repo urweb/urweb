@@ -54,6 +54,25 @@ static int dequeue() {
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 
+static char *get_header(void *data, const char *h) {
+  char *s = data;
+  int len = strlen(h);
+  char *p;
+
+  while (p = strchr(s, ':')) {
+    if (p - s == len && !strncasecmp(s, h, len)) {
+      return p + 2;
+    } else {
+      if ((s = strchr(p, 0)) && s[1] != 0)
+        s += 2;
+      else
+        return NULL;
+    }
+  }
+  
+  return NULL;
+}
+
 static void *worker(void *data) {
   int me = *(int *)data;
   uw_context ctx = uw_request_new_context();
@@ -75,7 +94,7 @@ static void *worker(void *data) {
 
     while (1) {
       int r;
-      char *s1, *s2;
+      char *method, *path, *query_string, *headers, *body, *s, *s2;
 
       if (back - buf == buf_size - 1) {
         char *new_buf;
@@ -100,22 +119,93 @@ static void *worker(void *data) {
       back += r;
       *back = 0;
 
-      if ((s1 = strstr(buf, "\r\n\r\n"))) {
+      if ((body = strstr(buf, "\r\n\r\n"))) {
         request_result rr;
 
-        if ((s2 = strcasestr(buf, "\r\nContent-Length: ")) && s2 < s1) {
+        body[0] = body[1] = 0;
+        body += 4;
+
+        if ((s = strcasestr(buf, "\r\nContent-Length: ")) && s < body) {
           int clen;
 
-          if (sscanf(s2 + 18, "%d\r\n", &clen) != 1) {
+          if (sscanf(s + 18, "%d\r\n", &clen) != 1) {
             fprintf(stderr, "Malformed Content-Length header\n");
             break;
           }
 
-          if (s1 + 4 + clen > back)
-            continue;
+          while (back - body < clen) {
+            if (back - buf == buf_size - 1) {
+              char *new_buf;
+              buf_size *= 2;
+              new_buf = realloc(buf, buf_size);
+
+              back = new_buf + (back - buf);
+              body = new_buf + (body - buf);
+              s = new_buf + (s - buf);
+
+              buf = new_buf;
+            }
+
+            r = recv(sock, back, buf_size - 1 - (back - buf), 0);
+
+            if (r < 0) {
+              fprintf(stderr, "Recv failed\n");
+              close(sock);
+              goto done;
+            }
+
+            if (r == 0) {
+              fprintf(stderr, "Connection closed.\n");
+              close(sock);
+              goto done;
+            }
+
+            back += r;
+            *back = 0;      
+          }
         }
 
-        rr = uw_request(rc, ctx, buf, back - buf, sock);
+        if (!(s = strstr(buf, "\r\n"))) {
+          fprintf(stderr, "No newline in request\n");
+          close(sock);
+          goto done;
+        }
+
+        *s = 0;
+        headers = s + 2;
+        method = s = buf;
+
+        if (!strsep(&s, " ")) {
+          fprintf(stderr, "No first space in HTTP command\n");
+          close(sock);
+          goto done;
+        }
+        path = s;
+
+        if (s = strchr(path, ' '))
+          *s = 0;
+
+        if (s = strchr(path, '?')) {
+          *s = 0;
+          query_string = s+1;
+        }
+        else
+          query_string = NULL;
+
+        s = headers;
+        while (s2 = strchr(s, '\r')) {
+          s = s2;
+
+          if (s[1] == 0)
+            break;
+
+          *s = 0;
+          s += 2;
+        }
+
+        uw_set_headers(ctx, get_header, headers);
+
+        rr = uw_request(rc, ctx, method, path, query_string, body, back - body, sock);
         uw_send(ctx, sock);
 
         if (rr == SERVED || rr == FAILED)
@@ -127,6 +217,7 @@ static void *worker(void *data) {
       }
     }
 
+  done:
     uw_reset(ctx);
   }
 }
