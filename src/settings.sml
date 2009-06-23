@@ -248,4 +248,27 @@ val checkMime = check
                     (CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"/" orelse ch = #"-" orelse ch = #"."))
                     mime
 
+
+type protocol = {
+     name : string,
+     link : string,
+     supportsPush : bool
+}
+val protocols = ref ([] : protocol list)
+fun addProtocol p = protocols := p :: !protocols
+fun getProtocol s = List.find (fn p => #name p = s) (!protocols)
+
+fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
+                                      file = s}
+
+val http = {name = "http",
+            link = clibFile "request.o" ^ " " ^ clibFile "http.o",
+            supportsPush = true}
+
+val () = addProtocol http
+
+val curProto = ref http
+fun setProtocol p = curProto := p
+fun currentProtocol () = !curProto
+
 end

@@ -13,7 +13,9 @@ all: smlnj mlton c
 
 smlnj: src/urweb.cm
 mlton: bin/urweb
-c: lib/c/urweb.o lib/c/request.o lib/c/driver.o
+
+OBJS := urweb request http
+c: $(OBJS:%=lib/c/%.o)
 
 clean:
 	rm -f src/*.mlton.grm.* src/*.mlton.lex.* \

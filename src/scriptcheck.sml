@@ -73,6 +73,8 @@ val pushWords = ["rv("]
 
 fun classify (ds, ps) =
     let
+        val proto = Settings.currentProtocol ()
+
         fun inString {needle, haystack} =
             let
                 val (_, suffix) = Substring.position needle (Substring.full haystack)
@@ -158,10 +160,18 @@ fun classify (ds, ps) =
 
         val (pull_ids, push_ids) = foldl decl (IS.empty, IS.empty) ds
 
+        val foundBad = ref false
+
         val ps = map (fn (ek, x, n, ts, t, _) =>
                          (ek, x, n, ts, t,
                           if IS.member (push_ids, n) then
-                              ServerAndPullAndPush
+                              (if not (#supportsPush proto) andalso not (!foundBad) then
+                                   (foundBad := true;
+                                    ErrorMsg.error ("This program needs server push, but the current protocol ("
+                                                    ^ #name proto ^ ") doesn't support that."))
+                               else
+                                   ();
+                               ServerAndPullAndPush)
                           else if IS.member (pull_ids, n) then
                               ServerAndPull
                           else

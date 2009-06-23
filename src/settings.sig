@@ -85,4 +85,16 @@ signature SETTINGS = sig
     val getMimeRules : unit -> rule list
     val checkMime : string -> bool
 
+    (* Web protocols that generated programs may speak *)
+    type protocol = {
+        name : string,      (* Call it this on the command line *)
+        link : string,      (* Pass these linker arguments *)
+        supportsPush : bool (* Is Ur/Web message-passing supported? *)
+    }
+    val addProtocol : protocol -> unit
+    val getProtocol : string -> protocol option
+
+    val setProtocol : protocol -> unit
+    val currentProtocol : unit -> protocol
+
 end
