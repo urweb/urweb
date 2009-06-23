@@ -140,6 +140,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{jsFunc Module.ident=name} gives the JavaScript name of an FFI value.
 \item \texttt{library FILENAME} parses \texttt{FILENAME.urp} and merges its contents with the rest of the current file's contents.
 \item \texttt{link FILENAME} adds \texttt{FILENAME} to the list of files to be passed to the GCC linker at the end of compilation.  This is most useful for importing extra libraries needed by new FFI modules.
+\item \texttt{path NAME=VALUE} creates a mapping from \texttt{NAME} to \texttt{VALUE}.  This mapping may be used at the beginnings of filesystem paths given to various other configuration directives.  A path like \texttt{\$NAME/rest} is expanded to \texttt{VALUE/rest}.  There is an initial mapping from the empty name (for paths like \texttt{\$/list}) to the directory where the Ur/Web standard library is installed.  If you accept the default \texttt{configure} options, this directory is \texttt{/usr/local/lib/urweb/ur}.
 \item \texttt{prefix PREFIX} sets the prefix included before every URI within the generated application.  The default is \texttt{/}.
 \item \texttt{profile} generates an executable that may be used with gprof.
 \item \texttt{rewrite KIND FROM TO} gives a rule for rewriting canonical module paths.  For instance, the canonical path of a page may be \texttt{Mod1.Mod2.mypage}, while you would rather the page were accessed via a URL containing only \texttt{page}.  The directive \texttt{rewrite url Mod1/Mod2/mypage page} would accomplish that.  The possible values of \texttt{KIND} determine which kinds of objects are affected.  The kind \texttt{all} matches any object, and \texttt{url} matches page URLs.  The kinds \texttt{table}, \texttt{sequence}, and \texttt{view} match those sorts of SQL entities, and \texttt{relation} matches any of those three.  \texttt{cookie} matches HTTP cookies, and \texttt{style} matches CSS class names.  If \texttt{FROM} ends in \texttt{/*}, it is interpreted as a prefix matching rule, and rewriting occurs by replacing only the appropriate prefix of a path with \texttt{TO}.  While the actual external names of relations and styles have parts separated by underscores instead of slashes, all rewrite rules must be written in terms of slashes.
@@ -288,6 +289,7 @@ $$\begin{array}{rrcll}
   &&& \hat{X} \; p & \textrm{unary constructor} \\
   &&& \{(x = p,)^*\} & \textrm{rigid record pattern} \\
   &&& \{(x = p,)^+, \ldots\} & \textrm{flexible record pattern} \\
+  &&& p : \tau & \textrm{type annotation} \\
   &&& (p) & \textrm{explicit precedence} \\
   \\
   \textrm{Qualified capitalized variables} & \hat{X} &::=& X & \textrm{not from a module} \\
@@ -304,7 +306,7 @@ $$\begin{array}{rrcll}
   &&& e \; e & \textrm{function application} \\
   &&& \lambda x : \tau \Rightarrow e & \textrm{function abstraction} \\
   &&& e [c] & \textrm{polymorphic function application} \\
-  &&& \lambda x \; ? \; \kappa \Rightarrow e & \textrm{polymorphic function abstraction} \\
+  &&& \lambda [x \; ? \; \kappa] \Rightarrow e & \textrm{polymorphic function abstraction} \\
   &&& e [\kappa] & \textrm{kind-polymorphic function application} \\
   &&& X \Longrightarrow e & \textrm{kind-polymorphic function abstraction} \\
   \\
@@ -372,7 +374,7 @@ The notation $[c_1, \ldots, c_n]$ is shorthand for $[c_1 = (), \ldots, c_n = ()]
 
 A tuple type $(\tau_1, \ldots, \tau_n)$ expands to a record type $\{1 = \tau_1, \ldots, n = \tau_n\}$, with natural numbers as field names.  A tuple pattern $(p_1, \ldots, p_n)$ expands to a rigid record pattern $\{1 = p_1, \ldots, n = p_n\}$.  Positive natural numbers may be used in most places where field names would be allowed.
 
-In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid X$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.  
+In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid X$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.
 
 For any signature item or declaration that defines some entity to be equal to $A$ with classification annotation $B$ (e.g., $\mt{val} \; x : B = A$), $B$ and the preceding colon (or similar punctuation) may be omitted, in which case it is filled in as a wildcard.
 
@@ -382,11 +384,15 @@ A signature item or declaration $\mt{class} \; x = \lambda y \Rightarrow c$ may 
 
 Handling of implicit and explicit constructor arguments may be tweaked with some prefixes to variable references.  An expression $@x$ is a version of $x$ where all implicit constructor arguments have been made explicit.  An expression $@@x$ achieves the same effect, additionally halting automatic resolution of type class instances and automatic proving of disjointness constraints.  The default is that any prefix of a variable's type consisting only of implicit polymorphism, type class instances, and disjointness obligations is resolved automatically, with the variable treated as having the type that starts after the last implicit element, with suitable unification variables substituted.  The same syntax works for variables projected out of modules and for capitalized variables (datatype constructors).
 
-At the expression level, an analogue is available of the composite $\lambda$ form for constructors.  We define the language of binders as $b ::= x \mid (x : \tau) \mid (x \; ? \; \kappa) \mid X \mid [c \sim c]$.  A lone variable $x$ as a binder stands for an expression variable of unspecified type.
+At the expression level, an analogue is available of the composite $\lambda$ form for constructors.  We define the language of binders as $b ::= p \mid [x] \mid [x \; ? \; \kappa] \mid X \mid [c \sim c]$.  A lone variable $[x]$ stands for an implicit constructor variable of unspecified kind.  The standard value-level function binder is recovered as the type-annotated pattern form $x : \tau$.  It is a compile-time error to include a pattern $p$ that does not match every value of the appropriate type.
 
-A $\mt{val}$ or $\mt{val} \; \mt{rec}$ declaration may include expression binders before the equal sign, following the binder grammar from the last paragraph.  Such declarations are elaborated into versions that add additional $\lambda$s to the fronts of the righthand sides, as appropriate.  The keyword $\mt{fun}$ is a synonym for $\mt{val} \; \mt{rec}$.
+A local $\mt{val}$ declaration may bind a pattern instead of just a plain variable.  As for function arguments, only irrefutable patterns are legal.
+
+The keyword $\mt{fun}$ is a shorthand for $\mt{val} \; \mt{rec}$ that allows arguments to be specified before the equal sign in the definition of each mutually-recursive function, as in SML.  Each curried argument must follow the grammar of the $b$ non-terminal introduced two paragraphs ago.  A $\mt{fun}$ declaration is elaborated into a version that adds additional $\lambda$s to the fronts of the righthand sides, as appropriate.
 
 A signature item $\mt{functor} \; X_1 \; (X_2 : S_1) : S_2$ is elaborated into $\mt{structure} \; X_1 : \mt{functor}(X_2 : S_1) : S_2$.  A declaration $\mt{functor} \; X_1 \; (X_2 : S_1) : S_2 = M$ is elaborated into $\mt{structure} \; X_1 : \mt{functor}(X_2 : S_1) : S_2 = \mt{functor}(X_2 : S_1) : S_2 = M$.
+
+An $\mt{open} \; \mt{constraints}$ declaration is implicitly inserted for the argument of every functor at the beginning of the functor body.  For every declaration of the form $\mt{structure} \; X : S = \mt{struct} \ldots \mt{end}$, an $\mt{open} \; \mt{constraints} \; X$ declaration is implicitly inserted immediately afterward.
 
 A declaration $\mt{table} \; x : \{(c = c,)^*\}$ is elaborated into $\mt{table} \; x : [(c = c,)^*]$
 
@@ -644,7 +650,7 @@ $$\infer{\Gamma \vdash e [c] : [x \mapsto c]\tau}{
   \Gamma \vdash e : x :: \kappa \to \tau
   & \Gamma \vdash c :: \kappa
 }
-\quad \infer{\Gamma \vdash \lambda x \; ? \; \kappa \Rightarrow e : x \; ? \; \kappa \to \tau}{
+\quad \infer{\Gamma \vdash \lambda [x \; ? \; \kappa] \Rightarrow e : x \; ? \; \kappa \to \tau}{
   \Gamma, x :: \kappa \vdash e : \tau
 }$$
 
@@ -730,6 +736,11 @@ $$\infer{\Gamma \vdash \{\overline{x = p}\} \leadsto \Gamma_n; \{\overline{x = \
 \quad \infer{\Gamma \vdash \{\overline{x = p}, \ldots\} \leadsto \Gamma_n; \$([\overline{x = \tau}] \rc c)}{
   \Gamma_0 = \Gamma
   & \forall i: \Gamma_i \vdash p_i \leadsto \Gamma_{i+1}; \tau_i
+}$$
+
+$$\infer{\Gamma \vdash p : \tau \leadsto \Gamma'; \tau}{
+  \Gamma \vdash p \leadsto \Gamma'; \tau'
+  & \Gamma \vdash \tau' \equiv \tau
 }$$
 
 \subsection{Declaration Typing}

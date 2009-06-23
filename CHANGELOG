@@ -1,4 +1,17 @@
 ========
+20090623
+========
+
+- Many bug fixes
+- Mutually-recursive datatypes
+- SML-style pattern-matching syntax for "fun", "fn", and local "val"
+- Backwards-incompatible change to syntax of formal constructor parameters to
+  value-level functions, to support the previous change
+- Path map support inspired by SML/NJ CM and MLton ML Basis
+- Start of some new standard library modules
+- Some improvements to JavaScript runtime, including better error handling
+
+========
 20090505
 ========
 
