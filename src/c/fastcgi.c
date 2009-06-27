@@ -70,7 +70,7 @@ static int fastcgi_send(FCGI_Output *o,
   o->r.requestIdB1 = o->r.requestIdB0 = 0;
   o->r.contentLengthB1 = contentLength >> 8;
   o->r.contentLengthB0 = contentLength & 255;
-  return uw_really_send(o->sock, &o->r, sizeof(o->r) - (65535 - contentLength));
+  return uw_really_send(o->sock, &o->r, sizeof(o->r) - 65535 + contentLength);
 }
 
 #define LATEST(i) ((FCGI_Record *)(i->buf + i->used))
@@ -166,26 +166,6 @@ static void log_error(void *data, const char *fmt, ...) {
 static void log_debug(void *data, const char *fmt, ...) {
 }
 
-static int read_funny_len(char **buf, int *len) {
-  if (*len <= 0)
-    return -1;
-
-  if ((*buf)[0] >> 7 == 0) {
-    int r = (*buf)[0];
-    ++*buf;
-    --*len;
-    return r;
-  }
-  else if (*len < 4)
-    return -1;
-  else {
-    int r = (((*buf)[3] & 0x7f) << 24) + ((*buf)[2] << 16) + ((*buf)[1] << 8) + (*buf)[0];
-    *buf += 4;
-    *len -= 4;
-    return r;
-  }
-}
-
 typedef struct {
   char *name, *value;
   unsigned name_len, value_len;
@@ -228,6 +208,26 @@ static char *get_header(void *data, const char *h) {
     return search_nvps(hs->nvps, hs->uppercased);
 }
 
+static int read_funny_len(char **buf, int *len) {
+  if (*len <= 0)
+    return -1;
+
+  if ((*buf)[0] >> 7 == 0) {
+    int r = (*buf)[0];
+    ++*buf;
+    --*len;
+    return r;
+  }
+  else if (*len < 4)
+    return -1;
+  else {
+    int r = (((*buf)[3] & 0x7f) << 24) + ((*buf)[2] << 16) + ((*buf)[1] << 8) + (*buf)[0];
+    *buf += 4;
+    *len -= 4;
+    return r;
+  }
+}
+
 static int read_nvp(char *buf, int len, nvp *nv) {
   int nameLength, valueLength;
 
@@ -238,13 +238,13 @@ static int read_nvp(char *buf, int len, nvp *nv) {
   if (len < nameLength + valueLength)
     return -1;
 
-  if (nameLength+1 > nv->name_len) {
+  if (!nv->name || nameLength+1 > nv->name_len) {
     nv->name_len = nameLength+1;
-    nv->name = realloc(nv->name, nv->name_len);
+    nv->name = nv->name ? realloc(nv->name, nv->name_len) : malloc(nv->name_len);
   }
-  if (valueLength+1 > nv->value_len) {
+  if (!nv->value || valueLength+1 > nv->value_len) {
     nv->value_len = valueLength+1;
-    nv->value = realloc(nv->value, nv->value_len);
+    nv->value = nv->value ? realloc(nv->value, nv->value_len) : malloc(nv->value_len);
   }
 
   memcpy(nv->name, buf, nameLength);
@@ -267,6 +267,7 @@ static void *worker(void *data) {
   char *body = malloc(0);
   size_t path_size = 0;
   char *path_buf = malloc(0);
+  int tries = 0;
 
   hs.uppercased = malloc(0);
   hs.uppercased_len = 0;
@@ -286,7 +287,7 @@ static void *worker(void *data) {
       fprintf(stderr, "Error receiving initial message\n");
       goto done;
     }
-    
+
     if (r->type != FCGI_BEGIN_REQUEST) {
       write_stderr(out, "First message is not BEGIN_REQUEST\n");
       goto done;
@@ -339,8 +340,8 @@ static void *worker(void *data) {
     } else
       body_len = 0;
 
-    if (body_len > body_size) {
-      body_size = body_len;
+    if (body_len+1 > body_size) {
+      body_size = body_len+1;
       body = realloc(body, body_size);
     }
 
@@ -374,6 +375,8 @@ static void *worker(void *data) {
       body_read += this_len;
     }
 
+    body[body_read] = 0;
+
     if (!(method = search_nvps(hs.nvps, "REQUEST_METHOD"))) {
       write_stderr(out, "REQUEST_METHOD not set\n");
       goto done;
@@ -383,7 +386,7 @@ static void *worker(void *data) {
       write_stderr(out, "SCRIPT_NAME not set\n");
       goto done;
     }
-    
+
     if (path_info = search_nvps(hs.nvps, "PATH_INFO")) {
       int len1 = strlen(path), len2 = strlen(path_info);
       int len = len1 + len2 + 1;
@@ -401,6 +404,7 @@ static void *worker(void *data) {
       query_string = "";
 
     uw_set_headers(ctx, get_header, &hs);
+
     {
       request_result rr;
       FCGI_EndRequestBody *erb = (FCGI_EndRequestBody *)out->r.contentData;
