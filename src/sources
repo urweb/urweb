@@ -16,6 +16,9 @@ errormsg.sml
 settings.sig
 settings.sml
 
+cgi.sig
+cgi.sml
+
 print.sig
 print.sml
 

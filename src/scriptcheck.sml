@@ -165,7 +165,7 @@ fun classify (ds, ps) =
         val ps = map (fn (ek, x, n, ts, t, _) =>
                          (ek, x, n, ts, t,
                           if IS.member (push_ids, n) then
-                              (if not (#supportsPush proto) andalso not (!foundBad) then
+                              (if not (#persistent proto) andalso not (!foundBad) then
                                    (foundBad := true;
                                     ErrorMsg.error ("This program needs server push, but the current protocol ("
                                                     ^ #name proto ^ ") doesn't support that."))

@@ -252,7 +252,7 @@ val checkMime = check
 type protocol = {
      name : string,
      link : string,
-     supportsPush : bool
+     persistent : bool
 }
 val protocols = ref ([] : protocol list)
 fun addProtocol p = protocols := p :: !protocols
@@ -263,12 +263,9 @@ fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
 
 val http = {name = "http",
             link = clibFile "request.o" ^ " " ^ clibFile "http.o",
-            supportsPush = true}
+            persistent = true}
 
 val () = addProtocol http
-val () = addProtocol {name = "cgi",
-                      link = clibFile "request.o" ^ " " ^ clibFile "cgi.o",
-                      supportsPush = false}
 
 val curProto = ref http
 fun setProtocol name =

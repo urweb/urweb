@@ -196,18 +196,26 @@ fun prepExp (e as (_, loc), sns) =
                           initial = initial, prepared = NONE}, loc),
                  sns)
               | SOME (ss, n) =>
-                ((EQuery {exps = exps, tables = tables, rnum = rnum,
-                          state = state, query = query, body = body,
-                          initial = initial, prepared = SOME (#2 sns)}, loc),
-                 ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1))
+                let
+                    val s = String.concat (rev ss)
+                in
+                    ((EQuery {exps = exps, tables = tables, rnum = rnum,
+                              state = state, query = query, body = body,
+                              initial = initial, prepared = SOME (#2 sns, s)}, loc),
+                     ((s, n) :: #1 sns, #2 sns + 1))
+                end
         end
 
       | EDml {dml, ...} =>
         (case prepString (dml, [], 0) of
              NONE => (e, sns)
            | SOME (ss, n) =>
-             ((EDml {dml = dml, prepared = SOME (#2 sns)}, loc),
-              ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1)))
+             let
+                 val s = String.concat (rev ss)
+             in
+                 ((EDml {dml = dml, prepared = SOME (#2 sns, s)}, loc),
+                  ((s, n) :: #1 sns, #2 sns + 1))
+             end)
 
       | ENextval {seq, ...} =>
         let
@@ -224,8 +232,12 @@ fun prepExp (e as (_, loc), sns) =
             case prepString (s, [], 0) of
                 NONE => (e, sns)
               | SOME (ss, n) =>
-                ((ENextval {seq = seq, prepared = SOME (#2 sns)}, loc),
-                 ((String.concat (rev ss), n) :: #1 sns, #2 sns + 1))
+                let
+                    val s = String.concat (rev ss)
+                in
+                    ((ENextval {seq = seq, prepared = SOME (#2 sns, s)}, loc),
+                     ((s, n) :: #1 sns, #2 sns + 1))
+                end
         end
 
       | EUnurlify (e, t) =>

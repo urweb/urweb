@@ -89,7 +89,7 @@ signature SETTINGS = sig
     type protocol = {
         name : string,      (* Call it this on the command line *)
         link : string,      (* Pass these linker arguments *)
-        supportsPush : bool (* Is Ur/Web message-passing supported? *)
+        persistent : bool   (* Multiple requests per process? *)
     }
     val addProtocol : protocol -> unit
     val getProtocol : string -> protocol option
@@ -98,5 +98,7 @@ signature SETTINGS = sig
 
     val setDebug : bool -> unit
     val getDebug : unit -> bool
+
+    val clibFile : string -> string
 
 end
