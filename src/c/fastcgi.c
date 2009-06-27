@@ -172,7 +172,7 @@ typedef struct {
 } nvp;
 
 static char *search_nvps(nvp *nvps, const char *h) {
-  for (; nvps->name; ++nvps)
+  for (; nvps->name[0]; ++nvps)
     if (!strcmp(h, nvps->name))
       return nvps->value;
 
@@ -238,13 +238,13 @@ static int read_nvp(char *buf, int len, nvp *nv) {
   if (len < nameLength + valueLength)
     return -1;
 
-  if (!nv->name || nameLength+1 > nv->name_len) {
+  if (nameLength+1 > nv->name_len) {
     nv->name_len = nameLength+1;
-    nv->name = nv->name ? realloc(nv->name, nv->name_len) : malloc(nv->name_len);
+    nv->name = realloc(nv->name, nv->name_len);
   }
-  if (!nv->value || valueLength+1 > nv->value_len) {
+  if (valueLength+1 > nv->value_len) {
     nv->value_len = valueLength+1;
-    nv->value = nv->value ? realloc(nv->value, nv->value_len) : malloc(nv->value_len);
+    nv->value = realloc(nv->value, nv->value_len);
   }
 
   memcpy(nv->name, buf, nameLength);
@@ -273,6 +273,10 @@ static void *worker(void *data) {
   hs.uppercased_len = 0;
   hs.nvps = malloc(sizeof(nvp));
   hs.n_nvps = 1;
+  hs.nvps[0].name = malloc(1);
+  hs.nvps[0].name_len = 1;
+  hs.nvps[0].value = malloc(0);
+  hs.nvps[0].value_len = 0;
 
   while (1) {
     FCGI_Record *r;
@@ -315,10 +319,10 @@ static void *worker(void *data) {
       if (used_nvps == hs.n_nvps-1) {
         ++hs.n_nvps;
         hs.nvps = realloc(hs.nvps, hs.n_nvps * sizeof(nvp));
-        hs.nvps[used_nvps].name = malloc(0);
-        hs.nvps[used_nvps].value = malloc(0);
-        hs.nvps[used_nvps].name_len = 0;
-        hs.nvps[used_nvps].value_len = 0;
+        hs.nvps[hs.n_nvps-1].name = malloc(1);
+        hs.nvps[hs.n_nvps-1].value = malloc(0);
+        hs.nvps[hs.n_nvps-1].name_len = 1;
+        hs.nvps[hs.n_nvps-1].value_len = 0;
       }
 
       if (read_nvp(r->contentData, (r->contentLengthB1 << 8) | r->contentLengthB0, &hs.nvps[used_nvps]) < 0) {
@@ -329,7 +333,7 @@ static void *worker(void *data) {
       ++used_nvps;
     }
 
-    hs.nvps[used_nvps].name = NULL;
+    hs.nvps[used_nvps].name[0] = 0;
 
     if (s = get_header(&hs, "Content-Length")) {
       body_len = atoi(s);
