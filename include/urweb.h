@@ -13,7 +13,8 @@ void uw_global_init(void);
 
 void uw_client_connect(unsigned id, int pass, int sock,
                        int (*send)(int sockfd, const void *buf, size_t len),
-                       int (*close)(int fd));
+                       int (*close)(int fd),
+                       void *logger_data, uw_logger log_error);
 void uw_prune_clients(uw_context);
 failure_kind uw_initialize(uw_context);
 

@@ -202,13 +202,15 @@ static char *get_header(void *data, const char *h) {
   *s = 0;
 
   if (!strcasecmp(saved_h, "Content-length")
-      || !strcasecmp(saved_h, "Content-type"))
-    return search_nvps(hs->nvps, hs->uppercased + 5);
-  else
-    return search_nvps(hs->nvps, hs->uppercased);
+      || !strcasecmp(saved_h, "Content-type")) {
+    if (s = search_nvps(hs->nvps, hs->uppercased + 5))
+      return s;
+  }
+  
+  return search_nvps(hs->nvps, hs->uppercased);
 }
 
-static int read_funny_len(char **buf, int *len) {
+static int read_funny_len(unsigned char **buf, int *len) {
   if (*len <= 0)
     return -1;
 
@@ -228,12 +230,12 @@ static int read_funny_len(char **buf, int *len) {
   }
 }
 
-static int read_nvp(char *buf, int len, nvp *nv) {
+static int read_nvp(unsigned char **buf, int len, nvp *nv) {
   int nameLength, valueLength;
 
-  if ((nameLength = read_funny_len(&buf, &len)) < 0)
+  if ((nameLength = read_funny_len(buf, &len)) < 0)
     return -1;
-  if ((valueLength = read_funny_len(&buf, &len)) < 0)
+  if ((valueLength = read_funny_len(buf, &len)) < 0)
     return -1;
   if (len < nameLength + valueLength)
     return -1;
@@ -247,11 +249,13 @@ static int read_nvp(char *buf, int len, nvp *nv) {
     nv->value = realloc(nv->value, nv->value_len);
   }
 
-  memcpy(nv->name, buf, nameLength);
+  memcpy(nv->name, *buf, nameLength);
   nv->name[nameLength] = 0;
 
-  memcpy(nv->value, buf + nameLength, valueLength);
+  memcpy(nv->value, *buf + nameLength, valueLength);
   nv->value[valueLength] = 0;
+
+  *buf += nameLength + valueLength;
 
   return 0;
 }
@@ -337,7 +341,8 @@ static void *worker(void *data) {
     }
 
     while (1) {
-      char *buf;
+      unsigned char *buf;
+      int len;
 
       if (!(r = fastcgi_recv(in))) {
         write_stderr(out, "Error receiving environment variables\n");
@@ -352,21 +357,27 @@ static void *worker(void *data) {
       if (r->contentLengthB1 == 0 && r->contentLengthB0 == 0)
         break;
 
-      if (used_nvps == hs.n_nvps-1) {
-        ++hs.n_nvps;
-        hs.nvps = realloc(hs.nvps, hs.n_nvps * sizeof(nvp));
-        hs.nvps[hs.n_nvps-1].name = malloc(1);
-        hs.nvps[hs.n_nvps-1].value = malloc(0);
-        hs.nvps[hs.n_nvps-1].name_len = 1;
-        hs.nvps[hs.n_nvps-1].value_len = 0;
-      }
+      len = (r->contentLengthB1 << 8) | r->contentLengthB0;
 
-      if (read_nvp(r->contentData, (r->contentLengthB1 << 8) | r->contentLengthB0, &hs.nvps[used_nvps]) < 0) {
-        write_stderr(out, "Error reading FCGI_PARAMS name-value pair\n");
-        goto done;
-      }
+      for (buf = r->contentData; buf < r->contentData + len; ) {
+        if (used_nvps == hs.n_nvps-1) {
+          ++hs.n_nvps;
+          hs.nvps = realloc(hs.nvps, hs.n_nvps * sizeof(nvp));
+          hs.nvps[hs.n_nvps-1].name = malloc(1);
+          hs.nvps[hs.n_nvps-1].value = malloc(0);
+          hs.nvps[hs.n_nvps-1].name_len = 1;
+          hs.nvps[hs.n_nvps-1].value_len = 0;
+        }
+        
+        if (read_nvp(&buf, len - (buf - r->contentData), &hs.nvps[used_nvps]) < 0) {
+          write_stderr(out, "Error reading FCGI_PARAMS name-value pair\n");
+          goto done;
+        }
 
-      ++used_nvps;
+        write_stderr(out, "PARAM: %s -> %s\n", hs.nvps[used_nvps].name, hs.nvps[used_nvps].value);
+
+        ++used_nvps;
+      }
     }
 
     hs.nvps[used_nvps].name[0] = 0;

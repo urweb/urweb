@@ -206,12 +206,13 @@ void uw_set_on_success(char *s) {
 
 void uw_client_connect(unsigned id, int pass, int sock,
                        int (*send)(int sockfd, const void *buf, ssize_t len),
-                       int (*close)(int fd)) {
+                       int (*close)(int fd),
+                       void *logger_data, uw_logger log_error) {
   client *c = find_client(id);
 
   if (c == NULL) {
     close(sock);
-    fprintf(stderr, "Out-of-bounds client request (%u)\n", id);
+    log_error(logger_data, "Out-of-bounds client request (%u)\n", id);
     return;
   }
 
@@ -220,14 +221,14 @@ void uw_client_connect(unsigned id, int pass, int sock,
   if (c->mode != USED) {
     pthread_mutex_unlock(&c->lock);
     close(sock);
-    fprintf(stderr, "Client request for unused slot (%u)\n", id);
+    log_error(logger_data, "Client request for unused slot (%u)\n", id);
     return;
   }
 
   if (pass != c->pass) {
     pthread_mutex_unlock(&c->lock);
     close(sock);
-    fprintf(stderr, "Wrong client password (%u, %d)\n", id, pass);
+    log_error(logger_data, "Wrong client password (%u, %d)\n", id, pass);
     return;
   }
 
@@ -563,7 +564,7 @@ void uw_login(uw_context ctx) {
       client *c = new_client();
       use_client(c);
       ctx->client = c;
-    }  
+    }
   }
 }
 
