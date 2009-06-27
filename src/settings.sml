@@ -262,7 +262,7 @@ fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
                                       file = s}
 
 val http = {name = "http",
-            link = clibFile "request.o" ^ " " ^ clibFile "http.o",
+            link = clibFile "request.o" ^ " " ^ clibFile "queue.o" ^ " " ^ clibFile "http.o",
             persistent = true}
 
 val () = addProtocol http

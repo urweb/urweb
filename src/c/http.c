@@ -14,44 +14,9 @@
 
 #include "urweb.h"
 #include "request.h"
+#include "queue.h"
 
 int uw_backlog = 10;
-
-typedef struct node {
-  int fd;
-  struct node *next;
-} *node;
-
-static node front = NULL, back = NULL;
-
-static int empty() {
-  return front == NULL;
-}
-
-static void enqueue(int fd) {
-  node n = malloc(sizeof(struct node));
-
-  n->fd = fd;
-  n->next = NULL;
-  if (back)
-    back->next = n;
-  else
-    front = n;
-  back = n;
-}
-
-static int dequeue() {
-  int ret = front->fd;
-
-  front = front->next;
-  if (!front)
-    back = NULL;
-
-  return ret;
-}
-
-static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 
 static char *get_header(void *data, const char *h) {
   char *s = data;
@@ -103,13 +68,7 @@ static void *worker(void *data) {
 
   while (1) {
     char *back = buf;
-    int sock;
-
-    pthread_mutex_lock(&queue_mutex);
-    while (empty())
-      pthread_cond_wait(&queue_cond, &queue_mutex);
-    sock = dequeue();
-    pthread_mutex_unlock(&queue_mutex);
+    int sock = uw_dequeue();
 
     printf("Handling connection with thread #%d.\n", me);
 
@@ -367,9 +326,6 @@ int main(int argc, char *argv[]) {
 
     printf("Accepted connection.\n");
 
-    pthread_mutex_lock(&queue_mutex);
-    enqueue(new_fd);
-    pthread_cond_broadcast(&queue_cond);
-    pthread_mutex_unlock(&queue_mutex);
+    uw_enqueue(new_fd);
   }
 }

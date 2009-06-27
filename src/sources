@@ -19,6 +19,9 @@ settings.sml
 cgi.sig
 cgi.sml
 
+fastcgi.sig
+fastcgi.sml
+
 print.sig
 print.sml
 
