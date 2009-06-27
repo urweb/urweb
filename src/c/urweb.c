@@ -1102,6 +1102,20 @@ int uw_print(uw_context ctx, int fd) {
   return uw_really_write(fd, ctx->page.start, ctx->page.front - ctx->page.start);
 }
 
+int uw_output(uw_context ctx, int (*output)(void *data, char *buf, size_t len), void *data) {
+  int n = output(data, ctx->outHeaders.start, ctx->outHeaders.front - ctx->outHeaders.start);
+
+  if (n < 0)
+    return n;
+
+  n = output(data, "\r\n", 2);
+
+  if (n < 0)
+    return n;
+
+  return output(data, ctx->page.start, ctx->page.front - ctx->page.start);
+}
+
 static void uw_check_headers(uw_context ctx, size_t extra) {
   buf_check(&ctx->outHeaders, extra);
 }

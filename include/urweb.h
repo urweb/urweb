@@ -43,6 +43,7 @@ void uw_memstats(uw_context);
 
 int uw_send(uw_context, int sock);
 int uw_print(uw_context, int fd);
+int uw_output(uw_context ctx, int (*output)(void *data, char *buf, size_t len), void *data);
 
 int uw_set_input(uw_context, const char *name, char *value);
 int uw_set_file_input(uw_context, char *name, uw_Basis_file);
