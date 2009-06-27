@@ -96,4 +96,7 @@ signature SETTINGS = sig
     val setProtocol : string -> unit
     val currentProtocol : unit -> protocol
 
+    val setDebug : bool -> unit
+    val getDebug : unit -> bool
+
 end

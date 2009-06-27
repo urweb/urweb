@@ -277,4 +277,8 @@ fun setProtocol name =
       | SOME p => curProto := p
 fun currentProtocol () = !curProto
 
+val debug = ref false
+fun setDebug b = debug := b
+fun getDebug () = !debug
+
 end

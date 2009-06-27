@@ -25,42 +25,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-fun doArgs (args, (timing, demo, sources)) =
+val timing = ref false
+val sources = ref ([] : string list)
+val demo = ref (NONE : (string * bool) option)
+
+fun doArgs args =
     case args of
-        [] => (timing, demo, rev sources)
+        [] => ()
       | "-demo" :: prefix :: rest =>
-        doArgs (rest, (timing, SOME (prefix, false), sources))
+        (demo := SOME (prefix, false);
+         doArgs rest)
       | "-guided-demo" :: prefix :: rest =>
-        doArgs (rest, (timing, SOME (prefix, true), sources))
+        (demo := SOME (prefix, true);
+         doArgs rest)
       | "-protocol" :: name :: rest =>
         (Settings.setProtocol name;
-         doArgs (rest, (timing, demo, sources)))
+         doArgs rest)
+      | "-debug" :: rest =>
+        (Settings.setDebug true;
+         doArgs rest)
+      | "-timing" :: rest =>
+        (timing := true;
+         doArgs rest)
       | arg :: rest =>
-        let
-            val acc =
-                if size arg > 0 andalso String.sub (arg, 0) = #"-" then
-                    case arg of
-                        "-timing" => (true, demo, sources)
-                      | _ => raise Fail ("Unknown option " ^ arg)
-                else
-                    (timing, demo, arg :: sources)
-        in
-            doArgs (rest, acc)
-        end
+        (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
+             raise Fail ("Unknown flag " ^ arg)
+         else
+             sources := arg :: !sources;
+         doArgs rest)
 
-val (timing, demo, sources) = doArgs (CommandLine.arguments (), (false, NONE, []))
+val () = doArgs (CommandLine.arguments ())
 
 val job =
-    case sources of
+    case !sources of
         [file] => file
       | _ => raise Fail "Zero or multiple job files specified"
 
 val () =
-    case demo of
+    case !demo of
         SOME (prefix, guided) =>
         Demo.make {prefix = prefix, dirname = job, guided = guided}
       | NONE =>
-        if timing then
+        if !timing then
             Compiler.time Compiler.toCjrize job
         else
             Compiler.compile job
