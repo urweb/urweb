@@ -5,13 +5,15 @@
 
 #include "types.h"
 
-int uw_really_send(int sock, void *buf, ssize_t len);
+int uw_really_send(int sock, const void *buf, ssize_t len);
 
 extern uw_unit uw_unit_v;
 
 void uw_global_init(void);
 
-void uw_client_connect(unsigned id, int pass, int sock);
+void uw_client_connect(unsigned id, int pass, int sock,
+                       int (*send)(int sockfd, const void *buf, size_t len),
+                       int (*close)(int fd));
 void uw_prune_clients(uw_context);
 failure_kind uw_initialize(uw_context);
 
@@ -43,7 +45,7 @@ void uw_memstats(uw_context);
 
 int uw_send(uw_context, int sock);
 int uw_print(uw_context, int fd);
-int uw_output(uw_context ctx, int (*output)(void *data, char *buf, size_t len), void *data);
+int uw_output(uw_context ctx, int (*output)(void *data, const char *buf, size_t len), void *data);
 
 int uw_set_input(uw_context, const char *name, char *value);
 int uw_set_file_input(uw_context, char *name, uw_Basis_file);

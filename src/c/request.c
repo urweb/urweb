@@ -151,12 +151,16 @@ void uw_free_request_context(uw_request_context r) {
   free(r);
 }
 
+extern char *uw_url_prefix;
+
 request_result uw_request(uw_request_context rc, uw_context ctx,
                           char *method, char *path, char *query_string,
                           char *body, size_t body_len,
                           void (*on_success)(uw_context), void (*on_failure)(uw_context),
                           void *logger_data, uw_logger log_error, uw_logger log_debug,
-                          int sock) {
+                          int sock,
+                          int (*send)(int sockfd, const void *buf, size_t len),
+                          int (*close)(int fd)) {
   int retries_left = MAX_RETRIES;
   char *s;
   failure_kind fk;
@@ -201,7 +205,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     return FAILED;
   }
 
-  if (!strcmp(path, "/.msgs")) {
+  if (!strncmp(path, uw_url_prefix, strlen(uw_url_prefix))
+      && !strcmp(path + strlen(uw_url_prefix), ".msgs")) {
     char *id = uw_Basis_requestHeader(ctx, "UrWeb-Client");
     char *pass = uw_Basis_requestHeader(ctx, "UrWeb-Pass");
 
@@ -212,7 +217,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
     if (id && pass) {
       unsigned idn = atoi(id);
-      uw_client_connect(idn, atoi(pass), sock);
+      uw_client_connect(idn, atoi(pass), sock, send, close);
       log_error(logger_data, "Processed request for messages by client %u\n\n", idn);
       return KEEP_OPEN;
     }

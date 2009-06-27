@@ -92,7 +92,7 @@ fun make {prefix, dirname, guided} =
                                        file = "demo.exe"},
             sql = SOME (OS.Path.joinDirFile {dir = dirname,
                                              file = "demo.sql"}),
-            debug = false,
+            debug = Settings.getDebug (),
             timeout = Int.max (#timeout combined, #timeout urp),
             profile = false,
             ffi = [],

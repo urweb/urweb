@@ -188,7 +188,7 @@ static void *worker(void *data) {
         rr = uw_request(rc, ctx, method, path, query_string, body, back - body,
                         on_success, on_failure,
                         NULL, log_error, log_debug,
-                        sock);
+                        sock, uw_really_send, close);
         uw_send(ctx, sock);
 
         if (rr == SERVED || rr == FAILED)

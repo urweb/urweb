@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
   rr = uw_request(rc, ctx, method, path, query_string, body, body_pos,
                   on_success, on_failure,
                   NULL, log_error, log_debug,
-                  -1);
+                  -1, NULL, NULL);
   uw_print(ctx, 1);
 
   if (rr == SERVED)

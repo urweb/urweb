@@ -113,7 +113,7 @@ static void on_failure(uw_context ctx) {
   uw_write_header(ctx, "Status: 500 Internal Server Error\r\n");
 }
 
-static int write_stdout(void *data, char *buf, size_t len) {
+static int write_stdout(void *data, const char *buf, size_t len) {
   FCGI_Output *o = (FCGI_Output *)data;
   while (len > 0) {
     size_t len2 = len;
@@ -254,6 +254,42 @@ static int read_nvp(char *buf, int len, nvp *nv) {
   nv->value[valueLength] = 0;
 
   return 0;
+}
+
+static int fastcgi_close_with(FCGI_Output *out, request_result rr) {
+  FCGI_EndRequestBody *erb = (FCGI_EndRequestBody *)out->r.contentData;
+
+  close_stream(out, FCGI_STDOUT);
+  close_stream(out, FCGI_STDERR);
+
+  if (rr == SERVED)
+    erb->appStatusB3 = erb->appStatusB2 = erb->appStatusB1 = erb->appStatusB0 = 0;
+  else
+    erb->appStatusB3 = erb->appStatusB2 = erb->appStatusB1 = erb->appStatusB0 = 0xFF;
+
+  erb->protocolStatus = FCGI_REQUEST_COMPLETE;
+  fastcgi_send(out, FCGI_END_REQUEST, sizeof(FCGI_EndRequestBody));
+  return close(out->sock);
+}
+
+static int fastcgi_close(int sock) {
+  FCGI_Output out;
+  out.sock = sock;
+  out.r.version = FCGI_VERSION_1;
+  out.r.paddingLength = 0;
+  out.r.reserved = 0;
+
+  return fastcgi_close_with(&out, SERVED);
+}
+
+int fastcgi_send_normal(int sock, const void *buf, ssize_t len) {
+  FCGI_Output out;
+  out.sock = sock;
+  out.r.version = FCGI_VERSION_1;
+  out.r.paddingLength = 0;
+  out.r.reserved = 0;
+
+  return write_stdout(&out, buf, len);
 }
 
 static void *worker(void *data) {
@@ -411,27 +447,18 @@ static void *worker(void *data) {
 
     {
       request_result rr;
-      FCGI_EndRequestBody *erb = (FCGI_EndRequestBody *)out->r.contentData;
 
       rr = uw_request(rc, ctx, method, path, query_string, body, body_read,
                       on_success, on_failure,
                       out, log_error, log_debug,
-                      in->sock);
+                      in->sock, fastcgi_send_normal, fastcgi_close);
 
       if (rr == KEEP_OPEN)
         goto done2;
 
       uw_output(ctx, write_stdout, out);
-      close_stream(out, FCGI_STDOUT);
-      close_stream(out, FCGI_STDERR);
-
-      if (rr == SERVED)
-        erb->appStatusB3 = erb->appStatusB2 = erb->appStatusB1 = erb->appStatusB0 = 0;
-      else
-        erb->appStatusB3 = erb->appStatusB2 = erb->appStatusB1 = erb->appStatusB0 = 0xFF;
-
-      erb->protocolStatus = FCGI_REQUEST_COMPLETE;
-      fastcgi_send(out, FCGI_END_REQUEST, sizeof(FCGI_EndRequestBody));
+      fastcgi_close_with(out, rr);
+      goto done2;
     }
 
   done:

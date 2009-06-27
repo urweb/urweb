@@ -19,8 +19,8 @@ to build the "Hello World" demo application.  Whether building the pieces separa
 
 <blockquote><pre>Alias /demo/ "DIR/demo/out/"
 
-ProxyPass /Demo/ http://localhost:8080/
-ProxyPassReverse /Demo/ http://localhost:8080/</pre></blockquote></p>
+ProxyPass /Demo/ http://localhost:8080/Demo/
+ProxyPassReverse /Demo/ http://localhost:8080/Demo/</pre></blockquote></p>
 
 <p>Building the demo also generates a <tt>demo.sql</tt> file, giving the SQL commands to run to define all of the tables and sequences that the applications expect to see.  The file <tt>demo.urp</tt> contains a <tt>database</tt> line with the PostgreSQL database that the demo web server will try to connect to.</p>
 

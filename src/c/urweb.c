@@ -19,7 +19,7 @@ uw_unit uw_unit_v = {};
 
 // Socket extras
 
-int uw_really_send(int sock, const void *buf, size_t len) {
+int uw_really_send(int sock, const void *buf, ssize_t len) {
   while (len > 0) {
     ssize_t n = send(sock, buf, len, 0);
 
@@ -112,6 +112,8 @@ typedef struct client {
   pthread_mutex_t lock, pull_lock;
   buf msgs;
   int sock;
+  int (*send)(int sockfd, const void *buf, ssize_t len);
+  int (*close)(int fd);
   time_t last_contact;
   unsigned n_channels;
   unsigned refcount;
@@ -202,7 +204,9 @@ void uw_set_on_success(char *s) {
   on_success = s;
 }
 
-void uw_client_connect(unsigned id, int pass, int sock) {
+void uw_client_connect(unsigned id, int pass, int sock,
+                       int (*send)(int sockfd, const void *buf, ssize_t len),
+                       int (*close)(int fd)) {
   client *c = find_client(id);
 
   if (c == NULL) {
@@ -228,21 +232,24 @@ void uw_client_connect(unsigned id, int pass, int sock) {
   }
 
   if (c->sock != -1) {
-    close(c->sock);
+    c->close(c->sock);
     c->sock = -1;
   }
 
   c->last_contact = time(NULL);
 
   if (buf_used(&c->msgs) > 0) {
-    uw_really_send(sock, on_success, strlen(on_success));
-    uw_really_send(sock, begin_msgs, sizeof(begin_msgs) - 1);
-    uw_really_send(sock, c->msgs.start, buf_used(&c->msgs));
+    send(sock, on_success, strlen(on_success));
+    send(sock, begin_msgs, sizeof(begin_msgs) - 1);
+    send(sock, c->msgs.start, buf_used(&c->msgs));
     buf_reset(&c->msgs);
     close(sock);
   }
-  else
+  else {
     c->sock = sock;
+    c->send = send;
+    c->close = close;
+  }
 
   pthread_mutex_unlock(&c->lock);
 }
@@ -264,10 +271,10 @@ static void client_send(client *c, buf *msg) {
   pthread_mutex_lock(&c->lock);
 
   if (c->sock != -1) {
-    uw_really_send(c->sock, on_success, strlen(on_success));
-    uw_really_send(c->sock, begin_msgs, sizeof(begin_msgs) - 1);
-    uw_really_send(c->sock, msg->start, buf_used(msg));
-    close(c->sock);
+    c->send(c->sock, on_success, strlen(on_success));
+    c->send(c->sock, begin_msgs, sizeof(begin_msgs) - 1);
+    c->send(c->sock, msg->start, buf_used(msg));
+    c->close(c->sock);
     c->sock = -1;
   } else
     buf_append(&c->msgs, msg->start, buf_used(msg));

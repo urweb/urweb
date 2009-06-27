@@ -2816,6 +2816,16 @@ fun p_file env (ds, ps) =
                         Link => false
                       | Action ef => ef = ReadCookieWrite
                       | Rpc ef => ef = ReadCookieWrite
+
+                val s =
+                    case Settings.getUrlPrefix () of
+                        "" => s
+                      | "/" => s
+                      | prefix =>
+                        if size s > 0 andalso String.sub (s, 0) = #"/" then
+                            prefix ^ String.extract (s, 1, NONE)
+                        else
+                            prefix ^ s
             in
                 box [string "if (!strncmp(request, \"",
                      string (String.toString s),
@@ -3274,6 +3284,12 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
+             string "const char *uw_url_prefix = \"",
+             string (Settings.getUrlPrefix ()),
+             string "\";",
+             newline,
+             newline,
+
              string "static const char begin_xhtml[] = \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" ?>\\n<!DOCTYPE html PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional//EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">\\n<html xmlns=\\\"http://www.w3.org/1999/xhtml\\\" xml:lang=\\\"en\\\" lang=\\\"en\\\">\";",
              newline,
              newline,
@@ -3324,7 +3340,10 @@ fun p_file env (ds, ps) =
 
              string "void uw_handle(uw_context ctx, char *request) {",
              newline,
-             string "if (!strcmp(request, \"/app.js\")) {",
+             string "if (!strcmp(request, \"",
+             string (OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
+                                          file = "app.js"}),
+             string "\")) {",
              newline,
              box [string "uw_write_header(ctx, \"Content-type: text/javascript\\r\\n\");",
                   newline,

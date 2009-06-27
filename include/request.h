@@ -18,7 +18,9 @@ request_result uw_request(uw_request_context, uw_context,
                           char *body, size_t body_len,
                           void (*on_success)(uw_context), void (*on_failure)(uw_context),
                           void *logger_data, uw_logger log_error, uw_logger log_debug,
-                          int sock);
+                          int sock,
+                          int (*send)(int sockfd, const void *buf, ssize_t len),
+                          int (*close)(int fd));
 
 uw_context uw_request_new_context(void *logger_data, uw_logger log_error, uw_logger log_debug);
 
