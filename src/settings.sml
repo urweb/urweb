@@ -261,13 +261,9 @@ fun getProtocol s = List.find (fn p => #name p = s) (!protocols)
 fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
                                       file = s}
 
-val http = {name = "http",
-            link = clibFile "request.o" ^ " " ^ clibFile "queue.o" ^ " " ^ clibFile "http.o",
-            persistent = true}
-
-val () = addProtocol http
-
-val curProto = ref http
+val curProto = ref {name = "",
+                    link = "",
+                    persistent = false}
 fun setProtocol name =
     case getProtocol name of
         NONE => raise Fail ("Unknown protocol " ^ name)

@@ -16,6 +16,9 @@ errormsg.sml
 settings.sig
 settings.sml
 
+http.sig
+http.sml
+
 cgi.sig
 cgi.sml
 
