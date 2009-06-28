@@ -27,6 +27,11 @@
 
 signature SETTINGS = sig
     
+    val setDebug : bool -> unit
+    val getDebug : unit -> bool
+                           
+    val clibFile : string -> string
+
     (* How do all application URLs begin? *)
     val setUrlPrefix : string -> unit
     val getUrlPrefix : unit -> string
@@ -92,13 +97,25 @@ signature SETTINGS = sig
         persistent : bool   (* Multiple requests per process? *)
     }
     val addProtocol : protocol -> unit
-    val getProtocol : string -> protocol option
     val setProtocol : string -> unit
     val currentProtocol : unit -> protocol
 
-    val setDebug : bool -> unit
-    val getDebug : unit -> bool
+    (* Different DBMSes *)
+    type dbms = {
+         name : string,
+         (* Call it this on the command line *)
+         header : string,
+         (* Include this C header file *)
+         link : string,
+         (* Pass these linker arguments *)
+         global_init : Print.PD.pp_desc,
+         (* Define uw_client_init() *)
+         init : string * (string * int) list -> Print.PD.pp_desc
+         (* Define uw_db_init() from dbstring and prepared statements *)
+    }
 
-    val clibFile : string -> string
+    val addDbms : dbms -> unit
+    val setDbms : string -> unit
+    val currentDbms : unit -> dbms
 
 end

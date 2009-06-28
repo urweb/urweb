@@ -25,6 +25,12 @@ cgi.sml
 fastcgi.sig
 fastcgi.sml
 
+postgres.sig
+postgres.sml
+
+mysql.sig
+mysql.sml
+
 print.sig
 print.sml
 

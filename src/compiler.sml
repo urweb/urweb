@@ -53,7 +53,9 @@ type job = {
      jsFuncs : (Settings.ffi * string) list,
      rewrites : Settings.rewrite list,
      filterUrl : Settings.rule list,
-     filterMime : Settings.rule list
+     filterMime : Settings.rule list,
+     protocol : string option,
+     dbms : string option
 }
 
 type ('src, 'dst) phase = {
@@ -349,6 +351,8 @@ fun parseUrp' fname =
                 val url = ref []
                 val mime = ref []
                 val libs = ref []
+                val protocol = ref NONE
+                val dbms = ref NONE
 
                 fun finish sources =
                     let
@@ -373,7 +377,9 @@ fun parseUrp' fname =
                             rewrites = rev (!rewrites),
                             filterUrl = rev (!url),
                             filterMime = rev (!mime),
-                            sources = sources
+                            sources = sources,
+                            protocol = !protocol,
+                            dbms = !dbms
                         }
 
                         fun mergeO f (old, new) =
@@ -410,7 +416,9 @@ fun parseUrp' fname =
                             rewrites = #rewrites old @ #rewrites new,
                             filterUrl = #filterUrl old @ #filterUrl new,
                             filterMime = #filterMime old @ #filterMime new,
-                            sources = #sources new @ #sources old
+                            sources = #sources new @ #sources old,
+                            protocol = mergeO #2 (#protocol old, #protocol new),
+                            dbms = mergeO #2 (#dbms old, #dbms new)
                         }
                     in
                         foldr (fn (fname, job) => merge (job, pu fname)) job (!libs)
@@ -570,6 +578,8 @@ fun parseUrp' fname =
                 Settings.setRewriteRules (#rewrites job);
                 Settings.setUrlRules (#filterUrl job);
                 Settings.setMimeRules (#filterMime job);
+                Option.app Settings.setProtocol (#protocol job);
+                Option.app Settings.setDbms (#dbms job);
                 job
             end
     in
@@ -949,7 +959,7 @@ fun compile job =
                 val hasDb = List.exists (fn (Cjr.DDatabase _, _) => true | _ => false) (#1 file)
                 val libs =
                     if hasDb then
-                        "-lpq"
+                        #link (Settings.currentDbms ())
                     else
                         ""
             in

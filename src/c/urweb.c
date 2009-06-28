@@ -286,10 +286,14 @@ static void client_send(client *c, buf *msg) {
 
 // Global entry points
 
+extern void uw_client_init();
+
 void uw_global_init() {
   srand(time(NULL) ^ getpid());
 
   clients = malloc(0);
+
+  uw_client_init();
 }
 
 

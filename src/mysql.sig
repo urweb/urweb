@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,51 +25,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-val timing = ref false
-val sources = ref ([] : string list)
-val demo = ref (NONE : (string * bool) option)
+signature MYSQL = sig
 
-fun doArgs args =
-    case args of
-        [] => ()
-      | "-demo" :: prefix :: rest =>
-        (demo := SOME (prefix, false);
-         doArgs rest)
-      | "-guided-demo" :: prefix :: rest =>
-        (demo := SOME (prefix, true);
-         doArgs rest)
-      | "-protocol" :: name :: rest =>
-        (Settings.setProtocol name;
-         doArgs rest)
-      | "-dbms" :: name :: rest =>
-        (Settings.setDbms name;
-         doArgs rest)
-      | "-debug" :: rest =>
-        (Settings.setDebug true;
-         doArgs rest)
-      | "-timing" :: rest =>
-        (timing := true;
-         doArgs rest)
-      | arg :: rest =>
-        (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
-             raise Fail ("Unknown flag " ^ arg)
-         else
-             sources := arg :: !sources;
-         doArgs rest)
-
-val () = doArgs (CommandLine.arguments ())
-
-val job =
-    case !sources of
-        [file] => file
-      | _ => raise Fail "Zero or multiple job files specified"
-
-val () =
-    case !demo of
-        SOME (prefix, guided) =>
-        Demo.make {prefix = prefix, dirname = job, guided = guided}
-      | NONE =>
-        if !timing then
-            Compiler.time Compiler.toCjrize job
-        else
-            Compiler.compile job
+end

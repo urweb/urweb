@@ -106,7 +106,9 @@ fun make {prefix, dirname, guided} =
             jsFuncs = [],
             rewrites = #rewrites combined @ #rewrites urp,
             filterUrl = #filterUrl combined @ #filterUrl urp,
-            filterMime = #filterMime combined @ #filterMime urp
+            filterMime = #filterMime combined @ #filterMime urp,
+            protocol = mergeWith #2 (#protocol combined, #protocol urp),
+            dbms = mergeWith #2 (#dbms combined, #dbms urp)
         }
 
         val parse = Compiler.run (Compiler.transform Compiler.parseUrp "Demo parseUrp")

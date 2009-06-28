@@ -274,4 +274,26 @@ val debug = ref false
 fun setDebug b = debug := b
 fun getDebug () = !debug
 
+type dbms = {
+     name : string,
+     header : string,
+     link : string,
+     global_init : Print.PD.pp_desc,
+     init : string * (string * int) list -> Print.PD.pp_desc
+}
+
+val dbmses = ref ([] : dbms list)
+val curDb = ref ({name = "",
+                  header = "",
+                  link = "",
+                  global_init = Print.box [],
+                  init = fn _ => Print.box []} : dbms)
+
+fun addDbms v = dbmses := v :: !dbmses
+fun setDbms s =
+    case List.find (fn db => #name db = s) (!dbmses) of
+        NONE => raise Fail ("Unknown DBMS " ^ s)
+      | SOME db => curDb := db
+fun currentDbms () = !curDb
+
 end

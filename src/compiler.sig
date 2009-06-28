@@ -49,7 +49,9 @@ signature COMPILER = sig
          jsFuncs : (Settings.ffi * string) list,
          rewrites : Settings.rewrite list,
          filterUrl : Settings.rule list,
-         filterMime : Settings.rule list
+         filterMime : Settings.rule list,
+         protocol : string option,
+         dbms : string option
     }
     val compile : string -> unit
     val compileC : {cname : string, oname : string, ename : string, libs : string,
