@@ -255,6 +255,8 @@ fun init (dbstring, ss) =
 
 fun query _ = raise Fail "MySQL query"
 fun queryPrepared _ = raise Fail "MySQL queryPrepared"
+fun dml _ = raise Fail "MySQL dml"
+fun dmlPrepared _ = raise Fail "MySQL dmlPrepared"
 
 val () = addDbms {name = "mysql",
                   header = "mysql/mysql.h",
@@ -273,6 +275,8 @@ val () = addDbms {name = "mysql",
                                      newline],
                   init = init,
                   query = query,
-                  queryPrepared = queryPrepared}
+                  queryPrepared = queryPrepared,
+                  dml = dml,
+                  dmlPrepared = dmlPrepared}
 
 end

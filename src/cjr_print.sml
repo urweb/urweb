@@ -1696,16 +1696,16 @@ fun p_exp' par env (e, loc) =
       | EDml {dml, prepared} =>
         box [string "(uw_begin_region(ctx), ({",
              newline,
-             string "PGconn *conn = uw_get_db(ctx);",
-             newline,
              case prepared of
                  NONE => box [string "char *dml = ",
                               p_exp env dml,
                               string ";",
-                              newline]
-               | SOME _ =>
+                              newline,
+                              newline,
+                              #dml (Settings.currentDbms ()) loc]
+               | SOME (id, dml') =>
                  let
-                     val ets = getPargs dml
+                     val inputs = getPargs dml
                  in
                      box [p_list_sepi newline
                                       (fn i => fn (e, t) =>
@@ -1718,83 +1718,18 @@ fun p_exp' par env (e, loc) =
                                                        space,
                                                        p_exp env e,
                                                        string ";"])
-                                      ets,
+                                      inputs,
                           newline,
                           newline,
 
-                          string "const int paramFormats[] = { ",
-                          p_list_sep (box [string ",", space])
-                                     (fn (_, t) => if isBlob t then string "1" else string "0") ets,
-                          string " };",
-                          newline,
-                          string "const int paramLengths[] = { ",
-                          p_list_sepi (box [string ",", space])
-                                      (fn i => fn (_, Blob) => string ("arg" ^ Int.toString (i + 1) ^ ".size")
-                                                | (_, Nullable Blob) => string ("arg" ^ Int.toString (i + 1)
-                                                                                ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
-                                                | _ => string "0") ets,
-                          string " };",
-                          newline,
-                          string "const char *paramValues[] = { ",
-                          p_list_sepi (box [string ",", space])
-                                      (fn i => fn (_, t) => p_ensql t (box [string "arg",
-                                                                            string (Int.toString (i + 1))]))
-                                      ets,
-                          string " };",
-                          newline,
-                          newline]
+                          #dmlPrepared (Settings.currentDbms ()) {loc = loc,
+                                                                  id = id,
+                                                                  dml = dml',
+                                                                  inputs = map #2 inputs}]
                  end,
              newline,
              newline,
-             string "PGresult *res = ",
-             case prepared of
-                 NONE => string "PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);"
-               | SOME (n, s) =>
-                 if #persistent (Settings.currentProtocol ()) then
-                     box [string "PQexecPrepared(conn, \"uw",
-                          string (Int.toString n),
-                          string "\", ",
-                          string (Int.toString (length (getPargs dml))),
-                          string ", paramValues, paramLengths, paramFormats, 0);"]
-                 else
-                     box [string "PQexecParams(conn, \"",
-                          string (String.toString s),
-                          string "\", ",
-                          string (Int.toString (length (getPargs dml))),
-                          string ", NULL, paramValues, paramLengths, paramFormats, 0);"],
-             newline,
-             newline,
 
-             string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
-             newline,
-             newline,
-
-             string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
-             newline,
-             box [string "if (!strcmp(PQresultErrorField(res, PG_DIAG_SQLSTATE), \"40001\")) {",
-                  box [newline,
-                       string "PQclear(res);",
-                       newline,
-                       string "uw_error(ctx, UNLIMITED_RETRY, \"Serialization failure\");",
-                       newline],
-                  string "}",
-                  newline,
-                  string "PQclear(res);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"",
-                  string (ErrorMsg.spanToString loc),
-                  string ": DML failed:\\n%s\\n%s\", ",
-                  case prepared of
-                      NONE => string "dml"
-                    | SOME _ => p_exp env dml,
-                  string ", PQerrorMessage(conn));",
-                  newline],
-             string "}",
-             newline,
-             newline,
-
-             string "PQclear(res);",
-             newline,
              string "uw_end_region(ctx);",
              newline,
              string "uw_unit_v;",

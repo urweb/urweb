@@ -135,7 +135,10 @@ signature SETTINGS = sig
                           inputs : sql_type list, numCols : int,
                           doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
                                    -> Print.PD.pp_desc}
-                         -> Print.PD.pp_desc
+                         -> Print.PD.pp_desc,
+         dml : ErrorMsg.span -> Print.PD.pp_desc,
+         dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
+                        inputs : sql_type list} -> Print.PD.pp_desc
     }
 
     val addDbms : dbms -> unit

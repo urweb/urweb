@@ -391,6 +391,87 @@ fun queryPrepared {loc, id, query, inputs, numCols, doCols} =
                                                                                   string (String.toString query),
                                                                                   string "\""]}]
 
+fun dmlCommon {loc, dml} =
+    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+         newline,
+         newline,
+
+         string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
+         newline,
+         box [string "if (!strcmp(PQresultErrorField(res, PG_DIAG_SQLSTATE), \"40001\")) {",
+              box [newline,
+                   string "PQclear(res);",
+                   newline,
+                   string "uw_error(ctx, UNLIMITED_RETRY, \"Serialization failure\");",
+                   newline],
+              string "}",
+              newline,
+              string "PQclear(res);",
+              newline,
+              string "uw_error(ctx, FATAL, \"",
+              string (ErrorMsg.spanToString loc),
+              string ": DML failed:\\n%s\\n%s\", ",
+              dml,
+              string ", PQerrorMessage(conn));",
+              newline],
+         string "}",
+         newline,
+         newline,
+
+         string "PQclear(res);",
+         newline]
+
+fun dml loc =
+    box [string "PGconn *conn = uw_get_db(ctx);",
+         newline,
+         string "PGresult *res = PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);",
+         newline,
+         newline,
+         dmlCommon {loc = loc, dml = string "dml"}]
+
+fun dmlPrepared {loc, id, dml, inputs} =
+    box [string "PGconn *conn = uw_get_db(ctx);",
+         newline,
+         string "const int paramFormats[] = { ",
+         p_list_sep (box [string ",", space])
+                    (fn t => if isBlob t then string "1" else string "0") inputs,
+         string " };",
+         newline,
+         string "const int paramLengths[] = { ",
+         p_list_sepi (box [string ",", space])
+                     (fn i => fn Blob => string ("arg" ^ Int.toString (i + 1) ^ ".size")
+                               | Nullable Blob => string ("arg" ^ Int.toString (i + 1)
+                                                          ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
+                               | _ => string "0") inputs,
+         string " };",
+         newline,
+         string "const char *paramValues[] = { ",
+         p_list_sepi (box [string ",", space])
+                     (fn i => fn t => p_ensql t (box [string "arg",
+                                                      string (Int.toString (i + 1))]))
+                     inputs,
+         string " };",
+         newline,
+         newline,
+         string "PGresult *res = ",
+         if #persistent (Settings.currentProtocol ()) then
+             box [string "PQexecPrepared(conn, \"uw",
+                  string (Int.toString id),
+                  string "\", ",
+                  string (Int.toString (length inputs)),
+                  string ", paramValues, paramLengths, paramFormats, 0);"]
+         else
+             box [string "PQexecParams(conn, \"",
+                  string (String.toString dml),
+                  string "\", ",
+                  string (Int.toString (length inputs)),
+                  string ", NULL, paramValues, paramLengths, paramFormats, 0);"],
+         newline,
+         newline,
+         dmlCommon {loc = loc, dml = box [string "\"",
+                                          string (String.toString dml),
+                                          string "\""]}]
+
 val () = addDbms {name = "postgres",
                   header = "postgresql/libpq-fe.h",
                   link = "-lpq",
@@ -398,7 +479,9 @@ val () = addDbms {name = "postgres",
                                      newline],
                   init = init,
                   query = query,
-                  queryPrepared = queryPrepared}
+                  queryPrepared = queryPrepared,
+                  dml = dml,
+                  dmlPrepared = dmlPrepared}
 val () = setDbms "postgres"
 
 end
