@@ -186,7 +186,7 @@ fun init (dbstring, ss) =
              newline,
              string "}",
              newline,
-             string "conn = malloc(sizeof(conn));",
+             string "conn = calloc(1, sizeof(conn));",
              newline,
              string "conn->conn = mysql;",
              newline,
@@ -253,6 +253,9 @@ fun init (dbstring, ss) =
              newline]
     end
 
+fun query _ = raise Fail "MySQL query"
+fun queryPrepared _ = raise Fail "MySQL queryPrepared"
+
 val () = addDbms {name = "mysql",
                   header = "mysql/mysql.h",
                   link = "-lmysqlclient",
@@ -268,6 +271,8 @@ val () = addDbms {name = "mysql",
                                           newline],
                               string "}",
                                      newline],
-                  init = init}
+                  init = init,
+                  query = query,
+                  queryPrepared = queryPrepared}
 
 end

@@ -274,12 +274,54 @@ val debug = ref false
 fun setDebug b = debug := b
 fun getDebug () = !debug
 
+datatype sql_type =
+         Int
+       | Float
+       | String
+       | Bool
+       | Time
+       | Blob
+       | Channel
+       | Client
+       | Nullable of sql_type
+
+fun p_sql_type t =
+    let
+        open Print.PD
+        open Print
+    in
+        case t of
+            Int => string "uw_Basis_int"
+          | Float => string "uw_Basis_float"
+          | String => string "uw_Basis_string"
+          | Bool => string "uw_Basis_bool"
+          | Time => string "uw_Basis_time"
+          | Blob => string "uw_Basis_blob"
+          | Channel => string "uw_Basis_channel"
+          | Client => string "uw_Basis_client"
+          | Nullable String => string "uw_Basis_string"
+          | Nullable t => box [p_sql_type t, string "*"]
+    end
+
+fun isBlob Blob = true
+  | isBlob (Nullable t) = isBlob t
+  | isBlob _ = false
+
 type dbms = {
      name : string,
      header : string,
      link : string,
      global_init : Print.PD.pp_desc,
-     init : string * (string * int) list -> Print.PD.pp_desc
+     init : string * (string * int) list -> Print.PD.pp_desc,
+     query : {loc : ErrorMsg.span, numCols : int,
+              doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
+                       -> Print.PD.pp_desc}
+             -> Print.PD.pp_desc,
+     queryPrepared : {loc : ErrorMsg.span, id : int, query : string,
+                      inputs : sql_type list, numCols : int,
+                      doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
+                               -> Print.PD.pp_desc}
+                     -> Print.PD.pp_desc
 }
 
 val dbmses = ref ([] : dbms list)
@@ -287,7 +329,9 @@ val curDb = ref ({name = "",
                   header = "",
                   link = "",
                   global_init = Print.box [],
-                  init = fn _ => Print.box []} : dbms)
+                  init = fn _ => Print.box [],
+                  query = fn _ => Print.box [],
+                  queryPrepared = fn _ => Print.box []} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =

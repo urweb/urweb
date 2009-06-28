@@ -470,20 +470,8 @@ fun p_getcol wontLeakStrings env (tAll as (t, loc)) i =
                            string ")"]),
              string ")"]
 
-datatype sql_type =
-         Int
-       | Float
-       | String
-       | Bool
-       | Time
-       | Blob
-       | Channel
-       | Client
-       | Nullable of sql_type
-
-fun isBlob Blob = true
-  | isBlob (Nullable t) = isBlob t
-  | isBlob _ = false
+datatype sql_type = datatype Settings.sql_type
+val isBlob = Settings.isBlob
 
 fun isFile (t : typ) =
     case #1 t of
@@ -1250,6 +1238,21 @@ fun urlify env t =
         urlify' IS.empty 0 t
     end
 
+fun sql_type_in env (tAll as (t, loc)) =
+    case t of
+        TFfi ("Basis", "int") => Int
+      | TFfi ("Basis", "float") => Float
+      | TFfi ("Basis", "string") => String
+      | TFfi ("Basis", "bool") => Bool
+      | TFfi ("Basis", "time") => Time
+      | TFfi ("Basis", "blob") => Blob
+      | TFfi ("Basis", "channel") => Channel
+      | TFfi ("Basis", "client") => Client
+      | TOption t' => Nullable (sql_type_in env t')
+      | _ => (ErrorMsg.errorAt loc "Don't know SQL equivalent of type";
+              Print.eprefaces' [("Type", p_typ env tAll)];
+              Int)
+
 fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t_GCC p
@@ -1570,14 +1573,62 @@ fun p_exp' par env (e, loc) =
 
             val wontLeakStrings = notLeaky env true state
             val wontLeakAnything = notLeaky env false state
+
+            val inputs =
+                case prepared of
+                    NONE => []
+                  | SOME _ => getPargs query
+
+            fun doCols p_getcol =
+                box [string "struct __uws_",
+                     string (Int.toString rnum),
+                     string " __uwr_r_",
+                     string (Int.toString (E.countERels env)),
+                     string ";",
+                     newline,
+                     p_typ env state,
+                     space,
+                     string "__uwr_acc_",
+                     string (Int.toString (E.countERels env + 1)),
+                     space,
+                     string "=",
+                     space,
+                     string "acc;",
+                     newline,
+                     newline,
+                     p_list_sepi (box []) (fn i =>
+                                           fn (proj, t) =>
+                                              box [string "__uwr_r_",
+                                                   string (Int.toString (E.countERels env)),
+                                                   string ".",
+                                                   string proj,
+                                                   space,
+                                                   string "=",
+                                                   space,
+                                                   p_getcol {wontLeakStrings = wontLeakStrings,
+                                                             col = i,
+                                                             typ = sql_type_in env t},
+                                                   string ";",
+                                                   newline]) outputs,
+                     newline,
+                     newline,
+
+                     string "acc",
+                     space,
+                     string "=",
+                     space,
+                     p_exp (E.pushERel
+                                (E.pushERel env "r" (TRecord rnum, loc))
+                                "acc" state) 
+                           body,
+                     string ";",
+                     newline]
         in
             box [if wontLeakAnything then
                      string "(uw_begin_region(ctx), "
                  else
                      box [],
                  string "({",
-                 newline,
-                 string "PGconn *conn = uw_get_db(ctx);",
                  newline,
                  p_typ env state,
                  space,
@@ -1588,176 +1639,46 @@ fun p_exp' par env (e, loc) =
                  p_exp env initial,
                  string ";",
                  newline,
-                 string "int n, i, dummy = (uw_begin_region(ctx), 0);",
+                 string "int dummy = (uw_begin_region(ctx), 0);",
                  newline,
                  
                  case prepared of
-                     NONE => box [string "char *query = ",
-                                  p_exp env query,
-                                  string ";",
-                                  newline]
-                   | SOME _ =>
-                     let
-                         val ets = getPargs query
-                     in
-                         box [p_list_sepi newline
-                                          (fn i => fn (e, t) =>
-                                                      box [p_sql_type t,
-                                                           space,
-                                                           string "arg",
-                                                           string (Int.toString (i + 1)),
-                                                           space,
-                                                           string "=",
-                                                           space,
-                                                           p_exp env e,
-                                                           string ";"])
-                                          ets,
-                              newline,
-                              newline,
+                     NONE =>
+                     box [string "char *query = ",
+                          p_exp env query,
+                          string ";",
+                          newline,
+                          newline,
 
-                              string "const int paramFormats[] = { ",
-                              p_list_sep (box [string ",", space])
-                              (fn (_, t) => if isBlob t then string "1" else string "0") ets,
-                              string " };",
-                              newline,
-                              string "const int paramLengths[] = { ",
-                              p_list_sepi (box [string ",", space])
-                              (fn i => fn (_, Blob) => string ("arg" ^ Int.toString (i + 1) ^ ".size")
-                                        | (_, Nullable Blob) => string ("arg" ^ Int.toString (i + 1)
-                                                                        ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
-                                        | _ => string "0") ets,
-                              string " };",
-                              newline,
-                              string "const char *paramValues[] = { ",
-                              p_list_sepi (box [string ",", space])
-                              (fn i => fn (_, t) => p_ensql t (box [string "arg",
-                                                                    string (Int.toString (i + 1))]))
-                              ets,
-                              string " };",
-                              newline,
-                              newline]
-                     end,
+                          #query (Settings.currentDbms ())
+                                 {loc = loc,
+                                  numCols = length outputs,
+                                  doCols = doCols}]
+                   | SOME (id, query) =>
+                     box [p_list_sepi newline
+                                      (fn i => fn (e, t) =>
+                                                  box [p_sql_type t,
+                                                       space,
+                                                       string "arg",
+                                                       string (Int.toString (i + 1)),
+                                                       space,
+                                                       string "=",
+                                                       space,
+                                                       p_exp env e,
+                                                       string ";"])
+                                      inputs,
+                          newline,
+                          newline,
 
-                 string "PGresult *res = ",
-                 case prepared of
-                     NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
-                   | SOME (n, s) =>
-                     if #persistent (Settings.currentProtocol ()) then
-                         box [string "PQexecPrepared(conn, \"uw",
-                              string (Int.toString n),
-                              string "\", ",
-                              string (Int.toString (length (getPargs query))),
-                              string ", paramValues, paramLengths, paramFormats, 0);"]
-                     else
-                         box [string "PQexecParams(conn, \"",
-                              string (String.toString s),
-                              string "\", ",
-                              string (Int.toString (length (getPargs query))),
-                              string ", NULL, paramValues, paramLengths, paramFormats, 0);"],
-                 newline,
+                          #queryPrepared (Settings.currentDbms ())
+                                         {loc = loc,
+                                          id = id,
+                                          query = query,
+                                          inputs = map #2 inputs,
+                                          numCols = length outputs,
+                                          doCols = doCols}],
                  newline,
 
-                 string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-                 newline,
-                 newline,
-
-                 string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-                 newline,
-                 box [string "PQclear(res);",
-                      newline,
-                      string "uw_error(ctx, FATAL, \"",
-                      string (ErrorMsg.spanToString loc),
-                      string ": Query failed:\\n%s\\n%s\", ",
-                      case prepared of
-                          NONE => string "query"
-                        | SOME _ => p_exp env query,
-                      string ", PQerrorMessage(conn));",
-                      newline],
-                 string "}",
-                 newline,
-                 newline,
-
-                 string "if (PQnfields(res) != ",
-                 string (Int.toString (length outputs)),
-                 string ") {",
-                 newline,
-                 box [string "int nf = PQnfields(res);",
-                      newline,
-                      string "PQclear(res);",
-                      newline,
-                      string "uw_error(ctx, FATAL, \"",
-                      string (ErrorMsg.spanToString loc),
-                      string ": Query returned %d columns instead of ",
-                      string (Int.toString (length outputs)),
-                      string ":\\n%s\\n%s\", ",
-                      case prepared of
-                          NONE => string "query"
-                        | SOME _ => p_exp env query,
-                      string ", nf, PQerrorMessage(conn));",
-                      newline],
-                 string "}",
-                 newline,
-                 newline,
-
-                 string "uw_end_region(ctx);",
-                 newline,
-                 string "uw_push_cleanup(ctx, (void (*)(void *))PQclear, res);",
-                 newline,
-                 string "n = PQntuples(res);",
-                 newline,
-                 string "for (i = 0; i < n; ++i) {",
-                 newline,
-                 box [string "struct",
-                      space,
-                      string "__uws_",
-                      string (Int.toString rnum),
-                      space,
-                      string "__uwr_r_",
-                      string (Int.toString (E.countERels env)),
-                      string ";",
-                      newline,
-                      p_typ env state,
-                      space,
-                      string "__uwr_acc_",
-                      string (Int.toString (E.countERels env + 1)),
-                      space,
-                      string "=",
-                      space,
-                      string "acc;",
-                      newline,
-                      newline,
-
-                      p_list_sepi (box []) (fn i =>
-                                            fn (proj, t) =>
-                                               box [string "__uwr_r_",
-                                                    string (Int.toString (E.countERels env)),
-                                                    string ".",
-                                                    string proj,
-                                                    space,
-                                                    string "=",
-                                                    space,
-                                                    p_getcol wontLeakStrings env t i,
-                                                    string ";",
-                                                    newline]) outputs,
-             
-                      newline,
-                      newline,
-
-                      string "acc",
-                      space,
-                      string "=",
-                      space,
-                      p_exp (E.pushERel
-                                 (E.pushERel env "r" (TRecord rnum, loc))
-                                 "acc" state) 
-                            body,
-                      string ";",
-                      newline],
-                 string "}",
-                 newline,
-                 newline,
-                 string "uw_pop_cleanup(ctx);",
-                 newline,
                  if wontLeakAnything then
                      box [string "uw_end_region(ctx);",
                           newline]

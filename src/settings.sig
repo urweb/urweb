@@ -101,6 +101,20 @@ signature SETTINGS = sig
     val currentProtocol : unit -> protocol
 
     (* Different DBMSes *)
+    datatype sql_type =
+             Int
+           | Float
+           | String
+           | Bool
+           | Time
+           | Blob
+           | Channel
+           | Client
+           | Nullable of sql_type
+
+    val p_sql_type : sql_type -> Print.PD.pp_desc
+    val isBlob : sql_type -> bool
+
     type dbms = {
          name : string,
          (* Call it this on the command line *)
@@ -110,8 +124,18 @@ signature SETTINGS = sig
          (* Pass these linker arguments *)
          global_init : Print.PD.pp_desc,
          (* Define uw_client_init() *)
-         init : string * (string * int) list -> Print.PD.pp_desc
-         (* Define uw_db_init() from dbstring and prepared statements *)
+         init : string * (string * int) list -> Print.PD.pp_desc,
+         (* Define uw_db_init(), uw_db_close(), uw_db_begin(), uw_db_commit(), and uw_db_rollback()
+          * from dbstring and prepared statements *)
+         query : {loc : ErrorMsg.span, numCols : int,
+                  doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
+                           -> Print.PD.pp_desc}
+                 -> Print.PD.pp_desc,
+         queryPrepared : {loc : ErrorMsg.span, id : int, query : string,
+                          inputs : sql_type list, numCols : int,
+                          doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
+                                   -> Print.PD.pp_desc}
+                         -> Print.PD.pp_desc
     }
 
     val addDbms : dbms -> unit

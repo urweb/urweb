@@ -189,12 +189,216 @@ fun init (dbstring, ss) =
          newline,
          string "}"]
 
+fun p_getcol {wontLeakStrings, col = i, typ = t} =
+    let
+        fun p_unsql t e eLen =
+            case t of
+                Int => box [string "uw_Basis_stringToInt_error(ctx, ", e, string ")"]
+              | Float => box [string "uw_Basis_stringToFloat_error(ctx, ", e, string ")"]
+              | String =>
+                if wontLeakStrings then
+                    e
+                else
+                    box [string "uw_strdup(ctx, ", e, string ")"]
+              | Bool => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
+              | Time => box [string "uw_Basis_stringToTime_error(ctx, ", e, string ")"]
+              | Blob => box [string "uw_Basis_stringToBlob_error(ctx, ",
+                             e,
+                             string ", ",
+                             eLen,
+                             string ")"]
+              | Channel => box [string "uw_Basis_stringToChannel_error(ctx, ", e, string ")"]
+              | Client => box [string "uw_Basis_stringToClient_error(ctx, ", e, string ")"]
+
+              | Nullable _ => raise Fail "Postgres: Recursive Nullable"
+
+        fun getter t =
+            case t of
+                Nullable t =>
+                box [string "(PQgetisnull(res, i, ",
+                     string (Int.toString i),
+                     string ") ? NULL : ",
+                     case t of
+                         String => getter t
+                       | _ => box [string "({",
+                                   newline,
+                                   p_sql_type t,
+                                   space,
+                                   string "*tmp = uw_malloc(ctx, sizeof(",
+                                   p_sql_type t,
+                                   string "));",
+                                   newline,
+                                   string "*tmp = ",
+                                   getter t,
+                                   string ";",
+                                   newline,
+                                   string "tmp;",
+                                   newline,
+                                   string "})"],
+                     string ")"]
+              | _ =>
+                box [string "(PQgetisnull(res, i, ",
+                     string (Int.toString i),
+                     string ") ? ",
+                     box [string "({",
+                          p_sql_type t,
+                          space,
+                          string "tmp;",
+                          newline,
+                          string "uw_error(ctx, FATAL, \"Unexpectedly NULL field #",
+                          string (Int.toString i),
+                          string "\");",
+                          newline,
+                          string "tmp;",
+                          newline,
+                          string "})"],
+                     string " : ",
+                     p_unsql t
+                             (box [string "PQgetvalue(res, i, ",
+                                   string (Int.toString i),
+                                   string ")"])
+                             (box [string "PQgetlength(res, i, ",
+                                   string (Int.toString i),
+                                   string ")"]),
+                     string ")"]
+    in
+        getter t
+    end
+
+fun queryCommon {loc, query, numCols, doCols} =
+    box [string "int n, i;",
+         newline,
+         newline,
+
+         string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+         newline,
+         newline,
+
+         string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+         newline,
+         box [string "PQclear(res);",
+              newline,
+              string "uw_error(ctx, FATAL, \"",
+              string (ErrorMsg.spanToString loc),
+              string ": Query failed:\\n%s\\n%s\", ",
+              query,
+              string ", PQerrorMessage(conn));",
+              newline],
+         string "}",
+         newline,
+         newline,
+
+         string "if (PQnfields(res) != ",
+         string (Int.toString numCols),
+         string ") {",
+         newline,
+         box [string "int nf = PQnfields(res);",
+              newline,
+              string "PQclear(res);",
+              newline,
+              string "uw_error(ctx, FATAL, \"",
+              string (ErrorMsg.spanToString loc),
+              string ": Query returned %d columns instead of ",
+              string (Int.toString numCols),
+              string ":\\n%s\\n%s\", nf, ",
+              query,
+              string ", PQerrorMessage(conn));",
+              newline],
+         string "}",
+         newline,
+         newline,
+
+         string "uw_end_region(ctx);",
+         newline,
+         string "uw_push_cleanup(ctx, (void (*)(void *))PQclear, res);",
+         newline,
+         string "n = PQntuples(res);",
+         newline,
+         string "for (i = 0; i < n; ++i) {",
+         newline,
+         doCols p_getcol,
+         string "}",
+         newline,
+         newline,
+         string "uw_pop_cleanup(ctx);",
+         newline]    
+
+fun query {loc, numCols, doCols} =
+    box [string "PGconn *conn = uw_get_db(ctx);",
+         newline,
+         string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
+         newline,
+         newline,
+         queryCommon {loc = loc, numCols = numCols, doCols = doCols, query = string "query"}]
+
+fun p_ensql t e =
+    case t of
+        Int => box [string "uw_Basis_attrifyInt(ctx, ", e, string ")"]
+      | Float => box [string "uw_Basis_attrifyFloat(ctx, ", e, string ")"]
+      | String => e
+      | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
+      | Time => box [string "uw_Basis_attrifyTime(ctx, ", e, string ")"]
+      | Blob => box [e, string ".data"]
+      | Channel => box [string "uw_Basis_attrifyChannel(ctx, ", e, string ")"]
+      | Client => box [string "uw_Basis_attrifyClient(ctx, ", e, string ")"]
+      | Nullable String => e
+      | Nullable t => box [string "(",
+                           e,
+                           string " == NULL ? NULL : ",
+                           p_ensql t (box [string "(*", e, string ")"]),
+                           string ")"]
+
+fun queryPrepared {loc, id, query, inputs, numCols, doCols} =
+    box [string "PGconn *conn = uw_get_db(ctx);",
+         newline,
+         string "const int paramFormats[] = { ",
+         p_list_sep (box [string ",", space])
+                    (fn t => if isBlob t then string "1" else string "0") inputs,
+         string " };",
+         newline,
+         string "const int paramLengths[] = { ",
+         p_list_sepi (box [string ",", space])
+                     (fn i => fn Blob => string ("arg" ^ Int.toString (i + 1) ^ ".size")
+                               | Nullable Blob => string ("arg" ^ Int.toString (i + 1)
+                                                          ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
+                               | _ => string "0") inputs,
+         string " };",
+         newline,
+         string "const char *paramValues[] = { ",
+         p_list_sepi (box [string ",", space])
+                     (fn i => fn t => p_ensql t (box [string "arg",
+                                                      string (Int.toString (i + 1))]))
+                     inputs,
+         string " };",
+         newline,
+         newline,
+         string "PGresult *res = ",
+         if #persistent (Settings.currentProtocol ()) then
+             box [string "PQexecPrepared(conn, \"uw",
+                  string (Int.toString id),
+                  string "\", ",
+                  string (Int.toString (length inputs)),
+                  string ", paramValues, paramLengths, paramFormats, 0);"]
+         else
+             box [string "PQexecParams(conn, \"",
+                  string (String.toString query),
+                  string "\", ",
+                  string (Int.toString (length inputs)),
+                  string ", NULL, paramValues, paramLengths, paramFormats, 0);"],
+         newline,
+         newline,
+         queryCommon {loc = loc, numCols = numCols, doCols = doCols, query = box [string "\"",
+                                                                                  string (String.toString query),
+                                                                                  string "\""]}]
+
 val () = addDbms {name = "postgres",
                   header = "postgresql/libpq-fe.h",
                   link = "-lpq",
                   global_init = box [string "void uw_client_init() { }",
                                      newline],
-                  init = init}
+                  init = init,
+                  query = query,
+                  queryPrepared = queryPrepared}
 val () = setDbms "postgres"
 
 end
