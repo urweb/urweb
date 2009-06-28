@@ -138,7 +138,9 @@ signature SETTINGS = sig
                          -> Print.PD.pp_desc,
          dml : ErrorMsg.span -> Print.PD.pp_desc,
          dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
-                        inputs : sql_type list} -> Print.PD.pp_desc
+                        inputs : sql_type list} -> Print.PD.pp_desc,
+         nextval : ErrorMsg.span -> Print.PD.pp_desc,
+         nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc
     }
 
     val addDbms : dbms -> unit

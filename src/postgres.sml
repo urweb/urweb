@@ -472,6 +472,75 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                           string (String.toString dml),
                                           string "\""]}]
 
+fun nextvalCommon {loc, query} =
+    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating nextval result.\");",
+         newline,
+         newline,
+
+         string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+         newline,
+         box [string "PQclear(res);",
+              newline,
+              string "uw_error(ctx, FATAL, \"",
+              string (ErrorMsg.spanToString loc),
+              string ": Query failed:\\n%s\\n%s\", ",
+              query,
+              string ", PQerrorMessage(conn));",
+              newline],
+         string "}",
+         newline,
+         newline,
+
+         string "uw_end_region(ctx);",
+         newline,
+         string "n = PQntuples(res);",
+         newline,
+         string "if (n != 1) {",
+         newline,
+         box [string "PQclear(res);",
+              newline,
+              string "uw_error(ctx, FATAL, \"",
+              string (ErrorMsg.spanToString loc),
+              string ": Wrong number of result rows:\\n%s\\n%s\", ",
+              query,
+              string ", PQerrorMessage(conn));",
+              newline],
+         string "}",
+         newline,
+         newline,
+
+         string "n = uw_Basis_stringToInt_error(ctx, PQgetvalue(res, 0, 0));",
+         newline,
+         string "PQclear(res);",
+         newline]
+
+fun nextval loc =
+    box [string "PGconn *conn = uw_get_db(ctx);",
+         newline,
+         string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
+         newline,
+         newline,
+         nextvalCommon {loc = loc, query = string "query"}]
+
+fun nextvalPrepared {loc, id, query} =
+    box [string "PGconn *conn = uw_get_db(ctx);",
+         newline,
+         newline,
+         string "PGresult *res = ",
+         if #persistent (Settings.currentProtocol ()) then
+             box [string "PQexecPrepared(conn, \"uw",
+                  string (Int.toString id),
+                  string "\", 0, NULL, NULL, NULL, 0);"]
+         else
+             box [string "PQexecParams(conn, \"",
+                  string (String.toString query),
+                  string "\", 0, NULL, NULL, NULL, NULL, 0);"],
+         newline,
+         newline,
+         nextvalCommon {loc = loc, query = box [string "\"",
+                                                string (String.toString query),
+                                                string "\""]}]
+
 val () = addDbms {name = "postgres",
                   header = "postgresql/libpq-fe.h",
                   link = "-lpq",
@@ -481,7 +550,9 @@ val () = addDbms {name = "postgres",
                   query = query,
                   queryPrepared = queryPrepared,
                   dml = dml,
-                  dmlPrepared = dmlPrepared}
+                  dmlPrepared = dmlPrepared,
+                  nextval = nextval,
+                  nextvalPrepared = nextvalPrepared}
 val () = setDbms "postgres"
 
 end

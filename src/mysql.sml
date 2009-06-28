@@ -257,6 +257,8 @@ fun query _ = raise Fail "MySQL query"
 fun queryPrepared _ = raise Fail "MySQL queryPrepared"
 fun dml _ = raise Fail "MySQL dml"
 fun dmlPrepared _ = raise Fail "MySQL dmlPrepared"
+fun nextval _ = raise Fail "MySQL nextval"
+fun nextvalPrepared _ = raise Fail "MySQL nextvalPrepared"
 
 val () = addDbms {name = "mysql",
                   header = "mysql/mysql.h",
@@ -277,6 +279,8 @@ val () = addDbms {name = "mysql",
                   query = query,
                   queryPrepared = queryPrepared,
                   dml = dml,
-                  dmlPrepared = dmlPrepared}
+                  dmlPrepared = dmlPrepared,
+                  nextval = nextval,
+                  nextvalPrepared = nextvalPrepared}
 
 end

@@ -324,7 +324,9 @@ type dbms = {
                      -> Print.PD.pp_desc,
      dml : ErrorMsg.span -> Print.PD.pp_desc,
      dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
-                    inputs : sql_type list} -> Print.PD.pp_desc
+                    inputs : sql_type list} -> Print.PD.pp_desc,
+     nextval : ErrorMsg.span -> Print.PD.pp_desc,
+     nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc
 }
 
 val dbmses = ref ([] : dbms list)
@@ -336,7 +338,9 @@ val curDb = ref ({name = "",
                   query = fn _ => Print.box [],
                   queryPrepared = fn _ => Print.box [],
                   dml = fn _ => Print.box [],
-                  dmlPrepared = fn _ => Print.box []} : dbms)
+                  dmlPrepared = fn _ => Print.box [],
+                  nextval = fn _ => Print.box [],
+                  nextvalPrepared = fn _ => Print.box []} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =

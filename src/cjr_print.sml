@@ -1751,81 +1751,23 @@ fun p_exp' par env (e, loc) =
             box [string "(uw_begin_region(ctx), ",
                  string "({",
                  newline,
-                 string "PGconn *conn = uw_get_db(ctx);",
+                 string "uw_Basis_int n;",
                  newline,
+
                  case prepared of
                      NONE => box [string "char *query = ",
                                   p_exp env query,
                                   string ";",
-                                  newline]
-                   | SOME _ =>
-                     box [],
-                 newline,
-                 string "PGresult *res = ",
-                 case prepared of
-                     NONE => string "PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
-                   | SOME (n, s) =>
-                     if #persistent (Settings.currentProtocol ()) then
-                         box [string "PQexecPrepared(conn, \"uw",
-                              string (Int.toString n),
-                              string "\", 0, NULL, NULL, NULL, 0);"]
-                     else
-                         box [string "PQexecParams(conn, \"uw",
-                              string (Int.toString n),
-                              string "\", 0, NULL, NULL, NULL, NULL, 0);"],
-                 newline,
-                 string "uw_Basis_int n;",
+                                  newline,
+                                  newline,
+
+                                  #nextval (Settings.currentDbms ()) loc]
+                   | SOME (id, query) => #nextvalPrepared (Settings.currentDbms ()) {loc = loc,
+                                                                                     id = id,
+                                                                                     query = query},
                  newline,
                  newline,
 
-                 string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating nextval result.\");",
-                 newline,
-                 newline,
-
-                 string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-                 newline,
-                 box [string "PQclear(res);",
-                      newline,
-                      string "uw_error(ctx, FATAL, \"",
-                      string (ErrorMsg.spanToString loc),
-                      string ": Query failed:\\n%s\\n%s\", ",
-                      case prepared of
-                          NONE => string "query"
-                        | SOME _ => p_exp env query,
-                      string ", PQerrorMessage(conn));",
-                      newline],
-                 string "}",
-                 newline,
-                 newline,
-
-                 string "uw_end_region(ctx);",
-                 newline,
-                 string "n = PQntuples(res);",
-                 newline,
-                 string "if (n != 1) {",
-                 newline,
-                 box [string "PQclear(res);",
-                      newline,
-                      string "uw_error(ctx, FATAL, \"",
-                      string (ErrorMsg.spanToString loc),
-                      string ": Wrong number of result rows:\\n%s\\n%s\", ",
-                      case prepared of
-                          NONE => string "query"
-                        | SOME _ => p_exp env query,
-                      string ", PQerrorMessage(conn));",
-                      newline],
-                 string "}",
-                 newline,
-                 newline,
-
-                 string "n = ",
-                 p_unsql true env (TFfi ("Basis", "int"), loc)
-                         (string "PQgetvalue(res, 0, 0)")
-                         (box []),
-                 string ";",
-                 newline,
-                 string "PQclear(res);",
-                 newline,
                  string "n;",
                  newline,
                  string "}))"]
