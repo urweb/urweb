@@ -112,8 +112,9 @@ signature SETTINGS = sig
            | Client
            | Nullable of sql_type
 
-    val p_sql_type : sql_type -> Print.PD.pp_desc
+    val p_sql_type : sql_type -> string
     val isBlob : sql_type -> bool
+    val isNotNull : sql_type -> bool
 
     type dbms = {
          name : string,
@@ -124,9 +125,11 @@ signature SETTINGS = sig
          (* Pass these linker arguments *)
          global_init : Print.PD.pp_desc,
          (* Define uw_client_init() *)
-         init : string * (string * int) list -> Print.PD.pp_desc,
-         (* Define uw_db_init(), uw_db_close(), uw_db_begin(), uw_db_commit(), and uw_db_rollback()
-          * from dbstring and prepared statements *)
+         init : {dbstring : string,
+                 prepared : (string * int) list,
+                 tables : (string * (string * sql_type) list) list,
+                 sequences : string list} -> Print.PD.pp_desc,
+         (* Define uw_db_init(), uw_db_close(), uw_db_begin(), uw_db_commit(), and uw_db_rollback() *)
          query : {loc : ErrorMsg.span, numCols : int,
                   doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
                            -> Print.PD.pp_desc}

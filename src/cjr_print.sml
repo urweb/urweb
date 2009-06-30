@@ -1837,8 +1837,6 @@ fun p_fun env (fx, n, args, ran, e) =
              string "}"]
     end
 
-val prepped = ref ([] : (string * int) list)
-
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DStruct (n, xts) =>
@@ -1990,35 +1988,8 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 space,
                                 string " */",
                                 newline]
-      | DDatabase {name, expunge, initialize} =>
-        box [string "static void uw_db_validate(uw_context);",
-             newline,
-             string "static void uw_db_prepare(uw_context);",
-             newline,
-             newline,
-
-             #init (Settings.currentDbms ()) (name, !prepped),
-
-             string "void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
-             newline,
-             box [p_enamed env expunge,
-                  string "(ctx, cli);",
-                  newline],
-             string "}",
-             newline,
-             newline,
-
-             string "void uw_initializer(uw_context ctx) {",
-             newline,
-             box [p_enamed env initialize,
-                  string "(ctx, uw_unit_v);",
-                  newline],
-             string "}",
-             newline]
-
-      | DPreparedStatements ss =>
-        (prepped := ss;
-         box [])
+      | DDatabase _ => box []
+      | DPreparedStatements _ => box []
 
       | DJavaScript s => box [string "static char jslib[] = \"",
                               string (String.toString s),
@@ -2605,267 +2576,27 @@ fun p_file env (ds, ps) =
 
         val pds' = map p_page ps
 
-        val tables = List.mapPartial (fn (DTable (s, xts, _, _), _) => SOME (s, xts)
-                                       | _ => NONE) ds
-        val sequences = List.mapPartial (fn (DSequence s, _) => SOME s
-                                          | _ => NONE) ds
+        val hasDb = ref false
+        val tables = ref []
+        val sequences = ref []
+        val dbstring = ref ""
+        val expunge = ref 0
+        val initialize = ref 0
+        val prepped = ref []
 
-        val validate =
-            if #persistent (Settings.currentProtocol ()) then
-                box [string "static void uw_db_validate(uw_context ctx) {",
-                     newline,
-                     string "PGconn *conn = uw_get_db(ctx);",
-                     newline,
-                     string "PGresult *res;",
-                     newline,
-                     newline,
-                     p_list_sep newline
-                                (fn (s, xts) =>
-                                    let
-                                        val sl = CharVector.map Char.toLower s
+        val () = app (fn d =>
+                         case #1 d of
+                             DDatabase {name = x, expunge = y, initialize = z} => (hasDb := true;
+                                                                                   dbstring := x;
+                                                                                   expunge := y;
+                                                                                   initialize := z)
+                           | DTable (s, xts, _, _) => tables := (s, map (fn (x, t) =>
+                                                                            (x, sql_type_in env t)) xts) :: !tables
+                           | DSequence s => sequences := s :: !sequences
+                           | DPreparedStatements ss => prepped := ss
+                           | _ => ()) ds
 
-                                        val q = "SELECT COUNT(*) FROM pg_class WHERE relname = '"
-                                                ^ sl ^ "'"
-
-                                        val q' = String.concat ["SELECT COUNT(*) FROM pg_attribute WHERE attrelid = (SELECT oid FROM pg_class WHERE relname = '",
-                                                                sl,
-                                                                "') AND (",
-                                                                String.concatWith " OR "
-                                                                                  (map (fn (x, t) =>
-                                                                                           String.concat ["(attname = 'uw_",
-                                                                                                          CharVector.map
-                                                                                                              Char.toLower (ident x),
-                                                                                                          "' AND atttypid = (SELECT oid FROM pg_type",
-                                                                                                          " WHERE typname = '",
-                                                                                                          p_sqltype_base' env t,
-                                                                                                          "') AND attnotnull = ",
-                                                                                                          if is_not_null t then
-                                                                                                              "TRUE"
-                                                                                                          else
-                                                                                                              "FALSE",
-                                                                                                          ")"]) xts),
-                                                                ")"]
-
-                                        val q'' = String.concat ["SELECT COUNT(*) FROM pg_attribute WHERE attrelid = (SELECT oid FROM pg_class WHERE relname = '",
-                                                                 sl,
-                                                                 "') AND attname LIKE 'uw_%'"]
-                                    in
-                                        box [string "res = PQexec(conn, \"",
-                                             string q,
-                                             string "\");",
-                                             newline,
-                                             newline,
-                                             string "if (res == NULL) {",
-                                             newline,
-                                             box [string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-                                             newline,
-                                             box [string "char msg[1024];",
-                                                  newline,
-                                                  string "strncpy(msg, PQerrorMessage(conn), 1024);",
-                                                  newline,
-                                                  string "msg[1023] = 0;",
-                                                  newline,
-                                                  string "PQclear(res);",
-                                                  newline,
-                                                  string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Query failed:\\n",
-                                                  string q,
-                                                  string "\\n%s\", msg);",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "if (strcmp(PQgetvalue(res, 0, 0), \"1\")) {",
-                                             newline,
-                                             box [string "PQclear(res);",
-                                                  newline,
-                                                  string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Table '",
-                                                  string s,
-                                                  string "' does not exist.\");",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "PQclear(res);",
-                                             newline,
-
-                                             string "res = PQexec(conn, \"",
-                                             string q',
-                                             string "\");",
-                                             newline,
-                                             newline,
-                                             string "if (res == NULL) {",
-                                             newline,
-                                             box [string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-                                             newline,
-                                             box [string "char msg[1024];",
-                                                  newline,
-                                                  string "strncpy(msg, PQerrorMessage(conn), 1024);",
-                                                  newline,
-                                                  string "msg[1023] = 0;",
-                                                  newline,
-                                                  string "PQclear(res);",
-                                                  newline,
-                                                  string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Query failed:\\n",
-                                                  string q',
-                                                  string "\\n%s\", msg);",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "if (strcmp(PQgetvalue(res, 0, 0), \"",
-                                             string (Int.toString (length xts)),
-                                             string "\")) {",
-                                             newline,
-                                             box [string "PQclear(res);",
-                                                  newline,
-                                                  string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Table '",
-                                                  string s,
-                                                  string "' has the wrong column types.\");",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "PQclear(res);",
-                                             newline,
-                                             newline,
-
-                                             string "res = PQexec(conn, \"",
-                                             string q'',
-                                             string "\");",
-                                             newline,
-                                             newline,
-                                             string "if (res == NULL) {",
-                                             newline,
-                                             box [string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-                                             newline,
-                                             box [string "char msg[1024];",
-                                                  newline,
-                                                  string "strncpy(msg, PQerrorMessage(conn), 1024);",
-                                                  newline,
-                                                  string "msg[1023] = 0;",
-                                                  newline,
-                                                  string "PQclear(res);",
-                                                  newline,
-                                                  string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Query failed:\\n",
-                                                  string q'',
-                                                  string "\\n%s\", msg);",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "if (strcmp(PQgetvalue(res, 0, 0), \"",
-                                             string (Int.toString (length xts)),
-                                             string "\")) {",
-                                             newline,
-                                             box [string "PQclear(res);",
-                                                  newline,
-                                                  string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Table '",
-                                                  string s,
-                                                  string "' has extra columns.\");",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "PQclear(res);",
-                                             newline]
-                                    end) tables,
-
-                     p_list_sep newline
-                                (fn s =>
-                                    let
-                                        val sl = CharVector.map Char.toLower s
-
-                                        val q = "SELECT COUNT(*) FROM pg_class WHERE relname = '"
-                                                ^ sl ^ "' AND relkind = 'S'"
-                                    in
-                                        box [string "res = PQexec(conn, \"",
-                                             string q,
-                                             string "\");",
-                                             newline,
-                                             newline,
-                                             string "if (res == NULL) {",
-                                             newline,
-                                             box [string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-                                             newline,
-                                             box [string "char msg[1024];",
-                                                  newline,
-                                                  string "strncpy(msg, PQerrorMessage(conn), 1024);",
-                                                  newline,
-                                                  string "msg[1023] = 0;",
-                                                  newline,
-                                                  string "PQclear(res);",
-                                                  newline,
-                                                  string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Query failed:\\n",
-                                                  string q,
-                                                  string "\\n%s\", msg);",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "if (strcmp(PQgetvalue(res, 0, 0), \"1\")) {",
-                                             newline,
-                                             box [string "PQclear(res);",
-                                                  newline,
-                                                  string "PQfinish(conn);",
-                                                  newline,
-                                                  string "uw_error(ctx, FATAL, \"Sequence '",
-                                                  string s,
-                                                  string "' does not exist.\");",
-                                                  newline],
-                                             string "}",
-                                             newline,
-                                             newline,
-                                             string "PQclear(res);",
-                                             newline]
-                                    end) sequences,
-
-                     string "}"]
-            else
-                string "static void uw_db_validate(uw_context ctx) { }"
-
-        val hasDb = List.exists (fn (DDatabase _, _) => true | _ => false) ds
+        val hasDb = !hasDb                                            
 
         val cookies = List.mapPartial (fn (DCookie s, _) => SOME s | _ => NONE) ds
 
@@ -2920,7 +2651,6 @@ fun p_file env (ds, ps) =
                       newline]
              else
                  box [],
-             newline,
              p_list_sep (box []) (fn s => box [string "#include \"",
                                                string s,
                                                string "\"",
@@ -2929,6 +2659,22 @@ fun p_file env (ds, ps) =
              string (OS.Path.joinDirFile {dir = Config.includ,
                                           file = "urweb.h"}),
              string "\"",
+             newline,
+             newline,
+
+             if hasDb then
+                 #init (Settings.currentDbms ()) {dbstring = !dbstring,
+                                                  prepared = !prepped,
+                                                  tables = !tables,
+                                                  sequences = !sequences}
+             else
+                 box [string "void uw_db_init(uw_context ctx) { };",
+                      newline,
+                      string "int uw_db_begin(uw_context ctx) { return 0; };",
+                      newline,
+                      string "int uw_db_commit(uw_context ctx) { return 0; };",
+                      newline,
+                      string "int uw_db_rollback(uw_context ctx) { return 0; };"],
              newline,
              newline,
 
@@ -3008,24 +2754,26 @@ fun p_file env (ds, ps) =
              string "}",
              newline,
              newline,
+
              if hasDb then
-                 validate
+                 box [string "void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
+                      newline,
+                      box [p_enamed env (!expunge),
+                           string "(ctx, cli);",
+                           newline],
+                      string "}",
+                      newline,
+                      newline,
+
+                      string "void uw_initializer(uw_context ctx) {",
+                      newline,
+                      box [p_enamed env (!initialize),
+                           string "(ctx, uw_unit_v);",
+                           newline],
+                      string "}",
+                      newline]
              else
-                 box [],
-             newline,
-             if List.exists (fn (DDatabase _, _) => true | _ => false) ds then
-                 box []
-             else
-                 box [newline,
-                      string "void uw_db_init(uw_context ctx) { };",
-                      newline,
-                      string "int uw_db_begin(uw_context ctx) { return 0; };",
-                      newline,
-                      string "int uw_db_commit(uw_context ctx) { return 0; };",
-                      newline,
-                      string "int uw_db_rollback(uw_context ctx) { return 0; };",
-                      newline,
-                      string "void uw_expunger(uw_context ctx, uw_Basis_client cli) { };",
+                 box [string "void uw_expunger(uw_context ctx, uw_Basis_client cli) { };",
                       newline,
                       string "void uw_initializer(uw_context ctx) { };",
                       newline]]

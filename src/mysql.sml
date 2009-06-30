@@ -31,7 +31,7 @@ open Settings
 open Print.PD
 open Print
 
-fun init (dbstring, ss) =
+fun init {dbstring, prepared = ss, tables, sequences} =
     let
         val host = ref NONE
         val user = ref NONE
