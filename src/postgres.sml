@@ -46,11 +46,11 @@ fun p_sql_type_base t =
       | Client => "integer"
       | Nullable t => p_sql_type_base t
 
-fun checkRel (s, xts) =
+fun checkRel (table, checkNullable) (s, xts) =
     let
         val sl = CharVector.map Char.toLower s
 
-        val q = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '"
+        val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE table_name = '"
                 ^ sl ^ "'"
 
         val q' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
@@ -63,12 +63,17 @@ fun checkRel (s, xts) =
                                                                               Char.toLower (ident x),
                                                                           "' AND data_type = '",
                                                                           p_sql_type_base t,
-                                                                          "' AND is_nullable = '",
-                                                                          if isNotNull t then
-                                                                              "NO"
+                                                                          "'",
+                                                                          if checkNullable then
+                                                                              (" AND is_nullable = '"
+                                                                               ^ (if isNotNull t then
+                                                                                      "NO"
+                                                                                  else
+                                                                                      "YES")
+                                                                               ^ "'")
                                                                           else
-                                                                              "YES",
-                                                                          "')"]) xts),
+                                                                              "",
+                                                                          ")"]) xts),
                                 ")"]
 
         val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
@@ -228,7 +233,7 @@ fun checkRel (s, xts) =
              newline]
     end
 
-fun init {dbstring, prepared = ss, tables, sequences} =
+fun init {dbstring, prepared = ss, tables, views, sequences} =
     box [if #persistent (currentProtocol ()) then
              box [string "static void uw_db_validate(uw_context ctx) {",
                   newline,
@@ -237,7 +242,8 @@ fun init {dbstring, prepared = ss, tables, sequences} =
                   string "PGresult *res;",
                   newline,
                   newline,
-                  p_list_sep newline checkRel tables,
+                  p_list_sep newline (checkRel ("tables", true)) tables,
+                  p_list_sep newline (checkRel ("views", false)) views,
 
                   p_list_sep newline
                              (fn s =>

@@ -2578,6 +2578,7 @@ fun p_file env (ds, ps) =
 
         val hasDb = ref false
         val tables = ref []
+        val views = ref []
         val sequences = ref []
         val dbstring = ref ""
         val expunge = ref 0
@@ -2592,6 +2593,8 @@ fun p_file env (ds, ps) =
                                                                                    initialize := z)
                            | DTable (s, xts, _, _) => tables := (s, map (fn (x, t) =>
                                                                             (x, sql_type_in env t)) xts) :: !tables
+                           | DView (s, xts, _) => views := (s, map (fn (x, t) =>
+                                                                       (x, sql_type_in env t)) xts) :: !views
                            | DSequence s => sequences := s :: !sequences
                            | DPreparedStatements ss => prepped := ss
                            | _ => ()) ds
@@ -2666,6 +2669,7 @@ fun p_file env (ds, ps) =
                  #init (Settings.currentDbms ()) {dbstring = !dbstring,
                                                   prepared = !prepped,
                                                   tables = !tables,
+                                                  views = !views,
                                                   sequences = !sequences}
              else
                  box [string "void uw_db_init(uw_context ctx) { };",

@@ -128,6 +128,7 @@ signature SETTINGS = sig
          init : {dbstring : string,
                  prepared : (string * int) list,
                  tables : (string * (string * sql_type) list) list,
+                 views : (string * (string * sql_type) list) list,
                  sequences : string list} -> Print.PD.pp_desc,
          (* Define uw_db_init(), uw_db_close(), uw_db_begin(), uw_db_commit(), and uw_db_rollback() *)
          query : {loc : ErrorMsg.span, numCols : int,

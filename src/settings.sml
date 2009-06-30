@@ -318,6 +318,7 @@ type dbms = {
      init : {dbstring : string,
              prepared : (string * int) list,
              tables : (string * (string * sql_type) list) list,
+             views : (string * (string * sql_type) list) list,
              sequences : string list} -> Print.PD.pp_desc,
      query : {loc : ErrorMsg.span, numCols : int,
               doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
