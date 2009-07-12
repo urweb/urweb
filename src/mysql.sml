@@ -741,8 +741,18 @@ fun queryCommon {loc, query, cols, doCols} =
                                           let
                                               fun buffers t =
                                                   case t of
-                                                      String => box []
-                                                    | Blob => box []
+                                                      String => box [string "out[",
+                                                                     string (Int.toString i),
+                                                                     string "].length = &length",
+                                                                     string (Int.toString i),
+                                                                     string ";",
+                                                                     newline]
+                                                    | Blob => box [string "out[",
+                                                                   string (Int.toString i),
+                                                                   string "].length = &length",
+                                                                   string (Int.toString i),
+                                                                   string ";",
+                                                                   newline]
                                                     | _ => box [string "out[",
                                                                 string (Int.toString i),
                                                                 string "].buffer = &buffer",
@@ -770,27 +780,45 @@ fun queryCommon {loc, query, cols, doCols} =
                                           end) cols,
          newline,
 
-         string "if (mysql_stmt_execute(stmt)) uw_error(ctx, FATAL, \"",
+         string "if (mysql_stmt_reset(stmt)) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
-         string ": Error executing query: %s\", mysql_error(conn->conn));",
+         string ": Error reseting statement: %s\\n%s\", ",
+         query,
+         string ", mysql_error(conn->conn));",
          newline,
          newline,
 
-         string "if (mysql_stmt_store_result(stmt)) uw_error(ctx, FATAL, \"",
+         string "if (mysql_stmt_execute(stmt)) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
-         string ": Error storing query result: %s\", mysql_error(conn->conn));",
+         string ": Error executing query: %s\\n%s\", ",
+         query,
+         string ", mysql_error(conn->conn));",
          newline,
          newline,
 
          string "if (mysql_stmt_bind_result(stmt, out)) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
-         string ": Error binding query result: %s\", mysql_error(conn->conn));",
+         string ": Error binding query result: %s\\n%s\", ",
+         query,
+         string ", mysql_error(conn->conn));",
+         newline,
+         newline,
+
+         string "if (mysql_stmt_store_result(stmt)) uw_error(ctx, FATAL, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": Error storing query result: %s\\n%s\", ",
+         query,
+         string ", mysql_error(conn->conn));",
          newline,
          newline,
 
          string "uw_end_region(ctx);",
          newline,
-         string "while ((r = mysql_stmt_fetch(stmt)) == 0) {",
+         string "while (1) {",
+         newline,
+         string "r = mysql_stmt_fetch(stmt);",
+         newline,
+         string "if (r != 0 && r != MYSQL_DATA_TRUNCATED) break;",
          newline,
          doCols p_getcol,
          string "}",
@@ -799,15 +827,26 @@ fun queryCommon {loc, query, cols, doCols} =
 
          string "if (r == 1) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
-         string ": query result fetching failed (%d): %s\", r, mysql_error(conn->conn));",
-         newline]    
+         string ": query result fetching failed: %s\\n%s\", ",
+         query,
+         string ", mysql_error(conn->conn));",
+         newline,
+         newline,
+
+         string "if (mysql_stmt_reset(stmt)) uw_error(ctx, FATAL, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": Error reseting statement: %s\\n%s\", ",
+         query,
+         string ", mysql_error(conn->conn));",
+         newline,
+         newline]
 
 fun query {loc, cols, doCols} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
          string "MYSQL_stmt *stmt = mysql_stmt_init(conn->conn);",
          newline,
-         string "if (stmt == NULL) uw_error(ctx, \"",
+         string "if (stmt == NULL) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
          string ": can't allocate temporary prepared statement\");",
          newline,
@@ -815,64 +854,14 @@ fun query {loc, cols, doCols} =
          newline,
          string "if (mysql_stmt_prepare(stmt, query, strlen(query))) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
-         string ": error preparing statement: %s\", mysql_error(conn->conn));",
+         string ": error preparing statement: %s\\n%s\", query, mysql_error(conn->conn));",
          newline,
-         newline,
-
-         p_list_sepi (box []) (fn i => fn t =>
-                                          let
-                                              fun buffers t =
-                                                  case t of
-                                                      String => box []
-                                                    | Blob => box []
-                                                    | _ => box [string "out[",
-                                                                string (Int.toString i),
-                                                                string "].buffer = &buffer",
-                                                                string (Int.toString i),
-                                                                string ";",
-                                                                newline]
-                                          in
-                                              box [string "in[",
-                                                   string (Int.toString i),
-                                                   string "].buffer_type = ",
-                                                   string (p_buffer_type t),
-                                                   string ";",
-                                                   newline,
-                                                               
-                                                   case t of
-                                                       Nullable t => box [string "in[",
-                                                                          string (Int.toString i),
-                                                                          string "].is_null = &is_null",
-                                                                          string (Int.toString i),
-                                                                          string ";",
-                                                                          newline,
-                                                                          buffers t]
-                                                     | _ => buffers t,
-                                                  newline]
-                                          end) cols,
          newline,
 
          queryCommon {loc = loc, cols = cols, doCols = doCols, query = string "query"},
 
          string "uw_pop_cleanup(ctx);",
          newline]
-
-fun p_ensql t e =
-    case t of
-        Int => box [string "uw_Basis_attrifyInt(ctx, ", e, string ")"]
-      | Float => box [string "uw_Basis_attrifyFloat(ctx, ", e, string ")"]
-      | String => e
-      | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
-      | Time => box [string "uw_Basis_attrifyTime(ctx, ", e, string ")"]
-      | Blob => box [e, string ".data"]
-      | Channel => box [string "uw_Basis_attrifyChannel(ctx, ", e, string ")"]
-      | Client => box [string "uw_Basis_attrifyClient(ctx, ", e, string ")"]
-      | Nullable String => e
-      | Nullable t => box [string "(",
-                           e,
-                           string " == NULL ? NULL : ",
-                           p_ensql t (box [string "(*", e, string ")"]),
-                           string ")"]
 
 fun queryPrepared {loc, id, query, inputs, cols, doCols} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
@@ -1052,12 +1041,233 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols} =
                                           end) inputs,
          newline,
 
+         string "if (mysql_stmt_bind_param(stmt, in)) uw_error(ctx, FATAL, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": error binding parameters\");",
+         newline,
+
          queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
                                                                             string (String.toString query),
                                                                             string "\""]}]
 
-fun dml _ = box []
-fun dmlPrepared _ = box []
+fun dmlCommon {loc, dml} =
+    box [string "if (mysql_stmt_execute(stmt)) uw_error(ctx, FATAL, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": Error executing DML: %s\\n%s\", ",
+         dml,
+         string ", mysql_error(conn->conn));",
+         newline,
+         newline]
+
+fun dml loc =
+    box [string "uw_conn *conn = uw_get_db(ctx);",
+         newline,
+         string "MYSQL_stmt *stmt = mysql_stmt_init(conn->conn);",
+         newline,
+         string "if (stmt == NULL) uw_error(ctx, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": can't allocate temporary prepared statement\");",
+         newline,
+         string "uw_push_cleanup(ctx, (void (*)(void *))mysql_stmt_close, stmt);",
+         newline,
+         string "if (mysql_stmt_prepare(stmt, dml, strlen(dml))) uw_error(ctx, FATAL, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": error preparing statement: %s\\n%s\", dml, mysql_error(conn->conn));",
+         newline,
+         newline,
+
+         dmlCommon {loc = loc, dml = string "dml"},
+
+         string "uw_pop_cleanup(ctx);",
+         newline]
+
+fun dmlPrepared {loc, id, dml, inputs} =
+    box [string "uw_conn *conn = uw_get_db(ctx);",
+         newline,
+         string "MYSQL_BIND in[",
+         string (Int.toString (length inputs)),
+         string "];",
+         newline,
+         p_list_sepi (box []) (fn i => fn t =>
+                                          let
+                                              fun buffers t =
+                                                  case t of
+                                                      String => box [string "unsigned long in_length",
+                                                                     string (Int.toString i),
+                                                                     string ";",
+                                                                     newline]
+                                                    | Blob => box [string "unsigned long in_length",
+                                                                   string (Int.toString i),
+                                                                   string ";",
+                                                                   newline]
+                                                    | Time => box [string (p_sql_ctype t),
+                                                                   space,
+                                                                   string "in_buffer",
+                                                                   string (Int.toString i),
+                                                                   string ";",
+                                                                   newline]
+                                                    | _ => box []
+                                          in
+                                              box [case t of
+                                                       Nullable t => box [string "my_bool in_is_null",
+                                                                          string (Int.toString i),
+                                                                          string ";",
+                                                                          newline,
+                                                                          buffers t]
+                                                     | _ => buffers t,
+                                                   newline]
+                                          end) inputs,
+         string "MYSQL_STMT *stmt = conn->p",
+         string (Int.toString id),
+         string ";",
+         newline,
+         newline,
+
+         string "memset(in, 0, sizeof in);",
+         newline,
+         p_list_sepi (box []) (fn i => fn t =>
+                                          let
+                                              fun buffers t =
+                                                  case t of
+                                                      String => box [string "in[",
+                                                                     string (Int.toString i),
+                                                                     string "].buffer = arg",
+                                                                     string (Int.toString (i + 1)),
+                                                                     string ";",
+                                                                     newline,
+                                                                     string "in_length",
+                                                                     string (Int.toString i),
+                                                                     string "= in[",
+                                                                     string (Int.toString i),
+                                                                     string "].buffer_length = strlen(arg",
+                                                                     string (Int.toString (i + 1)),
+                                                                     string ");",
+                                                                     newline,
+                                                                     string "in[",
+                                                                     string (Int.toString i),
+                                                                     string "].length = &in_length",
+                                                                     string (Int.toString i),
+                                                                     string ";",
+                                                                     newline]
+                                                    | Blob => box [string "in[",
+                                                                   string (Int.toString i),
+                                                                   string "].buffer = arg",
+                                                                   string (Int.toString (i + 1)),
+                                                                   string ".data;",
+                                                                   newline,
+                                                                   string "in_length",
+                                                                   string (Int.toString i),
+                                                                   string "= in[",
+                                                                   string (Int.toString i),
+                                                                   string "].buffer_length = arg",
+                                                                   string (Int.toString (i + 1)),
+                                                                   string ".size;",
+                                                                   newline,
+                                                                   string "in[",
+                                                                   string (Int.toString i),
+                                                                   string "].length = &in_length",
+                                                                   string (Int.toString i),
+                                                                   string ";",
+                                                                   newline]
+                                                    | Time =>
+                                                      let
+                                                          fun oneField dst src =
+                                                              box [string "in_buffer",
+                                                                   string (Int.toString i),
+                                                                   string ".",
+                                                                   string dst,
+                                                                   string " = tms.tm_",
+                                                                   string src,
+                                                                   string ";",
+                                                                   newline]
+                                                      in
+                                                          box [string "({",
+                                                               newline,
+                                                               string "struct tm tms;",
+                                                               newline,
+                                                               string "if (localtime_r(&arg",
+                                                               string (Int.toString (i + 1)),
+                                                               string ", &tm) == NULL) uw_error(\"",
+                                                               string (ErrorMsg.spanToString loc),
+                                                               string ": error converting to MySQL time\");",
+                                                               newline,
+                                                               oneField "year" "year",
+                                                               oneField "month" "mon",
+                                                               oneField "day" "mday",
+                                                               oneField "hour" "hour",
+                                                               oneField "minute" "min",
+                                                               oneField "second" "sec",
+                                                               newline,
+                                                               string "in[",
+                                                               string (Int.toString i),
+                                                               string "].buffer = &in_buffer",
+                                                               string (Int.toString i),
+                                                               string ";",
+                                                               newline]
+                                                      end
+                                                                   
+                                                    | _ => box [string "in[",
+                                                                string (Int.toString i),
+                                                                string "].buffer = &arg",
+                                                                string (Int.toString (i + 1)),
+                                                                string ";",
+                                                                newline]
+                                          in
+                                              box [string "in[",
+                                                   string (Int.toString i),
+                                                   string "].buffer_type = ",
+                                                   string (p_buffer_type t),
+                                                   string ";",
+                                                   newline,
+                                                               
+                                                   case t of
+                                                       Nullable t => box [string "in[",
+                                                                          string (Int.toString i),
+                                                                          string "].is_null = &in_is_null",
+                                                                          string (Int.toString i),
+                                                                          string ";",
+                                                                          newline,
+                                                                          string "if (arg",
+                                                                          string (Int.toString (i + 1)),
+                                                                          string " == NULL) {",
+                                                                          newline,
+                                                                          box [string "in_is_null",
+                                                                               string (Int.toString i),
+                                                                               string " = 1;",
+                                                                               newline],
+                                                                          string "} else {",
+                                                                          box [case t of
+                                                                                   String => box []
+                                                                                 | _ =>
+                                                                                   box [string (p_sql_ctype t),
+                                                                                        space,
+                                                                                        string "arg",
+                                                                                        string (Int.toString (i + 1)),
+                                                                                        string " = *arg",
+                                                                                        string (Int.toString (i + 1)),
+                                                                                        string ";",
+                                                                                        newline],
+                                                                               string "in_is_null",
+                                                                               string (Int.toString i),
+                                                                               string " = 0;",
+                                                                               newline,
+                                                                               buffers t,
+                                                                               newline]]
+                                                                          
+                                                     | _ => buffers t,
+                                                   newline]
+                                          end) inputs,
+         newline,
+
+         string "if (mysql_stmt_bind_param(stmt, in)) uw_error(ctx, FATAL, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": error binding parameters\");",
+         newline,
+
+         dmlCommon {loc = loc, dml = box [string "\"",
+                                          string (String.toString dml),
+                                          string "\""]}]
+
 fun nextval _ = box []
 fun nextvalPrepared _ = box []
 
