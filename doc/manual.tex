@@ -137,6 +137,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{effectful Module.ident} registers an FFI function or transaction as having side effects.  The optimizer avoids removing, moving, or duplicating calls to such functions.  Every effectful FFI function must be registered, or the optimizer may make invalid transformations.
 \item \texttt{exe FILENAME} sets the filename to which to write the output executable.  The default for file \texttt{P.urp} is \texttt{P.exe}.  
 \item \texttt{ffi FILENAME} reads the file \texttt{FILENAME.urs} to determine the interface to a new FFI module.  The name of the module is calculated from \texttt{FILENAME} in the same way as for normal source files.  See the files \texttt{include/urweb.h} and \texttt{src/c/urweb.c} for examples of C headers and implementations for FFI modules.  In general, every type or value \texttt{Module.ident} becomes \texttt{uw\_Module\_ident} in C.
+\item \texttt{header FILENAME} adds \texttt{FILENAME} to the list of files to be \texttt{\#include}d in C sources.  This is most useful for interfacing with new FFI modules.
 \item \texttt{jsFunc Module.ident=name} gives the JavaScript name of an FFI value.
 \item \texttt{library FILENAME} parses \texttt{FILENAME.urp} and merges its contents with the rest of the current file's contents.
 \item \texttt{link FILENAME} adds \texttt{FILENAME} to the list of files to be passed to the GCC linker at the end of compilation.  This is most useful for importing extra libraries needed by new FFI modules.
@@ -193,7 +194,7 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
 
 We often write syntax like $e^*$ to indicate zero or more copies of $e$, $e^+$ to indicate one or more copies, and $e,^*$ and $e,^+$ to indicate multiple copies separated by commas.  Another separator may be used in place of a comma.  The $e$ term may be surrounded by parentheses to indicate grouping; those parentheses should not be included in the actual ASCII.
 
-We write $\ell$ for literals of the primitive types, for the most part following C conventions.  There are $\mt{int}$, $\mt{float}$, and $\mt{string}$ literals.
+We write $\ell$ for literals of the primitive types, for the most part following C conventions.  There are $\mt{int}$, $\mt{float}$, $\mt{char}$, and $\mt{string}$ literals.  Character literals follow the SML convention instead of the C convention, written like \texttt{\#"a"} instead of \texttt{'a'}.
 
 This version of the manual doesn't include operator precedences; see \texttt{src/urweb.grm} for that.
 
@@ -610,7 +611,7 @@ $$\infer{\Gamma \vdash \mt{map} \; f \; (c_1 \rc c_2) \equiv \mt{map} \; f \; c_
 
 \subsection{Expression Typing}
 
-We assume the existence of a function $T$ assigning types to literal constants.  It maps integer constants to $\mt{Basis}.\mt{int}$, float constants to $\mt{Basis}.\mt{float}$, and string constants to $\mt{Basis}.\mt{string}$.
+We assume the existence of a function $T$ assigning types to literal constants.  It maps integer constants to $\mt{Basis}.\mt{int}$, float constants to $\mt{Basis}.\mt{float}$, character constants to $\mt{Basis}.\mt{char}$, and string constants to $\mt{Basis}.\mt{string}$.
 
 We also refer to a function $\mathcal I$, such that $\mathcal I(\tau)$ ``uses an oracle'' to instantiate all constructor function arguments at the beginning of $\tau$ that are marked implicit; i.e., replace $x_1 ::: \kappa_1 \to \ldots \to x_n ::: \kappa_n \to \tau$ with $[x_1 \mapsto c_1]\ldots[x_n \mapsto c_n]\tau$, where the $c_i$s are inferred and $\tau$ does not start like $x ::: \kappa \to \tau'$.
 
@@ -1147,6 +1148,7 @@ The idea behind Ur is to serve as the ideal host for embedded domain-specific la
 $$\begin{array}{l}
   \mt{type} \; \mt{int} \\
   \mt{type} \; \mt{float} \\
+  \mt{type} \; \mt{char} \\
   \mt{type} \; \mt{string} \\
   \mt{type} \; \mt{time} \\
   \mt{type} \; \mt{blob} \\

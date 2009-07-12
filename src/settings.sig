@@ -112,7 +112,7 @@ signature SETTINGS = sig
            | Client
            | Nullable of sql_type
 
-    val p_sql_type : sql_type -> string
+    val p_sql_ctype : sql_type -> string
     val isBlob : sql_type -> bool
     val isNotNull : sql_type -> bool
 
@@ -125,18 +125,19 @@ signature SETTINGS = sig
          (* Pass these linker arguments *)
          global_init : Print.PD.pp_desc,
          (* Define uw_client_init() *)
+         p_sql_type : sql_type -> string,
          init : {dbstring : string,
                  prepared : (string * int) list,
                  tables : (string * (string * sql_type) list) list,
                  views : (string * (string * sql_type) list) list,
                  sequences : string list} -> Print.PD.pp_desc,
          (* Define uw_db_init(), uw_db_close(), uw_db_begin(), uw_db_commit(), and uw_db_rollback() *)
-         query : {loc : ErrorMsg.span, numCols : int,
+         query : {loc : ErrorMsg.span, cols : sql_type list,
                   doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
                            -> Print.PD.pp_desc}
                  -> Print.PD.pp_desc,
          queryPrepared : {loc : ErrorMsg.span, id : int, query : string,
-                          inputs : sql_type list, numCols : int,
+                          inputs : sql_type list, cols : sql_type list,
                           doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
                                    -> Print.PD.pp_desc}
                          -> Print.PD.pp_desc,

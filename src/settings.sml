@@ -285,7 +285,7 @@ datatype sql_type =
        | Client
        | Nullable of sql_type
 
-fun p_sql_type t =
+fun p_sql_ctype t =
     let
         open Print.PD
         open Print
@@ -300,7 +300,7 @@ fun p_sql_type t =
           | Channel => "uw_Basis_channel"
           | Client => "uw_Basis_client"
           | Nullable String => "uw_Basis_string"
-          | Nullable t => p_sql_type t ^ "*"
+          | Nullable t => p_sql_ctype t ^ "*"
     end
 
 fun isBlob Blob = true
@@ -315,17 +315,18 @@ type dbms = {
      header : string,
      link : string,
      global_init : Print.PD.pp_desc,
+     p_sql_type : sql_type -> string,
      init : {dbstring : string,
              prepared : (string * int) list,
              tables : (string * (string * sql_type) list) list,
              views : (string * (string * sql_type) list) list,
              sequences : string list} -> Print.PD.pp_desc,
-     query : {loc : ErrorMsg.span, numCols : int,
+     query : {loc : ErrorMsg.span, cols : sql_type list,
               doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
                        -> Print.PD.pp_desc}
              -> Print.PD.pp_desc,
      queryPrepared : {loc : ErrorMsg.span, id : int, query : string,
-                      inputs : sql_type list, numCols : int,
+                      inputs : sql_type list, cols : sql_type list,
                       doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
                                -> Print.PD.pp_desc}
                      -> Print.PD.pp_desc,
@@ -341,6 +342,7 @@ val curDb = ref ({name = "",
                   header = "",
                   link = "",
                   global_init = Print.box [],
+                  p_sql_type = fn _ => "",
                   init = fn _ => Print.box [],
                   query = fn _ => Print.box [],
                   queryPrepared = fn _ => Print.box [],

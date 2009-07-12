@@ -34,6 +34,18 @@ open Print
 val ident = String.translate (fn #"'" => "PRIME"
                                | ch => str ch)
 
+fun p_sql_type t =
+    case t of
+        Int => "int8"
+      | Float => "float8"
+      | String => "text"
+      | Bool => "bool"
+      | Time => "timestamp"
+      | Blob => "bytea"
+      | Channel => "int8"
+      | Client => "int4"
+      | Nullable t => p_sql_type t
+
 fun p_sql_type_base t =
     case t of
         Int => "bigint"
@@ -540,7 +552,7 @@ fun p_getcol {wontLeakStrings, col = i, typ = t} =
         getter t
     end
 
-fun queryCommon {loc, query, numCols, doCols} =
+fun queryCommon {loc, query, cols, doCols} =
     box [string "int n, i;",
          newline,
          newline,
@@ -564,7 +576,7 @@ fun queryCommon {loc, query, numCols, doCols} =
          newline,
 
          string "if (PQnfields(res) != ",
-         string (Int.toString numCols),
+         string (Int.toString (length cols)),
          string ") {",
          newline,
          box [string "int nf = PQnfields(res);",
@@ -574,7 +586,7 @@ fun queryCommon {loc, query, numCols, doCols} =
               string "uw_error(ctx, FATAL, \"",
               string (ErrorMsg.spanToString loc),
               string ": Query returned %d columns instead of ",
-              string (Int.toString numCols),
+              string (Int.toString (length cols)),
               string ":\\n%s\\n%s\", nf, ",
               query,
               string ", PQerrorMessage(conn));",
@@ -598,13 +610,13 @@ fun queryCommon {loc, query, numCols, doCols} =
          string "uw_pop_cleanup(ctx);",
          newline]    
 
-fun query {loc, numCols, doCols} =
+fun query {loc, cols, doCols} =
     box [string "PGconn *conn = uw_get_db(ctx);",
          newline,
          string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
          newline,
          newline,
-         queryCommon {loc = loc, numCols = numCols, doCols = doCols, query = string "query"}]
+         queryCommon {loc = loc, cols = cols, doCols = doCols, query = string "query"}]
 
 fun p_ensql t e =
     case t of
@@ -623,7 +635,7 @@ fun p_ensql t e =
                            p_ensql t (box [string "(*", e, string ")"]),
                            string ")"]
 
-fun queryPrepared {loc, id, query, inputs, numCols, doCols} =
+fun queryPrepared {loc, id, query, inputs, cols, doCols} =
     box [string "PGconn *conn = uw_get_db(ctx);",
          newline,
          string "const int paramFormats[] = { ",
@@ -662,9 +674,9 @@ fun queryPrepared {loc, id, query, inputs, numCols, doCols} =
                   string ", NULL, paramValues, paramLengths, paramFormats, 0);"],
          newline,
          newline,
-         queryCommon {loc = loc, numCols = numCols, doCols = doCols, query = box [string "\"",
-                                                                                  string (String.toString query),
-                                                                                  string "\""]}]
+         queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
+                                                                            string (String.toString query),
+                                                                            string "\""]}]
 
 fun dmlCommon {loc, dml} =
     box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
@@ -821,6 +833,7 @@ val () = addDbms {name = "postgres",
                   link = "-lpq",
                   global_init = box [string "void uw_client_init() { }",
                                      newline],
+                  p_sql_type = p_sql_type,
                   init = init,
                   query = query,
                   queryPrepared = queryPrepared,

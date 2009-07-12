@@ -1652,7 +1652,7 @@ fun p_exp' par env (e, loc) =
 
                           #query (Settings.currentDbms ())
                                  {loc = loc,
-                                  numCols = length outputs,
+                                  cols = map (fn (_, t) => sql_type_in env t) outputs,
                                   doCols = doCols}]
                    | SOME (id, query) =>
                      box [p_list_sepi newline
@@ -1675,7 +1675,7 @@ fun p_exp' par env (e, loc) =
                                           id = id,
                                           query = query,
                                           inputs = map #2 inputs,
-                                          numCols = length outputs,
+                                          cols = map (fn (_, t) => sql_type_in env t) outputs,
                                           doCols = doCols}],
                  newline,
 
@@ -2797,7 +2797,8 @@ fun p_sql env (ds, _) =
                                                             box [string "uw_",
                                                                  string (CharVector.map Char.toLower x),
                                                                  space,
-                                                                 p_sqltype env (t, ErrorMsg.dummySpan)]) xts,
+                                                                 string (#p_sql_type (Settings.currentDbms ())
+                                                                                     (sql_type_in env t))]) xts,
                                                  case (pk, csts) of
                                                      ("", []) => box []
                                                    | _ => string ",",
