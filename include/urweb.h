@@ -205,4 +205,6 @@ void uw_check_heap(uw_context, size_t extra);
 char *uw_heap_front(uw_context);
 void uw_set_heap_front(uw_context, char*);
 
+uw_Basis_string uw_Basis_unAs(uw_context, uw_Basis_string);
+
 #endif

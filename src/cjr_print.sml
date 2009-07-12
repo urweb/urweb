@@ -2794,11 +2794,17 @@ fun p_sql env (ds, _) =
                                                  string s,
                                                  string "(",
                                                  p_list (fn (x, t) =>
-                                                            box [string "uw_",
-                                                                 string (CharVector.map Char.toLower x),
-                                                                 space,
-                                                                 string (#p_sql_type (Settings.currentDbms ())
-                                                                                     (sql_type_in env t))]) xts,
+                                                            let
+                                                                val t = sql_type_in env t
+                                                            in
+                                                                box [string "uw_",
+                                                                     string (CharVector.map Char.toLower x),
+                                                                     space,
+                                                                     string (#p_sql_type (Settings.currentDbms ()) t),
+                                                                     case t of
+                                                                         Nullable _ => box []
+                                                                       | _ => string " NOT NULL"]
+                                                            end) xts,
                                                  case (pk, csts) of
                                                      ("", []) => box []
                                                    | _ => string ",",

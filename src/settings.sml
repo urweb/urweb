@@ -314,7 +314,6 @@ type dbms = {
      name : string,
      header : string,
      link : string,
-     global_init : Print.PD.pp_desc,
      p_sql_type : sql_type -> string,
      init : {dbstring : string,
              prepared : (string * int) list,
@@ -334,14 +333,17 @@ type dbms = {
      dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
                     inputs : sql_type list} -> Print.PD.pp_desc,
      nextval : ErrorMsg.span -> Print.PD.pp_desc,
-     nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc
+     nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc,
+     sqlifyString : string -> string,
+     p_cast : string * sql_type -> string,
+     p_blank : int * sql_type -> string,
+     supportsDeleteAs : bool
 }
 
 val dbmses = ref ([] : dbms list)
 val curDb = ref ({name = "",
                   header = "",
                   link = "",
-                  global_init = Print.box [],
                   p_sql_type = fn _ => "",
                   init = fn _ => Print.box [],
                   query = fn _ => Print.box [],
@@ -349,7 +351,11 @@ val curDb = ref ({name = "",
                   dml = fn _ => Print.box [],
                   dmlPrepared = fn _ => Print.box [],
                   nextval = fn _ => Print.box [],
-                  nextvalPrepared = fn _ => Print.box []} : dbms)
+                  nextvalPrepared = fn _ => Print.box [],
+                  sqlifyString = fn s => s,
+                  p_cast = fn _ => "",
+                  p_blank = fn _ => "",
+                  supportsDeleteAs = false} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =

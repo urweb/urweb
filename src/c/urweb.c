@@ -2742,3 +2742,38 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
 
   longjmp(ctx->jmp_buf, RETURN_BLOB);
 }
+
+uw_Basis_string uw_Basis_unAs(uw_context ctx, uw_Basis_string s) {
+  uw_Basis_string r = uw_malloc(ctx, strlen(s) + 1);
+
+  for (; *s; ++s) {
+    if (s[0] == '\'') {
+      *r++ = '\'';
+      for (++s; *s; ++s) {
+        if (s[0] == '\'') {
+          *r++ = '\'';
+          break;
+        } else if (s[0] == '\\') {
+          if (s[1] == '\\') {
+            *r++ = '\\';
+            *r++ = '\\';
+            ++s;
+          } else if (s[1] == '\'') {
+            *r++ = '\\';
+            *r++ = '\'';
+            ++s;
+          } else
+            *r++ = '\'';
+        } else
+          *r++ = s[0];
+      }
+      if (*s == 0) break;
+    } else if (s[0] == 'T' && s[1] == '.')
+      ++s;
+    else
+      *r++ = s[0];
+  }
+
+  return r;
+}
+

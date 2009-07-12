@@ -28,47 +28,45 @@
 structure Prepare :> PREPARE = struct
 
 open Cjr
+open Settings
 
 fun prepString (e, ss, n) =
-    case #1 e of
-        EPrim (Prim.String s) =>
-        SOME (s :: ss, n)
-      | EFfiApp ("Basis", "strcat", [e1, e2]) =>
-        (case prepString (e1, ss, n) of
-             NONE => NONE
-           | SOME (ss, n) => prepString (e2, ss, n))
-      | EFfiApp ("Basis", "sqlifyInt", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::int8" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyFloat", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::float8" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyString", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::text" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyBool", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::bool" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyTime", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::timestamp" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyBlob", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::bytea" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyChannel", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::int8" :: ss, n + 1)
-      | EFfiApp ("Basis", "sqlifyClient", [e]) =>
-        SOME ("$" ^ Int.toString (n + 1) ^ "::int4" :: ss, n + 1)
+    let
+        fun doOne t =
+            SOME (#p_blank (Settings.currentDbms ()) (n + 1, t) :: ss, n + 1)
+    in
+        case #1 e of
+            EPrim (Prim.String s) =>
+            SOME (s :: ss, n)
+          | EFfiApp ("Basis", "strcat", [e1, e2]) =>
+            (case prepString (e1, ss, n) of
+                 NONE => NONE
+               | SOME (ss, n) => prepString (e2, ss, n))
+          | EFfiApp ("Basis", "sqlifyInt", [e]) => doOne Int
+          | EFfiApp ("Basis", "sqlifyFloat", [e]) => doOne Float
+          | EFfiApp ("Basis", "sqlifyString", [e]) => doOne String
+          | EFfiApp ("Basis", "sqlifyBool", [e]) => doOne Bool
+          | EFfiApp ("Basis", "sqlifyTime", [e]) => doOne Time
+          | EFfiApp ("Basis", "sqlifyBlob", [e]) => doOne Blob
+          | EFfiApp ("Basis", "sqlifyChannel", [e]) => doOne Channel
+          | EFfiApp ("Basis", "sqlifyClient", [e]) => doOne Client
 
-      | ECase (e,
-               [((PNone _, _),
-                 (EPrim (Prim.String "NULL"), _)),
-                ((PSome (_, (PVar _, _)), _),
-                 (EFfiApp (m, x, [(ERel 0, _)]), _))],
-               _) => prepString ((EFfiApp (m, x, [e]), #2 e), ss, n)
+          | ECase (e,
+                   [((PNone _, _),
+                     (EPrim (Prim.String "NULL"), _)),
+                    ((PSome (_, (PVar _, _)), _),
+                     (EFfiApp (m, x, [(ERel 0, _)]), _))],
+                   _) => prepString ((EFfiApp (m, x, [e]), #2 e), ss, n)
 
-      | ECase (e,
-               [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
-                 (EPrim (Prim.String "TRUE"), _)),
-                ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, _), _),
-                 (EPrim (Prim.String "FALSE"), _))],
-               _) => SOME ("$" ^ Int.toString (n + 1) ^ "::bool" :: ss, n + 1)
+          | ECase (e,
+                   [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
+                     (EPrim (Prim.String "TRUE"), _)),
+                    ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, _), _),
+                     (EPrim (Prim.String "FALSE"), _))],
+                   _) => doOne Bool
 
-      | _ => NONE
+          | _ => NONE
+    end
 
 fun prepExp (e as (_, loc), sns) =
     case #1 e of

@@ -1604,10 +1604,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("tab", s, (L'.TFun (s, s), loc),
                            (L'.EAbs ("e", s, s,
-                                     strcat [sc "DELETE FROM ",
-                                             (L'.ERel 1, loc),
-                                             sc " AS T WHERE ",
-                                             (L'.ERel 0, loc)]), loc)), loc),
+                                     if #supportsDeleteAs (Settings.currentDbms ()) then
+                                         strcat [sc "DELETE FROM ",
+                                                 (L'.ERel 1, loc),
+                                                 sc " AS T WHERE ",
+                                                 (L'.ERel 0, loc)]
+                                     else
+                                         strcat [sc "DELETE FROM ",
+                                                 (L'.ERel 1, loc),
+                                                 sc " WHERE ",
+                                                 (L'.EFfiApp ("Basis", "unAs", [(L'.ERel 0, loc)]), loc)]), loc)), loc),
                  fm)
             end
 

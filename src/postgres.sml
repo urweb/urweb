@@ -247,7 +247,11 @@ fun checkRel (table, checkNullable) (s, xts) =
 
 fun init {dbstring, prepared = ss, tables, views, sequences} =
     box [if #persistent (currentProtocol ()) then
-             box [string "static void uw_db_validate(uw_context ctx) {",
+             box [string "void uw_client_init() { }",
+                  newline,
+                  newline,
+
+                  string "static void uw_db_validate(uw_context ctx) {",
                   newline,
                   string "PGconn *conn = uw_get_db(ctx);",
                   newline,
@@ -509,10 +513,10 @@ fun p_getcol {wontLeakStrings, col = i, typ = t} =
                          String => getter t
                        | _ => box [string "({",
                                    newline,
-                                   string (p_sql_type t),
+                                   string (p_sql_ctype t),
                                    space,
                                    string "*tmp = uw_malloc(ctx, sizeof(",
-                                   string (p_sql_type t),
+                                   string (p_sql_ctype t),
                                    string "));",
                                    newline,
                                    string "*tmp = ",
@@ -528,7 +532,7 @@ fun p_getcol {wontLeakStrings, col = i, typ = t} =
                      string (Int.toString i),
                      string ") ? ",
                      box [string "({",
-                          string (p_sql_type t),
+                          string (p_sql_ctype t),
                           space,
                           string "tmp;",
                           newline,
@@ -828,11 +832,23 @@ fun nextvalPrepared {loc, id, query} =
                                                 string (String.toString query),
                                                 string "\""]}]
 
+fun sqlifyString s = "E'" ^ String.translate (fn #"'" => "\\'"
+                                               | #"\\" => "\\\\"
+                                               | ch =>
+                                                 if Char.isPrint ch then
+                                                     str ch
+                                                 else
+                                                     "\\" ^ StringCvt.padLeft #"0" 3
+                                                                              (Int.fmt StringCvt.OCT (ord ch)))
+                                             (String.toString s) ^ "'::text"
+
+fun p_cast (s, t) = s ^ "::" ^ p_sql_type t
+
+fun p_blank (n, t) = p_cast ("$" ^ Int.toString n, t)
+
 val () = addDbms {name = "postgres",
                   header = "postgresql/libpq-fe.h",
                   link = "-lpq",
-                  global_init = box [string "void uw_client_init() { }",
-                                     newline],
                   p_sql_type = p_sql_type,
                   init = init,
                   query = query,
@@ -840,7 +856,12 @@ val () = addDbms {name = "postgres",
                   dml = dml,
                   dmlPrepared = dmlPrepared,
                   nextval = nextval,
-                  nextvalPrepared = nextvalPrepared}
+                  nextvalPrepared = nextvalPrepared,
+                  sqlifyString = sqlifyString,
+                  p_cast = p_cast,
+                  p_blank = p_blank,
+                  supportsDeleteAs = true}
+
 val () = setDbms "postgres"
 
 end

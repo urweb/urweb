@@ -83,18 +83,30 @@ val urlifyString = String.translate (fn #" " => "+"
                                                   "%" ^ hexIt ch)
 
 
-fun sqlifyInt n = attrifyInt n ^ "::int8"
-fun sqlifyFloat n = attrifyFloat n ^ "::float8"
+fun sqlifyInt n = attrifyInt n ^ "::" ^ #p_sql_type (Settings.currentDbms ()) Settings.Int
+fun sqlifyFloat n = attrifyFloat n ^ "::" ^ #p_sql_type (Settings.currentDbms ()) Settings.Float
 
-fun sqlifyString s = "E'" ^ String.translate (fn #"'" => "\\'"
-                                               | #"\\" => "\\\\"
-                                               | ch =>
-                                                 if Char.isPrint ch then
-                                                     str ch
-                                                 else
-                                                     "\\" ^ StringCvt.padLeft #"0" 3
-                                                                              (Int.fmt StringCvt.OCT (ord ch)))
-                                             (String.toString s) ^ "'::text"
+fun sqlifyString s = #sqlifyString (Settings.currentDbms ()) s
+
+fun unAs s =
+    let
+        fun doChars (cs, acc) =
+            case cs of
+                #"T" :: #"." :: cs => doChars (cs, acc)
+              | #"'" :: cs => doString (cs, acc)
+              | ch :: cs => doChars (cs, ch :: acc)
+              | [] => String.implode (rev acc)
+
+        and doString (cs, acc) =
+            case cs of
+                #"\\" :: #"\\" :: cs => doString (cs, #"\\" :: #"\\" :: acc)
+              | #"\\" :: #"'" :: cs => doString (cs, #"'" :: #"\\" :: acc)
+              | #"'" :: cs => doChars (cs, #"'" :: acc)
+              | ch :: cs => doString (cs, ch :: acc)
+              | [] => String.implode (rev acc)
+    in
+        doChars (String.explode s, [])
+    end
 
 fun exp e =
     case e of
@@ -442,6 +454,33 @@ fun exp e =
             EPrim (Prim.String s)
         end
 
+      | EFfiApp ("Basis", "unAs", [(EPrim (Prim.String s), _)]) => 
+        EPrim (Prim.String (unAs s))
+      | EFfiApp ("Basis", "unAs", [e']) =>
+        let
+            fun parts (e as (_, loc)) =
+                case #1 e of
+                    EStrcat (s1, s2) =>
+                    (case (parts s1, parts s2) of
+                         (SOME p1, SOME p2) => SOME (p1 @ p2)
+                       | _ => NONE)
+                  | EPrim (Prim.String s) => SOME [(EPrim (Prim.String (unAs s)), loc)]
+                  | EFfiApp ("Basis", f, [_]) =>
+                    if String.isPrefix "sqlify" f then
+                        SOME [e]
+                    else
+                        NONE
+                  | _ => NONE
+        in
+            case parts e' of
+                SOME [e] => #1 e
+              | SOME es =>
+                (case rev es of
+                     (e as (_, loc)) :: es => #1 (foldl (fn (e, es) => (EStrcat (e, es), loc)) e es)
+                   | [] => raise Fail "MonoOpt impossible nil")
+              | NONE => e
+        end
+        
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)

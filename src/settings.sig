@@ -123,15 +123,13 @@ signature SETTINGS = sig
          (* Include this C header file *)
          link : string,
          (* Pass these linker arguments *)
-         global_init : Print.PD.pp_desc,
-         (* Define uw_client_init() *)
          p_sql_type : sql_type -> string,
          init : {dbstring : string,
                  prepared : (string * int) list,
                  tables : (string * (string * sql_type) list) list,
                  views : (string * (string * sql_type) list) list,
                  sequences : string list} -> Print.PD.pp_desc,
-         (* Define uw_db_init(), uw_db_close(), uw_db_begin(), uw_db_commit(), and uw_db_rollback() *)
+         (* Define uw_client_init(), uw_db_init(), uw_db_close(), uw_db_begin(), uw_db_commit(), and uw_db_rollback() *)
          query : {loc : ErrorMsg.span, cols : sql_type list,
                   doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
                            -> Print.PD.pp_desc}
@@ -145,7 +143,11 @@ signature SETTINGS = sig
          dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
                         inputs : sql_type list} -> Print.PD.pp_desc,
          nextval : ErrorMsg.span -> Print.PD.pp_desc,
-         nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc
+         nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc,
+         sqlifyString : string -> string,
+         p_cast : string * sql_type -> string,
+         p_blank : int * sql_type -> string (* Prepared statement input *),
+         supportsDeleteAs : bool
     }
 
     val addDbms : dbms -> unit
