@@ -13,6 +13,9 @@ order.sml
 errormsg.sig
 errormsg.sml
 
+print.sig
+print.sml
+
 settings.sig
 settings.sml
 
@@ -30,9 +33,6 @@ postgres.sml
 
 mysql.sig
 mysql.sml
-
-print.sig
-print.sml
 
 prim.sig
 prim.sml

@@ -643,14 +643,14 @@ fun p_getcol {wontLeakStrings = _, col = i, typ = t} =
                              newline,
                              string "})"]
               | Time => box [string "({",
-                             string "MYSQL_TIME *mt = buffer",
+                             string "MYSQL_TIME *mt = &buffer",
                              string (Int.toString i),
                              string ";",
                              newline,
                              newline,
                              string "struct tm t = {mt->second, mt->minute, mt->hour, mt->day, mt->month, mt->year, 0, 0, -1};",
                              newline,
-                             string "mktime(&tm);",
+                             string "mktime(&t);",
                              newline,
                              string "})"]
               | _ => box [string "buffer",
@@ -714,6 +714,10 @@ fun queryCommon {loc, query, cols, doCols} =
                                                                      string ";",
                                                                      newline]
                                                     | Blob => box [string "unsigned long length",
+                                                                   string (Int.toString i),
+                                                                   string ";",
+                                                                   newline]
+                                                    | Time => box [string "MYSQL_TIME buffer",
                                                                    string (Int.toString i),
                                                                    string ";",
                                                                    newline]
@@ -844,7 +848,7 @@ fun queryCommon {loc, query, cols, doCols} =
 fun query {loc, cols, doCols} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
-         string "MYSQL_stmt *stmt = mysql_stmt_init(conn->conn);",
+         string "MYSQL_STMT *stmt = mysql_stmt_init(conn->conn);",
          newline,
          string "if (stmt == NULL) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
@@ -882,9 +886,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols} =
                                                                    string (Int.toString i),
                                                                    string ";",
                                                                    newline]
-                                                    | Time => box [string (p_sql_ctype t),
-                                                                   space,
-                                                                   string "in_buffer",
+                                                    | Time => box [string "MYSQL_TIME in_buffer",
                                                                    string (Int.toString i),
                                                                    string ";",
                                                                    newline]
@@ -1023,18 +1025,24 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols} =
                                                                                  | _ =>
                                                                                    box [string (p_sql_ctype t),
                                                                                         space,
-                                                                                        string "arg",
-                                                                                        string (Int.toString (i + 1)),
-                                                                                        string " = *arg",
+                                                                                        string "tmp = *arg",
                                                                                         string (Int.toString (i + 1)),
                                                                                         string ";",
+                                                                                        newline,
+                                                                                        string (p_sql_ctype t),
+                                                                                        space,
+                                                                                        string "arg",
+                                                                                        string (Int.toString (i + 1)),
+                                                                                        string " = tmp;",
                                                                                         newline],
                                                                                string "in_is_null",
                                                                                string (Int.toString i),
                                                                                string " = 0;",
                                                                                newline,
                                                                                buffers t,
-                                                                               newline]]
+                                                                               newline],
+                                                                          string "}",
+                                                                          newline]
                                                                           
                                                      | _ => buffers t,
                                                    newline]
@@ -1100,9 +1108,7 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                                                    string (Int.toString i),
                                                                    string ";",
                                                                    newline]
-                                                    | Time => box [string (p_sql_ctype t),
-                                                                   space,
-                                                                   string "in_buffer",
+                                                    | Time => box [string "MYSQL_TIME in_buffer",
                                                                    string (Int.toString i),
                                                                    string ";",
                                                                    newline]
@@ -1241,18 +1247,24 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                                                                  | _ =>
                                                                                    box [string (p_sql_ctype t),
                                                                                         space,
-                                                                                        string "arg",
-                                                                                        string (Int.toString (i + 1)),
-                                                                                        string " = *arg",
+                                                                                        string "tmp = *arg",
                                                                                         string (Int.toString (i + 1)),
                                                                                         string ";",
+                                                                                        newline,
+                                                                                        string (p_sql_ctype t),
+                                                                                        space,
+                                                                                        string "arg",
+                                                                                        string (Int.toString (i + 1)),
+                                                                                        string " = tmp;",
                                                                                         newline],
                                                                                string "in_is_null",
                                                                                string (Int.toString i),
                                                                                string " = 0;",
                                                                                newline,
                                                                                buffers t,
-                                                                               newline]]
+                                                                               newline],
+                                                                          string "}",
+                                                                          newline]
                                                                           
                                                      | _ => buffers t,
                                                    newline]

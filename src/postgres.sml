@@ -247,7 +247,7 @@ fun checkRel (table, checkNullable) (s, xts) =
 
 fun init {dbstring, prepared = ss, tables, views, sequences} =
     box [if #persistent (currentProtocol ()) then
-             box [string "void uw_client_init() { }",
+             box [string "void uw_client_init(void) { }",
                   newline,
                   newline,
 
