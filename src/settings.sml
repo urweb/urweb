@@ -332,14 +332,15 @@ type dbms = {
      dml : ErrorMsg.span -> Print.PD.pp_desc,
      dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
                     inputs : sql_type list} -> Print.PD.pp_desc,
-     nextval : ErrorMsg.span -> Print.PD.pp_desc,
+     nextval : {loc : ErrorMsg.span, seqName : string option, seqE : Print.PD.pp_desc} -> Print.PD.pp_desc,
      nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc,
      sqlifyString : string -> string,
      p_cast : string * sql_type -> string,
      p_blank : int * sql_type -> string,
      supportsDeleteAs : bool,
      createSequence : string -> string,
-     textKeysNeedLengths : bool
+     textKeysNeedLengths : bool,
+     supportsNextval : bool
 }
 
 val dbmses = ref ([] : dbms list)
@@ -359,7 +360,8 @@ val curDb = ref ({name = "",
                   p_blank = fn _ => "",
                   supportsDeleteAs = false,
                   createSequence = fn _ => "",
-                  textKeysNeedLengths = false} : dbms)
+                  textKeysNeedLengths = false,
+                  supportsNextval = false} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =

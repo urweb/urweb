@@ -907,6 +907,36 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols} =
          newline,
          newline,
 
+         string "if (stmt == NULL) {",
+         newline,
+         box [string "stmt = mysql_stmt_init(conn->conn);",
+              newline,
+              string "if (stmt == NULL) uw_error(ctx, FATAL, \"Out of memory allocating prepared statement\");",
+              newline,
+              string "if (mysql_stmt_prepare(stmt, \"",
+              string (String.toString query),
+              string "\", ",
+              string (Int.toString (size query)),
+              string ")) {",
+              newline,
+              box [string "char msg[1024];",
+                   newline,
+                   string "strncpy(msg, mysql_stmt_error(stmt), 1024);",
+                   newline,
+                   string "msg[1023] = 0;",
+                   newline,
+                   string "uw_error(ctx, FATAL, \"Error preparing statement: %s\", msg);",
+                   newline],
+              string "}",
+              newline,
+              string "conn->p",
+              string (Int.toString id),
+              string " = stmt;",
+              newline],
+         string "}",
+         newline,
+         newline,
+
          string "memset(in, 0, sizeof in);",
          newline,
          p_list_sepi (box []) (fn i => fn t =>
@@ -1129,6 +1159,36 @@ fun dmlPrepared {loc, id, dml, inputs} =
          newline,
          newline,
 
+         string "if (stmt == NULL) {",
+         newline,
+         box [string "stmt = mysql_stmt_init(conn->conn);",
+              newline,
+              string "if (stmt == NULL) uw_error(ctx, FATAL, \"Out of memory allocating prepared statement\");",
+              newline,
+              string "if (mysql_stmt_prepare(stmt, \"",
+              string (String.toString dml),
+              string "\", ",
+              string (Int.toString (size dml)),
+              string ")) {",
+              newline,
+              box [string "char msg[1024];",
+                   newline,
+                   string "strncpy(msg, mysql_stmt_error(stmt), 1024);",
+                   newline,
+                   string "msg[1023] = 0;",
+                   newline,
+                   string "uw_error(ctx, FATAL, \"Error preparing statement: %s\", msg);",
+                   newline],
+              string "}",
+              newline,
+              string "conn->p",
+              string (Int.toString id),
+              string " = stmt;",
+              newline],
+         string "}",
+         newline,
+         newline,
+
          string "memset(in, 0, sizeof in);",
          newline,
          p_list_sepi (box []) (fn i => fn t =>
@@ -1280,8 +1340,35 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                           string (String.toString dml),
                                           string "\""]}]
 
-fun nextval _ = box []
-fun nextvalPrepared _ = box []
+fun nextval {loc, seqE, seqName} =
+    box [string "uw_conn *conn = uw_get_db(ctx);",
+         newline,
+         string "char *insert = ",
+         case seqName of
+             SOME s => string ("\"INSERT INTO " ^ s ^ " VALUES ()\"")
+           | NONE => box [string "uw_Basis_strcat(ctx, \"INSERT INTO \", uw_Basis_strcat(ctx, ",
+                          seqE,
+                          string ", \" VALUES ()\"))"],
+         string ";",
+         newline,
+         string "char *delete = ",
+         case seqName of
+             SOME s => string ("\"DELETE FROM " ^ s ^ "\"")
+           | NONE => box [string "uw_Basis_strcat(ctx, \"DELETE FROM \", ",
+                          seqE,
+                          string ")"],
+         string ";",
+         newline,
+         newline,
+
+         string "if (mysql_query(conn->conn, insert)) uw_error(ctx, FATAL, \"'nextval' INSERT failed\");",
+         newline,
+         string "n = mysql_insert_id(conn->conn);",
+         newline,
+         string "if (mysql_query(conn->conn, delete)) uw_error(ctx, FATAL, \"'nextval' DELETE failed\");",
+         newline]
+
+fun nextvalPrepared _ = raise Fail "MySQL.nextvalPrepared called"
 
 fun sqlifyString s = "'" ^ String.translate (fn #"'" => "\\'"
                                               | #"\\" => "\\\\"
@@ -1314,6 +1401,7 @@ val () = addDbms {name = "mysql",
                   p_blank = p_blank,
                   supportsDeleteAs = false,
                   createSequence = fn s => "CREATE TABLE " ^ s ^ " (id INTEGER PRIMARY KEY AUTO_INCREMENT)",
-                  textKeysNeedLengths = true}
+                  textKeysNeedLengths = true,
+                  supportsNextval = false}
 
 end

@@ -216,27 +216,30 @@ fun prepExp (e as (_, loc), sns) =
              end)
 
       | ENextval {seq, ...} =>
-        let
-            val s = case seq of
-                        (EPrim (Prim.String s), loc) =>
-                        (EPrim (Prim.String ("SELECT NEXTVAL('" ^ s ^ "')")), loc)
-                      | _ =>
-                        let
-                            val s' = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
-                        in
-                            (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), s']), loc)
-                        end
-        in
-            case prepString (s, [], 0) of
-                NONE => (e, sns)
-              | SOME (ss, n) =>
-                let
-                    val s = String.concat (rev ss)
-                in
-                    ((ENextval {seq = seq, prepared = SOME (#2 sns, s)}, loc),
-                     ((s, n) :: #1 sns, #2 sns + 1))
-                end
-        end
+        if #supportsNextval (Settings.currentDbms ()) then
+            let
+                val s = case seq of
+                            (EPrim (Prim.String s), loc) =>
+                            (EPrim (Prim.String ("SELECT NEXTVAL('" ^ s ^ "')")), loc)
+                          | _ =>
+                            let
+                                val s' = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
+                            in
+                                (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), s']), loc)
+                            end
+            in
+                case prepString (s, [], 0) of
+                    NONE => (e, sns)
+                  | SOME (ss, n) =>
+                    let
+                        val s = String.concat (rev ss)
+                    in
+                        ((ENextval {seq = seq, prepared = SOME (#2 sns, s)}, loc),
+                         ((s, n) :: #1 sns, #2 sns + 1))
+                    end
+            end
+        else
+            (e, sns)
 
       | EUnurlify (e, t) =>
         let

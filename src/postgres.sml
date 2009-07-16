@@ -805,13 +805,28 @@ fun nextvalCommon {loc, query} =
          string "PQclear(res);",
          newline]
 
-fun nextval loc =
-    box [string "PGconn *conn = uw_get_db(ctx);",
-         newline,
-         string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
-         newline,
-         newline,
-         nextvalCommon {loc = loc, query = string "query"}]
+open Cjr
+
+fun nextval {loc, seqE, seqName} =
+    let
+        val query = case seqName of
+                        SOME s =>
+                        string ("SELECT NEXTVAL('" ^ s ^ "')")
+                      | _ => box [string "uw_Basis_strcat(ctx, \"SELECT NEXTVAL('\", uw_Basis_strcat(ctx, ",
+                                  seqE,
+                                  string ", \"')\"))"]
+    in
+        box [string "char *query = ",
+             query,
+             string ";",
+             newline,
+             string "PGconn *conn = uw_get_db(ctx);",
+             newline,
+             string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
+             newline,
+             newline,
+             nextvalCommon {loc = loc, query = string "query"}]
+    end
 
 fun nextvalPrepared {loc, id, query} =
     box [string "PGconn *conn = uw_get_db(ctx);",
@@ -862,7 +877,8 @@ val () = addDbms {name = "postgres",
                   p_blank = p_blank,
                   supportsDeleteAs = true,
                   createSequence = fn s => "CREATE SEQUENCE " ^ s,
-                  textKeysNeedLengths = false}
+                  textKeysNeedLengths = false,
+                  supportsNextval = true}
 
 val () = setDbms "postgres"
 

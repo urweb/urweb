@@ -142,14 +142,15 @@ signature SETTINGS = sig
          dml : ErrorMsg.span -> Print.PD.pp_desc,
          dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
                         inputs : sql_type list} -> Print.PD.pp_desc,
-         nextval : ErrorMsg.span -> Print.PD.pp_desc,
+         nextval : {loc : ErrorMsg.span, seqE : Print.PD.pp_desc, seqName : string option} -> Print.PD.pp_desc,
          nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc,
          sqlifyString : string -> string,
          p_cast : string * sql_type -> string,
          p_blank : int * sql_type -> string (* Prepared statement input *),
          supportsDeleteAs : bool,
          createSequence : string -> string,
-         textKeysNeedLengths : bool
+         textKeysNeedLengths : bool,
+         supportsNextval : bool
     }
 
     val addDbms : dbms -> unit

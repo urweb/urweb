@@ -1737,41 +1737,26 @@ fun p_exp' par env (e, loc) =
              string "}))"]
 
       | ENextval {seq, prepared} =>
-        let
-            val query = case seq of
-                            (EPrim (Prim.String s), loc) =>
-                            (EPrim (Prim.String ("SELECT NEXTVAL('" ^ s ^ "')")), loc)
-                          | _ =>
-                            let
-                                val query = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
-                            in
-                                (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), query]), loc)
-                            end
-        in
-            box [string "(uw_begin_region(ctx), ",
-                 string "({",
-                 newline,
-                 string "uw_Basis_int n;",
-                 newline,
+        box [string "({",
+             newline,
+             string "uw_Basis_int n;",
+             newline,
 
-                 case prepared of
-                     NONE => box [string "char *query = ",
-                                  p_exp env query,
-                                  string ";",
-                                  newline,
-                                  newline,
+             case prepared of
+                 NONE => #nextval (Settings.currentDbms ()) {loc = loc,
+                                                             seqE = p_exp env seq,
+                                                             seqName = case #1 seq of
+                                                                           EPrim (Prim.String s) => SOME s
+                                                                         | _ => NONE}
+               | SOME (id, query) => #nextvalPrepared (Settings.currentDbms ()) {loc = loc,
+                                                                                 id = id,
+                                                                                 query = query},
+             newline,
+             newline,
 
-                                  #nextval (Settings.currentDbms ()) loc]
-                   | SOME (id, query) => #nextvalPrepared (Settings.currentDbms ()) {loc = loc,
-                                                                                     id = id,
-                                                                                     query = query},
-                 newline,
-                 newline,
-
-                 string "n;",
-                 newline,
-                 string "}))"]
-        end
+             string "n;",
+             newline,
+             string "})"]
 
       | EUnurlify (e, t) =>
         let
