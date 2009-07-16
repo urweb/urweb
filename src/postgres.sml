@@ -860,7 +860,9 @@ val () = addDbms {name = "postgres",
                   sqlifyString = sqlifyString,
                   p_cast = p_cast,
                   p_blank = p_blank,
-                  supportsDeleteAs = true}
+                  supportsDeleteAs = true,
+                  createSequence = fn s => "CREATE SEQUENCE " ^ s,
+                  textKeysNeedLengths = false}
 
 val () = setDbms "postgres"
 

@@ -337,7 +337,9 @@ type dbms = {
      sqlifyString : string -> string,
      p_cast : string * sql_type -> string,
      p_blank : int * sql_type -> string,
-     supportsDeleteAs : bool
+     supportsDeleteAs : bool,
+     createSequence : string -> string,
+     textKeysNeedLengths : bool
 }
 
 val dbmses = ref ([] : dbms list)
@@ -355,7 +357,9 @@ val curDb = ref ({name = "",
                   sqlifyString = fn s => s,
                   p_cast = fn _ => "",
                   p_blank = fn _ => "",
-                  supportsDeleteAs = false} : dbms)
+                  supportsDeleteAs = false,
+                  createSequence = fn _ => "",
+                  textKeysNeedLengths = false} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =

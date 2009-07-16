@@ -65,6 +65,12 @@ fun monoName env (all as (c, loc)) =
           | _ => poly ()
     end
 
+fun lowercaseFirst "" = ""
+  | lowercaseFirst s = String.str (Char.toLower (String.sub (s, 0)))
+                       ^ String.extract (s, 1, NONE)
+
+fun monoNameLc env c = lowercaseFirst (monoName env c)
+
 fun readType' (t, loc) = (L'.TFun ((L'.TFfi ("Basis", "string"), loc),
                                    (L'.TOption t, loc)), loc)
 fun readErrType (t, loc) = (L'.TFun ((L'.TFfi ("Basis", "string"), loc),
@@ -629,6 +635,12 @@ fun strcatComma loc es =
 fun strcatR loc e xs = strcatComma loc (map (fn (x, _) => (L'.EField (e, x), loc)) xs)
 
 val readCookie = ref IS.empty
+
+fun isBlobby (t : L.con) =
+    case #1 t of
+        L.CFfi ("Basis", "string") => true
+      | L.CFfi ("Basis", "blob") => true
+      | _ => false
 
 fun monoExp (env, st, fm) (all as (e, loc)) =
     let
@@ -1368,7 +1380,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("_", witnesses, (L'.TFfi ("Basis", "string"), loc),
                            (L'.EPrim (Prim.String
                                           (String.concatWith ", "
-                                                             (map (fn (x, _) => "uw_" ^ monoName env x) unique))),
+                                                             (map (fn (x, _) =>
+                                                                      "uw_" ^ monoNameLc env x
+                                                                      ^ (if #textKeysNeedLengths (Settings.currentDbms ())
+                                                                            andalso isBlobby t then
+                                                                             "(767)"
+                                                                         else
+                                                                             "")) unique))),
                             loc)), loc),
                  fm)
             end
@@ -1406,7 +1424,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val unique = (nm, t) :: unique
             in
                 ((L'.EPrim (Prim.String ("UNIQUE ("
-                                         ^ String.concatWith ", " (map (fn (x, _) => "uw_" ^ monoName env x) unique)
+                                         ^ String.concatWith ", "
+                                                             (map (fn (x, t) => "uw_" ^ monoNameLc env x
+                                                                                ^ (if #textKeysNeedLengths (Settings.currentDbms ())
+                                                                                      andalso isBlobby t then
+                                                                                       "(767)"
+                                                                                   else
+                                                                                       "")) unique)
                                          ^ ")")), loc),
                  fm)
             end
@@ -1447,18 +1471,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.EAbs ("m", mat, mat,
                                      (L'.ECase ((L'.EField ((L'.ERel 0, loc), "1"), loc),
                                                 [((L'.PPrim (Prim.String ""), loc),
-                                                  (L'.ERecord [("1", (L'.EPrim (Prim.String ("uw_" ^ nm1)),
+                                                  (L'.ERecord [("1", (L'.EPrim (Prim.String ("uw_" ^ lowercaseFirst nm1)),
                                                                       loc), string),
-                                                               ("2", (L'.EPrim (Prim.String ("uw_" ^ nm2)),
+                                                               ("2", (L'.EPrim (Prim.String ("uw_" ^ lowercaseFirst nm2)),
                                                                       loc), string)], loc)),
                                                  ((L'.PWild, loc),
                                                   (L'.ERecord [("1", (L'.EStrcat (
-                                                                      (L'.EPrim (Prim.String ("uw_" ^ nm1 ^ ", ")),
+                                                                      (L'.EPrim (Prim.String ("uw_" ^ lowercaseFirst nm1
+                                                                                              ^ ", ")),
                                                                        loc),
                                                                       (L'.EField ((L'.ERel 0, loc), "1"), loc)),
                                                                       loc), string),
                                                                ("2", (L'.EStrcat (
-                                                                      (L'.EPrim (Prim.String ("uw_" ^ nm2 ^ ", ")), loc),
+                                                                      (L'.EPrim (Prim.String ("uw_" ^ lowercaseFirst nm2
+                                                                                              ^ ", ")), loc),
                                                                       (L'.EField ((L'.ERel 0, loc), "2"), loc)),
                                                                       loc), string)],
                                                    loc))],
@@ -2146,7 +2172,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                _), _),
               _), _),
              (L.CName tab, _)), _),
-            (L.CName field, _)) => ((L'.EPrim (Prim.String (tab ^ ".uw_" ^ field)), loc), fm)
+            (L.CName field, _)) => ((L'.EPrim (Prim.String (tab ^ ".uw_" ^ lowercaseFirst field)), loc), fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2158,7 +2184,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                _), _),
               _), _),
              _), _),
-            (L.CName nm, _)) => ((L'.EPrim (Prim.String ("_" ^ nm)), loc), fm)
+            (L.CName nm, _)) => ((L'.EPrim (Prim.String ("_" ^ lowercaseFirst nm)), loc), fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2411,10 +2437,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | x :: rest => findOnload (rest, x :: acc)
                                      
                 val (onload, attrs) = findOnload (attrs, [])
-
-                fun lowercaseFirst "" = ""
-                  | lowercaseFirst s = String.str (Char.toLower (String.sub (s, 0)))
-                                       ^ String.extract (s, 1, NONE)
 
                 val (class, fm) = monoExp (env, st, fm) class
 

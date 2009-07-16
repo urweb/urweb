@@ -1283,18 +1283,18 @@ fun dmlPrepared {loc, id, dml, inputs} =
 fun nextval _ = box []
 fun nextvalPrepared _ = box []
 
-fun sqlifyString s = "CAST('" ^ String.translate (fn #"'" => "\\'"
-                                                   | #"\\" => "\\\\"
-                                                   | ch =>
-                                                     if Char.isPrint ch then
-                                                         str ch
-                                                     else
-                                                         (ErrorMsg.error
-                                                              "Non-printing character found in SQL string literal";
-                                                          ""))
-                                                 (String.toString s) ^ "' AS longtext)"
+fun sqlifyString s = "'" ^ String.translate (fn #"'" => "\\'"
+                                              | #"\\" => "\\\\"
+                                              | ch =>
+                                                if Char.isPrint ch then
+                                                    str ch
+                                                else
+                                                    (ErrorMsg.error
+                                                         "Non-printing character found in SQL string literal";
+                                                     ""))
+                                            (String.toString s) ^ "'"
 
-fun p_cast (s, t) = "CAST(" ^ s ^ " AS " ^ p_sql_type t ^ ")"
+fun p_cast (s, _) = s
 
 fun p_blank _ = "?"
 
@@ -1312,6 +1312,8 @@ val () = addDbms {name = "mysql",
                   sqlifyString = sqlifyString,
                   p_cast = p_cast,
                   p_blank = p_blank,
-                  supportsDeleteAs = false}
+                  supportsDeleteAs = false,
+                  createSequence = fn s => "CREATE TABLE " ^ s ^ " (id INTEGER PRIMARY KEY AUTO_INCREMENT)",
+                  textKeysNeedLengths = true}
 
 end

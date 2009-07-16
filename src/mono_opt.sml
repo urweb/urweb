@@ -83,8 +83,8 @@ val urlifyString = String.translate (fn #" " => "+"
                                                   "%" ^ hexIt ch)
 
 
-fun sqlifyInt n = attrifyInt n ^ "::" ^ #p_sql_type (Settings.currentDbms ()) Settings.Int
-fun sqlifyFloat n = attrifyFloat n ^ "::" ^ #p_sql_type (Settings.currentDbms ()) Settings.Float
+fun sqlifyInt n = #p_cast (Settings.currentDbms ()) (attrifyInt n, Settings.Int)
+fun sqlifyFloat n = #p_cast (Settings.currentDbms ()) (attrifyFloat n, Settings.Float)
 
 fun sqlifyString s = #sqlifyString (Settings.currentDbms ()) s
 

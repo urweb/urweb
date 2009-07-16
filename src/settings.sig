@@ -147,7 +147,9 @@ signature SETTINGS = sig
          sqlifyString : string -> string,
          p_cast : string * sql_type -> string,
          p_blank : int * sql_type -> string (* Prepared statement input *),
-         supportsDeleteAs : bool
+         supportsDeleteAs : bool,
+         createSequence : string -> string,
+         textKeysNeedLengths : bool
     }
 
     val addDbms : dbms -> unit

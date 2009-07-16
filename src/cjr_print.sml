@@ -2836,8 +2836,7 @@ fun p_sql env (ds, _) =
                                                  newline,
                                                  newline]
                                           | DSequence s =>
-                                            box [string "CREATE SEQUENCE ",
-                                                 string s,
+                                            box [string (#createSequence (Settings.currentDbms ()) s),
                                                  string ";",
                                                  newline,
                                                  newline]
