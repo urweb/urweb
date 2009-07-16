@@ -1932,13 +1932,15 @@ char *uw_memdup(uw_context ctx, const char *p, size_t len) {
   return r;
 }
 
+char *uw_sqlfmtInt = "%lld::int8%n";
+
 char *uw_Basis_sqlifyInt(uw_context ctx, uw_Basis_int n) {
   int len;
   char *r;
 
   uw_check_heap(ctx, INTS_MAX + 6);
   r = ctx->heap.front;
-  sprintf(r, "%lld::int8%n", n, &len);
+  sprintf(r, uw_sqlfmtInt, n, &len);
   ctx->heap.front += len+1;
   return r;
 }
@@ -1950,13 +1952,15 @@ char *uw_Basis_sqlifyIntN(uw_context ctx, uw_Basis_int *n) {
     return uw_Basis_sqlifyInt(ctx, *n);
 }
 
+char *uw_sqlfmtFloat = "%g::float8%n";
+
 char *uw_Basis_sqlifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;
   char *r;
 
   uw_check_heap(ctx, FLOATS_MAX + 8);
   r = ctx->heap.front;
-  sprintf(r, "%g::float8%n", n, &len);
+  sprintf(r, uw_sqlfmtFloat, n, &len);
   ctx->heap.front += len+1;
   return r;
 }
@@ -1968,14 +1972,17 @@ char *uw_Basis_sqlifyFloatN(uw_context ctx, uw_Basis_float *n) {
     return uw_Basis_sqlifyFloat(ctx, *n);
 }
 
+int uw_Estrings = 1;
+char *uw_sqlsuffixString = "::text";
 
 uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
 
-  uw_check_heap(ctx, strlen(s) * 2 + 10);
+  uw_check_heap(ctx, strlen(s) * 2 + 3 + uw_Estrings + strlen(uw_sqlsuffixString));
 
   r = s2 = ctx->heap.front;
-  *s2++ = 'E';
+  if (uw_Estrings)
+    *s2++ = 'E';
   *s2++ = '\'';
 
   for (; *s; s++) {
@@ -1993,26 +2000,32 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
     default:
       if (isprint(c))
         *s2++ = c;
-      else {
+      else if (uw_Estrings) {
         sprintf(s2, "\\%03o", c);
         s2 += 4;
       }
+      else
+        uw_error(ctx, FATAL, "Non-printable character %u in string to SQLify", c);
     }
   }
 
-  strcpy(s2, "'::text");
-  ctx->heap.front = s2 + 8;
+  *s2++ = '\'';
+  strcpy(s2, uw_sqlsuffixString);
+  ctx->heap.front = s2 + 1 + strlen(uw_sqlsuffixString);
   return r;
 }
+
+char *uw_sqlsuffixBlob = "::bytea";
 
 uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
   char *r, *s2;
   size_t i;
 
-  uw_check_heap(ctx, b.size * 5 + 11);
+  uw_check_heap(ctx, b.size * 5 + 3 + uw_Estrings + strlen(uw_sqlsuffixBlob));
 
   r = s2 = ctx->heap.front;
-  *s2++ = 'E';
+  if (uw_Estrings)
+    *s2++ = 'E';
   *s2++ = '\'';
 
   for (i = 0; i < b.size; ++i) {
@@ -2030,15 +2043,18 @@ uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
     default:
       if (isprint(c))
         *s2++ = c;
-      else {
+      else if (uw_Estrings) {
         sprintf(s2, "\\\\%03o", c);
         s2 += 5;
       }
+      else
+        uw_error(ctx, FATAL, "Non-printable character %u in blob to SQLify", c);
     }
   }
 
-  strcpy(s2, "'::bytea");
-  ctx->heap.front = s2 + 9;
+  *s2++ = '\'';
+  strcpy(s2, uw_sqlsuffixBlob);
+  ctx->heap.front = s2 + 1 + strlen(uw_sqlsuffixBlob);
   return r;
 }
 
@@ -2049,7 +2065,7 @@ char *uw_Basis_sqlifyChannel(uw_context ctx, uw_Basis_channel chn) {
 
   uw_check_heap(ctx, INTS_MAX + 7);
   r = ctx->heap.front;
-  sprintf(r, "%lld::int8%n", combo, &len);
+  sprintf(r, uw_sqlfmtInt, combo, &len);
   ctx->heap.front += len+1;
   return r;
 }
@@ -2066,13 +2082,15 @@ char *uw_Basis_attrifyChannel(uw_context ctx, uw_Basis_channel chn) {
   return r;
 }
 
+char *uw_sqlfmtUint4 = "%u::int4%n";
+
 char *uw_Basis_sqlifyClient(uw_context ctx, uw_Basis_client cli) {
   int len;
   char *r;
 
   uw_check_heap(ctx, INTS_MAX + 7);
   r = ctx->heap.front;
-  sprintf(r, "%u::int4%n", cli, &len);
+  sprintf(r, uw_sqlfmtUint4, cli, &len);
   ctx->heap.front += len+1;
   return r;
 }

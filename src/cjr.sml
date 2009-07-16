@@ -89,11 +89,11 @@ datatype exp' =
                      query : exp,
                      body : exp,
                      initial : exp,
-                     prepared : (int * string) option }
+                     prepared : {id : int, query : string, nested : bool} option }
        | EDml of { dml : exp,
-                   prepared : (int * string) option }
+                   prepared : {id : int, dml : string} option }
        | ENextval of { seq : exp,
-                       prepared : (int * string) option }
+                       prepared : {id : int, query : string} option }
        | EUnurlify of exp * typ
 
 withtype exp = exp' located

@@ -207,4 +207,11 @@ void uw_set_heap_front(uw_context, char*);
 
 uw_Basis_string uw_Basis_unAs(uw_context, uw_Basis_string);
 
+extern char *uw_sqlfmtInt;
+extern char *uw_sqlfmtFloat;
+extern int uw_Estrings;
+extern char *uw_sqlsuffixString;
+extern char *uw_sqlsuffixBlob;
+extern char *uw_sqlfmtUint4;
+
 #endif

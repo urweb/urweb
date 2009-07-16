@@ -1654,7 +1654,7 @@ fun p_exp' par env (e, loc) =
                                  {loc = loc,
                                   cols = map (fn (_, t) => sql_type_in env t) outputs,
                                   doCols = doCols}]
-                   | SOME (id, query) =>
+                   | SOME {id, query, nested} =>
                      box [p_list_sepi newline
                                       (fn i => fn (e, t) =>
                                                   box [p_sql_type t,
@@ -1676,7 +1676,8 @@ fun p_exp' par env (e, loc) =
                                           query = query,
                                           inputs = map #2 inputs,
                                           cols = map (fn (_, t) => sql_type_in env t) outputs,
-                                          doCols = doCols}],
+                                          doCols = doCols,
+                                          nested = nested}],
                  newline,
 
                  if wontLeakAnything then
@@ -1703,7 +1704,7 @@ fun p_exp' par env (e, loc) =
                               newline,
                               newline,
                               #dml (Settings.currentDbms ()) loc]
-               | SOME (id, dml') =>
+               | SOME {id, dml = dml'} =>
                  let
                      val inputs = getPargs dml
                  in
@@ -1748,7 +1749,7 @@ fun p_exp' par env (e, loc) =
                                                              seqName = case #1 seq of
                                                                            EPrim (Prim.String s) => SOME s
                                                                          | _ => NONE}
-               | SOME (id, query) => #nextvalPrepared (Settings.currentDbms ()) {loc = loc,
+               | SOME {id, query} => #nextvalPrepared (Settings.currentDbms ()) {loc = loc,
                                                                                  id = id,
                                                                                  query = query},
              newline,

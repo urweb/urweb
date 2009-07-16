@@ -199,7 +199,7 @@ fun prepExp (e as (_, loc), sns) =
                 in
                     ((EQuery {exps = exps, tables = tables, rnum = rnum,
                               state = state, query = query, body = body,
-                              initial = initial, prepared = SOME (#2 sns, s)}, loc),
+                              initial = initial, prepared = SOME {id = #2 sns, query = s, nested = true}}, loc),
                      ((s, n) :: #1 sns, #2 sns + 1))
                 end
         end
@@ -211,7 +211,7 @@ fun prepExp (e as (_, loc), sns) =
              let
                  val s = String.concat (rev ss)
              in
-                 ((EDml {dml = dml, prepared = SOME (#2 sns, s)}, loc),
+                 ((EDml {dml = dml, prepared = SOME {id = #2 sns, dml = s}}, loc),
                   ((s, n) :: #1 sns, #2 sns + 1))
              end)
 
@@ -234,7 +234,7 @@ fun prepExp (e as (_, loc), sns) =
                     let
                         val s = String.concat (rev ss)
                     in
-                        ((ENextval {seq = seq, prepared = SOME (#2 sns, s)}, loc),
+                        ((ENextval {seq = seq, prepared = SOME {id = #2 sns, query = s}}, loc),
                          ((s, n) :: #1 sns, #2 sns + 1))
                     end
             end

@@ -327,7 +327,8 @@ type dbms = {
      queryPrepared : {loc : ErrorMsg.span, id : int, query : string,
                       inputs : sql_type list, cols : sql_type list,
                       doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
-                               -> Print.PD.pp_desc}
+                               -> Print.PD.pp_desc,
+                      nested : bool}
                      -> Print.PD.pp_desc,
      dml : ErrorMsg.span -> Print.PD.pp_desc,
      dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
@@ -340,7 +341,8 @@ type dbms = {
      supportsDeleteAs : bool,
      createSequence : string -> string,
      textKeysNeedLengths : bool,
-     supportsNextval : bool
+     supportsNextval : bool,
+     supportsNestedPrepared : bool
 }
 
 val dbmses = ref ([] : dbms list)
@@ -361,7 +363,8 @@ val curDb = ref ({name = "",
                   supportsDeleteAs = false,
                   createSequence = fn _ => "",
                   textKeysNeedLengths = false,
-                  supportsNextval = false} : dbms)
+                  supportsNextval = false,
+                  supportsNestedPrepared = false} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =

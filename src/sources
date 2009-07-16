@@ -192,6 +192,9 @@ scriptcheck.sml
 prepare.sig
 prepare.sml
 
+checknest.sig
+checknest.sml
+
 compiler.sig
 compiler.sml
 

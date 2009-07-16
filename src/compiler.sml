@@ -884,6 +884,13 @@ val prepare = {
 
 val toPrepare = transform prepare "prepare" o toScriptcheck
 
+val checknest = {
+    func = fn f => if #supportsNestedPrepared (Settings.currentDbms ()) then f else Checknest.annotate f,
+    print = CjrPrint.p_file CjrEnv.empty
+}
+
+val toChecknest = transform checknest "checknest" o toPrepare
+
 val sqlify = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_sql CjrEnv.empty
@@ -924,7 +931,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
     end
 
 fun compile job =
-    case run toPrepare job of
+    case run toChecknest job of
         NONE => print "Ur compilation failed\n"
       | SOME file =>
         let

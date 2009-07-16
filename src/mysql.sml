@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -376,7 +376,21 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
 
              string "void uw_client_init(void) {",
              newline,
-             box [string "if (mysql_library_init(0, NULL, NULL)) {",
+             box [string "uw_sqlfmtInt = \"%lld%n\";",
+                  newline,
+                  string "uw_sqlfmtFloat = \"%g%n\";",
+                  newline,
+                  string "uw_Estrings = 0;",
+                  newline,
+                  string "uw_sqlsuffixString = \"\";",
+                  newline,
+                  string "uw_sqlsuffixBlob = \"\";",
+                  newline,
+                  string "uw_sqlfmtUint4 = \"%u%n\";",
+                  newline,
+                  newline,
+
+                  string "if (mysql_library_init(0, NULL, NULL)) {",
                   newline,
                   box [string "fprintf(stderr, \"Could not initialize MySQL library\\n\");",
                        newline,
@@ -867,7 +881,7 @@ fun query {loc, cols, doCols} =
          string "uw_pop_cleanup(ctx);",
          newline]
 
-fun queryPrepared {loc, id, query, inputs, cols, doCols} =
+fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
          string "MYSQL_BIND in[",
@@ -901,18 +915,25 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols} =
                                                      | _ => buffers t,
                                                    newline]
                                           end) inputs,
-         string "MYSQL_STMT *stmt = conn->p",
-         string (Int.toString id),
-         string ";",
-         newline,
-         newline,
 
-         string "if (stmt == NULL) {",
-         newline,
+         if nested then
+             box [string "MYSQL_STMT *stmt;",
+                  newline]
+         else
+             box [string "MYSQL_STMT *stmt = conn->p",
+                  string (Int.toString id),
+                  string ";",
+                  newline,
+                  newline,
+
+                  string "if (stmt == NULL) {",
+                  newline],
+
          box [string "stmt = mysql_stmt_init(conn->conn);",
               newline,
               string "if (stmt == NULL) uw_error(ctx, FATAL, \"Out of memory allocating prepared statement\");",
               newline,
+              string "uw_push_cleanup(ctx, (void (*)(void *))mysql_stmt_close, stmt);",
               string "if (mysql_stmt_prepare(stmt, \"",
               string (String.toString query),
               string "\", ",
@@ -929,12 +950,18 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols} =
                    newline],
               string "}",
               newline,
-              string "conn->p",
-              string (Int.toString id),
-              string " = stmt;",
-              newline],
-         string "}",
-         newline,
+              if nested then
+                  box []
+              else
+                  box [string "conn->p",
+                       string (Int.toString id),
+                       string " = stmt;",
+                       newline]],
+         if nested then
+             box []
+         else
+             box [string "}",
+                  newline],
          newline,
 
          string "memset(in, 0, sizeof in);",
@@ -1086,7 +1113,13 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols} =
 
          queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
                                                                             string (String.toString query),
-                                                                            string "\""]}]
+                                                                            string "\""]},
+
+         if nested then
+             box [string "uw_pop_cleanup(ctx);",
+                  newline]
+         else
+             box []]
 
 fun dmlCommon {loc, dml} =
     box [string "if (mysql_stmt_execute(stmt)) uw_error(ctx, FATAL, \"",
@@ -1402,6 +1435,7 @@ val () = addDbms {name = "mysql",
                   supportsDeleteAs = false,
                   createSequence = fn s => "CREATE TABLE " ^ s ^ " (id INTEGER PRIMARY KEY AUTO_INCREMENT)",
                   textKeysNeedLengths = true,
-                  supportsNextval = false}
+                  supportsNextval = false,
+                  supportsNestedPrepared = false}
 
 end

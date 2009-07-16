@@ -247,7 +247,21 @@ fun checkRel (table, checkNullable) (s, xts) =
 
 fun init {dbstring, prepared = ss, tables, views, sequences} =
     box [if #persistent (currentProtocol ()) then
-             box [string "void uw_client_init(void) { }",
+             box [string "void uw_client_init(void) {",
+                  newline,
+                  box [string "uw_sqlfmtInt = \"%lld::int8%n\";",
+                       newline,
+                       string "uw_sqlfmtFloat = \"%g::float8%n\";",
+                       newline,
+                       string "uw_Estrings = 1;",
+                       newline,
+                       string "uw_sqlsuffixString = \"::text\";",
+                       newline,
+                       string "uw_sqlsuffixBlob = \"::bytea\";",
+                       newline,
+                       string "uw_sqlfmtUint4 = \"%u::int4%n\";",
+                       newline],
+                  string "}",
                   newline,
                   newline,
 
@@ -639,7 +653,7 @@ fun p_ensql t e =
                            p_ensql t (box [string "(*", e, string ")"]),
                            string ")"]
 
-fun queryPrepared {loc, id, query, inputs, cols, doCols} =
+fun queryPrepared {loc, id, query, inputs, cols, doCols, nested = _} =
     box [string "PGconn *conn = uw_get_db(ctx);",
          newline,
          string "const int paramFormats[] = { ",
@@ -782,8 +796,6 @@ fun nextvalCommon {loc, query} =
          newline,
          newline,
 
-         string "uw_end_region(ctx);",
-         newline,
          string "n = PQntuples(res);",
          newline,
          string "if (n != 1) {",
@@ -811,7 +823,7 @@ fun nextval {loc, seqE, seqName} =
     let
         val query = case seqName of
                         SOME s =>
-                        string ("SELECT NEXTVAL('" ^ s ^ "')")
+                        string ("\"SELECT NEXTVAL('" ^ s ^ "')\"")
                       | _ => box [string "uw_Basis_strcat(ctx, \"SELECT NEXTVAL('\", uw_Basis_strcat(ctx, ",
                                   seqE,
                                   string ", \"')\"))"]
@@ -878,7 +890,8 @@ val () = addDbms {name = "postgres",
                   supportsDeleteAs = true,
                   createSequence = fn s => "CREATE SEQUENCE " ^ s,
                   textKeysNeedLengths = false,
-                  supportsNextval = true}
+                  supportsNextval = true,
+                  supportsNestedPrepared = true}
 
 val () = setDbms "postgres"
 

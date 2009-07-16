@@ -99,6 +99,7 @@ signature COMPILER = sig
     val cjrize : (Mono.file, Cjr.file) phase
     val scriptcheck : (Cjr.file, Cjr.file) phase
     val prepare : (Cjr.file, Cjr.file) phase
+    val checknest : (Cjr.file, Cjr.file) phase
     val sqlify : (Mono.file, Cjr.file) phase
 
     val toParseJob : (string, job) transform
@@ -138,6 +139,7 @@ signature COMPILER = sig
     val toCjrize : (string, Cjr.file) transform
     val toScriptcheck : (string, Cjr.file) transform
     val toPrepare : (string, Cjr.file) transform
+    val toChecknest : (string, Cjr.file) transform
     val toSqlify : (string, Cjr.file) transform
 
 end
