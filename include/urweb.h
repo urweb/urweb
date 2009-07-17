@@ -159,13 +159,13 @@ uw_Basis_int *uw_Basis_stringToInt(uw_context, uw_Basis_string);
 uw_Basis_float *uw_Basis_stringToFloat(uw_context, uw_Basis_string);
 uw_Basis_char *uw_Basis_stringToChar(uw_context, uw_Basis_string);
 uw_Basis_bool *uw_Basis_stringToBool(uw_context, uw_Basis_string);
-uw_Basis_time *uw_Basis_stringToTime(uw_context, uw_Basis_string);
+uw_Basis_time *uw_Basis_stringToTime(uw_context, const char *);
 
 uw_Basis_int uw_Basis_stringToInt_error(uw_context, uw_Basis_string);
 uw_Basis_float uw_Basis_stringToFloat_error(uw_context, uw_Basis_string);
 uw_Basis_char uw_Basis_stringToChar_error(uw_context, uw_Basis_string);
 uw_Basis_bool uw_Basis_stringToBool_error(uw_context, uw_Basis_string);
-uw_Basis_time uw_Basis_stringToTime_error(uw_context, uw_Basis_string);
+uw_Basis_time uw_Basis_stringToTime_error(uw_context, const char *);
 uw_Basis_blob uw_Basis_stringToBlob_error(uw_context, uw_Basis_string, size_t);
 uw_Basis_channel uw_Basis_stringToChannel_error(uw_context, uw_Basis_string);
 uw_Basis_client uw_Basis_stringToClient_error(uw_context, uw_Basis_string);

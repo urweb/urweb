@@ -37,7 +37,7 @@ fun p_sql_type t =
       | Float => "real"
       | String => "text"
       | Bool => "integer"
-      | Time => "integer"
+      | Time => "text"
       | Blob => "blob"
       | Channel => "integer"
       | Client => "integer"
@@ -371,7 +371,7 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
                 else
                     box [string "uw_strdup(ctx, sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
               | Bool => box [string "(uw_Basis_bool)sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
-              | Time => box [string "(uw_Basis_time)sqlite3_column_int64(stmt, ", string (Int.toString i), string ")"]
+              | Time => box [string "uw_Basis_stringToTime_error(ctx, sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
               | Blob => box [string "({",
                              newline,
                              string "char *data = sqlite3_column_blob(stmt, ",
@@ -526,11 +526,11 @@ fun p_inputs loc =
                                                      string ", ",
                                                      arg,
                                                      string ")"]
-                                      | Time => box [string "sqlite3_bind_int64(stmt, ",
+                                      | Time => box [string "sqlite3_bind_text(stmt, ",
                                                      string (Int.toString (i + 1)),
-                                                     string ", ",
+                                                     string ", uw_Basis_attrifyTime(ctx, ",
                                                      arg,
-                                                     string ")"]
+                                                     string "), -1, SQLITE_TRANSIENT)"]
                                       | Blob => box [string "sqlite3_bind_blob(stmt, ",
                                                      string (Int.toString (i + 1)),
                                                      string ", ",
