@@ -2844,7 +2844,7 @@ fun p_sql env (ds, _) =
                            end)
                        env ds
     in
-        box pps
+        box (string (#sqlPrefix (Settings.currentDbms ())) :: pps)
     end
 
 end

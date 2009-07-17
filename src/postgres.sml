@@ -893,7 +893,8 @@ val () = addDbms {name = "postgres",
                   createSequence = fn s => "CREATE SEQUENCE " ^ s,
                   textKeysNeedLengths = false,
                   supportsNextval = true,
-                  supportsNestedPrepared = true}
+                  supportsNestedPrepared = true,
+                  sqlPrefix = ""}
 
 val () = setDbms "postgres"
 

@@ -487,7 +487,9 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
 
                       string "}"]
              else
-                 string "static void uw_db_prepare(uw_context ctx) { }",
+                 box [string "static void uw_db_prepare(uw_context ctx) { }",
+                      newline,
+                      string "static void uw_db_validate(uw_context ctx) { }"],
              newline,
              newline,
              
@@ -1445,6 +1447,7 @@ val () = addDbms {name = "mysql",
                   createSequence = fn s => "CREATE TABLE " ^ s ^ " (id INTEGER PRIMARY KEY AUTO_INCREMENT)",
                   textKeysNeedLengths = true,
                   supportsNextval = false,
-                  supportsNestedPrepared = false}
+                  supportsNestedPrepared = false,
+                  sqlPrefix = "SET storage_engine=InnoDB;\n"}
 
 end

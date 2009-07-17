@@ -153,7 +153,8 @@ signature SETTINGS = sig
          createSequence : string -> string,
          textKeysNeedLengths : bool,
          supportsNextval : bool,
-         supportsNestedPrepared : bool
+         supportsNestedPrepared : bool,
+         sqlPrefix : string
     }
 
     val addDbms : dbms -> unit
