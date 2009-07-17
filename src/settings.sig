@@ -150,6 +150,7 @@ signature SETTINGS = sig
          p_cast : string * sql_type -> string,
          p_blank : int * sql_type -> string (* Prepared statement input *),
          supportsDeleteAs : bool,
+         supportsUpdateAs : bool,
          createSequence : string -> string,
          textKeysNeedLengths : bool,
          supportsNextval : bool,

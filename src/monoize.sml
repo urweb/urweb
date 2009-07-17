@@ -1606,19 +1606,35 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                      ((L'.EAbs ("fs", rt, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                                 (L'.EAbs ("tab", s, (L'.TFun (s, s), loc),
                                           (L'.EAbs ("e", s, s,
-                                                    strcat [sc "UPDATE ",
-                                                            (L'.ERel 1, loc),
-                                                            sc " AS T SET ",
-                                                            strcatComma (map (fn (x, _) =>
-                                                                                 strcat [sc ("uw_" ^ x
-                                                                                             ^ " = "),
-                                                                                         (L'.EField
-                                                                                              ((L'.ERel 2,
-                                                                                                loc),
-                                                                                               x), loc)])
-                                                                             changed),
-                                                            sc " WHERE ",
-                                                            (L'.ERel 0, loc)]), loc)), loc)), loc),
+                                                    if #supportsUpdateAs (Settings.currentDbms ()) then
+                                                        strcat [sc "UPDATE ",
+                                                                (L'.ERel 1, loc),
+                                                                sc " AS T SET ",
+                                                                strcatComma (map (fn (x, _) =>
+                                                                                     strcat [sc ("uw_" ^ x
+                                                                                                 ^ " = "),
+                                                                                             (L'.EField
+                                                                                                  ((L'.ERel 2,
+                                                                                                    loc),
+                                                                                                   x), loc)])
+                                                                                 changed),
+                                                                sc " WHERE ",
+                                                                (L'.ERel 0, loc)]
+                                                    else
+                                                        strcat [sc "UPDATE ",
+                                                                (L'.ERel 1, loc),
+                                                                sc " SET ",
+                                                                strcatComma (map (fn (x, _) =>
+                                                                                     strcat [sc ("uw_" ^ x
+                                                                                                 ^ " = "),
+                                                                                             (L'.EField
+                                                                                                  ((L'.ERel 2,
+                                                                                                    loc),
+                                                                                                   x), loc)])
+                                                                                 changed),
+                                                                sc " WHERE ",
+                                                                (L'.EFfiApp ("Basis", "unAs", [(L'.ERel 0, loc)]), loc)]),
+                                           loc)), loc)), loc),
                       fm)
                  end
                | _ => poly ())

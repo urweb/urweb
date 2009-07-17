@@ -232,8 +232,14 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                                                                string (Int.toString i),
                                                                string ", NULL) != SQLITE_OK) {",
                                                                newline,
-                                                               uhoh false ("Error preparing statement: "
-                                                                           ^ String.toString s) [],
+                                                               box [string "char msg[1024];",
+                                                                    newline,
+                                                                    string "strncpy(msg, sqlite3_errmsg(conn->conn), 1024);",
+                                                                    newline,
+                                                                    string "msg[1023] = 0;",
+                                                                    newline,
+                                                                    uhoh false ("Error preparing statement: "
+                                                                                ^ String.toString s ^ "\\n%s") ["msg"]],
                                                                string "}",
                                                                newline]
                                                       end)
@@ -379,7 +385,17 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
                              string "b;",
                              newline,
                              string "})"]
-              | Channel => box [string "sqlite3_column_int64(stmt, ", string (Int.toString i), string ")"]
+              | Channel => box [string "({",
+                                newline,
+                                string "sqlite3_int64 n = sqlite3_column_int64(stmt, ",
+                                string (Int.toString i),
+                                string ");",
+                                newline,
+                                string "uw_Basis_channel ch = {n >> 32, n & 0xFFFFFFFF};",
+                                newline,
+                                string "ch;",
+                                newline,
+                                string "})"]
               | Client => box [string "sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
 
               | Nullable _ => raise Fail "Postgres: Recursive Nullable"
@@ -469,7 +485,7 @@ fun queryCommon {loc, query, cols, doCols} =
 fun query {loc, cols, doCols} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
-         string "sqlite3 *stmt;",
+         string "sqlite3_stmt *stmt;",
          newline,
          newline,
          string "if (sqlite3_prepare_v2(conn->conn, query, -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: %s\\n%s\", sqlite3_errmsg(conn->conn));",
@@ -522,11 +538,13 @@ fun p_inputs loc =
                                                      string ".data, ",
                                                      arg,
                                                      string ".size, SQLITE_TRANSIENT"]
-                                      | Channel => box [string "sqlite_bind_int64(stmt, ",
+                                      | Channel => box [string "sqlite3_bind_int64(stmt, ",
                                                         string (Int.toString (i + 1)),
-                                                        string ", ",
+                                                        string ", ((sqlite3_int64)",
                                                         arg,
-                                                        string ")"]
+                                                        string ".cli << 32) | ",
+                                                        arg,
+                                                        string ".chn)"]
                                       | Client => box [string "sqlite3_bind_int(stmt, ",
                                                        string (Int.toString (i + 1)),
                                                        string ", ",
@@ -629,7 +647,7 @@ fun dmlCommon {loc, dml} =
 fun dml loc =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
-         string "sqlite3 *stmt;",
+         string "sqlite3_stmt *stmt;",
          newline,
          newline,
          string "if (sqlite3_prepare_v2(conn->conn, dml, -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: %s\\n%s\", dml, sqlite3_errmsg(conn->conn));",
@@ -690,7 +708,7 @@ fun nextval {loc, seqE, seqName} =
          newline,
          string "char *insert = ",
          case seqName of
-             SOME s => string ("\"INSERT INTO " ^ s ^ " VALUES ()\"")
+             SOME s => string ("\"INSERT INTO " ^ s ^ " VALUES (NULL)\"")
            | NONE => box [string "uw_Basis_strcat(ctx, \"INSERT INTO \", uw_Basis_strcat(ctx, ",
                           seqE,
                           string ", \" VALUES ()\"))"],
@@ -706,11 +724,11 @@ fun nextval {loc, seqE, seqName} =
          newline,
          newline,
 
-         string "if (sqlite3_exec(conn->conn, insert, NULL, NULL, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"'nextval' INSERT failed\");",
+         string "if (sqlite3_exec(conn->conn, insert, NULL, NULL, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"'nextval' INSERT failed: %s\", sqlite3_errmsg(conn->conn));",
          newline,
          string "n = sqlite3_last_insert_rowid(conn->conn);",
          newline,
-         string "if (sqlite3_exec(conn->conn, delete, NULL, NULL, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"'nextval' DELETE failed\");",
+         string "if (sqlite3_exec(conn->conn, delete, NULL, NULL, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"'nextval' DELETE failed: %s\", sqlite3_errmsg(conn->conn));",
          newline]
 
 fun nextvalPrepared _ = raise Fail "SQLite.nextvalPrepared called"
@@ -744,7 +762,8 @@ val () = addDbms {name = "sqlite",
                   p_cast = p_cast,
                   p_blank = p_blank,
                   supportsDeleteAs = false,
-                  createSequence = fn s => "CREATE TABLE " ^ s ^ " (id INTEGER PRIMARY KEY AUTO INCREMENT)",
+                  supportsUpdateAs = false,
+                  createSequence = fn s => "CREATE TABLE " ^ s ^ " (id INTEGER PRIMARY KEY AUTOINCREMENT)",
                   textKeysNeedLengths = false,
                   supportsNextval = false,
                   supportsNestedPrepared = false,
