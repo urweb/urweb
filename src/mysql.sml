@@ -596,7 +596,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline]
     end
 
-fun p_getcol {wontLeakStrings = _, col = i, typ = t} =
+fun p_getcol {loc, wontLeakStrings = _, col = i, typ = t} =
     let
         fun getter t =
             case t of
@@ -933,7 +933,11 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
               newline,
               string "if (stmt == NULL) uw_error(ctx, FATAL, \"Out of memory allocating prepared statement\");",
               newline,
-              string "uw_push_cleanup(ctx, (void (*)(void *))mysql_stmt_close, stmt);",
+              if nested then
+                  box [string "uw_push_cleanup(ctx, (void (*)(void *))mysql_stmt_close, stmt);",
+                       newline]
+              else
+                  box [],
               string "if (mysql_stmt_prepare(stmt, \"",
               string (String.toString query),
               string "\", ",
@@ -946,6 +950,11 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                    newline,
                    string "msg[1023] = 0;",
                    newline,
+                   if nested then
+                       box []
+                   else
+                       box [string "mysql_stmt_close(stmt);",
+                            newline],
                    string "uw_error(ctx, FATAL, \"Error preparing statement: %s\", msg);",
                    newline],
               string "}",

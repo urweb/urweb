@@ -321,12 +321,13 @@ type dbms = {
              views : (string * (string * sql_type) list) list,
              sequences : string list} -> Print.PD.pp_desc,
      query : {loc : ErrorMsg.span, cols : sql_type list,
-              doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
+              doCols : ({loc : ErrorMsg.span, wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
                        -> Print.PD.pp_desc}
              -> Print.PD.pp_desc,
      queryPrepared : {loc : ErrorMsg.span, id : int, query : string,
                       inputs : sql_type list, cols : sql_type list,
-                      doCols : ({wontLeakStrings : bool, col : int, typ : sql_type} -> Print.PD.pp_desc)
+                      doCols : ({loc : ErrorMsg.span, wontLeakStrings : bool, col : int,
+                                 typ : sql_type} -> Print.PD.pp_desc)
                                -> Print.PD.pp_desc,
                       nested : bool}
                      -> Print.PD.pp_desc,

@@ -494,7 +494,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
          newline,
          string "}"]
 
-fun p_getcol {wontLeakStrings, col = i, typ = t} =
+fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
     let
         fun p_unsql t e eLen =
             case t of
@@ -550,7 +550,9 @@ fun p_getcol {wontLeakStrings, col = i, typ = t} =
                           space,
                           string "tmp;",
                           newline,
-                          string "uw_error(ctx, FATAL, \"Unexpectedly NULL field #",
+                          string "uw_error(ctx, FATAL, \"",
+                          string (ErrorMsg.spanToString loc),
+                          string ": Unexpectedly NULL field #",
                           string (Int.toString i),
                           string "\");",
                           newline,
