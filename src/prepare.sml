@@ -30,190 +30,220 @@ structure Prepare :> PREPARE = struct
 open Cjr
 open Settings
 
-fun prepString (e, ss, n) =
+structure SM = BinaryMapFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
+structure St :> sig
+    type t
+    val empty : t
+    val nameOf : t * string -> t * int
+    val list : t -> (string * int) list
+    val count : t -> int
+end = struct
+
+type t = {map : int SM.map, list : (string * int) list, count : int}
+
+val empty = {map = SM.empty, list = [], count = 0}
+
+fun nameOf (t as {map, list, count}, s) =
+    case SM.find (map, s) of
+        NONE => ({map = SM.insert (map, s, count), list = (s, count) :: list, count = count + 1}, count)
+      | SOME n => (t, n)
+
+fun list (t : t) = rev (#list t)
+fun count (t : t) = #count t
+
+end
+
+fun prepString (e, st) =
     let
-        fun doOne t =
-            SOME (#p_blank (Settings.currentDbms ()) (n + 1, t) :: ss, n + 1)
+        fun prepString' (e, ss, n) =
+            let
+                fun doOne t =
+                    SOME (#p_blank (Settings.currentDbms ()) (n + 1, t) :: ss, n + 1)
+            in
+                case #1 e of
+                    EPrim (Prim.String s) =>
+                    SOME (s :: ss, n)
+                  | EFfiApp ("Basis", "strcat", [e1, e2]) =>
+                    (case prepString' (e1, ss, n) of
+                         NONE => NONE
+                       | SOME (ss, n) => prepString' (e2, ss, n))
+                  | EFfiApp ("Basis", "sqlifyInt", [e]) => doOne Int
+                  | EFfiApp ("Basis", "sqlifyFloat", [e]) => doOne Float
+                  | EFfiApp ("Basis", "sqlifyString", [e]) => doOne String
+                  | EFfiApp ("Basis", "sqlifyBool", [e]) => doOne Bool
+                  | EFfiApp ("Basis", "sqlifyTime", [e]) => doOne Time
+                  | EFfiApp ("Basis", "sqlifyBlob", [e]) => doOne Blob
+                  | EFfiApp ("Basis", "sqlifyChannel", [e]) => doOne Channel
+                  | EFfiApp ("Basis", "sqlifyClient", [e]) => doOne Client
+
+                  | ECase (e,
+                           [((PNone _, _),
+                             (EPrim (Prim.String "NULL"), _)),
+                            ((PSome (_, (PVar _, _)), _),
+                             (EFfiApp (m, x, [(ERel 0, _)]), _))],
+                           _) => prepString' ((EFfiApp (m, x, [e]), #2 e), ss, n)
+
+                  | ECase (e,
+                           [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
+                             (EPrim (Prim.String "TRUE"), _)),
+                            ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, _), _),
+                             (EPrim (Prim.String "FALSE"), _))],
+                           _) => doOne Bool
+
+                  | _ => NONE
+            end
     in
-        case #1 e of
-            EPrim (Prim.String s) =>
-            SOME (s :: ss, n)
-          | EFfiApp ("Basis", "strcat", [e1, e2]) =>
-            (case prepString (e1, ss, n) of
-                 NONE => NONE
-               | SOME (ss, n) => prepString (e2, ss, n))
-          | EFfiApp ("Basis", "sqlifyInt", [e]) => doOne Int
-          | EFfiApp ("Basis", "sqlifyFloat", [e]) => doOne Float
-          | EFfiApp ("Basis", "sqlifyString", [e]) => doOne String
-          | EFfiApp ("Basis", "sqlifyBool", [e]) => doOne Bool
-          | EFfiApp ("Basis", "sqlifyTime", [e]) => doOne Time
-          | EFfiApp ("Basis", "sqlifyBlob", [e]) => doOne Blob
-          | EFfiApp ("Basis", "sqlifyChannel", [e]) => doOne Channel
-          | EFfiApp ("Basis", "sqlifyClient", [e]) => doOne Client
-
-          | ECase (e,
-                   [((PNone _, _),
-                     (EPrim (Prim.String "NULL"), _)),
-                    ((PSome (_, (PVar _, _)), _),
-                     (EFfiApp (m, x, [(ERel 0, _)]), _))],
-                   _) => prepString ((EFfiApp (m, x, [e]), #2 e), ss, n)
-
-          | ECase (e,
-                   [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
-                     (EPrim (Prim.String "TRUE"), _)),
-                    ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, _), _),
-                     (EPrim (Prim.String "FALSE"), _))],
-                   _) => doOne Bool
-
-          | _ => NONE
+        case prepString' (e, [], 0) of
+            NONE => NONE
+          | SOME (ss, n) =>
+            let
+                val s = String.concat (rev ss)
+                val (st, id) = St.nameOf (st, s)
+            in
+                SOME (id, s, st)
+            end
     end
 
-fun prepExp (e as (_, loc), sns) =
+fun prepExp (e as (_, loc), st) =
     case #1 e of
-        EPrim _ => (e, sns)
-      | ERel _ => (e, sns)
-      | ENamed _ => (e, sns)
-      | ECon (_, _, NONE) => (e, sns)
+        EPrim _ => (e, st)
+      | ERel _ => (e, st)
+      | ENamed _ => (e, st)
+      | ECon (_, _, NONE) => (e, st)
       | ECon (dk, pc, SOME e) =>
         let
-            val (e, sns) = prepExp (e, sns)
+            val (e, st) = prepExp (e, st)
         in
-            ((ECon (dk, pc, SOME e), loc), sns)
+            ((ECon (dk, pc, SOME e), loc), st)
         end
-      | ENone t => (e, sns)
+      | ENone t => (e, st)
       | ESome (t, e) =>
         let
-            val (e, sns) = prepExp (e, sns)
+            val (e, st) = prepExp (e, st)
         in
-            ((ESome (t, e), loc), sns)
+            ((ESome (t, e), loc), st)
         end
-      | EFfi _ => (e, sns)
+      | EFfi _ => (e, st)
       | EFfiApp (m, x, es) =>
         let
-            val (es, sns) = ListUtil.foldlMap prepExp sns es
+            val (es, st) = ListUtil.foldlMap prepExp st es
         in
-            ((EFfiApp (m, x, es), loc), sns)
+            ((EFfiApp (m, x, es), loc), st)
         end
       | EApp (e1, es) =>
         let
-            val (e1, sns) = prepExp (e1, sns)
-            val (es, sns) = ListUtil.foldlMap prepExp sns es
+            val (e1, st) = prepExp (e1, st)
+            val (es, st) = ListUtil.foldlMap prepExp st es
         in
-            ((EApp (e1, es), loc), sns)
+            ((EApp (e1, es), loc), st)
         end
 
       | EUnop (s, e1) =>
         let
-            val (e1, sns) = prepExp (e1, sns)
+            val (e1, st) = prepExp (e1, st)
         in
-            ((EUnop (s, e1), loc), sns)
+            ((EUnop (s, e1), loc), st)
         end
       | EBinop (s, e1, e2) =>
         let
-            val (e1, sns) = prepExp (e1, sns)
-            val (e2, sns) = prepExp (e2, sns)
+            val (e1, st) = prepExp (e1, st)
+            val (e2, st) = prepExp (e2, st)
         in
-            ((EBinop (s, e1, e2), loc), sns)
+            ((EBinop (s, e1, e2), loc), st)
         end
 
       | ERecord (rn, xes) =>
         let
-            val (xes, sns) = ListUtil.foldlMap (fn ((x, e), sns) =>
+            val (xes, st) = ListUtil.foldlMap (fn ((x, e), st) =>
                                                    let
-                                                       val (e, sns) = prepExp (e, sns)
+                                                       val (e, st) = prepExp (e, st)
                                                    in
-                                                       ((x, e), sns)
-                                                   end) sns xes
+                                                       ((x, e), st)
+                                                   end) st xes
         in
-            ((ERecord (rn, xes), loc), sns)
+            ((ERecord (rn, xes), loc), st)
         end
       | EField (e, s) =>
         let
-            val (e, sns) = prepExp (e, sns)
+            val (e, st) = prepExp (e, st)
         in
-            ((EField (e, s), loc), sns)
+            ((EField (e, s), loc), st)
         end
 
       | ECase (e, pes, ts) =>
         let
-            val (e, sns) = prepExp (e, sns)
-            val (pes, sns) = ListUtil.foldlMap (fn ((p, e), sns) =>
+            val (e, st) = prepExp (e, st)
+            val (pes, st) = ListUtil.foldlMap (fn ((p, e), st) =>
                                                    let
-                                                       val (e, sns) = prepExp (e, sns)
+                                                       val (e, st) = prepExp (e, st)
                                                    in
-                                                       ((p, e), sns)
-                                                   end) sns pes
+                                                       ((p, e), st)
+                                                   end) st pes
         in
-            ((ECase (e, pes, ts), loc), sns)
+            ((ECase (e, pes, ts), loc), st)
         end
 
       | EError (e, t) =>
         let
-            val (e, sns) = prepExp (e, sns)
+            val (e, st) = prepExp (e, st)
         in
-            ((EError (e, t), loc), sns)
+            ((EError (e, t), loc), st)
         end
 
       | EReturnBlob {blob, mimeType, t} =>
         let
-            val (blob, sns) = prepExp (blob, sns)
-            val (mimeType, sns) = prepExp (mimeType, sns)
+            val (blob, st) = prepExp (blob, st)
+            val (mimeType, st) = prepExp (mimeType, st)
         in
-            ((EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), sns)
+            ((EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), st)
         end
 
       | EWrite e =>
         let
-            val (e, sns) = prepExp (e, sns)
+            val (e, st) = prepExp (e, st)
         in
-            ((EWrite e, loc), sns)
+            ((EWrite e, loc), st)
         end
       | ESeq (e1, e2) =>
         let
-            val (e1, sns) = prepExp (e1, sns)
-            val (e2, sns) = prepExp (e2, sns)
+            val (e1, st) = prepExp (e1, st)
+            val (e2, st) = prepExp (e2, st)
         in
-            ((ESeq (e1, e2), loc), sns)
+            ((ESeq (e1, e2), loc), st)
         end
       | ELet (x, t, e1, e2) =>
         let
-            val (e1, sns) = prepExp (e1, sns)
-            val (e2, sns) = prepExp (e2, sns)
+            val (e1, st) = prepExp (e1, st)
+            val (e2, st) = prepExp (e2, st)
         in
-            ((ELet (x, t, e1, e2), loc), sns)
+            ((ELet (x, t, e1, e2), loc), st)
         end
 
       | EQuery {exps, tables, rnum, state, query, body, initial, ...} =>
         let
-            val (body, sns) = prepExp (body, sns)
+            val (body, st) = prepExp (body, st)
         in
-            case prepString (query, [], 0) of
+            case prepString (query, st) of
                 NONE =>
                 ((EQuery {exps = exps, tables = tables, rnum = rnum,
                           state = state, query = query, body = body,
                           initial = initial, prepared = NONE}, loc),
-                 sns)
-              | SOME (ss, n) =>
-                let
-                    val s = String.concat (rev ss)
-                in
-                    ((EQuery {exps = exps, tables = tables, rnum = rnum,
-                              state = state, query = query, body = body,
-                              initial = initial, prepared = SOME {id = #2 sns, query = s, nested = true}}, loc),
-                     ((s, n) :: #1 sns, #2 sns + 1))
-                end
+                 st)
+              | SOME (id, s, st) =>
+                ((EQuery {exps = exps, tables = tables, rnum = rnum,
+                          state = state, query = query, body = body,
+                          initial = initial, prepared = SOME {id = id, query = s, nested = true}}, loc), st)
         end
 
       | EDml {dml, ...} =>
-        (case prepString (dml, [], 0) of
-             NONE => (e, sns)
-           | SOME (ss, n) =>
-             let
-                 val s = String.concat (rev ss)
-             in
-                 ((EDml {dml = dml, prepared = SOME {id = #2 sns, dml = s}}, loc),
-                  ((s, n) :: #1 sns, #2 sns + 1))
-             end)
+        (case prepString (dml, st) of
+             NONE => (e, st)
+           | SOME (id, s, st) =>
+             ((EDml {dml = dml, prepared = SOME {id = id, dml = s}}, loc), st))
 
       | ENextval {seq, ...} =>
         if #supportsNextval (Settings.currentDbms ()) then
@@ -228,70 +258,64 @@ fun prepExp (e as (_, loc), sns) =
                                 (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), s']), loc)
                             end
             in
-                case prepString (s, [], 0) of
-                    NONE => (e, sns)
-                  | SOME (ss, n) =>
-                    let
-                        val s = String.concat (rev ss)
-                    in
-                        ((ENextval {seq = seq, prepared = SOME {id = #2 sns, query = s}}, loc),
-                         ((s, n) :: #1 sns, #2 sns + 1))
-                    end
+                case prepString (s, st) of
+                    NONE => (e, st)
+                  | SOME (id, s, st) =>
+                    ((ENextval {seq = seq, prepared = SOME {id = id, query = s}}, loc), st)
             end
         else
-            (e, sns)
+            (e, st)
 
       | EUnurlify (e, t) =>
         let
-            val (e, sns) = prepExp (e, sns)
+            val (e, st) = prepExp (e, st)
         in
-            ((EUnurlify (e, t), loc), sns)
+            ((EUnurlify (e, t), loc), st)
         end
 
-fun prepDecl (d as (_, loc), sns) =
+fun prepDecl (d as (_, loc), st) =
     case #1 d of
-        DStruct _ => (d, sns)
-      | DDatatype _ => (d, sns)
-      | DDatatypeForward _ => (d, sns)
+        DStruct _ => (d, st)
+      | DDatatype _ => (d, st)
+      | DDatatypeForward _ => (d, st)
       | DVal (x, n, t, e) =>
         let
-            val (e, sns) = prepExp (e, sns)
+            val (e, st) = prepExp (e, st)
         in
-            ((DVal (x, n, t, e), loc), sns)
+            ((DVal (x, n, t, e), loc), st)
         end
       | DFun (x, n, xts, t, e) =>
         let
-            val (e, sns) = prepExp (e, sns)
+            val (e, st) = prepExp (e, st)
         in
-            ((DFun (x, n, xts, t, e), loc), sns)
+            ((DFun (x, n, xts, t, e), loc), st)
         end
       | DFunRec fs =>
         let
-            val (fs, sns) = ListUtil.foldlMap (fn ((x, n, xts, t, e), sns) =>
+            val (fs, st) = ListUtil.foldlMap (fn ((x, n, xts, t, e), st) =>
                                                   let
-                                                      val (e, sns) = prepExp (e, sns)
+                                                      val (e, st) = prepExp (e, st)
                                                   in
-                                                      ((x, n, xts, t, e), sns)
-                                                  end) sns fs
+                                                      ((x, n, xts, t, e), st)
+                                                  end) st fs
         in
-            ((DFunRec fs, loc), sns)
+            ((DFunRec fs, loc), st)
         end
 
-      | DTable _ => (d, sns)
-      | DSequence _ => (d, sns)
-      | DView _ => (d, sns)
-      | DDatabase _ => (d, sns)
-      | DPreparedStatements _ => (d, sns)
-      | DJavaScript _ => (d, sns)
-      | DCookie _ => (d, sns)
-      | DStyle _ => (d, sns)
+      | DTable _ => (d, st)
+      | DSequence _ => (d, st)
+      | DView _ => (d, st)
+      | DDatabase _ => (d, st)
+      | DPreparedStatements _ => (d, st)
+      | DJavaScript _ => (d, st)
+      | DCookie _ => (d, st)
+      | DStyle _ => (d, st)
 
 fun prepare (ds, ps) =
     let
-        val (ds, (sns, _)) = ListUtil.foldlMap prepDecl ([], 0) ds
+        val (ds, st) = ListUtil.foldlMap prepDecl St.empty ds
     in
-        ((DPreparedStatements (rev sns), ErrorMsg.dummySpan) :: ds, ps)
+        ((DPreparedStatements (St.list st), ErrorMsg.dummySpan) :: ds, ps)
     end
 
 end
-
