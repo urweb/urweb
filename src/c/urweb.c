@@ -1990,12 +1990,18 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
 
     switch (c) {
     case '\'':
-      strcpy(s2, "\\'");
+      if (uw_Estrings)
+        strcpy(s2, "\\'");
+      else
+        strcpy(s2, "''");
       s2 += 2;
       break;
     case '\\':
-      strcpy(s2, "\\\\");
-      s2 += 2;
+      if (uw_Estrings) {
+        strcpy(s2, "\\\\");
+        s2 += 2;
+      } else
+        *s2++ = '\\';
       break;
     default:
       if (isprint(c))
@@ -2033,12 +2039,18 @@ uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
 
     switch (c) {
     case '\'':
-      strcpy(s2, "\\'");
+      if (uw_Estrings)
+        strcpy(s2, "\\'");
+      else
+        strcpy(s2, "''");
       s2 += 2;
       break;
     case '\\':
-      strcpy(s2, "\\\\\\\\");
-      s2 += 4;
+      if (uw_Estrings) {
+        strcpy(s2, "\\\\\\\\");
+        s2 += 4;
+      } else
+        *s2++ = '\\';
       break;
     default:
       if (isprint(c))
@@ -2549,9 +2561,15 @@ void uw_commit(uw_context ctx) {
 
 int uw_rollback(uw_context ctx) {
   size_t i;
+  cleanup *cl;
 
   if (ctx->client)
     release_client(ctx->client);
+
+  for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
+    cl->func(cl->arg);
+
+  ctx->cleanup_front = ctx->cleanup;
 
   for (i = 0; i < ctx->used_transactionals; ++i)
     if (ctx->transactionals[i].rollback != NULL)

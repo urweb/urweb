@@ -31,6 +31,9 @@ fastcgi.sml
 mysql.sig
 mysql.sml
 
+sqlite.sig
+sqlite.sml
+
 prim.sig
 prim.sml
 

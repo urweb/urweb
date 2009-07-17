@@ -1,0 +1,753 @@
+(* Copyright (c) 2009, Adam Chlipala
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * - The names of contributors may not be used to endorse or promote products
+ *   derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *)
+
+structure SQLite :> SQLITE = struct
+
+open Settings
+open Print.PD
+open Print
+
+fun p_sql_type t =
+    case t of
+        Int => "integer"
+      | Float => "real"
+      | String => "text"
+      | Bool => "integer"
+      | Time => "integer"
+      | Blob => "blob"
+      | Channel => "integer"
+      | Client => "integer"
+      | Nullable t => p_sql_type t
+
+val ident = String.translate (fn #"'" => "PRIME"
+                               | ch => str ch)
+
+fun checkRel (table, checkNullable) (s, xts) =
+    let
+        val q = "SELECT COUNT(*) FROM sqlite_master WHERE type = '" ^ table ^ "' AND name = '"
+                ^ s ^ "'"
+    in
+        box [string "if (sqlite3_prepare_v2(conn->conn, \"",
+             string q,
+             string "\", -1, &stmt, NULL) != SQLITE_OK) {",
+             newline,
+             box [string "sqlite3_close(conn->conn);",
+                  newline,
+                  string "uw_error(ctx, FATAL, \"Query preparation failed:\\n",
+                  string q,
+                  string "\");",
+                  newline],
+             string "}",
+             newline,
+             newline,
+
+             string "while ((res = sqlite3_step(stmt)) == SQLITE_BUSY)",
+             newline,
+             box [string "sleep(1);",
+                  newline],
+             newline,
+             string "if (res == SQLITE_DONE) {",
+             newline,
+             box [string "sqlite3_finalize(stmt);",
+                  newline,
+                  string "sqlite3_close(conn->conn);",
+                  newline,
+                  string "uw_error(ctx, FATAL, \"No row returned:\\n",
+                  string q,
+                  string "\");",
+                  newline],
+             string "}",
+             newline,
+             newline,
+             string "if (res != SQLITE_ROW) {",
+             newline,
+             box [string "sqlite3_finalize(stmt);",
+                  newline,
+                  string "sqlite3_close(conn->conn);",
+                  newline,
+                  string "uw_error(ctx, FATAL, \"Error getting row:\\n",
+                  string q,
+                  string "\");",
+                  newline],
+             string "}",
+             newline,
+             newline,
+
+             string "if (sqlite3_column_count(stmt) != 1) {",
+             newline,
+             box [string "sqlite3_finalize(stmt);",
+                  newline,
+                  string "sqlite3_close(conn->conn);",
+                  newline,
+                  string "uw_error(ctx, FATAL, \"Bad column count:\\n",
+                  string q,
+                  string "\");",
+                  newline],
+             string "}",
+             newline,
+             newline,
+
+             string "if (sqlite3_column_int(stmt, 0) != 1) {",
+             newline,
+             box [string "sqlite3_finalize(stmt);",
+                  newline,
+                  string "sqlite3_close(conn->conn);",
+                  newline,
+                  string "uw_error(ctx, FATAL, \"Table '",
+                  string s,
+                  string "' does not exist.\");",
+                  newline],
+             string "}",
+             newline,
+             newline,
+             string "sqlite3_finalize(stmt);",
+             newline]
+    end
+
+fun init {dbstring, prepared = ss, tables, views, sequences} =
+    let
+        val db = ref dbstring
+    in
+        app (fn s =>
+                case String.fields (fn ch => ch = #"=") s of
+                    [name, value] =>
+                    (case name of
+                         "dbname" => db := value
+                       | _ => ())
+                  | _ => ()) (String.tokens Char.isSpace dbstring);
+
+        box [string "typedef struct {",
+             newline,
+             box [string "sqlite3 *conn;",
+                  newline,
+                  p_list_sepi (box [])
+                              (fn i => fn _ =>
+                                          box [string "sqlite3_stmt *p",
+                                               string (Int.toString i),
+                                               string ";",
+                                               newline])
+                              ss],
+             string "} uw_conn;",
+             newline,
+             newline,
+
+             string "void uw_client_init(void) {",
+             newline,
+             box [string "uw_sqlfmtInt = \"%lld%n\";",
+                  newline,
+                  string "uw_sqlfmtFloat = \"%g%n\";",
+                  newline,
+                  string "uw_Estrings = 0;",
+                  newline,
+                  string "uw_sqlsuffixString = \"\";",
+                  newline,
+                  string "uw_sqlsuffixBlob = \"\";",
+                  newline,
+                  string "uw_sqlfmtUint4 = \"%u%n\";",
+                  newline],
+             string "}",
+             newline,
+             newline,
+
+             if #persistent (currentProtocol ()) then
+                 box [string "static void uw_db_validate(uw_context ctx) {",
+                      newline,
+                      string "uw_conn *conn = uw_get_db(ctx);",
+                      newline,
+                      string "sqlite3_stmt *stmt;",
+                      newline,
+                      string "int res;",
+                      newline,
+                      newline,
+                      p_list_sep newline (checkRel ("table", true)) tables,
+                      p_list_sep newline (fn name => checkRel ("table", true)
+                                                              (name, [("id", Settings.Client)])) sequences,
+                      p_list_sep newline (checkRel ("view", false)) views,
+                      string "}",
+                      newline,
+                      newline,
+
+                      string "static void uw_db_prepare(uw_context ctx) {",
+                      newline,
+                      string "uw_conn *conn = uw_get_db(ctx);",
+                      newline,
+                      newline,
+
+                      p_list_sepi newline (fn i => fn (s, n) =>
+                                                      let
+                                                          fun uhoh this s args =
+                                                              box [p_list_sepi (box [])
+                                                                               (fn j => fn () =>
+                                                                                           box [string
+                                                                                                    "sqlite3_finalize(conn->p",
+                                                                                                string (Int.toString j),
+                                                                                                string ");",
+                                                                                                newline])
+                                                                               (List.tabulate (i, fn _ => ())),
+                                                                   box (if this then
+                                                                            [string
+                                                                                 "sqlite3_finalize(conn->p",
+                                                                             string (Int.toString i),
+                                                                             string ");",
+                                                                             newline]
+                                                                        else
+                                                                            []),
+                                                                   string "sqlite3_close(conn->conn);",
+                                                                   newline,
+                                                                   string "uw_error(ctx, FATAL, \"",
+                                                                   string s,
+                                                                   string "\"",
+                                                                   p_list_sep (box []) (fn s => box [string ", ",
+                                                                                                     string s]) args,
+                                                                   string ");",
+                                                                   newline]
+                                                      in
+                                                          box [string "if (sqlite3_prepare_v2(conn->conn, \"",
+                                                               string (String.toString s),
+                                                               string "\", -1, &conn->p",
+                                                               string (Int.toString i),
+                                                               string ", NULL) != SQLITE_OK) {",
+                                                               newline,
+                                                               uhoh false ("Error preparing statement: "
+                                                                           ^ String.toString s) [],
+                                                               string "}",
+                                                               newline]
+                                                      end)
+                                  ss,
+
+                      string "}"]
+             else
+                 box [string "static void uw_db_prepare(uw_context ctx) { }",
+                      newline,
+                      string "static void uw_db_validate(uw_context ctx) { }"],
+             newline,
+             newline,
+             
+             string "void uw_db_init(uw_context ctx) {",
+             newline,
+             string "sqlite3 *sqlite;",
+             newline,
+             string "uw_conn *conn;",
+             newline,
+             newline,
+             string "if (sqlite3_open(\"",
+             string (!db),
+             string "\", &sqlite) != SQLITE_OK) uw_error(ctx, FATAL, ",
+             string "\"Can't open SQLite database.\");",
+             newline,
+             newline,
+             string "conn = calloc(1, sizeof(uw_conn));",
+             newline,
+             string "conn->conn = sqlite;",
+             newline,
+             string "uw_set_db(ctx, conn);",
+             newline,
+             string "uw_db_validate(ctx);",
+             newline,
+             string "uw_db_prepare(ctx);",
+             newline,
+             string "}",
+             newline,
+             newline,
+
+             string "void uw_db_close(uw_context ctx) {",
+             newline,
+             string "uw_conn *conn = uw_get_db(ctx);",
+             newline,
+             p_list_sepi (box [])
+                         (fn i => fn _ =>
+                                     box [string "if (conn->p",
+                                          string (Int.toString i),
+                                          string ") sqlite3_finalize(conn->p",
+                                          string (Int.toString i),
+                                          string ");",
+                                          newline])
+                         ss,
+             string "sqlite3_close(conn->conn);",
+             newline,
+             string "}",
+             newline,
+             newline,
+
+             string "int uw_db_begin(uw_context ctx) {",
+             newline,
+             string "uw_conn *conn = uw_get_db(ctx);",
+             newline,
+             newline,
+             string "if (sqlite3_exec(conn->conn, \"BEGIN\", NULL, NULL, NULL) == SQLITE_OK)",
+             newline,
+             box [string "return 0;",
+                  newline],
+             string "else {",
+             newline,
+             box [string "fprintf(stderr, \"Begin error: %s\\n\", sqlite3_errmsg(conn->conn));",
+                  newline,
+                  string "return 1;",
+                  newline],
+             string "}",
+             newline,
+             string "}",
+             newline,
+             string "int uw_db_commit(uw_context ctx) {",
+             newline,
+             string "uw_conn *conn = uw_get_db(ctx);",
+             newline,
+             string "if (sqlite3_exec(conn->conn, \"COMMIT\", NULL, NULL, NULL) == SQLITE_OK)",
+             newline,
+             box [string "return 0;",
+                  newline],
+             string "else {",
+             newline,
+             box [string "fprintf(stderr, \"Commit error: %s\\n\", sqlite3_errmsg(conn->conn));",
+                  newline,
+                  string "return 1;",
+                  newline],
+             string "}",
+             newline,
+             string "}",
+             newline,
+             newline,
+
+             string "int uw_db_rollback(uw_context ctx) {",
+             newline,
+             string "uw_conn *conn = uw_get_db(ctx);",
+             newline,
+             string "if (sqlite3_exec(conn->conn, \"ROLLBACK\", NULL, NULL, NULL) == SQLITE_OK)",
+             newline,
+             box [string "return 0;",
+                  newline],
+             string "else {",
+             newline,
+             box [string "fprintf(stderr, \"Rollback error: %s\\n\", sqlite3_errmsg(conn->conn));",
+                  newline,
+                  string "return 1;",
+                  newline],
+             string "}",
+             newline,
+             string "}",
+             newline,
+             newline]
+    end
+
+fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
+    let
+        fun p_unsql t =
+            case t of
+                Int => box [string "sqlite3_column_int64(stmt, ", string (Int.toString i), string ")"]
+              | Float => box [string "sqlite3_column_double(stmt, ", string (Int.toString i), string ")"]
+              | String =>
+                if wontLeakStrings then
+                    box [string "sqlite3_column_text(stmt, ", string (Int.toString i), string ")"]
+                else
+                    box [string "uw_strdup(ctx, sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
+              | Bool => box [string "(uw_Basis_bool)sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
+              | Time => box [string "(uw_Basis_time)sqlite3_column_int64(stmt, ", string (Int.toString i), string ")"]
+              | Blob => box [string "({",
+                             newline,
+                             string "char *data = sqlite3_column_blob(stmt, ",
+                             string (Int.toString i),
+                             string ");",
+                             newline,
+                             string "uw_Basis_blob b = {sqlite3_column_bytes(stmt, ",
+                             string (Int.toString i),
+                             string "), data};",
+                             newline,
+                             string "b;",
+                             newline,
+                             string "})"]
+              | Channel => box [string "sqlite3_column_int64(stmt, ", string (Int.toString i), string ")"]
+              | Client => box [string "sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
+
+              | Nullable _ => raise Fail "Postgres: Recursive Nullable"
+
+        fun getter t =
+            case t of
+                Nullable t =>
+                box [string "(sqlite3_column_type(stmt, ",
+                     string (Int.toString i),
+                     string ") == SQLITE_NULL ? NULL : ",
+                     case t of
+                         String => getter t
+                       | _ => box [string "({",
+                                   newline,
+                                   string (p_sql_ctype t),
+                                   space,
+                                   string "*tmp = uw_malloc(ctx, sizeof(",
+                                   string (p_sql_ctype t),
+                                   string "));",
+                                   newline,
+                                   string "*tmp = ",
+                                   getter t,
+                                   string ";",
+                                   newline,
+                                   string "tmp;",
+                                   newline,
+                                   string "})"],
+                     string ")"]
+              | _ =>
+                box [string "(sqlite3_column_type(stmt, ",
+                     string (Int.toString i),
+                     string ") == SQLITE_NULL ? ",
+                     box [string "({",
+                          string (p_sql_ctype t),
+                          space,
+                          string "tmp;",
+                          newline,
+                          string "uw_error(ctx, FATAL, \"",
+                          string (ErrorMsg.spanToString loc),
+                          string ": Unexpectedly NULL field #",
+                          string (Int.toString i),
+                          string "\");",
+                          newline,
+                          string "tmp;",
+                          newline,
+                          string "})"],
+                     string " : ",
+                     p_unsql t,
+                     string ")"]
+    in
+        getter t
+    end
+
+fun queryCommon {loc, query, cols, doCols} =
+    box [string "int r;",
+         newline,
+
+         string "sqlite3_reset(stmt);",
+         newline,
+
+         string "uw_end_region(ctx);",
+         newline,
+         string "while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {",
+         newline,
+         doCols p_getcol,
+         string "}",
+         newline,
+         newline,
+
+         string "if (r == SQLITE_BUSY) {",
+         box [string "sleep(1);",
+              newline,
+              string "uw_error(ctx, UNLIMITED_RETRY, \"Database is busy\");",
+              newline],
+         string "}",
+         newline,
+         newline,
+
+         string "if (r != SQLITE_DONE) uw_error(ctx, FATAL, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": query step failed: %s\\n%s\", ",
+         query,
+         string ", sqlite3_errmsg(conn->conn));",
+         newline,
+         newline]
+
+fun query {loc, cols, doCols} =
+    box [string "uw_conn *conn = uw_get_db(ctx);",
+         newline,
+         string "sqlite3 *stmt;",
+         newline,
+         newline,
+         string "if (sqlite3_prepare_v2(conn->conn, query, -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: %s\\n%s\", sqlite3_errmsg(conn->conn));",
+         newline,
+         newline,
+         string "uw_push_cleanup(ctx, (void (*)(void *))sqlite3_finalize, stmt);",
+         newline,
+         newline,
+
+         queryCommon {loc = loc, cols = cols, doCols = doCols, query = string "query"},
+
+         string "uw_pop_cleanup(ctx);",
+         newline]
+
+fun p_inputs loc =
+    p_list_sepi (box [])
+                (fn i => fn t =>
+                            let
+                                fun bind (t, arg) =
+                                    case t of
+                                        Int => box [string "sqlite3_bind_int64(stmt, ",
+                                                    string (Int.toString (i + 1)),
+                                                    string ", ",
+                                                    arg,
+                                                    string ")"]
+                                      | Float => box [string "sqlite3_bind_double(stmt, ",
+                                                      string (Int.toString (i + 1)),
+                                                      string ", ",
+                                                      arg,
+                                                    string ")"]
+                                      | String => box [string "sqlite3_bind_text(stmt, ",
+                                                       string (Int.toString (i + 1)),
+                                                       string ", ",
+                                                       arg,
+                                                       string ", -1, SQLITE_TRANSIENT)"]
+                                      | Bool => box [string "sqlite3_bind_int(stmt, ",
+                                                     string (Int.toString (i + 1)),
+                                                     string ", ",
+                                                     arg,
+                                                     string ")"]
+                                      | Time => box [string "sqlite3_bind_int64(stmt, ",
+                                                     string (Int.toString (i + 1)),
+                                                     string ", ",
+                                                     arg,
+                                                     string ")"]
+                                      | Blob => box [string "sqlite3_bind_blob(stmt, ",
+                                                     string (Int.toString (i + 1)),
+                                                     string ", ",
+                                                     arg,
+                                                     string ".data, ",
+                                                     arg,
+                                                     string ".size, SQLITE_TRANSIENT"]
+                                      | Channel => box [string "sqlite_bind_int64(stmt, ",
+                                                        string (Int.toString (i + 1)),
+                                                        string ", ",
+                                                        arg,
+                                                        string ")"]
+                                      | Client => box [string "sqlite3_bind_int(stmt, ",
+                                                       string (Int.toString (i + 1)),
+                                                       string ", ",
+                                                       arg,
+                                                       string ")"]
+                                      | Nullable t => box [string "(",
+                                                           arg,
+                                                           string " == NULL ? sqlite3_bind_null(stmt, ",
+                                                           string (Int.toString (i + 1)),
+                                                           string ") : ",
+                                                           bind (t, case t of
+                                                                        String => arg
+                                                                      | _ => box [string "(*", arg, string ")"]),
+                                                           string ")"]
+                            in
+                                box [string "if (",
+                                     bind (t, box [string "arg", string (Int.toString (i + 1))]),
+                                     string " != SQLITE_OK) uw_error(ctx, FATAL, \"",
+                                     string (ErrorMsg.spanToString loc),
+                                     string ": Error binding parameter #",
+                                     string (Int.toString (i + 1)),
+                                     string ": %s\", sqlite3_errmsg(conn->conn));",
+                                     newline]
+                            end)
+
+fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
+    box [string "uw_conn *conn = uw_get_db(ctx);",
+         newline,
+         if nested then
+             box [string "sqlite3_stmt *stmt;",
+                  newline]
+         else
+             box [string "sqlite3_stmt *stmt = conn->p",
+                  string (Int.toString id),
+                  string ";",
+                  newline,
+                  newline,
+
+                  string "if (stmt == NULL) {",
+                  newline],
+
+         string "if (sqlite3_prepare_v2(conn->conn, \"",
+         string (String.toString query),
+         string "\", -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: ",
+         string (String.toString query),
+         string "\\n%s\", sqlite3_errmsg(conn->conn));",
+         newline,
+         if nested then
+             box [string "uw_push_cleanup(ctx, (void (*)(void *))sqlite3_finalize, stmt);",
+                  newline]
+         else
+             box [string "conn->p",
+                  string (Int.toString id),
+                  string " = stmt;",
+                  newline,
+                  string "}",
+                  newline,
+                  newline,
+                  string "uw_push_cleanup(ctx, (void (*)(void *))sqlite3_clear_bindings, stmt);",
+                  newline,
+                  string "uw_push_cleanup(ctx, (void (*)(void *))sqlite3_reset, stmt);",
+                  newline],
+         newline,
+
+         p_inputs loc inputs,
+         newline,
+
+         queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
+                                                                            string (String.toString query),
+                                                                            string "\""]},
+
+         string "uw_pop_cleanup(ctx);",
+         newline,
+         if nested then
+             box []
+         else
+             box [string "uw_pop_cleanup(ctx);",
+                  newline]]
+
+fun dmlCommon {loc, dml} =
+    box [string "int r;",
+         newline,
+
+         string "if ((r = sqlite3_step(stmt)) == SQLITE_BUSY) {",
+         box [string "sleep(1);",
+              newline,
+              string "uw_error(ctx, UNLIMITED_RETRY, \"Database is busy\");",
+              newline],
+         string "}",
+         newline,
+         newline,
+
+         string "if (r != SQLITE_DONE) uw_error(ctx, FATAL, \"",
+         string (ErrorMsg.spanToString loc),
+         string ": DML step failed: %s\\n%s\", ",
+         dml,
+         string ", sqlite3_errmsg(conn->conn));",
+         newline]
+
+fun dml loc =
+    box [string "uw_conn *conn = uw_get_db(ctx);",
+         newline,
+         string "sqlite3 *stmt;",
+         newline,
+         newline,
+         string "if (sqlite3_prepare_v2(conn->conn, dml, -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: %s\\n%s\", dml, sqlite3_errmsg(conn->conn));",
+         newline,
+         newline,
+         string "uw_push_cleanup(ctx, (void (*)(void *))sqlite3_finalize, stmt);",
+         newline,
+         newline,
+
+         dmlCommon {loc = loc, dml = string "dml"},
+
+         string "uw_pop_cleanup(ctx);",
+         newline]
+
+fun dmlPrepared {loc, id, dml, inputs} =
+    box [string "uw_conn *conn = uw_get_db(ctx);",
+         newline,
+         string "sqlite3_stmt *stmt = conn->p",
+         string (Int.toString id),
+         string ";",
+         newline,
+         newline,
+
+         string "if (stmt == NULL) {",
+         newline,
+         box [string "if (sqlite3_prepare_v2(conn->conn, \"",
+              string (String.toString dml),
+              string "\", -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: ",
+              string (String.toString dml),
+              string "\\n%s\", sqlite3_errmsg(conn->conn));",
+              newline,
+              string "conn->p",
+              string (Int.toString id),
+              string " = stmt;",
+              newline],
+         string "}",
+         newline,
+
+         string "uw_push_cleanup(ctx, (void (*)(void *))sqlite3_clear_bindings, stmt);",
+         newline,
+         string "uw_push_cleanup(ctx, (void (*)(void *))sqlite3_reset, stmt);",
+         newline,
+
+         p_inputs loc inputs,
+         newline,
+
+         dmlCommon {loc = loc, dml = box [string "\"",
+                                          string (String.toString dml),
+                                          string "\""]},
+
+         string "uw_pop_cleanup(ctx);",
+         newline,
+         string "uw_pop_cleanup(ctx);",
+         newline]
+
+fun nextval {loc, seqE, seqName} =
+    box [string "uw_conn *conn = uw_get_db(ctx);",
+         newline,
+         string "char *insert = ",
+         case seqName of
+             SOME s => string ("\"INSERT INTO " ^ s ^ " VALUES ()\"")
+           | NONE => box [string "uw_Basis_strcat(ctx, \"INSERT INTO \", uw_Basis_strcat(ctx, ",
+                          seqE,
+                          string ", \" VALUES ()\"))"],
+         string ";",
+         newline,
+         string "char *delete = ",
+         case seqName of
+             SOME s => string ("\"DELETE FROM " ^ s ^ "\"")
+           | NONE => box [string "uw_Basis_strcat(ctx, \"DELETE FROM \", ",
+                          seqE,
+                          string ")"],
+         string ";",
+         newline,
+         newline,
+
+         string "if (sqlite3_exec(conn->conn, insert, NULL, NULL, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"'nextval' INSERT failed\");",
+         newline,
+         string "n = sqlite3_last_insert_rowid(conn->conn);",
+         newline,
+         string "if (sqlite3_exec(conn->conn, delete, NULL, NULL, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"'nextval' DELETE failed\");",
+         newline]
+
+fun nextvalPrepared _ = raise Fail "SQLite.nextvalPrepared called"
+
+fun sqlifyString s = "'" ^ String.translate (fn #"'" => "''"
+                                              | ch =>
+                                                if Char.isPrint ch then
+                                                    str ch
+                                                else
+                                                    (ErrorMsg.error
+                                                         "Non-printing character found in SQL string literal";
+                                                     ""))
+                                            (String.toString s) ^ "'"
+
+fun p_cast (s, _) = s
+
+fun p_blank _ = "?"
+
+val () = addDbms {name = "sqlite",
+                  header = "sqlite3.h",
+                  link = "-lsqlite3",
+                  init = init,
+                  p_sql_type = p_sql_type,
+                  query = query,
+                  queryPrepared = queryPrepared,
+                  dml = dml,
+                  dmlPrepared = dmlPrepared,
+                  nextval = nextval,
+                  nextvalPrepared = nextvalPrepared,
+                  sqlifyString = sqlifyString,
+                  p_cast = p_cast,
+                  p_blank = p_blank,
+                  supportsDeleteAs = false,
+                  createSequence = fn s => "CREATE TABLE " ^ s ^ " (id INTEGER PRIMARY KEY AUTO INCREMENT)",
+                  textKeysNeedLengths = false,
+                  supportsNextval = false,
+                  supportsNestedPrepared = false,
+                  sqlPrefix = ""}
+
+end

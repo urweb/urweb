@@ -1450,6 +1450,6 @@ val () = addDbms {name = "mysql",
                   textKeysNeedLengths = true,
                   supportsNextval = false,
                   supportsNestedPrepared = false,
-                  sqlPrefix = "SET storage_engine=InnoDB;\n"}
+                  sqlPrefix = "SET storage_engine=InnoDB;\n\n"}
 
 end
