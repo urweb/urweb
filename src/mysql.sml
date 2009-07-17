@@ -671,6 +671,16 @@ fun p_getcol {loc, wontLeakStrings = _, col = i, typ = t} =
                              string "mktime(&t);",
                              newline,
                              string "})"]
+              | Channel => box [string "({",
+                                string "uw_Basis_channel ch = {buffer",
+                                string (Int.toString i),
+                                string " >> 32, buffer",
+                                string (Int.toString i),
+                                string " & 0xFFFFFFFF};",
+                                newline,
+                                string "ch;",
+                                newline,
+                                string "})"]
               | _ => box [string "buffer",
                           string (Int.toString i)]
     in
@@ -739,6 +749,10 @@ fun queryCommon {loc, query, cols, doCols} =
                                                                    string (Int.toString i),
                                                                    string ";",
                                                                    newline]
+                                                    | Channel => box [string "unsigned long long buffer",
+                                                                      string (Int.toString i),
+                                                                      string ";",
+                                                                      newline]
                                                     | _ => box [string (p_sql_ctype t),
                                                                 space,
                                                                 string "buffer",
@@ -906,8 +920,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                    newline]
                                                     | Time => box [string "MYSQL_TIME in_buffer",
                                                                    string (Int.toString i),
-                                                                   string ";",
-                                                                   newline]
+                                                                   string ";",                                                                   newline]
                                                     | _ => box []
                                           in
                                               box [case t of
@@ -1062,6 +1075,20 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                string ";",
                                                                newline]
                                                       end
+                                                    | Channel => box [string "in_buffer",
+                                                                      string (Int.toString i),
+                                                                      string " = ((unsigned long long)arg",
+                                                                      string (Int.toString (i + 1)),
+                                                                      string ".cli << 32) | arg",
+                                                                      string (Int.toString (i + 1)),
+                                                                      string ".chn;",
+                                                                      newline,
+                                                                      string "in[",
+                                                                      string (Int.toString i),
+                                                                      string "].buffer = &in_buffer",
+                                                                      string (Int.toString i),
+                                                                      string ";",
+                                                                      newline]
                                                                    
                                                     | _ => box [string "in[",
                                                                 string (Int.toString i),
@@ -1191,6 +1218,10 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                                                    string (Int.toString i),
                                                                    string ";",
                                                                    newline]
+                                                    | Channel => box [string "unsigned long long in_buffer",
+                                                                      string (Int.toString i),
+                                                                      string ";",
+                                                                      newline]
                                                     | _ => box []
                                           in
                                               box [case t of
@@ -1320,6 +1351,20 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                                                string ";",
                                                                newline]
                                                       end
+                                                    | Channel => box [string "in_buffer",
+                                                                      string (Int.toString i),
+                                                                      string " = ((unsigned long long)arg",
+                                                                      string (Int.toString (i + 1)),
+                                                                      string ".cli << 32) | arg",
+                                                                      string (Int.toString (i + 1)),
+                                                                      string ".chn;",
+                                                                      newline,
+                                                                      string "in[",
+                                                                      string (Int.toString i),
+                                                                      string "].buffer = &in_buffer",
+                                                                      string (Int.toString i),
+                                                                      string ";",
+                                                                      newline]
                                                                    
                                                     | _ => box [string "in[",
                                                                 string (Int.toString i),
@@ -1334,6 +1379,13 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                                    string (p_buffer_type t),
                                                    string ";",
                                                    newline,
+
+                                                   case t of
+                                                       Channel => box [string "in[",
+                                                                       string (Int.toString i),
+                                                                       string "].is_unsigned = 1;",
+                                                                       newline]
+                                                     | _ => box [],
                                                                
                                                    case t of
                                                        Nullable t => box [string "in[",
