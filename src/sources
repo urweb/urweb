@@ -28,9 +28,6 @@ cgi.sml
 fastcgi.sig
 fastcgi.sml
 
-postgres.sig
-postgres.sml
-
 mysql.sig
 mysql.sml
 
@@ -176,6 +173,9 @@ fuse.sig
 fuse.sml
 
 cjr.sml
+
+postgres.sig
+postgres.sml
 
 cjr_env.sig
 cjr_env.sml
