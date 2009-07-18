@@ -332,9 +332,9 @@ fun parseUrp' fname =
                         end
 
                 val prefix = ref NONE
-                val database = ref NONE
-                val exe = ref NONE
-                val sql = ref NONE
+                val database = ref (Settings.getDbstring ())
+                val exe = ref (Settings.getExe ())
+                val sql = ref (Settings.getSql ())
                 val debug = ref (Settings.getDebug ())
                 val profile = ref false
                 val timeout = ref NONE
@@ -398,7 +398,7 @@ fun parseUrp' fname =
 
                         fun merge (old : job, new : job) = {
                             prefix = #prefix old,
-                            database = #database old,
+                            database = mergeO (fn (old, _) => old) (#database old, #database new),
                             exe = #exe old,
                             sql = #sql old,
                             debug = #debug old orelse #debug new,
@@ -490,19 +490,16 @@ fun parseUrp' fname =
                                  prefix := SOME arg)
                               | "database" =>
                                 (case !database of
-                                     NONE => ()
-                                   | SOME _ => ErrorMsg.error "Duplicate 'database' directive";
-                                 database := SOME arg)
+                                     NONE => database := SOME arg
+                                   | SOME _ => ())
                               | "exe" =>
                                 (case !exe of
-                                     NONE => ()
-                                   | SOME _ => ErrorMsg.error "Duplicate 'exe' directive";
-                                 exe := SOME (relify arg))
+                                     NONE => exe := SOME (relify arg)
+                                   | SOME _ => ())
                               | "sql" =>
                                 (case !sql of
-                                     NONE => ()
-                                   | SOME _ => ErrorMsg.error "Duplicate 'sql' directive";
-                                 sql := SOME (relify arg))
+                                     NONE => sql := SOME (relify arg)
+                                   | SOME _ => ())
                               | "debug" => debug := true
                               | "profile" => profile := true
                               | "timeout" =>

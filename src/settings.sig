@@ -163,4 +163,13 @@ signature SETTINGS = sig
     val setDbms : string -> unit
     val currentDbms : unit -> dbms
 
+    val setDbstring : string option -> unit
+    val getDbstring : unit -> string option
+
+    val setExe : string option -> unit
+    val getExe : unit -> string option
+
+    val setSql : string option -> unit
+    val getSql : unit -> string option
+
 end

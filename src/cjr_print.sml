@@ -2659,7 +2659,9 @@ fun p_file env (ds, ps) =
                                                   views = !views,
                                                   sequences = !sequences}
              else
-                 box [string "void uw_db_init(uw_context ctx) { };",
+                 box [string "void uw_client_init(void) { };",
+                      newline,
+                      string "void uw_db_init(uw_context ctx) { };",
                       newline,
                       string "int uw_db_begin(uw_context ctx) { return 0; };",
                       newline,

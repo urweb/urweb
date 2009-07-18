@@ -41,6 +41,9 @@ fun doArgs args =
       | "-protocol" :: name :: rest =>
         (Settings.setProtocol name;
          doArgs rest)
+      | "-db" :: s :: rest =>
+        (Settings.setDbstring (SOME s);
+         doArgs rest)
       | "-dbms" :: name :: rest =>
         (Settings.setDbms name;
          doArgs rest)
@@ -49,6 +52,12 @@ fun doArgs args =
          doArgs rest)
       | "-timing" :: rest =>
         (timing := true;
+         doArgs rest)
+      | "-output" :: s :: rest =>
+        (Settings.setExe (SOME s);
+         doArgs rest)
+      | "-sql" :: s :: rest =>
+        (Settings.setSql (SOME s);
          doArgs rest)
       | arg :: rest =>
         (if size arg > 0 andalso String.sub (arg, 0) = #"-" then

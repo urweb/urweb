@@ -380,4 +380,16 @@ fun setDbms s =
       | SOME db => curDb := db
 fun currentDbms () = !curDb
 
+val dbstring = ref (NONE : string option)
+fun setDbstring so = dbstring := so
+fun getDbstring () = !dbstring
+
+val exe = ref (NONE : string option)
+fun setExe so = exe := so
+fun getExe () = !exe
+
+val sql = ref (NONE : string option)
+fun setSql so = sql := so
+fun getSql () = !sql
+
 end

@@ -88,10 +88,14 @@ fun make {prefix, dirname, guided} =
                                 else
                                     files @ [file])
                             (#sources combined) (#sources urp),
-            exe = OS.Path.joinDirFile {dir = dirname,
-                                       file = "demo.exe"},
-            sql = SOME (OS.Path.joinDirFile {dir = dirname,
-                                             file = "demo.sql"}),
+            exe = case Settings.getExe () of
+                      NONE => OS.Path.joinDirFile {dir = dirname,
+                                                   file = "demo.exe"}
+                    | SOME s => s,
+            sql = SOME (case Settings.getSql () of
+                            NONE => OS.Path.joinDirFile {dir = dirname,
+                                                         file = "demo.sql"}
+                          | SOME s => s),
             debug = Settings.getDebug (),
             timeout = Int.max (#timeout combined, #timeout urp),
             profile = false,
