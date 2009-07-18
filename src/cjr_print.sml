@@ -85,11 +85,11 @@ fun p_typ' par env (t, loc) =
         (case ListUtil.search #3 (!xncs) of
              NONE => raise Fail "CjrPrint: TDatatype marked Option has no constructor with an argument"
            | SOME t =>
-             case #1 t of
-                 TDatatype _ => p_typ' par env t
-               | TFfi ("Basis", "string") => p_typ' par env t
-               | _ => box [p_typ' par env t,
-                           string "*"])
+             if isUnboxable t then
+                 p_typ' par env t
+             else
+                 box [p_typ' par env t,
+                      string "*"])
       | TDatatype (Default, n, _) =>
         (box [string "struct",
               space,

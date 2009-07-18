@@ -1,4 +1,13 @@
 ========
+20090718
+========
+
+- New application protocols: CGI and FastCGI
+- New database backends: MySQL and SQLite
+- More JavaScript events added to tags in standard library
+- New manual section on using the foreign function interface (FFI)
+
+========
 20090623
 ========
 
