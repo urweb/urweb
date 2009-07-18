@@ -554,7 +554,7 @@ con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
 con mouseEvents = [Onclick = transaction unit, Ondblclick = transaction unit,
                    Onmousedown = transaction unit, Onmousemove = transaction unit,
                    Onmouseout = transaction unit, Onmouseover = transaction unit,
-                   Onmouseup = transaction unit, ]
+                   Onmouseup = transaction unit]
 con keyEvents = [Onkeydown = transaction unit, Onkeypress = transaction unit,
                  Onkeyup = transaction unit]
 con resizeEvents = [Onresize = transaction unit]
