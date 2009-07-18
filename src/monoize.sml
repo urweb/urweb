@@ -2505,10 +2505,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                        result = (L'.TFfi ("Basis", "string"), loc)}), loc),
                                            fm)
                                       end
-                                    | (L'.TFun _, _) =>
+                                    | (L'.TFun (dom, _), _) =>
                                       let
                                           val s' = " " ^ lowercaseFirst x ^ "='"
-                                          val e = (L'.EApp (e, (L'.ERecord [], loc)), loc)
+                                          val e = case #1 dom of
+                                                      L'.TRecord [] => (L'.EApp (e, (L'.ERecord [], loc)), loc)
+                                                    | _ => (L'.EApp ((L'.EApp (e, (L'.EFfiApp ("Basis", "kc", []), loc)),
+                                                                      loc), (L'.ERecord [], loc)), loc)
                                       in
                                           ((L'.EStrcat (s,
                                                         (L'.EStrcat (

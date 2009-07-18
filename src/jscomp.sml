@@ -768,6 +768,7 @@ fun process file =
                             in
                                 (str name, st)
                             end
+                          | EFfiApp ("Basis", "kc", []) => (str "kc(event)", st)
                           | EFfiApp (m, x, args) =>
                             let
                                 val name = case Settings.jsFunc (m, x) of

@@ -7,8 +7,8 @@ fun main () =
       <span onmousedown={set s "Mouse down"} onmouseup={set s "Mouse up"}>SPAN</span>
       <span onmouseout={set s "Mouse out"} onmouseover={set s "Mouse over"}>SPAN</span>
       <span onmousemove={set s "Mouse move"}>SPAN</span>
-      <button onkeydown={set s "Key down"} onkeyup={set s "Key up"}/>
-      <button onkeypress={set s "Key press"}/>
+      <button onkeydown={fn k => set s ("Key down: " ^ show k)} onkeyup={fn _ => set s "Key up"}/>
+      <button onkeypress={fn _ => set s "Key press"}/>
       <br/>
       <br/>
 

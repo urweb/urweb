@@ -555,8 +555,9 @@ con mouseEvents = [Onclick = transaction unit, Ondblclick = transaction unit,
                    Onmousedown = transaction unit, Onmousemove = transaction unit,
                    Onmouseout = transaction unit, Onmouseover = transaction unit,
                    Onmouseup = transaction unit]
-con keyEvents = [Onkeydown = transaction unit, Onkeypress = transaction unit,
-                 Onkeyup = transaction unit]
+con keyEvents = [Onkeydown = int -> transaction unit, Onkeypress = int -> transaction unit,
+                 Onkeyup = int -> transaction unit]
+(* Key arguments are character codes. *)
 con resizeEvents = [Onresize = transaction unit]
 
 con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents

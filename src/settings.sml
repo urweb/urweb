@@ -91,7 +91,8 @@ val effectfulBase = basis ["dml",
                            "onFail",
                            "onConnectFail",
                            "onDisconnect",
-                           "onServerError"]
+                           "onServerError",
+                           "kc"]
 
 val effectful = ref effectfulBase
 fun setEffectful ls = effectful := S.addList (effectfulBase, ls)
@@ -108,7 +109,8 @@ val clientBase = basis ["get",
                         "onFail",
                         "onConnectFail",
                         "onDisconnect",
-                        "onServerError"]
+                        "onServerError",
+                        "kc"]
 val client = ref clientBase
 fun setClientOnly ls = client := S.addList (clientBase, ls)
 fun isClientOnly x = S.member (!client, x)
@@ -162,7 +164,8 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("strindex", "sidx"),
                           ("strchr", "schr"),
                           ("substring", "ssub"),
-                          ("strcspn", "sspn")]
+                          ("strcspn", "sspn"),
+                          ("kc", "kc")]
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)
