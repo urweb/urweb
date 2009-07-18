@@ -569,12 +569,13 @@ val p : bodyTag boxEvents
 val b : bodyTag boxEvents
 val i : bodyTag boxEvents
 val tt : bodyTag boxEvents
-val font : bodyTag ([Size = int, Face = string] ++ boxEvents)
 
 val h1 : bodyTag boxEvents
 val h2 : bodyTag boxEvents
 val h3 : bodyTag boxEvents
 val h4 : bodyTag boxEvents
+val h5 : bodyTag boxEvents
+val h6 : bodyTag boxEvents
 
 val li : bodyTag boxEvents
 val ol : bodyTag boxEvents
