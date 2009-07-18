@@ -537,7 +537,8 @@ val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
 val link : unit -> tag [Rel = string, Typ = string, Href = url, Media = string] head [] [] []
 
-val body : unit -> tag [Onload = transaction unit] html body [] []
+val body : unit -> tag [Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit]
+                       html body [] []
 con bodyTag = fn (attrs :: {Type}) =>
                  ctx ::: {Unit} ->
                  [[Body] ~ ctx] =>
@@ -549,30 +550,43 @@ con bodyTagStandalone = fn (attrs :: {Type}) =>
 
 val br : bodyTagStandalone []
 
-val span : bodyTag []
-val div : bodyTag []
+con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
+con mouseEvents = [Onclick = transaction unit, Ondblclick = transaction unit,
+                   Onmousedown = transaction unit, Onmousemove = transaction unit,
+                   Onmouseout = transaction unit, Onmouseover = transaction unit,
+                   Onmouseup = transaction unit, ]
+con keyEvents = [Onkeydown = transaction unit, Onkeypress = transaction unit,
+                 Onkeyup = transaction unit]
+con resizeEvents = [Onresize = transaction unit]
 
-val p : bodyTag []
-val b : bodyTag []
-val i : bodyTag []
-val tt : bodyTag []
-val font : bodyTag [Size = int, Face = string]
+con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents
+con tableEvents = focusEvents ++ mouseEvents ++ keyEvents
 
-val h1 : bodyTag []
-val h2 : bodyTag []
-val h3 : bodyTag []
-val h4 : bodyTag []
+val span : bodyTag boxEvents
+val div : bodyTag boxEvents
 
-val li : bodyTag []
-val ol : bodyTag []
-val ul : bodyTag []
+val p : bodyTag boxEvents
+val b : bodyTag boxEvents
+val i : bodyTag boxEvents
+val tt : bodyTag boxEvents
+val font : bodyTag ([Size = int, Face = string] ++ boxEvents)
 
-val hr : bodyTag []
+val h1 : bodyTag boxEvents
+val h2 : bodyTag boxEvents
+val h3 : bodyTag boxEvents
+val h4 : bodyTag boxEvents
 
-val a : bodyTag [Link = transaction page, Href = url, Onclick = transaction unit]
+val li : bodyTag boxEvents
+val ol : bodyTag boxEvents
+val ul : bodyTag boxEvents
 
-val img : bodyTag [Src = url]
+val hr : bodyTag boxEvents
 
+val a : bodyTag ([Link = transaction page, Href = url] ++ boxEvents)
+
+val img : bodyTag ([Src = url, Onabort = transaction unit, Onerror = transaction unit,
+                    Onload = transaction unit] ++ boxEvents)
+          
 val form : ctx ::: {Unit} -> bind ::: {Type}
            -> [[Body] ~ ctx] =>
     xml form [] bind
@@ -601,18 +615,20 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                         nm :: Name -> unit
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
 val hidden : formTag string [] [Value = string]
-val textbox : formTag string [] [Value = string, Size = int, Source = source string]
-val password : formTag string [] [Value = string, Size = int]
-val textarea : formTag string [] [Rows = int, Cols = int]
+val textbox : formTag string [] ([Value = string, Size = int, Source = source string, Onchange = transaction unit,
+                                  Ontext = transaction unit] ++ boxEvents)
+val password : formTag string [] ([Value = string, Size = int] ++ boxEvents)
+val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
+                                   Ontext = transaction unit] ++ boxEvents)
 
-val checkbox : formTag bool [] [Checked = bool]
+val checkbox : formTag bool [] ([Checked = bool] ++ boxEvents)
 
 type file
 val fileName : file -> option string
 val fileMimeType : file -> string
 val fileData : file -> blob
 
-val upload : formTag file [] [Value = string, Size = int]
+val upload : formTag file [] ([Value = string, Size = int] ++ boxEvents)
 
 type mimeType
 val blessMime : string -> mimeType
@@ -622,16 +638,16 @@ val blobSize : blob -> int
 
 con radio = [Body, Radio]
 val radio : formTag string radio []
-val radioOption : unit -> tag [Value = string] radio [] [] []
+val radioOption : unit -> tag ([Value = string] ++ boxEvents) radio [] [] []
 
 con select = [Select]
-val select : formTag string select []
+val select : formTag string select ([Onchange = transaction unit] ++ boxEvents)
 val option : unit -> tag [Value = string, Selected = bool] select [] [] []
 
 val submit : ctx ::: {Unit} -> use ::: {Type}
              -> [[Form] ~ ctx] =>
                    unit
-                   -> tag [Value = string, Action = $use -> transaction page]
+                   -> tag ([Value = string, Action = $use -> transaction page] ++ boxEvents)
                           ([Form] ++ ctx) ([Form] ++ ctx) use []
 
 (*** AJAX-oriented widgets *)
@@ -641,26 +657,30 @@ con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
                   -> [[Body] ~ ctx] =>
                         unit -> tag attrs ([Body] ++ ctx) inner [] []
 
-val ctextbox : cformTag [Value = string, Size = int, Source = source string] []
-val button : cformTag [Value = string, Onclick = transaction unit] []
+val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Onchange = transaction unit,
+                          Ontext = transaction unit] ++ boxEvents) []
+val button : cformTag ([Value = string] ++ boxEvents) []
 
-val ccheckbox : cformTag [Value = bool, Size = int, Source = source bool] []
+val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool] ++ boxEvents) []
 
 con cselect = [Cselect]
-val cselect : cformTag [Source = source string,
-                        Onchange = transaction unit] cselect
+val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxEvents) cselect
 val coption : unit -> tag [Value = string, Selected = bool] cselect [] [] []
 
 (*** Tables *)
 
-val tabl : other ::: {Unit} -> [other ~ [Body, Table]] =>
-                                  unit -> tag [Border = int] ([Body] ++ other) ([Body, Table] ++ other) [] []
-val tr : other ::: {Unit} -> [other ~ [Body, Table, Tr]] =>
-                                unit -> tag [] ([Body, Table] ++ other) ([Body, Tr] ++ other) [] []
-val th : other ::: {Unit} -> [other ~ [Body, Tr]] =>
-                                unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] []
-val td : other ::: {Unit} -> [other ~ [Body, Tr]] =>
-                                unit -> tag [] ([Body, Tr] ++ other) ([Body] ++ other) [] []
+val tabl : other ::: {Unit} -> [other ~ [Body, Table]] => unit
+  -> tag ([Border = int] ++ boxEvents)
+         ([Body] ++ other) ([Body, Table] ++ other) [] []
+val tr : other ::: {Unit} -> [other ~ [Body, Table, Tr]] => unit
+  -> tag tableEvents
+         ([Body, Table] ++ other) ([Body, Tr] ++ other) [] []
+val th : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
+  -> tag tableEvents
+         ([Body, Tr] ++ other) ([Body] ++ other) [] []
+val td : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
+  -> tag tableEvents
+         ([Body, Tr] ++ other) ([Body] ++ other) [] []
 
 
 (** Aborting *)
