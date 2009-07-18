@@ -2333,7 +2333,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                              sc ")"]), loc)), loc),
                  fm)
             end
-          | L.EFfi ("Basis", "sql_octet_length") => ((L'.EPrim (Prim.String "octet_length"), loc), fm)
+          | L.EFfi ("Basis", "sql_octet_length") =>
+            ((L'.EPrim (Prim.String (if #supportsOctetLength (Settings.currentDbms ()) then
+                                         "octet_length"
+                                     else
+                                         "length")), loc), fm)
 
           | (L.ECApp (
              (L.ECApp (

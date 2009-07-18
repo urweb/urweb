@@ -1,7 +1,7 @@
 sequence s
 table t : { Id : int, Nam : option string, Data : blob, Desc : string, Typ : string }
 
-fun view id =
+fun see id =
     r <- oneRow (SELECT t.Data, t.Typ FROM t WHERE t.Id = {[id]});
     returnBlob r.T.Data (blessMime r.T.Typ)
 
@@ -13,7 +13,7 @@ fun save r =
 
 and main () =
     ls <- queryX (SELECT t.Id, t.Desc, octet_length(t.Data) AS Len FROM t ORDER BY t.Desc)
-          (fn r => <xml><li><a link={view r.T.Id}>{[r.T.Desc]} ({[r.Len]})</a></li></xml>);
+          (fn r => <xml><li><a link={see r.T.Id}>{[r.T.Desc]} ({[r.Len]})</a></li></xml>);
     return <xml><body>
       {ls}
 

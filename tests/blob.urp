@@ -1,5 +1,7 @@
 debug
-database dbname=blob
+database dbname=blobo
 sql blob.sql
+allow mime image/gif
+allow mime image/png
 
 blob

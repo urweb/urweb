@@ -345,7 +345,8 @@ type dbms = {
      textKeysNeedLengths : bool,
      supportsNextval : bool,
      supportsNestedPrepared : bool,
-     sqlPrefix : string
+     sqlPrefix : string,
+     supportsOctetLength : bool
 }
 
 val dbmses = ref ([] : dbms list)
@@ -369,7 +370,8 @@ val curDb = ref ({name = "",
                   textKeysNeedLengths = false,
                   supportsNextval = false,
                   supportsNestedPrepared = false,
-                  sqlPrefix = ""} : dbms)
+                  sqlPrefix = "",
+                  supportsOctetLength = false} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =

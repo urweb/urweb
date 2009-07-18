@@ -374,13 +374,15 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
               | Time => box [string "uw_Basis_stringToTime_error(ctx, sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
               | Blob => box [string "({",
                              newline,
-                             string "char *data = sqlite3_column_blob(stmt, ",
+                             string "char *data = (char *)sqlite3_column_blob(stmt, ",
                              string (Int.toString i),
                              string ");",
                              newline,
-                             string "uw_Basis_blob b = {sqlite3_column_bytes(stmt, ",
+                             string "int len = sqlite3_column_bytes(stmt, ",
                              string (Int.toString i),
-                             string "), data};",
+                             string ");",
+                             newline,
+                             string "uw_Basis_blob b = {len, uw_memdup(ctx, data, len)};",
                              newline,
                              string "b;",
                              newline,
@@ -537,7 +539,7 @@ fun p_inputs loc =
                                                      arg,
                                                      string ".data, ",
                                                      arg,
-                                                     string ".size, SQLITE_TRANSIENT"]
+                                                     string ".size, SQLITE_TRANSIENT)"]
                                       | Channel => box [string "sqlite3_bind_int64(stmt, ",
                                                         string (Int.toString (i + 1)),
                                                         string ", ((sqlite3_int64)",
@@ -767,6 +769,7 @@ val () = addDbms {name = "sqlite",
                   textKeysNeedLengths = false,
                   supportsNextval = false,
                   supportsNestedPrepared = false,
-                  sqlPrefix = ""}
+                  sqlPrefix = "",
+                  supportsOctetLength = false}
 
 end
