@@ -1116,6 +1116,18 @@
 
  fun elabHead (env, denv) infer (e as (_, loc)) t =
      let
+         fun unravelKind (t, e) =
+             case hnormCon env t of
+                 (L'.TKFun (x, t'), _) =>
+                 let
+                     val u = kunif loc
+
+                     val t'' = subKindInCon (0, u) t'
+                 in
+                     unravelKind (t'', (L'.EKApp (e, u), loc))
+                 end
+               | t => (e, t, [])
+
          fun unravel (t, e) =
              case hnormCon env t of
                  (L'.TKFun (x, t'), _) =>
@@ -1184,7 +1196,7 @@
                | t => (e, t, [])
      in
          case infer of
-             L.DontInfer => (e, t, [])
+             L.DontInfer => unravelKind (t, e)
            | _ => unravel (t, e)
      end
 

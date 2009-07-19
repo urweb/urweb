@@ -120,6 +120,7 @@ signature COMPILER = sig
     val toSpecialize : (string, Core.file) transform 
     val toShake3 : (string, Core.file) transform
     val toEspecialize : (string, Core.file) transform 
+    val toReduce2 : (string, Core.file) transform
     val toShake4 : (string, Core.file) transform
     val toMarshalcheck : (string, Core.file) transform
     val toEffectize : (string, Core.file) transform

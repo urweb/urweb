@@ -51,7 +51,7 @@ end
 
 fun not b = if b then False else True
 
-con idT (t :: Type) = t
+con id = K ==> fn t :: K => t
 con record (t :: {Type}) = $t
 con fst = K1 ==> K2 ==> fn t :: (K1 * K2) => t.1
 con snd = K1 ==> K2 ==> fn t :: (K1 * K2) => t.2
@@ -92,11 +92,24 @@ fun read_option [t ::: Type] (_ : read t) =
 fun txt [t] [ctx ::: {Unit}] [use ::: {Type}] (_ : show t) (v : t) =
     cdata (show v)
 
+fun mp [K] [tf1 :: K -> Type] [tf2 :: K -> Type] (f : t ::: K -> tf1 t -> tf2 t) [r :: {K}] (fl : folder r) =
+    fl [fn r :: {K} => $(map tf1 r) -> $(map tf2 r)]
+    (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] acc r =>
+        acc (r -- nm) ++ {nm = f r.nm})
+    (fn _ => {})
+
+fun map2 [K1] [K2] [tf1 :: K1 -> Type] [tf2 :: K2 -> Type] [tf :: K1 -> K2]
+         (f : t ::: K1 -> tf1 t -> tf2 (tf t)) [r :: {K1}] (fl : folder r) =
+    fl [fn r :: {K1} => $(map tf1 r) -> $(map tf2 (map tf r))]
+    (fn [nm :: Name] [t :: K1] [rest :: {K1}] [[nm] ~ rest] acc r =>
+        acc (r -- nm) ++ {nm = f r.nm})
+    (fn _ => {})
+
 fun foldUR [tf :: Type] [tr :: {Unit} -> Type]
            (f : nm :: Name -> rest :: {Unit}
                 -> [[nm] ~ rest] =>
                       tf -> tr rest -> tr ([nm] ++ rest))
-           (i : tr []) [r :: {Unit}] (fl : folder r)=
+           (i : tr []) [r :: {Unit}] (fl : folder r) =
     fl [fn r :: {Unit} => $(mapU tf r) -> tr r]
        (fn [nm :: Name] [t :: Unit] [rest :: {Unit}] [[nm] ~ rest] acc r =>
            f [nm] [rest] ! r.nm (acc (r -- nm)))

@@ -779,7 +779,9 @@ val toShake3 = transform shake "shake3" o toSpecialize
 
 val toEspecialize = transform especialize "especialize" o toShake3
 
-val toShake4 = transform shake "shake4" o toEspecialize
+val toReduce2 = transform reduce "reduce2" o toEspecialize
+
+val toShake4 = transform shake "shake4" o toReduce2
 
 val marshalcheck = {
     func = (fn file => (MarshalCheck.check file; file)),

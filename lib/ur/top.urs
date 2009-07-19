@@ -21,7 +21,7 @@ end
 
 val not : bool -> bool
 
-con idT = fn t :: Type => t
+con id = K ==> fn t :: K => t
 con record = fn t :: {Type} => $t
 con fst = K1 ==> K2 ==> fn t :: (K1 * K2) => t.1
 con snd = K1 ==> K2 ==> fn t :: (K1 * K2) => t.2
@@ -44,6 +44,13 @@ val read_option : t ::: Type -> read t -> read (option t)
 
 val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> show t -> t
           -> xml ctx use []
+
+val mp : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
+         -> (t ::: K -> tf1 t -> tf2 t)
+         -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r)
+val map2 : K1 --> K2 --> tf1 :: (K1 -> Type) -> tf2 :: (K2 -> Type) -> tf :: (K1 -> K2)
+           -> (t ::: K1 -> tf1 t -> tf2 (tf t))
+           -> r :: {K1} -> folder r -> $(map tf1 r) -> $(map tf2 (map tf r))
 
 val foldUR : tf :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}
