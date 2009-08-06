@@ -2646,24 +2646,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                   | "dyn" =>
                     (case attrs of
                          [("Signal", e, _)] =>
-                         let
-                             val inTable = case targs of
-                                               (L.CRecord (_, ctx), _) :: _ =>
-                                               List.exists (fn ((L.CName "Table", _), _) => true
-                                                             | _ => false) ctx
-                                             | _ => false
-
-                             val tag = if inTable then
-                                           "tbody"
-                                       else
-                                           "span"
-                         in
-                             ((L'.EStrcat
-                                   ((L'.EPrim (Prim.String ("<" ^ tag ^ "><script type=\"text/javascript\">dyn(")), loc),
-                                    (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                                 (L'.EPrim (Prim.String (")</script></" ^ tag ^ ">")), loc)), loc)), loc),
-                              fm)
-                         end
+                         ((L'.EStrcat
+                               ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(")), loc),
+                                (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
+                                             (L'.EPrim (Prim.String (")</script>")), loc)), loc)), loc),
+                          fm)
                        | _ => raise Fail "Monoize: Bad dyn attributes")
                     
                   | "submit" => normal ("input type=\"submit\"", NONE, NONE)
@@ -2683,9 +2670,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                  loc)), loc), fm)
                               end
                             | SOME (_, src, _) =>
-                              (strcat [str "<span><script type=\"text/javascript\">inp(",
+                              (strcat [str "<script type=\"text/javascript\">inp(",
                                        (L'.EJavaScript (L'.Script, src), loc),
-                                       str ")</script></span>"],
+                                       str ")</script>"],
                                fm))
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to textbox tag"))
@@ -2760,9 +2747,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                               str ")"]
                              val sc = setAttrs sc
                          in
-                             (strcat [str "<span><script type=\"text/javascript\">",
+                             (strcat [str "<script type=\"text/javascript\">",
                                       sc,
-                                      str "</script></span>"],
+                                      str "</script>"],
                               fm)
                          end)
 
@@ -2783,9 +2770,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                               str ")"]
                              val sc = setAttrs sc
                          in
-                             (strcat [str "<span><script type=\"text/javascript\">",
+                             (strcat [str "<script type=\"text/javascript\">",
                                       sc,
-                                      str "</script></span>"],
+                                      str "</script>"],
                               fm)
                          end)
 
@@ -2813,9 +2800,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                               str ")"]
                              val sc = setAttrs sc
                          in
-                             (strcat [str "<span><script type=\"text/javascript\">",
+                             (strcat [str "<script type=\"text/javascript\">",
                                       sc,
-                                      str "</script></span>"],
+                                      str "</script>"],
                               fm)
                          end)
 
