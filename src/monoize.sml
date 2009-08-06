@@ -2645,13 +2645,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                   | "dyn" =>
                     let
-                        val inTable = case targs of
-                                          (L.CRecord (_, ctx), _) :: _ =>
-                                          List.exists (fn ((L.CName "Table", _), _) => true
-                                                        | _ => false) ctx
-                                        | _ => false
+                        fun inTag tag = case targs of
+                                            (L.CRecord (_, ctx), _) :: _ =>
+                                            List.exists (fn ((L.CName tag', _), _) => tag' = tag
+                                                          | _ => false) ctx
+                                          | _ => false
                                                
-                        val tag = if inTable then
+                        val tag = if inTag "Tr" then
+                                      "tr"
+                                  else if inTag "Table" then
                                       "table"
                                   else
                                       "span"
