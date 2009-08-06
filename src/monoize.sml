@@ -2644,14 +2644,28 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     end
 
                   | "dyn" =>
-                    (case attrs of
-                         [("Signal", e, _)] =>
-                         ((L'.EStrcat
-                               ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(")), loc),
-                                (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                             (L'.EPrim (Prim.String (")</script>")), loc)), loc)), loc),
-                          fm)
-                       | _ => raise Fail "Monoize: Bad dyn attributes")
+                    let
+                        val inTable = case targs of
+                                          (L.CRecord (_, ctx), _) :: _ =>
+                                          List.exists (fn ((L.CName "Table", _), _) => true
+                                                        | _ => false) ctx
+                                        | _ => false
+                                               
+                        val tag = if inTable then
+                                      "table"
+                                  else
+                                      "span"
+                    in
+                        case attrs of
+                            [("Signal", e, _)] =>
+                            ((L'.EStrcat
+                                  ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(\""
+                                                           ^ tag ^ "\", ")), loc),
+                                   (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
+                                                (L'.EPrim (Prim.String (")</script>")), loc)), loc)), loc),
+                             fm)
+                          | _ => raise Fail "Monoize: Bad dyn attributes"
+                    end
                     
                   | "submit" => normal ("input type=\"submit\"", NONE, NONE)
                   | "button" => normal ("input type=\"submit\"", NONE, NONE)
