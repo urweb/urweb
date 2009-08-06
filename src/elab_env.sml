@@ -500,6 +500,47 @@ fun unifyKinds (k1, k2) =
       | (KFun (_, k1), KFun (_, k2)) => unifyKinds (k1, k2)
       | _ => raise Unify
 
+fun eqCons (c1, c2) =
+    case (#1 c1, #1 c2) of
+        (CUnif (_, _, _, ref (SOME c1)), _) => eqCons (c1, c2)
+      | (_, CUnif (_, _, _, ref (SOME c2))) => eqCons (c1, c2)
+
+      | (CRel n1, CRel n2) => if n1 = n2 then () else raise Unify
+
+      | (TFun (d1, r1), TFun (d2, r2)) => (eqCons (d1, d2); eqCons (r1, r2))
+      | (TCFun (_, _, k1, r1), TCFun (_, _, k2, r2)) => (unifyKinds (k1, k2); eqCons (r1, r2))
+      | (TRecord c1, TRecord c2) => eqCons (c1, c2)
+      | (TDisjoint (a1, b1, c1), TDisjoint (a2, b2, c2)) =>
+        (eqCons (a1, a2); eqCons (b1, b2); eqCons (c1, c2))
+
+      | (CNamed n1, CNamed n2) => if n1 = n2 then () else raise Unify
+      | (CModProj (n1, ms1, x1), CModProj (n2, ms2, x2)) =>
+        if n1 = n2 andalso ms1 = ms2 andalso x1 = x2 then () else raise Unify
+      | (CApp (f1, x1), CApp (f2, x2)) => (eqCons (f1, f2); eqCons (x1, x2))
+      | (CAbs (_, k1, b1), CAbs (_, k2, b2)) => (unifyKinds (k1, k2); eqCons (b1, b2))
+
+      | (CKAbs (_, b1), CKAbs (_, b2)) => eqCons (b1, b2)
+      | (CKApp (c1, k1), CKApp (c2, k2)) => (eqCons (c1, c2); unifyKinds (k1, k2))
+      | (TKFun (_, c1), TKFun (_, c2)) => eqCons (c1, c2)
+
+      | (CName s1, CName s2) => if s1 = s2 then () else raise Unify
+
+      | (CRecord (k1, xcs1), CRecord (k2, xcs2)) =>
+        (unifyKinds (k1, k2);
+         ListPair.appEq (fn ((x1, c1), (x2, c2)) => (eqCons (x1, x2); eqCons (c1, c2))) (xcs1, xcs2)
+         handle ListPair.UnequalLengths => raise Unify)
+      | (CConcat (f1, x1), CConcat (f2, x2)) => (eqCons (f1, f2); eqCons (x1, x2))
+      | (CMap (d1, r1), CMap (d2, r2)) => (unifyKinds (d1, d2); unifyKinds (r1, r2))
+
+      | (CUnit, CUnit) => ()
+
+      | (CTuple cs1, CTuple cs2) => (ListPair.appEq (eqCons) (cs1, cs2)
+                                     handle ListPair.UnequalLengths => raise Unify)
+      | (CProj (c1, n1), CProj (c2, n2)) => (eqCons (c1, c2);
+                                             if n1 = n2 then () else raise Unify)
+
+      | _ => raise Unify
+
 fun unifyCons rs =
     let
         fun unify d (c1, c2) =
@@ -524,7 +565,7 @@ fun unifyCons rs =
                     in
                         case !r of
                             NONE => r := SOME c1
-                          | SOME c2 => unify d (c1, c2)
+                          | SOME c2 => eqCons (c1, c2)
                     end
 
               | (TFun (d1, r1), TFun (d2, r2)) => (unify d (d1, d2); unify d (r1, r2))

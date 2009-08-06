@@ -3175,7 +3175,7 @@ and wildifyStr env (str, sgn) =
 
 and elabDecl (dAll as (d, loc), (env, denv, gs)) =
     let
-        (*val () = preface ("elabDecl", SourcePrint.p_decl (d, loc))*)
+        (*val () = preface ("elabDecl", SourcePrint.p_decl dAll)*)
         (*val befor = Time.now ()*)
 
         val r = 
@@ -3410,7 +3410,6 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                              L'.StrFun _ => ()
                            | _ => strError env (FunctorRebind loc))
                       | _ => ();
-
                     ([(L'.DStr (x, n, sgn', str'), loc)], (env', denv', gs' @ gs))
                 end
 
@@ -3620,10 +3619,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
     in
-        (*prefaces "elabDecl" [("e", SourcePrint.p_decl dAll),
-                             ("t", PD.string (LargeReal.toString (Time.toReal
-                                                                      (Time.- (Time.now (), befor)))))];*)
-
+        (*prefaces "/elabDecl" [("d", SourcePrint.p_decl dAll)];*)
         r
     end
 
