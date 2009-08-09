@@ -962,9 +962,11 @@ fun unurlify env (t, loc) =
         unurlify' IS.empty t
     end
 
+val urlify1 = ref 0
+
 fun urlify env t =
     let
-        fun urlify' rf level (t as (_, loc)) =
+        fun urlify' rf rfl level (t as (_, loc)) =
             case #1 t of
                 TFfi ("Basis", "unit") => box []
               | TFfi (m, t) => box [string ("uw_" ^ ident m ^ "_urlify" ^ capitalize t
@@ -1007,7 +1009,7 @@ fun urlify env t =
                                                                   newline]
                                                              else
                                                                  []),
-                                                        urlify' rf (level + 1) t,
+                                                        urlify' rf rfl (level + 1) t,
                                                         string "}",
                                                         newline] :: blocks,
                                                    true)
@@ -1079,8 +1081,9 @@ fun urlify env t =
                              string "it0) {",
                              newline,
                              box [string "if (it0) {",
+                                  newline,
                                   if isUnboxable t then
-                                      urlify' rf 0 t
+                                      urlify' rf rfl 0 t
                                   else
                                       box [p_typ env t,
                                            space,
@@ -1094,11 +1097,12 @@ fun urlify env t =
                                            string has_arg,
                                            string "/\");",
                                            newline,
-                                           urlify' rf 1 t,
+                                           urlify' rf rfl 1 t,
                                            string ";",
                                            newline],
                                   string "} else {",
-                                  box [string "uw_write(ctx, \"",
+                                  box [newline,
+                                       string "uw_write(ctx, \"",
                                        string no_arg,
                                        string "\");",
                                        newline],
@@ -1165,7 +1169,7 @@ fun urlify env t =
                                                         string x',
                                                         string ";",
                                                         newline,
-                                                        urlify' rf 1 t,
+                                                        urlify' rf rfl 1 t,
                                                         newline],
                                      string "} else {",
                                      newline,
@@ -1208,7 +1212,7 @@ fun urlify env t =
                      if isUnboxable t then
                          box [string "uw_write(ctx, \"Some/\");",
                               newline,
-                              urlify' rf level t]
+                              urlify' rf rfl level t]
                      else
                          box [p_typ env t,
                               space,
@@ -1223,19 +1227,84 @@ fun urlify env t =
                               newline,
                               string "uw_write(ctx, \"Some/\");",
                               newline,
-                              urlify' rf (level + 1) t,
+                              urlify' rf rfl (level + 1) t,
                               string ";",
                               newline],
                      string "} else {",
-                     box [string "uw_write(ctx, \"None\");",
+                     box [newline,
+                          string "uw_write(ctx, \"None\");",
                           newline],
                      string "}",
                      newline]
 
+              | TList (t, i) =>
+                if IS.member (rfl, i) then
+                    box [string "urlifyl_",
+                         string (Int.toString i),
+                         string "(it",
+                         string (Int.toString level),
+                         string ");",
+                         newline]
+                else
+                    let
+                        val rfl = IS.add (rfl, i)
+                    in
+                        box [string "({",
+                             space,
+                             string "void",
+                             space,
+                             string "urlifyl_",
+                             string (Int.toString i),
+                             string "(struct __uws_",
+                             string (Int.toString i),
+                             space,
+                             string "*it0) {",
+                             newline,
+                             box [string "if (it0) {",
+                                  newline,
+                                  p_typ env t,
+                                  space,
+                                  string "it1",
+                                  space,
+                                  string "=",
+                                  space,
+                                  string "it0->__uwf_1;",
+                                  newline,
+                                  string "uw_write(ctx, \"Cons/\");",
+                                  newline,
+                                  urlify' rf rfl 1 t,
+                                  string ";",
+                                  newline,
+                                  string "uw_write(ctx, \"/\");",
+                                  newline,
+                                  string "urlifyl_",
+                                  string (Int.toString i),
+                                  string "(it0->__uwf_2);",
+                                  newline,
+                                  string "} else {",
+                                  newline,
+                                  box [string "uw_write(ctx, \"Nil\");",
+                                       newline],
+                                  string "}",
+                                  newline],
+                             string "}",
+                             newline,
+                             newline,
+
+                             string "urlifyl_",
+                             string (Int.toString i),
+                             string "(it",
+                             string (Int.toString level),
+                             string ");",
+                             newline,
+                             string "});",
+                             newline]
+                    end
+
               | _ => (ErrorMsg.errorAt loc "Unable to choose a URL encoding function";
                       space)
     in
-        urlify' IS.empty 0 t
+        urlify' IS.empty IS.empty 0 t
     end
 
 fun sql_type_in env (tAll as (t, loc)) =

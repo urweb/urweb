@@ -30,4 +30,6 @@ signature MONO_OPT = sig
     val optimize : Mono.file -> Mono.file
     val optExp : Mono.exp -> Mono.exp
 
+    val removeServerCalls : bool ref
+
 end

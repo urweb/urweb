@@ -131,6 +131,18 @@ fun subStrInSgn (m1, m2) =
                sgn_item = fn sgi => sgi,
                sgn = fn sgn => sgn}
 
+val occurs =
+    U.Con.existsB {kind = fn _ => false,
+                   con = fn (n, c) =>
+                            case c of
+                                CRel n' => n' = n
+                              | _ => false,
+                   bind = fn (n, b) =>
+                             case b of
+                                 U.Con.RelC _ => n + 1
+                               | _ => n}
+                  0
+
 
 fun hnormCon env (cAll as (c, loc)) =
     case c of
@@ -155,6 +167,16 @@ fun hnormCon env (cAll as (c, loc)) =
               | SOME (_, NONE) => cAll
               | SOME (_, SOME c) => hnormCon env c
         end
+
+      (* Eta reduction *)
+      | CAbs (x, k, b) =>
+        (case #1 (hnormCon (E.pushCRel env x k) b) of
+             CApp (f, (CRel 0, _)) =>
+             if occurs f then
+                 cAll
+             else
+                 hnormCon env (subConInCon (0, (CUnit, loc)) f)
+           | _ => cAll)
 
       | CApp (c1, c2) =>
         (case #1 (hnormCon env c1) of

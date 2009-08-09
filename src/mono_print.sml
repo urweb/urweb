@@ -335,11 +335,11 @@ fun p_exp' par env (e, _) =
                                 p_exp env e,
                                 string ")"]
 
-      | EServerCall (n, e, _, _) => box [string "Server(",
-                                         p_exp env n,
-                                         string ")[",
-                                         p_exp env e,
-                                         string "]"]
+      | EServerCall (n, e, _, _, _) => box [string "Server(",
+                                            p_exp env n,
+                                            string ")[",
+                                            p_exp env e,
+                                            string "]"]
       | ERecv (n, e, _) => box [string "Recv(",
                                 p_exp env n,
                                 string ")[",

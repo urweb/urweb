@@ -98,12 +98,12 @@ fun mp [K] [tf1 :: K -> Type] [tf2 :: K -> Type] (f : t ::: K -> tf1 t -> tf2 t)
         acc (r -- nm) ++ {nm = f r.nm})
     (fn _ => {})
 
-fun map2 [K1] [K2] [tf1 :: K1 -> Type] [tf2 :: K2 -> Type] [tf :: K1 -> K2]
-         (f : t ::: K1 -> tf1 t -> tf2 (tf t)) [r :: {K1}] (fl : folder r) =
-    fl [fn r :: {K1} => $(map tf1 r) -> $(map tf2 (map tf r))]
-    (fn [nm :: Name] [t :: K1] [rest :: {K1}] [[nm] ~ rest] acc r =>
-        acc (r -- nm) ++ {nm = f r.nm})
-    (fn _ => {})
+fun map2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type]
+         (f : t ::: K -> tf1 t -> tf2 t -> tf3 t) [r :: {K}] (fl : folder r) =
+    fl [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r)]
+    (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] acc r1 r2 =>
+        acc (r1 -- nm) (r2 -- nm) ++ {nm = f r1.nm r2.nm})
+    (fn _ _ => {})
 
 fun foldUR [tf :: Type] [tr :: {Unit} -> Type]
            (f : nm :: Name -> rest :: {Unit}

@@ -86,7 +86,7 @@ fun varDepth (e, _) =
       | ESignalReturn e => varDepth e
       | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
       | ESignalSource e => varDepth e
-      | EServerCall (e, ek, _, _) => Int.max (varDepth e, varDepth ek)
+      | EServerCall (e, ek, _, _, _) => Int.max (varDepth e, varDepth ek)
       | ERecv (e, ek, _) => Int.max (varDepth e, varDepth ek)
       | ESleep (e, ek) => Int.max (varDepth e, varDepth ek)
 
@@ -130,7 +130,7 @@ fun closedUpto d =
               | ESignalReturn e => cu inner e
               | ESignalBind (e1, e2) => cu inner e1 andalso cu inner e2
               | ESignalSource e => cu inner e
-              | EServerCall (e, ek, _, _) => cu inner e andalso cu inner ek
+              | EServerCall (e, ek, _, _, _) => cu inner e andalso cu inner ek
               | ERecv (e, ek, _) => cu inner e andalso cu inner ek
               | ESleep (e, ek) => cu inner e andalso cu inner ek
     in
@@ -432,6 +432,13 @@ fun process file =
                                 e
                 in
                     ("(t[i++]==\"Some\"?" ^ e ^ ":null)", st)
+                end
+
+              | TList t =>
+                let
+                    val (e, st) = unurlifyExp loc (t, st)
+                in
+                    ("uul(function(){return t[i++];},function(){return " ^ e ^ "})", st)
                 end
 
               | TDatatype (n, ref (dk, cs)) =>
@@ -1034,7 +1041,7 @@ fun process file =
                                  st)
                             end
 
-                          | EServerCall (e, ek, t, eff) =>
+                          | EServerCall (e, ek, t, eff, _) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                                 val (ek, st) = jsE inner (ek, st)
@@ -1313,12 +1320,13 @@ fun process file =
                      ((ESignalSource e, loc), st)
                  end
                  
-               | EServerCall (e1, e2, t, ef) =>
+               | EServerCall (e1, e2, t, ef, ue) =>
                  let
                      val (e1, st) = exp outer (e1, st)
                      val (e2, st) = exp outer (e2, st)
+                     val (ue, st) = exp outer (ue, st)
                  in
-                     ((EServerCall (e1, e2, t, ef), loc), st)
+                     ((EServerCall (e1, e2, t, ef, ue), loc), st)
                  end
                | ERecv (e1, e2, t) =>
                  let

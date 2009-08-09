@@ -30,6 +30,8 @@ structure MonoOpt :> MONO_OPT = struct
 open Mono
 structure U = MonoUtil
 
+val removeServerCalls = ref false
+
 fun typ t = t
 fun decl d = d
 
@@ -480,6 +482,12 @@ fun exp e =
                    | [] => raise Fail "MonoOpt impossible nil")
               | NONE => e
         end
+
+      | EServerCall (_, _, _, _, ue) =>
+        if !removeServerCalls then
+            optExp ue
+        else
+            e
         
       | _ => e
 

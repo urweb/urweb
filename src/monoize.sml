@@ -93,7 +93,12 @@ fun monoType env =
                     L.TFun (c1, c2) => (L'.TFun (mt env dtmap c1, mt env dtmap c2), loc)
                   | L.TCFun _ => poly ()
                   | L.TRecord (L.CRecord ((L.KType, _), xcs), _) =>
-                    (L'.TRecord (map (fn (x, t) => (monoName env x, mt env dtmap t)) xcs), loc)
+                    let
+                        val xcs = map (fn (x, t) => (monoName env x, mt env dtmap t)) xcs
+                        val xcs = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xcs
+                    in
+                        (L'.TRecord xcs, loc)
+                    end
                   | L.TRecord _ => poly ()
 
                   | L.CApp ((L.CFfi ("Basis", "option"), _), t) =>
@@ -3076,6 +3081,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                               e,
                                               monoType env t), fm)
                                         end) fm xes
+
+                val xes = ListMergeSort.sort (fn ((x, _, _), (y, _, _)) => String.compare (x, y) = GREATER) xes
             in
                 ((L'.ERecord xes, loc), fm)
             end
@@ -3154,6 +3161,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 val (ek, fm) = monoExp (env, st, fm) ek
 
+                val unRpced = foldl (fn (e1, e2) => (L'.EApp (e2, e1), loc)) (L'.ENamed n, loc) es
+                val unRpced = (L'.EApp (unRpced, (L'.ERecord [], loc)), loc)
+                val unRpced = (L'.EApp (ek, unRpced), loc)
+                val unRpced = (L'.EApp (unRpced, (L'.ERecord [], loc)), loc)
+                val unit = (L'.TRecord [], loc)
+
                 val ekf = (L'.EAbs ("f",
                                     (L'.TFun (t,
                                               (L'.TFun ((L'.TRecord [], loc),
@@ -3171,9 +3184,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               L'.ReadCookieWrite
                           else
                               L'.ReadOnly
-                val e = (L'.EServerCall (call, ek, t, eff), loc)
+
+                val e = (L'.EServerCall (call, ek, t, eff, unRpced), loc)
                 val e = liftExpInExp 0 e
-                val unit = (L'.TRecord [], loc)
                 val e = (L'.EAbs ("_", unit, unit, e), loc)
             in
                 (e, fm)

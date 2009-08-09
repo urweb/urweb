@@ -48,9 +48,9 @@ val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> show t -> t
 val mp : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
          -> (t ::: K -> tf1 t -> tf2 t)
          -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r)
-val map2 : K1 --> K2 --> tf1 :: (K1 -> Type) -> tf2 :: (K2 -> Type) -> tf :: (K1 -> K2)
-           -> (t ::: K1 -> tf1 t -> tf2 (tf t))
-           -> r :: {K1} -> folder r -> $(map tf1 r) -> $(map tf2 (map tf r))
+val map2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type)
+           -> (t ::: K -> tf1 t -> tf2 t -> tf3 t)
+           -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r)
 
 val foldUR : tf :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}

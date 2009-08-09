@@ -805,7 +805,7 @@ val monoize = {
 val toMonoize = transform monoize "monoize" o toEffectize
 
 val mono_opt = {
-    func = MonoOpt.optimize,
+    func = (fn x => (MonoOpt.removeServerCalls := false; MonoOpt.optimize x)),
     print = MonoPrint.p_file MonoEnv.empty
 }
 
@@ -841,7 +841,12 @@ val jscomp = {
 
 val toJscomp = transform jscomp "jscomp" o toMono_opt2
 
-val toMono_opt3 = transform mono_opt "mono_opt3" o toJscomp
+val mono_opt' = {
+    func = (fn x => (MonoOpt.removeServerCalls := true; MonoOpt.optimize x)),
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toMono_opt3 = transform mono_opt' "mono_opt3" o toJscomp
 
 val fuse = {
     func = Fuse.fuse,

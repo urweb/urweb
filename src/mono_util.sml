@@ -362,14 +362,16 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                      fn e' =>
                         (ESignalSource e', loc))
 
-              | EServerCall (s, ek, t, eff) =>
+              | EServerCall (s, ek, t, eff, ue) =>
                 S.bind2 (mfe ctx s,
                          fn s' =>
                             S.bind2 (mfe ctx ek,
                                   fn ek' =>
-                                     S.map2 (mft t,
+                                     S.bind2 (mft t,
                                           fn t' =>
-                                             (EServerCall (s', ek', t', eff), loc))))
+                                             S.map2 (mfe ctx ue,
+                                                     fn ue' =>
+                                                        (EServerCall (s', ek', t', eff, ue'), loc)))))
               | ERecv (s, ek, t) =>
                 S.bind2 (mfe ctx s,
                       fn s' =>
