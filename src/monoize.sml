@@ -2538,6 +2538,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                           val x =
                                               case x of
                                                   "Typ" => "Type"
+                                                | "Link" => "Href"
                                                 | _ => x
                                           val xp = " " ^ lowercaseFirst x ^ "=\""
 

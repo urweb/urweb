@@ -117,7 +117,7 @@ fun exp env (e, s) =
                                                    end
                                            in
                                                case x of
-                                                   (CName "Link", _) => tagIt (Link, "Href")
+                                                   (CName "Link", _) => tagIt (Link, "Link")
                                                  | (CName "Action", _) => tagIt (Action ReadWrite, "Action")
                                                  | _ => ((x, e, t), (count, tags, byTag, newTags))
                                            end)
