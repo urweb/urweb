@@ -585,7 +585,7 @@ fun process file =
                                         succ,
                                         str ")"]
                               | PCon (Option, _, NONE) =>
-                                strcat [str ("(d" ^ Int.toString depth ^ "?"),
+                                strcat [str ("(d" ^ Int.toString depth ^ "!=null?"),
                                         fail,
                                         str ":",
                                         succ,
@@ -594,7 +594,7 @@ fun process file =
                                 (case IM.find (someTs, n) of
                                      NONE => raise Fail "Jscomp: Not in someTs"
                                    | SOME t =>
-                                     strcat [str ("(d" ^ Int.toString depth ^ "?(d"
+                                     strcat [str ("(d" ^ Int.toString depth ^ "!=null?(d"
                                                   ^ Int.toString (depth+1) ^ "=d" ^ Int.toString depth
                                                   ^ (if isNullable t then
                                                          ".v,"
@@ -634,12 +634,12 @@ fun process file =
                                 in
                                     succ
                                 end
-                              | PNone _ => strcat [str ("(d" ^ Int.toString depth ^ "?"),
+                              | PNone _ => strcat [str ("(d" ^ Int.toString depth ^ "!=null?"),
                                                    fail,
                                                    str ":",
                                                    succ,
                                                    str ")"]
-                              | PSome (t, p) => strcat [str ("(d" ^ Int.toString depth ^ "?(d" ^ Int.toString (depth+1)
+                              | PSome (t, p) => strcat [str ("(d" ^ Int.toString depth ^ "!=null?(d" ^ Int.toString (depth+1)
                                                              ^ "=d" ^ Int.toString depth
                                                              ^ (if isNullable t then
                                                                     ".v"
