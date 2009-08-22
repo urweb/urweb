@@ -21,7 +21,7 @@ fun action () =
 
         fun sender s n f =
             sleep 2000;
-            writeBack (s, n, f);
+            rpc (writeBack (s, n, f));
             sender (s ^ "!") (n + 1) (f + 1.23)
     in
         return <xml><body onload={spawn (receiver ()); sender "" 0 0.0}>

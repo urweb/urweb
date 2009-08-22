@@ -437,14 +437,14 @@ fun p_exp' par env (e, _) =
                                     newline,
                                     p_exp (E.pushERel env x t) e2]
 
-      | EServerCall (n, es, e, _) => box [string "Server(",
-                                          p_enamed env n,
-                                          string ",",
-                                          space,
-                                          p_list (p_exp env) es,
-                                          string ")[",
-                                          p_exp env e,
-                                          string "]"]
+      | EServerCall (n, es, e, _, _) => box [string "Server(",
+                                             p_enamed env n,
+                                             string ",",
+                                             space,
+                                             p_list (p_exp env) es,
+                                             string ")[",
+                                             p_exp env e,
+                                             string "]"]
 
       | EKAbs (x, e) => box [string x,
                              space,

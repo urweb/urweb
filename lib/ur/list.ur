@@ -217,6 +217,13 @@ fun app [m] (_ : monad m) [a] f =
         app'
     end
 
+fun mapQuery [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
+             [tables ~ exps] (q : sql_query tables exps)
+             (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> t) =
+    query q
+          (fn fs acc => return (f fs :: acc))
+          []
+
 fun assoc [a] [b] (_ : eq a) (x : a) =
     let
         fun assoc' (ls : list (a * b)) =

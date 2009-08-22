@@ -137,7 +137,7 @@ fun shake file =
             in
                 case e of
                     ENamed n => check n
-                  | EServerCall (n, _, _, _) => check n
+                  | EServerCall (n, _, _, _, _) => check n
                   | _ => s
             end
 

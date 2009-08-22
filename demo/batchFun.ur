@@ -78,7 +78,7 @@ functor Make(M : sig
                                    <xml><td>{m.Show v}</td></xml>)
                                [M.cols] M.fl M.cols (r -- #Id)}
                       {if withDel then
-                           <xml><td><button value="Delete" onclick={del r.Id}/></td></xml>
+                           <xml><td><button value="Delete" onclick={rpc (del r.Id)}/></td></xml>
                        else
                            <xml/>}
                     </tr>
@@ -129,7 +129,7 @@ functor Make(M : sig
             fun exec () =
                 ls <- get batched;
 
-                doBatch ls;
+                rpc (doBatch ls);
                 set batched Nil
         in
             return <xml><body>
@@ -137,7 +137,7 @@ functor Make(M : sig
 
               {show True lss}
 
-              <button value="Update" onclick={ls <- allRows (); set lss ls}/><br/>
+              <button value="Update" onclick={ls <- rpc (allRows ()); set lss ls}/><br/>
               <br/>
 
               <h2>Batch new rows to add</h2>

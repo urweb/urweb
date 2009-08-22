@@ -25,7 +25,8 @@ fun show withDel lss =
                 Nil => <xml/>
               | Cons ((id, a), ls) => <xml>
                 <tr><td>{[id]}</td> <td>{[a]}</td> {if withDel then
-                                                        <xml><td><button value="Delete" onclick={del id}/></td></xml>
+                                                        <xml><td><button value="Delete" onclick={rpc (del id)}/>
+                                                        </td></xml>
                                                     else
                                                         <xml/>} </tr>
                 {show' ls}
@@ -55,7 +56,7 @@ fun main () =
         fun exec () =
             ls <- get batched;
 
-            doBatch ls;
+            rpc (doBatch ls);
             set batched Nil
     in
         return <xml><body>
@@ -63,7 +64,7 @@ fun main () =
 
           {show True lss}
 
-          <button value="Update" onclick={ls <- allRows (); set lss ls}/><br/>
+          <button value="Update" onclick={ls <- rpc (allRows ()); set lss ls}/><br/>
           <br/>
 
           <h2>Batch new rows to add</h2>

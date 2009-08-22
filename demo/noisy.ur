@@ -19,7 +19,7 @@ fun check ls =
     case ls of
         Nil => return ()
       | Cons (id, ls') =>
-        ao <- lookup id;
+        ao <- rpc (lookup id);
         alert (case ao of
                    None => "Nada"
                  | Some a => a);
@@ -34,10 +34,10 @@ fun main () =
     return <xml><body>
       <button value="Check values of 1, 2, and 3" onclick={check (Cons (1, Cons (2, Cons (3, Nil))))}/><br/>
       <br/>
-      <button value="Add" onclick={id <- get idAdd; a <- get aAdd; add (readError id) a}/>
+      <button value="Add" onclick={id <- get idAdd; a <- get aAdd; rpc (add (readError id) a)}/>
       <ctextbox source={idAdd}/>
       <ctextbox source={aAdd}/><br/>
       <br/>
-      <button value="Delete" onclick={id <- get idDel; del (readError id)}/>
+      <button value="Delete" onclick={id <- get idDel; rpc (del (readError id))}/>
       <ctextbox source={idDel}/>
     </body></xml>

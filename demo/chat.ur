@@ -35,7 +35,7 @@ fun chat id () =
         fun doSpeak () =
             line <- get newLine;
             set newLine "";
-            speak line
+            rpc (speak line)
     in
         return <xml><body onload={onload ()}>
           <h1>{[r.T.Title]}</h1>

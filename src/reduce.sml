@@ -33,6 +33,14 @@ open Core
 
 structure IM = IntBinaryMap
 
+structure E = CoreEnv
+
+fun multiLiftExpInExp n e =
+    if n = 0 then
+        e
+    else
+        multiLiftExpInExp (n - 1) (E.liftExpInExp 0 e)
+
 datatype env_item =
          UnknownK
        | KnownK of kind
@@ -254,6 +262,98 @@ fun kindConAndExp (namedC, namedE) =
               | EFfi _ => all
               | EFfiApp (m, f, es) => (EFfiApp (m, f, map (exp env) es), loc)
 
+              | EApp (
+                (EApp
+                     ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1), _), t2), _),
+                             _), _),
+                      (EApp (
+                       (EApp (
+                        (ECApp (
+                         (ECApp ((EFfi ("Basis", "return"), _), _), _),
+                         _), _),
+                        _), _), v), _)), _), trans2) => exp env (EApp (trans2, v), loc)
+
+              (*| EApp (
+                (EApp
+                     ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1), _), t2), _),
+                             (EFfi ("Basis", "transaction_monad"), _)), _),
+                      (ECase (ed, pes, {disc, ...}), _)), _),
+                trans2) =>
+                let
+                    val e' = (EFfi ("Basis", "bind"), loc)
+                    val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                    val e' = (ECApp (e', t1), loc)
+                    val e' = (ECApp (e', t2), loc)
+                    val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+
+                    val pes = map (fn (p, e) =>
+                                      let
+                                          val e' = (EApp (e', e), loc)
+                                          val e' = (EApp (e',
+                                                          multiLiftExpInExp (E.patBindsN p)
+                                                                            trans2), loc)
+                                          val e' = exp env e'
+                                      in
+                                          (p, e')
+                                      end) pes
+                in
+                    (ECase (exp env ed,
+                            pes,
+                            {disc = con env disc,
+                             result = (CApp ((CFfi ("Basis", "transaction"), loc), con env t2), loc)}),
+                     loc)
+                end*)
+
+              | EApp (
+                (EApp
+                     ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1), _), t2), _),
+                             (EFfi ("Basis", "transaction_monad"), _)), _),
+                      (EServerCall (n, es, ke, dom, ran), _)), _),
+                trans2) =>
+                let
+                    val e' = (EFfi ("Basis", "bind"), loc)
+                    val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                    val e' = (ECApp (e', dom), loc)
+                    val e' = (ECApp (e', t2), loc)
+                    val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                    val e' = (EApp (e', (EApp (E.liftExpInExp 0 ke, (ERel 0, loc)), loc)), loc)
+                    val e' = (EApp (e', E.liftExpInExp 0 trans2), loc)
+                    val e' = (EAbs ("x", dom, t2, e'), loc)
+                    val e' = (EServerCall (n, es, e', dom, t2), loc)
+                in
+                    exp env e'
+                end
+
+              | EApp (
+                (EApp
+                     ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), _), _), t3), _),
+                             (EFfi ("Basis", "transaction_monad"), _)), _),
+                      (EApp ((EApp
+                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), _), _), _), t1), _), t2), _),
+                                          (EFfi ("Basis", "transaction_monad"), _)), _),
+                                   trans1), _), trans2), _)), _),
+                trans3) =>
+                let
+                    val e'' = (EFfi ("Basis", "bind"), loc)
+                    val e'' = (ECApp (e'', (CFfi ("Basis", "transaction"), loc)), loc)
+                    val e'' = (ECApp (e'', t2), loc)
+                    val e'' = (ECApp (e'', t3), loc)
+                    val e'' = (EApp (e'', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                    val e'' = (EApp (e'', (EApp (E.liftExpInExp 0 trans2, (ERel 0, loc)), loc)), loc)
+                    val e'' = (EApp (e'', E.liftExpInExp 0 trans3), loc)
+                    val e'' = (EAbs ("x", t1, (CApp ((CFfi ("Basis", "transaction"), loc), t3), loc), e''), loc)
+
+                    val e' = (EFfi ("Basis", "bind"), loc)
+                    val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                    val e' = (ECApp (e', t1), loc)
+                    val e' = (ECApp (e', t3), loc)
+                    val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                    val e' = (EApp (e', trans1), loc)
+                    val e' = (EApp (e', e''), loc)
+                in
+                    exp env e'
+                end
+
               | EApp (e1, e2) =>
                 let
                     val e1 = exp env e1
@@ -424,7 +524,8 @@ fun kindConAndExp (namedC, namedE) =
 
               | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc)
 
-              | EServerCall (n, es, e, t) => (EServerCall (n, map (exp env) es, exp env e, con env t), loc))
+              | EServerCall (n, es, e, t1, t2) => (EServerCall (n, map (exp env) es, exp env e,
+                                                                con env t1, con env t2), loc))
     in
         {kind = kind, con = con, exp = exp}
     end

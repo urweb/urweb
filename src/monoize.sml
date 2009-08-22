@@ -3137,7 +3137,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ELet (x, t', e1, e2), loc), fm)
             end
 
-          | L.EServerCall (n, es, ek, t) =>
+          | L.EServerCall (n, es, ek, t, (L.TRecord (L.CRecord (_, []), _), _)) =>
             let
                 val t = monoType env t
                 val (_, ft, _, name) = Env.lookupENamed env n
@@ -3192,6 +3192,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 (e, fm)
             end
+          | L.EServerCall _ => (E.errorAt loc "Full scope of server call continuation isn't known";
+                                Print.eprefaces' [("Expression", CorePrint.p_exp env all)];
+                                (dummyExp, fm))
 
           | L.EKAbs _ => poly ()
           | L.EKApp _ => poly ()
