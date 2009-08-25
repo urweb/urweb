@@ -428,7 +428,7 @@ fun process file =
               | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
               | TFfi ("Basis", "channel") => ("(t[i++].length > 0 ? parseInt(t[i]) : null)", st)
 
-              | TFfi ("Basis", "bool") => ("t[i++] == \"True\"", st)
+              | TFfi ("Basis", "bool") => ("t[i++] == \"1\"", st)
 
               | TOption t =>
                 let
