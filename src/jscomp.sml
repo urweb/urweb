@@ -301,12 +301,18 @@ fun process file =
                                             [((PNone rt, loc),
                                               str loc "null"),
                                              ((PSome (rt, (PVar ("x", rt), loc)), loc),
-                                              strcat loc [str loc "{v:{_1:",
+                                              strcat loc [str loc ((if isNullable t' then
+                                                                        "{v:"
+                                                                    else
+                                                                        "") ^ "{_1:"),
                                                           e',
                                                           str loc ",_2:",
                                                           (EApp ((ENamed n', loc),
                                                                  (EField ((ERel 0, loc), "2"), loc)), loc),
-                                                          str loc "}}"])],
+                                                          str loc ((if isNullable t' then
+                                                                        "}"
+                                                                    else
+                                                                        "") ^ "}")])],
                                             {disc = t, result = s}), loc)
                          val body = (EAbs ("x", t, s, body), loc)
                                     
