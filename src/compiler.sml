@@ -901,11 +901,12 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
     let
         val proto = Settings.currentProtocol ()
         val urweb_o = clibFile "urweb.o"
+        val memmem_o = clibFile "memmem.o"
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wstrict-prototypes -Werror -O3 -I " ^ Config.includ
                       ^ " -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ libs ^ " " ^ urweb_o ^ " " ^ oname
-                   ^ " " ^ #link proto ^ " -o " ^ ename
+        val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ urweb_o ^ " " ^ oname
+                   ^ " " ^ memmem_o ^ " " ^ #link proto ^ " -o " ^ ename
 
         val (compile, link) =
             if profile then

@@ -1,4 +1,12 @@
 ========
+20090825
+========
+
+- Many bug fixes
+- Remote procedure calls must be marked with the new 'rpc' function.
+- Some tweaks to enable usage on OSX (suggested by Paul Snively)
+
+========
 20090718
 ========
 

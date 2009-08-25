@@ -1795,6 +1795,14 @@ $$\begin{array}{l}
 
 Transactions can be run on the client by including them in attributes like the $\mt{Onclick}$ attribute of $\mt{button}$, and GUI widgets like $\mt{ctextbox}$ have $\mt{Source}$ attributes that can be used to connect them to sources, so that their values can be read by code running because of, e.g., an $\mt{Onclick}$ event.
 
+\subsubsection{Remote Procedure Calls}
+
+Any function call may be made a client-to-server ``remote procedure call'' if the function being called needs no features that are only available to client code.  To make a function call an RPC, pass that function call as the argument to $\mt{Basis.rpc}$:
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{rpc} : \mt{t} ::: \mt{Type} \to \mt{transaction} \; \mt{t} \to \mt{transaction} \; \mt{t}
+\end{array}$$
+
 \subsubsection{Asynchronous Message-Passing}
 
 To support asynchronous, ``server push'' delivery of messages to clients, any client that might need to receive an asynchronous message is assigned a unique ID.  These IDs may be retrieved both on the client and on the server, during execution of code related to a client.

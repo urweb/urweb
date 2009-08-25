@@ -2,6 +2,7 @@
 #define URWEB_TYPES_H
 
 #include <time.h>
+#include <unistd.h>
 
 typedef long long uw_Basis_int;
 typedef double uw_Basis_float;
