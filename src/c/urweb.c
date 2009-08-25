@@ -1235,7 +1235,7 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   }
 
   strcpy(s2, "\"");
-  ctx->heap.front = s2 + 1;
+  ctx->heap.front = s2 + 2;
   return r;
 }
 

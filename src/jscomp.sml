@@ -86,7 +86,7 @@ fun varDepth (e, _) =
       | ESignalReturn e => varDepth e
       | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
       | ESignalSource e => varDepth e
-      | EServerCall (e, ek, _, _, _) => Int.max (varDepth e, varDepth ek)
+      | EServerCall (e, ek, _, _) => Int.max (varDepth e, varDepth ek)
       | ERecv (e, ek, _) => Int.max (varDepth e, varDepth ek)
       | ESleep (e, ek) => Int.max (varDepth e, varDepth ek)
 
@@ -130,7 +130,7 @@ fun closedUpto d =
               | ESignalReturn e => cu inner e
               | ESignalBind (e1, e2) => cu inner e1 andalso cu inner e2
               | ESignalSource e => cu inner e
-              | EServerCall (e, ek, _, _, _) => cu inner e andalso cu inner ek
+              | EServerCall (e, ek, _, _) => cu inner e andalso cu inner ek
               | ERecv (e, ek, _) => cu inner e andalso cu inner ek
               | ESleep (e, ek) => cu inner e andalso cu inner ek
     in
@@ -389,6 +389,7 @@ fun process file =
         fun unurlifyExp loc (t : typ, st) =
             case #1 t of
                 TRecord [] => ("null", st)
+              | TFfi ("Basis", "unit") => ("null", st)
               | TRecord [(x, t)] =>
                 let
                     val (e, st) = unurlifyExp loc (t, st)
@@ -524,6 +525,7 @@ fun process file =
 
                         fun unsupported s =
                             (EM.errorAt loc (s ^ " in code to be compiled to JavaScript[2]");
+                             Print.preface ("Code", MonoPrint.p_exp MonoEnv.empty e);
                              (str "ERROR", st))
 
                         val strcat = strcat loc
@@ -669,7 +671,24 @@ fun process file =
                                       raise Fail "Jscomp: deStrcat")
 
                         val quoteExp = quoteExp loc
+
+                        val hasQuery = U.Exp.exists {typ = fn _ => false,
+                                                     exp = fn EQuery _ => true
+                                                            | _ => false}
+
+                        val indirectQuery = U.Exp.exists {typ = fn _ => false,
+                                                          exp = fn ENamed n =>
+                                                                   (case IM.find (nameds, n) of
+                                                                        NONE => false
+                                                                      | SOME e => hasQuery e)
+                                                                 | _ => false}
+
                     in
+                        (*if indirectQuery e then
+                            Print.preface ("Indirect", MonoPrint.p_exp MonoEnv.empty e)
+                        else
+                            ();*)
+
                         (*Print.prefaces "jsE" [("e", MonoPrint.p_exp MonoEnv.empty e),
                                               ("inner", Print.PD.string (Int.toString inner))];*)
 
@@ -1041,7 +1060,7 @@ fun process file =
                                  st)
                             end
 
-                          | EServerCall (e, ek, t, eff, _) =>
+                          | EServerCall (e, ek, t, eff) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                                 val (ek, st) = jsE inner (ek, st)
@@ -1320,13 +1339,12 @@ fun process file =
                      ((ESignalSource e, loc), st)
                  end
                  
-               | EServerCall (e1, e2, t, ef, ue) =>
+               | EServerCall (e1, e2, t, ef) =>
                  let
                      val (e1, st) = exp outer (e1, st)
                      val (e2, st) = exp outer (e2, st)
-                     val (ue, st) = exp outer (ue, st)
                  in
-                     ((EServerCall (e1, e2, t, ef, ue), loc), st)
+                     ((EServerCall (e1, e2, t, ef), loc), st)
                  end
                | ERecv (e1, e2, t) =>
                  let

@@ -155,6 +155,17 @@ fun foldR2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tr :: {K} -> Type]
            f [nm] [t] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
        (fn _ _ => i)
 
+fun foldR3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [tr :: {K} -> Type]
+            (f : nm :: Name -> t :: K -> rest :: {K}
+                 -> [[nm] ~ rest] =>
+                       tf1 t -> tf2 t -> tf3 t -> tr rest -> tr ([nm = t] ++ rest))
+            (i : tr []) [r :: {K}] (fl : folder r) =
+    fl [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> tr r]
+       (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] 
+                        (acc : _ -> _ -> _ -> tr rest) r1 r2 r3 =>
+           f [nm] [t] [rest] ! r1.nm r2.nm r3.nm (acc (r1 -- nm) (r2 -- nm) (r3 -- nm)))
+       (fn _ _ _ => i)
+
 fun foldRX [K] [tf :: K -> Type] [ctx :: {Unit}]
             (f : nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
@@ -172,6 +183,16 @@ fun foldRX2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [ctx :: {Unit}]
            (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest]
                             r1 r2 acc =>
                <xml>{f [nm] [t] [rest] ! r1 r2}{acc}</xml>)
+           <xml/>
+
+fun foldRX3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [ctx :: {Unit}]
+             (f : nm :: Name -> t :: K -> rest :: {K}
+                  -> [[nm] ~ rest] =>
+                        tf1 t -> tf2 t -> tf3 t -> xml ctx [] []) =
+    foldR3 [tf1] [tf2] [tf3] [fn _ => xml ctx [] []]
+           (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest]
+                            r1 r2 r3 acc =>
+               <xml>{f [nm] [t] [rest] ! r1 r2 r3}{acc}</xml>)
            <xml/>
 
 fun queryI [tables ::: {{Type}}] [exps ::: {Type}]

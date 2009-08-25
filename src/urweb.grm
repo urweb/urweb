@@ -1087,6 +1087,13 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                        (EField (e, ident), loc))
                                                    (EVar (#1 path, #2 path, Infer), s (pathleft, pathright)) idents
                                          end)
+       | LPAREN eexp RPAREN DOT idents  (let
+                                             val loc = s (LPARENleft, identsright)
+                                         in
+                                             foldl (fn (ident, e) =>
+                                                       (EField (e, ident), loc))
+                                                   eexp idents
+                                         end)
        | AT path DOT idents             (let
                                              val loc = s (ATleft, identsright)
                                          in

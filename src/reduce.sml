@@ -254,12 +254,12 @@ fun kindConAndExp (namedC, namedE) =
             let
                 (*val () = Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),
                                                ("env", Print.PD.string (e2s env))]*)
-                (*val () = if dangling (edepth env) all then
+                val () = if dangling (edepth env) all then
                              (Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),
                                                     ("env", Print.PD.string (e2s env))];
                               raise Fail "!")
                          else
-                             ()*)
+                             ()
 
                 val r = case e of
                             EPrim _ => all
@@ -299,17 +299,6 @@ fun kindConAndExp (namedC, namedE) =
                           | EFfi _ => all
                           | EFfiApp (m, f, es) => (EFfiApp (m, f, map (exp env) es), loc)
 
-                          | EApp (
-                           (EApp
-                                ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1), _), t2), _),
-                                        _), _),
-                                 (EApp (
-                                  (EApp (
-                                   (ECApp (
-                                    (ECApp ((EFfi ("Basis", "return"), _), _), _),
-                                    _), _),
-                                   _), _), v), _)), _), trans2) => exp env (EApp (trans2, v), loc)
-
                           (*| EApp (
                            (EApp
                                 ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1), _), t2), _),
@@ -341,73 +330,216 @@ fun kindConAndExp (namedC, namedE) =
                                 loc)
                            end*)
 
-                          | EApp (
-                           (EApp
-                                ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1), _), t2), _),
-                                        (EFfi ("Basis", "transaction_monad"), _)), _),
-                                 (EServerCall (n, es, ke, dom, ran), _)), _),
-                           trans2) =>
-                           let
-                               val e' = (EFfi ("Basis", "bind"), loc)
-                               val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
-                               val e' = (ECApp (e', dom), loc)
-                               val e' = (ECApp (e', t2), loc)
-                               val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
-                               val e' = (EApp (e', (EApp (E.liftExpInExp 0 ke, (ERel 0, loc)), loc)), loc)
-                               val e' = (EApp (e', E.liftExpInExp 0 trans2), loc)
-                               val e' = (EAbs ("x", dom, t2, e'), loc)
-                               val e' = (EServerCall (n, es, e', dom, t2), loc)
-                           in
-                               exp env e'
-                           end
-
-                          | EApp (
-                            (EApp
-                                 ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), mt), _), _), _), t3), _),
-                                         me), _),
-                                  (EApp ((EApp
-                                              ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), _), _), _), t1), _), t2), _),
-                                                      _), _),
-                                               trans1), _), trans2), _)), _),
-                            trans3) =>
-                            let
-                                val e'' = (EFfi ("Basis", "bind"), loc)
-                                val e'' = (ECApp (e'', mt), loc)
-                                val e'' = (ECApp (e'', t2), loc)
-                                val e'' = (ECApp (e'', t3), loc)
-                                val e'' = (EApp (e'', me), loc)
-                                val e'' = (EApp (e'', (EApp (E.liftExpInExp 0 trans2, (ERel 0, loc)), loc)), loc)
-                                val e'' = (EApp (e'', E.liftExpInExp 0 trans3), loc)
-                                val e'' = (EAbs ("xb", t1, (CApp (mt, t3), loc), e''), loc)
-
-                                val e' = (EFfi ("Basis", "bind"), loc)
-                                val e' = (ECApp (e', mt), loc)
-                                val e' = (ECApp (e', t1), loc)
-                                val e' = (ECApp (e', t3), loc)
-                                val e' = (EApp (e', me), loc)
-                                val e' = (EApp (e', trans1), loc)
-                                val e' = (EApp (e', e''), loc)
-                                (*val () = print "Before\n"*)
-                                val ee' = exp env e'
-                                (*val () = print "After\n"*)
-                            in
-                                (*Print.prefaces "Commute" [("Pre", CorePrint.p_exp CoreEnv.empty (e, loc)),
-                                                          ("Mid", CorePrint.p_exp CoreEnv.empty e'),
-                                                          ("env", Print.PD.string (e2s env)),
-                                                          ("Post", CorePrint.p_exp CoreEnv.empty ee')];*)
-                                ee'
-                            end
-
                           | EApp (e1, e2) =>
                             let
+                                val env' = deKnown env
+
+                                fun reassoc e =
+                                    case #1 e of
+                                        EApp
+                                            ((EApp
+                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _),
+                                                                          t1),
+                                                                   _), t2), _),
+                                                          (EFfi ("Basis", "transaction_monad"), _)), _),
+                                                   (EServerCall (n, es, (EAbs (_, _, _, ke), _), dom, ran), _)), _),
+                                             trans3) =>
+                                        let
+                                            val e' = (EFfi ("Basis", "bind"), loc)
+                                            val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                                            val e' = (ECApp (e', dom), loc)
+                                            val e' = (ECApp (e', t2), loc)
+                                            val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                                            val e' = (EApp (e', ke), loc)
+                                            val e' = (EApp (e', E.liftExpInExp 0 trans3), loc)
+                                            val e' = reassoc e'
+                                            val e' = (EAbs ("x", dom, t2, e'), loc)
+                                            val e' = (EServerCall (n, es, e', dom, t2), loc)
+                                        in
+                                            e'
+                                        end
+
+                                      | EApp
+                                            ((EApp
+                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _),
+                                                                          t1),
+                                                                   _), t2), _),
+                                                          (EFfi ("Basis", "transaction_monad"), _)), _),
+                                                   (EServerCall (n, es, ke, dom, ran), _)), _),
+                                             trans3) =>
+                                        let
+                                            val e' = (EFfi ("Basis", "bind"), loc)
+                                            val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                                            val e' = (ECApp (e', dom), loc)
+                                            val e' = (ECApp (e', t2), loc)
+                                            val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                                            val e' = (EApp (e', exp (UnknownE :: env')
+                                                                    (EApp (E.liftExpInExp 0 ke, (ERel 0, loc)), loc)),
+                                                      loc)
+                                            val e' = (EApp (e', E.liftExpInExp 0 trans3), loc)
+                                            val e' = reassoc e'
+                                            val e' = (EAbs ("x", dom, t2, e'), loc)
+                                            val e' = (EServerCall (n, es, e', dom, t2), loc)
+                                        in
+                                            e'
+                                        end
+
+                                      | EApp
+                                            ((EApp
+                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), mt),
+                                                                           _), _), _), t3), _),
+                                                          me), _),
+                                                   (EApp ((EApp
+                                                               ((EApp ((ECApp ((ECApp ((ECApp (
+                                                                                        (EFfi ("Basis", "bind"), _), _), _),
+                                                                                       t1), _), t2), _),
+                                                                       _), _),
+                                                                trans1), _), (EAbs (_, _, _, trans2), _)), _)), _),
+                                             trans3) =>
+                                        let
+                                            val e'' = (EFfi ("Basis", "bind"), loc)
+                                            val e'' = (ECApp (e'', mt), loc)
+                                            val e'' = (ECApp (e'', t2), loc)
+                                            val e'' = (ECApp (e'', t3), loc)
+                                            val e'' = (EApp (e'', me), loc)
+                                            val e'' = (EApp (e'', trans2), loc)
+                                            val e'' = (EApp (e'', E.liftExpInExp 0 trans3), loc)
+                                            val e'' = reassoc e''
+                                            val e'' = (EAbs ("xb", t1, (CApp (mt, t3), loc), e''), loc)
+
+                                            val e' = (EFfi ("Basis", "bind"), loc)
+                                            val e' = (ECApp (e', mt), loc)
+                                            val e' = (ECApp (e', t1), loc)
+                                            val e' = (ECApp (e', t3), loc)
+                                            val e' = (EApp (e', me), loc)
+                                            val e' = (EApp (e', trans1), loc)
+                                            val e' = (EApp (e', e''), loc)
+                                        in
+                                            e'
+                                        end
+
+                                      | EApp
+                                            ((EApp
+                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), mt),
+                                                                           _), _), _), t3), _),
+                                                          me), _),
+                                                   (EApp ((EApp
+                                                               ((EApp ((ECApp ((ECApp ((ECApp (
+                                                                                        (EFfi ("Basis", "bind"), _), _), _),
+                                                                                       t1), _), t2), _),
+                                                                       _), _),
+                                                                trans1), _), trans2), _)), _),
+                                             trans3) =>
+                                        let
+                                            val e'' = (EFfi ("Basis", "bind"), loc)
+                                            val e'' = (ECApp (e'', mt), loc)
+                                            val e'' = (ECApp (e'', t2), loc)
+                                            val e'' = (ECApp (e'', t3), loc)
+                                            val e'' = (EApp (e'', me), loc)
+                                            val () = print "In2\n"
+                                            val e'' = (EApp (e'', exp (UnknownE :: env')
+                                                                      (EApp (E.liftExpInExp 0 trans2, (ERel 0, loc)),
+                                                                       loc)),
+                                                       loc)
+                                            val () = print "Out2\n"
+                                            val e'' = (EApp (e'', E.liftExpInExp 0 trans3), loc)
+                                            val e'' = reassoc e''
+                                            val e'' = (EAbs ("xb", t1, (CApp (mt, t3), loc), e''), loc)
+
+                                            val e' = (EFfi ("Basis", "bind"), loc)
+                                            val e' = (ECApp (e', mt), loc)
+                                            val e' = (ECApp (e', t1), loc)
+                                            val e' = (ECApp (e', t3), loc)
+                                            val e' = (EApp (e', me), loc)
+                                            val e' = (EApp (e', trans1), loc)
+                                            val e' = (EApp (e', e''), loc)
+                                        in
+                                            e'
+                                        end
+
+                                      | _ => e
+
                                 val e1 = exp env e1
                                 val e2 = exp env e2
+                                val e12 = reassoc (EApp (e1, e2), loc)
                             in
-                                case #1 e1 of
-                                    EAbs (_, _, _, b) =>
+                                case #1 e12 of
+                                    EApp ((EAbs (_, _, _, b), _), e2) =>
                                     ((*Print.preface ("Body", CorePrint.p_exp CoreEnv.empty b);*)
-                                     exp (KnownE e2 :: deKnown env) b)
-                                  | _ => (EApp (e1, e2), loc)
+                                     exp (KnownE e2 :: env') b)
+                                  (*| EApp
+                                        ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1),
+                                                         _), t2), _),
+                                                _), _),
+                                         (EApp (
+                                          (EApp (
+                                           (ECApp (
+                                            (ECApp ((EFfi ("Basis", "return"), _), _), _),
+                                            _), _),
+                                           _), _), v), _)) =>
+                                    (ELet ("rv", con env t1, v,
+                                           exp (deKnown env) (EApp (E.liftExpInExp 0 e2, (ERel 0, loc)), loc)), loc)*)
+                                  (*| EApp
+                                        ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1),
+                                                         _), t2), _),
+                                                (EFfi ("Basis", "transaction_monad"), _)), _),
+                                         (EServerCall (n, es, ke, dom, ran), _)) =>
+                                    let
+                                        val e' = (EFfi ("Basis", "bind"), loc)
+                                        val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                                        val e' = (ECApp (e', dom), loc)
+                                        val e' = (ECApp (e', t2), loc)
+                                        val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                                        val e' = (EApp (e', (EApp (E.liftExpInExp 0 ke, (ERel 0, loc)), loc)), loc)
+                                        val e' = (EApp (e', E.liftExpInExp 0 (exp env e2)), loc)
+                                        val e' = (EAbs ("x", dom, t2, e'), loc)
+                                        val e' = (EServerCall (n, es, e', dom, t2), loc)
+                                        val e' = exp (deKnown env) e'
+                                    in
+                                        (*Print.prefaces "SC" [("Old", CorePrint.p_exp CoreEnv.empty all),
+                                                             ("New", CorePrint.p_exp CoreEnv.empty e')]*)
+                                        e'
+                                    end
+                                  | EApp
+                                        ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), mt),
+                                                                 _), _), _), t3), _),
+                                                me), _),
+                                         (EApp ((EApp
+                                                     ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), _), _), _),
+                                                                             t1), _), t2), _),
+                                                             _), _),
+                                                      trans1), _), trans2), _)) =>
+                                    let
+                                        val e'' = (EFfi ("Basis", "bind"), loc)
+                                        val e'' = (ECApp (e'', mt), loc)
+                                        val e'' = (ECApp (e'', t2), loc)
+                                        val e'' = (ECApp (e'', t3), loc)
+                                        val e'' = (EApp (e'', me), loc)
+                                        val e'' = (EApp (e'', (EApp (E.liftExpInExp 0 trans2, (ERel 0, loc)), loc)), loc)
+                                        val e'' = (EApp (e'', E.liftExpInExp 0 e2), loc)
+                                        val e'' = (EAbs ("xb", t1, (CApp (mt, t3), loc), e''), loc)
+
+                                        val e' = (EFfi ("Basis", "bind"), loc)
+                                        val e' = (ECApp (e', mt), loc)
+                                        val e' = (ECApp (e', t1), loc)
+                                        val e' = (ECApp (e', t3), loc)
+                                        val e' = (EApp (e', me), loc)
+                                        val e' = (EApp (e', trans1), loc)
+                                        val e' = (EApp (e', e''), loc)
+                                        (*val () = Print.prefaces "Going in" [("e", CorePrint.p_exp CoreEnv.empty (e, loc)),
+                                                                            ("e1", CorePrint.p_exp CoreEnv.empty e1),
+                                                                            ("e'", CorePrint.p_exp CoreEnv.empty e')]*)
+                                        val ee' = exp (deKnown env) e'
+                                        val () = Print.prefaces "Coming out" [("ee'", CorePrint.p_exp CoreEnv.empty ee')]
+                                    in
+                                        (*Print.prefaces "Commute" [("Pre", CorePrint.p_exp CoreEnv.empty (e, loc)),
+                                                                  ("Mid", CorePrint.p_exp CoreEnv.empty e'),
+                                                                  ("env", Print.PD.string (e2s env)),
+                                                                  ("Post", CorePrint.p_exp CoreEnv.empty ee')];*)
+                                        ee'
+                                    end
+                                  | _ => (EApp (e1, exp env e2), loc)*)
+                                  | _ => e12
                             end
 
                           | EAbs (x, dom, ran, e) => (EAbs (x, con env dom, con env ran, exp (UnknownE :: env) e), loc)
@@ -568,7 +700,8 @@ fun kindConAndExp (namedC, namedE) =
                           | EWrite e => (EWrite (exp env e), loc)
                           | EClosure (n, es) => (EClosure (n, map (exp env) es), loc)
 
-                          | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc)
+                          | ELet (x, t, e1, e2) =>
+                            (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc)
 
                           | EServerCall (n, es, e, t1, t2) => (EServerCall (n, map (exp env) es, exp env e,
                                                                             con env t1, con env t2), loc)
@@ -618,7 +751,8 @@ fun reduce file =
                      (namedC, IM.insert (namedE, n, e)))
                 end
               | DValRec vis =>
-                ((DValRec (map (fn (x, n, t, e, s) => (x, n, con namedC [] t, exp (namedC, namedE) [] e, s)) vis), loc),
+                ((DValRec (map (fn (x, n, t, e, s) => (x, n, con namedC [] t,
+                                                       exp (namedC, namedE) [] e, s)) vis), loc),
                  st)
               | DExport _ => (d, st)
               | DTable (s, n, c, s', pe, pc, ce, cc) => ((DTable (s, n, con namedC [] c, s',

@@ -114,7 +114,7 @@ datatype exp' =
        | ESignalBind of exp * exp
        | ESignalSource of exp
 
-       | EServerCall of exp * exp * typ * effect * exp
+       | EServerCall of exp * exp * typ * effect
        | ERecv of exp * exp * typ
        | ESleep of exp * exp
 

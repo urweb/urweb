@@ -22,6 +22,15 @@ val foldR2 : K --> m ::: (Type -> Type) -> monad m
              -> tr []
              -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> m (tr r)
 
+val foldR3 : K --> m ::: (Type -> Type) -> monad m
+             -> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type)
+             -> tr :: ({K} -> Type)
+             -> (nm :: Name -> t :: K -> rest :: {K}
+                 -> [[nm] ~ rest] =>
+                       tf1 t -> tf2 t -> tf3 t -> tr rest -> m (tr ([nm = t] ++ rest)))
+             -> tr []
+             -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> m (tr r)
+
 val mapR : K --> m ::: (Type -> Type) -> monad m
            -> tf :: (K -> Type)
            -> tr :: (K -> Type)

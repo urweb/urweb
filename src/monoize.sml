@@ -3162,10 +3162,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 val (ek, fm) = monoExp (env, st, fm) ek
 
-                val unRpced = foldl (fn (e1, e2) => (L'.EApp (e2, e1), loc)) (L'.ENamed n, loc) es
-                val unRpced = (L'.EApp (unRpced, (L'.ERecord [], loc)), loc)
-                val unRpced = (L'.EApp (ek, unRpced), loc)
-                val unRpced = (L'.EApp (unRpced, (L'.ERecord [], loc)), loc)
                 val unit = (L'.TRecord [], loc)
 
                 val ekf = (L'.EAbs ("f",
@@ -3186,7 +3182,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                           else
                               L'.ReadOnly
 
-                val e = (L'.EServerCall (call, ek, t, eff, unRpced), loc)
+                val e = (L'.EServerCall (call, ek, t, eff), loc)
                 val e = liftExpInExp 0 e
                 val e = (L'.EAbs ("_", unit, unit, e), loc)
             in

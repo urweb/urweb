@@ -84,6 +84,14 @@ val foldR2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
              -> tr []
              -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> tr r
 
+val foldR3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type)
+             -> tr :: ({K} -> Type)
+             -> (nm :: Name -> t :: K -> rest :: {K}
+                 -> [[nm] ~ rest] =>
+                       tf1 t -> tf2 t -> tf3 t -> tr rest -> tr ([nm = t] ++ rest))
+             -> tr []
+             -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> tr r
+
 val foldRX : K --> tf :: (K -> Type) -> ctx :: {Unit}
              -> (nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
@@ -96,6 +104,13 @@ val foldRX2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> ctx :: {Unit}
                         tf1 t -> tf2 t -> xml ctx [] [])
               -> r :: {K} -> folder r
               -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] []
+
+val foldRX3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type) -> ctx :: {Unit}
+              -> (nm :: Name -> t :: K -> rest :: {K}
+                  -> [[nm] ~ rest] =>
+                        tf1 t -> tf2 t -> tf3 t -> xml ctx [] [])
+              -> r :: {K} -> folder r
+              -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> xml ctx [] []
 
 val queryI : tables ::: {{Type}} -> exps ::: {Type}
              -> [tables ~ exps] =>
