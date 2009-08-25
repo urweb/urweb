@@ -3086,6 +3086,7 @@ and wildifyStr env (str, sgn) =
                               (SOME c1, SOME c2) => SOME (L.CConcat (c1, c2), loc)
                             | _ => NONE)
                        | L'.CUnit => SOME (L.CUnit, loc)
+                       | L'.CUnif (_, _, _, ref (SOME c)) => decompileCon env c
 
                        | _ => NONE
 
@@ -3094,7 +3095,9 @@ and wildifyStr env (str, sgn) =
                                let
                                    val (needed, constraints, neededV) =
                                        case sgi of
-                                           L'.SgiConAbs (x, _, k) => (SM.insert (neededC, x, k), constraints, neededV)
+                                           L'.SgiCon (x, _, k, c) => (SM.insert (neededC, x, (k, SOME c)),
+                                                                      constraints, neededV)
+                                         | L'.SgiConAbs (x, _, k) => (SM.insert (neededC, x, (k, NONE)), constraints, neededV)
                                          | L'.SgiConstraint cs => (neededC, (env', cs, loc) :: constraints, neededV)
 
                                          | L'.SgiVal (x, _, t) =>
@@ -3154,15 +3157,23 @@ and wildifyStr env (str, sgn) =
                          [] => ds'
                        | xs =>
                          let
-                             val ds'' = map (fn (x, k) =>
+                             val ds'' = map (fn (x, (k, co)) =>
                                                 let
                                                     val k =
                                                         case decompileKind k of
                                                             NONE => (L.KWild, #2 str)
                                                           | SOME k => k
+
                                                     val cwild = (L.CWild k, #2 str)
+                                                    val c =
+                                                        case co of
+                                                            NONE => cwild
+                                                          | SOME c =>
+                                                            case decompileCon env c of
+                                                                NONE => cwild
+                                                              | SOME c' => c'
                                                 in
-                                                    (L.DCon (x, NONE, cwild), #2 str)
+                                                    (L.DCon (x, NONE, c), #2 str)
                                                 end) xs
                          in
                              ds'' @ ds'
