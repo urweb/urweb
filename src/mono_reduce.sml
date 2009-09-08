@@ -38,19 +38,36 @@ structure IM = IntBinaryMap
 structure IS = IntBinarySet
 
 
+val simpleTypeImpure =
+    U.Typ.exists (fn TFun _ => true
+                   | TDatatype _ => true
+                   | _ => false)
+
 fun simpleImpure syms =
-    U.Exp.exists {typ = fn _ => false,
-                  exp = fn EWrite _ => true
-                         | EQuery _ => true
-                         | EDml _ => true
-                         | ENextval _ => true
-                         | EUnurlify _ => true
-                         | EFfiApp (m, x, _) => Settings.isEffectful (m, x)
-                         | EServerCall _ => true
-                         | ERecv _ => true
-                         | ESleep _ => true
-                         | ENamed n => IS.member (syms, n)
-                         | _ => false}
+    U.Exp.existsB {typ = fn _ => false,
+                   exp = fn (env, e) =>
+                            case e of
+                                EWrite _ => true
+                              | EQuery _ => true
+                              | EDml _ => true
+                              | ENextval _ => true
+                              | EUnurlify _ => true
+                              | EFfiApp (m, x, _) => Settings.isEffectful (m, x)
+                              | EServerCall _ => true
+                              | ERecv _ => true
+                              | ESleep _ => true
+                              | ENamed n => IS.member (syms, n)
+                              | ERel n =>
+                                let
+                                    val (_, t, _) = E.lookupERel env n
+                                in
+                                    simpleTypeImpure t
+                                end
+                              | _ => false,
+                   bind = fn (env, b) =>
+                             case b of
+                                 U.Exp.RelE (x, t) => E.pushERel env x t NONE
+                               | _ => env}
 
 fun impure (e, _) =
     case e of
@@ -268,13 +285,13 @@ fun reduce file =
                       in
                           case d of
                               DVal (_, n, _, e, _) =>
-                              (if simpleImpure impures e then
+                              (if simpleImpure impures E.empty e then
                                    IS.add (impures, n)
                                else
                                    impures,
                                IM.insert (absCounts, n, countAbs e))
                             | DValRec vis =>
-                              (if List.exists (fn (_, _, _, e, _) => simpleImpure impures e) vis then
+                              (if List.exists (fn (_, _, _, e, _) => simpleImpure impures E.empty e) vis then
                                    foldl (fn ((_, n, _, _, _), impures) =>
                                              IS.add (impures, n)) impures vis
                                else
@@ -390,8 +407,8 @@ fun reduce file =
                 s
             end
 
-        val impure = fn e =>
-                        simpleImpure impures e andalso impure e
+        val impure = fn env => fn e =>
+                        simpleImpure impures env e andalso impure e
                         andalso not (List.null (summarize ~1 e))
 
         fun exp env e =
@@ -415,7 +432,7 @@ fun reduce file =
                         ((*Print.prefaces "Considering" [("e1", MonoPrint.p_exp (E.pushERel env x t NONE) e1),
                                                        ("e2", MonoPrint.p_exp env e2),
                                                        ("sub", MonoPrint.p_exp env (reduceExp env (subExpInExp (0, e2) e1)))];*)
-                         if impure e2 then
+                         if impure env e2 then
                              #1 (reduceExp env (ELet (x, t, e2, e1), loc))
                          else
                              #1 (reduceExp env (subExpInExp (0, e2) e1)))
@@ -490,7 +507,7 @@ fun reduce file =
                                                  (EApp (b, liftExpInExp 0 e'), loc)), loc))
 
                       | ELet (x, t, e', (EAbs (x', t' as (TRecord [], _), ran, e''), loc)) =>
-                        if impure e' then
+                        if impure env e' then
                             e
                         else
                             EAbs (x', t', ran, reduceExp env (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
@@ -518,7 +535,7 @@ fun reduce file =
                                          (ECase _, _) => e
                                        | _ => doSub ())
                         in
-                            if impure e' then
+                            if impure env e' then
                                 let
                                     val effs_e' = summarize 0 e'
                                     val effs_e' = List.filter (fn x => x <> UseRel) effs_e'

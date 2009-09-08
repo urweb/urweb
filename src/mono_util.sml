@@ -434,6 +434,21 @@ fun exists {typ, exp} k =
         S.Return _ => true
       | S.Continue _ => false
 
+fun existsB {typ, exp, bind} ctx e =
+    case mapfoldB {typ = fn t => fn () =>
+                                    if typ t then
+                                        S.Return ()
+                                    else
+                                        S.Continue (t, ()),
+                   exp = fn ctx => fn e => fn () =>
+                                              if exp (ctx, e) then
+                                                  S.Return ()
+                                              else
+                                                  S.Continue (e, ()),
+                   bind = bind} ctx e () of
+        S.Return _ => true
+      | S.Continue _ => false
+
 fun foldB {typ, exp, bind} ctx s e =
     case mapfoldB {typ = fn t => fn s => S.Continue (t, typ (t, s)),
                    exp = fn ctx => fn e => fn s => S.Continue (e, exp (ctx, e, s)),

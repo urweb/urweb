@@ -72,6 +72,10 @@ structure Exp : sig
     val exists : {typ : Mono.typ' -> bool,
                   exp : Mono.exp' -> bool} -> Mono.exp -> bool
 
+    val existsB : {typ : Mono.typ' -> bool,
+                   exp : 'context * Mono.exp' -> bool,
+                   bind : 'context * binder -> 'context} -> 'context -> Mono.exp -> bool
+
     val foldB : {typ : Mono.typ' * 'state -> 'state,
                  exp : 'context * Mono.exp' * 'state -> 'state,
                  bind : 'context * binder -> 'context}
