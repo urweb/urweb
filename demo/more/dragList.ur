@@ -15,7 +15,7 @@ fun draggableList title items =
                                set di movedOver;
                                set itemSource original;
                                set draggingItem (Some itemSource)}>
-              <dyn signal={Monad.mp (fn s => <xml>{[s]}</xml>) (signal itemSource)}/>
+              <dyn signal={Monad.mp cdata (signal itemSource)}/>
          </li></xml>) itemSources}
       </ul>
     </xml>
