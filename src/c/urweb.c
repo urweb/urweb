@@ -2556,6 +2556,7 @@ void uw_commit(uw_context ctx) {
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {
       buf_check(&ctx->page, buf_used(&ctx->page) - 4 + len);
+      start = strstr(ctx->page.start, "<sc>");
       memmove(start + len, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 3);
       ctx->page.front += len - 4;
       memcpy(start, ctx->script_header, len);
@@ -2566,13 +2567,13 @@ void uw_commit(uw_context ctx) {
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {
       buf_check(&ctx->page, buf_used(&ctx->page) - 4 + lenP);
+      start = strstr(ctx->page.start, "<sc>");
       memmove(start + lenP, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 3);
       ctx->page.front += lenP - 4;
       memcpy(start, ctx->script_header, lenH);
       memcpy(start + lenH, "<script type=\"text/javascript\">", 31);
       memcpy(start + lenH + 31, ctx->script.start, len);
       memcpy(start + lenH + 31 + len, "</script>", 9);
-      printf("start=%s\n", start);
     }
   }
 }

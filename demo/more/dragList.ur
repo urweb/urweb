@@ -10,11 +10,12 @@ fun draggableList title items =
               onmouseover={di <- get draggingItem;
                            case di of
                                None => return ()
-                             | Some di => item1 <- get di;
-                               item2 <- get itemSource;
-                               set di item2;
-                               set itemSource item1}>
-              <dyn signal={s <- signal itemSource; return <xml>{[s]}</xml>}/>
+                             | Some di => original <- get di;
+                               movedOver <- get itemSource;
+                               set di movedOver;
+                               set itemSource original;
+                               set draggingItem (Some itemSource)}>
+              <dyn signal={Monad.mp (fn s => <xml>{[s]}</xml>) (signal itemSource)}/>
          </li></xml>) itemSources}
       </ul>
     </xml>
@@ -26,8 +27,13 @@ fun main () =
                                         :: "Sus scrofa ussuricus"
                                         :: "Sus scrofa cristatus"
                                         :: "Sus scrofa taiwanus" :: []);
-    return <xml><body>
-      {bears}
-      {beers}
-      {boars}
-    </body></xml>
+    return <xml>
+      <head>
+        <link rel="stylesheet" type="text/css" href="../../dragList.css"/>
+      </head>
+      <body>
+        {bears}
+        {beers}
+        {boars}
+      </body>
+    </xml>

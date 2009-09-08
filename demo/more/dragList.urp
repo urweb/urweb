@@ -1,4 +1,5 @@
-debug
+allow url ../../dragList.css
 
 $/list
+$/monad
 dragList

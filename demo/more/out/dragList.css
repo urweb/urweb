@@ -1,0 +1,18 @@
+ul {
+  width: 200px; 
+  list-style-image: url(http://script.aculo.us/images/bullet.gif);
+}
+
+li {
+  color: #7E9E50;
+  font: 20px Georgia;
+  background-color: #ECF3E1; 
+  border:1px solid #C5DEA1;
+  cursor: move;
+  margin: 0px;
+}
+
+h2 {
+  font: 42px/30px Georgia, serif;
+  color: #7E9E50;
+}
