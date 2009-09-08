@@ -1153,17 +1153,7 @@ void uw_write_script(uw_context ctx, uw_Basis_string s) {
 }
 
 const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
-  if (ctx->script_header[0] == 0)
-    return "";
-  else if (buf_used(&ctx->script) == 0)
-    return ctx->script_header;
-  else {
-    char *r = uw_malloc(ctx, strlen(ctx->script_header) + 42 + buf_used(&ctx->script));
-    sprintf(r, "%s<script type=\"text/javascript\">%s</script>",
-            ctx->script_header,
-            ctx->script.start);
-    return r;
-  }
+  return "<sc>";
 }
 
 uw_Basis_string uw_Basis_maybe_onload(uw_context ctx, uw_Basis_string s) {
@@ -2557,6 +2547,34 @@ void uw_commit(uw_context ctx) {
 
   for (i = 0; i < ctx->used_transactionals; ++i)
     ctx->transactionals[i].free(ctx->transactionals[i].data);
+
+  // Splice script data into appropriate part of page
+  if (ctx->script_header[0] == 0)
+    ;
+  else if (buf_used(&ctx->script) == 0) {
+    size_t len = strlen(ctx->script_header);
+    char *start = strstr(ctx->page.start, "<sc>");
+    if (start) {
+      buf_check(&ctx->page, buf_used(&ctx->page) - 4 + len);
+      memmove(start + len, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 3);
+      ctx->page.front += len - 4;
+      memcpy(start, ctx->script_header, len);
+    }
+  } else {
+    size_t lenH = strlen(ctx->script_header), len = buf_used(&ctx->script);
+    size_t lenP = lenH + 40 + len;
+    char *start = strstr(ctx->page.start, "<sc>");
+    if (start) {
+      buf_check(&ctx->page, buf_used(&ctx->page) - 4 + lenP);
+      memmove(start + lenP, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 3);
+      ctx->page.front += lenP - 4;
+      memcpy(start, ctx->script_header, lenH);
+      memcpy(start + lenH, "<script type=\"text/javascript\">", 31);
+      memcpy(start + lenH + 31, ctx->script.start, len);
+      memcpy(start + lenH + 31 + len, "</script>", 9);
+      printf("start=%s\n", start);
+    }
+  }
 }
 
 int uw_rollback(uw_context ctx) {

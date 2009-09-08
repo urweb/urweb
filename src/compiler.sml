@@ -854,13 +854,17 @@ val toUntangle2 = transform untangle "untangle2" o toFuse
 
 val toMono_reduce2 = transform mono_reduce "mono_reduce2" o toUntangle2
 val toMono_shake2 = transform mono_shake "mono_shake2" o toMono_reduce2
+val toMono_opt4 = transform mono_opt "mono_opt4" o toMono_shake2
+val toFuse2 = transform fuse "shake2" o toMono_opt4
+val toUntangle3 = transform untangle "untangle3" o toFuse2
+val toMono_shake3 = transform mono_shake "mono_shake3" o toUntangle3
 
 val pathcheck = {
     func = (fn file => (PathCheck.check file; file)),
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toPathcheck = transform pathcheck "pathcheck" o toMono_shake2
+val toPathcheck = transform pathcheck "pathcheck" o toMono_shake3
 
 val cjrize = {
     func = Cjrize.cjrize,

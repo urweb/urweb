@@ -44,6 +44,16 @@ fun foldlAbort [a] [b] f =
         foldlAbort'
     end
 
+val length = fn [a] =>
+                let
+                    fun length' acc (ls : list a) =
+                        case ls of
+                            [] => acc
+                          | _ :: ls => length' (acc + 1) ls
+                in
+                    length' 0
+                end
+
 val rev = fn [a] =>
              let
                  fun rev' acc (ls : list a) =

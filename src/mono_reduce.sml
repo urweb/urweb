@@ -35,7 +35,22 @@ structure E = MonoEnv
 structure U = MonoUtil
 
 structure IM = IntBinaryMap
+structure IS = IntBinarySet
 
+
+fun simpleImpure syms =
+    U.Exp.exists {typ = fn _ => false,
+                  exp = fn EWrite _ => true
+                         | EQuery _ => true
+                         | EDml _ => true
+                         | ENextval _ => true
+                         | EUnurlify _ => true
+                         | EFfiApp (m, x, _) => Settings.isEffectful (m, x)
+                         | EServerCall _ => true
+                         | ERecv _ => true
+                         | ESleep _ => true
+                         | ENamed n => IS.member (syms, n)
+                         | _ => false}
 
 fun impure (e, _) =
     case e of
@@ -81,7 +96,6 @@ fun impure (e, _) =
       | EServerCall _ => true
       | ERecv _ => true
       | ESleep _ => true
-
 
 val liftExpInExp = Monoize.liftExpInExp
 
@@ -244,22 +258,33 @@ fun patBinds (p, _) =
 
 fun reduce file =
     let
-        fun countAbs (e, _) =
-            case e of
-                EAbs (_, _, _, e) => 1 + countAbs e
-              | _ => 0
-
-        val absCounts =
-            foldl (fn ((d, _), absCounts) =>
-                      case d of
-                          DVal (_, n, _, e, _) =>
-                          IM.insert (absCounts, n, countAbs e)
-                        | DValRec vis =>
-                          foldl (fn ((_, n, _, e, _), absCounts) =>
-                                    IM.insert (absCounts, n, countAbs e))
-                          absCounts vis
-                        | _ => absCounts)
-            IM.empty file
+        val (impures, absCounts) =
+            foldl (fn ((d, _), (impures, absCounts)) =>
+                      let
+                          fun countAbs (e, _) =
+                              case e of
+                                  EAbs (_, _, _, e) => 1 + countAbs e
+                                | _ => 0
+                      in
+                          case d of
+                              DVal (_, n, _, e, _) =>
+                              (if simpleImpure impures e then
+                                   IS.add (impures, n)
+                               else
+                                   impures,
+                               IM.insert (absCounts, n, countAbs e))
+                            | DValRec vis =>
+                              (if List.exists (fn (_, _, _, e, _) => simpleImpure impures e) vis then
+                                   foldl (fn ((_, n, _, _, _), impures) =>
+                                             IS.add (impures, n)) impures vis
+                               else
+                                   impures,
+                               foldl (fn ((x, n, _, e, _), absCounts) =>
+                                         IM.insert (absCounts, n, countAbs e))
+                                     absCounts vis)
+                            | _ => (impures, absCounts)
+                      end)
+                  (IS.empty, IM.empty) file
 
         fun summarize d (e, _) =
             let
@@ -365,6 +390,10 @@ fun reduce file =
                 s
             end
 
+        val impure = fn e =>
+                        simpleImpure impures e andalso impure e
+                        andalso not (List.null (summarize ~1 e))
+
         fun exp env e =
             let
                 (*val () = Print.prefaces "exp" [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))]*)
@@ -464,7 +493,7 @@ fun reduce file =
                         if impure e' then
                             e
                         else
-                            EAbs (x', t', ran, (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
+                            EAbs (x', t', ran, reduceExp env (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
 
                       | ELet (x, t, e', b) =>
                         let
@@ -479,13 +508,15 @@ fun reduce file =
                                 end
 
                             fun trySub () =
-                                case t of
-                                    (TFfi ("Basis", "string"), _) => doSub ()
-                                  | (TSignal _, _) => e
-                                  | _ =>
-                                    case e' of
-                                        (ECase _, _) => e
-                                      | _ => doSub ()
+                                ((*Print.prefaces "trySub"
+                                                [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))];*)
+                                 case t of
+                                     (TFfi ("Basis", "string"), _) => doSub ()
+                                   | (TSignal _, _) => e
+                                   | _ =>
+                                     case e' of
+                                         (ECase _, _) => e
+                                       | _ => doSub ())
                         in
                             if impure e' then
                                 let
@@ -495,7 +526,8 @@ fun reduce file =
 
                                     (*val () = Print.prefaces "Try"
                                                             [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
-                                                             ("e'", p_events effs_e'),
+                                                             ("e'", MonoPrint.p_exp env e'),
+                                                             ("e'_eff", p_events effs_e'),
                                                              ("b", p_events effs_b)]*)
 
                                     fun does eff = List.exists (fn eff' => eff' = eff) effs_e'

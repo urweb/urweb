@@ -2576,13 +2576,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                            NONE => tagStart
                                          | SOME extra => (L'.EStrcat (tagStart, extra), loc)
 
-                        val xml = case extraInner of
-                                      NONE => xml
-                                    | SOME ei => (L.EFfiApp ("Basis", "strcat", [ei, xml]), loc)
-
                         fun normal () =
                             let
                                 val (xml, fm) = monoExp (env, st, fm) xml
+
+                                val xml = case extraInner of
+                                              NONE => xml
+                                            | SOME ei => (L'.EStrcat (ei, xml), loc)
                             in
                                 ((L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
                                               (L'.EStrcat (xml,
@@ -2646,7 +2646,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                              [(L'.ERecord [], loc)]), loc),
                                                                 onload), loc)]),
                                       loc),
-                                SOME (L.EFfiApp ("Basis", "get_script", [(L.ERecord [], loc)]), loc))
+                                SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
                     end
 
                   | "dyn" =>
