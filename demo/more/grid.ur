@@ -1,0 +1,170 @@
+con colMeta' = fn (row :: Type) (t :: Type) =>
+                  {Header : string,
+                   Project : row -> transaction t,
+                   Update : row -> t -> transaction row,
+                   Display : t -> xbody,
+                   Edit : t -> xbody,
+                   Validate : t -> signal bool}
+
+con colMeta = fn (row :: Type) (global_t :: (Type * Type)) =>
+                 {Initialize : transaction global_t.1,
+                  Handlers : global_t.1 -> colMeta' row global_t.2}                  
+
+functor Make(M : sig
+                 type row
+                 val list : transaction (list row)
+                 val new : transaction row
+                 val save : {Old : row, New : row} -> transaction unit
+                 val delete : row -> transaction unit
+
+                 con cols :: {(Type * Type)}
+                 val cols : $(map (colMeta row) cols)
+
+                 val folder : folder cols
+             end) = struct
+    style tabl
+    style tr
+    style th
+    style td
+
+    fun make (row : M.row) [t] (m : colMeta' M.row t) : transaction t = m.Project row
+
+    fun makeAll cols row = @@Monad.exec [transaction] _ [map snd M.cols]
+                               (map2 [fst] [colMeta M.row] [fn p :: (Type * Type) => transaction p.2]
+                                     (fn [p] data meta => make row [_] (meta.Handlers data))
+                                     [_] M.folder cols M.cols)
+                               (@@Folder.mp [_] [_] M.folder)
+
+    fun addRow cols rows row =
+        rowS <- source row;
+        cols <- makeAll cols row;
+        colsS <- source cols;
+        ud <- source False;
+        Monad.ignore (Dlist.append rows {Row = rowS,
+                                         Cols = colsS,
+                                         Updating = ud})
+
+    type grid = {Cols : $(map fst M.cols),
+                 Rows : Dlist.dlist {Row : source M.row, Cols : source ($(map snd M.cols)), Updating : source bool}}
+ 
+    val createMetas = Monad.mapR [colMeta M.row] [fst]
+                           (fn [nm :: Name] [p :: (Type * Type)] meta => meta.Initialize)
+                           [_] M.folder M.cols
+
+    val grid =
+        cols <- createMetas;
+        rows <- Dlist.create;
+        return {Cols = cols, Rows = rows}
+
+    fun sync {Cols = cols, Rows = rows} =
+        Dlist.clear rows;
+        init <- rpc M.list;
+        List.app (addRow cols rows) init
+
+    fun render grid = <xml>
+      <table class={tabl}>
+        <tr class={tr}>
+          <th/> <th/>
+          {foldRX2 [fst] [colMeta M.row] [_]
+                  (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
+                                   data (meta : colMeta M.row p) =>
+                      <xml><th class={th}>{[(meta.Handlers data).Header]}</th></xml>)
+                  [_] M.folder grid.Cols M.cols}
+          </tr>
+
+          {Dlist.render (fn {Row = rowS, Cols = colsS, Updating = ud} pos =>
+                            let
+                                val delete =
+                                    Dlist.delete pos;
+                                    row <- get rowS;
+                                    rpc (M.delete row)
+
+                                val update = set ud True
+
+                                val cancel =
+                                    set ud False;
+                                    row <- get rowS;
+                                    cols <- makeAll grid.Cols row;
+                                    set colsS cols
+                                    
+                                val save =
+                                    cols <- get colsS;
+                                    errors <- Monad.foldR3 [fst] [colMeta M.row] [snd] [fn _ => option string]
+                                                           (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
+                                                                            [[nm] ~ rest] data meta v errors =>
+                                                               b <- current ((meta.Handlers data).Validate v);
+                                                               return (if b then
+                                                                           errors
+                                                                       else
+                                                                           case errors of
+                                                                               None => Some ((meta.Handlers data).Header)
+                                                                             | Some s => Some ((meta.Handlers data).Header
+                                                                                               ^ ", " ^ s)))
+                                                           None [_] M.folder grid.Cols M.cols cols;
+
+                                    case errors of
+                                        Some s => alert ("Can't save because the following columns have invalid values:\n"
+                                                         ^ s)
+                                      | None =>
+                                        set ud False;
+                                        row <- get rowS;
+                                        row' <- Monad.foldR3 [fst] [colMeta M.row] [snd] [fn _ => M.row]
+                                                             (fn [nm :: Name] [t :: (Type * Type)]
+                                                                              [rest :: {(Type * Type)}]
+                                                                              [[nm] ~ rest] data meta v row' =>
+                                                                 (meta.Handlers data).Update row' v)
+                                                             row [_] M.folder grid.Cols M.cols cols;
+                                        rpc (M.save {Old = row, New = row'});
+                                        set rowS row';
+
+                                        cols <- makeAll grid.Cols row';
+                                        set colsS cols
+                            in
+                                <xml><tr class={tr}>
+                                  <td>
+                                    <dyn signal={b <- signal ud;
+                                                 return (if b then
+                                                             <xml><button value="Save" onclick={save}/></xml>
+                                                         else
+                                                             <xml><button value="Update" onclick={update}/></xml>)}/>
+                                  </td>
+                                  <td><dyn signal={b <- signal ud;
+                                                   return (if b then
+                                                               <xml><button value="Cancel" onclick={cancel}/></xml>
+                                                           else
+                                                               <xml><button value="Delete" onclick={delete}/></xml>)}/>
+                                  </td>
+
+                                  <dyn signal={cols <- signal colsS;
+                                               return (foldRX3 [fst] [colMeta M.row] [snd] [_]
+                                                               (fn [nm :: Name] [t :: (Type * Type)]
+                                                                                [rest :: {(Type * Type)}]
+                                                                                [[nm] ~ rest] data meta v =>
+                                                                   <xml><td class={td}>
+                                                                     <dyn signal={b <- signal ud;
+                                                                                  return (if b then
+                                                                                              (meta.Handlers data).Edit v
+                                                                                          else
+                                                                                              (meta.Handlers data).Display
+                                                                                                                  v)}/>
+                                                                     <dyn signal={b <- signal ud;
+                                                                                  if b then
+                                                                                      valid <-
+                                                                                      (meta.Handlers data).Validate v;
+                                                                                      return (if valid then
+                                                                                                  <xml/>
+                                                                                              else
+                                                                                                  <xml>!</xml>)
+                                                                                  else
+                                                                                      return <xml/>}/>
+                                                                   </td></xml>)
+                                                               [_] M.folder grid.Cols M.cols cols)}/>
+                                  </tr></xml>
+                            end) grid.Rows}
+          </table>
+          
+          <button value="New row" onclick={row <- rpc M.new;
+                                           addRow grid.Cols grid.Rows row}/>
+          <button value="Refresh" onclick={sync grid}/>
+    </xml>
+end

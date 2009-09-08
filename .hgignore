@@ -24,6 +24,9 @@ src/config.sml
 demo/out/*.html
 demo/demo.*
 
+demo/more/out/*.html
+demo/more/demo.*
+
 *.sql
 *mlmon.out
 
