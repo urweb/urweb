@@ -474,7 +474,7 @@ fun reduce file =
                                                 foldl (fn (e, (body, remaining)) =>
                                                           (subExpInExp (0, multiLift remaining e) body, remaining - 1))
                                                       (body, length subs - 1) subs
-                                            val r = reduceExp env body
+                                            val r = reduceExp (E.patBinds env p) body
                                         in
                                             (*Print.preface ("subs", Print.p_list (MonoPrint.p_exp env) subs);*)
                                             (*Print.prefaces "ECase"
@@ -510,7 +510,8 @@ fun reduce file =
                         if impure env e' then
                             e
                         else
-                            EAbs (x', t', ran, reduceExp env (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
+                            EAbs (x', t', ran, reduceExp (E.pushERel env x' t' NONE)
+                                                         (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
 
                       | ELet (x, t, e', b) =>
                         let

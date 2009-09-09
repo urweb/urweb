@@ -56,7 +56,7 @@ __RCSID("$NetBSD$");
  * NULL if none is found.
  */
 void *
-memmem(const void *b1, const void *b2, size_t len1, size_t len2)
+memmem(const void *b1, size_t len1, const void *b2, size_t len2)
 {
         /* Initialize search pointer */
         char *sp = (char *) b1;
