@@ -2836,3 +2836,23 @@ uw_Basis_string uw_Basis_unAs(uw_context ctx, uw_Basis_string s) {
   return r;
 }
 
+uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {
+  va_list ap;
+  size_t len = 1;
+  char *s, *r, *s2;
+  
+  va_start(ap, ctx);
+  for (s = va_arg(ap, char*); s; s = va_arg(ap, char*))
+    len += strlen(s);
+  va_end(ap);
+
+  r = uw_malloc(ctx, len);
+  va_start(ap, ctx);
+  for (s2 = r, s = va_arg(ap, char*); s; s = va_arg(ap, char*))
+    while (*s)
+      *s2++ = *s++;
+  va_end(ap);
+  *s2 = 0;
+
+  return r;
+}

@@ -1468,6 +1468,24 @@ fun p_exp' par env (e, loc) =
       | EApp ((EReturnBlob {blob, mimeType, t = (TFun (_, ran), _)}, loc), _) =>
         p_exp env (EReturnBlob {blob = blob, mimeType = mimeType, t = ran}, loc)
 
+      | EFfiApp ("Basis", "strcat", [e1, e2]) =>
+        let
+            fun flatten e =
+                case #1 e of
+                    EFfiApp ("Basis", "strcat", [e1, e2]) => flatten e1 @ flatten e2
+                  | _ => [e]
+        in
+            case flatten e1 @ flatten e2 of
+                [e1, e2] => box [string "uw_Basis_strcat(ctx, ",
+                                 p_exp env e1,
+                                 string ",",
+                                 p_exp env e2,
+                                 string ")"]
+              | es => box [string "uw_Basis_mstrcat(ctx, ",
+                           p_list (p_exp env) es,
+                           string ", NULL)"]
+        end
+
       | EFfiApp (m, x, []) => box [string "uw_",
                                    p_ident m,
                                    string "_",
