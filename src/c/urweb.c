@@ -346,6 +346,7 @@ struct uw_context {
   void *get_header_data;
 
   buf outHeaders, page, heap, script;
+  int returning_blob;
   input *inputs, *subinputs, *cur_container;
   size_t n_subinputs, used_subinputs;
 
@@ -386,6 +387,7 @@ uw_context uw_init() {
 
   buf_init(&ctx->outHeaders, 0);
   buf_init(&ctx->page, 0);
+  ctx->returning_blob = 0;
   buf_init(&ctx->heap, 0);
   buf_init(&ctx->script, 1);
   ctx->script.start[0] = 0;
@@ -458,6 +460,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   buf_reset(&ctx->script);
   ctx->script.start[0] = 0;
   buf_reset(&ctx->page);
+  ctx->returning_blob = 0;
   buf_reset(&ctx->heap);
   ctx->regions = NULL;
   ctx->cleanup_front = ctx->cleanup;
@@ -2549,7 +2552,7 @@ void uw_commit(uw_context ctx) {
     ctx->transactionals[i].free(ctx->transactionals[i].data);
 
   // Splice script data into appropriate part of page
-  if (ctx->script_header[0] == 0)
+  if (ctx->returning_blob || ctx->script_header[0] == 0)
     ;
   else if (buf_used(&ctx->script) == 0) {
     size_t len = strlen(ctx->script_header);
@@ -2776,6 +2779,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   cleanup *cl;
   int len;
 
+  ctx->returning_blob = 1;
   buf_reset(&ctx->outHeaders);
   buf_reset(&ctx->page);
 

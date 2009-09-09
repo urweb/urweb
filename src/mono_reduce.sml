@@ -237,7 +237,9 @@ fun match (env, p : pat, e : exp) =
         end
 
       | (PNone _, ENone _) => Yes env
+      | (PNone _, ESome _) => No
       | (PSome (_, p), ESome (_, e)) => match (env, p, e)
+      | (PSome _, ENone _) => No
 
       | _ => Maybe
 
@@ -543,7 +545,7 @@ fun reduce file =
                                     val effs_b = summarize 0 b
 
                                     (*val () = Print.prefaces "Try"
-                                                            [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
+                                                            [(*("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),*)
                                                              ("e'", MonoPrint.p_exp env e'),
                                                              ("e'_eff", p_events effs_e'),
                                                              ("b", p_events effs_b)]*)
@@ -574,8 +576,12 @@ fun reduce file =
                                                     ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
                                                     ("effs_e'", Print.p_list p_event effs_e'),
                                                     ("effs_b", Print.p_list p_event effs_b)];*)
-                                    if List.null effs_e' orelse (List.all (fn eff => eff <> Unsure) effs_e'
-                                                                 andalso verifyCompatible effs_b) then
+                                    if List.null effs_e'
+                                       orelse (List.all (fn eff => eff <> Unsure) effs_e'
+                                               andalso verifyCompatible effs_b)
+                                       orelse (case effs_b of
+                                                   UseRel :: effs => List.all verifyUnused effs
+                                                 | _ => false) then
                                         trySub ()
                                     else
                                         e
