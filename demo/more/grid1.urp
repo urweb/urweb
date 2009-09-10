@@ -1,6 +1,6 @@
 database dbname=test
 library grid
 sql grid.sql
-allow url /defun/grid.css
+allow url ../../grid.css
 
 grid1
