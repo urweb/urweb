@@ -44,7 +44,7 @@ fun main () =
     grid <- grid;
     return <xml>
       <head>
-        <link rel="stylesheet" type="text/css" href="/defun/grid.css"/>
+        <link rel="stylesheet" type="text/css" href="../../grid.css"/>
       </head>
       <body onload={sync grid}>
         {render grid}
