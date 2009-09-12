@@ -2523,7 +2523,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                          (L'.EPrim (Prim.String s'), loc),
                                                          (L'.EStrcat (
                                                           (L'.EJavaScript (L'.Attribute, e), loc),
-                                                          (L'.EPrim (Prim.String "'"), loc)), loc)),
+                                                          (L'.EPrim (Prim.String ";return false'"), loc)), loc)),
                                                          loc)), loc),
                                            fm)
                                       end
