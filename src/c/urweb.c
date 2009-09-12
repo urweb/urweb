@@ -1625,7 +1625,7 @@ uw_Basis_time uw_Basis_unurlifyTime(uw_context ctx, char **s) {
 }
 
 static uw_Basis_string uw_unurlifyString_to(uw_context ctx, char *r, char *s) {
-  char *s1, *s2;
+  char *s1, *s2 = s;
   int n;
 
   if (*s2 == '_')
@@ -1633,7 +1633,7 @@ static uw_Basis_string uw_unurlifyString_to(uw_context ctx, char *r, char *s) {
   else if (s2[0] == '%' && s2[1] == '5' && (s2[2] == 'f' || s2[2] == 'F'))
     s2 += 3;
 
-  for (s1 = r, s2 = s; *s2; ++s1, ++s2) {
+  for (s1 = r; *s2; ++s1, ++s2) {
     char c = *s2;
 
     switch (c) {
