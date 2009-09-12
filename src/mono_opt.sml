@@ -76,11 +76,19 @@ fun hexIt ch =
           | _ => s
     end
 
-val urlifyString = String.translate (fn #" " => "+"
-                                      | ch => if Char.isAlphaNum ch then
-                                                  str ch
-                                              else
-                                                  "%" ^ hexIt ch)
+fun urlifyString s =
+    case s of
+        "" => "_"
+      | _ =>
+        (if String.sub (s, 0) = #"_" then
+             "_"
+         else
+             "")
+        ^ String.translate (fn #" " => "+"
+                             | ch => if Char.isAlphaNum ch then
+                                         str ch
+                                     else
+                                         "%" ^ hexIt ch) s
 
 
 fun sqlifyInt n = #p_cast (Settings.currentDbms ()) (attrifyInt n, Settings.Int)

@@ -1479,9 +1479,16 @@ char *uw_Basis_urlifyFloat(uw_context ctx, uw_Basis_float n) {
 char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *p;
 
-  uw_check_heap(ctx, strlen(s) * 3 + 1);
+  if (s[0] == '\0')
+    return "_";
 
-  for (r = p = ctx->heap.front; *s; s++) {
+  uw_check_heap(ctx, strlen(s) * 3 + 1 + !!(s[0] == '_'));
+
+  r = p = ctx->heap.front;
+  if (s[0] == '_')
+    *p++ = '_';
+
+  for (; *s; s++) {
     char c = *s;
 
     if (c == ' ')
@@ -1547,7 +1554,16 @@ uw_Basis_string uw_Basis_urlifyTime(uw_context ctx, uw_Basis_time t) {
 }
 
 uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
-  uw_check(ctx, strlen(s) * 3);
+  if (s[0] == '\0') {
+    uw_check(ctx, 1);
+    uw_writec_unsafe(ctx, '_');
+    return uw_unit_v;
+  }
+
+  uw_check(ctx, strlen(s) * 3 + !!(s[0] == '_'));
+
+  if (s[0] == '_')
+    uw_writec_unsafe(ctx, '_');
 
   for (; *s; s++) {
     char c = *s;
@@ -1611,6 +1627,11 @@ uw_Basis_time uw_Basis_unurlifyTime(uw_context ctx, char **s) {
 static uw_Basis_string uw_unurlifyString_to(uw_context ctx, char *r, char *s) {
   char *s1, *s2;
   int n;
+
+  if (*s2 == '_')
+    ++s2;
+  else if (s2[0] == '%' && s2[1] == '5' && (s2[2] == 'f' || s2[2] == 'F'))
+    s2 += 3;
 
   for (s1 = r, s2 = s; *s2; ++s1, ++s2) {
     char c = *s2;
