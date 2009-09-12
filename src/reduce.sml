@@ -101,6 +101,69 @@ val deKnown = ListUtil.mapConcat (fn KnownC _ => []
                                                           @ List.tabulate (ne, fn _ => UnknownE)
                                    | x => [x])
 
+datatype result = Yes of env | No | Maybe
+
+fun match (env, p : pat, e : exp) =
+    case (#1 p, #1 e) of
+        (PWild, _) => Yes env
+      | (PVar (x, t), _) => Yes (KnownE e :: env)
+
+      | (PPrim p, EPrim p') =>
+        if Prim.equal (p, p') then
+            Yes env
+        else
+            No
+
+      | (PCon (_, PConVar n1, _, NONE), ECon (_, PConVar n2, _, NONE)) =>
+        if n1 = n2 then
+            Yes env
+        else
+            No
+
+      | (PCon (_, PConVar n1, _, SOME p), ECon (_, PConVar n2, _, SOME e)) =>
+        if n1 = n2 then
+            match (env, p, e)
+        else
+            No
+
+      | (PCon (_, PConFfi {mod = m1, con = con1, ...}, _, NONE),
+         ECon (_, PConFfi {mod = m2, con = con2, ...}, _, NONE)) =>
+        if m1 = m2 andalso con1 = con2 then
+            Yes env
+        else
+            No
+
+      | (PCon (_, PConFfi {mod = m1, con = con1, ...}, _, SOME ep),
+         ECon (_, PConFfi {mod = m2, con = con2, ...}, _, SOME e)) =>
+        if m1 = m2 andalso con1 = con2 then
+            match (env, p, e)
+        else
+            No
+
+      | (PRecord xps, ERecord xes) =>
+        if List.exists (fn ((CName _, _), _, _) => false
+                         | _ => true) xes then
+            Maybe
+        else
+            let
+                fun consider (xps, env) =
+                    case xps of
+                        [] => Yes env
+                      | (x, p, _) :: rest =>
+                        case List.find (fn ((CName x', _), _, _) => x' = x
+                                         | _ => false) xes of
+                            NONE => No
+                          | SOME (_, e, _) =>
+                            case match (env, p, e) of
+                                No => No
+                              | Maybe => Maybe
+                              | Yes env => consider (rest, env)
+            in
+                consider (xps, env)
+            end
+
+      | _ => Maybe
+
 fun kindConAndExp (namedC, namedE) =
     let
         fun kind env (all as (k, loc)) =
@@ -690,11 +753,24 @@ fun kindConAndExp (namedC, namedE) =
                                       | PCon (dk, pc, cs, po) =>
                                         (PCon (dk, patCon pc, map (con env) cs, Option.map pat po), loc)
                                       | PRecord xpts => (PRecord (map (fn (x, p, t) => (x, pat p, con env t)) xpts), loc)
+
+                                fun push () =
+                                    (ECase (exp env e,
+                                            map (fn (p, e) => (pat p,
+                                                               exp (List.tabulate (patBinds p,
+                                                                                fn _ => UnknownE) @ env) e))
+                                                pes, {disc = con env disc, result = con env result}), loc)
+
+                                fun search pes =
+                                    case pes of
+                                        [] => push ()
+                                      | (p, body) :: pes =>
+                                        case match (env, p, e) of
+                                            No => search pes
+                                          | Maybe => push ()
+                                          | Yes env' => exp env' body
                             in
-                                (ECase (exp env e,
-                                        map (fn (p, e) => (pat p,
-                                                           exp (List.tabulate (patBinds p, fn _ => UnknownE) @ env) e))
-                                            pes, {disc = con env disc, result = con env result}), loc)
+                                search pes
                             end
 
                           | EWrite e => (EWrite (exp env e), loc)

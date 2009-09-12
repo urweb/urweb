@@ -15,53 +15,93 @@ con colMeta = fn (row :: {Type}) (global_t :: (Type * Type)) =>
                   Handlers : global_t.1 -> colMeta' row global_t.2}
 
 structure Direct = struct
+    con metaBase = fn actual_input :: (Type * Type) =>
+                  {Display : actual_input.2 -> xbody,
+                   Edit : actual_input.2 -> xbody,
+                   Initialize : actual_input.1 -> transaction actual_input.2,
+                   Parse : actual_input.2 -> signal (option actual_input.1)}
+
+    datatype metaBoth actual input =
+             NonNull of metaBase (actual, input) * metaBase (option actual, input)
+           | Nullable of metaBase (actual, input)
+
     con meta = fn global_actual_input :: (Type * Type * Type) =>
                   {Initialize : transaction global_actual_input.1,
                    Handlers : global_actual_input.1
-                              -> {Display : global_actual_input.3 -> xbody,
-                                  Edit : global_actual_input.3 -> xbody,
-                                  Initialize : global_actual_input.2 -> transaction global_actual_input.3,
-                                  Parse : global_actual_input.3 -> signal (option global_actual_input.2)}}
+                              -> metaBoth global_actual_input.2 global_actual_input.3}
 
     con editableState (ts :: (Type * Type * Type)) = (ts.1, ts.3)
     fun editable [ts] [rest] [nm :: Name] [[nm] ~ rest] name (m : meta ts) : colMeta ([nm = ts.2] ++ rest)
                                                                                      (editableState ts) =
-       {Initialize = m.Initialize,
-        Handlers = fn data => {Header = name,
-                               Project = fn r => (m.Handlers data).Initialize r.nm,
-                               Update = fn r s =>
-                                           vo <- current ((m.Handlers data).Parse s);
-                                           return (case vo of
-                                                       None => r
-                                                     | Some v => r -- nm ++ {nm = v}),
-                               Display = (m.Handlers data).Display,
-                               Edit = (m.Handlers data).Edit,
-                               Validate = fn s => vo <- (m.Handlers data).Parse s; return (Option.isSome vo)}}
+       let
+           fun doMr mr = {Header = name,
+                          Project = fn r => mr.Initialize r.nm,
+                          Update = fn r s =>
+                                      vo <- current (mr.Parse s);
+                                      return (case vo of
+                                                  None => r
+                                                | Some v => r -- nm ++ {nm = v}),
+                          Display = mr.Display,
+                          Edit = mr.Edit,
+                          Validate = fn s => vo <- mr.Parse s; return (Option.isSome vo)}
+       in
+           {Initialize = m.Initialize,
+            Handlers = fn data => case m.Handlers data of
+                                  NonNull (mr, _) => doMr mr
+                                | Nullable mr => doMr mr}
+       end
         
     con readOnlyState (ts :: (Type * Type * Type)) = (ts.1, ts.3)
     fun readOnly [ts] [rest] [nm :: Name] [[nm] ~ rest] name (m : meta ts) : colMeta ([nm = ts.2] ++ rest)
                                                                                      (readOnlyState ts) =
-       {Initialize = m.Initialize,
-        Handlers = fn data => {Header = name,
-                               Project = fn r => (m.Handlers data).Initialize r.nm,
-                               Update = fn r _ => return r,
-                               Display = (m.Handlers data).Display,
-                               Edit = (m.Handlers data).Display,
-                               Validate = fn _ => return True}}
+       let
+           fun doMr mr = {Header = name,
+                          Project = fn r => mr.Initialize r.nm,
+                          Update = fn r _ => return r,
+                          Display = mr.Display,
+                          Edit = mr.Display,
+                          Validate = fn _ => return True}
+       in
+           {Initialize = m.Initialize,
+            Handlers = fn data => case m.Handlers data of
+                                      NonNull (mr, _) => doMr mr
+                                    | Nullable mr => doMr mr}
+       end
 
     con metaBasic = fn actual_input :: (Type * Type) =>
-                  {Display : actual_input.2 -> xbody,
-                   Edit : source actual_input.2 -> xbody,
-                   Initialize : actual_input.1 -> actual_input.2,
-                   Parse : actual_input.2 -> option actual_input.1}
+                       {Display : actual_input.2 -> xbody,
+                        Edit : source actual_input.2 -> xbody,
+                        Initialize : actual_input.1 -> actual_input.2,
+                        InitializeNull : actual_input.2,
+                        IsNull : actual_input.2 -> bool,
+                        Parse : actual_input.2 -> option actual_input.1}
 
     con basicState = source
     fun basic [ts ::: (Type * Type)] (m : metaBasic ts) : meta (unit, ts.1, basicState ts.2) =
         {Initialize = return (),
-         Handlers = fn () => {Display = fn s => <xml><dyn signal={v <- signal s; return (m.Display v)}/></xml>,
+         Handlers = fn () => NonNull (
+                             {Display = fn s => <xml><dyn signal={v <- signal s; return (m.Display v)}/></xml>,
                               Edit = m.Edit,
                               Initialize = fn v => source (m.Initialize v),
-                              Parse = fn s => v <- signal s; return (m.Parse v)}}
+                              Parse = fn s => v <- signal s; return (m.Parse v)},
+                             {Display = fn s => <xml><dyn signal={v <- signal s; return (m.Display v)}/></xml>,
+                              Edit = m.Edit,
+                              Initialize = fn v => source (case v of
+                                                       None => m.InitializeNull
+                                                     | Some v => m.Initialize v),
+                              Parse = fn s => v <- signal s;
+                                         return (if m.IsNull v then
+                                                     Some None
+                                                 else
+                                                     case m.Parse v of
+                                                         None => None
+                                                       | Some v' => Some (Some v'))})}
+
+    fun nullable [global] [actual] [input] (m : meta (global, actual, input)) =
+        {Initialize = m.Initialize,
+         Handlers = fn d => case m.Handlers d of
+                                Nullable _ => error <xml>Don't stack calls to Direct.nullable!</xml>
+                              | NonNull (_, ho) => Nullable ho}
 
     type intGlobal = unit
     type intInput = basicState string
@@ -69,6 +109,8 @@ structure Direct = struct
         basic {Display = fn s => <xml>{[s]}</xml>,
                Edit = fn s => <xml><ctextbox source={s}/></xml>,
                Initialize = fn n => show n,
+               InitializeNull = "",
+               IsNull = eq "",
                Parse = fn v => read v}
 
     type stringGlobal = unit
@@ -77,6 +119,8 @@ structure Direct = struct
         basic {Display = fn s => <xml>{[s]}</xml>,
                Edit = fn s => <xml><ctextbox source={s}/></xml>,
                Initialize = fn s => s,
+               InitializeNull = "",
+               IsNull = eq "",
                Parse = fn s => Some s}
 
     type boolGlobal = unit
@@ -85,6 +129,8 @@ structure Direct = struct
         basic {Display = fn b => <xml>{[b]}</xml>,
                Edit = fn s => <xml><ccheckbox source={s}/></xml>,
                Initialize = fn b => b,
+               InitializeNull = False,
+               IsNull = fn _ => False,
                Parse = fn b => Some b}
 
     functor Foreign (M : sig
@@ -102,7 +148,7 @@ structure Direct = struct
         open M
 
         con global = list (t * string)
-        con input = source string * t * $row
+        con input = source string * option (t * $row)
 
         val getChoices = List.mapQuery (SELECT * FROM tab AS T)
                                        (fn r => (r.T.nm, render r.T))
@@ -111,21 +157,57 @@ structure Direct = struct
             r <- oneRow (SELECT T.{{row}} FROM tab AS T WHERE T.{nm} = {[k]});
             return r.T
 
-        val meta =
+        val meta : meta (global, M.t, input) =
             {Initialize = getChoices,
              Handlers = fn choices =>
-                           {Display = fn (_, k, r) => <xml>{[render ({nm = k} ++ r)]}</xml>,
-                            Edit = fn (s, k, _) => 
+                           NonNull (
+                           {Display = fn (_, kr) => case kr of
+                                                          None => error <xml>Unexpected Foreign null</xml>
+                                                        | Some (k, r) => <xml>{[render ({nm = k} ++ r)]}</xml>,
+                            Edit = fn (s, kr) => 
                                       <xml><cselect source={s}>
                                         {List.mapX (fn (k', rend) =>
-                                                       <xml><coption value={show k'} selected={k' = k}>{[rend]}</coption>
+                                                       <xml><coption value={show k'} selected={case kr of
+                                                                                                   None => False
+                                                                                                 | Some (k, _) =>
+                                                                                                   k' = k}>{[rend]}</coption>
                                                        </xml>)
                                                    choices}
                                       </cselect></xml>,
                             Initialize = fn k => s <- source (show k);
                                             r <- rpc (getChoice k);
-                                            return (s, k, r),
-                            Parse = fn (s, _, _) => k <- signal s; return (read k)}}
+                                            return (s, Some (k, r)),
+                            Parse = fn (s, _) => k <- signal s; return (read k : option t)},
+                           {Display = fn (_, kr) => case kr of
+                                                          None => <xml>NULL</xml>
+                                                        | Some (k, r) => <xml>{[render ({nm = k} ++ r)]}</xml>,
+                            Edit = fn (s, kr) => 
+                                      <xml><cselect source={s}>
+                                        <coption value="" selected={case kr of
+                                                                        None => True
+                                                                      | _ => False}>NULL</coption>
+                                        {List.mapX (fn (k', rend) =>
+                                                       <xml><coption value={show k'} selected={case kr of
+                                                                                                   None => False
+                                                                                                 | Some (k, _) =>
+                                                                                                   k' = k}>{[rend]}</coption>
+                                                       </xml>)
+                                                   choices}
+                                      </cselect></xml>,
+                            Initialize = fn k => case k of
+                                                     None =>
+                                                     s <- source "";
+                                                     return (s, None)
+                                                   | Some k =>
+                                                     s <- source (show k);
+                                                     r <- rpc (getChoice k);
+                                                     return (s, Some (k, r)),
+                            Parse = fn (s, _) => ks <- signal s;
+                                       return (case ks of
+                                                   "" => Some None
+                                                 | _ => case read ks : option t of
+                                                            None => None
+                                                          | Some k => Some (Some k))})}
     end
 end
 

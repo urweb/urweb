@@ -15,13 +15,20 @@ con colMeta = fn (row :: {Type}) (global_t :: (Type * Type)) =>
                   Handlers : global_t.1 -> colMeta' row global_t.2}
 
 structure Direct : sig
+    con metaBase = fn actual_input :: (Type * Type) =>
+                  {Display : actual_input.2 -> xbody,
+                   Edit : actual_input.2 -> xbody,
+                   Initialize : actual_input.1 -> transaction actual_input.2,
+                   Parse : actual_input.2 -> signal (option actual_input.1)}
+
+    datatype metaBoth actual input =
+             NonNull of metaBase (actual, input) * metaBase (option actual, input)
+           | Nullable of metaBase (actual, input)
+
     con meta = fn global_actual_input :: (Type * Type * Type) =>
                   {Initialize : transaction global_actual_input.1,
                    Handlers : global_actual_input.1
-                              -> {Display : global_actual_input.3 -> xbody,
-                                  Edit : global_actual_input.3 -> xbody,
-                                  Initialize : global_actual_input.2 -> transaction global_actual_input.3,
-                                  Parse : global_actual_input.3 -> signal (option global_actual_input.2)}}
+                              -> metaBoth global_actual_input.2 global_actual_input.3}
 
     con editableState :: (Type * Type * Type) -> (Type * Type)
     val editable : ts ::: (Type * Type * Type) -> rest ::: {Type}
@@ -34,6 +41,10 @@ structure Direct : sig
                    -> nm :: Name -> [[nm] ~ rest] => string -> meta ts
                                                      -> colMeta ([nm = ts.2] ++ rest)
                                                                 (readOnlyState ts)
+
+    val nullable : global ::: Type -> actual ::: Type -> input ::: Type
+                   -> meta (global, actual, input)
+                   -> meta (global, option actual, input)
 
     type intGlobal
     type intInput
