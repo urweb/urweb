@@ -1054,7 +1054,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                newline,
                                                                string "if (localtime_r(&arg",
                                                                string (Int.toString (i + 1)),
-                                                               string ", &tm) == NULL) uw_error(\"",
+                                                               string ", &tms) == NULL) uw_error(ctx, FATAL, \"",
                                                                string (ErrorMsg.spanToString loc),
                                                                string ": error converting to MySQL time\");",
                                                                newline,
@@ -1073,6 +1073,8 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                string "].buffer = &in_buffer",
                                                                string (Int.toString i),
                                                                string ";",
+                                                               newline,
+                                                               string "});",
                                                                newline]
                                                       end
                                                     | Channel => box [string "in_buffer",
@@ -1178,7 +1180,7 @@ fun dml loc =
          newline,
          string "MYSQL_stmt *stmt = mysql_stmt_init(conn->conn);",
          newline,
-         string "if (stmt == NULL) uw_error(ctx, \"",
+         string "if (stmt == NULL) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
          string ": can't allocate temporary prepared statement\");",
          newline,
@@ -1333,7 +1335,7 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                                                newline,
                                                                string "if (localtime_r(&arg",
                                                                string (Int.toString (i + 1)),
-                                                               string ", &tm) == NULL) uw_error(\"",
+                                                               string ", &tms) == NULL) uw_error(ctx, FATAL, \"",
                                                                string (ErrorMsg.spanToString loc),
                                                                string ": error converting to MySQL time\");",
                                                                newline,
@@ -1349,6 +1351,8 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                                                string "].buffer = &in_buffer",
                                                                string (Int.toString i),
                                                                string ";",
+                                                               newline,
+                                                               string "});",
                                                                newline]
                                                       end
                                                     | Channel => box [string "in_buffer",
