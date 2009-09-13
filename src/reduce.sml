@@ -520,6 +520,36 @@ fun kindConAndExp (namedC, namedE) =
                                             e'
                                         end
 
+                                      | EApp
+                                            ((EApp
+                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _),
+                                                                          t1),
+                                                                   _), t2), _),
+                                                          (EFfi ("Basis", "transaction_monad"), _)), _),
+                                                   (ECase (e, pes, {disc, ...}), _)), _), trans) =>
+                                        let
+                                            val e' = (EFfi ("Basis", "bind"), loc)
+                                            val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                                            val e' = (ECApp (e', t1), loc)
+                                            val e' = (ECApp (e', t2), loc)
+                                            val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+
+                                            fun doCase (p, e) =
+                                                let
+                                                    val e' = (EApp (e', e), loc)
+                                                    val e' = (EApp (e',
+                                                                    multiLiftExpInExp (E.patBindsN p)
+                                                                                      trans), loc)
+                                                in
+                                                    (p, reassoc e')
+                                                end
+                                        in
+                                            (ECase (e, map doCase pes,
+                                                    {disc = disc,
+                                                     result = (CApp ((CFfi ("Basis", "transaction"), loc),
+                                                                     t2), loc)}), loc)
+                                        end
+
                                       | _ => e
 
                                 val e1 = exp env e1
@@ -528,80 +558,7 @@ fun kindConAndExp (namedC, namedE) =
                             in
                                 case #1 e12 of
                                     EApp ((EAbs (_, _, _, b), _), e2) =>
-                                    ((*Print.preface ("Body", CorePrint.p_exp CoreEnv.empty b);*)
-                                     exp (KnownE e2 :: env') b)
-                                  (*| EApp
-                                        ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1),
-                                                         _), t2), _),
-                                                _), _),
-                                         (EApp (
-                                          (EApp (
-                                           (ECApp (
-                                            (ECApp ((EFfi ("Basis", "return"), _), _), _),
-                                            _), _),
-                                           _), _), v), _)) =>
-                                    (ELet ("rv", con env t1, v,
-                                           exp (deKnown env) (EApp (E.liftExpInExp 0 e2, (ERel 0, loc)), loc)), loc)*)
-                                  (*| EApp
-                                        ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _), t1),
-                                                         _), t2), _),
-                                                (EFfi ("Basis", "transaction_monad"), _)), _),
-                                         (EServerCall (n, es, ke, dom, ran), _)) =>
-                                    let
-                                        val e' = (EFfi ("Basis", "bind"), loc)
-                                        val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
-                                        val e' = (ECApp (e', dom), loc)
-                                        val e' = (ECApp (e', t2), loc)
-                                        val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
-                                        val e' = (EApp (e', (EApp (E.liftExpInExp 0 ke, (ERel 0, loc)), loc)), loc)
-                                        val e' = (EApp (e', E.liftExpInExp 0 (exp env e2)), loc)
-                                        val e' = (EAbs ("x", dom, t2, e'), loc)
-                                        val e' = (EServerCall (n, es, e', dom, t2), loc)
-                                        val e' = exp (deKnown env) e'
-                                    in
-                                        (*Print.prefaces "SC" [("Old", CorePrint.p_exp CoreEnv.empty all),
-                                                             ("New", CorePrint.p_exp CoreEnv.empty e')]*)
-                                        e'
-                                    end
-                                  | EApp
-                                        ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), mt),
-                                                                 _), _), _), t3), _),
-                                                me), _),
-                                         (EApp ((EApp
-                                                     ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), _), _), _),
-                                                                             t1), _), t2), _),
-                                                             _), _),
-                                                      trans1), _), trans2), _)) =>
-                                    let
-                                        val e'' = (EFfi ("Basis", "bind"), loc)
-                                        val e'' = (ECApp (e'', mt), loc)
-                                        val e'' = (ECApp (e'', t2), loc)
-                                        val e'' = (ECApp (e'', t3), loc)
-                                        val e'' = (EApp (e'', me), loc)
-                                        val e'' = (EApp (e'', (EApp (E.liftExpInExp 0 trans2, (ERel 0, loc)), loc)), loc)
-                                        val e'' = (EApp (e'', E.liftExpInExp 0 e2), loc)
-                                        val e'' = (EAbs ("xb", t1, (CApp (mt, t3), loc), e''), loc)
-
-                                        val e' = (EFfi ("Basis", "bind"), loc)
-                                        val e' = (ECApp (e', mt), loc)
-                                        val e' = (ECApp (e', t1), loc)
-                                        val e' = (ECApp (e', t3), loc)
-                                        val e' = (EApp (e', me), loc)
-                                        val e' = (EApp (e', trans1), loc)
-                                        val e' = (EApp (e', e''), loc)
-                                        (*val () = Print.prefaces "Going in" [("e", CorePrint.p_exp CoreEnv.empty (e, loc)),
-                                                                            ("e1", CorePrint.p_exp CoreEnv.empty e1),
-                                                                            ("e'", CorePrint.p_exp CoreEnv.empty e')]*)
-                                        val ee' = exp (deKnown env) e'
-                                        val () = Print.prefaces "Coming out" [("ee'", CorePrint.p_exp CoreEnv.empty ee')]
-                                    in
-                                        (*Print.prefaces "Commute" [("Pre", CorePrint.p_exp CoreEnv.empty (e, loc)),
-                                                                  ("Mid", CorePrint.p_exp CoreEnv.empty e'),
-                                                                  ("env", Print.PD.string (e2s env)),
-                                                                  ("Post", CorePrint.p_exp CoreEnv.empty ee')];*)
-                                        ee'
-                                    end
-                                  | _ => (EApp (e1, exp env e2), loc)*)
+                                    exp (KnownE e2 :: env') b
                                   | _ => e12
                             end
 

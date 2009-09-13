@@ -923,7 +923,7 @@ fun unurlify env (t, loc) =
                 box [string "(request[0] == '/' ? ++request : request, ",
                      string "((!strncmp(request, \"None\", 4) ",
                      string "&& (request[4] == 0 || request[4] == '/')) ",
-                     string "? (request += 4, NULL) ",
+                     string "? (request += (request[4] == 0 ? 4 : 5), NULL) ",
                      string ": ((!strncmp(request, \"Some\", 4) ",
                      string "&& request[4] == '/') ",
                      string "? (request += 5, ",

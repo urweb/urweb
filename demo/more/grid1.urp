@@ -1,3 +1,4 @@
+debug
 database dbname=test
 library grid
 sql grid.sql
