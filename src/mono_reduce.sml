@@ -275,6 +275,16 @@ fun patBinds (p, _) =
       | PNone _ => 0
       | PSome (_, p) => patBinds p
 
+val countFree = U.Exp.foldB {typ = fn (_, n) => n,
+                             exp = fn (x, e, n) =>
+                                      case e of
+                                          ERel x' => if x = x' then n + 1 else n
+                                        | _ => n,
+                             bind = fn (n, b) =>
+                                       case b of
+                                           U.Exp.RelE _ => n + 1
+                                     | _ => n} 0 0
+
 fun reduce file =
     let
         val (impures, absCounts) =
@@ -434,7 +444,7 @@ fun reduce file =
                         ((*Print.prefaces "Considering" [("e1", MonoPrint.p_exp (E.pushERel env x t NONE) e1),
                                                        ("e2", MonoPrint.p_exp env e2),
                                                        ("sub", MonoPrint.p_exp env (reduceExp env (subExpInExp (0, e2) e1)))];*)
-                         if impure env e2 then
+                         if impure env e2 orelse countFree e1 > 1 then
                              #1 (reduceExp env (ELet (x, t, e2, e1), loc))
                          else
                              #1 (reduceExp env (subExpInExp (0, e2) e1)))
@@ -522,8 +532,8 @@ fun reduce file =
                                     val r = subExpInExp (0, e') b
                                 in
                                     (*Print.prefaces "doSub" [("e'", MonoPrint.p_exp env e'),
-                                                            ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                                                            ("r", MonoPrint.p_exp env r)];*)
+                                                              ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                                              ("r", MonoPrint.p_exp env r)];*)
                                     #1 (reduceExp env r)
                                 end
 

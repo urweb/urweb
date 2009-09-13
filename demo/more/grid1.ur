@@ -8,7 +8,7 @@ table t : {Id : int, A : int, B : string, C : bool, D : int, E : option int, F :
   PRIMARY KEY Id,
   CONSTRAINT Foreign FOREIGN KEY (D) REFERENCES t1(Id) ON DELETE CASCADE
 
-(*fun page (n, s) = return <xml>A = {[n]}, B = {[s]}</xml>*)
+fun page (n, s) = return <xml>A = {[n]}, B = {[s]}</xml>
 
 open Make(struct
               val tab = t
@@ -36,14 +36,14 @@ open Make(struct
                                            end)
 
               val cols = {Id = Direct.readOnly [#Id] ! "Id" Direct.int,
-                          (*A = Direct.editable [#A] ! "A" Direct.int,
+                          A = Direct.editable [#A] ! "A" Direct.int,
                           B = Direct.editable [#B] ! "B" Direct.string,
                           C = Direct.editable [#C] ! "C" Direct.bool,
-                          D = Direct.editable [#D] ! "D" F.meta,*)
+                          D = Direct.editable [#D] ! "D" F.meta,
                           E = Direct.editable [#E] ! "E" (Direct.nullable Direct.int),
-                          F = Direct.editable [#F] ! "F" (Direct.nullable F.meta)(*,
+                          F = Direct.editable [#F] ! "F" (Direct.nullable F.meta),
                           DA = computed "2A" (fn r => 2 * r.A),
-                          Link = computedHtml "Link" (fn r => <xml><a link={page (r.A, r.B)}>Go</a></xml>)*)}
+                          Link = computedHtml "Link" (fn r => <xml><a link={page (r.A, r.B)}>Go</a></xml>)}
           end)
 
 fun main () =
