@@ -917,13 +917,42 @@ fun process file =
                                          :: es),
                                  st)
                             end
-                          | EField (e, x) =>
+                          | EField (e', x) =>
                             let
-                                val (e, st) = jsE inner (e, st)
+                                fun default () =
+                                    let
+                                        val (e', st) = jsE inner (e', st)
+                                    in
+                                        (strcat [e',
+                                                 str ("._" ^ x)], st)
+                                    end
+
+                                fun seek (e, xs) =
+                                    case #1 e of
+                                        ERel n =>
+                                        if n < inner then
+                                            default ()
+                                        else
+                                            let
+                                                val n = n - inner
+                                                val t = List.nth (outer, n)
+                                                val t = foldl (fn (x, (TRecord xts, _)) =>
+                                                                  (case List.find (fn (x', _) => x' = x) xts of
+                                                                       NONE => raise Fail "Jscomp: Bad seek [1]"
+                                                                     | SOME (_, t) => t)
+                                                                | _ => raise Fail "Jscomp: Bad seek [2]")
+                                                              t xs
+
+                                                val e = (ERel n, loc)
+                                                val e = foldl (fn (x, e) => (EField (e, x), loc)) e xs
+                                            in
+                                                quoteExp t (e, st)
+                                            end
+                                      | EField (e', x) => seek (e', x :: xs)
+                                      | _ => default ()
                             in
-                                (strcat [e,
-                                         str ("._" ^ x)], st)
-                            end
+                                seek (e', [x])
+                            end  
 
                           | ECase (e', pes, {result, ...}) =>
                             let
@@ -1274,8 +1303,12 @@ fun process file =
 
                | EQuery {exps, tables, state, query, body, initial} =>
                  let
+                     val row = exps @ map (fn (x, xts) => (x, (TRecord xts, loc))) tables
+                     val row = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) row
+                     val row = (TRecord row, loc)
+
                      val (query, st) = exp outer (query, st)
-                     val (body, st) = exp outer (body, st)
+                     val (body, st) = exp (state :: row :: outer) (body, st)
                      val (initial, st) = exp outer (initial, st)
                  in
                      ((EQuery {exps = exps, tables = tables, state = state,
