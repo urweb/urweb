@@ -17,10 +17,13 @@ con aggregateMeta = fn (row :: Type) (acc :: Type) =>
 
 functor Make(M : sig
                  type row
+                 type key
+                 val keyOf : row -> key
+
                  val list : transaction (list row)
                  val new : transaction row
-                 val save : {Old : row, New : row} -> transaction unit
-                 val delete : row -> transaction unit
+                 val save : key -> row -> transaction unit
+                 val delete : key -> transaction unit
 
                  con cols :: {(Type * Type)}
                  val cols : $(map (colMeta row) cols)
@@ -85,7 +88,7 @@ functor Make(M : sig
                                 val delete =
                                     Dlist.delete pos;
                                     row <- get rowS;
-                                    rpc (M.delete row)
+                                    rpc (M.delete (M.keyOf row))
 
                                 val update = set ud True
 
@@ -122,7 +125,7 @@ functor Make(M : sig
                                                                               [[nm] ~ rest] data meta v row' =>
                                                                  (meta.Handlers data).Update row' v)
                                                              row [_] M.folder grid.Cols M.cols cols;
-                                        rpc (M.save {Old = row, New = row'});
+                                        rpc (M.save (M.keyOf row) row');
                                         set rowS row';
 
                                         cols <- makeAll grid.Cols row';

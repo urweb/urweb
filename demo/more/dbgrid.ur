@@ -253,6 +253,8 @@ functor Make(M : sig
                  val aggregates : $(map (aggregateMeta (key ++ row)) aggregates)
              end) = struct
     open Grid.Make(struct
+                       fun keyOf r = r --- M.row
+
                        val list = query (SELECT * FROM {{M.tab}} AS T) (fn r rs => return (r.T :: rs)) []
 
                        val wholeRow = @Folder.concat ! M.keyFolder M.rowFolder
@@ -269,7 +271,7 @@ functor Make(M : sig
                            dml (insert M.tab (ensql row));
                            return row
 
-                       fun selector (r : $(M.key ++ M.row)) : sql_exp [T = M.key ++ M.row] [] [] bool =
+                       fun selector (r : $M.key) : sql_exp [T = M.key ++ M.row] [] [] bool =
                          foldR2 [rawMeta] [id]
                                 [fn key => rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] bool]
                                 (fn [nm :: Name] [t :: Type] [key :: {Type}] [[nm] ~ key]
@@ -278,17 +280,17 @@ functor Make(M : sig
                                     [rest :: {Type}] [rest ~ [nm = t] ++ key] =>
                                     (WHERE T.{nm} = {@sql_inject meta.Inj v} AND {exp [[nm = t] ++ rest] !}))
                                 (fn [rest :: {Type}] [rest ~ []] => (WHERE TRUE))
-                                [_] M.keyFolder (M.raw --- map rawMeta M.row) (r --- M.row)
+                                [_] M.keyFolder (M.raw --- map rawMeta M.row) r
                                 [_] !
 
-                       fun save {Old = row, New = row'} =
+                       fun save key row =
                            dml (update [M.key ++ M.row] !
-                                       (ensql row')
+                                       (ensql row)
                                        M.tab
-                                       (selector row))
+                                       (selector key))
 
-                       fun delete row =
-                           dml (Basis.delete M.tab (selector row))
+                       fun delete key =
+                           dml (Basis.delete M.tab (selector key))
 
                        val cols = M.cols
 

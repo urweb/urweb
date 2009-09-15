@@ -17,10 +17,13 @@ con aggregateMeta = fn (row :: Type) (acc :: Type) =>
 
 functor Make(M : sig
                  type row
+                 type key
+                 val keyOf : row -> key
+
                  val list : transaction (list row)
                  val new : transaction row
-                 val save : {Old : row, New : row} -> transaction unit
-                 val delete : row -> transaction unit
+                 val save : key -> row -> transaction unit
+                 val delete : key -> transaction unit
 
                  con cols :: {(Type * Type)}
                  val cols : $(map (colMeta row) cols)
