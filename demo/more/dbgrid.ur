@@ -109,7 +109,11 @@ structure Direct = struct
                               Parse = fn s => v <- signal s; return (m.Parse v),
                               CreateFilter = source m.CreateFilter,
                               DisplayFilter = m.DisplayFilter,
-                              Filter = fn f v => f <- signal f; return (m.Filter f v)},
+                              Filter = fn f v => f <- signal f;
+                                          return (if m.FilterIsNull f then
+                                                      True
+                                                  else
+                                                      m.Filter f v)},
                              {Display = fn s => <xml><dyn signal={v <- signal s; return (m.Display v)}/></xml>,
                               Edit = m.Edit,
                               Initialize = fn v => source (case v of
@@ -126,7 +130,7 @@ structure Direct = struct
                               DisplayFilter = m.DisplayFilter,
                               Filter = fn f v => f <- signal f;
                                           return (if m.FilterIsNull f then
-                                                      Option.isNone v
+                                                      True
                                                   else
                                                       case v of
                                                           None => False
@@ -143,13 +147,13 @@ structure Direct = struct
     type intFilter = basicFilter string
     val int : meta (intGlobal, int, intInput, intFilter) =
         basic {Display = fn s => <xml>{[s]}</xml>,
-               Edit = fn s => <xml><ctextbox source={s}/></xml>,
+               Edit = fn s => <xml><ctextbox size={5} source={s}/></xml>,
                Initialize = fn n => show n,
                InitializeNull = "",
                IsNull = eq "",
                Parse = fn v => read v,
                CreateFilter = "",
-               DisplayFilter = fn s => <xml><ctextbox source={s}/></xml> : xbody,
+               DisplayFilter = fn s => <xml><ctextbox size={5} source={s}/></xml> : xbody,
                Filter = fn s n =>
                            case read s of
                                None => True
