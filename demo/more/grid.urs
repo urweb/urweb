@@ -1,14 +1,17 @@
-con colMeta' = fn (row :: Type) (t :: Type) =>
+con colMeta' = fn (row :: Type) (input :: Type) (filter :: Type) =>
                   {Header : string,
-                   Project : row -> transaction t,
-                   Update : row -> t -> transaction row,
-                   Display : t -> xbody,
-                   Edit : t -> xbody,
-                   Validate : t -> signal bool}
+                   Project : row -> transaction input,
+                   Update : row -> input -> transaction row,
+                   Display : input -> xbody,
+                   Edit : input -> xbody,
+                   Validate : input -> signal bool,
+                   CreateFilter : transaction filter,
+                   DisplayFilter : filter -> xbody,
+                   Filter : filter -> row -> signal bool}
                   
-con colMeta = fn (row :: Type) (global_t :: (Type * Type)) =>
-                 {Initialize : transaction global_t.1,
-                  Handlers : global_t.1 -> colMeta' row global_t.2}
+con colMeta = fn (row :: Type) (global_input_filter :: (Type * Type * Type)) =>
+                 {Initialize : transaction global_input_filter.1,
+                  Handlers : global_input_filter.1 -> colMeta' row global_input_filter.2 global_input_filter.3}
 
 con aggregateMeta = fn (row :: Type) (acc :: Type) =>
                        {Initial : acc,
@@ -25,7 +28,7 @@ functor Make(M : sig
                  val save : key -> row -> transaction unit
                  val delete : key -> transaction unit
 
-                 con cols :: {(Type * Type)}
+                 con cols :: {(Type * Type * Type)}
                  val cols : $(map (colMeta row) cols)
 
                  val folder : folder cols

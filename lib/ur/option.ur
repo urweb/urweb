@@ -7,6 +7,11 @@ fun eq [a] (_ : eq a) =
                | (Some x, Some y) => x = y
                | _ => False)
 
+fun isNone [a] x =
+    case x of
+        None => True
+      | Some _ => False
+
 fun isSome [a] x =
     case x of
         None => False

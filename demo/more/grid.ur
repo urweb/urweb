@@ -1,14 +1,17 @@
-con colMeta' = fn (row :: Type) (t :: Type) =>
+con colMeta' = fn (row :: Type) (input :: Type) (filter :: Type) =>
                   {Header : string,
-                   Project : row -> transaction t,
-                   Update : row -> t -> transaction row,
-                   Display : t -> xbody,
-                   Edit : t -> xbody,
-                   Validate : t -> signal bool}
-
-con colMeta = fn (row :: Type) (global_t :: (Type * Type)) =>
-                 {Initialize : transaction global_t.1,
-                  Handlers : global_t.1 -> colMeta' row global_t.2}                  
+                   Project : row -> transaction input,
+                   Update : row -> input -> transaction row,
+                   Display : input -> xbody,
+                   Edit : input -> xbody,
+                   Validate : input -> signal bool,
+                   CreateFilter : transaction filter,
+                   DisplayFilter : filter -> xbody,
+                   Filter : filter -> row -> signal bool}
+                  
+con colMeta = fn (row :: Type) (global_input_filter :: (Type * Type * Type)) =>
+                 {Initialize : transaction global_input_filter.1,
+                  Handlers : global_input_filter.1 -> colMeta' row global_input_filter.2 global_input_filter.3}
 
 con aggregateMeta = fn (row :: Type) (acc :: Type) =>
                        {Initial : acc,
@@ -25,7 +28,7 @@ functor Make(M : sig
                  val save : key -> row -> transaction unit
                  val delete : key -> transaction unit
 
-                 con cols :: {(Type * Type)}
+                 con cols :: {(Type * Type * Type)}
                  val cols : $(map (colMeta row) cols)
 
                  val folder : folder cols
@@ -40,20 +43,21 @@ functor Make(M : sig
     style td
     style agg
 
-    fun make (row : M.row) [t] (m : colMeta' M.row t) : transaction t = m.Project row
+    fun make (row : M.row) [input] [filter] (m : colMeta' M.row input filter) : transaction input = m.Project row
 
-    fun makeAll cols row = @@Monad.exec [transaction] _ [map snd M.cols]
-                               (map2 [fst] [colMeta M.row] [fn p :: (Type * Type) => transaction p.2]
-                                     (fn [p] data meta => make row [_] (meta.Handlers data))
+    fun makeAll cols row = @@Monad.exec [transaction] _ [map snd3 M.cols]
+                               (map2 [fst3] [colMeta M.row] [fn p => transaction (snd3 p)]
+                                     (fn [p] data meta => make row [_] [_] (meta.Handlers data))
                                      [_] M.folder cols M.cols)
                                (@@Folder.mp [_] [_] M.folder)
 
-    type grid = {Cols : $(map fst M.cols),
+    type grid = {Cols : $(map fst3 M.cols),
                  Rows : Dlist.dlist {Row : source M.row,
-                                     Cols : source ($(map snd M.cols)),
+                                     Cols : source ($(map snd3 M.cols)),
                                      Updating : source bool,
                                      Selected : source bool},
-                 Selection : source bool}
+                 Selection : source bool,
+                 Filters : $(map thd3 M.cols)}
 
     fun addRow cols rows row =
         rowS <- source row;
@@ -66,15 +70,29 @@ functor Make(M : sig
                                          Updating = ud,
                                          Selected = sd})
 
-    val createMetas = Monad.mapR [colMeta M.row] [fst]
-                           (fn [nm :: Name] [p :: (Type * Type)] meta => meta.Initialize)
-                           [_] M.folder M.cols
-
     val grid =
-        cols <- createMetas;
-        rows <- Dlist.create;
+        cols <- Monad.mapR [colMeta M.row] [fst3]
+                           (fn [nm :: Name] [p :: (Type * Type * Type)] meta => meta.Initialize)
+                           [_] M.folder M.cols;
+
+        filters <- Monad.mapR2 [colMeta M.row] [fst3] [thd3]
+                               (fn [nm :: Name] [p :: (Type * Type * Type)] meta state =>
+                                   (meta.Handlers state).CreateFilter)
+                               [_] M.folder M.cols cols;
+
+        rows <- Dlist.create {Filter = fn all =>
+                                          row <- signal all.Row;
+                                          foldR3 [colMeta M.row] [fst3] [thd3] [fn _ => M.row -> signal bool]
+                                                 (fn [nm :: Name] [p :: (Type * Type * Type)]
+                                                                  [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
+                                                                  meta state filter combinedFilter row =>
+                                                     previous <- combinedFilter row;
+                                                     this <- (meta.Handlers state).Filter filter row;
+                                                     return (previous && this))
+                                                 (fn _ => return True)
+                                                 [_] M.folder M.cols cols filters row};
         sel <- source False;
-        return {Cols = cols, Rows = rows, Selection = sel}
+        return {Cols = cols, Rows = rows, Selection = sel, Filters = filters}
 
     fun sync {Cols = cols, Rows = rows, ...} =
         Dlist.clear rows;
@@ -85,8 +103,8 @@ functor Make(M : sig
       <table class={tabl}>
         <tr class={tr}>
           <th/> <th/> <th/>
-          {foldRX2 [fst] [colMeta M.row] [_]
-                   (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
+          {foldRX2 [fst3] [colMeta M.row] [_]
+                   (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
                                     data (meta : colMeta M.row p) =>
                        <xml><th class={th}>{[(meta.Handlers data).Header]}</th></xml>)
                    [_] M.folder grid.Cols M.cols}
@@ -109,8 +127,8 @@ functor Make(M : sig
                                   
                               val save =
                                   cols <- get colsS;
-                                  errors <- Monad.foldR3 [fst] [colMeta M.row] [snd] [fn _ => option string]
-                                                         (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
+                                  errors <- Monad.foldR3 [fst3] [colMeta M.row] [snd3] [fn _ => option string]
+                                                         (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}]
                                                                           [[nm] ~ rest] data meta v errors =>
                                                              b <- current ((meta.Handlers data).Validate v);
                                                              return (if b then
@@ -128,9 +146,9 @@ functor Make(M : sig
                                     | None =>
                                       set ud False;
                                       row <- get rowS;
-                                      row' <- Monad.foldR3 [fst] [colMeta M.row] [snd] [fn _ => M.row]
-                                                           (fn [nm :: Name] [t :: (Type * Type)]
-                                                                            [rest :: {(Type * Type)}]
+                                      row' <- Monad.foldR3 [fst3] [colMeta M.row] [snd3] [fn _ => M.row]
+                                                           (fn [nm :: Name] [t :: (Type * Type * Type)]
+                                                                            [rest :: {(Type * Type * Type)}]
                                                                             [[nm] ~ rest] data meta v row' =>
                                                                (meta.Handlers data).Update row' v)
                                                            row [_] M.folder grid.Cols M.cols cols;
@@ -165,9 +183,9 @@ functor Make(M : sig
                                 </td>
 
                                 <dyn signal={cols <- signal colsS;
-                                             return (foldRX3 [fst] [colMeta M.row] [snd] [_]
-                                                             (fn [nm :: Name] [t :: (Type * Type)]
-                                                                              [rest :: {(Type * Type)}]
+                                             return (foldRX3 [fst3] [colMeta M.row] [snd3] [_]
+                                                             (fn [nm :: Name] [t :: (Type * Type * Type)]
+                                                                              [rest :: {(Type * Type * Type)}]
                                                                               [[nm] ~ rest] data meta v =>
                                                                  <xml><td class={td}>
                                                                    <dyn signal={b <- signal ud;
@@ -206,6 +224,13 @@ functor Make(M : sig
                                         <xml><td class={agg}>{meta.Display acc}</td></xml>)
                                     [_] M.aggFolder M.aggregates rows}
                          </tr></xml>}/>
+
+              <tr><th colspan={3}>Filters</th>
+                {foldRX3 [colMeta M.row] [fst3] [thd3] [_]
+                 (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
+                                  meta state filter => <xml><td>{(meta.Handlers state).DisplayFilter filter}</td></xml>)
+                 [_] M.folder M.cols grid.Cols grid.Filters}
+              </tr>
           </table>
           
           <button value="New row" onclick={row <- rpc M.new;

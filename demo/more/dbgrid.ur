@@ -2,17 +2,20 @@ con rawMeta = fn t :: Type =>
                  {New : transaction t,
                   Inj : sql_injectable t}
 
-con colMeta' = fn (row :: {Type}) (t :: Type) =>
+con colMeta' = fn (row :: {Type}) (input :: Type) (filter :: Type) =>
                   {Header : string,
-                   Project : $row -> transaction t,
-                   Update : $row -> t -> transaction ($row),
-                   Display : t -> xbody,
-                   Edit : t -> xbody,
-                   Validate : t -> signal bool}
+                   Project : $row -> transaction input,
+                   Update : $row -> input -> transaction ($row),
+                   Display : input -> xbody,
+                   Edit : input -> xbody,
+                   Validate : input -> signal bool,
+                   CreateFilter : transaction filter,
+                   DisplayFilter : filter -> xbody,
+                   Filter : filter -> $row -> signal bool}
 
-con colMeta = fn (row :: {Type}) (global_t :: (Type * Type)) =>
-                 {Initialize : transaction global_t.1,
-                  Handlers : global_t.1 -> colMeta' row global_t.2}
+con colMeta = fn (row :: {Type}) (global_input_filter :: (Type * Type * Type)) =>
+                 {Initialize : transaction global_input_filter.1,
+                  Handlers : global_input_filter.1 -> colMeta' row global_input_filter.2 global_input_filter.3}
 
 con aggregateMeta = fn (row :: {Type}) (acc :: Type) =>
                        {Initial : acc,
@@ -20,22 +23,26 @@ con aggregateMeta = fn (row :: {Type}) (acc :: Type) =>
                         Display : acc -> xbody}
 
 structure Direct = struct
-    con metaBase = fn actual_input :: (Type * Type) =>
-                  {Display : actual_input.2 -> xbody,
-                   Edit : actual_input.2 -> xbody,
-                   Initialize : actual_input.1 -> transaction actual_input.2,
-                   Parse : actual_input.2 -> signal (option actual_input.1)}
+    con metaBase = fn actual_input_filter :: (Type * Type * Type) =>
+                  {Display : actual_input_filter.2 -> xbody,
+                   Edit : actual_input_filter.2 -> xbody,
+                   Initialize : actual_input_filter.1 -> transaction actual_input_filter.2,
+                   Parse : actual_input_filter.2 -> signal (option actual_input_filter.1),
+                   CreateFilter : transaction actual_input_filter.3,
+                   DisplayFilter : actual_input_filter.3 -> xbody,
+                   Filter : actual_input_filter.3 -> actual_input_filter.1 -> signal bool}
 
-    datatype metaBoth actual input =
-             NonNull of metaBase (actual, input) * metaBase (option actual, input)
-           | Nullable of metaBase (actual, input)
+    datatype metaBoth actual input filter =
+             NonNull of metaBase (actual, input, filter) * metaBase (option actual, input, filter)
+           | Nullable of metaBase (actual, input, filter)
 
-    con meta = fn global_actual_input :: (Type * Type * Type) =>
-                  {Initialize : transaction global_actual_input.1,
-                   Handlers : global_actual_input.1
-                              -> metaBoth global_actual_input.2 global_actual_input.3}
+    con meta = fn global_actual_input_filter :: (Type * Type * Type * Type) =>
+                  {Initialize : transaction global_actual_input_filter.1,
+                   Handlers : global_actual_input_filter.1
+                              -> metaBoth global_actual_input_filter.2 global_actual_input_filter.3
+                                          global_actual_input_filter.4}
 
-    con editableState (ts :: (Type * Type * Type)) = (ts.1, ts.3)
+    con editableState (ts :: (Type * Type * Type * Type)) = (ts.1, ts.3, ts.4)
     fun editable [ts] [rest] [nm :: Name] [[nm] ~ rest] name (m : meta ts) : colMeta ([nm = ts.2] ++ rest)
                                                                                      (editableState ts) =
        let
@@ -48,7 +55,10 @@ structure Direct = struct
                                                 | Some v => r -- nm ++ {nm = v}),
                           Display = mr.Display,
                           Edit = mr.Edit,
-                          Validate = fn s => vo <- mr.Parse s; return (Option.isSome vo)}
+                          Validate = fn s => vo <- mr.Parse s; return (Option.isSome vo),
+                          CreateFilter = mr.CreateFilter,
+                          DisplayFilter = mr.DisplayFilter,
+                          Filter = fn i r => mr.Filter i r.nm}
        in
            {Initialize = m.Initialize,
             Handlers = fn data => case m.Handlers data of
@@ -56,7 +66,7 @@ structure Direct = struct
                                 | Nullable mr => doMr mr}
        end
         
-    con readOnlyState (ts :: (Type * Type * Type)) = (ts.1, ts.3)
+    con readOnlyState (ts :: (Type * Type * Type * Type)) = (ts.1, ts.3, ts.4)
     fun readOnly [ts] [rest] [nm :: Name] [[nm] ~ rest] name (m : meta ts) : colMeta ([nm = ts.2] ++ rest)
                                                                                      (readOnlyState ts) =
        let
@@ -65,7 +75,10 @@ structure Direct = struct
                           Update = fn r _ => return r,
                           Display = mr.Display,
                           Edit = mr.Display,
-                          Validate = fn _ => return True}
+                          Validate = fn _ => return True,
+                          CreateFilter = mr.CreateFilter,
+                          DisplayFilter = mr.DisplayFilter,
+                          Filter = fn i r => mr.Filter i r.nm}
        in
            {Initialize = m.Initialize,
             Handlers = fn data => case m.Handlers data of
@@ -73,22 +86,30 @@ structure Direct = struct
                                     | Nullable mr => doMr mr}
        end
 
-    con metaBasic = fn actual_input :: (Type * Type) =>
-                       {Display : actual_input.2 -> xbody,
-                        Edit : source actual_input.2 -> xbody,
-                        Initialize : actual_input.1 -> actual_input.2,
-                        InitializeNull : actual_input.2,
-                        IsNull : actual_input.2 -> bool,
-                        Parse : actual_input.2 -> option actual_input.1}
+    con metaBasic = fn actual_input_filter :: (Type * Type * Type) =>
+                       {Display : actual_input_filter.2 -> xbody,
+                        Edit : source actual_input_filter.2 -> xbody,
+                        Initialize : actual_input_filter.1 -> actual_input_filter.2,
+                        InitializeNull : actual_input_filter.2,
+                        IsNull : actual_input_filter.2 -> bool,
+                        Parse : actual_input_filter.2 -> option actual_input_filter.1,
+                        CreateFilter : actual_input_filter.3,
+                        DisplayFilter : source actual_input_filter.3 -> xbody,
+                        Filter : actual_input_filter.3 -> actual_input_filter.1 -> bool,
+                        FilterIsNull : actual_input_filter.3 -> bool}
 
     con basicState = source
-    fun basic [ts ::: (Type * Type)] (m : metaBasic ts) : meta (unit, ts.1, basicState ts.2) =
+    con basicFilter = source
+    fun basic [ts ::: (Type * Type * Type)] (m : metaBasic ts) : meta (unit, ts.1, basicState ts.2, basicFilter ts.3) =
         {Initialize = return (),
          Handlers = fn () => NonNull (
                              {Display = fn s => <xml><dyn signal={v <- signal s; return (m.Display v)}/></xml>,
                               Edit = m.Edit,
                               Initialize = fn v => source (m.Initialize v),
-                              Parse = fn s => v <- signal s; return (m.Parse v)},
+                              Parse = fn s => v <- signal s; return (m.Parse v),
+                              CreateFilter = source m.CreateFilter,
+                              DisplayFilter = m.DisplayFilter,
+                              Filter = fn f v => f <- signal f; return (m.Filter f v)},
                              {Display = fn s => <xml><dyn signal={v <- signal s; return (m.Display v)}/></xml>,
                               Edit = m.Edit,
                               Initialize = fn v => source (case v of
@@ -100,9 +121,18 @@ structure Direct = struct
                                                  else
                                                      case m.Parse v of
                                                          None => None
-                                                       | Some v' => Some (Some v'))})}
+                                                       | Some v' => Some (Some v')),
+                              CreateFilter = source m.CreateFilter,
+                              DisplayFilter = m.DisplayFilter,
+                              Filter = fn f v => f <- signal f;
+                                          return (if m.FilterIsNull f then
+                                                      Option.isNone v
+                                                  else
+                                                      case v of
+                                                          None => False
+                                                        | Some v => m.Filter f v) : signal bool})}
 
-    fun nullable [global] [actual] [input] (m : meta (global, actual, input)) =
+    fun nullable [global] [actual] [input] [filter] (m : meta (global, actual, input, filter)) =
         {Initialize = m.Initialize,
          Handlers = fn d => case m.Handlers d of
                                 Nullable _ => error <xml>Don't stack calls to Direct.nullable!</xml>
@@ -110,33 +140,62 @@ structure Direct = struct
 
     type intGlobal = unit
     type intInput = basicState string
-    val int : meta (intGlobal, int, intInput) =
+    type intFilter = basicFilter string
+    val int : meta (intGlobal, int, intInput, intFilter) =
         basic {Display = fn s => <xml>{[s]}</xml>,
                Edit = fn s => <xml><ctextbox source={s}/></xml>,
                Initialize = fn n => show n,
                InitializeNull = "",
                IsNull = eq "",
-               Parse = fn v => read v}
+               Parse = fn v => read v,
+               CreateFilter = "",
+               DisplayFilter = fn s => <xml><ctextbox source={s}/></xml> : xbody,
+               Filter = fn s n =>
+                           case read s of
+                               None => True
+                             | Some n' => n' = n,
+               FilterIsNull = eq ""}
 
     type stringGlobal = unit
     type stringInput = basicState string
-    val string : meta (stringGlobal, string, stringInput) =
+    type stringFilter = basicFilter string
+    val string : meta (stringGlobal, string, stringInput, stringFilter) =
         basic {Display = fn s => <xml>{[s]}</xml>,
                Edit = fn s => <xml><ctextbox source={s}/></xml>,
                Initialize = fn s => s,
                InitializeNull = "",
                IsNull = eq "",
-               Parse = fn s => Some s}
+               Parse = fn s => Some s,
+               CreateFilter = "",
+               DisplayFilter = fn s => <xml><ctextbox source={s}/></xml> : xbody,
+               Filter = fn s n =>
+                           case read s of
+                               None => True
+                             | Some n' => n' = n,
+               FilterIsNull = eq ""}
 
     type boolGlobal = unit
     type boolInput = basicState bool
-    val bool : meta (boolGlobal, bool, boolInput) =
+    type boolFilter = basicFilter string
+    val bool : meta (boolGlobal, bool, boolInput, boolFilter) =
         basic {Display = fn b => <xml>{[b]}</xml>,
                Edit = fn s => <xml><ccheckbox source={s}/></xml>,
                Initialize = fn b => b,
                InitializeNull = False,
                IsNull = fn _ => False,
-               Parse = fn b => Some b}
+               Parse = fn b => Some b,
+               CreateFilter = "",
+               DisplayFilter = fn s => <xml><cselect source={s}>
+                 <coption/>
+                 <coption value="0">False</coption>
+                 <coption value="1">True</coption>
+               </cselect></xml> : xbody,
+               Filter = fn s b =>
+                           case s of
+                               "0" => b = False
+                             | "1" => b = True
+                             | _ => True,
+               FilterIsNull = eq ""}
 
     functor Foreign (M : sig
                          con row :: {Type}
@@ -152,8 +211,9 @@ structure Direct = struct
                      end) = struct
         open M
 
-        con global = list (t * string)
-        con input = source string * option (t * $row)
+        type global = list (t * string)
+        type input = source string * option (t * $row)
+        type filter = source string
 
         val getChoices = List.mapQuery (SELECT * FROM tab AS T)
                                        (fn r => (r.T.nm, render r.T))
@@ -162,7 +222,7 @@ structure Direct = struct
             r <- oneRow (SELECT T.{{row}} FROM tab AS T WHERE T.{nm} = {[k]});
             return r.T
 
-        val meta : meta (global, M.t, input) =
+        val meta : meta (global, M.t, input, filter) =
             {Initialize = getChoices,
              Handlers = fn choices =>
                            NonNull (
@@ -182,7 +242,19 @@ structure Direct = struct
                             Initialize = fn k => s <- source (show k);
                                             r <- rpc (getChoice k);
                                             return (s, Some (k, r)),
-                            Parse = fn (s, _) => k <- signal s; return (read k : option t)},
+                            Parse = fn (s, _) => k <- signal s; return (read k : option t),
+                            CreateFilter = source "",
+                            DisplayFilter = fn s => 
+                                               <xml><cselect source={s}>
+                                                 <coption/>
+                                                 {List.mapX (fn (k, rend) =>
+                                                                <xml><coption value={show k}>{[rend]}</coption></xml>)
+                                                            choices}
+                                               </cselect></xml> : xbody,
+                            Filter = fn s k => s <- signal s;
+                                        return (case read s : option t of
+                                                    None => True
+                                                  | Some k' => k' = k)},
                            {Display = fn (_, kr) => case kr of
                                                           None => <xml>NULL</xml>
                                                         | Some (k, r) => <xml>{[render ({nm = k} ++ r)]}</xml>,
@@ -212,11 +284,31 @@ structure Direct = struct
                                                    "" => Some None
                                                  | _ => case read ks : option t of
                                                             None => None
-                                                          | Some k => Some (Some k))})}
+                                                          | Some k => Some (Some k)),
+                            CreateFilter = source "",
+                            DisplayFilter = fn s => 
+                                               <xml><cselect source={s}>
+                                                 <coption/>
+                                                 <coption value="0">NULL</coption>
+                                                 {List.mapX (fn (k, rend) =>
+                                                                <xml><coption value={"1" ^ show k}>{[rend]}</coption>
+                                                                </xml>)
+                                                            choices}
+                                               </cselect></xml> : xbody,
+                            Filter = fn s ko => s <- signal s;
+                                        return (case s of
+                                                    "" => True
+                                                  | "0" => ko = None
+                                                  | _ =>
+                                                    case read (String.substring s {Start = 1,
+                                                                                   Len = String.length s - 1})
+                                                         : option t of
+                                                        None => True
+                                                      | Some k => ko = Some k)})}
     end
 end
 
-con computedState = (unit, xbody)
+con computedState = (unit, xbody, unit)
 fun computed [row] [t] (_ : show t) name (f : $row -> t) : colMeta row computedState =
     {Initialize = return (),
      Handlers = fn () => {Header = name,
@@ -224,7 +316,10 @@ fun computed [row] [t] (_ : show t) name (f : $row -> t) : colMeta row computedS
                           Update = fn r _ => return r,
                           Display = fn x => x,
                           Edit = fn _ => <xml>...</xml>,
-                          Validate = fn _ => return True}}
+                          Validate = fn _ => return True,
+                          CreateFilter = return (),
+                          DisplayFilter = fn _ => <xml/>,
+                          Filter = fn _ _ => return True}}
 fun computedHtml [row] name (f : $row -> xbody) : colMeta row computedState =
     {Initialize = return (),
      Handlers = fn () => {Header = name,
@@ -232,7 +327,10 @@ fun computedHtml [row] name (f : $row -> xbody) : colMeta row computedState =
                           Update = fn r _ => return r,
                           Display = fn x => x,
                           Edit = fn _ => <xml>...</xml>,
-                          Validate = fn _ => return True}}
+                          Validate = fn _ => return True,
+                          CreateFilter = return (),
+                          DisplayFilter = fn _ => <xml/>,
+                          Filter = fn _ _ => return True}}
 
 functor Make(M : sig
                  con key :: {Type}
@@ -242,7 +340,7 @@ functor Make(M : sig
 
                  val raw : $(map rawMeta (key ++ row))
 
-                 con cols :: {(Type * Type)}
+                 con cols :: {(Type * Type * Type)}
                  val cols : $(map (colMeta (key ++ row)) cols)
 
                  val keyFolder : folder key

@@ -6,18 +6,19 @@ datatype dlist' t =
          Empty
        | Nonempty of { Head : dlist'' t, Tail : source (source (dlist'' t)) }
 
-con dlist t = source (dlist' t)
+con dlist t = {Filter: t -> signal bool,
+               Elements : source (dlist' t)}
 
 type position = transaction unit
 
 fun headPos [t] (dl : dlist t) =
-    dl' <- get dl;
+    dl' <- get dl.Elements;
     case dl' of
         Nonempty { Head = Cons (_, tl), Tail = tl' } =>
         cur <- get tl;
-        set dl (case cur of
-                    Nil => Empty
-                  | _ => Nonempty {Head = cur, Tail = tl'})
+        set dl.Elements (case cur of
+                             Nil => Empty
+                           | _ => Nonempty {Head = cur, Tail = tl'})
       | _ => return ()
 
 fun tailPos [t] (cur : source (dlist'' t)) new tail =
@@ -28,17 +29,20 @@ fun tailPos [t] (cur : source (dlist'' t)) new tail =
         Nil => set tail cur
       | _ => return ()
 
-val create = fn [t] => source Empty
+fun create [t] r =
+    s <- source Empty;
+    return {Filter = r.Filter,
+            Elements = s}
 
-fun clear [t] (s : dlist t) = set s Empty
+fun clear [t] (s : dlist t) = set s.Elements Empty
 
 fun append [t] dl v =
-    dl' <- get dl;
+    dl' <- get dl.Elements;
     case dl' of
         Empty =>
         tl <- source Nil;
         tl' <- source tl;
-        set dl (Nonempty {Head = Cons (v, tl), Tail = tl'});
+        set dl.Elements (Nonempty {Head = Cons (v, tl), Tail = tl'});
         return (headPos dl)
                 
       | Nonempty {Tail = tl, ...} =>
@@ -49,7 +53,7 @@ fun append [t] dl v =
         return (tailPos cur new tl)
 
 fun render [ctx] [ctx ~ body] [t] f dl = <xml>
-  <dyn signal={dl' <- signal dl;
+  <dyn signal={dl' <- signal dl.Elements;
                return (case dl' of
                            Empty => <xml/>
                          | Nonempty {Head = hd, Tail = tlTop} => 
@@ -63,8 +67,13 @@ fun render [ctx] [ctx ~ body] [t] f dl = <xml>
                                                          None => headPos dl
                                                        | Some prev => tailPos prev tl tlTop
                                        in
-                                           <xml>{f v pos}<dyn signal={tl' <- signal tl;
-                                                                      return (render' (Some tl) tl')}/></xml>
+                                           <xml><dyn signal={b <- dl.Filter v;
+                                                             return (if b then
+                                                                         f v pos
+                                                                     else
+                                                                         <xml/>)}/>
+                                             <dyn signal={tl' <- signal tl;
+                                                          return (render' (Some tl) tl')}/></xml>
                                        end
                            in
                                render' None hd
@@ -82,7 +91,7 @@ fun elements' [t] (dl'' : dlist'' t) =
         return (x :: tl)
 
 fun elements [t] (dl : dlist t) =
-    dl' <- signal dl;
+    dl' <- signal dl.Elements;
     case dl' of
         Empty => return []
       | Nonempty {Head = hd, ...} => elements' hd
@@ -98,7 +107,7 @@ fun foldl [t] [acc] (f : t -> acc -> signal acc) =
                 foldl'' i' dl'
 
         fun foldl' (i : acc) (dl : dlist t) : signal acc =
-            dl <- signal dl;
+            dl <- signal dl.Elements;
             case dl of
                 Empty => return i
               | Nonempty {Head = dl, ...} => foldl'' i dl

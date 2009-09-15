@@ -1,7 +1,7 @@
 con dlist :: Type -> Type
 type position
 
-val create : t ::: Type -> transaction (dlist t)
+val create : t ::: Type -> {Filter : t -> signal bool} -> transaction (dlist t)
 val clear : t ::: Type -> dlist t -> transaction unit
 val append : t ::: Type -> dlist t -> t -> transaction position
 val delete : position -> transaction unit
