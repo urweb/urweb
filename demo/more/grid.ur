@@ -84,7 +84,7 @@ functor Make(M : sig
     fun render grid = <xml>
       <table class={tabl}>
         <tr class={tr}>
-          <th/> <th/>
+          <th/> <th/> <th/>
           {foldRX2 [fst] [colMeta M.row] [_]
                    (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
                                     data (meta : colMeta M.row p) =>

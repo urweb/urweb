@@ -537,34 +537,34 @@ fun process file =
                         val strcat = strcat loc
 
                         fun jsPrim p =
-                            case p of
-                                Prim.String s =>
-                                str ("\""
-                                     ^ String.translate (fn #"'" =>
-                                                            if mode = Attribute then
-                                                                "\\047"
-                                                            else
-                                                                "'"
-                                                          | #"\"" => "\\\""
-                                                          | #"<" =>
-                                                            (*if mode = Script then
-                                                                "<"
-                                                            else*)
-                                                                "\\074"
-                                                          | #"\\" => "\\\\"
-                                                          | #"\n" => "\\n"
-                                                          | #"\r" => "\\r"
-                                                          | #"\t" => "\\t"
-                                                          | ch =>
-                                                            if Char.isPrint ch then
-                                                                String.str ch
-                                                            else
-                                                                "\\" ^ padWith (#"0",
-                                                                                Int.fmt StringCvt.OCT (ord ch),
-                                                                                3)) s
-                                     ^ "\"")
-                              | Prim.Char ch => str ("'" ^ String.str ch ^ "'")
-                              | _ => str (Prim.toString p)
+                            let
+                                fun jsChar ch =
+                                    case ch of
+                                        #"'" =>
+                                        if mode = Attribute then
+                                            "\\047"
+                                        else
+                                            "'"
+                                      | #"\"" => "\\\""
+                                      | #"<" => "\\074"
+                                      | #"\\" => "\\\\"
+                                      | #"\n" => "\\n"
+                                      | #"\r" => "\\r"
+                                      | #"\t" => "\\t"
+                                      | ch =>
+                                        if Char.isPrint ch then
+                                            String.str ch
+                                        else
+                                            "\\" ^ padWith (#"0",
+                                                            Int.fmt StringCvt.OCT (ord ch),
+                                                            3)
+                            in
+                                case p of
+                                    Prim.String s =>
+                                    str ("\"" ^ String.translate jsChar s ^ "\"")
+                                  | Prim.Char ch => str ("'" ^ jsChar ch ^ "'")
+                                  | _ => str (Prim.toString p)
+                            end
 
                         fun jsPat depth inner (p, _) succ fail =
                             case p of

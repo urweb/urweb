@@ -197,7 +197,8 @@ fun make {prefix, dirname, guided} =
                                                                         ext = SOME s}
                                          val src' = OS.Path.file src
                                      in
-                                         if OS.FileSys.access (src, []) then
+                                         if String.isPrefix (OS.Path.mkCanonical dirname) src
+                                            andalso OS.FileSys.access (src, []) then
                                              (TextIO.output (out, " | <a target=\"showcase\" href=\"");
                                               TextIO.output (out, src');
                                               TextIO.output (out, ".html\"><tt>");

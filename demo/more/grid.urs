@@ -47,4 +47,5 @@ functor Make(M : sig
     style tr
     style th
     style td
+    style agg
 end
