@@ -361,8 +361,7 @@ fun reduce file =
                             unravel (e, 0, [])
                         end
 
-                      | EAbs (_, _, _, e) => List.filter (fn UseRel => true
-                                                           | _ => false) (summarize (d + 1) e)
+                      | EAbs _ => []
 
                       | EUnop (_, e) => summarize d e
                       | EBinop (_, e1, e2) => summarize d e1 @ summarize d e2
@@ -370,8 +369,8 @@ fun reduce file =
                       | ERecord xets => List.concat (map (summarize d o #2) xets)
                       | EField (e, _) => summarize d e
 
-                      | ECase (e, pes, _) =>
-                        let
+                      | ECase (e, pes, _) => summarize d e @ [Unsure]
+                        (*let
                             val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
                         in
                             case lss of
@@ -381,7 +380,7 @@ fun reduce file =
                                     summarize d e @ ls
                                 else
                                     [Unsure]
-                        end
+                        end*)
                       | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
 
                       | EError (e, _) => summarize d e @ [Unsure]
@@ -396,9 +395,9 @@ fun reduce file =
 
                       | EQuery {query, body, initial, ...} =>
                         List.concat [summarize d query,
-                                     summarize (d + 2) body,
                                      summarize d initial,
-                                     [ReadDb]]
+                                     [ReadDb],
+                                     summarize (d + 2) body]
 
                       | EDml e => summarize d e @ [WriteDb]
                       | ENextval e => summarize d e @ [WriteDb]
@@ -408,9 +407,9 @@ fun reduce file =
                       | ESignalBind (e1, e2) => summarize d e1 @ summarize d e2
                       | ESignalSource e => summarize d e
 
-                      | EServerCall (e, ek, _, _) => summarize d e @ summarize d ek @ [Unsure]
-                      | ERecv (e, ek, _) => summarize d e @ summarize d ek @ [Unsure]
-                      | ESleep (e, ek) => summarize d e @ summarize d ek @ [Unsure]
+                      | EServerCall (e, _, _, _) => summarize d e @ [Unsure]
+                      | ERecv (e, _, _) => summarize d e @ [Unsure]
+                      | ESleep (e, _) => summarize d e @ [Unsure]
             in
                 (*Print.prefaces "Summarize"
                                [("e", MonoPrint.p_exp MonoEnv.empty (e, ErrorMsg.dummySpan)),
@@ -496,7 +495,10 @@ fun reduce file =
                                             #1 r
                                         end
                         in
-                            search pes
+                            if impure env e' then
+                                e
+                            else
+                                search pes
                         end
 
                       | EField ((ERecord xes, _), x) =>
@@ -532,8 +534,8 @@ fun reduce file =
                                     val r = subExpInExp (0, e') b
                                 in
                                     (*Print.prefaces "doSub" [("e'", MonoPrint.p_exp env e'),
-                                                              ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                                                              ("r", MonoPrint.p_exp env r)];*)
+                                                            ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                                            ("r", MonoPrint.p_exp env r)];*)
                                     #1 (reduceExp env r)
                                 end
 
@@ -586,12 +588,13 @@ fun reduce file =
                                                     ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
                                                     ("effs_e'", Print.p_list p_event effs_e'),
                                                     ("effs_b", Print.p_list p_event effs_b)];*)
-                                    if List.null effs_e'
-                                       orelse (List.all (fn eff => eff <> Unsure) effs_e'
-                                               andalso verifyCompatible effs_b)
-                                       orelse (case effs_b of
-                                                   UseRel :: effs => List.all verifyUnused effs
-                                                 | _ => false) then
+                                    if (List.null effs_e'
+                                        orelse (List.all (fn eff => eff <> Unsure) effs_e'
+                                                andalso verifyCompatible effs_b)
+                                        orelse (case effs_b of
+                                                    UseRel :: effs => List.all verifyUnused effs
+                                                  | _ => false))
+                                           andalso countFree b = 1 then
                                         trySub ()
                                     else
                                         e

@@ -143,10 +143,10 @@ functor Make(M : sig
                               <xml><tr class={tr}>
                                 <td>
                                   <dyn signal={b <- signal grid.Selection;
-                                               return (if not b then
+                                               return (if b then
                                                            <xml><ccheckbox source={sd}/></xml>
                                                        else
-                                                           <xml>No</xml>)}/>
+                                                           <xml/>)}/>
                                 </td>
 
                                 <td>
@@ -200,7 +200,7 @@ functor Make(M : sig
                                   (fn [t] meta => meta.Initial)
                                   [_] M.aggFolder M.aggregates) grid.Rows;
                          return <xml><tr>
-                           <td/><td/>
+                           <th colspan={3}>Aggregates</th>
                            {foldRX2 [aggregateMeta M.row] [id] [_]
                                     (fn [nm :: Name] [t :: Type] [rest :: {Type}] [[nm] ~ rest] meta acc =>
                                         <xml><td class={agg}>{meta.Display acc}</td></xml>)

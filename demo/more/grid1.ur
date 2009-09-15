@@ -69,6 +69,7 @@ fun main () =
       <body onload={sync grid}>
         {render grid}
         <hr/>
+        <ccheckbox source={showSelection grid}/> Show selection<br/>
         Selection: <dyn signal={ls <- selection grid;
                                 return (List.mapX (fn r => <xml>{[r.Id]}; </xml>) ls)}/>
       </body>

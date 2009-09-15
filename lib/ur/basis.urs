@@ -680,10 +680,10 @@ val tr : other ::: {Unit} -> [other ~ [Body, Table, Tr]] => unit
   -> tag tableEvents
          ([Body, Table] ++ other) ([Body, Tr] ++ other) [] []
 val th : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
-  -> tag tableEvents
+  -> tag ([Colspan = int] ++ tableEvents)
          ([Body, Tr] ++ other) ([Body] ++ other) [] []
 val td : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
-  -> tag tableEvents
+  -> tag ([Colspan = int] ++ tableEvents)
          ([Body, Tr] ++ other) ([Body] ++ other) [] []
 
 
