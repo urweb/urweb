@@ -53,7 +53,7 @@ open Make(struct
                                        Display = txt},
                                 Dummy2 = {Initial = (),
                                           Step = fn _ _ => (),
-                                          Display = fn _ => <xml>-</xml>},
+                                          Display = fn _ => <xml/>},
                                 And = {Initial = True,
                                        Step = fn r b => r.C && b,
                                        Display = txt}}
@@ -61,11 +61,15 @@ open Make(struct
 
 fun main () =
     grid <- grid;
+    set (showSelection grid) True;
     return <xml>
       <head>
         <link rel="stylesheet" type="text/css" href="../../grid.css"/>
       </head>
       <body onload={sync grid}>
         {render grid}
+        <hr/>
+        Selection: <dyn signal={ls <- selection grid;
+                                return (List.mapX (fn r => <xml>{[r.Id]}; </xml>) ls)}/>
       </body>
     </xml>

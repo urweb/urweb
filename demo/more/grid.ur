@@ -48,18 +48,24 @@ functor Make(M : sig
                                      [_] M.folder cols M.cols)
                                (@@Folder.mp [_] [_] M.folder)
 
+    type grid = {Cols : $(map fst M.cols),
+                 Rows : Dlist.dlist {Row : source M.row,
+                                     Cols : source ($(map snd M.cols)),
+                                     Updating : source bool,
+                                     Selected : source bool},
+                 Selection : source bool}
+
     fun addRow cols rows row =
         rowS <- source row;
         cols <- makeAll cols row;
         colsS <- source cols;
         ud <- source False;
+        sd <- source False;
         Monad.ignore (Dlist.append rows {Row = rowS,
                                          Cols = colsS,
-                                         Updating = ud})
+                                         Updating = ud,
+                                         Selected = sd})
 
-    type grid = {Cols : $(map fst M.cols),
-                 Rows : Dlist.dlist {Row : source M.row, Cols : source ($(map snd M.cols)), Updating : source bool}}
- 
     val createMetas = Monad.mapR [colMeta M.row] [fst]
                            (fn [nm :: Name] [p :: (Type * Type)] meta => meta.Initialize)
                            [_] M.folder M.cols
@@ -67,9 +73,10 @@ functor Make(M : sig
     val grid =
         cols <- createMetas;
         rows <- Dlist.create;
-        return {Cols = cols, Rows = rows}
+        sel <- source False;
+        return {Cols = cols, Rows = rows, Selection = sel}
 
-    fun sync {Cols = cols, Rows = rows} =
+    fun sync {Cols = cols, Rows = rows, ...} =
         Dlist.clear rows;
         init <- rpc M.list;
         List.app (addRow cols rows) init
@@ -85,7 +92,7 @@ functor Make(M : sig
                    [_] M.folder grid.Cols M.cols}
         </tr>
 
-        {Dlist.render (fn {Row = rowS, Cols = colsS, Updating = ud} pos =>
+        {Dlist.render (fn {Row = rowS, Cols = colsS, Updating = ud, Selected = sd} pos =>
                           let
                               val delete =
                                   Dlist.delete pos;
@@ -134,6 +141,14 @@ functor Make(M : sig
                                       set colsS cols
                           in
                               <xml><tr class={tr}>
+                                <td>
+                                  <dyn signal={b <- signal grid.Selection;
+                                               return (if not b then
+                                                           <xml><ccheckbox source={sd}/></xml>
+                                                       else
+                                                           <xml>No</xml>)}/>
+                                </td>
+
                                 <td>
                                   <dyn signal={b <- signal ud;
                                                return (if b then
@@ -197,4 +212,14 @@ functor Make(M : sig
                                            addRow grid.Cols grid.Rows row}/>
           <button value="Refresh" onclick={sync grid}/>
     </xml>
+
+    fun showSelection grid = grid.Selection
+
+    fun selection grid = Dlist.foldl (fn {Row = rowS, Selected = sd, ...} ls =>
+                                         sd <- signal sd;
+                                         if sd then
+                                             row <- signal rowS;
+                                             return (row :: ls)
+                                         else
+                                             return ls) [] grid.Rows
 end

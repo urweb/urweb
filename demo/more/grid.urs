@@ -39,7 +39,10 @@ functor Make(M : sig
     val grid : transaction grid
     val sync : grid -> transaction unit
     val render : grid -> xbody
-                           
+
+    val showSelection : grid -> source bool
+    val selection : grid -> signal (list M.row)
+
     style tabl
     style tr
     style th
