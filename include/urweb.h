@@ -171,6 +171,8 @@ uw_Basis_blob uw_Basis_stringToBlob_error(uw_context, uw_Basis_string, size_t);
 uw_Basis_channel uw_Basis_stringToChannel_error(uw_context, uw_Basis_string);
 uw_Basis_client uw_Basis_stringToClient_error(uw_context, uw_Basis_string);
 
+uw_Basis_time uw_Basis_unsqlTime(uw_context, uw_Basis_string);
+
 uw_Basis_string uw_Basis_requestHeader(uw_context, uw_Basis_string);
 
 void uw_write_header(uw_context, uw_Basis_string);

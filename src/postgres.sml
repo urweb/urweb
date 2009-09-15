@@ -506,7 +506,7 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
                 else
                     box [string "uw_strdup(ctx, ", e, string ")"]
               | Bool => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
-              | Time => box [string "uw_Basis_stringToTime_error(ctx, ", e, string ")"]
+              | Time => box [string "uw_Basis_unsqlTime(ctx, ", e, string ")"]
               | Blob => box [string "uw_Basis_stringToBlob_error(ctx, ",
                              e,
                              string ", ",

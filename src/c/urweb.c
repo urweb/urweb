@@ -2160,6 +2160,7 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
 
   if (localtime_r(&t, &stm)) {
     s = uw_malloc(ctx, TIMES_MAX);
+    --stm.tm_hour;
     len = strftime(s, TIMES_MAX, TIME_FMT, &stm);
     r = uw_malloc(ctx, len + 14);
     sprintf(r, "'%s'::timestamp", s);
@@ -2176,6 +2177,7 @@ char *uw_Basis_attrifyTime(uw_context ctx, uw_Basis_time t) {
   if (localtime_r(&t, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
     r = ctx->heap.front;
+    --stm.tm_hour;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
     ctx->heap.front += len+1;
     return r;
@@ -2416,6 +2418,34 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
     else if (strptime(s, TIME_FMT, &stm) == end)
       return mktime(&stm);
     else
+      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+  }
+}
+
+uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
+  char *dot = strchr(s, '.'), *end = strchr(s, 0);
+  struct tm stm = {};
+
+  if (dot) {
+    *dot = 0;
+    if (strptime(s, TIME_FMT_PG, &stm)) {
+      *dot = '.';
+      --stm.tm_hour;
+      return mktime(&stm);
+    }
+    else {
+      *dot = '.';
+      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+    }
+  }
+  else {
+    if (strptime(s, TIME_FMT_PG, &stm) == end) {
+      --stm.tm_hour;
+      return mktime(&stm);
+    } else if (strptime(s, TIME_FMT, &stm) == end) {
+      --stm.tm_hour;
+      return mktime(&stm);
+    } else
       uw_error(ctx, FATAL, "Can't parse time: %s", s);
   }
 }
