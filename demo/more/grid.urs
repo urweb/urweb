@@ -10,6 +10,11 @@ con colMeta = fn (row :: Type) (global_t :: (Type * Type)) =>
                  {Initialize : transaction global_t.1,
                   Handlers : global_t.1 -> colMeta' row global_t.2}
 
+con aggregateMeta = fn (row :: Type) (acc :: Type) =>
+                       {Initial : acc,
+                        Step : row -> acc -> acc,
+                        Display : acc -> xbody}
+
 functor Make(M : sig
                  type row
                  val list : transaction (list row)
@@ -21,6 +26,9 @@ functor Make(M : sig
                  val cols : $(map (colMeta row) cols)
 
                  val folder : folder cols
+
+                 con aggregates :: {Type}
+                 val aggregates : $(map (aggregateMeta row) aggregates)
              end) : sig
     type grid
 

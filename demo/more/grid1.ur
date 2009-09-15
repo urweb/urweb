@@ -44,6 +44,8 @@ open Make(struct
                           F = Direct.editable [#F] ! "F" (Direct.nullable F.meta),
                           DA = computed "2A" (fn r => 2 * r.A),
                           Link = computedHtml "Link" (fn r => <xml><a link={page (r.A, r.B)}>Go</a></xml>)}
+
+              val aggregates = {}
           end)
 
 fun main () =

@@ -14,6 +14,11 @@ con colMeta = fn (row :: {Type}) (global_t :: (Type * Type)) =>
                  {Initialize : transaction global_t.1,
                   Handlers : global_t.1 -> colMeta' row global_t.2}
 
+con aggregateMeta = fn (row :: {Type}) (acc :: Type) =>
+                       {Initial : acc,
+                        Step : $row -> acc -> acc,
+                        Display : acc -> xbody}
+
 structure Direct = struct
     con metaBase = fn actual_input :: (Type * Type) =>
                   {Display : actual_input.2 -> xbody,
@@ -243,6 +248,9 @@ functor Make(M : sig
                  val keyFolder : folder key
                  val rowFolder : folder row
                  val colsFolder : folder cols
+
+                 con aggregates :: {Type}
+                 val aggregates : $(map (aggregateMeta (key ++ row)) aggregates)
              end) = struct
     open Grid.Make(struct
                        val list = query (SELECT * FROM {{M.tab}} AS T) (fn r rs => return (r.T :: rs)) []
@@ -285,5 +293,7 @@ functor Make(M : sig
                        val cols = M.cols
 
                        val folder = M.colsFolder
+
+                       val aggregates = M.aggregates
                    end)
 end
