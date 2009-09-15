@@ -104,65 +104,72 @@ val deKnown = ListUtil.mapConcat (fn KnownC _ => []
 datatype result = Yes of env | No | Maybe
 
 fun match (env, p : pat, e : exp) =
-    case (#1 p, #1 e) of
-        (PWild, _) => Yes env
-      | (PVar (x, t), _) => Yes (KnownE e :: env)
+    let
+        val baseline = length env
 
-      | (PPrim p, EPrim p') =>
-        if Prim.equal (p, p') then
-            Yes env
-        else
-            No
+        fun match (env, p, e) =
+            case (#1 p, #1 e) of
+                (PWild, _) => Yes env
+              | (PVar (x, t), _) => Yes (KnownE (multiLiftExpInExp (length env - baseline) e) :: env)
 
-      | (PCon (_, PConVar n1, _, NONE), ECon (_, PConVar n2, _, NONE)) =>
-        if n1 = n2 then
-            Yes env
-        else
-            No
+              | (PPrim p, EPrim p') =>
+                if Prim.equal (p, p') then
+                    Yes env
+                else
+                    No
 
-      | (PCon (_, PConVar n1, _, SOME p), ECon (_, PConVar n2, _, SOME e)) =>
-        if n1 = n2 then
-            match (env, p, e)
-        else
-            No
+              | (PCon (_, PConVar n1, _, NONE), ECon (_, PConVar n2, _, NONE)) =>
+                if n1 = n2 then
+                    Yes env
+                else
+                    No
 
-      | (PCon (_, PConFfi {mod = m1, con = con1, ...}, _, NONE),
-         ECon (_, PConFfi {mod = m2, con = con2, ...}, _, NONE)) =>
-        if m1 = m2 andalso con1 = con2 then
-            Yes env
-        else
-            No
+              | (PCon (_, PConVar n1, _, SOME p), ECon (_, PConVar n2, _, SOME e)) =>
+                if n1 = n2 then
+                    match (env, p, e)
+                else
+                    No
 
-      | (PCon (_, PConFfi {mod = m1, con = con1, ...}, _, SOME ep),
-         ECon (_, PConFfi {mod = m2, con = con2, ...}, _, SOME e)) =>
-        if m1 = m2 andalso con1 = con2 then
-            match (env, p, e)
-        else
-            No
+              | (PCon (_, PConFfi {mod = m1, con = con1, ...}, _, NONE),
+                 ECon (_, PConFfi {mod = m2, con = con2, ...}, _, NONE)) =>
+                if m1 = m2 andalso con1 = con2 then
+                    Yes env
+                else
+                    No
 
-      | (PRecord xps, ERecord xes) =>
-        if List.exists (fn ((CName _, _), _, _) => false
-                         | _ => true) xes then
-            Maybe
-        else
-            let
-                fun consider (xps, env) =
-                    case xps of
-                        [] => Yes env
-                      | (x, p, _) :: rest =>
-                        case List.find (fn ((CName x', _), _, _) => x' = x
-                                         | _ => false) xes of
-                            NONE => No
-                          | SOME (_, e, _) =>
-                            case match (env, p, e) of
-                                No => No
-                              | Maybe => Maybe
-                              | Yes env => consider (rest, env)
-            in
-                consider (xps, env)
-            end
+              | (PCon (_, PConFfi {mod = m1, con = con1, ...}, _, SOME ep),
+                 ECon (_, PConFfi {mod = m2, con = con2, ...}, _, SOME e)) =>
+                if m1 = m2 andalso con1 = con2 then
+                    match (env, p, e)
+                else
+                    No
 
-      | _ => Maybe
+              | (PRecord xps, ERecord xes) =>
+                if List.exists (fn ((CName _, _), _, _) => false
+                                 | _ => true) xes then
+                    Maybe
+                else
+                    let
+                        fun consider (xps, env) =
+                            case xps of
+                                [] => Yes env
+                              | (x, p, _) :: rest =>
+                                case List.find (fn ((CName x', _), _, _) => x' = x
+                                                 | _ => false) xes of
+                                    NONE => No
+                                  | SOME (_, e, _) =>
+                                    case match (env, p, e) of
+                                        No => No
+                                      | Maybe => Maybe
+                                      | Yes env => consider (rest, env)
+                    in
+                        consider (xps, env)
+                    end
+
+              | _ => Maybe
+    in
+        match (env, p, e)
+    end
 
 fun kindConAndExp (namedC, namedE) =
     let

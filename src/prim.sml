@@ -41,7 +41,7 @@ fun p_t t =
         Int n => string (Int64.toString n)
       | Float n => string (Real64.toString n)
       | String s => box [string "\"", string (String.toString s), string "\""]
-      | Char ch => box [string "#\"", string (String.str ch), string "\""]
+      | Char ch => box [string "#\"", string (String.toString (String.str ch)), string "\""]
 
 fun int2s n =
     if Int64.compare (n, Int64.fromInt 0) = LESS then
@@ -73,7 +73,7 @@ fun p_t_GCC t =
         Int n => string (int2s n)
       | Float n => string (float2s n)
       | String s => box [string "\"", string (String.toString s), string "\""]
-      | Char ch => box [string "'", string (str ch), string "'"]
+      | Char ch => box [string "'", string (String.toString (str ch)), string "'"]
 
 fun equal x =
     case x of
