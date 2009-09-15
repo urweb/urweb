@@ -45,7 +45,18 @@ open Make(struct
                           DA = computed "2A" (fn r => 2 * r.A),
                           Link = computedHtml "Link" (fn r => <xml><a link={page (r.A, r.B)}>Go</a></xml>)}
 
-              val aggregates = {}
+              val aggregates = {Dummy1 = {Initial = (),
+                                          Step = fn _ _ => (),
+                                          Display = fn _ => <xml/>},
+                                Sum = {Initial = 0,
+                                       Step = fn r n => r.A + n,
+                                       Display = txt},
+                                Dummy2 = {Initial = (),
+                                          Step = fn _ _ => (),
+                                          Display = fn _ => <xml>-</xml>},
+                                And = {Initial = True,
+                                       Step = fn r b => r.C && b,
+                                       Display = txt}}
           end)
 
 fun main () =

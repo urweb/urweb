@@ -32,11 +32,13 @@ functor Make(M : sig
 
                  con aggregates :: {Type}
                  val aggregates : $(map (aggregateMeta row) aggregates)
+                 val aggFolder : folder aggregates
              end) = struct
     style tabl
     style tr
     style th
     style td
+    style agg
 
     fun make (row : M.row) [t] (m : colMeta' M.row t) : transaction t = m.Project row
 
@@ -77,101 +79,118 @@ functor Make(M : sig
         <tr class={tr}>
           <th/> <th/>
           {foldRX2 [fst] [colMeta M.row] [_]
-                  (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
-                                   data (meta : colMeta M.row p) =>
-                      <xml><th class={th}>{[(meta.Handlers data).Header]}</th></xml>)
-                  [_] M.folder grid.Cols M.cols}
-          </tr>
+                   (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
+                                    data (meta : colMeta M.row p) =>
+                       <xml><th class={th}>{[(meta.Handlers data).Header]}</th></xml>)
+                   [_] M.folder grid.Cols M.cols}
+        </tr>
 
-          {Dlist.render (fn {Row = rowS, Cols = colsS, Updating = ud} pos =>
-                            let
-                                val delete =
-                                    Dlist.delete pos;
-                                    row <- get rowS;
-                                    rpc (M.delete (M.keyOf row))
+        {Dlist.render (fn {Row = rowS, Cols = colsS, Updating = ud} pos =>
+                          let
+                              val delete =
+                                  Dlist.delete pos;
+                                  row <- get rowS;
+                                  rpc (M.delete (M.keyOf row))
 
-                                val update = set ud True
+                              val update = set ud True
 
-                                val cancel =
-                                    set ud False;
-                                    row <- get rowS;
-                                    cols <- makeAll grid.Cols row;
-                                    set colsS cols
-                                    
-                                val save =
-                                    cols <- get colsS;
-                                    errors <- Monad.foldR3 [fst] [colMeta M.row] [snd] [fn _ => option string]
-                                                           (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                                                            [[nm] ~ rest] data meta v errors =>
-                                                               b <- current ((meta.Handlers data).Validate v);
-                                                               return (if b then
-                                                                           errors
-                                                                       else
-                                                                           case errors of
-                                                                               None => Some ((meta.Handlers data).Header)
-                                                                             | Some s => Some ((meta.Handlers data).Header
-                                                                                               ^ ", " ^ s)))
-                                                           None [_] M.folder grid.Cols M.cols cols;
+                              val cancel =
+                                  set ud False;
+                                  row <- get rowS;
+                                  cols <- makeAll grid.Cols row;
+                                  set colsS cols
+                                  
+                              val save =
+                                  cols <- get colsS;
+                                  errors <- Monad.foldR3 [fst] [colMeta M.row] [snd] [fn _ => option string]
+                                                         (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
+                                                                          [[nm] ~ rest] data meta v errors =>
+                                                             b <- current ((meta.Handlers data).Validate v);
+                                                             return (if b then
+                                                                         errors
+                                                                     else
+                                                                         case errors of
+                                                                             None => Some ((meta.Handlers data).Header)
+                                                                           | Some s => Some ((meta.Handlers data).Header
+                                                                                             ^ ", " ^ s)))
+                                                         None [_] M.folder grid.Cols M.cols cols;
 
-                                    case errors of
-                                        Some s => alert ("Can't save because the following columns have invalid values:\n"
-                                                         ^ s)
-                                      | None =>
-                                        set ud False;
-                                        row <- get rowS;
-                                        row' <- Monad.foldR3 [fst] [colMeta M.row] [snd] [fn _ => M.row]
+                                  case errors of
+                                      Some s => alert ("Can't save because the following columns have invalid values:\n"
+                                                       ^ s)
+                                    | None =>
+                                      set ud False;
+                                      row <- get rowS;
+                                      row' <- Monad.foldR3 [fst] [colMeta M.row] [snd] [fn _ => M.row]
+                                                           (fn [nm :: Name] [t :: (Type * Type)]
+                                                                            [rest :: {(Type * Type)}]
+                                                                            [[nm] ~ rest] data meta v row' =>
+                                                               (meta.Handlers data).Update row' v)
+                                                           row [_] M.folder grid.Cols M.cols cols;
+                                      rpc (M.save (M.keyOf row) row');
+                                      set rowS row';
+
+                                      cols <- makeAll grid.Cols row';
+                                      set colsS cols
+                          in
+                              <xml><tr class={tr}>
+                                <td>
+                                  <dyn signal={b <- signal ud;
+                                               return (if b then
+                                                           <xml><button value="Save" onclick={save}/></xml>
+                                                       else
+                                                           <xml><button value="Update" onclick={update}/></xml>)}/>
+                                </td>
+
+                                <td><dyn signal={b <- signal ud;
+                                                 return (if b then
+                                                             <xml><button value="Cancel" onclick={cancel}/></xml>
+                                                         else
+                                                             <xml><button value="Delete" onclick={delete}/></xml>)}/>
+                                </td>
+
+                                <dyn signal={cols <- signal colsS;
+                                             return (foldRX3 [fst] [colMeta M.row] [snd] [_]
                                                              (fn [nm :: Name] [t :: (Type * Type)]
                                                                               [rest :: {(Type * Type)}]
-                                                                              [[nm] ~ rest] data meta v row' =>
-                                                                 (meta.Handlers data).Update row' v)
-                                                             row [_] M.folder grid.Cols M.cols cols;
-                                        rpc (M.save (M.keyOf row) row');
-                                        set rowS row';
+                                                                              [[nm] ~ rest] data meta v =>
+                                                                 <xml><td class={td}>
+                                                                   <dyn signal={b <- signal ud;
+                                                                                return (if b then
+                                                                                            (meta.Handlers data).Edit v
+                                                                                        else
+                                                                                            (meta.Handlers data).Display
+                                                                                                                v)}/>
+                                                                   <dyn signal={b <- signal ud;
+                                                                                if b then
+                                                                                    valid <-
+                                                                                    (meta.Handlers data).Validate v;
+                                                                                    return (if valid then
+                                                                                                <xml/>
+                                                                                            else
+                                                                                                <xml>!</xml>)
+                                                                                else
+                                                                                    return <xml/>}/>
+                                                                 </td></xml>)
+                                                             [_] M.folder grid.Cols M.cols cols)}/>
+                                </tr></xml>
+                          end) grid.Rows}
 
-                                        cols <- makeAll grid.Cols row';
-                                        set colsS cols
-                            in
-                                <xml><tr class={tr}>
-                                  <td>
-                                    <dyn signal={b <- signal ud;
-                                                 return (if b then
-                                                             <xml><button value="Save" onclick={save}/></xml>
-                                                         else
-                                                             <xml><button value="Update" onclick={update}/></xml>)}/>
-                                  </td>
-                                  <td><dyn signal={b <- signal ud;
-                                                   return (if b then
-                                                               <xml><button value="Cancel" onclick={cancel}/></xml>
-                                                           else
-                                                               <xml><button value="Delete" onclick={delete}/></xml>)}/>
-                                  </td>
-
-                                  <dyn signal={cols <- signal colsS;
-                                               return (foldRX3 [fst] [colMeta M.row] [snd] [_]
-                                                               (fn [nm :: Name] [t :: (Type * Type)]
-                                                                                [rest :: {(Type * Type)}]
-                                                                                [[nm] ~ rest] data meta v =>
-                                                                   <xml><td class={td}>
-                                                                     <dyn signal={b <- signal ud;
-                                                                                  return (if b then
-                                                                                              (meta.Handlers data).Edit v
-                                                                                          else
-                                                                                              (meta.Handlers data).Display
-                                                                                                                  v)}/>
-                                                                     <dyn signal={b <- signal ud;
-                                                                                  if b then
-                                                                                      valid <-
-                                                                                      (meta.Handlers data).Validate v;
-                                                                                      return (if valid then
-                                                                                                  <xml/>
-                                                                                              else
-                                                                                                  <xml>!</xml>)
-                                                                                  else
-                                                                                      return <xml/>}/>
-                                                                   </td></xml>)
-                                                               [_] M.folder grid.Cols M.cols cols)}/>
-                                  </tr></xml>
-                            end) grid.Rows}
+            <dyn signal={rows <- Dlist.foldl (fn row => Monad.mapR2 [aggregateMeta M.row] [id] [id]
+                                                                    (fn [nm :: Name] [t :: Type] meta acc =>
+                                                                        Monad.mp (fn v => meta.Step v acc)
+                                                                                 (signal row.Row))
+                                                                    [_] M.aggFolder M.aggregates)
+                                 (mp [aggregateMeta M.row] [id]
+                                  (fn [t] meta => meta.Initial)
+                                  [_] M.aggFolder M.aggregates) grid.Rows;
+                         return <xml><tr>
+                           <td/><td/>
+                           {foldRX2 [aggregateMeta M.row] [id] [_]
+                                    (fn [nm :: Name] [t :: Type] [rest :: {Type}] [[nm] ~ rest] meta acc =>
+                                        <xml><td class={agg}>{meta.Display acc}</td></xml>)
+                                    [_] M.aggFolder M.aggregates rows}
+                         </tr></xml>}/>
           </table>
           
           <button value="New row" onclick={row <- rpc M.new;

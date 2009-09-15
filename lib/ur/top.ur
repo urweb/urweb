@@ -105,6 +105,13 @@ fun map2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type]
         acc (r1 -- nm) (r2 -- nm) ++ {nm = f r1.nm r2.nm})
     (fn _ _ => {})
 
+fun map3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [tf :: K -> Type]
+         (f : t ::: K -> tf1 t -> tf2 t -> tf3 t -> tf t) [r :: {K}] (fl : folder r) =
+    fl [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> $(map tf r)]
+    (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] acc r1 r2 r3 =>
+        acc (r1 -- nm) (r2 -- nm) (r3 -- nm) ++ {nm = f r1.nm r2.nm r3.nm})
+    (fn _ _ _ => {})
+
 fun foldUR [tf :: Type] [tr :: {Unit} -> Type]
            (f : nm :: Name -> rest :: {Unit}
                 -> [[nm] ~ rest] =>

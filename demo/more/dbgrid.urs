@@ -103,6 +103,7 @@ functor Make(M : sig
 
                  con aggregates :: {Type}
                  val aggregates : $(map (aggregateMeta (key ++ row)) aggregates)
+                 val aggFolder : folder aggregates
              end) : sig
     type grid
 

@@ -86,3 +86,22 @@ fun elements [t] (dl : dlist t) =
     case dl' of
         Empty => return []
       | Nonempty {Head = hd, ...} => elements' hd
+
+fun foldl [t] [acc] (f : t -> acc -> signal acc) =
+    let
+        fun foldl'' (i : acc) (dl : dlist'' t) : signal acc =
+            case dl of
+                Nil => return i
+              | Cons (v, dl') =>
+                dl' <- signal dl';
+                i' <- f v i;
+                foldl'' i' dl'
+
+        fun foldl' (i : acc) (dl : dlist t) : signal acc =
+            dl <- signal dl;
+            case dl of
+                Empty => return i
+              | Nonempty {Head = dl, ...} => foldl'' i dl
+    in
+        foldl'
+    end
