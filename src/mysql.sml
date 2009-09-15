@@ -49,7 +49,7 @@ fun p_buffer_type t =
       | Float => "MYSQL_TYPE_DOUBLE"
       | String => "MYSQL_TYPE_STRING"
       | Bool => "MYSQL_TYPE_LONG"
-      | Time => "MYSQL_TYPE_TIME"
+      | Time => "MYSQL_TYPE_TIMESTAMP"
       | Blob => "MYSQL_TYPE_BLOB"
       | Channel => "MYSQL_TYPE_LONGLONG"
       | Client => "MYSQL_TYPE_LONG"
@@ -666,7 +666,7 @@ fun p_getcol {loc, wontLeakStrings = _, col = i, typ = t} =
                              string ";",
                              newline,
                              newline,
-                             string "struct tm t = {mt->second, mt->minute, mt->hour, mt->day, mt->month-1, mt->year, 0, 0, -1};",
+                             string "struct tm t = {mt->second, mt->minute, mt->hour, mt->day, mt->month-1, mt->year - 1900, 0, 0, -1};",
                              newline,
                              string "mktime(&t);",
                              newline,
@@ -1058,13 +1058,13 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                string (ErrorMsg.spanToString loc),
                                                                string ": error converting to MySQL time\");",
                                                                newline,
-                                                               oneField "year" "year",
+                                                               oneField "year" "year + 1900",
                                                                box [string "in_buffer",
                                                                     string (Int.toString i),
                                                                     string ".month = tms.tm_mon + 1;",
                                                                     newline],
                                                                oneField "day" "mday",
-                                                               oneField "hour" "hour",
+                                                               oneField "hour" "hour - 1",
                                                                oneField "minute" "min",
                                                                oneField "second" "sec",
                                                                newline,
@@ -1339,10 +1339,10 @@ fun dmlPrepared {loc, id, dml, inputs} =
                                                                string (ErrorMsg.spanToString loc),
                                                                string ": error converting to MySQL time\");",
                                                                newline,
-                                                               oneField "year" "year",
-                                                               oneField "month" "mon",
+                                                               oneField "year" "year + 1900",
+                                                               oneField "month" "mon + 1",
                                                                oneField "day" "mday",
-                                                               oneField "hour" "hour",
+                                                               oneField "hour" "hour - 1",
                                                                oneField "minute" "min",
                                                                oneField "second" "sec",
                                                                newline,
