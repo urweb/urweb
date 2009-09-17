@@ -193,6 +193,19 @@ fun p_pat (env, exit, depth) (p, loc) =
               space,
               exit],
          env)
+      | PPrim (Prim.Char ch) =>
+        (box [string "if",
+              space,
+              string "(disc",
+              string (Int.toString depth),
+              space,
+              string "!=",
+              space,
+              Prim.p_t_GCC (Prim.Char ch),
+              string ")",
+              space,
+              exit],
+         env)
       | PPrim _ => raise Fail "CjrPrint: Disallowed PPrim primitive"
 
       | PCon (dk, pc, po) =>
