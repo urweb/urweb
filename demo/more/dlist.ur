@@ -48,7 +48,7 @@ fun append [t] dl v =
         set tl new;
         return (tailPos cur new tl)
 
-fun render [ctx] [ctx ~ body] [t] f {Filter = filter, ...} dl = <xml>
+fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter dl = <xml>
   <dyn signal={dl' <- signal dl;
                return (case dl' of
                            Empty => <xml/>
@@ -75,6 +75,39 @@ fun render [ctx] [ctx ~ body] [t] f {Filter = filter, ...} dl = <xml>
                                render' None hd
                            end)}/>
 </xml>
+
+fun renderFlat [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter ls =
+    List.mapX (fn p => f p.1 p.2) ls
+
+fun render [ctx] [ctx ~ body] [t] f r dl = <xml>
+    <dyn signal={sort <- r.Sort;
+                 case sort of
+                     None => return (renderDyn f r.Filter dl)
+                   | Some sort =>
+                     dl' <- signal dl;
+                     elems <- (case dl' of
+                                   Empty => return []
+                                 | Nonempty {Head = hd, Tail = tlTop} =>
+                                   let
+                                       fun listOut prev dl'' acc =
+                                           case dl'' of
+                                               Nil => return acc
+                                             | Cons (v, tl) =>
+                                               let
+                                                   val pos = case prev of
+                                                                 None => headPos dl
+                                                               | Some prev => tailPos prev tl tlTop
+                                               in
+                                                   tl' <- signal tl;
+                                                   listOut (Some tl) tl' ((v, pos) :: acc)
+                                               end
+                                   in
+                                       listOut None hd []
+                                   end);
+                     return (renderFlat f r.Filter elems)}/>
+</xml>
+                             
+        
 
 fun delete pos = pos
 

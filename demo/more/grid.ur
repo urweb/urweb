@@ -212,7 +212,8 @@ functor Make(M : sig
                                               this <- (meta.Handlers state).Filter filter row;
                                               return (previous && this))
                                           (fn _ => return True)
-                                          [_] M.folder M.cols grid.Cols grid.Filters row}
+                                          [_] M.folder M.cols grid.Cols grid.Filters row,
+                       Sort = return None}
                       grid.Rows}
 
             <dyn signal={rows <- Dlist.foldl (fn row => Monad.mapR2 [aggregateMeta M.row] [id] [id]
