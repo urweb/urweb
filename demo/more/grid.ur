@@ -80,19 +80,13 @@ functor Make(M : sig
                                    (meta.Handlers state).CreateFilter)
                                [_] M.folder M.cols cols;
 
-        rows <- Dlist.create {Filter = fn all =>
-                                          row <- signal all.Row;
-                                          foldR3 [colMeta M.row] [fst3] [thd3] [fn _ => M.row -> signal bool]
-                                                 (fn [nm :: Name] [p :: (Type * Type * Type)]
-                                                                  [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
-                                                                  meta state filter combinedFilter row =>
-                                                     previous <- combinedFilter row;
-                                                     this <- (meta.Handlers state).Filter filter row;
-                                                     return (previous && this))
-                                                 (fn _ => return True)
-                                                 [_] M.folder M.cols cols filters row};
+        rows <- Dlist.create;
         sel <- source False;
-        return {Cols = cols, Rows = rows, Selection = sel, Filters = filters}
+
+        return {Cols = cols,
+                Rows = rows,
+                Selection = sel,
+                Filters = filters}
 
     fun sync {Cols = cols, Rows = rows, ...} =
         Dlist.clear rows;
@@ -207,7 +201,19 @@ functor Make(M : sig
                                                                  </td></xml>)
                                                              [_] M.folder grid.Cols M.cols cols)}/>
                                 </tr></xml>
-                          end) grid.Rows}
+                          end)
+                      {Filter = fn all =>
+                                   row <- signal all.Row;
+                                   foldR3 [colMeta M.row] [fst3] [thd3] [fn _ => M.row -> signal bool]
+                                          (fn [nm :: Name] [p :: (Type * Type * Type)]
+                                                           [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
+                                                           meta state filter combinedFilter row =>
+                                              previous <- combinedFilter row;
+                                              this <- (meta.Handlers state).Filter filter row;
+                                              return (previous && this))
+                                          (fn _ => return True)
+                                          [_] M.folder M.cols grid.Cols grid.Filters row}
+                      grid.Rows}
 
             <dyn signal={rows <- Dlist.foldl (fn row => Monad.mapR2 [aggregateMeta M.row] [id] [id]
                                                                     (fn [nm :: Name] [t :: Type] meta acc =>
