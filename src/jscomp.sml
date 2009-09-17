@@ -800,6 +800,9 @@ fun process file =
                             in
                                 (str name, st)
                             end
+                          | EFfiApp ("Basis", "sigString", [_]) => (strcat [str "\"",
+                                                                           e,
+                                                                           str "\""], st)
                           | EFfiApp ("Basis", "kc", []) => (str "kc(event)", st)
                           | EFfiApp (m, x, args) =>
                             let
