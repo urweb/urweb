@@ -58,7 +58,7 @@ fun replace [t] dl ls =
                 case ls of
                     [] => return acc
                   | x :: ls =>
-                    this <- source (Cons (x, tl));
+                    this <- source (Cons (x, acc));
                     build ls this
         in
             hd <- build (List.rev ls) tl;

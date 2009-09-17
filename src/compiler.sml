@@ -779,7 +779,14 @@ val toShake3 = transform shake "shake3" o toSpecialize
 
 val toEspecialize = transform especialize "especialize" o toShake3
 
-val toReduce2 = transform reduce "reduce2" o toEspecialize
+val tailify = {
+    func = Tailify.frob,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toTailify = transform tailify "tailify" o toEspecialize
+
+val toReduce2 = transform reduce "reduce2" o toTailify
 
 val toShake4 = transform shake "shake4" o toReduce2
 

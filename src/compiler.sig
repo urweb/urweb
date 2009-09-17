@@ -86,6 +86,7 @@ signature COMPILER = sig
     val reduce : (Core.file, Core.file) phase
     val unpoly : (Core.file, Core.file) phase
     val specialize : (Core.file, Core.file) phase
+    val tailify : (Core.file, Core.file) phase
     val marshalcheck : (Core.file, Core.file) phase
     val effectize : (Core.file, Core.file) phase
     val monoize : (Core.file, Mono.file) phase
@@ -120,6 +121,7 @@ signature COMPILER = sig
     val toSpecialize : (string, Core.file) transform 
     val toShake3 : (string, Core.file) transform
     val toEspecialize : (string, Core.file) transform 
+    val toTailify : (string, Core.file) transform
     val toReduce2 : (string, Core.file) transform
     val toShake4 : (string, Core.file) transform
     val toMarshalcheck : (string, Core.file) transform
