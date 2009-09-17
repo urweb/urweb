@@ -907,7 +907,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
         val urweb_o = clibFile "urweb.o"
         val memmem_o = clibFile "memmem.o"
 
-        val compile = "gcc " ^ Config.gccArgs ^ " -Wstrict-prototypes -Werror -O3 -I " ^ Config.includ
+        val compile = "gcc " ^ Config.gccArgs ^ " -Wstrict-prototypes -Werror -O3 -fno-inline -I " ^ Config.includ
                       ^ " -c " ^ cname ^ " -o " ^ oname
         val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ urweb_o ^ " " ^ oname
                    ^ " " ^ memmem_o ^ " " ^ #link proto ^ " -o " ^ ename
