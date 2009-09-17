@@ -456,6 +456,54 @@ fun kindConAndExp (namedC, namedE) =
 
                                       | EApp
                                             ((EApp
+                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _),
+                                                                          t1),
+                                                                   _), t2), _),
+                                                          (EFfi ("Basis", "transaction_monad"), _)), _),
+                                                   (ETailCall (n, es, (EAbs (_, _, _, ke), _), dom, ran), _)), _),
+                                             trans3) =>
+                                        let
+                                            val e' = (EFfi ("Basis", "bind"), loc)
+                                            val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                                            val e' = (ECApp (e', dom), loc)
+                                            val e' = (ECApp (e', t2), loc)
+                                            val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                                            val e' = (EApp (e', ke), loc)
+                                            val e' = (EApp (e', E.liftExpInExp 0 trans3), loc)
+                                            val e' = reassoc e'
+                                            val e' = (EAbs ("x", dom, t2, e'), loc)
+                                            val e' = (ETailCall (n, es, e', dom, t2), loc)
+                                        in
+                                            e'
+                                        end
+
+                                      | EApp
+                                            ((EApp
+                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _),
+                                                                          t1),
+                                                                   _), t2), _),
+                                                          (EFfi ("Basis", "transaction_monad"), _)), _),
+                                                   (ETailCall (n, es, ke, dom, ran), _)), _),
+                                             trans3) =>
+                                        let
+                                            val e' = (EFfi ("Basis", "bind"), loc)
+                                            val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
+                                            val e' = (ECApp (e', dom), loc)
+                                            val e' = (ECApp (e', t2), loc)
+                                            val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
+                                            val e' = (EApp (e', exp (UnknownE :: env')
+                                                                    (EApp (E.liftExpInExp 0 ke, (ERel 0, loc)), loc)),
+                                                      loc)
+                                            val e' = (EApp (e', E.liftExpInExp 0 trans3), loc)
+                                            val e' = reassoc e'
+                                            val e' = (EAbs ("x", dom, t2, e'), loc)
+                                            val e' = (ETailCall (n, es, e', dom, t2), loc)
+                                        in
+                                            e'
+                                        end
+
+                                      | EApp
+                                            ((EApp
                                                   ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), mt),
                                                                            _), _), _), t3), _),
                                                           me), _),

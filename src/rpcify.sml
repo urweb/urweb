@@ -259,7 +259,12 @@ fun frob file =
                                                                              (fn (i, _) =>
                                                                                  (ERel (len - i - 1), loc))
                                                                              ts
-                                                              val k = (EAbs ("x", ran, ran, (ERel 0, loc)), loc)
+                                                              val k = (EFfi ("Basis", "return"), loc)
+                                                              val trans = (CFfi ("Basis", "transaction"), loc)
+                                                              val k = (ECApp (k, trans), loc)
+                                                              val k = (ECApp (k, ran), loc)
+                                                              val k = (EApp (k, (EFfi ("Basis", "transaction_monad"),
+                                                                                 loc)), loc)
                                                               val re = (ETailCall (n, args, k, ran, ran), loc)
                                                               val (re, _) = foldr (fn (dom, (re, ran)) =>
                                                                                       ((EAbs ("x", dom, ran, re),
@@ -273,7 +278,6 @@ fun frob file =
                                                                                (EApp (be, (ERel (len - i), loc)), loc))
                                                                            be ts
                                                               val ne = (EFfi ("Basis", "bind"), loc)
-                                                              val trans = (CFfi ("Basis", "transaction"), loc)
                                                               val ne = (ECApp (ne, trans), loc)
                                                               val ne = (ECApp (ne, ran), loc)
                                                               val unit = (TRecord (CRecord ((KType, loc), []),

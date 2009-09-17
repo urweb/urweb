@@ -3143,7 +3143,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (ek, fm) = monoExp (env, st, fm) ek
 
                 val e = (L'.ENamed n, loc)
-                val e = foldl (fn (e, arg) => (L'.EApp (e, arg), loc)) e es
+                val e = foldl (fn (arg, e) => (L'.EApp (e, arg), loc)) e es
                 val e = (L'.EApp (e, ek), loc)
             in
                 (e, fm)
