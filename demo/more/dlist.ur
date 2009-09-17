@@ -162,8 +162,12 @@ fun render [ctx] [ctx ~ body] [t] f (r : {Filter : t -> signal bool,
                                                                  None => headPos dl
                                                                | Some prev => tailPos prev tl tlTop
                                                in
+                                                   b <- r.Filter v;
                                                    tl' <- signal tl;
-                                                   listOut (Some tl) tl' ((v, pos) :: acc)
+                                                   listOut (Some tl) tl' (if b then
+                                                                              (v, pos) :: acc
+                                                                          else
+                                                                              acc)
                                                end
                                    in
                                        listOut None hd []
