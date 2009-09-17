@@ -446,6 +446,14 @@ fun p_exp' par env (e, _) =
                                              string ")[",
                                              p_exp env e,
                                              string "]"]
+      | ETailCall (n, es, e, _, _) => box [string "Tail(",
+                                           p_enamed env n,
+                                           string ",",
+                                           space,
+                                           p_list (p_exp env) es,
+                                           string ")[",
+                                           p_exp env e,
+                                           string "]"]
 
       | EKAbs (x, e) => box [string x,
                              space,

@@ -3137,6 +3137,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ELet (x, t', e1, e2), loc), fm)
             end
 
+          | L.ETailCall (n, es, ek, _, (L.TRecord (L.CRecord (_, []), _), _)) =>
+            let
+                val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
+                val (ek, fm) = monoExp (env, st, fm) ek
+
+                val e = (L'.ENamed n, loc)
+                val e = foldl (fn (e, arg) => (L'.EApp (e, arg), loc)) e es
+                val e = (L'.EApp (e, ek), loc)
+            in
+                (e, fm)
+            end
+          | L.ETailCall _ => (E.errorAt loc "Full scope of tail call continuation isn't known";
+                              Print.eprefaces' [("Expression", CorePrint.p_exp env all)];
+                              (dummyExp, fm))
+
           | L.EServerCall (n, es, ek, t, (L.TRecord (L.CRecord (_, []), _), _)) =>
             let
                 val t = monoType env t

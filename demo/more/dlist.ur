@@ -48,6 +48,24 @@ fun append [t] dl v =
         set tl new;
         return (tailPos cur new tl)
 
+fun replace [t] dl ls =
+    case ls of
+        [] => set dl Empty
+      | x :: ls =>
+        tl <- source Nil;
+        let
+            fun build ls acc =
+                case ls of
+                    [] => return acc
+                  | x :: ls =>
+                    this <- source (Cons (x, tl));
+                    build ls this
+        in
+            hd <- build (List.rev ls) tl;
+            tlS <- source tl;
+            set dl (Nonempty {Head = Cons (x, hd), Tail = tlS})
+        end
+
 fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter dl = <xml>
   <dyn signal={dl' <- signal dl;
                return (case dl' of

@@ -38,19 +38,20 @@ structure IM = IntBinaryMap
 fun default (k, s) = s
 
 fun exp thisGroup (e, s) =
-    case e of
-        ENamed n =>
-        if IS.member (thisGroup, n) then
-            IS.add (s, n)
-        else
-            s
-      | EClosure (n, _) =>
-        if IS.member (thisGroup, n) then
-            IS.add (s, n)
-        else
-            s
-
-      | _ => s
+    let
+        fun try n =
+            if IS.member (thisGroup, n) then
+                IS.add (s, n)
+            else
+                s
+    in
+        case e of
+            ENamed n => try n
+          | EClosure (n, _) => try n
+          | EServerCall (n, _, _, _, _) => try n
+          | ETailCall (n, _, _, _, _) => try n
+          | _ => s
+    end
 
 fun untangle file =
     let

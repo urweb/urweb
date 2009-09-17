@@ -745,6 +745,8 @@ fun kindConAndExp (namedC, namedE) =
 
                           | EServerCall (n, es, e, t1, t2) => (EServerCall (n, map (exp env) es, exp env e,
                                                                             con env t1, con env t2), loc)
+                          | ETailCall (n, es, e, t1, t2) => (ETailCall (n, map (exp env) es, exp env e,
+                                                                        con env t1, con env t2), loc)
             in
                 (*if dangling (edepth' (deKnown env)) r then
                     (Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),

@@ -59,16 +59,20 @@ functor Make(M : sig
                  Selection : source bool,
                  Filters : $(map thd3 M.cols)}
 
-    fun addRow cols rows row =
+    fun newRow cols row =
         rowS <- source row;
         cols <- makeAll cols row;
         colsS <- source cols;
         ud <- source False;
         sd <- source False;
-        Monad.ignore (Dlist.append rows {Row = rowS,
-                                         Cols = colsS,
-                                         Updating = ud,
-                                         Selected = sd})
+        return {Row = rowS,
+                Cols = colsS,
+                Updating = ud,
+                Selected = sd}
+
+    fun addRow cols rows row =
+        r <- newRow cols row;
+        Monad.ignore (Dlist.append rows r)
 
     val grid =
         cols <- Monad.mapR [colMeta M.row] [fst3]
@@ -91,7 +95,8 @@ functor Make(M : sig
     fun sync {Cols = cols, Rows = rows, ...} =
         Dlist.clear rows;
         init <- rpc M.list;
-        List.app (addRow cols rows) init
+        rs <- List.mapM (newRow cols) init;
+        Dlist.replace rows rs
 
     fun render grid = <xml>
       <table class={tabl}>

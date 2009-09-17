@@ -140,6 +140,7 @@ fun exp env (all as (e, loc)) =
       | ELet (x, t, e1, e2) => (ELet (x, t, exp env e1, exp (Unknown :: env) e2), loc)
 
       | EServerCall (n, es, e, t1, t2) => (EServerCall (n, map (exp env) es, exp env e, t1, t2), loc)
+      | ETailCall (n, es, e, t1, t2) => (ETailCall (n, map (exp env) es, exp env e, t1, t2), loc)
 
 fun reduce file =
     let
