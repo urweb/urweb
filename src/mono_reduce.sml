@@ -38,12 +38,12 @@ structure IM = IntBinaryMap
 structure IS = IntBinarySet
 
 
-val simpleTypeImpure =
+fun simpleTypeImpure tsyms =
     U.Typ.exists (fn TFun _ => true
-                   | TDatatype _ => true
+                   | TDatatype (n, _) => IS.member (tsyms, n)
                    | _ => false)
 
-fun simpleImpure syms =
+fun simpleImpure (tsyms, syms) =
     U.Exp.existsB {typ = fn _ => false,
                    exp = fn (env, e) =>
                             case e of
@@ -51,7 +51,6 @@ fun simpleImpure syms =
                               | EQuery _ => true
                               | EDml _ => true
                               | ENextval _ => true
-                              | EUnurlify _ => true
                               | EFfiApp (m, x, _) => Settings.isEffectful (m, x)
                               | EServerCall _ => true
                               | ERecv _ => true
@@ -61,7 +60,7 @@ fun simpleImpure syms =
                                 let
                                     val (_, t, _) = E.lookupERel env n
                                 in
-                                    simpleTypeImpure t
+                                    simpleTypeImpure tsyms t
                                 end
                               | _ => false,
                    bind = fn (env, b) =>
@@ -287,8 +286,8 @@ val countFree = U.Exp.foldB {typ = fn (_, n) => n,
 
 fun reduce file =
     let
-        val (impures, absCounts) =
-            foldl (fn ((d, _), (impures, absCounts)) =>
+        val (timpures, impures, absCounts) =
+            foldl (fn ((d, _), (timpures, impures, absCounts)) =>
                       let
                           fun countAbs (e, _) =
                               case e of
@@ -296,14 +295,26 @@ fun reduce file =
                                 | _ => 0
                       in
                           case d of
-                              DVal (_, n, _, e, _) =>
-                              (if simpleImpure impures E.empty e then
+                              DDatatype dts =>
+                              (if List.exists (fn (_, _, cs) =>
+                                                  List.exists (fn (_, _, NONE) => false
+                                                                | (_, _, SOME t) => simpleTypeImpure timpures t) cs)
+                                              dts then
+                                   IS.addList (timpures, map #2 dts)
+                               else
+                                   timpures,
+                               impures,
+                               absCounts)
+                            | DVal (_, n, _, e, _) =>
+                              (timpures,
+                               if simpleImpure (timpures, impures) E.empty e then
                                    IS.add (impures, n)
                                else
                                    impures,
                                IM.insert (absCounts, n, countAbs e))
                             | DValRec vis =>
-                              (if List.exists (fn (_, _, _, e, _) => simpleImpure impures E.empty e) vis then
+                              (timpures,
+                               if List.exists (fn (_, _, _, e, _) => simpleImpure (timpures, impures) E.empty e) vis then
                                    foldl (fn ((_, n, _, _, _), impures) =>
                                              IS.add (impures, n)) impures vis
                                else
@@ -311,9 +322,9 @@ fun reduce file =
                                foldl (fn ((x, n, _, e, _), absCounts) =>
                                          IM.insert (absCounts, n, countAbs e))
                                      absCounts vis)
-                            | _ => (impures, absCounts)
+                            | _ => (timpures, impures, absCounts)
                       end)
-                  (IS.empty, IM.empty) file
+                  (IS.empty, IS.empty, IM.empty) file
 
         fun summarize d (e, _) =
             let
@@ -341,13 +352,16 @@ fun reduce file =
                                     let
                                         val ls = rev ls
                                     in
-                                        case IM.find (absCounts, n) of
-                                            NONE => [Unsure]
-                                          | SOME len =>
-                                            if passed < len then
-                                                ls
-                                            else
-                                                ls @ [Unsure]
+                                        if IS.member (impures, n) then
+                                            case IM.find (absCounts, n) of
+                                                NONE => [Unsure]
+                                              | SOME len =>
+                                                if passed < len then
+                                                    ls
+                                                else
+                                                    ls @ [Unsure]
+                                        else
+                                            ls
                                     end
                                   | ERel n => List.revAppend (ls,
                                                               if n = d then
@@ -419,7 +433,7 @@ fun reduce file =
             end
 
         val impure = fn env => fn e =>
-                        simpleImpure impures env e andalso impure e
+                        simpleImpure (timpures, impures) env e andalso impure e
                         andalso not (List.null (summarize ~1 e))
 
         fun exp env e =
