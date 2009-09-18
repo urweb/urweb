@@ -1912,7 +1912,7 @@ uw_Basis_string uw_Basis_substring(uw_context ctx, uw_Basis_string s, uw_Basis_i
     return &s[start];
   else {
     uw_Basis_string r = uw_malloc(ctx, len+1);
-    memcpy(r, s, len);
+    memcpy(r, s+start, len);
     r[len] = 0;
     return r;
   }
