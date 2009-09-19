@@ -938,7 +938,7 @@ eexp   : eapps                          (eapps)
        | eexp PLUS eexp                 (native_op ("plus", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp MINUS eexp                (native_op ("minus", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eterm STAR eexp                (native_op ("times", eterm, eexp, s (etermleft, eexpright)))
-       | eexp DIVIDE eexp               (native_op ("div", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp DIVIDE eexp               (native_op ("divide", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp MOD eexp                  (native_op ("mod", eexp1, eexp2, s (eexp1left, eexp2right)))
 
        | eexp LT eexp                   (native_op ("lt", eexp1, eexp2, s (eexp1left, eexp2right)))

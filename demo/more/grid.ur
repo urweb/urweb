@@ -37,6 +37,8 @@ functor Make(M : sig
                  con aggregates :: {Type}
                  val aggregates : $(map (aggregateMeta row) aggregates)
                  val aggFolder : folder aggregates
+
+                 val pageLength : option int
              end) = struct
     style tabl
     style tr
@@ -59,7 +61,8 @@ functor Make(M : sig
                                      Selected : source bool},
                  Selection : source bool,
                  Filters : $(map thd3 M.cols),
-                 Sort : source (option (M.row -> M.row -> bool))}
+                 Sort : source (option (M.row -> M.row -> bool)),
+                 Position : source int}
 
     fun newRow cols row =
         rowS <- source row;
@@ -89,12 +92,14 @@ functor Make(M : sig
         rows <- Dlist.create;
         sel <- source False;
         sort <- source None;
+        pos <- source 0;
 
         return {Cols = cols,
                 Rows = rows,
                 Selection = sel,
                 Filters = filters,
-                Sort = sort}
+                Sort = sort,
+                Position = pos}
 
     fun sync {Cols = cols, Rows = rows, ...} =
         Dlist.clear rows;
@@ -216,8 +221,8 @@ functor Make(M : sig
                                                              [_] M.folder grid.Cols M.cols cols)}/>
                                 </tr></xml>
                           end)
-                      {StartPosition = return (Some 1),
-                       MaxLength = return (Some 2),
+                      {StartPosition = Monad.mp Some (signal grid.Position),
+                       MaxLength = return M.pageLength,
                        Filter = fn all =>
                                    row <- signal all.Row;
                                    foldR3 [colMeta M.row] [fst3] [thd3] [fn _ => M.row -> signal bool]
@@ -258,6 +263,42 @@ functor Make(M : sig
                  [_] M.folder M.cols grid.Cols grid.Filters}
               </tr>
           </table>
+
+          {case M.pageLength of
+               None => <xml/>
+             | Some plen => <xml>
+               <dyn signal={avail <- Dlist.size grid.Rows;
+                            return (if avail <= plen then
+                                        <xml/>
+                                    else
+                                        let
+                                            val numPages = avail / plen
+                                            val numPages = if numPages * plen < avail then
+                                                               numPages + 1
+                                                           else
+                                                               numPages
+
+                                            fun pages n =
+                                                if n * plen >= avail then
+                                                    <xml/>
+                                                else
+                                                    <xml>
+                                                      <dyn signal={pos <- signal grid.Position;
+                                                                   return (if n * plen = pos then
+                                                                               <xml><b>{[n + 1]}</b></xml>
+                                                                           else
+                                                                               <xml>
+                                                                                 <button value={show (n + 1)}
+                                                                                         onclick={set grid.Position
+                                                                                                      (n * plen)
+                                                                                                 }/></xml>)}/>
+                                                      {if (n + 1) * plen >= avail then <xml/> else <xml>|</xml>}
+                                                      {pages (n + 1)}
+                                                    </xml>
+                                        in
+                                            <xml><p><b>Pages:</b> {pages 0}</p></xml>
+                                        end)}/>
+               </xml>}
           
           <button value="New row" onclick={row <- rpc M.new;
                                            addRow grid.Cols grid.Rows row}/>

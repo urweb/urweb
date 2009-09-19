@@ -246,6 +246,20 @@ fun elements [t] (dl : dlist t) =
         Empty => return []
       | Nonempty {Head = hd, ...} => elements' hd
 
+fun size' [t] (dl'' : dlist'' t) =
+    case dl'' of
+        Nil => return 0
+      | Cons (x, dl'') =>
+        dl'' <- signal dl'';
+        n <- size' dl'';
+        return (n + 1)
+
+fun size [t] (dl : dlist t) =
+    dl' <- signal dl;
+    case dl' of
+        Empty => return 0
+      | Nonempty {Head = hd, ...} => size' hd
+
 fun foldl [t] [acc] (f : t -> acc -> signal acc) =
     let
         fun foldl'' (i : acc) (dl : dlist'' t) : signal acc =

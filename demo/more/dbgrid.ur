@@ -373,6 +373,8 @@ functor Make(M : sig
                  con aggregates :: {Type}
                  val aggregates : $(map (aggregateMeta (key ++ row)) aggregates)
                  val aggFolder : folder aggregates
+
+                 val pageLength : option int
              end) = struct
     open Grid.Make(struct
                        fun keyOf r = r --- M.row
@@ -421,5 +423,7 @@ functor Make(M : sig
                        val aggregates = M.aggregates
 
                        val aggFolder = M.aggFolder
+
+                       val pageLength = M.pageLength
                    end)
 end

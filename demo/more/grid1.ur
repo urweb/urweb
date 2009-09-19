@@ -57,6 +57,8 @@ open Make(struct
                                 And = {Initial = True,
                                        Step = fn r b => r.C && b,
                                        Display = txt}}
+
+              val pageLength = Some 10
           end)
 
 fun main () =

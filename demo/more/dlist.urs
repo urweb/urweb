@@ -8,6 +8,7 @@ val replace : t ::: Type -> dlist t -> list t -> transaction unit
 
 val delete : position -> transaction unit
 val elements : t ::: Type -> dlist t -> signal (list t)
+val size : t ::: Type -> dlist t -> signal int
 val foldl : t ::: Type -> acc ::: Type -> (t -> acc -> signal acc) -> acc -> dlist t -> signal acc
 
 val render : ctx ::: {Unit} -> [ctx ~ body] => t ::: Type
