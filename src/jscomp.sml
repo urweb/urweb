@@ -1055,7 +1055,7 @@ fun process file =
                                 (strcat (str "cs(function(){"
                                          :: locals
                                          @ [str "return ",
-                                            compact inner e,
+                                            (*compact inner*) e,
                                             str "})"]),
                                  st)
                             end

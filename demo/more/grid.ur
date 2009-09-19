@@ -57,7 +57,8 @@ functor Make(M : sig
                                      Updating : source bool,
                                      Selected : source bool},
                  Selection : source bool,
-                 Filters : $(map thd3 M.cols)}
+                 Filters : $(map thd3 M.cols),
+                 Sort : source (option (M.row -> M.row -> bool))}
 
     fun newRow cols row =
         rowS <- source row;
@@ -86,11 +87,13 @@ functor Make(M : sig
 
         rows <- Dlist.create;
         sel <- source False;
+        sort <- source None;
 
         return {Cols = cols,
                 Rows = rows,
                 Selection = sel,
-                Filters = filters}
+                Filters = filters,
+                Sort = sort}
 
     fun sync {Cols = cols, Rows = rows, ...} =
         Dlist.clear rows;
@@ -218,7 +221,10 @@ functor Make(M : sig
                                               return (previous && this))
                                           (fn _ => return True)
                                           [_] M.folder M.cols grid.Cols grid.Filters row,
-                       Sort = return (Some (fn _ _ => return True))}
+                       Sort = f <- signal grid.Sort;
+                              return (Option.mp (fn f r1 r2 => r1 <- signal r1.Row;
+                                                    r2 <- signal r2.Row;
+                                                    return (f r1 r2)) f)}
                       grid.Rows}
 
             <dyn signal={rows <- Dlist.foldl (fn row => Monad.mapR2 [aggregateMeta M.row] [id] [id]
