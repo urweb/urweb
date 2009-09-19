@@ -216,7 +216,8 @@ functor Make(M : sig
                                                              [_] M.folder grid.Cols M.cols cols)}/>
                                 </tr></xml>
                           end)
-                      {Filter = fn all =>
+                      {StartPosition = return (Some 1),
+                       Filter = fn all =>
                                    row <- signal all.Row;
                                    foldR3 [colMeta M.row] [fst3] [thd3] [fn _ => M.row -> signal bool]
                                           (fn [nm :: Name] [p :: (Type * Type * Type)]
