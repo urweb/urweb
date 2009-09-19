@@ -49,6 +49,7 @@ val ord_string : ord string
 val ord_char : ord char
 val ord_bool : ord bool
 val ord_time : ord time
+val mkOrd : t ::: Type -> {Lt : t -> t -> bool, Le : t -> t -> bool} -> ord t
 
 
 (** String operations *)

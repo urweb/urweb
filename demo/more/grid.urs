@@ -7,7 +7,8 @@ con colMeta' = fn (row :: Type) (input :: Type) (filter :: Type) =>
                    Validate : input -> signal bool,
                    CreateFilter : transaction filter,
                    DisplayFilter : filter -> xbody,
-                   Filter : filter -> row -> signal bool}
+                   Filter : filter -> row -> signal bool,
+                   Sort : option (row -> row -> bool)}
                   
 con colMeta = fn (row :: Type) (global_input_filter :: (Type * Type * Type)) =>
                  {Initialize : transaction global_input_filter.1,

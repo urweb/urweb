@@ -1024,6 +1024,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        boolBin "<",
                        boolBin "<=")
             end
+          | L.ECApp ((L.EFfi ("Basis", "mkOrd"), _), t) =>
+            let
+                val t = monoType env t
+                val b = (L'.TFfi ("Basis", "bool"), loc)
+                val dom = ordTy t
+            in
+                ((L'.EAbs ("f", dom, dom,
+                           (L'.ERel 0, loc)), loc), fm)
+            end
                        
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>
             let

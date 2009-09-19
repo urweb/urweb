@@ -11,7 +11,8 @@ con colMeta' = fn (row :: {Type}) (input :: Type) (filter :: Type) =>
                    Validate : input -> signal bool,
                    CreateFilter : transaction filter,
                    DisplayFilter : filter -> xbody,
-                   Filter : filter -> $row -> signal bool}
+                   Filter : filter -> $row -> signal bool,
+                   Sort : option ($row -> $row -> bool)}
 
 con colMeta = fn (row :: {Type}) (global_input_filter :: (Type * Type * Type)) =>
                  {Initialize : transaction global_input_filter.1,
@@ -30,7 +31,8 @@ structure Direct = struct
                    Parse : actual_input_filter.2 -> signal (option actual_input_filter.1),
                    CreateFilter : transaction actual_input_filter.3,
                    DisplayFilter : actual_input_filter.3 -> xbody,
-                   Filter : actual_input_filter.3 -> actual_input_filter.1 -> signal bool}
+                   Filter : actual_input_filter.3 -> actual_input_filter.1 -> signal bool,
+                   Sort : actual_input_filter.1 -> actual_input_filter.1 -> bool}
 
     datatype metaBoth actual input filter =
              NonNull of metaBase (actual, input, filter) * metaBase (option actual, input, filter)
@@ -58,7 +60,8 @@ structure Direct = struct
                           Validate = fn s => vo <- mr.Parse s; return (Option.isSome vo),
                           CreateFilter = mr.CreateFilter,
                           DisplayFilter = mr.DisplayFilter,
-                          Filter = fn i r => mr.Filter i r.nm}
+                          Filter = fn i r => mr.Filter i r.nm,
+                          Sort = Some (fn r1 r2 => mr.Sort r1.nm r2.nm)} 
        in
            {Initialize = m.Initialize,
             Handlers = fn data => case m.Handlers data of
@@ -78,7 +81,8 @@ structure Direct = struct
                           Validate = fn _ => return True,
                           CreateFilter = mr.CreateFilter,
                           DisplayFilter = mr.DisplayFilter,
-                          Filter = fn i r => mr.Filter i r.nm}
+                          Filter = fn i r => mr.Filter i r.nm,
+                          Sort = Some (fn r1 r2 => mr.Sort r1.nm r2.nm)}
        in
            {Initialize = m.Initialize,
             Handlers = fn data => case m.Handlers data of
@@ -96,7 +100,8 @@ structure Direct = struct
                         CreateFilter : actual_input_filter.3,
                         DisplayFilter : source actual_input_filter.3 -> xbody,
                         Filter : actual_input_filter.3 -> actual_input_filter.1 -> bool,
-                        FilterIsNull : actual_input_filter.3 -> bool}
+                        FilterIsNull : actual_input_filter.3 -> bool,
+                        Sort : actual_input_filter.1 -> actual_input_filter.1 -> bool}
 
     con basicState = source
     con basicFilter = source
@@ -113,7 +118,8 @@ structure Direct = struct
                                           return (if m.FilterIsNull f then
                                                       True
                                                   else
-                                                      m.Filter f v)},
+                                                      m.Filter f v),
+                              Sort = m.Sort},
                              {Display = fn s => <xml><dyn signal={v <- signal s; return (m.Display v)}/></xml>,
                               Edit = m.Edit,
                               Initialize = fn v => source (case v of
@@ -134,7 +140,12 @@ structure Direct = struct
                                                   else
                                                       case v of
                                                           None => False
-                                                        | Some v => m.Filter f v) : signal bool})}
+                                                        | Some v => m.Filter f v),
+                              Sort = fn x y =>
+                                        case (x, y) of
+                                            (None, _) => True
+                                          | (Some x', Some y') => m.Sort x' y'
+                                          | _ => False})}
 
     fun nullable [global] [actual] [input] [filter] (m : meta (global, actual, input, filter)) =
         {Initialize = m.Initialize,
@@ -158,7 +169,8 @@ structure Direct = struct
                            case read s of
                                None => True
                              | Some n' => n' = n,
-               FilterIsNull = eq ""}
+               FilterIsNull = eq "",
+               Sort = le}
 
     type stringGlobal = unit
     type stringInput = basicState string
@@ -176,7 +188,8 @@ structure Direct = struct
                            case read s of
                                None => True
                              | Some n' => n' = n,
-               FilterIsNull = eq ""}
+               FilterIsNull = eq "",
+               Sort = le}
 
     type boolGlobal = unit
     type boolInput = basicState bool
@@ -199,7 +212,8 @@ structure Direct = struct
                                "0" => b = False
                              | "1" => b = True
                              | _ => True,
-               FilterIsNull = eq ""}
+               FilterIsNull = eq "",
+               Sort = le}
 
     functor Foreign (M : sig
                          con row :: {Type}
@@ -207,6 +221,7 @@ structure Direct = struct
                          val show_t : show t
                          val read_t : read t
                          val eq_t : eq t
+                         val ord_t : ord t
                          val inj_t : sql_injectable t
                          con nm :: Name
                          constraint [nm] ~ row
@@ -258,7 +273,8 @@ structure Direct = struct
                             Filter = fn s k => s <- signal s;
                                         return (case read s : option t of
                                                     None => True
-                                                  | Some k' => k' = k)},
+                                                  | Some k' => k' = k),
+                            Sort = le},
                            {Display = fn (_, kr) => case kr of
                                                           None => <xml>NULL</xml>
                                                         | Some (k, r) => <xml>{[render ({nm = k} ++ r)]}</xml>,
@@ -308,7 +324,8 @@ structure Direct = struct
                                                                                    Len = String.length s - 1})
                                                          : option t of
                                                         None => True
-                                                      | Some k => ko = Some k)})}
+                                                      | Some k => ko = Some k),
+                            Sort = le})}
     end
 end
 
@@ -323,7 +340,8 @@ fun computed [row] [t] (_ : show t) name (f : $row -> t) : colMeta row computedS
                           Validate = fn _ => return True,
                           CreateFilter = return (),
                           DisplayFilter = fn _ => <xml/>,
-                          Filter = fn _ _ => return True}}
+                          Filter = fn _ _ => return True,
+                          Sort = None}}
 fun computedHtml [row] name (f : $row -> xbody) : colMeta row computedState =
     {Initialize = return (),
      Handlers = fn () => {Header = name,
@@ -334,7 +352,8 @@ fun computedHtml [row] name (f : $row -> xbody) : colMeta row computedState =
                           Validate = fn _ => return True,
                           CreateFilter = return (),
                           DisplayFilter = fn _ => <xml/>,
-                          Filter = fn _ _ => return True}}
+                          Filter = fn _ _ => return True,
+                          Sort = None}}
 
 functor Make(M : sig
                  con key :: {Type}

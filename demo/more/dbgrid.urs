@@ -11,7 +11,8 @@ con colMeta' = fn (row :: {Type}) (input :: Type) (filter :: Type) =>
                    Validate : input -> signal bool,
                    CreateFilter : transaction filter,
                    DisplayFilter : filter -> xbody,
-                   Filter : filter -> $row -> signal bool}
+                   Filter : filter -> $row -> signal bool,
+                   Sort : option ($row -> $row -> bool)}
 
 con colMeta = fn (row :: {Type}) (global_input_filter :: (Type * Type * Type)) =>
                  {Initialize : transaction global_input_filter.1,
@@ -30,7 +31,8 @@ structure Direct : sig
                    Parse : actual_input_filter.2 -> signal (option actual_input_filter.1),
                    CreateFilter : transaction actual_input_filter.3,
                    DisplayFilter : actual_input_filter.3 -> xbody,
-                   Filter : actual_input_filter.3 -> actual_input_filter.1 -> signal bool}
+                   Filter : actual_input_filter.3 -> actual_input_filter.1 -> signal bool,
+                   Sort : actual_input_filter.1 -> actual_input_filter.1 -> bool}
 
     datatype metaBoth actual input filter =
              NonNull of metaBase (actual, input, filter) * metaBase (option actual, input, filter)
@@ -79,6 +81,7 @@ structure Direct : sig
                          val show_t : show t
                          val read_t : read t
                          val eq_t : eq t
+                         val ord_t : ord t
                          val inj_t : sql_injectable t
                          con nm :: Name
                          constraint [nm] ~ row

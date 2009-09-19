@@ -7,6 +7,18 @@ fun eq [a] (_ : eq a) =
                | (Some x, Some y) => x = y
                | _ => False)
 
+fun ord [a] (_ : ord a) =
+    mkOrd {Lt = fn x y =>
+                   case (x, y) of
+                       (None, Some _) => True
+                     | (Some x, Some y) => x < y
+                     | _ => False,
+           Le = fn x y =>
+                   case (x, y) of
+                       (None, _) => True
+                     | (Some x, Some y) => x <= y
+                     | _ => False}
+
 fun isNone [a] x =
     case x of
         None => True

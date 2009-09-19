@@ -7,7 +7,8 @@ con colMeta' = fn (row :: Type) (input :: Type) (filter :: Type) =>
                    Validate : input -> signal bool,
                    CreateFilter : transaction filter,
                    DisplayFilter : filter -> xbody,
-                   Filter : filter -> row -> signal bool}
+                   Filter : filter -> row -> signal bool,
+                   Sort : option (row -> row -> bool)}
                   
 con colMeta = fn (row :: Type) (global_input_filter :: (Type * Type * Type)) =>
                  {Initialize : transaction global_input_filter.1,
@@ -101,14 +102,19 @@ functor Make(M : sig
         rs <- List.mapM (newRow cols) init;
         Dlist.replace rows rs
 
-    fun render grid = <xml>
+    fun render (grid : grid) = <xml>
       <table class={tabl}>
         <tr class={tr}>
-          <th/> <th/> <th/>
+          <th/> <th/> <th><button value="No sort" onclick={set grid.Sort None}/></th>
           {foldRX2 [fst3] [colMeta M.row] [_]
                    (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
                                     data (meta : colMeta M.row p) =>
-                       <xml><th class={th}>{[(meta.Handlers data).Header]}</th></xml>)
+                       <xml><th class={th}>
+                         {case (meta.Handlers data).Sort of
+                              None => txt (meta.Handlers data).Header
+                            | sort => <xml><button value={(meta.Handlers data).Header}
+                                                             onclick={set grid.Sort sort}/></xml>}
+                       </th></xml>)
                    [_] M.folder grid.Cols M.cols}
         </tr>
 

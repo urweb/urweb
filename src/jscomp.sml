@@ -874,6 +874,18 @@ fun process file =
                                          str ")"],
                                  st)
                             end
+                          | EBinop ("strcmp", e1, e2) =>
+                            let
+                                val (e1, st) = jsE inner (e1, st)
+                                val (e2, st) = jsE inner (e2, st)
+                            in
+                                (strcat [str "strcmp(",
+                                         e1,
+                                         str ",",
+                                         e2,
+                                         str ")"],
+                                 st)
+                            end                                
                           | EBinop (s, e1, e2) =>
                             let
                                 val s =
