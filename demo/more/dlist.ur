@@ -83,15 +83,22 @@ fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] 
                                        val pos = case prev of
                                                      None => headPos dl
                                                    | Some prev => tailPos prev tl tlTop
-                                       val len = Option.mp (fn n => n - 1) len
                                    in
-                                       <xml><dyn signal={b <- filter v;
-                                                         return (if b then
-                                                                     f v pos
-                                                                 else
-                                                                     <xml/>)}/>
-                                         <dyn signal={tl' <- signal tl;
-                                                      return (render' (Some tl) tl' len)}/></xml>
+                                       <xml>
+                                         <dyn signal={b <- filter v;
+                                                      return <xml>
+                                                        {if b then
+                                                             f v pos
+                                                         else
+                                                             <xml/>}
+                                                        <dyn signal={tl' <- signal tl;
+                                                                     return (render' (Some tl) tl'
+                                                                                     (if b then
+                                                                                          Option.mp (fn n => n - 1) len
+                                                                                      else
+                                                                                          len))}/>
+                                                      </xml>}/>
+                                       </xml>
                                    end
 
                        fun skip pos hd =
