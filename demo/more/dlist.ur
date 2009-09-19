@@ -260,6 +260,21 @@ fun size [t] (dl : dlist t) =
         Empty => return 0
       | Nonempty {Head = hd, ...} => size' hd
 
+fun numPassing' [t] (f : t -> signal bool) (dl'' : dlist'' t) =
+    case dl'' of
+        Nil => return 0
+      | Cons (x, dl'') =>
+        b <- f x;
+        dl'' <- signal dl'';
+        n <- numPassing' f dl'';
+        return (if b then n + 1 else n)
+
+fun numPassing [t] (f : t -> signal bool) (dl : dlist t) =
+    dl' <- signal dl;
+    case dl' of
+        Empty => return 0
+      | Nonempty {Head = hd, ...} => numPassing' f hd
+
 fun foldl [t] [acc] (f : t -> acc -> signal acc) =
     let
         fun foldl'' (i : acc) (dl : dlist'' t) : signal acc =

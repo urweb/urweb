@@ -107,6 +107,18 @@ functor Make(M : sig
         rs <- List.mapM (newRow cols) init;
         Dlist.replace rows rs
 
+    fun myFilter grid all =
+        row <- signal all.Row;
+        foldR3 [colMeta M.row] [fst3] [thd3] [fn _ => M.row -> signal bool]
+               (fn [nm :: Name] [p :: (Type * Type * Type)]
+                                [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
+                                meta state filter combinedFilter row =>
+                   previous <- combinedFilter row;
+                   this <- (meta.Handlers state).Filter filter row;
+                   return (previous && this))
+               (fn _ => return True)
+               [_] M.folder M.cols grid.Cols grid.Filters row
+
     fun render (grid : grid) = <xml>
       <table class={tabl}>
         <tr class={tr}>
@@ -221,19 +233,17 @@ functor Make(M : sig
                                                              [_] M.folder grid.Cols M.cols cols)}/>
                                 </tr></xml>
                           end)
-                      {StartPosition = Monad.mp Some (signal grid.Position),
+                      {StartPosition = case M.pageLength of
+                                           None => return None
+                                         | Some len =>
+                                           avail <- Dlist.numPassing (myFilter grid) grid.Rows;
+                                           pos <- signal grid.Position;
+                                           return (Some (if pos >= avail then
+                                                             0
+                                                         else
+                                                             pos)),
                        MaxLength = return M.pageLength,
-                       Filter = fn all =>
-                                   row <- signal all.Row;
-                                   foldR3 [colMeta M.row] [fst3] [thd3] [fn _ => M.row -> signal bool]
-                                          (fn [nm :: Name] [p :: (Type * Type * Type)]
-                                                           [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
-                                                           meta state filter combinedFilter row =>
-                                              previous <- combinedFilter row;
-                                              this <- (meta.Handlers state).Filter filter row;
-                                              return (previous && this))
-                                          (fn _ => return True)
-                                          [_] M.folder M.cols grid.Cols grid.Filters row,
+                       Filter = myFilter grid,
                        Sort = f <- signal grid.Sort;
                               return (Option.mp (fn f r1 r2 => r1 <- signal r1.Row;
                                                     r2 <- signal r2.Row;
@@ -267,7 +277,7 @@ functor Make(M : sig
           {case M.pageLength of
                None => <xml/>
              | Some plen => <xml>
-               <dyn signal={avail <- Dlist.size grid.Rows;
+               <dyn signal={avail <- Dlist.numPassing (myFilter grid) grid.Rows;
                             return (if avail <= plen then
                                         <xml/>
                                     else
