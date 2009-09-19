@@ -13,6 +13,7 @@ val foldl : t ::: Type -> acc ::: Type -> (t -> acc -> signal acc) -> acc -> dli
 val render : ctx ::: {Unit} -> [ctx ~ body] => t ::: Type
              -> (t -> position -> xml (ctx ++ body) [] [])
              -> {StartPosition : signal (option int),
+                 MaxLength : signal (option int),
                  Filter : t -> signal bool,
                  Sort : signal (option (t -> t -> signal bool)) (* <= *)}
              -> dlist t

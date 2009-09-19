@@ -66,29 +66,33 @@ fun replace [t] dl ls =
             set dl (Nonempty {Head = Cons (x, hd), Tail = tlS})
         end
 
-fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter pos dl = <xml>
+fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter pos len dl = <xml>
   <dyn signal={dl' <- signal dl;
                case dl' of
                    Empty => return <xml/>
                  | Nonempty {Head = hd, Tail = tlTop} => 
                    let
-                       fun render' prev dl'' =
-                           case dl'' of
-                               Nil => <xml/>
-                             | Cons (v, tl) =>
-                               let
-                                   val pos = case prev of
-                                                 None => headPos dl
-                                               | Some prev => tailPos prev tl tlTop
-                               in
-                                   <xml><dyn signal={b <- filter v;
-                                                     return (if b then
-                                                                 f v pos
-                                                             else
-                                                                 <xml/>)}/>
-                                     <dyn signal={tl' <- signal tl;
-                                                  return (render' (Some tl) tl')}/></xml>
-                               end
+                       fun render' prev dl'' len =
+                           case len of
+                               Some 0 => <xml/>
+                             | _ =>
+                               case dl'' of
+                                   Nil => <xml/>
+                                 | Cons (v, tl) =>
+                                   let
+                                       val pos = case prev of
+                                                     None => headPos dl
+                                                   | Some prev => tailPos prev tl tlTop
+                                       val len = Option.mp (fn n => n - 1) len
+                                   in
+                                       <xml><dyn signal={b <- filter v;
+                                                         return (if b then
+                                                                     f v pos
+                                                                 else
+                                                                     <xml/>)}/>
+                                         <dyn signal={tl' <- signal tl;
+                                                      return (render' (Some tl) tl' len)}/></xml>
+                                   end
 
                        fun skip pos hd =
                            case pos of
@@ -101,15 +105,33 @@ fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] 
                                    skip (pos-1) tl'
                    in
                        case pos of
-                           None => return (render' None hd)
+                           None => return (render' None hd len)
                          | Some pos =>
                            hd <- skip pos hd;
-                           return (render' None hd)
+                           return (render' None hd len)
                    end}/>
 </xml>
 
-fun renderFlat [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter ls =
-    List.mapX (fn p => f p.1 p.2) ls
+fun renderFlat [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter =
+    let
+        fun renderFlat' len ls =
+            case len of
+                Some 0 => <xml/>
+              | _ =>
+                case ls of
+                    [] => <xml/>
+                  | p :: ls =>
+                    let
+                        val len =
+                            case len of
+                                None => None
+                              | Some n => Some (n - 1)
+                    in
+                        <xml>{f p.1 p.2}{renderFlat' len ls}</xml>
+                    end
+    in
+        renderFlat'
+    end
 
 val split [t] =
     let
@@ -158,11 +180,14 @@ fun sort [t] (cmp : t -> t -> signal bool) =
 
 fun render [ctx] [ctx ~ body] [t] f (r : {Filter : t -> signal bool,
                                           Sort : signal (option (t -> t -> signal bool)),
-                                          StartPosition : signal (option int)}) dl = <xml>
-    <dyn signal={cmp <- r.Sort;
+                                          StartPosition : signal (option int),
+                                          MaxLength : signal (option int)}) dl = <xml>
+    <dyn signal={len <- r.MaxLength;
+                 cmp <- r.Sort;
                  pos <- r.StartPosition;
+
                  case cmp of
-                     None => return (renderDyn f r.Filter pos dl)
+                     None => return (renderDyn f r.Filter pos len dl)
                    | Some cmp =>
                      dl' <- signal dl;
                      elems <- (case dl' of
@@ -201,7 +226,7 @@ fun render [ctx] [ctx ~ body] [t] f (r : {Filter : t -> signal bool,
                                  None => elems
                                | Some pos => skip pos elems
                      in
-                         return (renderFlat f r.Filter elems)
+                         return (renderFlat f r.Filter len elems)
                      end}/>
 </xml>
 

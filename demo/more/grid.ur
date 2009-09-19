@@ -217,6 +217,7 @@ functor Make(M : sig
                                 </tr></xml>
                           end)
                       {StartPosition = return (Some 1),
+                       MaxLength = return (Some 2),
                        Filter = fn all =>
                                    row <- signal all.Row;
                                    foldR3 [colMeta M.row] [fst3] [thd3] [fn _ => M.row -> signal bool]
