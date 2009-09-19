@@ -1,4 +1,13 @@
 ========
+20090919
+========
+
+- Bug fixes
+- Optimization improvements
+- Expanded grid demo in demo/more: optional columns, sorting, filtering,
+  paging, selecting rows, aggregate row
+
+========
 20090912
 ========
 
