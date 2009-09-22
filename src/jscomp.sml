@@ -690,7 +690,7 @@ fun process file =
 
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str ("{c:\"f\",f:" ^ name ^ ",:a:cons("),
+                                (strcat [str ("{c:\"f\",f:" ^ name ^ ",a:cons("),
                                          e,
                                          str ",null)}"],
                                  st)
@@ -728,7 +728,7 @@ fun process file =
                                               let
                                                   val (e, st) = jsE inner (e, st)
                                               in
-                                                  (strcat [str ("cons({n:\"" ^ x ^ ",v:"),
+                                                  (strcat [str ("cons({n:\"" ^ x ^ "\",v:"),
                                                            e,
                                                            str "},",
                                                            es,
