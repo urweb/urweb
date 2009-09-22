@@ -882,11 +882,11 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str "{c:\"b\",e1:",
+                                (strcat [str "{c:\"f\",f:sb,a:cons(",
                                          e1,
-                                         str ",e2:",
+                                         str ",cons(",
                                          e2,
-                                         str "}"],
+                                         str ",null))}"],
                                  st)
                             end
                           | ESignalSource e =>
