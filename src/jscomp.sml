@@ -51,132 +51,15 @@ type state = {
      maxName : int
 }
 
-fun varDepth (e, _) =
-    case e of
-        EPrim _ => 0
-      | ERel _ => 0
-      | ENamed _ => 0
-      | ECon (_, _, NONE) => 0
-      | ECon (_, _, SOME e) => varDepth e
-      | ENone _ => 0
-      | ESome (_, e) => varDepth e
-      | EFfi _ => 0
-      | EFfiApp (_, _, es) => foldl Int.max 0 (map varDepth es)
-      | EApp (e1, e2) => Int.max (varDepth e1, varDepth e2)
-      | EAbs _ => 0
-      | EUnop (_, e) => varDepth e
-      | EBinop (_, e1, e2) => Int.max (varDepth e1, varDepth e2)
-      | ERecord xes => foldl Int.max 0 (map (fn (_, e, _) => varDepth e) xes)
-      | EField (e, _) => varDepth e
-      | ECase (e, pes, _) =>
-        foldl Int.max (varDepth e)
-        (map (fn (p, e) => E.patBindsN p + varDepth e) pes)
-      | EStrcat (e1, e2) => Int.max (varDepth e1, varDepth e2)
-      | EError (e, _) => varDepth e
-      | EReturnBlob {blob = e1, mimeType = e2, ...} => Int.max (varDepth e1, varDepth e2)
-      | EWrite e => varDepth e
-      | ESeq (e1, e2) => Int.max (varDepth e1, varDepth e2)
-      | ELet (_, _, e1, e2) => Int.max (varDepth e1, 1 + varDepth e2)
-      | EClosure _ => 0
-      | EQuery _ => 0
-      | EDml _ => 0
-      | ENextval _ => 0
-      | EUnurlify _ => 0
-      | EJavaScript _ => 0
-      | ESignalReturn e => varDepth e
-      | ESignalBind (e1, e2) => Int.max (varDepth e1, varDepth e2)
-      | ESignalSource e => varDepth e
-      | EServerCall (e, ek, _, _) => Int.max (varDepth e, varDepth ek)
-      | ERecv (e, ek, _) => Int.max (varDepth e, varDepth ek)
-      | ESleep (e, ek) => Int.max (varDepth e, varDepth ek)
-
-fun closedUpto d =
-    let
-        fun cu inner (e, _) =
-            case e of
-                EPrim _ => true
-              | ERel n => n < inner orelse n - inner >= d
-              | ENamed _ => true
-              | ECon (_, _, NONE) => true
-              | ECon (_, _, SOME e) => cu inner e
-              | ENone _ => true
-              | ESome (_, e) => cu inner e
-              | EFfi _ => true
-              | EFfiApp (_, _, es) => List.all (cu inner) es
-              | EApp (e1, e2) => cu inner e1 andalso cu inner e2
-              | EAbs (_, _, _, e) => cu (inner + 1) e
-              | EUnop (_, e) => cu inner e
-              | EBinop (_, e1, e2) => cu inner e1 andalso cu inner e2
-              | ERecord xes => List.all (fn (_, e, _) => cu inner e) xes
-              | EField (e, _) => cu inner e
-              | ECase (e, pes, _) =>
-                cu inner e
-                andalso List.all (fn (p, e) => cu (inner + E.patBindsN p) e) pes
-              | EStrcat (e1, e2) => cu inner e1 andalso cu inner e2
-              | EError (e, _) => cu inner e
-              | EReturnBlob {blob = e1, mimeType = e2, ...} => cu inner e1 andalso cu inner e2
-              | EWrite e => cu inner e
-              | ESeq (e1, e2) => cu inner e1 andalso cu inner e2
-              | ELet (_, _, e1, e2) => cu inner e1 andalso cu (inner + 1) e2
-              | EClosure (_, es) => List.all (cu inner) es
-              | EQuery {query, body, initial, ...} =>
-                cu inner query
-                andalso cu (inner + 2) body
-                andalso cu inner initial
-              | EDml e => cu inner e
-              | ENextval e => cu inner e
-              | EUnurlify (e, _) => cu inner e
-              | EJavaScript (_, e) => cu inner e
-              | ESignalReturn e => cu inner e
-              | ESignalBind (e1, e2) => cu inner e1 andalso cu inner e2
-              | ESignalSource e => cu inner e
-              | EServerCall (e, ek, _, _) => cu inner e andalso cu inner ek
-              | ERecv (e, ek, _) => cu inner e andalso cu inner ek
-              | ESleep (e, ek) => cu inner e andalso cu inner ek
-    in
-        cu 0
-    end
-
 fun strcat loc es =
     case es of
         [] => (EPrim (Prim.String ""), loc)
       | [x] => x
       | x :: es' => (EStrcat (x, strcat loc es'), loc)
 
-fun patDepth (p, _) =
-    case p of
-        PWild => 0
-      | PVar _ => 0
-      | PPrim _ => 0
-      | PCon (_, _, NONE) => 0
-      | PCon (_, _, SOME p) => 1 + patDepth p
-      | PRecord xpts => foldl Int.max 0 (map (fn (_, p, _) => 1 + patDepth p) xpts)
-      | PNone _ => 0
-      | PSome (_, p) => 1 + patDepth p
-
-val compact =
-    U.Exp.mapB {typ = fn t => t,
-                exp = fn inner => fn e =>
-                                     case e of
-                                         ERel n =>
-                                         if n >= inner then
-                                             ERel (n - inner)
-                                         else
-                                             e
-                                       | _ => e,
-                bind = fn (inner, b) =>
-                          case b of
-                              U.Exp.RelE _ => inner+1
-                            | _ => inner}
-
 exception CantEmbed of typ
 
-fun inString {needle, haystack} =
-    let
-        val (_, suffix) = Substring.position needle (Substring.full haystack)
-    in
-        not (Substring.isEmpty suffix)
-    end
+fun inString {needle, haystack} = String.isSubstring needle haystack
 
 fun process file =
     let
@@ -520,14 +403,12 @@ fun process file =
                     let
                         val str = str loc
 
-                        fun var n = Int.toString (len + inner - n - 1)
-
                         fun patCon pc =
                             case pc of
                                 PConVar n => str (Int.toString n)
                               | PConFfi {mod = "Basis", con = "True", ...} => str "true"
                               | PConFfi {mod = "Basis", con = "False", ...} => str "false"
-                              | PConFfi {con, ...} => str ("\"_" ^ con ^ "\"")
+                              | PConFfi {con, ...} => str ("\"" ^ con ^ "\"")
 
                         fun unsupported s =
                             (EM.errorAt loc (s ^ " in code to be compiled to JavaScript[2]");
@@ -566,98 +447,56 @@ fun process file =
                                   | _ => str (Prim.toString p)
                             end
 
-                        fun jsPat depth inner (p, _) succ fail =
+                        fun jsPat (p, _) =
                             case p of
-                                PWild => succ
-                              | PVar _ => strcat [str ("(_" ^ Int.toString (len + inner) ^ "=d"
-                                                       ^ Int.toString depth ^ ","),
-                                                  succ,
-                                                  str ")"]
-                              | PPrim p => strcat [str ("(d" ^ Int.toString depth ^ "=="),
+                                PWild => str "{c:\"w\"}"
+                              | PVar _ => str "{c:\"v\"}"
+                              | PPrim p => strcat [str "{c:\"c\",v:",
                                                    jsPrim p,
-                                                   str "?",
-                                                   succ,
-                                                   str ":",
-                                                   fail,
-                                                   str ")"]
+                                                   str "}"]
                               | PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE) =>
-                                strcat [str ("(d" ^ Int.toString depth ^ "?"),
-                                        succ,
-                                        str ":",
-                                        fail,
-                                        str ")"]
+                                str "{c:\"c\",v:true}"
                               | PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE) =>
-                                strcat [str ("(d" ^ Int.toString depth ^ "?"),
-                                        fail,
-                                        str ":",
-                                        succ,
-                                        str ")"]
+                                str "{c:\"c\",v:false}"
                               | PCon (Option, _, NONE) =>
-                                strcat [str ("(d" ^ Int.toString depth ^ "!=null?"),
-                                        fail,
-                                        str ":",
-                                        succ,
-                                        str ")"]
+                                str "{c:\"c\",v:null}"
                               | PCon (Option, PConVar n, SOME p) =>
                                 (case IM.find (someTs, n) of
                                      NONE => raise Fail "Jscomp: Not in someTs"
-                                   | SOME t =>
-                                     strcat [str ("(d" ^ Int.toString depth ^ "!=null?(d"
-                                                  ^ Int.toString (depth+1) ^ "=d" ^ Int.toString depth
-                                                  ^ (if isNullable t then
-                                                         ".v,"
-                                                     else
-                                                         "")
-                                                  ^ ","),
-                                             jsPat (depth+1) inner p succ fail,
-                                             str "):",
-                                             fail,
-                                             str ")"])
-                              | PCon (_, pc, NONE) =>
-                                strcat [str ("(d" ^ Int.toString depth ^ "=="),
-                                        patCon pc,
-                                        str "?",
-                                        succ,
-                                        str ":",
-                                        fail,
-                                        str ")"]
-                              | PCon (_, pc, SOME p) =>
-                                strcat [str ("(d" ^ Int.toString depth ^ ".n=="),
-                                        patCon pc,
-                                        str ("?(d" ^ Int.toString (depth+1) ^ "=d" ^ Int.toString depth ^ ".v,"),
-                                        jsPat (depth+1) inner p succ fail,
-                                        str "):",
-                                        fail,
-                                        str ")"]
-                              | PRecord xps =>
-                                let
-                                    val (_, succ) = foldl
-                                                        (fn ((x, p, _), (inner, succ)) =>
-                                                            (inner + E.patBindsN p,
-                                                             strcat [str ("(d" ^ Int.toString (depth+1) ^ "=d"
-                                                                          ^ Int.toString depth ^ "._" ^ x ^ ","),
-                                                                     jsPat (depth+1) inner p succ fail,
-                                                                     str ")"]))
-                                                        (inner, succ) xps
-                                in
-                                    succ
-                                end
-                              | PNone _ => strcat [str ("(d" ^ Int.toString depth ^ "!=null?"),
-                                                   fail,
-                                                   str ":",
-                                                   succ,
-                                                   str ")"]
-                              | PSome (t, p) => strcat [str ("(d" ^ Int.toString depth ^ "!=null?(d" ^ Int.toString (depth+1)
-                                                             ^ "=d" ^ Int.toString depth
+                                   | SOME t => strcat [str ("{c:\"s\",n:"
+                                                            ^ (if isNullable t then
+                                                                   "true"
+                                                               else
+                                                                   "false")
+                                                            ^ ",p:"),
+                                                       jsPat p,
+                                                       str "}"])
+                              | PCon (_, pc, NONE) => strcat [str "{c:\"0\",n:",
+                                                              patCon pc,
+                                                              str "}"]
+                              | PCon (_, pc, SOME p) => strcat [str "{c:\"1\",n:",
+                                                                patCon pc,
+                                                                str ",p:",
+                                                                jsPat p,
+                                                                str "}"]
+                              | PRecord xps => strcat [str "{c:\"r\",l:",
+                                                       foldr (fn ((x, p, _), e) =>
+                                                                 strcat [str ("cons({n:\"" ^ x ^ "\",p:"),
+                                                                         jsPat p,
+                                                                         str "},",
+                                                                         e,
+                                                                         str ")"])
+                                                             (str "null") xps,
+                                                       str "}"]
+                              | PNone _ => str "{c:\"c\",v:null}"
+                              | PSome (t, p) => strcat [str ("{c:\"s\",n:"
                                                              ^ (if isNullable t then
-                                                                    ".v"
+                                                                    "true"
                                                                 else
-                                                                    "")
-                                                             ^ ","),
-                                                        jsPat (depth+1) inner p succ fail,
-                                                        str "):",
-                                                        fail,
-                                                        str ")"]
+                                                                    "false")
+                                                             ^ ",p:"),
+                                                        jsPat p,
+                                                        str "}"]
 
                         val jsifyString = String.translate (fn #"\"" => "\\\""
                                                              | #"\\" => "\\\\"
@@ -677,39 +516,28 @@ fun process file =
                                       raise Fail "Jscomp: deStrcat")
 
                         val quoteExp = quoteExp loc
-
-                        val hasQuery = U.Exp.exists {typ = fn _ => false,
-                                                     exp = fn EQuery _ => true
-                                                            | _ => false}
-
-                        val indirectQuery = U.Exp.exists {typ = fn _ => false,
-                                                          exp = fn ENamed n =>
-                                                                   (case IM.find (nameds, n) of
-                                                                        NONE => false
-                                                                      | SOME e => hasQuery e)
-                                                                 | _ => false}
-
                     in
-                        (*if indirectQuery e then
-                            Print.preface ("Indirect", MonoPrint.p_exp MonoEnv.empty e)
-                        else
-                            ();*)
-
                         (*Print.prefaces "jsE" [("e", MonoPrint.p_exp MonoEnv.empty e),
                                               ("inner", Print.PD.string (Int.toString inner))];*)
 
                         case #1 e of
-                            EPrim p => (jsPrim p, st)
+                            EPrim p => (strcat [str "{c:\"c\",v:",
+                                                jsPrim p,
+                                                str "}"],
+                                        st)
                           | ERel n =>
                             if n < inner then
-                                (str ("_" ^ var n), st)
+                                (str ("{c:\"v\",n:" ^ Int.toString n ^ "}"), st)
                             else
                                 let
                                     val n = n - inner
                                     (*val () = Print.prefaces "quote" [("t", MonoPrint.p_typ MonoEnv.empty
                                                                            (List.nth (outer, n)))]*)
+                                    val (e, st) = quoteExp (List.nth (outer, n)) ((ERel n, loc), st)
                                 in
-                                    quoteExp (List.nth (outer, n)) ((ERel n, loc), st)
+                                    (strcat [str "{c:\"c\",v:",
+                                             e,
+                                             str "}"], st)
                                 end
 
                           | ENamed n =>
@@ -731,11 +559,11 @@ fun process file =
                                                           maxName = #maxName st}
 
                                                 val old = e
-                                                val (e, st) = jsExp mode [] 0 (e, st)
+                                                val (e, st) = jsExp mode [] (e, st)
                                                 val new = e
                                                 val e = deStrcat 0 e
                                                 
-                                                val sc = "_n" ^ Int.toString n ^ "=" ^ e ^ ";\n"
+                                                val sc = "urfuncs[" ^ Int.toString n ^ "] = " ^ e ^ ";\n"
                                             in
                                                 (*Print.prefaces "jsify'" [("old", MonoPrint.p_exp MonoEnv.empty old),
                                                                          ("new", MonoPrint.p_exp MonoEnv.empty new)];*)
@@ -748,10 +576,10 @@ fun process file =
                                                  maxName = #maxName st}
                                             end
                             in
-                                (str ("_n" ^ Int.toString n), st)
+                                (str ("{c:\"n\",n:" ^ Int.toString n ^ "}"), st)
                             end
 
-                          | ECon (Option, _, NONE) => (str "null", st)
+                          | ECon (Option, _, NONE) => (str "{c:\"c\",v:null}", st)
                           | ECon (Option, PConVar n, SOME e) =>
                             let
                                 val (e, st) = jsE inner (e, st)
@@ -760,32 +588,35 @@ fun process file =
                                     NONE => raise Fail "Jscomp: Not in someTs [2]"
                                   | SOME t =>
                                     (if isNullable t then
-                                         strcat [str "{v:",
+                                         strcat [str "{c:\"s\",v:",
                                                  e,
                                                  str "}"]
                                      else
                                          e, st)
                             end
 
-                          | ECon (_, pc, NONE) => (patCon pc, st)
+                          | ECon (_, pc, NONE) => (strcat [str "{c:\"c\",v:",
+                                                           patCon pc,
+                                                           str "}"],
+                                                   st)
                           | ECon (_, pc, SOME e) =>
                             let
                                 val (s, st) = jsE inner (e, st)
                             in
-                                (strcat [str "{n:",
+                                (strcat [str "{c:\"1\",n:",
                                          patCon pc,
                                          str ",v:",
                                          s,
                                          str "}"], st)
                             end
 
-                          | ENone _ => (str "null", st)
+                          | ENone _ => (str "{c:\"c\",v:null}", st)
                           | ESome (t, e) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
                                 (if isNullable t then
-                                     strcat [str "{v:", e, str "}"]
+                                     strcat [str "{c:\"s\",v:", e, str "}"]
                                  else
                                      e, st)
                             end
@@ -798,12 +629,11 @@ fun process file =
                                                         "ERROR")
                                              | SOME s => s
                             in
-                                (str name, st)
+                                (str ("{c:\"c\",v:" ^ name ^ "}"), st)
                             end
-                          | EFfiApp ("Basis", "sigString", [_]) => (strcat [str "\"",
-                                                                           e,
-                                                                           str "\""], st)
-                          | EFfiApp ("Basis", "kc", []) => (str "kc(event)", st)
+                          | EFfiApp ("Basis", "sigString", [_]) => (strcat [str "{c:\"c\",v:\"",
+                                                                            e,
+                                                                            str "\"}"], st)
                           | EFfiApp (m, x, args) =>
                             let
                                 val name = case Settings.jsFunc (m, x) of
@@ -811,34 +641,24 @@ fun process file =
                                                                         ^ x ^ " in JavaScript");
                                                         "ERROR")
                                              | SOME s => s
+
+                                val (e, st) = foldr (fn (e, (acc, st)) =>
+                                                        let
+                                                            val (e, st) = jsE inner (e, st)
+                                                        in
+                                                            (strcat [str "cons(",
+                                                                     e,
+                                                                     str ",",
+                                                                     acc,
+                                                                     str ")"],
+                                                             st)
+                                                        end)
+                                              (str "null", st) args
                             in
-                                case args of
-                                    [] => (str (name ^ "()"), st)
-                                  | [e] =>
-                                    let
-                                        val (e, st) = jsE inner (e, st)
-                                    in
-                                        (strcat [str (name ^ "("),
-                                                 e,
-                                                 str ")"], st)
-                                    end
-                                  | e :: es =>
-                                    let
-                                        val (e, st) = jsE inner (e, st)
-                                        val (es, st) = ListUtil.foldlMapConcat
-                                                           (fn (e, st) =>
-                                                               let
-                                                                   val (e, st) = jsE inner (e, st)
-                                                               in
-                                                                   ([str ",", e], st)
-                                                               end)
-                                                           st es
-                                    in
-                                        (strcat (str (name ^ "(")
-                                                 :: e
-                                                 :: es
-                                                 @ [str ")"]), st)
-                                    end
+                                (strcat [str ("{c:\"f\",f:" ^ name ^ ",a:"),
+                                         e,
+                                         str "}"],
+                                 st)
                             end
 
                           | EApp (e1, e2) =>
@@ -846,90 +666,80 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [e1, str "(", e2, str ")"], st)
+                                (strcat [str "{c:\"a\",f:",
+                                         e1,
+                                         str ",x:",
+                                         e2,
+                                         str "}"], st)
                             end
                           | EAbs (_, _, _, e) =>
                             let
-                                val locals = List.tabulate
-                                                 (varDepth e,
-                                               fn i => str ("var _" ^ Int.toString (len + inner + i + 1) ^ ";"))
                                 val (e, st) = jsE (inner + 1) (e, st)
                             in
-                                (strcat (str ("function(_"
-                                              ^ Int.toString (len + inner)
-                                              ^ "){")
-                                         :: locals
-                                         @ [str "return ",
-                                            e,
-                                            str "}"]),
-                                 st)
+                                (strcat [str "{c:\"l\",b:",
+                                         e,
+                                         str "}"], st)
                             end
 
                           | EUnop (s, e) =>
                             let
+                                val name = case s of
+                                               "!" => "not"
+                                             | "-" => "neg"
+                                             | _ => raise Fail "Jscomp: Unknown unary operator"
+
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str ("(" ^ s),
+                                (strcat [str ("{c:\"f\",f:" ^ name ^ ",:a:cons("),
                                          e,
-                                         str ")"],
+                                         str ",null)}"],
                                  st)
                             end
-                          | EBinop ("strcmp", e1, e2) =>
-                            let
-                                val (e1, st) = jsE inner (e1, st)
-                                val (e2, st) = jsE inner (e2, st)
-                            in
-                                (strcat [str "strcmp(",
-                                         e1,
-                                         str ",",
-                                         e2,
-                                         str ")"],
-                                 st)
-                            end                                
                           | EBinop (s, e1, e2) =>
                             let
-                                val s =
-                                    case s of
-                                        "!strcmp" => "=="
-                                      | _ => s
+                                val name = case s of
+                                               "==" => "eq"
+                                             | "!strcmp" => "eq"
+                                             | "+" => "plus"
+                                             | "-" => "minus"
+                                             | "*" => "times"
+                                             | "/" => "div"
+                                             | "%" => "mod"
+                                             | "<" => "lt"
+                                             | "<=" => "le"
+                                             | _ => raise Fail "Jscomp: Unknown binary operator"
 
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str "(",
+                                (strcat [str ("{c:\"f\",f:" ^ name ^ ",a:cons("),
                                          e1,
-                                         str s,
+                                         str ",cons(",
                                          e2,
-                                         str ")"],
+                                         str ",null))}"],
                                  st)
                             end
 
-                          | ERecord [] => (str "null", st)
-                          | ERecord [(x, e, _)] =>
+                          | ERecord [] => (str "{c:\"c\",v:null}", st)
+                          | ERecord xes =>
                             let
-                                val (e, st) = jsE inner (e, st)
-                            in
-                                (strcat [str ("{_" ^ x ^ ":"), e, str "}"], st)
-                            end
-                          | ERecord ((x, e, _) :: xes) =>
-                            let
-                                val (e, st) = jsE inner (e, st)
-
                                 val (es, st) =
                                     foldr (fn ((x, e, _), (es, st)) =>
                                               let
                                                   val (e, st) = jsE inner (e, st)
                                               in
-                                                  (str (",_" ^ x ^ ":")
-                                                   :: e
-                                                   :: es,
+                                                  (strcat [str ("cons({n:\"" ^ x ^ ",v:"),
+                                                           e,
+                                                           str "},",
+                                                           es,
+                                                           str ")"],
                                                    st)
                                               end)
-                                          ([str "}"], st) xes
+                                          (str "null", st) xes
                             in
-                                (strcat (str ("{_" ^ x ^ ":")
-                                         :: e
-                                         :: es),
+                                (strcat [str "{c:\"r\",l:",
+                                         es,
+                                         str "}"],
                                  st)
                             end
                           | EField (e', x) =>
@@ -938,8 +748,9 @@ fun process file =
                                     let
                                         val (e', st) = jsE inner (e', st)
                                     in
-                                        (strcat [e',
-                                                 str ("._" ^ x)], st)
+                                        (strcat [str "{c:\".\",r:",
+                                                 e',
+                                                 str (",f:\"" ^ x ^ "\"}")], st)
                                     end
 
                                 fun seek (e, xs) =
@@ -960,8 +771,12 @@ fun process file =
 
                                                 val e = (ERel n, loc)
                                                 val e = foldl (fn (x, e) => (EField (e, x), loc)) e xs
+                                                val (e, st) = quoteExp t (e, st)
                                             in
-                                                quoteExp t (e, st)
+                                                (strcat [str "{c:\"c\",v:",
+                                                         e,
+                                                         str "}"],
+                                                 st)
                                             end
                                       | EField (e', x) => seek (e', x :: xs)
                                       | _ => default ()
@@ -969,43 +784,31 @@ fun process file =
                                 seek (e', [x])
                             end  
 
-                          | ECase (e', pes, {result, ...}) =>
+                          | ECase (e', pes, _) =>
                             let
-                                val plen = length pes
+                                val (e', st) = jsE inner (e', st)
 
-                                val (cases, st) = ListUtil.foldliMap
-                                                      (fn (i, (p, e), st) =>
-                                                          let
-                                                              val (e, st) = jsE (inner + E.patBindsN p) (e, st)
-                                                              val fail =
-                                                                  if i = plen - 1 then
-                                                                      str ("pf(\"" ^ ErrorMsg.spanToString loc ^ "\")")
-                                                                  else
-                                                                      str ("c" ^ Int.toString (i+1) ^ "()")
-                                                              val c = jsPat 0 inner p e fail
-                                                          in
-                                                              (strcat [str ("c" ^ Int.toString i ^ "=function(){return "),
-                                                                       c,
-                                                                       str "},"],
-                                                               st)
-                                                          end)
-                                                      st pes
-
-                                val depth = foldl Int.max 0 (map (fn (p, _) => 1 + patDepth p) pes)
-                                val normalDepth = foldl Int.max 0 (map (fn (_, e) => 1 + varDepth e) pes)
-                                val (e, st) = jsE inner (e', st)
-
-                                val len = inner + len
-                                val normalVars = List.tabulate (normalDepth, fn n => "_" ^ Int.toString (n + len))
-                                val patVars = List.tabulate (depth, fn n => "d" ^ Int.toString n)
-                                val caseVars = ListUtil.mapi (fn (i, _) => "c" ^ Int.toString i) pes
+                                val (ps, st) =
+                                    foldr (fn ((p, e), (ps, st)) =>
+                                              let
+                                                  val (e, st) = jsE inner (e, st)
+                                              in
+                                                  (strcat [str "cons({p:",
+                                                           jsPat p,
+                                                           str ",b:",
+                                                           e,
+                                                           str "},",
+                                                           ps,
+                                                           str ")"],
+                                                   st)
+                                              end)
+                                          (str "null", st) pes
                             in
-                                (strcat (str "(function (){ var "
-                                         :: str (String.concatWith "," (normalVars @ patVars @ caseVars) ^ ";d0=")
-                                         :: e
-                                         :: str ";\nreturn ("
-                                         :: List.revAppend (cases,
-                                                            [str "c0()) } ())"])), st)
+                                (strcat [str "{c:\"m\",e:",
+                                         e,
+                                         str ",p:",
+                                         ps,
+                                         str "}"], st)
                             end
 
                           | EStrcat (e1, e2) =>
@@ -1013,24 +816,15 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str "cat(", e1, str ",", e2, str ")"], st)
+                                (strcat [str "{c:\"f\",f:cat,a:cons(", e1, str ",cons(", e2, str ",null))}"], st)
                             end
 
                           | EError (e, _) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "er(", e, str ")"],
+                                (strcat [str "{c:\"f\",f:er,a:cons(", e, str ",null)}"],
                                  st)
-                            end
-
-                          | EWrite e =>
-                            let
-                                val (e, st) = jsE inner (e, st)
-                            in
-                                (strcat [str "document.write(",
-                                         e,
-                                         str ".v)"], st)
                             end
 
                           | ESeq (e1, e2) =>
@@ -1038,18 +832,18 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str "(", e1, str ",", e2, str ")"], st)
+                                (strcat [str "{c:\";\",e1:", e1, str ",e2:", e2, str "}"], st)
                             end
                           | ELet (_, _, e1, e2) =>
                             let
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE (inner + 1) (e2, st)
                             in
-                                (strcat [str ("(_" ^ Int.toString (len + inner) ^ "="),
+                                (strcat [str "{c:\"=\",e1:",
                                          e1,
-                                         str ",",
+                                         str ",e2:",
                                          e2,
-                                         str ")"], st)
+                                         str "}"], st)
                             end
 
                           | EJavaScript (Source _, e) =>
@@ -1057,21 +851,16 @@ fun process file =
                              jsE inner (e, st))
                           | EJavaScript (_, e) =>
                             let
-                                val locals = List.tabulate
-                                                 (varDepth e,
-                                               fn i => str ("var _" ^ Int.toString (len + inner + i) ^ ";"))
-
                                 val (e, st) = jsE inner (e, st)
                             in
                                 foundJavaScript := true;
-                                (strcat (str "cs(function(){"
-                                         :: locals
-                                         @ [str "return ",
-                                            (*compact inner*) e,
-                                            str "})"]),
+                                (strcat [str "{c:\"e\",e:",
+                                         e,
+                                         str "}"],
                                  st)
                             end
 
+                          | EWrite _ => unsupported "EWrite"
                           | EClosure _ => unsupported "EClosure"
                           | EQuery _ => unsupported "Query"
                           | EDml _ => unsupported "DML"
@@ -1083,9 +872,9 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "sr(",
+                                (strcat [str "{c:\"f\",f:sr,a:cons(",
                                          e,
-                                         str ")"],
+                                         str ",null)}"],
                                  st)
                             end
                           | ESignalBind (e1, e2) =>
@@ -1093,20 +882,20 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str "sb(",
+                                (strcat [str "{c:\"b\",e1:",
                                          e1,
-                                         str ",",
+                                         str ",e2:",
                                          e2,
-                                         str ")"],
+                                         str "}"],
                                  st)
                             end
                           | ESignalSource e =>
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "ss(",
+                                (strcat [str "{c:\"f\",f:ss,a:cons(",
                                          e,
-                                         str ")"],
+                                         str ",null)}"],
                                  st)
                             end
 
@@ -1116,16 +905,18 @@ fun process file =
                                 val (ek, st) = jsE inner (ek, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str ("rc(cat(\"" ^ Settings.getUrlPrefix () ^ "\","),
+                                (strcat [str ("{c:\"f\",f:rc,a:cons({c:\"c\",v:\""
+                                              ^ Settings.getUrlPrefix ()
+                                              ^ "\"},cons("),
                                          e,
-                                         str ("), function(s){var t=s.split(\"/\");var i=0;return "
-                                              ^ unurl ^ "},"),
+                                         str (",cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
+                                              ^ unurl ^ "}},cons({c:\"!\",e:"),
                                          ek,
-                                         str (","
+                                         str ("},cons("
                                               ^ (case eff of
                                                      ReadCookieWrite => "true"
                                                    | _ => "false")
-                                              ^ ")")],
+                                              ^ ",null)))))}")],
                                  st)
                             end
 
@@ -1135,12 +926,12 @@ fun process file =
                                 val (ek, st) = jsE inner (ek, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str "rv(",
+                                (strcat [str ("{c:\"f\",f:rv,a:cons("),
                                          e,
-                                         str (", function(s){var t=s.split(\"/\");var i=0;return "
-                                              ^ unurl ^ "},"),
+                                         str (",cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
+                                              ^ unurl ^ "}},cons({c:\"!\",e:"),
                                          ek,
-                                         str ")"],
+                                         str ("},null)))}")],
                                  st)
                             end
 
@@ -1149,18 +940,17 @@ fun process file =
                                 val (e, st) = jsE inner (e, st)
                                 val (ek, st) = jsE inner (ek, st)
                             in
-                                (strcat [str "window.setTimeout(",
+                                (strcat [str "{c:\"f\",f:window.setTimeout,a:cons(",
                                          ek,
-                                         str ", ",
+                                         str ",cons(",
                                          e,
-                                         str ")"],
+                                         str ",null))}"],
                                  st)
                             end
                     end
             in
-                jsE
+                jsE 0
             end
-
 
         fun patBinds ((p, _), env) =
             case p of
@@ -1350,28 +1140,9 @@ fun process file =
                  end
 
                | EJavaScript (m, e') =>
-                 (let
-                      val len = length outer
-                      fun str s = (EPrim (Prim.String s), #2 e')
-
-                      val locals = List.tabulate
-                                       (varDepth e',
-                                     fn i => str ("var _" ^ Int.toString (len + i) ^ ";"))
-
-                      val (e', st) = jsExp m outer 0 (e', st)
-
-                      val e' =
-                          case locals of
-                              [] => e'
-                            | _ =>
-                              strcat (#2 e') (str "(function(){"
-                                              :: locals
-                                              @ [str "return ",
-                                                 e',
-                                                 str "}())"])
-                  in
-                      (e', st)
-                  end handle CantEmbed _ => (e, st))
+                 (foundJavaScript := true;
+                  jsExp m outer (e', st)
+                  handle CantEmbed _ => (e, st))
 
                | ESignalReturn e =>
                  let

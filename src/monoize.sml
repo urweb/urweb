@@ -2522,17 +2522,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                     | (L'.TFun (dom, _), _) =>
                                       let
                                           val s' = " " ^ lowercaseFirst x ^ "='"
-                                          val e = case #1 dom of
-                                                      L'.TRecord [] => (L'.EApp (e, (L'.ERecord [], loc)), loc)
-                                                    | _ => (L'.EApp ((L'.EApp (e, (L'.EFfiApp ("Basis", "kc", []), loc)),
-                                                                      loc), (L'.ERecord [], loc)), loc)
+                                          val (e, s') =
+                                              case #1 dom of
+                                                  L'.TRecord [] => ((L'.EApp (e, (L'.ERecord [], loc)), loc), s')
+                                                | _ => ((L'.EApp ((L'.EApp (e, (L'.EFfiApp ("Basis", "kc", []), loc)),
+                                                                   loc), (L'.ERecord [], loc)), loc),
+                                                        s' ^ "uwe=event;")
+                                          val s' = s' ^ "exec("
                                       in
                                           ((L'.EStrcat (s,
                                                         (L'.EStrcat (
                                                          (L'.EPrim (Prim.String s'), loc),
                                                          (L'.EStrcat (
                                                           (L'.EJavaScript (L'.Attribute, e), loc),
-                                                          (L'.EPrim (Prim.String ";return false'"), loc)), loc)),
+                                                          (L'.EPrim (Prim.String ");return false'"), loc)), loc)),
                                                          loc)), loc),
                                            fm)
                                       end
@@ -2621,13 +2624,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         val assgns = List.mapPartial
                                      (fn ("Source", _, _) => NONE
                                        | ("Onchange", e, _) =>
-                                         SOME (strcat [str "addOnChange(d,",
+                                         SOME (strcat [str "addOnChange(d,exec(",
                                                        (L'.EJavaScript (L'.Script, e), loc),
-                                                       str ")"])
+                                                       str "))"])
                                        | (x, e, _) =>
-                                         SOME (strcat [str ("d." ^ lowercaseFirst x ^ "="),
+                                         SOME (strcat [str ("d." ^ lowercaseFirst x ^ "=exec("),
                                                        (L'.EJavaScript (L'.Script, e), loc),
-                                                       str ";"]))
+                                                       str ");"]))
                                      attrs
                     in
                         case assgns of
@@ -2646,7 +2649,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          let
                                              val e = (L'.EApp (e, (L'.ERecord [], loc)), loc)
                                          in
-                                             (L'.EJavaScript (L'.Attribute, e), loc)
+                                             (L'.EStrcat ((L'.EPrim (Prim.String "exec("), loc),
+                                                          (L'.EStrcat ((L'.EJavaScript (L'.Attribute, e), loc),
+                                                                       (L'.EPrim (Prim.String ")"), loc)), loc)), loc)
                                          end
                     in
                         normal ("body",
@@ -2677,9 +2682,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             [("Signal", e, _)] =>
                             ((L'.EStrcat
                                   ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(\""
-                                                           ^ tag ^ "\", ")), loc),
+                                                           ^ tag ^ "\", exec(")), loc),
                                    (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                                (L'.EPrim (Prim.String (")</script>")), loc)), loc)), loc),
+                                                (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
                              fm)
                           | _ => raise Fail "Monoize: Bad dyn attributes"
                     end
@@ -2701,9 +2706,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                  loc)), loc), fm)
                               end
                             | SOME (_, src, _) =>
-                              (strcat [str "<script type=\"text/javascript\">inp(",
+                              (strcat [str "<script type=\"text/javascript\">inp(exec(",
                                        (L'.EJavaScript (L'.Script, src), loc),
-                                       str ")</script>"],
+                                       str "))</script>"],
                                fm))
                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                raise Fail "No name passed to textbox tag"))
@@ -2773,9 +2778,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          end
                        | SOME (_, src, _) =>
                          let
-                             val sc = strcat [str "inp(",
+                             val sc = strcat [str "inp(exec(",
                                               (L'.EJavaScript (L'.Script, src), loc),
-                                              str ")"]
+                                              str "))"]
                              val sc = setAttrs sc
                          in
                              (strcat [str "<script type=\"text/javascript\">",
@@ -2796,9 +2801,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          end
                        | SOME (_, src, _) =>
                          let
-                             val sc = strcat [str "chk(",
+                             val sc = strcat [str "chk(exec(",
                                               (L'.EJavaScript (L'.Script, src), loc),
-                                              str ")"]
+                                              str "))"]
                              val sc = setAttrs sc
                          in
                              (strcat [str "<script type=\"text/javascript\">",
@@ -2824,11 +2829,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          let
                              val (xml, fm) = monoExp (env, st, fm) xml
 
-                             val sc = strcat [str "sel(",
+                             val sc = strcat [str "sel(exec(",
                                               (L'.EJavaScript (L'.Script, src), loc),
                                               str ",",
                                               (L'.EJavaScript (L'.Script, xml), loc),
-                                              str ")"]
+                                              str "))"]
                              val sc = setAttrs sc
                          in
                              (strcat [str "<script type=\"text/javascript\">",

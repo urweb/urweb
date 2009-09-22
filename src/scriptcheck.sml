@@ -67,7 +67,7 @@ val events = ["abort",
               "unload"]
                 
 val scriptWords = "<script"
-                   :: map (fn s => "on" ^ s ^ " ='") events
+                   :: map (fn s => " on" ^ s ^ "='") events
 
 val pushWords = ["rv("]
 
@@ -75,12 +75,7 @@ fun classify (ds, ps) =
     let
         val proto = Settings.currentProtocol ()
 
-        fun inString {needle, haystack} =
-            let
-                val (_, suffix) = Substring.position needle (Substring.full haystack)
-            in
-                not (Substring.isEmpty suffix)
-            end
+        fun inString {needle, haystack} = String.isSubstring needle haystack
 
         fun hasClient {basis, words, onload} csids =
             let
