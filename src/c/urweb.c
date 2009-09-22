@@ -1292,7 +1292,7 @@ uw_Basis_int uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
   strcpy(ctx->script.front, s);
   ctx->script.front += s_len;
   strcpy(ctx->script.front, "));");
-  ctx->script.front += 2;
+  ctx->script.front += 3;
 
   return ctx->source_count++;
 }
@@ -1307,7 +1307,7 @@ uw_unit uw_Basis_set_client_source(uw_context ctx, uw_Basis_int n, uw_Basis_stri
   strcpy(ctx->script.front, s);
   ctx->script.front += s_len;
   strcpy(ctx->script.front, "));");
-  ctx->script.front += 2;
+  ctx->script.front += 3;
 
   return uw_unit_v;
 }
