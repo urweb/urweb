@@ -282,7 +282,18 @@ val countFree = U.Exp.foldB {typ = fn (_, n) => n,
                              bind = fn (n, b) =>
                                        case b of
                                            U.Exp.RelE _ => n + 1
-                                     | _ => n} 0 0
+                                     | _ => n}
+
+val freeInAbs = U.Exp.existsB {typ = fn _ => false,
+                               exp = fn (n, e) =>
+                                        case e of
+                                            EAbs (_, _, _, b) => countFree n 0 b > 0
+                                          | EJavaScript (_, b) => countFree n 0 b > 0
+                                          | _ => false,
+                               bind = fn (n, b) =>
+                                         case b of
+                                             U.Exp.RelE _ => n + 1
+                                           | _ => n} 0
 
 fun reduce file =
     let
@@ -457,7 +468,7 @@ fun reduce file =
                         ((*Print.prefaces "Considering" [("e1", MonoPrint.p_exp (E.pushERel env x t NONE) e1),
                                                        ("e2", MonoPrint.p_exp env e2),
                                                        ("sub", MonoPrint.p_exp env (reduceExp env (subExpInExp (0, e2) e1)))];*)
-                         if impure env e2 orelse countFree e1 > 1 then
+                         if impure env e2 orelse countFree 0 0 e1 > 1 then
                              #1 (reduceExp env (ELet (x, t, e2, e1), loc))
                          else
                              #1 (reduceExp env (subExpInExp (0, e2) e1)))
@@ -608,7 +619,8 @@ fun reduce file =
                                         orelse (case effs_b of
                                                     UseRel :: effs => List.all verifyUnused effs
                                                   | _ => false))
-                                           andalso countFree b = 1 then
+                                       andalso countFree 0 0 b = 1
+                                       andalso not (freeInAbs b) then
                                         trySub ()
                                     else
                                         e
