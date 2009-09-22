@@ -463,15 +463,16 @@ fun process file =
                               | PCon (Option, PConVar n, SOME p) =>
                                 (case IM.find (someTs, n) of
                                      NONE => raise Fail "Jscomp: Not in someTs"
-                                   | SOME t => strcat [str ("{c:\"s\",n:"
-                                                            ^ (if isNullable t then
-                                                                   "true"
-                                                               else
-                                                                   "false")
-                                                            ^ ",p:"),
-                                                       jsPat p,
-                                                       str "}"])
-                              | PCon (_, pc, NONE) => strcat [str "{c:\"0\",n:",
+                                   | SOME t =>
+                                     strcat [str ("{c:\"s\",n:"
+                                                  ^ (if isNullable t then
+                                                         "true"
+                                                     else
+                                                         "false")
+                                                  ^ ",p:"),
+                                             jsPat p,
+                                             str "}"])
+                              | PCon (_, pc, NONE) => strcat [str "{c:\"c\",v:",
                                                               patCon pc,
                                                               str "}"]
                               | PCon (_, pc, SOME p) => strcat [str "{c:\"1\",n:",
@@ -560,7 +561,6 @@ fun process file =
 
                                                 val old = e
                                                 val (e, st) = jsExp mode [] (e, st)
-                                                val new = e
                                                 val e = deStrcat 0 e
                                                 
                                                 val sc = "urfuncs[" ^ Int.toString n ^ "] = " ^ e ^ ";\n"
@@ -791,7 +791,7 @@ fun process file =
                                 val (ps, st) =
                                     foldr (fn ((p, e), (ps, st)) =>
                                               let
-                                                  val (e, st) = jsE inner (e, st)
+                                                  val (e, st) = jsE (inner + E.patBindsN p) (e, st)
                                               in
                                                   (strcat [str "cons({p:",
                                                            jsPat p,
@@ -805,7 +805,7 @@ fun process file =
                                           (str "null", st) pes
                             in
                                 (strcat [str "{c:\"m\",e:",
-                                         e,
+                                         e',
                                          str ",p:",
                                          ps,
                                          str "}"], st)
