@@ -910,9 +910,9 @@ fun process file =
                                               ^ "\"},cons("),
                                          e,
                                          str (",cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
-                                              ^ unurl ^ "}},cons({c:\"!\",e:"),
+                                              ^ unurl ^ "}},cons("),
                                          ek,
-                                         str ("},cons("
+                                         str (",cons("
                                               ^ (case eff of
                                                      ReadCookieWrite => "true"
                                                    | _ => "false")
@@ -929,9 +929,9 @@ fun process file =
                                 (strcat [str ("{c:\"f\",f:rv,a:cons("),
                                          e,
                                          str (",cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
-                                              ^ unurl ^ "}},cons({c:\"!\",e:"),
+                                              ^ unurl ^ "}},cons("),
                                          ek,
-                                         str ("},null)))}")],
+                                         str (",null)))}")],
                                  st)
                             end
 
