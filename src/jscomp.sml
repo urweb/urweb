@@ -686,7 +686,7 @@ fun process file =
                                 val name = case s of
                                                "!" => "not"
                                              | "-" => "neg"
-                                             | _ => raise Fail "Jscomp: Unknown unary operator"
+                                             | _ => raise Fail ("Jscomp: Unknown unary operator " ^ s)
 
                                 val (e, st) = jsE inner (e, st)
                             in
@@ -707,7 +707,8 @@ fun process file =
                                              | "%" => "mod"
                                              | "<" => "lt"
                                              | "<=" => "le"
-                                             | _ => raise Fail "Jscomp: Unknown binary operator"
+                                             | "strcmp" => "strcmp"
+                                             | _ => raise Fail ("Jscomp: Unknown binary operator " ^ s)
 
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
