@@ -912,11 +912,11 @@ fun process file =
                                          str (",cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ unurl ^ "}},cons("),
                                          ek,
-                                         str (",cons("
+                                         str (",cons({c:\"c\",v:"
                                               ^ (case eff of
                                                      ReadCookieWrite => "true"
                                                    | _ => "false")
-                                              ^ ",null)))))}")],
+                                              ^ "},null)))))}")],
                                  st)
                             end
 
@@ -940,10 +940,10 @@ fun process file =
                                 val (e, st) = jsE inner (e, st)
                                 val (ek, st) = jsE inner (ek, st)
                             in
-                                (strcat [str "{c:\"f\",f:window.setTimeout,a:cons(",
-                                         ek,
-                                         str ",cons(",
+                                (strcat [str "{c:\"f\",f:sl,a:cons(",
                                          e,
+                                         str ",cons(",
+                                         ek,
                                          str ",null))}"],
                                  st)
                             end
