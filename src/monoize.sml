@@ -2831,7 +2831,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                              val sc = strcat [str "sel(exec(",
                                               (L'.EJavaScript (L'.Script, src), loc),
-                                              str ",",
+                                              str "),exec(",
                                               (L'.EJavaScript (L'.Script, xml), loc),
                                               str "))"]
                              val sc = setAttrs sc
