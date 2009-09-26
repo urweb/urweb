@@ -1,4 +1,13 @@
 ========
+20090926
+========
+
+- Reimplemented client-side code generation to use an interpreter, rather than
+  compilation to JavaScript; this avoids common browser flaws: lack of
+  optimization of tail calls and occasional bugs in closure handling.
+- Bug fixes
+
+========
 20090919
 ========
 

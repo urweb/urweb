@@ -2015,10 +2015,10 @@ In contrast to C FFI code, JavaScript FFI functions take no extra context argume
 
 \begin{itemize}
 \item Integers, floats, strings, characters, and booleans are represented in the usual JavaScript way.
-\item Ur functions are represented with JavaScript functions, currying and all.  Only named FFI functions are represented with multiple JavaScript arguments.
+\item Ur functions are represented in an unspecified way.  This means that you should not rely on any details of function representation.  Named FFI functions are represented as JavaScript functions with as many arguments as their Ur types specify.  To call a non-FFI function \texttt{f} on argument \texttt{x}, run \texttt{execF(f, x)}.
 \item An Ur record is represented with a JavaScript record, where Ur field name \texttt{N} translates to JavaScript field name \texttt{\_N}.  An exception to this rule is that the empty record is encoded as \texttt{null}.
 \item \texttt{option}-like types receive special handling similar to their handling in C.  The ``\texttt{None}'' constructor is \texttt{null}, and a use of the ``\texttt{Some}'' constructor on a value \texttt{v} is either \texttt{v}, if the underlying type doesn't need to use \texttt{null}; or \texttt{\{v:v\}} otherwise.
-\item Any other datatypes represent a non-value-carrying constructor \texttt{C} as \texttt{"\_C"} and an application of a constructor \texttt{C} to value \texttt{v} as \texttt{\{n:"\_C", v:v\}}.  This rule only applies to datatypes defined in FFI module signatures; the compiler is free to optimize the representations of other, non-\texttt{option}-like datatypes in arbitrary ways.
+\item Any other datatypes represent a non-value-carrying constructor \texttt{C} as \texttt{"C"} and an application of a constructor \texttt{C} to value \texttt{v} as \texttt{\{n:"C", v:v\}}.  This rule only applies to datatypes defined in FFI module signatures; the compiler is free to optimize the representations of other, non-\texttt{option}-like datatypes in arbitrary ways.
 \end{itemize}
 
 It is possible to write JavaScript FFI code that interacts with the functional-reactive structure of a document, but this version of the manual doesn't cover the details.
