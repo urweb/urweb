@@ -36,6 +36,19 @@ structure L' = Mono
 structure IM = IntBinaryMap
 structure IS = IntBinarySet
 
+structure SS = BinarySetFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
+val singletons = SS.addList (SS.empty,
+                             ["link",
+                              "br",
+                              "p",
+                              "hr",
+                              "input",
+                              "button"])
+
 val dummyTyp = (L'.TDatatype (0, ref (L'.Enum, [])), E.dummySpan)
 
 structure U = MonoUtil
@@ -2603,6 +2616,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                   loc),
                                  fm)
                             end
+
+                        fun isSingleton () =
+                            let
+                                val (bef, aft) = Substring.splitl (not o Char.isSpace) (Substring.full tag)
+                            in
+                                SS.member (singletons, if Substring.isEmpty aft then
+                                                           tag
+                                                       else
+                                                           Substring.string bef)
+                            end
                     in
                         case xml of
                             (L.EApp ((L.ECApp (
@@ -2610,7 +2633,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                 _), _),
                                       _), _),
                                      (L.EPrim (Prim.String s), _)), _) =>
-                            if CharVector.all Char.isSpace s then
+                            if CharVector.all Char.isSpace s andalso isSingleton () then
                                 ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String " />"), loc)), loc), fm)
                             else
                                 normal ()
