@@ -15,5 +15,11 @@ functor Table(M : sig
     val inj : sql_injectable id
     val id : meta id
 
-    val create : $M.cols -> transaction id
+    type row = $([Id = id] ++ M.cols)
+
+    val create : $M.cols -> transaction row
+    val delete : row -> transaction unit
+    val save : row -> transaction unit
+    val lookup : id -> transaction (option row)
+    val list : transaction (list row)
 end
