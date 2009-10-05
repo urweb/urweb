@@ -1636,7 +1636,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                     if #supportsUpdateAs (Settings.currentDbms ()) then
                                                         strcat [sc "UPDATE ",
                                                                 (L'.ERel 1, loc),
-                                                                sc " AS T SET ",
+                                                                sc " AS T_T SET ",
                                                                 strcatComma (map (fn (x, _) =>
                                                                                      strcat [sc ("uw_" ^ x
                                                                                                  ^ " = "),
@@ -1676,7 +1676,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                      if #supportsDeleteAs (Settings.currentDbms ()) then
                                          strcat [sc "DELETE FROM ",
                                                  (L'.ERel 1, loc),
-                                                 sc " AS T WHERE ",
+                                                 sc " AS T_T WHERE ",
                                                  (L'.ERel 0, loc)]
                                      else
                                          strcat [sc "DELETE FROM ",
@@ -1823,7 +1823,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                         @ map (fn (x, xts) =>
                                                                   strcatComma
                                                                       (map (fn (x', _) =>
-                                                                               sc (x ^ ".uw_" ^ x'))
+                                                                               sc ("T_" ^ x
+										   ^ ".uw_"
+										   ^ x'))
                                                                            xts)) stables),
                                            sc " FROM ",
                                            gf "From",
@@ -1849,7 +1851,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                strcatComma (map (fn (x, xts) =>
                                                                     strcatComma
                                                                         (map (fn (x', _) =>
-                                                                                 sc (x ^ ".uw_" ^ x'))
+                                                                                 sc ("T_" ^ x
+										     ^ ".uw_"
+										     ^ x'))
                                                                              xts)) grouped)
                                                ],
 
@@ -1968,7 +1972,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("tab", s, s,
                            strcat [(L'.ERel 0, loc),
-                                   (L'.EPrim (Prim.String (" AS " ^ name)), loc)]), loc),
+                                   (L'.EPrim (Prim.String (" AS T_" ^ name)), loc)]), loc),
                  fm)
             end
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_comma"), _), _), _), _) =>
@@ -2215,7 +2219,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                _), _),
               _), _),
              (L.CName tab, _)), _),
-            (L.CName field, _)) => ((L'.EPrim (Prim.String (tab ^ ".uw_" ^ lowercaseFirst field)), loc), fm)
+            (L.CName field, _)) => ((L'.EPrim (Prim.String ("T_" ^ tab ^ ".uw_" ^ lowercaseFirst field)), loc), fm)
 
           | L.ECApp (
             (L.ECApp (

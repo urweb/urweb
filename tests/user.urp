@@ -1,0 +1,5 @@
+debug
+database dbname=udb
+sql user.sql
+
+user
