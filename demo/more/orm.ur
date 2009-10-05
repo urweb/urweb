@@ -16,10 +16,12 @@ functor Table(M : sig
     val id : meta id = {Link = (),
                         Inj = inj}
 
-    sequence s
-    table t : ([Id = id] ++ M.cols)
+    con fs = [Id = id] ++ M.cols
 
-    type row = $([Id = id] ++ M.cols)
+    sequence s
+    table t : fs
+
+    type row = $fs
 
     fun ensql [avail] (r : $M.cols) : $(map (sql_exp avail [] []) M.cols) =
         map2 [meta] [Top.id] [sql_exp avail [] []]
@@ -39,5 +41,41 @@ functor Table(M : sig
         ro <- oneOrNoRows (SELECT * FROM t WHERE t.Id = {[id]});
         return (Option.mp (fn r => r.T) ro)
 
-    val list = query (SELECT * FROM t) (fn r ls => return (r.T :: ls)) []
+    fun resultsOut q = query q (fn r ls => return (r.T :: ls)) []
+
+    val list = resultsOut (SELECT * FROM t)
+
+    con col = fn t => {Exp : sql_exp [T = fs] [] [] t,
+                       Inj : sql_injectable t}
+    val idCol = {Exp = sql_field [#T] [#Id], Inj = _}
+    val cols = foldR [meta] [fn before => after :: {Type} -> [before ~ after] =>
+                                $(map (fn t => {Exp : sql_exp [T = before ++ after] [] [] t,
+                                                Inj : sql_injectable t}) before)]
+               (fn [nm :: Name] [t :: Type] [before :: {Type}] [[nm] ~ before] (meta : meta t)
+                                (acc : after :: {Type} -> [before ~ after] =>
+                                 $(map (fn t => {Exp : sql_exp [T = before ++ after] [] [] t,
+                                                 Inj : sql_injectable t}) before))
+                                [after :: {Type}] [[nm = t] ++ before ~ after] =>
+                   {nm = {Exp = sql_field [#T] [nm],
+                          Inj = meta.Inj}} ++ acc [[nm = t] ++ after] !)
+               (fn [after :: {Type}] [[] ~ after] => {})
+               [_] M.folder M.cols
+               [[Id = id]] !
+
+    type filter = sql_exp [T = fs] [] [] bool
+    fun search (f : filter) = resultsOut (SELECT * FROM t WHERE {f})
+
+    fun bin (b : t ::: Type -> sql_binary t t bool) [t] (c : col t) (v : t) =
+        sql_binary b c.Exp (@sql_inject c.Inj v)
+    val eq = bin @@sql_eq
+    val ne = bin @@sql_ne
+    val lt = bin @@sql_lt
+    val le = bin @@sql_le
+    val gt = bin @@sql_gt
+    val ge = bin @@sql_ge
+
+    fun bb (b : sql_binary bool bool bool) (f1 : filter) (f2 : filter) =
+        sql_binary b f1 f2
+    val _and = bb sql_and
+    val or = bb sql_or
 end

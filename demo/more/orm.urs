@@ -22,4 +22,21 @@ functor Table(M : sig
     val save : row -> transaction unit
     val lookup : id -> transaction (option row)
     val list : transaction (list row)
+
+    con col :: Type -> Type
+    val idCol : col id
+    val cols : $(map col M.cols)
+
+    type filter
+    val search : filter -> transaction (list row)
+
+    val eq : t ::: Type -> col t -> t -> filter
+    val ne : t ::: Type -> col t -> t -> filter
+    val lt : t ::: Type -> col t -> t -> filter
+    val le : t ::: Type -> col t -> t -> filter
+    val gt : t ::: Type -> col t -> t -> filter
+    val ge : t ::: Type -> col t -> t -> filter
+
+    val _and : filter -> filter -> filter
+    val or : filter -> filter -> filter
 end
