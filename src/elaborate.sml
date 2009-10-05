@@ -326,8 +326,9 @@
                               NONE => (conError env (UnboundCon (loc, s));
                                        kerror)
                             | SOME (k, _) => k
+                 val (c, k) = elabConHead (L'.CModProj (n, ms, s), loc) k
               in
-                  ((L'.CModProj (n, ms, s), loc), k, [])
+                  (c, k, [])
               end)
 
        | L.CApp (c1, c2) =>
@@ -678,12 +679,12 @@
          sum
      end
 
- and consEq env (c1, c2) =
+ and consEq env loc (c1, c2) =
      let
          val mayDelay' = !mayDelay
      in
          (mayDelay := false;
-          unifyCons env c1 c2;
+          unifyCons env loc c1 c2;
           mayDelay := mayDelay';
           true)
          handle CUnify _ => (mayDelay := mayDelay'; false)
@@ -724,15 +725,15 @@
 
          val (fs1, fs2) = eatMatching (fn ((x1, c1), (x2, c2)) =>
                                           not (consNeq env (x1, x2))
-                                          andalso consEq env (c1, c2)
-                                          andalso consEq env (x1, x2))
+                                          andalso consEq env loc (c1, c2)
+                                          andalso consEq env loc (x1, x2))
                                       (#fields s1, #fields s2)
          (*val () = eprefaces "Summaries2" [("#1", p_summary env {fields = fs1, unifs = #unifs s1, others = #others s1}),
                                           ("#2", p_summary env {fields = fs2, unifs = #unifs s2, others = #others s2})]*)
 
          val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
 
-         val (others1, others2) = eatMatching (consEq env) (#others s1, #others s2)
+         val (others1, others2) = eatMatching (consEq env loc) (#others s1, #others s2)
          (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
@@ -793,7 +794,7 @@
                  val c = (L'.CRecord (k, fs), loc)
                  val c = foldl (fn ((c', _), c) => (L'.CConcat (c', c), loc)) c unifs
              in
-                 (guessMap env (other, c, GuessFailure);
+                 (guessMap env loc (other, c, GuessFailure);
                   true)
                  handle GuessFailure => false
              end
@@ -833,23 +834,21 @@
                                         ("#2", p_summary env (normalizeRecordSummary env s2))]*)
      end
 
- and guessMap env (c1, c2, ex) =
+ and guessMap env loc (c1, c2, ex) =
      let
-         val loc = #2 c1
-
          fun unfold (dom, ran, f, r, c) =
              let
                  fun unfold (r, c) =
                      case #1 (hnormCon env c) of
-                         L'.CRecord (_, []) => unifyCons env r (L'.CRecord (dom, []), loc)
+                         L'.CRecord (_, []) => unifyCons env loc r (L'.CRecord (dom, []), loc)
                        | L'.CRecord (_, [(x, v)]) =>
                          let
                              val v' = case dom of
                                           (L'.KUnit, _) => (L'.CUnit, loc)
                                         | _ => cunif (loc, dom)
                          in
-                             unifyCons env v (L'.CApp (f, v'), loc);
-                             unifyCons env r (L'.CRecord (dom, [(x, v')]), loc)
+                             unifyCons env loc v (L'.CApp (f, v'), loc);
+                             unifyCons env loc r (L'.CRecord (dom, [(x, v')]), loc)
                          end
                        | L'.CRecord (_, (x, v) :: rest) =>
                          let
@@ -858,7 +857,7 @@
                          in
                              unfold (r1, (L'.CRecord (ran, [(x, v)]), loc));
                              unfold (r2, (L'.CRecord (ran, rest), loc));
-                             unifyCons env r (L'.CConcat (r1, r2), loc)
+                             unifyCons env loc r (L'.CConcat (r1, r2), loc)
                          end
                        | L'.CConcat (c1', c2') =>
                          let
@@ -867,7 +866,7 @@
                          in
                              unfold (r1, c1');
                              unfold (r2, c2');
-                             unifyCons env r (L'.CConcat (r1, r2), loc)
+                             unifyCons env loc r (L'.CConcat (r1, r2), loc)
                          end
                        | L'.CUnif (_, _, _, ur) =>
                          ur := SOME (L'.CApp ((L'.CApp ((L'.CMap (dom, ran), loc), f), loc), r), loc)
@@ -885,7 +884,7 @@
            | _ => raise ex
      end
 
- and unifyCons' env c1 c2 =
+ and unifyCons' env loc c1 c2 =
      if isUnitCon env c1 andalso isUnitCon env c2 then
          ()
      else
@@ -896,11 +895,11 @@
              val c1 = hnormCon env c1
              val c2 = hnormCon env c2
          in
-             unifyCons'' env c1 c2
-             handle ex => guessMap env (c1, c2, ex)
+             unifyCons'' env loc c1 c2
+             handle ex => guessMap env loc (c1, c2, ex)
          end
 
- and unifyCons'' env (c1All as (c1, loc)) (c2All as (c2, _)) =
+ and unifyCons'' env loc (c1All as (c1, _)) (c2All as (c2, _)) =
      let
          fun err f = raise CUnify' (f (c1All, c2All))
 
@@ -912,7 +911,7 @@
                          let
                              fun tryNormal () =
                                  if n1 = n2 then
-                                     unifyCons' env c1 c2
+                                     unifyCons' env loc c1 c2
                                  else
                                      onFail ()
                          in
@@ -925,7 +924,7 @@
                                           val us = map (fn k => cunif (loc, k)) ks
                                       in
                                           r := SOME (L'.CTuple us, loc);
-                                          unifyCons' env c1All (List.nth (us, n2 - 1))
+                                          unifyCons' env loc c1All (List.nth (us, n2 - 1))
                                       end
                                     | _ => tryNormal ())
                             | _ => tryNormal ()
@@ -941,7 +940,7 @@
                               val us = map (fn k => cunif (loc, k)) ks
                           in
                               r := SOME (L'.CTuple us, loc);
-                              unifyCons' env (List.nth (us, n1 - 1)) c2All
+                              unifyCons' env loc (List.nth (us, n1 - 1)) c2All
                           end
                         | _ => trySnd ())
                    | _ => trySnd ()
@@ -957,7 +956,7 @@
                           val us = map (fn k => cunif (loc, k)) ks
                       in
                           r := SOME (L'.CTuple us, loc);
-                          unifyCons' env c1All (List.nth (us, n2 - 1))
+                          unifyCons' env loc c1All (List.nth (us, n2 - 1))
                       end
                     | _ => onFail ())
                | _ => onFail ()
@@ -1003,8 +1002,8 @@
            | (L'.CUnit, L'.CUnit) => ()
 
            | (L'.TFun (d1, r1), L'.TFun (d2, r2)) =>
-             (unifyCons' env d1 d2;
-             unifyCons' env r1 r2)
+             (unifyCons' env loc d1 d2;
+             unifyCons' env loc r1 r2)
            | (L'.TCFun (expl1, x1, d1, r1), L'.TCFun (expl2, _, d2, r2)) =>
              if expl1 <> expl2 then
                  err CExplicitness
@@ -1017,13 +1016,13 @@
                       (*TextIO.print ("E.pushCRel: "
                                     ^ LargeReal.toString (Time.toReal (Time.- (Time.now (), befor)))
                                     ^ "\n");*)
-                      unifyCons' env' r1 r2
+                      unifyCons' env' loc r1 r2
                   end)
-           | (L'.TRecord r1, L'.TRecord r2) => unifyCons' env r1 r2
+           | (L'.TRecord r1, L'.TRecord r2) => unifyCons' env loc r1 r2
            | (L'.TDisjoint (c1, d1, e1), L'.TDisjoint (c2, d2, e2)) =>
-             (unifyCons' env c1 c2;
-              unifyCons' env d1 d2;
-              unifyCons' env e1 e2)
+             (unifyCons' env loc c1 c2;
+              unifyCons' env loc d1 d2;
+              unifyCons' env loc e1 e2)
 
            | (L'.CRel n1, L'.CRel n2) =>
              if n1 = n2 then
@@ -1037,11 +1036,11 @@
                  err CIncompatible
 
            | (L'.CApp (d1, r1), L'.CApp (d2, r2)) =>
-             (unifyCons' env d1 d2;
-              unifyCons' env r1 r2)
+             (unifyCons' env loc d1 d2;
+              unifyCons' env loc r1 r2)
            | (L'.CAbs (x1, k1, c1), L'.CAbs (_, k2, c2)) =>
              (unifyKinds env k1 k2;
-              unifyCons' (E.pushCRel env x1 k1) c1 c2)
+              unifyCons' (E.pushCRel env x1 k1) loc c1 c2)
 
            | (L'.CName n1, L'.CName n2) =>
              if n1 = n2 then
@@ -1056,7 +1055,7 @@
                  err CIncompatible
 
            | (L'.CTuple cs1, L'.CTuple cs2) =>
-             ((ListPair.appEq (fn (c1, c2) => unifyCons' env c1 c2) (cs1, cs2))
+             ((ListPair.appEq (fn (c1, c2) => unifyCons' env loc c1 c2) (cs1, cs2))
               handle ListPair.UnequalLengths => err CIncompatible)
 
            | (L'.CProj (c1, n1), _) => projSpecial1 (c1, n1, fn () => err CIncompatible)
@@ -1067,28 +1066,28 @@
               unifyKinds env ran1 ran2)
 
            | (L'.CKAbs (x, c1), L'.CKAbs (_, c2)) =>
-             unifyCons' (E.pushKRel env x) c1 c2
+             unifyCons' (E.pushKRel env x) loc c1 c2
            | (L'.CKApp (c1, k1), L'.CKApp (c2, k2)) =>
              (unifyKinds env k1 k2;
-              unifyCons' env c1 c2)
+              unifyCons' env loc c1 c2)
            | (L'.TKFun (x, c1), L'.TKFun (_, c2)) =>
-             unifyCons' (E.pushKRel env x) c1 c2
+             unifyCons' (E.pushKRel env x) loc c1 c2
 
            | _ => err CIncompatible
      end
 
- and unifyCons env c1 c2 =
-     unifyCons' env c1 c2
+ and unifyCons env loc c1 c2 =
+     unifyCons' env loc c1 c2
      handle CUnify' err => raise CUnify (c1, c2, err)
           | KUnify args => raise CUnify (c1, c2, CKind args)
 
  fun checkCon env e c1 c2 =
-     unifyCons env c1 c2
+     unifyCons env (#2 e) c1 c2
      handle CUnify (c1, c2, err) =>
             expError env (Unify (e, c1, c2, err))
 
  fun checkPatCon env p c1 c2 =
-     unifyCons env c1 c2
+     unifyCons env (#2 p) c1 c2
      handle CUnify (c1, c2, err) =>
             expError env (PatUnify (p, c1, c2, err))
 
@@ -2653,7 +2652,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                                          SOME env
                                                      end
                                              in
-                                                 (unifyCons env c1 c2;
+                                                 (unifyCons env loc c1 c2;
                                                   good ())
                                                  handle CUnify (c1, c2, err) =>
                                                         (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
@@ -2707,7 +2706,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                             orelse case (t1, t2) of
                                                        (NONE, NONE) => false
                                                      | (SOME t1, SOME t2) =>
-                                                       (unifyCons env t1 (sub2 t2); false)
+                                                       (unifyCons env loc t1 (sub2 t2); false)
                                                      | _ => true
                                     in
                                         (if xs1 <> xs2
@@ -2778,7 +2777,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                                      SOME env
                                                  end
                                          in
-                                             (unifyCons env t1 t2;
+                                             (unifyCons env loc t1 t2;
                                               good ())
                                              handle CUnify (c1, c2, err) =>
                                                     (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
@@ -2799,7 +2798,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                                           ("c1", p_con env c1),
                                                           ("c2", p_con env c2),
                                                           ("c2'", p_con env (sub2 c2))];*)
-                                          unifyCons env c1 (sub2 c2);
+                                          unifyCons env loc c1 (sub2 c2);
                                           SOME env)
                                          handle CUnify (c1, c2, err) =>
                                                 (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
@@ -2855,7 +2854,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                         seek (fn (env, sgi1All as (sgi1, _)) =>
                                  case sgi1 of
                                      L'.SgiConstraint (c1, d1) =>
-                                     if consEq env (c1, c2) andalso consEq env (d1, d2) then
+                                     if consEq env loc (c1, c2)
+					andalso consEq env loc (d1, d2) then
                                          SOME env
                                      else
                                          NONE
@@ -2911,7 +2911,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                                          SOME env
                                                      end
                                              in
-                                                 (unifyCons env c1 c2;
+                                                 (unifyCons env loc c1 c2;
                                                   good ())
                                                  handle CUnify (c1, c2, err) =>
                                                         (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
@@ -3819,7 +3819,7 @@ and elabStr (env, denv) (str, loc) =
                       (strerror, sgnerror, []))
         end
 
-fun resolveClass env = E.resolveClass (hnormCon env) (consEq env) env
+fun resolveClass env = E.resolveClass (hnormCon env) (consEq env dummy) env
 
 fun elabFile basis topStr topSgn env file =
     let
