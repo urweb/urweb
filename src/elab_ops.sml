@@ -242,6 +242,9 @@ fun hnormCon env (cAll as (c, loc)) =
                                            (case #1 (hnormCon env f') of
                                                 CMap (dom, _) =>
                                                 let
+                                                    val inner_f = liftConInCon 0 inner_f
+                                                    val f = liftConInCon 0 f
+
                                                     val f' = (CApp (inner_f, (CRel 0, loc)), loc)
                                                     val f' = (CApp (f, f'), loc)
                                                     val f' = (CAbs ("v", dom, f'), loc)

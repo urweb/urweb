@@ -1,68 +1,78 @@
-con link = fn t :: Type => unit
+con link = fn col_parent :: (Type * Type) => col_parent.1 -> transaction (option col_parent.2)
+fun noParent [t ::: Type] _ = return None
 
-con meta = fn col :: Type => {
-              Link : link col,
-              Inj : sql_injectable col
-              }
+con meta = fn col_parent :: (Type * Type) => {
+	      Link : link col_parent,
+	      Inj : sql_injectable col_parent.1
+	      }
 
 functor Table(M : sig
-                  con cols :: {Type}
+                  con cols :: {(Type * Type)}
                   val cols : $(map meta cols)
                   constraint [Id] ~ cols
                   val folder : folder cols
               end) = struct
     type id = int
-    val inj = _
-    val id : meta id = {Link = (),
-                        Inj = inj}
+    con fs' = map fst M.cols
+    con fs = [Id = id] ++ fs'
+    type row' = $fs'
+    type row = $fs
 
-    con fs = [Id = id] ++ M.cols
+    fun resultsOut q = query q (fn r ls => return (r.T :: ls)) []
+    fun resultOut q = ro <- oneOrNoRows q; return (Option.mp (fn r => r .T) ro)
 
     sequence s
     table t : fs
 
-    type row = $fs
+    val inj = _
+    val id = {Link = fn id => resultOut (SELECT * FROM t WHERE t.Id = {[id]}),
+              Inj = inj}
 
-    fun ensql [avail] (r : $M.cols) : $(map (sql_exp avail [] []) M.cols) =
-        map2 [meta] [Top.id] [sql_exp avail [] []]
-             (fn [t] meta v => @sql_inject meta.Inj v)
+    fun ensql [avail] (r : row') : $(map (sql_exp avail [] []) fs') =
+        map2 [meta] [fst] [fn ts :: (Type * Type) => sql_exp avail [] [] ts.1]
+             (fn [ts] meta v => @sql_inject meta.Inj v)
              [_] M.folder M.cols r
 
-    fun create (r : $M.cols) =
+    fun create (r : row') =
         id <- nextval s;
         dml (insert t ({Id = sql_inject id} ++ ensql r));
         return ({Id = id} ++ r)
 
     fun delete r = dml (DELETE FROM t WHERE t.Id = {[r.Id]})
 
-    fun save r = dml (update [M.cols] ! (ensql (r -- #Id)) t (WHERE T.Id = {[r.Id]}))
+    fun save r = dml (update [fs'] ! (ensql (r -- #Id)) t (WHERE T.Id = {[r.Id]}))
 
     fun lookup id =
         ro <- oneOrNoRows (SELECT * FROM t WHERE t.Id = {[id]});
         return (Option.mp (fn r => r.T) ro)
 
-    fun resultsOut q = query q (fn r ls => return (r.T :: ls)) []
 
     val list = resultsOut (SELECT * FROM t)
 
     con col = fn t => {Exp : sql_exp [T = fs] [] [] t,
                        Inj : sql_injectable t}
     val idCol = {Exp = sql_field [#T] [#Id], Inj = _}
-    val cols = foldR [meta] [fn before => after :: {Type} -> [before ~ after] =>
-                                $(map (fn t => {Exp : sql_exp [T = before ++ after] [] [] t,
-                                                Inj : sql_injectable t}) before)]
-               (fn [nm :: Name] [t :: Type] [before :: {Type}] [[nm] ~ before] (meta : meta t)
-                                (acc : after :: {Type} -> [before ~ after] =>
-                                 $(map (fn t => {Exp : sql_exp [T = before ++ after] [] [] t,
-                                                 Inj : sql_injectable t}) before))
-                                [after :: {Type}] [[nm = t] ++ before ~ after] =>
-                   {nm = {Exp = sql_field [#T] [nm],
-                          Inj = meta.Inj}} ++ acc [[nm = t] ++ after] !)
-               (fn [after :: {Type}] [[] ~ after] => {})
+    con meta' = fn (fs :: {Type}) (col_parent :: (Type * Type)) =>
+                   {Col : {Exp : sql_exp [T = fs] [] [] col_parent.1,
+                           Inj : sql_injectable col_parent.1},
+                    Parent : $fs -> transaction (option col_parent.2)}
+    val cols = foldR [meta] [fn before => after :: {(Type * Type)} -> [before ~ after] =>
+                                $(map (meta' (map fst (before ++ after))) before)]
+               (fn [nm :: Name] [ts :: (Type * Type)] [before :: {(Type * Type)}]
+                                [[nm] ~ before] (meta : meta ts)
+                                (acc : after :: {(Type * Type)} -> [before ~ after] =>
+                                 $(map (meta' (map fst (before ++ after))) before))
+                                [after :: {(Type * Type)}] [[nm = ts] ++ before ~ after] =>
+                   {nm = {Col = {Exp = sql_field [#T] [nm],
+                                 Inj = meta.Inj},
+                          Parent = fn r => meta.Link r.nm}}
+                       ++ acc [[nm = ts] ++ after] !)
+               (fn [after :: {(Type * Type)}] [[] ~ after] => {})
                [_] M.folder M.cols
-               [[Id = id]] !
+               [[Id = (id, row)]] !
 
     type filter = sql_exp [T = fs] [] [] bool
+    fun find (f : filter) = resultOut (SELECT * FROM t WHERE {f})
     fun search (f : filter) = resultsOut (SELECT * FROM t WHERE {f})
 
     fun bin (b : t ::: Type -> sql_binary t t bool) [t] (c : col t) (v : t) =

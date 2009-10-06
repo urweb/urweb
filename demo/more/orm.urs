@@ -1,23 +1,25 @@
-con link :: Type -> Type
+con link :: (Type * Type) -> Type
+val noParent : t ::: Type -> link (t, unit)
 
-con meta = fn col :: Type => {
-	      Link : link col,
-	      Inj : sql_injectable col
+con meta = fn col_parent :: (Type * Type) => {
+	      Link : link col_parent,
+	      Inj : sql_injectable col_parent.1
 	      }
 
 functor Table(M : sig
-		  con cols :: {Type}
+		  con cols :: {(Type * Type)}
 		  val cols : $(map meta cols)
 		  constraint [Id] ~ cols
 		  val folder : folder cols
 	      end) : sig
     type id
+    type row' = $(map fst M.cols)
+    type row = $([Id = id] ++ map fst M.cols)
+
     val inj : sql_injectable id
-    val id : meta id
+    val id : meta (id, row)
 
-    type row = $([Id = id] ++ M.cols)
-
-    val create : $M.cols -> transaction row
+    val create : row' -> transaction row
     val delete : row -> transaction unit
     val save : row -> transaction unit
     val lookup : id -> transaction (option row)
@@ -25,9 +27,12 @@ functor Table(M : sig
 
     con col :: Type -> Type
     val idCol : col id
-    val cols : $(map col M.cols)
+    val cols : $(map (fn col_parent :: (Type * Type) =>
+                         {Col : col col_parent.1,
+                          Parent : row -> transaction (option col_parent.2)}) M.cols)
 
     type filter
+    val find : filter -> transaction (option row)
     val search : filter -> transaction (list row)
 
     val eq : t ::: Type -> col t -> t -> filter
