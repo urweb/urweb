@@ -291,7 +291,8 @@ val sql_query1 : tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}
                  -> selectedExps ::: {Type}
-                 -> {From : sql_from_items tables,
+                 -> {Distinct : bool,
+                     From : sql_from_items tables,
                      Where : sql_exp tables [] [] bool,
                      GroupBy : sql_subset tables grouped,
                      Having : sql_exp grouped tables [] bool,

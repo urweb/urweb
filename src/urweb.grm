@@ -208,7 +208,7 @@ fun patType loc (p : pat) =
  | NOTAGS of string 
  | BEGIN_TAG of string | END_TAG of string
 
- | SELECT | FROM | AS | CWHERE | GROUP | ORDER | BY | HAVING
+ | SELECT | DISTINCT | FROM | AS | CWHERE | GROUP | ORDER | BY | HAVING
  | UNION | INTERSECT | EXCEPT
  | LIMIT | OFFSET | ALL
  | TRUE | FALSE | CAND | OR | NOT
@@ -314,6 +314,7 @@ fun patType loc (p : pat) =
 
  | query of exp
  | query1 of exp
+ | dopt of exp
  | tables of con list * exp
  | fitem of con list * exp
  | tname of con
@@ -625,7 +626,7 @@ pmodes :                                ([])
 commaOpt:                               ()
         | COMMA                         ()
 
-pkopt  :                                (EVar (["Basis"], "no_primary_key", Infer), ErrorMsg.dummySpan)
+pkopt  :                                (EVar (["Basis"], "no_primary_key", Infer), dummy)
        | PRIMARY KEY tnames             (let
                                              val loc = s (PRIMARYleft, tnamesright)
 
@@ -1410,8 +1411,12 @@ query  : query1 obopt lopt ofopt        (let
                                          in
                                              (EApp ((EVar (["Basis"], "sql_query", Infer), loc), re), loc)
                                          end)
-                
-query1 : SELECT select FROM tables wopt gopt hopt
+
+dopt   :                                (EVar (["Basis"], "False", Infer), dummy)
+       | DISTINCT                       (EVar (["Basis"], "True", Infer),
+                                         s (DISTINCTleft, DISTINCTright))
+
+query1 : SELECT dopt select FROM tables wopt gopt hopt
                                         (let
                                              val loc = s (SELECTleft, tablesright)
 
@@ -1460,7 +1465,9 @@ query1 : SELECT select FROM tables wopt gopt hopt
                                                            end
 
                                              val e = (EVar (["Basis"], "sql_query1", Infer), loc)
-                                             val re = (ERecord [((CName "From", loc),
+                                             val re = (ERecord [((CName "Distinct", loc),
+                                                                 dopt),
+                                                                ((CName "From", loc),
                                                                  #2 tables),
                                                                 ((CName "Where", loc),
                                                                  wopt),

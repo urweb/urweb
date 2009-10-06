@@ -408,6 +408,7 @@ notags = [^<{\n]+;
 <INITIAL> "Unit"      => (Tokens.KUNIT (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "SELECT"    => (Tokens.SELECT (pos yypos, pos yypos + size yytext));
+<INITIAL> "DISTINCT"  => (Tokens.DISTINCT (pos yypos, pos yypos + size yytext));
 <INITIAL> "FROM"      => (Tokens.FROM (pos yypos, pos yypos + size yytext));
 <INITIAL> "AS"        => (Tokens.AS (pos yypos, pos yypos + size yytext));
 <INITIAL> "WHERE"     => (Tokens.CWHERE (pos yypos, pos yypos + size yytext));

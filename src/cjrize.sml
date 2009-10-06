@@ -520,9 +520,14 @@ fun cifyDecl ((d, loc), sm) =
                                           in
                                               ((ax, dom) :: args, t, e)
                                           end
-                                        | (L'.TFun _, _) =>
-                                          (ErrorMsg.errorAt loc "Function isn't explicit at code generation";
-                                           ([], tAll, eAll))
+                                        | (L'.TFun (dom, ran), _) =>
+                                          let
+                                              val e = MonoEnv.liftExpInExp 0 eAll
+                                              val e = (L.EApp (e, (L.ERel 0, loc)), loc)
+                                              val (args, t, e) = unravel (ran, e)
+                                          in
+                                              (("x", dom) :: args, t, e)
+                                          end
                                         | _ => ([], tAll, eAll)
 
                                   val (args, ran, e) = unravel (t, e)

@@ -92,6 +92,12 @@ fun read_option [t ::: Type] (_ : read t) =
 fun txt [t] [ctx ::: {Unit}] [use ::: {Type}] (_ : show t) (v : t) =
     cdata (show v)
 
+fun map0 [K] [tf :: K -> Type] (f : t :: K -> tf t) [r :: {K}] (fl : folder r) =
+    fl [fn r :: {K} => $(map tf r)]
+    (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] acc =>
+        acc ++ {nm = f [t]})
+    {}
+
 fun mp [K] [tf1 :: K -> Type] [tf2 :: K -> Type] (f : t ::: K -> tf1 t -> tf2 t) [r :: {K}] (fl : folder r) =
     fl [fn r :: {K} => $(map tf1 r) -> $(map tf2 r)]
     (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] acc r =>

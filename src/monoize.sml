@@ -1771,6 +1771,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 fun sc s = (L'.EPrim (Prim.String s), loc)
                 val s = (L'.TFfi ("Basis", "string"), loc)
+                val b = (L'.TFfi ("Basis", "bool"), loc)
                 val un = (L'.TRecord [], loc)
                 fun gf s = (L'.EField ((L'.ERel 0, loc), s), loc)
 
@@ -1806,7 +1807,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                         (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) sexps
                     in
                         ((L'.EAbs ("r",
-                                   (L'.TRecord [("From", s),
+                                   (L'.TRecord [("Distinct", b),
+                                                ("From", s),
                                                 ("Where", s),
                                                 ("GroupBy", un),
                                                 ("Having", s),
@@ -1815,6 +1817,22 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                     loc),
                                    s,
                                    strcat [sc "SELECT ",
+                                           (L'.ECase (gf "Distinct",
+                                                      [((L'.PCon (L'.Enum,
+                                                                  L'.PConFfi {mod = "Basis",
+                                                                              datatyp = "bool",
+                                                                              con = "True",
+                                                                              arg = NONE},
+                                                                  NONE), loc),
+                                                        (L'.EPrim (Prim.String "DISTINCT "), loc)),
+                                                       ((L'.PCon (L'.Enum,
+                                                                  L'.PConFfi {mod = "Basis",
+                                                                              datatyp = "bool",
+                                                                              con = "False",
+                                                                              arg = NONE},
+                                                                  NONE), loc),
+                                                        (L'.EPrim (Prim.String ""), loc))],
+                                                      {disc = b, result = s}), loc),
                                            strcatComma (map (fn (x, t) =>
                                                                 strcat [
                                                                 (L'.EField (gf "SelectExps", x), loc),

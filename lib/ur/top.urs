@@ -45,6 +45,9 @@ val read_option : t ::: Type -> read t -> read (option t)
 val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> show t -> t
           -> xml ctx use []
 
+val map0 : K --> tf :: (K -> Type)
+           -> (t :: K -> tf t)
+           -> r :: {K} -> folder r -> $(map tf r)
 val mp : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
          -> (t ::: K -> tf1 t -> tf2 t)
          -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r)

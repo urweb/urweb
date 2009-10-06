@@ -144,7 +144,7 @@ See doc for the variable `urweb-mode-info'."
   "A regexp that matches any non-SQL keywords of Ur/Web.")
 
 (defconst urweb-sql-keywords-regexp
-  (urweb-syms-re "SELECT" "FROM" "AS" "WHERE" "SQL" "GROUP" "ORDER" "BY"
+  (urweb-syms-re "SELECT" "DISTINCT" "FROM" "AS" "WHERE" "SQL" "GROUP" "ORDER" "BY"
                  "HAVING" "LIMIT" "OFFSET" "ALL" "UNION" "INTERSECT" "EXCEPT"
                  "TRUE" "FALSE" "AND" "OR" "NOT" "COUNT" "AVG" "SUM" "MIN" "MAX"
                  "ASC" "DESC" "INSERT" "INTO" "VALUES" "UPDATE" "SET" "DELETE"
