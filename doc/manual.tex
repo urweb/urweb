@@ -1469,7 +1469,8 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{grouped} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \{\mt{From} : \mt{sql\_from\_items} \; \mt{tables}, \\
+  \hspace{.1in} \to \{\mt{Distinct} : \mt{bool}, \\
+  \hspace{.2in} \mt{From} : \mt{sql\_from\_items} \; \mt{tables}, \\
   \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; \mt{tables} \; [] \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{GroupBy} : \mt{sql\_subset} \; \mt{tables} \; \mt{grouped}, \\
   \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; [] \; \mt{bool}, \\
@@ -1855,7 +1856,7 @@ Queries $Q$ are added to the rules for expressions $e$.
 
 $$\begin{array}{rrcll}
   \textrm{Queries} & Q &::=& (q \; [\mt{ORDER} \; \mt{BY} \; (E \; [o],)^+] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N]) \\
-  \textrm{Pre-queries} & q &::=& \mt{SELECT} \; P \; \mt{FROM} \; T,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
+  \textrm{Pre-queries} & q &::=& \mt{SELECT} \; [\mt{DISTINCT}] \; P \; \mt{FROM} \; T,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
   &&& \mid q \; R \; q \\
   \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT}
 \end{array}$$

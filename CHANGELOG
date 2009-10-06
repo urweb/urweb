@@ -5,6 +5,7 @@ Next
 - Bug fixes
 - Improvement to choice of line number to cite in record unification error
   messages
+- SELECT DISTINCT
 
 ========
 20090926
