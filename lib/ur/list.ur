@@ -230,9 +230,10 @@ fun app [m] (_ : monad m) [a] f =
 fun mapQuery [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
              [tables ~ exps] (q : sql_query tables exps)
              (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> t) =
-    query q
-          (fn fs acc => return (f fs :: acc))
-          []
+    ls <- query q
+                (fn fs acc => return (f fs :: acc))
+                [];
+    return (rev ls)
 
 fun assoc [a] [b] (_ : eq a) (x : a) =
     let

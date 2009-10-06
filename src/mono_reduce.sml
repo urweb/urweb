@@ -380,7 +380,8 @@ fun reduce file =
                                                               else
                                                                   [Unsure])
                                   | EApp (f, x) =>
-                                    unravel (#1 f, passed + 1, summarize d x @ ls)
+                                    unravel (#1 f, passed + 1, List.revAppend (summarize d x,
+                                                                               ls))
                                   | _ => [Unsure]
                         in
                             unravel (e, 0, [])
@@ -584,6 +585,7 @@ fun reduce file =
                                     (*val () = Print.prefaces "Try"
                                                             [(*("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),*)
                                                              ("e'", MonoPrint.p_exp env e'),
+                                                             ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
                                                              ("e'_eff", p_events effs_e'),
                                                              ("b", p_events effs_b)]*)
 

@@ -2160,6 +2160,7 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
 
   if (localtime_r(&t, &stm)) {
     s = uw_malloc(ctx, TIMES_MAX);
+    --stm.tm_hour;
     len = strftime(s, TIMES_MAX, TIME_FMT, &stm);
     r = uw_malloc(ctx, len + 14);
     sprintf(r, "'%s'::timestamp", s);
@@ -2176,7 +2177,6 @@ char *uw_Basis_attrifyTime(uw_context ctx, uw_Basis_time t) {
   if (localtime_r(&t, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
     r = ctx->heap.front;
-    --stm.tm_hour;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
     ctx->heap.front += len+1;
     return r;
@@ -2429,7 +2429,6 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
     *dot = 0;
     if (strptime(s, TIME_FMT_PG, &stm)) {
       *dot = '.';
-      --stm.tm_hour;
       return mktime(&stm);
     }
     else {
@@ -2439,10 +2438,8 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
   }
   else {
     if (strptime(s, TIME_FMT_PG, &stm) == end) {
-      --stm.tm_hour;
       return mktime(&stm);
     } else if (strptime(s, TIME_FMT, &stm) == end) {
-      --stm.tm_hour;
       return mktime(&stm);
     } else
       uw_error(ctx, FATAL, "Can't parse time: %s", s);
@@ -2602,9 +2599,13 @@ void uw_commit(uw_context ctx) {
     ctx->transactionals[i].free(ctx->transactionals[i].data);
 
   // Splice script data into appropriate part of page
-  if (ctx->returning_blob || ctx->script_header[0] == 0)
-    ;
-  else if (buf_used(&ctx->script) == 0) {
+  if (ctx->returning_blob || ctx->script_header[0] == 0) {
+    char *start = strstr(ctx->page.start, "<sc>");
+    if (start) {
+      memmove(start, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 4);
+      ctx->page.front -= 4;
+    }
+  } else if (buf_used(&ctx->script) == 0) {
     size_t len = strlen(ctx->script_header);
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {

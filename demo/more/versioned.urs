@@ -2,7 +2,7 @@ functor Make(M : sig
                  con key :: {Type}
                  con data :: {Type}
                  constraint key ~ data
-                 constraint [When] ~ (key ++ data)
+                 constraint [When, Version] ~ (key ++ data)
 
                  val key : $(map sql_injectable key)
                  val data : $(map (fn t => {Inj : sql_injectable_prim t,
@@ -16,4 +16,9 @@ functor Make(M : sig
 
     val keys : transaction (list $M.key)
     val current : $M.key -> transaction (option $M.data)
+
+    type version
+    val keysAt : version -> transaction (list $M.key)
+    val archive : version -> $M.key -> transaction (option $M.data)
+    val updateTimes : transaction (list (version * time))
 end

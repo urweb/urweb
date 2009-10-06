@@ -536,23 +536,6 @@ fun getPargs (e, _) =
 
       | _ => raise Fail "CjrPrint: getPargs"
 
-fun p_ensql t e =
-    case t of
-        Int => box [string "uw_Basis_attrifyInt(ctx, ", e, string ")"]
-      | Float => box [string "uw_Basis_attrifyFloat(ctx, ", e, string ")"]
-      | String => e
-      | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
-      | Time => box [string "uw_Basis_attrifyTime(ctx, ", e, string ")"]
-      | Blob => box [e, string ".data"]
-      | Channel => box [string "uw_Basis_attrifyChannel(ctx, ", e, string ")"]
-      | Client => box [string "uw_Basis_attrifyClient(ctx, ", e, string ")"]
-      | Nullable String => e
-      | Nullable t => box [string "(",
-                           e,
-                           string " == NULL ? NULL : ",
-                           p_ensql t (box [string "(*", e, string ")"]),
-                           string ")"]
-
 fun notLeaky env allowHeapAllocated =
     let
         fun nl ok (t, _) =

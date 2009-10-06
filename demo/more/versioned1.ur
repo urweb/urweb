@@ -9,6 +9,18 @@ open Versioned.Make(struct
                                                 Eq = _}}
                     end)
 
+fun retro vr =
+    ks <- keysAt vr;
+    ks <- List.mapM (fn r => fso <- archive vr r; return (r.Id, fso)) ks;
+
+    return <xml><body>
+      {List.mapX (fn (k, r) => <xml><li>
+        {[k]}: {case r of
+                    None => <xml>Whoa!</xml>
+                  | Some r => <xml>{[r.Nam]}, {[r.ShoeSize]}</xml>}
+      </li></xml>) ks}
+    </body></xml>
+
 fun expandKey k =
     name <- source "";
     shoeSize <- source "";
@@ -22,6 +34,8 @@ fun main () =
     id <- source "";
     name <- source "";
     shoeSize <- source "";
+
+    times <- updateTimes;
 
     return <xml><body>
       <dyn signal={ks <- signal ks;
@@ -59,4 +73,8 @@ fun main () =
                                              kr <- expandKey (readError id);
                                              set ks (kr :: cur)}/></th></tr>
       </table>
+
+      <h2>Archive</h2>
+
+      {List.mapX (fn (vr, tm) => <xml><li><a link={retro vr}>{[tm]}</a></li></xml>) times}
     </body></xml>

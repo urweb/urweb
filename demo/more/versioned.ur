@@ -2,7 +2,7 @@ functor Make(M : sig
                  con key :: {Type}
                  con data :: {Type}
                  constraint key ~ data
-                 constraint [When] ~ (key ++ data)
+                 constraint [When, Version] ~ (key ++ data)
 
                  val key : $(map sql_injectable key)
                  val data : $(map (fn t => {Inj : sql_injectable_prim t,
@@ -11,10 +11,14 @@ functor Make(M : sig
                  val keyFolder : folder key
                  val dataFolder : folder data
              end) = struct
-    con all = [When = time] ++ M.key ++ map option M.data
+    type version = int
+    con all = [When = time, Version = version] ++ M.key ++ map option M.data
+    sequence s
     table t : all
 
     val keys = List.mapQuery (SELECT DISTINCT t.{{M.key}} FROM t) (fn r => r.T)
+    fun keysAt vr = List.mapQuery (SELECT DISTINCT t.{{M.key}} FROM t
+                                   WHERE t.Version <= {[vr]}) (fn r => r.T)
 
     con dmeta = fn t => {Inj : sql_injectable_prim t,
                          Eq : eq t}
@@ -24,14 +28,16 @@ functor Make(M : sig
              (fn [t] => @sql_inject)
              [_] M.keyFolder M.key (r --- M.data)
 
-    fun insert r = dml (Basis.insert t
-                                     ({When = (SQL CURRENT_TIMESTAMP)}
-                                          ++ keyRecd r
-                                          ++ map2 [dmeta] [id]
-                                          [fn t => sql_exp [] [] [] (option t)]
-                                          (fn [t] x v => @sql_inject (@sql_option_prim x.Inj)
-                                                          (Some v))
-                                          [_] M.dataFolder M.data (r --- M.key)))
+    fun insert r =
+        vr <- nextval s;
+        dml (Basis.insert t
+                          ({Version = (SQL {[vr]}), When = (SQL CURRENT_TIMESTAMP)}
+                               ++ keyRecd r
+                               ++ map2 [dmeta] [id]
+                               [fn t => sql_exp [] [] [] (option t)]
+                               (fn [t] x v => @sql_inject (@sql_option_prim x.Inj)
+                                               (Some v))
+                               [_] M.dataFolder M.data (r --- M.key)))
 
     fun keyExp (r : $M.key) : sql_exp [T = all] [] [] bool =
         foldR2 [sql_injectable] [id] [fn before => after :: {Type} -> [before ~ after]
@@ -46,9 +52,14 @@ functor Make(M : sig
                [_] M.keyFolder M.key r
                [_] !
 
-    fun current k =
+    datatype bound =
+             NoBound
+           | Lt of int
+           | Le of int
+
+    fun seek vro k =
         let
-            fun current' timeOpt r =
+            fun current' vro r =
                 let
                     val complete = foldR [option] [fn ts => option $ts]
                                    (fn [nm :: Name] [v :: Type] [r :: {Type}] [[nm] ~ r]
@@ -62,11 +73,12 @@ functor Make(M : sig
                         Some r => return (Some r)
                       | None =>
                         let
-                            val filter = case timeOpt of
-                                             None => (WHERE TRUE)
-                                           | Some time => (WHERE t.When < {[time]})
+                            val filter = case vro of
+                                             NoBound => (WHERE TRUE)
+                                           | Lt vr => (WHERE t.Version < {[vr]})
+                                           | Le vr => (WHERE t.Version <= {[vr]})
                         in
-                            ro <- oneOrNoRows (SELECT t.When, t.{{map option M.data}}
+                            ro <- oneOrNoRows (SELECT t.Version, t.{{map option M.data}}
                                                FROM t
                                                WHERE {filter}
                                                  AND {keyExp k}
@@ -81,21 +93,25 @@ functor Make(M : sig
                                                 case old of
                                                     None => new
                                                   | Some _ => old)
-                                            [_] M.dataFolder r (r'.T -- #When)
+                                            [_] M.dataFolder r (r'.T -- #Version)
                                 in
-                                    current' (Some r'.T.When) r
+                                    current' (Lt r'.T.Version) r
                                 end
                         end
                 end
         in
-            current' None (map0 [option] (fn [t :: Type] => None : option t) [_] M.dataFolder)
+            current' vro (map0 [option] (fn [t :: Type] => None : option t) [_] M.dataFolder)
         end
+
+    val current = seek NoBound
+    fun archive vr = seek (Le vr)
 
     fun update r =
         cur <- current (r --- M.data);
         case cur of
             None => error <xml>Tried to update nonexistent key</xml>
           | Some cur =>
+            vr <- nextval s;
             let
                 val r' = map3 [dmeta] [id] [id] [fn t => sql_exp [] [] [] (option t)]
                               (fn [t] (meta : dmeta t) old new =>
@@ -105,10 +121,14 @@ functor Make(M : sig
                                     else
                                         Some new))
                               [_] M.dataFolder M.data cur (r --- M.key)
-                val r' = {When = (SQL CURRENT_TIMESTAMP)}
+                val r' = {Version = (SQL {[vr]}), When = (SQL CURRENT_TIMESTAMP)}
                              ++ keyRecd r
                              ++ r'
             in
                 dml (Basis.insert t r')
             end
+
+    val updateTimes = List.mapQuery (SELECT t.Version, t.When
+                                     FROM t
+                                     ORDER BY t.When) (fn r => (r.T.Version, r.T.When))
 end
