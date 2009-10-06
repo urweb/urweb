@@ -2,6 +2,10 @@
 
 dragList.urp
 
-This is an Ur/Web version of the "draggable lists" <a href="http://groups.inf.ed.ac.uk/links/examples/">demo program from Links</a>.
+<p>This is an Ur/Web version of the "draggable lists" <a href="http://groups.inf.ed.ac.uk/links/examples/">demo program from Links</a>.</p>
 
 grid1.urp
+
+orm1.urp
+
+<p>Many varieties of "object-relational mapping" (ORM) can be implemented as libraries in Ur/Web, as this demo shows.</p>

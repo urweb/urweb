@@ -11,16 +11,24 @@ structure S = Table(struct
                     end)
 
 fun action () =
-    r <- T.create {A = 3, B = "Hi"};
-    T.save (r -- #B ++ {B = "Bye"});
+    r1 <- T.create {A = 3, B = "Hi"};
+    T.save (r1 -- #B ++ {B = "Bye"});
+    r2 <- T.create {A = 4, B = "Why"};
+    r3 <- T.create {A = 66, B = "Hi"};
 
-    s <- S.create {C = r.Id, D = 45.67};
+    s <- S.create {C = r1.Id, D = 45.67};
 
     ls <- T.list;
     ls' <- T.search (T.eq T.cols.B.Col "Hi");
 
     lsS <- S.list;
     lsS <- List.mapM (fn r => p <- S.cols.C.Parent r; return (r, p)) lsS;
+
+    T.delete r1;
+    T.delete r2;
+    T.delete r3;
+
+    S.delete s;
 
     return <xml><body>
       {List.mapX (fn r => <xml><li> {[r.A]}: {[r.B]}</li></xml>) ls}

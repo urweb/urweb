@@ -1,6 +1,6 @@
 library orm
-database dbname=orm1
-sql orm1.sql
+database dbname=test
+sql test.sql
 
 $/list
 orm1
