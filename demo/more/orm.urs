@@ -6,6 +6,8 @@ con meta = fn col_parent :: (Type * Type) => {
 	      Inj : sql_injectable col_parent.1
 	      }
 
+val local : t :: Type -> sql_injectable t -> meta (t, unit)
+
 functor Table(M : sig
 		  con cols :: {(Type * Type)}
 		  val cols : $(map meta cols)

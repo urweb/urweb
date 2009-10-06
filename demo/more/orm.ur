@@ -1,10 +1,13 @@
 con link = fn col_parent :: (Type * Type) => col_parent.1 -> transaction (option col_parent.2)
-fun noParent [t ::: Type] _ = return None
+fun noParent [t ::: Type] (_ : t) = return None
 
 con meta = fn col_parent :: (Type * Type) => {
 	      Link : link col_parent,
 	      Inj : sql_injectable col_parent.1
 	      }
+
+fun local [t :: Type] (inj : sql_injectable t) = {Link = noParent,
+                                                  Inj = inj}
 
 functor Table(M : sig
                   con cols :: {(Type * Type)}
