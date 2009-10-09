@@ -6,6 +6,7 @@ Next
 - Improvement to choice of line number to cite in record unification error
   messages
 - SELECT DISTINCT
+- New extra demos: orm1 and versioned1
 
 ========
 20090926
