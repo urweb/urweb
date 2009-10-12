@@ -100,7 +100,7 @@ fun unAs s =
     let
         fun doChars (cs, acc) =
             case cs of
-                #"T" :: #"." :: cs => doChars (cs, acc)
+                #"T" :: #"_" :: #"T" :: #"." :: cs => doChars (cs, acc)
               | #"'" :: cs => doString (cs, acc)
               | ch :: cs => doChars (cs, ch :: acc)
               | [] => String.implode (rev acc)

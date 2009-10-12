@@ -73,19 +73,21 @@ val ident = String.translate (fn #"'" => "PRIME"
 fun checkRel (table, checkNullable) (s, xts) =
     let
         val sl = CharVector.map Char.toLower s
+        val both = "table_name IN ('" ^ sl ^ "', '" ^ s ^ "')"
 
-        val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE table_name = '"
-                ^ sl ^ "'"
+        val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE " ^ both
 
-        val q' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
-                                sl,
-                                "' AND (",
+        val q' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE ",
+                                both,
+                                " AND (",
                                 String.concatWith " OR "
                                                   (map (fn (x, t) =>
-                                                           String.concat ["(column_name = 'uw_",
+                                                           String.concat ["(column_name IN ('uw_",
                                                                           CharVector.map
                                                                               Char.toLower (ident x),
-                                                                          "' AND data_type = '",
+                                                                          "', 'uw_",
+                                                                          ident x,
+                                                                          "') AND data_type = '",
                                                                           p_sql_type_base t,
                                                                           "'",
                                                                           if checkNullable then
@@ -100,9 +102,9 @@ fun checkRel (table, checkNullable) (s, xts) =
                                                                           ")"]) xts),
                                 ")"]
 
-        val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
-                                 sl,
-                                 "' AND column_name LIKE 'uw_%'"]
+        val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE ",
+                                 both,
+                                 " AND column_name LIKE 'uw_%'"]
     in
         box [string "if (mysql_query(conn->conn, \"",
              string q,
