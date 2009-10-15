@@ -2516,7 +2516,7 @@ and sgiOfDecl (d, loc) =
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
       | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
 
-and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
+and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
                         ("sgn2", p_sgn env sgn2)];*)
     case (#1 (hnormSgn env sgn1), #1 (hnormSgn env sgn2)) of
@@ -2575,7 +2575,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                             seek env sgis1
                         end
 
-                    val seek = seek' (fn env => (sgnError env (UnmatchedSgi sgi2All);
+                    val seek = seek' (fn env => (sgnError env (UnmatchedSgi (strLoc, sgi2All));
                                                  env))
                 in
                     case sgi of
@@ -2587,7 +2587,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                              let
                                                  val () = unifyKinds env k1 k2
                                                      handle KUnify (k1, k2, err) =>
-                                                            sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
+                                                            sgnError env (SgiWrongKind (strLoc, sgi1All, k1,
+                                                                                        sgi2All, k2, err))
                                                  val env = E.pushCNamedAs env x n1 k1 co1
                                              in
                                                  SOME (if n1 = n2 then
@@ -2655,7 +2656,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                                  (unifyCons env loc c1 c2;
                                                   good ())
                                                  handle CUnify (c1, c2, err) =>
-                                                        (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                        (sgnError env (SgiWrongCon (strLoc, sgi1All, c1,
+                                                                                    sgi2All, c2, err));
                                                          good ())
                                              end
                                          else
@@ -2675,7 +2677,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                 else
                                     let
                                         fun mismatched ue =
-                                            (sgnError env (SgiMismatchedDatatypes (sgi1All, sgi2All, ue));
+                                            (sgnError env (SgiMismatchedDatatypes (strLoc, sgi1All, sgi2All, ue));
                                              SOME env)
 
                                         val k = (L'.KType, loc)
@@ -2780,7 +2782,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                              (unifyCons env loc t1 t2;
                                               good ())
                                              handle CUnify (c1, c2, err) =>
-                                                    (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                    (sgnError env (SgiWrongCon (strLoc, sgi1All, c1, sgi2All, c2, err));
                                                      good ())
                                          end
                                      else
@@ -2801,7 +2803,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                           unifyCons env loc c1 (sub2 c2);
                                           SOME env)
                                          handle CUnify (c1, c2, err) =>
-                                                (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                (sgnError env (SgiWrongCon (strLoc, sgi1All, c1, sgi2All, c2, err));
                                                  SOME env)
                                      else
                                          NONE
@@ -2813,7 +2815,7 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                      L'.SgiStr (x', n1, sgn1) =>
                                      if x = x' then
                                          let
-                                             val () = subSgn' counterparts env sgn1 sgn2
+                                             val () = subSgn' counterparts env strLoc sgn1 sgn2
                                              val env = E.pushStrNamedAs env x n1 sgn1
                                              val env = if n1 = n2 then
                                                            env
@@ -2834,8 +2836,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                      L'.SgiSgn (x', n1, sgn1) =>
                                      if x = x' then
                                          let
-                                             val () = subSgn' counterparts env sgn1 sgn2
-                                             val () = subSgn' counterparts env sgn2 sgn1
+                                             val () = subSgn' counterparts env strLoc sgn1 sgn2
+                                             val () = subSgn' counterparts env strLoc sgn2 sgn1
 
                                              val env = E.pushSgnNamedAs env x n2 sgn2
                                              val env = if n1 = n2 then
@@ -2869,7 +2871,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                              let
                                                  val () = unifyKinds env k1 k2
                                                      handle KUnify (k1, k2, err) =>
-                                                            sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
+                                                            sgnError env (SgiWrongKind (strLoc, sgi1All, k1,
+                                                                                        sgi2All, k2, err))
 
                                                  val env = E.pushCNamedAs env x n1 k1 co
                                              in
@@ -2895,7 +2898,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                              let
                                                  val () = unifyKinds env k1 k2
                                                      handle KUnify (k1, k2, err) =>
-                                                            sgnError env (SgiWrongKind (sgi1All, k1, sgi2All, k2, err))
+                                                            sgnError env (SgiWrongKind (strLoc, sgi1All, k1,
+                                                                                        sgi2All, k2, err))
 
                                                  val c2 = sub2 c2
 
@@ -2914,7 +2918,8 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                                                  (unifyCons env loc c1 c2;
                                                   good ())
                                                  handle CUnify (c1, c2, err) =>
-                                                        (sgnError env (SgiWrongCon (sgi1All, c1, sgi2All, c2, err));
+                                                        (sgnError env (SgiWrongCon (strLoc, sgi1All, c1,
+                                                                                    sgi2All, c2, err));
                                                          good ())
                                              end
                                          else
@@ -2937,11 +2942,11 @@ and subSgn' counterparts env sgn1 (sgn2 as (_, loc2)) =
                 else
                     subStrInSgn (n2, n1) ran2
         in
-            subSgn' counterparts env dom2 dom1;
-            subSgn' counterparts (E.pushStrNamedAs env m1 n1 dom2) ran1 ran2
+            subSgn' counterparts env strLoc dom2 dom1;
+            subSgn' counterparts (E.pushStrNamedAs env m1 n1 dom2) strLoc ran1 ran2
         end
 
-      | _ => sgnError env (SgnWrongForm (sgn1, sgn2)))
+      | _ => sgnError env (SgnWrongForm (strLoc, sgn1, sgn2)))
 
 and subSgn env = subSgn' (ref IM.empty) env
 
@@ -3405,7 +3410,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                 val str = wildifyStr env (str, formal)
                                 val (str', actual, gs2) = elabStr (env, denv) str
                             in
-                                subSgn env (selfifyAt env {str = str', sgn = actual}) formal;
+                                subSgn env loc (selfifyAt env {str = str', sgn = actual}) formal;
                                 (str', formal, enD gs1 @ gs2)
                             end
 
@@ -3786,7 +3791,7 @@ and elabStr (env, denv) (str, loc) =
                     let
                         val (ran', gs) = elabSgn (env', denv') ran
                     in
-                        subSgn env' actual ran';
+                        subSgn env' loc actual ran';
                         (ran', gs)
                     end
         in
@@ -3807,7 +3812,7 @@ and elabStr (env, denv) (str, loc) =
             case #1 (hnormSgn env sgn1) of
                 L'.SgnError => (strerror, sgnerror, [])
               | L'.SgnFun (m, n, dom, ran) =>
-                (subSgn env sgn2 dom;
+                (subSgn env loc sgn2 dom;
                  case #1 (hnormSgn env ran) of
                      L'.SgnError => (strerror, sgnerror, [])
                    | L'.SgnConst sgis =>
@@ -3878,7 +3883,7 @@ fun elabFile basis topStr topSgn env file =
                                         | NONE => expError env (Unresolvable (loc, c))
                                   end) gs
 
-        val () = subSgn env' topSgn' topSgn
+        val () = subSgn env' ErrorMsg.dummySpan topSgn' topSgn
 
         val (env', top_n) = E.pushStrNamed env' "Top" topSgn
         val () = top_r := top_n

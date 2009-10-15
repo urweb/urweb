@@ -88,11 +88,12 @@ signature ELAB_ERR = sig
 
     datatype sgn_error =
              UnboundSgn of ErrorMsg.span * string
-           | UnmatchedSgi of Elab.sgn_item
-           | SgiWrongKind of Elab.sgn_item * Elab.kind * Elab.sgn_item * Elab.kind * kunify_error
-           | SgiWrongCon of Elab.sgn_item * Elab.con * Elab.sgn_item * Elab.con * cunify_error
-           | SgiMismatchedDatatypes of Elab.sgn_item * Elab.sgn_item * (Elab.con * Elab.con * cunify_error) option
-           | SgnWrongForm of Elab.sgn * Elab.sgn
+           | UnmatchedSgi of ErrorMsg.span * Elab.sgn_item
+           | SgiWrongKind of ErrorMsg.span * Elab.sgn_item * Elab.kind * Elab.sgn_item * Elab.kind * kunify_error
+           | SgiWrongCon of ErrorMsg.span * Elab.sgn_item * Elab.con * Elab.sgn_item * Elab.con * cunify_error
+           | SgiMismatchedDatatypes of ErrorMsg.span * Elab.sgn_item * Elab.sgn_item
+                                       * (Elab.con * Elab.con * cunify_error) option
+           | SgnWrongForm of ErrorMsg.span * Elab.sgn * Elab.sgn
            | UnWhereable of Elab.sgn * string
            | WhereWrongKind of Elab.kind * Elab.kind * kunify_error
            | NotIncludable of Elab.sgn

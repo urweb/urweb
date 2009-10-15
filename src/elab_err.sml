@@ -259,11 +259,12 @@ fun declError env err =
 
 datatype sgn_error =
          UnboundSgn of ErrorMsg.span * string
-       | UnmatchedSgi of sgn_item
-       | SgiWrongKind of sgn_item * kind * sgn_item * kind * kunify_error
-       | SgiWrongCon of sgn_item * con * sgn_item * con * cunify_error
-       | SgiMismatchedDatatypes of sgn_item * sgn_item * (con * con * cunify_error) option
-       | SgnWrongForm of sgn * sgn
+       | UnmatchedSgi of ErrorMsg.span * sgn_item
+       | SgiWrongKind of ErrorMsg.span * sgn_item * kind * sgn_item * kind * kunify_error
+       | SgiWrongCon of ErrorMsg.span * sgn_item * con * sgn_item * con * cunify_error
+       | SgiMismatchedDatatypes of ErrorMsg.span * sgn_item * sgn_item
+                                   * (con * con * cunify_error) option
+       | SgnWrongForm of ErrorMsg.span * sgn * sgn
        | UnWhereable of sgn * string
        | WhereWrongKind of kind * kind * kunify_error
        | NotIncludable of sgn
@@ -280,25 +281,25 @@ fun sgnError env err =
     case err of
         UnboundSgn (loc, s) =>
         ErrorMsg.errorAt loc ("Unbound signature variable " ^ s)
-      | UnmatchedSgi (sgi as (_, loc)) =>
+      | UnmatchedSgi (loc, sgi) =>
         (ErrorMsg.errorAt loc "Unmatched signature item";
          eprefaces' [("Item", p_sgn_item env sgi)])
-      | SgiWrongKind (sgi1, k1, sgi2, k2, kerr) =>
-        (ErrorMsg.errorAt (#2 sgi1) "Kind unification failure in signature matching:";
+      | SgiWrongKind (loc, sgi1, k1, sgi2, k2, kerr) =>
+        (ErrorMsg.errorAt loc "Kind unification failure in signature matching:";
          eprefaces' [("Have", p_sgn_item env sgi1),
                      ("Need", p_sgn_item env sgi2),
                      ("Kind 1", p_kind env k1),
                      ("Kind 2", p_kind env k2)];
          kunifyError env kerr)
-      | SgiWrongCon (sgi1, c1, sgi2, c2, cerr) =>
-        (ErrorMsg.errorAt (#2 sgi1) "Constructor unification failure in signature matching:";
+      | SgiWrongCon (loc, sgi1, c1, sgi2, c2, cerr) =>
+        (ErrorMsg.errorAt loc "Constructor unification failure in signature matching:";
          eprefaces' [("Have", p_sgn_item env sgi1),
                      ("Need", p_sgn_item env sgi2),
                      ("Con 1", p_con env c1),
                      ("Con 2", p_con env c2)];
          cunifyError env cerr)
-      | SgiMismatchedDatatypes (sgi1, sgi2, cerro) =>
-        (ErrorMsg.errorAt (#2 sgi1) "Mismatched 'datatype' specifications:";
+      | SgiMismatchedDatatypes (loc, sgi1, sgi2, cerro) =>
+        (ErrorMsg.errorAt loc "Mismatched 'datatype' specifications:";
          eprefaces' [("Have", p_sgn_item env sgi1),
                      ("Need", p_sgn_item env sgi2)];
          Option.app (fn (c1, c2, ue) =>
@@ -306,8 +307,8 @@ fun sgnError env err =
                                    [("Con 1", p_con env c1),
                                     ("Con 2", p_con env c2)];
                          cunifyError env ue)) cerro)
-      | SgnWrongForm (sgn1, sgn2) =>
-        (ErrorMsg.errorAt (#2 sgn1) "Incompatible signatures:";
+      | SgnWrongForm (loc, sgn1, sgn2) =>
+        (ErrorMsg.errorAt loc "Incompatible signatures:";
          eprefaces' [("Sig 1", p_sgn env sgn1),
                      ("Sig 2", p_sgn env sgn2)])
       | UnWhereable (sgn, x) =>
