@@ -4,6 +4,8 @@ functor Make(M : sig
                  con keyName :: Name
                  con keyType :: Type
                  val showKey : show keyType
+                 val readKey : read keyType
+                 val injKey : sql_injectable keyType
 
                  con visible :: {(Type * Type)}
                  constraint [keyName] ~ visible
@@ -20,6 +22,11 @@ functor Make(M : sig
              end) = struct
 
     open M
+
+    fun ensql [avail] (r : $(map snd visible)) : $(map (sql_exp avail [] []) (map fst visible)) =
+        map2 [meta] [snd] [fn ts :: (Type * Type) => sql_exp avail [] [] ts.1]
+             (fn [ts] meta v => @sql_inject meta.Inject (meta.Parse v))
+             [_] folder visible r
 
     fun main () =
         items <- queryX (SELECT t.{keyName}, t.{{map fst visible}} FROM t)
@@ -45,7 +52,15 @@ functor Make(M : sig
                  (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest] m =>
                      <xml><th>{[m.Nam]}</th></xml>) [_] folder visible}</tr>
             <subforms{#Users}>{items}</subforms>
+            <tr> <td><submit value="Save" action={save}/></td> </tr>
           </table></form>
         </body></xml>
+
+    and save r =
+        List.app (fn user => dml (update [map fst visible] !
+                                  (ensql (user -- keyName))
+                                  t
+                                  (WHERE t.{keyName} = {[readError user.keyName]}))) r.Users;
+        main ()
 
 end

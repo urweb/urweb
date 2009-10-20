@@ -2,6 +2,8 @@ functor Make(M : sig
                  con keyName :: Name
                  con keyType :: Type
                  val showKey : show keyType
+                 val readKey : read keyType
+                 val injKey : sql_injectable keyType
 
                  con visible :: {(Type * Type)}
                  constraint [keyName] ~ visible
