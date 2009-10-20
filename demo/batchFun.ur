@@ -1,11 +1,11 @@
-con colMeta = fn t_state :: (Type * Type) =>
+con colMeta = fn (db :: Type, state :: Type) =>
                  {Nam : string,
-                  Show : t_state.1 -> xbody,
-                  Inject : sql_injectable t_state.1,
+                  Show : db -> xbody,
+                  Inject : sql_injectable db,
 
-                  NewState : transaction t_state.2,
-                  Widget : t_state.2 -> xbody,
-                  ReadState : t_state.2 -> transaction t_state.1}
+                  NewState : transaction state,
+                  Widget : state -> xbody,
+                  ReadState : state -> transaction db}
 con colsMeta = fn cols :: {(Type * Type)} => $(map colMeta cols)
 
 fun default [t] (sh : show t) (rd : read t) (inj : sql_injectable t)

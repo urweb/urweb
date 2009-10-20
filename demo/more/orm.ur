@@ -1,9 +1,9 @@
 con link = fn col_parent :: (Type * Type) => col_parent.1 -> transaction (option col_parent.2)
 fun noParent [t ::: Type] (_ : t) = return None
 
-con meta = fn col_parent :: (Type * Type) => {
-	      Link : link col_parent,
-	      Inj : sql_injectable col_parent.1
+con meta = fn (col :: Type, parent :: Type) => {
+	      Link : link (col, parent),
+	      Inj : sql_injectable col
 	      }
 
 fun local [t :: Type] (inj : sql_injectable t) = {Link = noParent,
@@ -55,10 +55,10 @@ functor Table(M : sig
     con col = fn t => {Exp : sql_exp [T = fs] [] [] t,
                        Inj : sql_injectable t}
     val idCol = {Exp = sql_field [#T] [#Id], Inj = _}
-    con meta' = fn (fs :: {Type}) (col_parent :: (Type * Type)) =>
-                   {Col : {Exp : sql_exp [T = fs] [] [] col_parent.1,
-                           Inj : sql_injectable col_parent.1},
-                    Parent : $fs -> transaction (option col_parent.2)}
+    con meta' = fn (fs :: {Type}) (col :: Type, parent :: Type) =>
+                   {Col : {Exp : sql_exp [T = fs] [] [] col,
+                           Inj : sql_injectable col},
+                    Parent : $fs -> transaction (option parent)}
     val cols = foldR [meta] [fn before => after :: {(Type * Type)} -> [before ~ after] =>
                                 $(map (meta' (map fst (before ++ after))) before)]
                (fn [nm :: Name] [ts :: (Type * Type)] [before :: {(Type * Type)}]

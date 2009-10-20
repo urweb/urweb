@@ -10,9 +10,9 @@ con colMeta' = fn (row :: Type) (input :: Type) (filter :: Type) =>
                    Filter : filter -> row -> signal bool,
                    Sort : option (row -> row -> bool)}
                   
-con colMeta = fn (row :: Type) (global_input_filter :: (Type * Type * Type)) =>
-                 {Initialize : transaction global_input_filter.1,
-                  Handlers : global_input_filter.1 -> colMeta' row global_input_filter.2 global_input_filter.3}
+con colMeta = fn (row :: Type) (global :: Type, input :: Type, filter :: Type) =>
+                 {Initialize : transaction global,
+                  Handlers : global -> colMeta' row input filter}
 
 con aggregateMeta = fn (row :: Type) (acc :: Type) =>
                        {Initial : acc,
