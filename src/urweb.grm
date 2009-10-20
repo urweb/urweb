@@ -242,6 +242,8 @@ fun patType loc (p : pat) =
  | csts of exp
  | cstopt of exp
 
+ | ckl of (string * kind option) list
+
  | pmode of prop_kind * exp
  | pkind of prop_kind
  | prule of exp
@@ -847,14 +849,35 @@ cargp  : SYMBOL                         (fn (c, k) =>
                                                 ((CAbs ("_", NONE, c), loc),
                                                  (KArrow ((KWild, loc), k), loc))
                                             end)
-       | LPAREN SYMBOL DCOLON kind RPAREN (fn (c, k) =>
+       | LPAREN SYMBOL kopt ckl RPAREN (fn (c, k) =>
                                               let
                                                   val loc = s (LPARENleft, RPARENright)
+                                                  val ckl = (SYMBOL, kopt) :: ckl
+                                                  val ckl = map (fn (x, ko) => (x, case ko of
+                                                                                       NONE => (KWild, loc)
+                                                                                     | SOME k => k)) ckl
                                               in
-                                                  ((CAbs (SYMBOL, SOME kind, c), loc),
-                                                   (KArrow (kind, k), loc))
+                                                  case ckl of
+                                                      [(x, k')] => ((CAbs (SYMBOL, SOME k', c), loc),
+                                                                    (KArrow (k', k), loc))
+                                                    | _ =>
+                                                      let
+                                                          val k' = (KTuple (map #2 ckl), loc)
+
+                                                          val c = foldr (fn ((x, k), c) =>
+                                                                            (CAbs (x, SOME k, c), loc)) c ckl
+                                                          val v = (CVar ([], "$x"), loc)
+                                                          val c = ListUtil.foldli (fn (i, _, c) =>
+                                                                                      (CApp (c, (CProj (v, i + 1), loc)),
+                                                                                       loc)) c ckl
+                                                      in
+                                                          ((CAbs ("$x", SOME k', c), loc),
+                                                           (KArrow (k', k), loc))
+                                                      end
                                               end)
 
+ckl    :                                ([])
+       | COMMA SYMBOL kopt ckl          ((SYMBOL, kopt) :: ckl)
 
 path   : SYMBOL                         ([], SYMBOL)
        | CSYMBOL DOT path               (let val (ms, x) = path in (CSYMBOL :: ms, x) end)
