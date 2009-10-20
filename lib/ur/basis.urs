@@ -594,25 +594,25 @@ val img : bodyTag ([Src = url, Onabort = transaction unit, Onerror = transaction
                     Onload = transaction unit] ++ boxEvents)
           
 val form : ctx ::: {Unit} -> bind ::: {Type}
-           -> [[Body] ~ ctx] =>
-    xml form [] bind
+           -> [[Body, Form] ~ ctx] =>
+    xml ([Body, Form] ++ ctx) [] bind
     -> xml ([Body] ++ ctx) [] []
        
 val subform : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
               -> [[Form] ~ ctx] =>
     nm :: Name -> [[nm] ~ use] =>
-    xml form [] bind
+    xml ([Form] ++ ctx) [] bind
     -> xml ([Form] ++ ctx) use [nm = $bind]
 
 val subforms : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
-              -> [[Form] ~ ctx] =>
+              -> [[Form, Subform] ~ ctx] =>
     nm :: Name -> [[nm] ~ use] =>
-    xml subform [Entry = $bind] []
+    xml ([Subform] ++ ctx) [Entry = $bind] []
     -> xml ([Form] ++ ctx) use [nm = list ($bind)]
 
 val entry : ctx ::: {Unit} -> bind ::: {Type}
-              -> [[Subform] ~ ctx] =>
-    xml form [] bind
+              -> [[Subform, Form] ~ ctx] =>
+    xml ([Form] ++ ctx) [] bind
     -> xml ([Subform] ++ ctx) [Entry = $bind] []
 
 con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>

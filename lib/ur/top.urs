@@ -125,12 +125,12 @@ val queryI : tables ::: {{Type}} -> exps ::: {Type}
                  -> transaction unit)
              -> transaction unit
 
-val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
+val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
              -> [tables ~ exps] =>
              sql_query tables exps
              -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
-                 -> xml ctx [] [])
-             -> transaction (xml ctx [] [])
+                 -> xml ctx inp [])
+             -> transaction (xml ctx inp [])
 
 val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
               -> [tables ~ exps] =>

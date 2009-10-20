@@ -1,27 +1,4 @@
-con meta = fn (db :: Type, widget :: Type) =>
-              {Show : db -> xbody,
-               Widget : nm :: Name -> xml form [] [nm = widget],
-               WidgetPopulated : nm :: Name -> db -> xml form [] [nm = widget],
-               Parse : widget -> db,
-               Inject : sql_injectable db}
-
-fun default [t] (sh : show t) (rd : read t) (inj : sql_injectable t) : meta (t, string) =
-    {Show = txt,
-     Widget = fn [nm :: Name] => <xml><textbox{nm}/></xml>,
-     WidgetPopulated = fn [nm :: Name] n =>
-                          <xml><textbox{nm} value={show n}/></xml>,
-     Parse = readError,
-     Inject = _}
-
-val int = default
-val float = default
-val string = default
-val bool = {Show = txt,
-            Widget = fn [nm :: Name] => <xml><checkbox{nm}/></xml>,
-            WidgetPopulated = fn [nm :: Name] b =>
-                                 <xml><checkbox{nm} checked={b}/></xml>,
-            Parse = fn x => x,
-            Inject = _}
+open Meta
 
 functor Make(M : sig
                  con paper :: {(Type * Type)}
@@ -52,7 +29,7 @@ functor Make(M : sig
 
     cookie login : {Id : int, Password : string}
 
-    fun checkLogin () =
+    val checkLogin =
         r <- getCookie login;
         case r of
             None => return None
@@ -61,6 +38,21 @@ functor Make(M : sig
                           FROM user
                           WHERE user.Id = {[r.Id]}
                             AND user.Password = {[r.Password]})
+
+    structure Users = BulkEdit.Make(struct
+                                        con keyName = #Id
+                                        val visible = {Nam = string "Name",
+                                                       Chair = bool "Chair?",
+                                                       OnPc = bool "On PC?"}
+
+                                        val title = "Users"
+                                        val isAllowed =
+                                            me <- checkLogin;
+                                            return (Option.isSome me)
+
+                                        val t = user
+                                    end)
+
 
     fun doRegister r =
         n <- oneRowE1 (SELECT COUNT( * ) AS N
@@ -90,11 +82,18 @@ functor Make(M : sig
     </body></xml>
 
     and main () =
-        me <- checkLogin ();
+        me <- checkLogin;
         return <xml><body>
           {case me of
                None => <xml><li><a link={register None}>Register for access</a></li></xml>
-             | Some {Nam = name, ...} => <xml>Welcome, {[name]}!</xml>}
+             | Some me => <xml>
+               <div>Welcome, {[me.Nam]}!</div>
+
+               {if me.Chair then
+                    <xml><li><a link={Users.main ()}>Manage users</a></li></xml>
+                else
+                    <xml/>}
+             </xml>}
         </body></xml>
 
 end
