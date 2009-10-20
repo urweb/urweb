@@ -236,9 +236,14 @@ fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}]
 
 fun oneOrNoRows [tables ::: {{Type}}] [exps ::: {Type}]
                 [tables ~ exps]
-                (q : sql_query tables exps)  =
+                (q : sql_query tables exps) =
     query q
           (fn fs _ => return (Some fs))
+          None
+
+fun oneOrNoRows1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [nm = fs] []) =
+    query q
+          (fn fs _ => return (Some fs.nm))
           None
 
 fun oneRow [tables ::: {{Type}}] [exps ::: {Type}]
@@ -247,6 +252,12 @@ fun oneRow [tables ::: {{Type}}] [exps ::: {Type}]
     return (case o of
                 None => error <xml>Query returned no rows</xml>
               | Some r => r)
+
+fun oneRowE1 [tab ::: Name] [nm ::: Name] [t ::: Type] [[tab] ~ [nm]] (q : sql_query [tab = []] [nm = t]) =
+    o <- oneOrNoRows q;
+    return (case o of
+                None => error <xml>Query returned no rows</xml>
+              | Some r => r.nm)
 
 fun eqNullable [tables ::: {{Type}}] [agg ::: {{Type}}] [exps ::: {Type}]
     [t ::: Type] (_ : sql_injectable (option t))

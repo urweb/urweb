@@ -1,0 +1,5 @@
+library conference
+database dbname=conf1
+sql conf1.sql
+
+conference1

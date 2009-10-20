@@ -147,13 +147,22 @@ val oneOrNoRows : tables ::: {{Type}} -> exps ::: {Type}
                               $(exps
                                     ++ map (fn fields :: {Type} => $fields) tables))
 
+val oneOrNoRows1 : nm ::: Name -> fs ::: {Type}
+                   -> sql_query [nm = fs] []
+                   -> transaction (option $fs)
+
 val oneRow : tables ::: {{Type}} -> exps ::: {Type}
              -> [tables ~ exps] =>
              sql_query tables exps
              -> transaction
                     $(exps
                           ++ map (fn fields :: {Type} => $fields) tables)
-                
+
+val oneRowE1 : tab ::: Name -> nm ::: Name -> t ::: Type
+               -> [[tab] ~ [nm]] =>
+    sql_query [tab = []] [nm = t]
+    -> transaction t
+
 val eqNullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type -> sql_injectable (option t)
                  -> sql_exp tables agg exps (option t)
