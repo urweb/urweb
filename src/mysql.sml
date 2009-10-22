@@ -36,6 +36,7 @@ fun p_sql_type t =
         Int => "bigint"
       | Float => "double"
       | String => "longtext"
+      | Char => "char"
       | Bool => "bool"
       | Time => "timestamp"
       | Blob => "longblob"
@@ -48,6 +49,7 @@ fun p_buffer_type t =
         Int => "MYSQL_TYPE_LONGLONG"
       | Float => "MYSQL_TYPE_DOUBLE"
       | String => "MYSQL_TYPE_STRING"
+      | Char => "MYSQL_TYPE_TINY"
       | Bool => "MYSQL_TYPE_LONG"
       | Time => "MYSQL_TYPE_TIMESTAMP"
       | Blob => "MYSQL_TYPE_BLOB"
@@ -60,6 +62,7 @@ fun p_sql_type_base t =
         Int => "bigint"
       | Float => "double"
       | String => "longtext"
+      | Char => "char"
       | Bool => "tinyint"
       | Time => "timestamp"
       | Blob => "longblob"
@@ -385,6 +388,8 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                   string "uw_Estrings = 0;",
                   newline,
                   string "uw_sqlsuffixString = \"\";",
+                  newline,
+                  string "uw_sqlsuffixChar = \"\";",
                   newline,
                   string "uw_sqlsuffixBlob = \"\";",
                   newline,

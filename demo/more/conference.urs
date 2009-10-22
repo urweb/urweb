@@ -7,6 +7,7 @@ functor Make(M : sig
                  con review :: {(Type * Type)}
                  constraint [Paper, User] ~ review
                  val review : $(map Meta.meta review)
+                 val reviewFolder : folder review
 
                  val submissionDeadline : time
                  val summarizePaper : $(map fst paper) -> xbody

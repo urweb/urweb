@@ -105,6 +105,7 @@ signature SETTINGS = sig
              Int
            | Float
            | String
+           | Char
            | Bool
            | Time
            | Blob

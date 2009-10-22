@@ -9,6 +9,7 @@ functor Make(M : sig
                  con review :: {(Type * Type)}
                  constraint [Paper, User] ~ review
                  val review : $(map meta review)
+                 val reviewFolder : folder review
 
                  val submissionDeadline : time
                  val summarizePaper : $(map fst paper) -> xbody
@@ -26,7 +27,7 @@ functor Make(M : sig
 
     table authorship : {Paper : int, User : int}
           PRIMARY KEY (Paper, User),
-          CONSTRAINT Paper FOREIGN KEY Paper REFERENCES paper(Id),
+          CONSTRAINT Paper FOREIGN KEY Paper REFERENCES paper(Id) ON DELETE CASCADE,
           CONSTRAINT User FOREIGN KEY User REFERENCES user(Id)
 
     con review = [Paper = int, User = int] ++ map fst M.review
@@ -249,6 +250,7 @@ functor Make(M : sig
         </body></xml>
 
     and one id =
+        me <- getLogin;
         checkPaper id;
         ro <- oneOrNoRows (SELECT paper.{{map fst M.paper}}, octet_length(paper.Document) AS N
                            FROM paper
@@ -258,6 +260,10 @@ functor Make(M : sig
                              JOIN user ON authorship.User = user.Id
                            WHERE authorship.Paper = {[id]})
                    (fn r => <xml><li>{[r.User.Nam]}</li></xml>);
+        myReview <- oneOrNoRows1 (SELECT review.{{map fst M.review}}
+                                  FROM review
+                                  WHERE review.User = {[me.Id]}
+                                    AND review.Paper = {[id]});
         case ro of
             None => error <xml>Paper not found!</xml>
           | Some r => return <xml><body>
@@ -274,6 +280,24 @@ functor Make(M : sig
                  <xml><div>No paper uploaded yet.</div></xml>
              else
                  <xml><a link={download id}>Download paper</a> ({[r.N]} bytes)</xml>}
+
+            <hr/>
+
+            {case myReview of
+                 None => <xml>
+                   <h2>Add Your Review</h2>
+           
+                   <form>
+                     {allWidgets M.review M.reviewFolder}
+                   </form>
+                 </xml>
+               | Some myReview => <xml>
+                 <h2>Edit Your Review</h2>
+
+                 <form>
+                   {allPopulated M.review myReview M.reviewFolder}
+                 </form>
+               </xml>}
           </body></xml>
 
     and download id =

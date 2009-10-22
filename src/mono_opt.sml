@@ -45,12 +45,16 @@ fun attrifyFloat n =
     else
         Real.toString n
 
-val attrifyString = String.translate (fn #"\"" => "&quot;"
-                                       | #"&" => "&amp;"
-                                       | ch => if Char.isPrint ch then
-                                                   str ch
-                                               else
-                                                   "&#" ^ Int.toString (ord ch) ^ ";")
+fun attrifyChar ch =
+    case ch of
+        #"\"" => "&quot;"
+      | #"&" => "&amp;"
+      | ch => if Char.isPrint ch then
+                  str ch
+              else
+                  "&#" ^ Int.toString (ord ch) ^ ";"
+
+val attrifyString = String.translate attrifyChar
 
 val urlifyInt = attrifyInt
 val urlifyFloat = attrifyFloat
@@ -95,6 +99,7 @@ fun sqlifyInt n = #p_cast (Settings.currentDbms ()) (attrifyInt n, Settings.Int)
 fun sqlifyFloat n = #p_cast (Settings.currentDbms ()) (attrifyFloat n, Settings.Float)
 
 fun sqlifyString s = #sqlifyString (Settings.currentDbms ()) s
+fun sqlifyChar ch = #sqlifyString (Settings.currentDbms ()) (str ch)
 
 fun unAs s =
     let
@@ -260,6 +265,13 @@ fun exp e =
       | EWrite (EFfiApp ("Basis", "attrifyString", [e]), _) =>
         EFfiApp ("Basis", "attrifyString_w", [e])
 
+      | EFfiApp ("Basis", "attrifyChar", [(EPrim (Prim.Char s), _)]) =>
+        EPrim (Prim.String (attrifyChar s))
+      | EWrite (EFfiApp ("Basis", "attrifyChar", [(EPrim (Prim.Char s), _)]), loc) =>
+        EWrite (EPrim (Prim.String (attrifyChar s)), loc)
+      | EWrite (EFfiApp ("Basis", "attrifyChar", [e]), _) =>
+        EFfiApp ("Basis", "attrifyChar_w", [e])
+
       | EFfiApp ("Basis", "attrifyCss_class", [(EPrim (Prim.String s), _)]) =>
         EPrim (Prim.String s)
       | EWrite (EFfiApp ("Basis", "attrifyCss_class", [(EPrim (Prim.String s), _)]), loc) =>
@@ -318,6 +330,8 @@ fun exp e =
                         result = (TFfi ("Basis", "string"), loc)}), loc)
       | EFfiApp ("Basis", "sqlifyString", [(EPrim (Prim.String n), _)]) =>
         EPrim (Prim.String (sqlifyString n))
+      | EFfiApp ("Basis", "sqlifyChar", [(EPrim (Prim.Char n), _)]) =>
+        EPrim (Prim.String (sqlifyChar n))
 
       | EWrite (ECase (discE, pes, {disc, ...}), loc) =>
         optExp (ECase (discE,

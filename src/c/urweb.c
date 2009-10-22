@@ -1388,6 +1388,32 @@ char *uw_Basis_attrifyString(uw_context ctx, uw_Basis_string s) {
   return result;
 }
 
+char *uw_Basis_attrifyChar(uw_context ctx, uw_Basis_char c) {
+  char *result, *p;
+  uw_check_heap(ctx, 7);
+
+  result = p = ctx->heap.front;
+
+  if (c == '"') {
+    strcpy(p, "&quot;");
+    p += 6;
+  } else if (c == '&') {
+    strcpy(p, "&amp;");
+    p += 5;
+  }
+  else if (isprint(c))
+    *p++ = c;
+  else {
+    int len2;
+    sprintf(p, "&#%d;%n", c, &len2);
+    p += len2;
+  }
+
+  *p++ = 0;
+  ctx->heap.front = p;
+  return result;
+}
+
 char *uw_Basis_attrifyCss_class(uw_context ctx, uw_Basis_css_class s) {
   return s;
 }
@@ -1433,6 +1459,24 @@ uw_unit uw_Basis_attrifyString_w(uw_context ctx, uw_Basis_string s) {
       uw_Basis_attrifyInt_w_unsafe(ctx, c);
       uw_writec_unsafe(ctx, ';');
     }
+  }
+
+  return uw_unit_v;
+}
+
+uw_unit uw_Basis_attrifyChar_w(uw_context ctx, uw_Basis_char c) {
+  uw_check(ctx, 6);
+
+  if (c == '"')
+    uw_write_unsafe(ctx, "&quot;");
+  else if (c == '&')
+    uw_write_unsafe(ctx, "&amp;");
+  else if (isprint(c))
+    uw_writec_unsafe(ctx, c);
+  else {
+    uw_write_unsafe(ctx, "&#");
+    uw_Basis_attrifyInt_w_unsafe(ctx, c);
+    uw_writec_unsafe(ctx, ';');
   }
 
   return uw_unit_v;
@@ -1988,6 +2032,7 @@ char *uw_Basis_sqlifyFloatN(uw_context ctx, uw_Basis_float *n) {
 
 int uw_Estrings = 1;
 char *uw_sqlsuffixString = "::text";
+char *uw_sqlsuffixChar = "::char";
 
 uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
@@ -2032,6 +2077,48 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
   *s2++ = '\'';
   strcpy(s2, uw_sqlsuffixString);
   ctx->heap.front = s2 + 1 + strlen(uw_sqlsuffixString);
+  return r;
+}
+
+uw_Basis_string uw_Basis_sqlifyChar(uw_context ctx, uw_Basis_char c) {
+  char *r, *s2;
+
+  uw_check_heap(ctx, 5 + uw_Estrings + strlen(uw_sqlsuffixChar));
+
+  r = s2 = ctx->heap.front;
+  if (uw_Estrings)
+    *s2++ = 'E';
+  *s2++ = '\'';
+
+  switch (c) {
+  case '\'':
+    if (uw_Estrings)
+      strcpy(s2, "\\'");
+    else
+      strcpy(s2, "''");
+    s2 += 2;
+    break;
+  case '\\':
+    if (uw_Estrings) {
+      strcpy(s2, "\\\\");
+      s2 += 2;
+    } else
+      *s2++ = '\\';
+    break;
+  default:
+    if (isprint(c))
+      *s2++ = c;
+    else if (uw_Estrings) {
+      sprintf(s2, "\\%03o", c);
+      s2 += 4;
+    }
+    else
+      uw_error(ctx, FATAL, "Non-printable character %u in char to SQLify", c);
+  }
+
+  *s2++ = '\'';
+  strcpy(s2, uw_sqlsuffixChar);
+  ctx->heap.front = s2 + 1 + strlen(uw_sqlsuffixChar);
   return r;
 }
 

@@ -1921,6 +1921,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyString", [(L'.ERel 0, loc)]), loc)), loc),
              fm)
+          | L.EFfi ("Basis", "sql_char") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "char"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyChar", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
           | L.EFfi ("Basis", "sql_time") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyTime", [(L'.ERel 0, loc)]), loc)), loc),

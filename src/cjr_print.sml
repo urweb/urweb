@@ -491,20 +491,7 @@ fun isFile (t : typ) =
         TFfi ("Basis", "file") => true
       | _ => false
 
-fun p_sql_type' t =
-    case t of
-        Int => "uw_Basis_int"
-      | Float => "uw_Basis_float"
-      | String => "uw_Basis_string"
-      | Bool => "uw_Basis_bool"
-      | Time => "uw_Basis_time"
-      | Blob => "uw_Basis_blob"
-      | Channel => "uw_Basis_channel"
-      | Client => "uw_Basis_client"
-      | Nullable String => "uw_Basis_string"
-      | Nullable t => p_sql_type' t ^ "*"
-
-fun p_sql_type t = string (p_sql_type' t)
+fun p_sql_type t = string (Settings.p_sql_ctype t)
 
 fun getPargs (e, _) =
     case e of
@@ -1308,6 +1295,7 @@ fun sql_type_in env (tAll as (t, loc)) =
         TFfi ("Basis", "int") => Int
       | TFfi ("Basis", "float") => Float
       | TFfi ("Basis", "string") => String
+      | TFfi ("Basis", "char") => Char
       | TFfi ("Basis", "bool") => Bool
       | TFfi ("Basis", "time") => Time
       | TFfi ("Basis", "blob") => Blob

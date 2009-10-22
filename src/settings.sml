@@ -282,6 +282,7 @@ datatype sql_type =
          Int
        | Float
        | String
+       | Char
        | Bool
        | Time
        | Blob
@@ -298,6 +299,7 @@ fun p_sql_ctype t =
             Int => "uw_Basis_int"
           | Float => "uw_Basis_float"
           | String => "uw_Basis_string"
+          | Char => "uw_Basis_char"
           | Bool => "uw_Basis_bool"
           | Time => "uw_Basis_time"
           | Blob => "uw_Basis_blob"

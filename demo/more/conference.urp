@@ -1,5 +1,6 @@
 allow mime application/pdf
 
+$/string
 $/option
 $/list
 meta

@@ -52,6 +52,18 @@ fun allWidgets [ts ::: {(Type * Type)}] (r : $(map meta ts)) (fl : folder ts) =
           <xml/>
           [_] fl r
 
+fun allPopulated [ts ::: {(Type * Type)}] (r : $(map meta ts)) (vs : $(map fst ts)) (fl : folder ts) =
+    foldR2 [meta] [fst] [fn cols :: {(Type * Type)} =>
+                            xml form [] (map snd cols)]
+           (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
+                            (m : meta p) v (acc : xml form [] (map snd rest)) => 
+               <xml>
+                 {[m.Nam]}: {m.WidgetPopulated [nm] v}<br/>
+                 {useMore acc}
+               </xml>)
+           <xml/>
+           [_] fl r vs
+
 fun allPopulatedTr [ts ::: {(Type * Type)}] (r : $(map meta ts)) (vs : $(map fst ts)) (fl : folder ts) =
     foldR2 [meta] [fst] [fn cols :: {(Type * Type)} =>
                             xml [Body, Form, Tr] [] (map snd cols)]

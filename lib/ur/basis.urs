@@ -165,6 +165,7 @@ val sql_bool : sql_injectable_prim bool
 val sql_int : sql_injectable_prim int
 val sql_float : sql_injectable_prim float
 val sql_string : sql_injectable_prim string
+val sql_char : sql_injectable_prim char
 val sql_time : sql_injectable_prim time
 val sql_blob : sql_injectable_prim blob
 val sql_channel : t ::: Type -> sql_injectable_prim (channel t)

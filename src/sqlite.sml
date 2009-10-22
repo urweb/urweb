@@ -36,6 +36,7 @@ fun p_sql_type t =
         Int => "integer"
       | Float => "real"
       | String => "text"
+      | Char => "integer"
       | Bool => "integer"
       | Time => "text"
       | Blob => "blob"
@@ -164,6 +165,8 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                   string "uw_Estrings = 0;",
                   newline,
                   string "uw_sqlsuffixString = \"\";",
+                  newline,
+                  string "uw_sqlsuffixChar = \"\";",
                   newline,
                   string "uw_sqlsuffixBlob = \"\";",
                   newline,
@@ -370,6 +373,7 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
                     box [string "sqlite3_column_text(stmt, ", string (Int.toString i), string ")"]
                 else
                     box [string "uw_strdup(ctx, sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
+              | Char => box [string "sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
               | Bool => box [string "(uw_Basis_bool)sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
               | Time => box [string "uw_Basis_stringToTime_error(ctx, sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
               | Blob => box [string "({",
@@ -523,6 +527,11 @@ fun p_inputs loc =
                                                        string ", ",
                                                        arg,
                                                        string ", -1, SQLITE_TRANSIENT)"]
+                                      | Char => box [string "sqlite3_bind_int(stmt, ",
+                                                       string (Int.toString (i + 1)),
+                                                       string ", ",
+                                                       arg,
+                                                       string ")"]
                                       | Bool => box [string "sqlite3_bind_int(stmt, ",
                                                      string (Int.toString (i + 1)),
                                                      string ", ",

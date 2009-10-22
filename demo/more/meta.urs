@@ -18,6 +18,9 @@ val allContent : ts ::: {(Type * Type)} -> $(map meta ts) -> $(map fst ts) -> fo
 val allWidgets : ts ::: {(Type * Type)} -> $(map meta ts) -> folder ts
                  -> xml form [] (map snd ts)
 
+val allPopulated : ts ::: {(Type * Type)} -> $(map meta ts) -> $(map fst ts) -> folder ts
+                   -> xml form [] (map snd ts)
+
 val allPopulatedTr : ts ::: {(Type * Type)} -> $(map meta ts) -> $(map fst ts) -> folder ts
                      -> xml ([Tr] ++ form) [] (map snd ts)
 

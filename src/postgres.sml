@@ -39,6 +39,7 @@ fun p_sql_type t =
         Int => "int8"
       | Float => "float8"
       | String => "text"
+      | Char => "char"
       | Bool => "bool"
       | Time => "timestamp"
       | Blob => "bytea"
@@ -51,6 +52,7 @@ fun p_sql_type_base t =
         Int => "bigint"
       | Float => "double precision"
       | String => "text"
+      | Char => "character"
       | Bool => "boolean"
       | Time => "timestamp without time zone"
       | Blob => "bytea"
@@ -256,6 +258,8 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                        string "uw_Estrings = 1;",
                        newline,
                        string "uw_sqlsuffixString = \"::text\";",
+                       newline,
+                       string "uw_sqlsuffixChar = \"::char\";",
                        newline,
                        string "uw_sqlsuffixBlob = \"::bytea\";",
                        newline,
@@ -505,6 +509,7 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
                     e
                 else
                     box [string "uw_strdup(ctx, ", e, string ")"]
+              | Char => box [e, string "[0]"]
               | Bool => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
               | Time => box [string "uw_Basis_unsqlTime(ctx, ", e, string ")"]
               | Blob => box [string "uw_Basis_stringToBlob_error(ctx, ",
@@ -643,6 +648,7 @@ fun p_ensql t e =
         Int => box [string "uw_Basis_attrifyInt(ctx, ", e, string ")"]
       | Float => box [string "uw_Basis_attrifyFloat(ctx, ", e, string ")"]
       | String => e
+      | Char => box [string "uw_Basis_attrifyChar(ctx, ", e, string ")"]
       | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
       | Time => box [string "uw_Basis_attrifyTime(ctx, ", e, string ")"]
       | Blob => box [e, string ".data"]
