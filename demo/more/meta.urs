@@ -15,3 +15,9 @@ val textarea : string -> meta (string, string)
 
 val allWidgets : ts ::: {(Type * Type)} -> $(map meta ts) -> folder ts
                  -> xml form [] (map snd ts)
+
+val allPopulatedTr : ts ::: {(Type * Type)} -> $(map meta ts) -> $(map fst ts) -> folder ts
+                     -> xml ([Tr] ++ form) [] (map snd ts)
+
+val ensql : avail ::: {{Type}} -> ts ::: {(Type * Type)} -> $(map meta ts) -> $(map snd ts) -> folder ts
+            -> $(map (sql_exp avail [] []) (map fst ts))

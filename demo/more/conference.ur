@@ -2,7 +2,7 @@ open Meta
 
 functor Make(M : sig
                  con paper :: {(Type * Type)}
-                 constraint [Id] ~ paper
+                 constraint [Id, Document] ~ paper
                  val paper : $(map meta paper)
                  val paperFolder : folder paper
 
@@ -18,7 +18,7 @@ functor Make(M : sig
           CONSTRAINT Nam UNIQUE Nam
     sequence userId
 
-    con paper = [Id = int] ++ map fst M.paper
+    con paper = [Id = int, Document = blob] ++ map fst M.paper
     table paper : paper
           PRIMARY KEY Id
     sequence paperId
@@ -133,12 +133,22 @@ functor Make(M : sig
         m <- main' ();
         return <xml><body>{m}</body></xml>
 
-    and submit () = return <xml><body>
-      <h1>Submit a Paper</h1>
-
-      <form>
-        {allWidgets M.paper M.paperFolder}
-      </form>
-    </body></xml>
+    and submit () =
+        let
+            fun doSubmit r = return <xml><body>
+              MIME type: {[fileMimeType r.Document]}<br/>
+              Length: {[blobSize (fileData r.Document)]}
+            </body></xml>
+        in
+            return <xml><body>
+              <h1>Submit a Paper</h1>
+              
+              <form>
+                {allWidgets M.paper M.paperFolder}
+                <b>Paper:</b> <upload{#Document}/><br/>
+                <submit value="Submit" action={doSubmit}/>
+              </form>
+            </body></xml>
+        end
 
 end

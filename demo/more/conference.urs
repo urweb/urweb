@@ -1,6 +1,6 @@
 functor Make(M : sig
                  con paper :: {(Type * Type)}
-                 constraint [Id] ~ paper
+                 constraint [Id, Document] ~ paper
                  val paper : $(map Meta.meta paper)
                  val paperFolder : folder paper
 

@@ -23,25 +23,11 @@ functor Make(M : sig
 
     open M
 
-    fun ensql [avail] (r : $(map snd visible)) : $(map (sql_exp avail [] []) (map fst visible)) =
-        map2 [meta] [snd] [fn ts :: (Type * Type) => sql_exp avail [] [] ts.1]
-             (fn [ts] meta v => @sql_inject meta.Inject (meta.Parse v))
-             [_] folder visible r
-
     fun main () =
         items <- queryX (SELECT t.{keyName}, t.{{map fst visible}} FROM t)
                  (fn r => <xml><entry><tr>
                    <hidden{keyName} value={show r.T.keyName}/>
-                   {useMore (foldR2 [meta] [fst] [fn cols :: {(Type * Type)} =>
-                                            xml [Body, Form, Tr] [] (map snd cols)]
-                                    (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
-                                                     (m : meta p) v (acc : xml [Body, Form, Tr] [] (map snd rest)) => 
-                                        <xml>
-                                          <td>{m.WidgetPopulated [nm] v}</td>
-                                          {useMore acc}
-                                        </xml>)
-                                    <xml/>
-                                    [_] folder visible (r.T -- keyName))}
+                   {useMore (allPopulatedTr visible (r.T -- keyName) folder)}
                  </tr></entry></xml>);
         
         return <xml><body>
@@ -58,7 +44,7 @@ functor Make(M : sig
 
     and save r =
         List.app (fn user => dml (update [map fst visible] !
-                                  (ensql (user -- keyName))
+                                  (ensql visible (user -- keyName) folder)
                                   t
                                   (WHERE t.{keyName} = {[readError user.keyName]}))) r.Users;
         main ()

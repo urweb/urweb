@@ -44,3 +44,20 @@ fun allWidgets [ts ::: {(Type * Type)}] (r : $(map meta ts)) (fl : folder ts) =
                            </xml>)
           <xml/>
           [_] fl r
+
+fun allPopulatedTr [ts ::: {(Type * Type)}] (r : $(map meta ts)) (vs : $(map fst ts)) (fl : folder ts) =
+    foldR2 [meta] [fst] [fn cols :: {(Type * Type)} =>
+                            xml [Body, Form, Tr] [] (map snd cols)]
+           (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
+                            (m : meta p) v (acc : xml [Body, Form, Tr] [] (map snd rest)) => 
+               <xml>
+                 <td>{m.WidgetPopulated [nm] v}</td>
+                 {useMore acc}
+               </xml>)
+           <xml/>
+           [_] fl r vs
+
+fun ensql [avail] [ts ::: {(Type * Type)}] (r : $(map meta ts)) (vs : $(map snd ts)) (fl : folder ts) =
+    map2 [meta] [snd] [fn ts :: (Type * Type) => sql_exp avail [] [] ts.1]
+         (fn [ts] meta v => @sql_inject meta.Inject (meta.Parse v))
+         [_] fl r vs
