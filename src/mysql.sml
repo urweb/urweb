@@ -49,7 +49,7 @@ fun p_buffer_type t =
         Int => "MYSQL_TYPE_LONGLONG"
       | Float => "MYSQL_TYPE_DOUBLE"
       | String => "MYSQL_TYPE_STRING"
-      | Char => "MYSQL_TYPE_TINY"
+      | Char => "MYSQL_TYPE_STRING"
       | Bool => "MYSQL_TYPE_LONG"
       | Time => "MYSQL_TYPE_TIMESTAMP"
       | Blob => "MYSQL_TYPE_BLOB"
@@ -790,6 +790,16 @@ fun queryCommon {loc, query, cols, doCols} =
                                                                      string (Int.toString i),
                                                                      string ";",
                                                                      newline]
+                                                    | Char => box [string "out[",
+                                                                   string (Int.toString i),
+                                                                   string "].buffer_length = 1;",
+                                                                   newline,
+                                                                   string "out[",
+                                                                   string (Int.toString i),
+                                                                   string "].buffer = &buffer",
+                                                                   string (Int.toString i),
+                                                                   string ";",
+                                                                   newline]
                                                     | Blob => box [string "out[",
                                                                    string (Int.toString i),
                                                                    string "].length = &length",
@@ -927,7 +937,8 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                    newline]
                                                     | Time => box [string "MYSQL_TIME in_buffer",
                                                                    string (Int.toString i),
-                                                                   string ";",                                                                   newline]
+                                                                   string ";",
+                                                                   newline]
                                                     | _ => box []
                                           in
                                               box [case t of
@@ -1023,6 +1034,16 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                      string (Int.toString i),
                                                                      string ";",
                                                                      newline]
+                                                    | Char => box [string "in[",
+                                                                   string (Int.toString i),
+                                                                   string "].buffer = &arg",
+                                                                   string (Int.toString (i + 1)),
+                                                                   string ";",
+                                                                   newline,
+                                                                   string "in[",
+                                                                   string (Int.toString i),
+                                                                   string "].buffer_length = 1;",
+                                                                   newline]
                                                     | Blob => box [string "in[",
                                                                    string (Int.toString i),
                                                                    string "].buffer = arg",
@@ -1185,7 +1206,7 @@ fun dmlCommon {loc, dml} =
 fun dml loc =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
-         string "MYSQL_stmt *stmt = mysql_stmt_init(conn->conn);",
+         string "MYSQL_STMT *stmt = mysql_stmt_init(conn->conn);",
          newline,
          string "if (stmt == NULL) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
