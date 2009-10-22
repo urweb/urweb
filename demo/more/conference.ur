@@ -250,55 +250,73 @@ functor Make(M : sig
         </body></xml>
 
     and one id =
-        me <- getLogin;
-        checkPaper id;
-        ro <- oneOrNoRows (SELECT paper.{{map fst M.paper}}, octet_length(paper.Document) AS N
-                           FROM paper
-                           WHERE paper.Id = {[id]});
-        authors <- queryX (SELECT user.Nam
-                           FROM authorship
-                             JOIN user ON authorship.User = user.Id
-                           WHERE authorship.Paper = {[id]})
-                   (fn r => <xml><li>{[r.User.Nam]}</li></xml>);
-        myReview <- oneOrNoRows1 (SELECT review.{{map fst M.review}}
-                                  FROM review
-                                  WHERE review.User = {[me.Id]}
-                                    AND review.Paper = {[id]});
-        case ro of
-            None => error <xml>Paper not found!</xml>
-          | Some r => return <xml><body>
-            <h1>Paper #{[id]}</h1>
+        let
+            fun newReview r =
+                me <- getLogin;
+                checkPaper id;
+                dml (insert review ({Paper = sql_inject id, User = sql_inject me.Id}
+                                        ++ ensql M.review r M.reviewFolder));
+                one id
 
-            <h3>Authors:</h3>
-            <ul>
-              {authors}
-            </ul>
+            fun saveReview r =
+                me <- getLogin;
+                checkPaper id;
+                dml (update [map fst M.review] ! (ensql M.review r M.reviewFolder)
+                            review (WHERE T.Paper = {[id]} AND T.User = {[me.Id]}));
+                one id
+        in
+            me <- getLogin;
+            checkPaper id;
+            ro <- oneOrNoRows (SELECT paper.{{map fst M.paper}}, octet_length(paper.Document) AS N
+                               FROM paper
+                               WHERE paper.Id = {[id]});
+            authors <- queryX (SELECT user.Nam
+                               FROM authorship
+                                 JOIN user ON authorship.User = user.Id
+                               WHERE authorship.Paper = {[id]})
+                              (fn r => <xml><li>{[r.User.Nam]}</li></xml>);
+            myReview <- oneOrNoRows1 (SELECT review.{{map fst M.review}}
+                                      FROM review
+                                      WHERE review.User = {[me.Id]}
+                                        AND review.Paper = {[id]});
+            case ro of
+                None => error <xml>Paper not found!</xml>
+              | Some r => return <xml><body>
+                <h1>Paper #{[id]}</h1>
 
-            {allContent M.paper r.Paper M.paperFolder}<br/>
+                <h3>Authors:</h3>
+                <ul>
+                  {authors}
+                </ul>
 
-            {if r.N = 0 then
-                 <xml><div>No paper uploaded yet.</div></xml>
-             else
-                 <xml><a link={download id}>Download paper</a> ({[r.N]} bytes)</xml>}
+                {allContent M.paper r.Paper M.paperFolder}<br/>
 
-            <hr/>
+                {if r.N = 0 then
+                     <xml><div>No paper uploaded yet.</div></xml>
+                 else
+                     <xml><a link={download id}>Download paper</a> ({[r.N]} bytes)</xml>}
 
-            {case myReview of
-                 None => <xml>
-                   <h2>Add Your Review</h2>
-           
-                   <form>
-                     {allWidgets M.review M.reviewFolder}
-                   </form>
-                 </xml>
-               | Some myReview => <xml>
-                 <h2>Edit Your Review</h2>
+                <hr/>
 
-                 <form>
-                   {allPopulated M.review myReview M.reviewFolder}
-                 </form>
-               </xml>}
-          </body></xml>
+                {case myReview of
+                     None => <xml>
+                       <h2>Add Your Review</h2>
+                       
+                       <form>
+                         {allWidgets M.review M.reviewFolder}
+                         <submit value="Add" action={newReview}/>
+                       </form>
+                     </xml>
+                   | Some myReview => <xml>
+                     <h2>Edit Your Review</h2>
+
+                     <form>
+                       {allPopulated M.review myReview M.reviewFolder}
+                       <submit value="Save" action={saveReview}/>
+                     </form>
+                   </xml>}
+              </body></xml>
+        end
 
     and download id =
         checkPaper id;
