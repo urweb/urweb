@@ -1876,7 +1876,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                ],
 
                                            (L'.ECase (gf "Having",
-                                                      [((L'.PPrim (Prim.String "TRUE"), loc),
+                                                      [((L'.PPrim (Prim.String
+                                                                       (#trueString (Settings.currentDbms ()))), loc),
                                                         sc ""),
                                                        ((L'.PWild, loc),
                                                         strcat [sc " HAVING ", gf "Having"])],

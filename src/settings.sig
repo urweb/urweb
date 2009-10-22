@@ -157,7 +157,9 @@ signature SETTINGS = sig
          supportsNextval : bool,
          supportsNestedPrepared : bool,
          sqlPrefix : string,
-         supportsOctetLength : bool
+         supportsOctetLength : bool,
+         trueString : string,
+         falseString : string
     }
 
     val addDbms : dbms -> unit

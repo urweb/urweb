@@ -323,9 +323,9 @@ fun exp e =
       | EFfiApp ("Basis", "sqlifyBool", [b as (_, loc)]) =>
         optExp (ECase (b,
                        [((PCon (Enum, PConFfi {mod = "Basis", datatyp = "bool", con = "True", arg = NONE}, NONE), loc),
-                         (EPrim (Prim.String "TRUE"), loc)),
+                         (EPrim (Prim.String (#trueString (Settings.currentDbms ()))), loc)),
                         ((PCon (Enum, PConFfi {mod = "Basis", datatyp = "bool", con = "False", arg = NONE}, NONE), loc),
-                         (EPrim (Prim.String "FALSE"), loc))],
+                         (EPrim (Prim.String (#falseString (Settings.currentDbms ()))), loc))],
                        {disc = (TFfi ("Basis", "bool"), loc),
                         result = (TFfi ("Basis", "string"), loc)}), loc)
       | EFfiApp ("Basis", "sqlifyString", [(EPrim (Prim.String n), _)]) =>

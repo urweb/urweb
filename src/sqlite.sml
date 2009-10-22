@@ -36,7 +36,7 @@ fun p_sql_type t =
         Int => "integer"
       | Float => "real"
       | String => "text"
-      | Char => "integer"
+      | Char => "text"
       | Bool => "integer"
       | Time => "text"
       | Blob => "blob"
@@ -370,12 +370,12 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
               | Float => box [string "sqlite3_column_double(stmt, ", string (Int.toString i), string ")"]
               | String =>
                 if wontLeakStrings then
-                    box [string "sqlite3_column_text(stmt, ", string (Int.toString i), string ")"]
+                    box [string "(uw_Basis_string)sqlite3_column_text(stmt, ", string (Int.toString i), string ")"]
                 else
-                    box [string "uw_strdup(ctx, sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
-              | Char => box [string "sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
+                    box [string "uw_strdup(ctx, (uw_Basis_string)sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
+              | Char => box [string "sqlite3_column_text(stmt, ", string (Int.toString i), string ")[0]"]
               | Bool => box [string "(uw_Basis_bool)sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
-              | Time => box [string "uw_Basis_stringToTime_error(ctx, sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
+              | Time => box [string "uw_Basis_stringToTime_error(ctx, (uw_Basis_string)sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
               | Blob => box [string "({",
                              newline,
                              string "char *data = (char *)sqlite3_column_blob(stmt, ",
@@ -506,6 +506,18 @@ fun query {loc, cols, doCols} =
          string "uw_pop_cleanup(ctx);",
          newline]
 
+val p_pre_inputs =
+    p_list_sepi (box [])
+                (fn i => fn t =>
+                            case t of
+                                Char => box [string "char arg",
+                                             string (Int.toString (i + 1)),
+                                             string "s = {arg",
+                                             string (Int.toString (i + 1)),
+                                             string ", 0};",
+                                             newline]
+                              | _ => box [])
+
 fun p_inputs loc =
     p_list_sepi (box [])
                 (fn i => fn t =>
@@ -521,17 +533,17 @@ fun p_inputs loc =
                                                       string (Int.toString (i + 1)),
                                                       string ", ",
                                                       arg,
-                                                    string ")"]
+                                                      string ")"]
                                       | String => box [string "sqlite3_bind_text(stmt, ",
                                                        string (Int.toString (i + 1)),
                                                        string ", ",
                                                        arg,
                                                        string ", -1, SQLITE_TRANSIENT)"]
-                                      | Char => box [string "sqlite3_bind_int(stmt, ",
-                                                       string (Int.toString (i + 1)),
-                                                       string ", ",
-                                                       arg,
-                                                       string ")"]
+                                      | Char => box [string "sqlite3_bind_text(stmt, ",
+                                                     string (Int.toString (i + 1)),
+                                                     string ", ",
+                                                     arg,
+                                                     string "s, -1, SQLITE_TRANSIENT)"]
                                       | Bool => box [string "sqlite3_bind_int(stmt, ",
                                                      string (Int.toString (i + 1)),
                                                      string ", ",
@@ -584,6 +596,7 @@ fun p_inputs loc =
 fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
+         p_pre_inputs inputs,
          if nested then
              box [string "sqlite3_stmt *stmt;",
                   newline]
@@ -676,6 +689,7 @@ fun dml loc =
 fun dmlPrepared {loc, id, dml, inputs} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
+         p_pre_inputs inputs,
          string "sqlite3_stmt *stmt = conn->p",
          string (Int.toString id),
          string ";",
@@ -779,6 +793,8 @@ val () = addDbms {name = "sqlite",
                   supportsNextval = false,
                   supportsNestedPrepared = false,
                   sqlPrefix = "",
-                  supportsOctetLength = false}
+                  supportsOctetLength = false,
+                  trueString = "1",
+                  falseString = "0"}
 
 end

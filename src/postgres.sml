@@ -902,7 +902,9 @@ val () = addDbms {name = "postgres",
                   supportsNextval = true,
                   supportsNestedPrepared = true,
                   sqlPrefix = "",
-                  supportsOctetLength = true}
+                  supportsOctetLength = true,
+                  trueString = "TRUE",
+                  falseString = "FALSE"}
 
 val () = setDbms "postgres"
 
