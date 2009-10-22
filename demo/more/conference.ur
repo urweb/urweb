@@ -2,7 +2,7 @@ open Meta
 
 functor Make(M : sig
                  con paper :: {(Type * Type)}
-                 constraint [Id, Document] ~ paper
+                 constraint [Id, Document, Authors] ~ paper
                  val paper : $(map meta paper)
                  val paperFolder : folder paper
 
@@ -24,6 +24,11 @@ functor Make(M : sig
           PRIMARY KEY Id
     sequence paperId
 
+    table authorship : {Paper : int, User : int}
+          PRIMARY KEY (Paper, User),
+          CONSTRAINT Paper FOREIGN KEY Paper REFERENCES paper(Id),
+          CONSTRAINT User FOREIGN KEY User REFERENCES user(Id)
+
     con review = [Paper = int, User = int] ++ map fst M.review
     table review : review
           PRIMARY KEY (Paper, User),
@@ -43,14 +48,18 @@ functor Make(M : sig
                           WHERE user.Id = {[r.Id]}
                             AND user.Password = {[r.Password]})
 
-    fun checkPaper id =
+    val getLogin =
         ro <- checkLogin;
-        if (case ro of
-                None => False
-              | Some r => r.OnPc) then
+        case ro of
+            None => error <xml>You must be logged in to do that.</xml>
+          | Some r => return r
+
+    fun checkPaper id =
+        r <- getLogin;
+        if r.OnPc then
             return ()
         else
-            error <xml>You must be logged in to do that.</xml>
+            error <xml>You aren't authorized to see that paper.</xml>
 
     structure Users = BulkEdit.Make(struct
                                         con keyName = #Id
@@ -66,6 +75,29 @@ functor Make(M : sig
                                         val t = user
                                     end)
 
+    datatype dnat = O | S of source dnat
+    type dnatS = source dnat
+
+    fun inc n =
+        v <- get n;
+        case v of
+            O =>
+            n' <- source O;
+            set n (S n')
+          | S n => inc n
+
+    fun dec n =
+        let
+            fun dec' last n =
+                v <- get n;
+                case v of
+                    O => (case last of
+                              None => return ()
+                            | Some n' => set n' O)
+                  | S n' => dec' (Some n) n'
+        in
+            dec' None n
+        end
 
     fun doRegister r =
         n <- oneRowE1 (SELECT COUNT( * ) AS N
@@ -151,18 +183,54 @@ functor Make(M : sig
     and submit () =
         let
             fun doSubmit r =
-                id <- nextval paperId;
-                dml (insert paper ({Id = sql_inject id, Document = sql_inject (fileData r.Document)}
-                                       ++ ensql M.paper (r -- #Document) M.paperFolder));
-                return <xml><body>
-                  OK, done!
-                </body></xml>
+                me <- getLogin;
+                coauthors <- List.mapM (fn name => oneOrNoRowsE1 (SELECT user.Id AS N
+                                                                  FROM user
+                                                                  WHERE user.Nam = {[name.Nam]})) r.Authors;
+                if List.exists Option.isNone coauthors then
+                    error <xml>At least one of those coauthor usernames isn't registered.</xml>
+                else
+                    id <- nextval paperId;
+                    dml (insert paper ({Id = sql_inject id, Document = sql_inject (fileData r.Document)}
+                                           ++ ensql M.paper (r -- #Authors -- #Document) M.paperFolder));
+                    List.app (fn uid =>
+                                 case uid of
+                                     None => error <xml>Impossible empty uid!</xml>
+                                   | Some uid => dml (INSERT INTO authorship (Paper, User)
+                                                      VALUES ({[id]}, {[uid]})))
+                             (Some me.Id :: coauthors);
+                    return <xml><body>
+                      Thanks for submitting!
+                    </body></xml>
+
+            fun authorBlanks n =
+                case n of
+                    O => <xml/>
+                  | S n => <xml>
+                    <entry><b>Author:</b> <textbox{#Nam}/><br/></entry>
+                    <dyn signal={authorBlanksS n}/>
+                  </xml>
+
+            and authorBlanksS n =
+                n <- signal n;
+                return (authorBlanks n)
         in
+            me <- getLogin;
+            numAuthors <- source O;
+
             return <xml><body>
               <h1>Submit a Paper</h1>
               
               <form>
-                {allWidgets M.paper M.paperFolder}
+                <b>Author:</b> {[me.Nam]}<br/>
+                <subforms{#Authors}>
+                  <dyn signal={authorBlanksS numAuthors}/>
+                </subforms>
+                <button value="Add author" onclick={inc numAuthors}/><br/>
+                <button value="Remove author" onclick={dec numAuthors}/><br/>
+                <br/>
+
+                {useMore (allWidgets M.paper M.paperFolder)}
                 <b>Paper:</b> <upload{#Document}/><br/>
                 <submit value="Submit" action={doSubmit}/>
               </form>
@@ -185,10 +253,20 @@ functor Make(M : sig
         ro <- oneOrNoRows (SELECT paper.{{map fst M.paper}}, octet_length(paper.Document) AS N
                            FROM paper
                            WHERE paper.Id = {[id]});
+        authors <- queryX (SELECT user.Nam
+                           FROM authorship
+                             JOIN user ON authorship.User = user.Id
+                           WHERE authorship.Paper = {[id]})
+                   (fn r => <xml><li>{[r.User.Nam]}</li></xml>);
         case ro of
             None => error <xml>Paper not found!</xml>
           | Some r => return <xml><body>
             <h1>Paper #{[id]}</h1>
+
+            <h3>Authors:</h3>
+            <ul>
+              {authors}
+            </ul>
 
             {allContent M.paper r.Paper M.paperFolder}<br/>
 
