@@ -25,3 +25,22 @@ fun bool name = {Nam = name,
                                       <xml><checkbox{nm} checked={b}/></xml>,
                  Parse = fn x => x,
                  Inject = _}
+
+fun textarea name = {Nam = name,
+                     Show = cdata,
+                     Widget = fn [nm :: Name] => <xml><br/><textarea{nm} rows={10} cols={80}/></xml>,
+                     WidgetPopulated = fn [nm :: Name] s => <xml><br/>
+                       <textarea{nm} rows={10} cols={80}>{[s]}</textarea>
+                     </xml>,
+                     Parse = fn s => s,
+                     Inject = _}
+
+fun allWidgets [ts ::: {(Type * Type)}] (r : $(map meta ts)) (fl : folder ts) =
+    foldR [meta] [fn ts :: {(Type * Type)} => xml form [] (map snd ts)]
+          (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
+                           [[nm] ~ rest] (col : meta t) (acc : xml form [] (map snd rest)) => <xml>
+                             <b>{[col.Nam]}</b>: {col.Widget [nm]}<br/>
+                             {useMore acc}
+                           </xml>)
+          <xml/>
+          [_] fl r

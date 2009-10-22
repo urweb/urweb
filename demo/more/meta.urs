@@ -10,3 +10,8 @@ val int : string -> meta (int, string)
 val float : string -> meta (float, string)
 val string : string -> meta (string, string)
 val bool : string -> meta (bool, bool)
+
+val textarea : string -> meta (string, string)
+
+val allWidgets : ts ::: {(Type * Type)} -> $(map meta ts) -> folder ts
+                 -> xml form [] (map snd ts)

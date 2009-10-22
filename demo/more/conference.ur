@@ -2,8 +2,9 @@ open Meta
 
 functor Make(M : sig
                  con paper :: {(Type * Type)}
-                 constraint [Id, Title] ~ paper
+                 constraint [Id] ~ paper
                  val paper : $(map meta paper)
+                 val paperFolder : folder paper
 
                  con review :: {(Type * Type)}
                  constraint [Paper, User] ~ review
@@ -17,7 +18,7 @@ functor Make(M : sig
           CONSTRAINT Nam UNIQUE Nam
     sequence userId
 
-    con paper = [Id = int, Title = string] ++ map fst M.paper
+    con paper = [Id = int] ++ map fst M.paper
     table paper : paper
           PRIMARY KEY Id
     sequence paperId
@@ -122,7 +123,7 @@ functor Make(M : sig
                     <xml/>}
 
                {if now < M.submissionDeadline then
-                    <xml><li>Submit</li></xml>
+                    <xml><li><a link={submit ()}>Submit</a></li></xml>
                 else
                     <xml/>}
              </xml>}
@@ -131,5 +132,13 @@ functor Make(M : sig
     and main () =
         m <- main' ();
         return <xml><body>{m}</body></xml>
+
+    and submit () = return <xml><body>
+      <h1>Submit a Paper</h1>
+
+      <form>
+        {allWidgets M.paper M.paperFolder}
+      </form>
+    </body></xml>
 
 end
