@@ -8,6 +8,8 @@ functor Make(M : sig
                  con review :: {(Type * Type)}
                  constraint [Paper, User] ~ review
                  val review : $(map meta review)
+
+                 val submissionDeadline : time
              end) = struct
 
     table user : {Id : int, Nam : string, Password : string, Chair : bool, OnPc : bool}
@@ -81,11 +83,36 @@ functor Make(M : sig
       </table></form>
     </body></xml>
 
-    and main () =
-        me <- checkLogin;
+    and signin r =
+        ro <- oneOrNoRowsE1 (SELECT user.Id AS N
+                             FROM user
+                             WHERE user.Nam = {[r.Nam]}
+                               AND user.Password = {[r.Password]});
+        (case ro of
+             None => return ()
+           | Some id => setCookie login {Id = id, Password = r.Password});
+        m <- main' ();
         return <xml><body>
+          {case ro of
+               None => <xml><div>Invalid username or password.</div></xml>
+             | _ => <xml/>}
+
+          {m}
+        </body></xml>
+
+    and main' () =
+        me <- checkLogin;
+        now <- now;
+        return <xml><ul>
           {case me of
-               None => <xml><li><a link={register None}>Register for access</a></li></xml>
+               None => <xml>
+                 <li><a link={register None}>Register for access</a></li>
+                 <li><b>Log in:</b> <form><table>
+                   <tr> <th>Username:</th> <td><textbox{#Nam}/></td> </tr>
+                   <tr> <th>Password:</th> <td><password{#Password}/></td> </tr>
+                   <tr> <th><submit value="Log in" action={signin}/></th> </tr>
+                 </table></form></li>
+               </xml>
              | Some me => <xml>
                <div>Welcome, {[me.Nam]}!</div>
 
@@ -93,7 +120,16 @@ functor Make(M : sig
                     <xml><li><a link={Users.main ()}>Manage users</a></li></xml>
                 else
                     <xml/>}
+
+               {if now < M.submissionDeadline then
+                    <xml><li>Submit</li></xml>
+                else
+                    <xml/>}
              </xml>}
-        </body></xml>
+        </ul></xml>
+
+    and main () =
+        m <- main' ();
+        return <xml><body>{m}</body></xml>
 
 end

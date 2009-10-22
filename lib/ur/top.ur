@@ -246,6 +246,11 @@ fun oneOrNoRows1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [nm = fs] []) =
           (fn fs _ => return (Some fs.nm))
           None
 
+fun oneOrNoRowsE1 [tab ::: Name] [nm ::: Name] [t ::: Type] [[tab] ~ [nm]] (q : sql_query [tab = []] [nm = t]) =
+    query q
+          (fn fs _ => return (Some fs.nm))
+          None
+
 fun oneRow [tables ::: {{Type}}] [exps ::: {Type}]
            [tables ~ exps] (q : sql_query tables exps) =
     o <- oneOrNoRows q;

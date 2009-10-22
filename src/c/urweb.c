@@ -2907,3 +2907,7 @@ uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {
 
   return r;
 }
+
+uw_Basis_time uw_Basis_now(uw_context ctx) {
+  return time(NULL);
+}

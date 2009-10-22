@@ -111,6 +111,11 @@ val signal : t ::: Type -> source t -> signal t
 val current : t ::: Type -> signal t -> transaction t
 
 
+(** * Time *)
+
+val now : transaction time
+
+
 (** HTTP operations *)
 
 val requestHeader : string -> transaction (option string)

@@ -151,6 +151,11 @@ val oneOrNoRows1 : nm ::: Name -> fs ::: {Type}
                    -> sql_query [nm = fs] []
                    -> transaction (option $fs)
 
+val oneOrNoRowsE1 : tab ::: Name -> nm ::: Name -> t ::: Type
+                    -> [[tab] ~ [nm]] =>
+    sql_query [tab = []] [nm = t]
+    -> transaction (option t)
+
 val oneRow : tables ::: {{Type}} -> exps ::: {Type}
              -> [tables ~ exps] =>
              sql_query tables exps
