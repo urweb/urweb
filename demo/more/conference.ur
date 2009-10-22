@@ -11,6 +11,7 @@ functor Make(M : sig
                  val review : $(map meta review)
 
                  val submissionDeadline : time
+                 val summarizePaper : $(map fst paper) -> xbody
              end) = struct
 
     table user : {Id : int, Nam : string, Password : string, Chair : bool, OnPc : bool}
@@ -41,6 +42,15 @@ functor Make(M : sig
                           FROM user
                           WHERE user.Id = {[r.Id]}
                             AND user.Password = {[r.Password]})
+
+    fun checkPaper id =
+        ro <- checkLogin;
+        if (case ro of
+                None => False
+              | Some r => r.OnPc) then
+            return ()
+        else
+            error <xml>You must be logged in to do that.</xml>
 
     structure Users = BulkEdit.Make(struct
                                         con keyName = #Id
@@ -122,6 +132,11 @@ functor Make(M : sig
                 else
                     <xml/>}
 
+               {if me.OnPc then
+                    <xml><li><a link={all ()}>All papers</a></li></xml>
+                else
+                    <xml/>}
+
                {if now < M.submissionDeadline then
                     <xml><li><a link={submit ()}>Submit</a></li></xml>
                 else
@@ -135,10 +150,13 @@ functor Make(M : sig
 
     and submit () =
         let
-            fun doSubmit r = return <xml><body>
-              MIME type: {[fileMimeType r.Document]}<br/>
-              Length: {[blobSize (fileData r.Document)]}
-            </body></xml>
+            fun doSubmit r =
+                id <- nextval paperId;
+                dml (insert paper ({Id = sql_inject id, Document = sql_inject (fileData r.Document)}
+                                       ++ ensql M.paper (r -- #Document) M.paperFolder));
+                return <xml><body>
+                  OK, done!
+                </body></xml>
         in
             return <xml><body>
               <h1>Submit a Paper</h1>
@@ -150,5 +168,43 @@ functor Make(M : sig
               </form>
             </body></xml>
         end
+
+    and all () =
+        ps <- queryX (SELECT paper.Id, paper.{{map fst M.paper}} FROM paper)
+              (fn r => <xml><li><a link={one r.Paper.Id}>{M.summarizePaper (r.Paper -- #Id)}</a></li></xml>);
+        return <xml><body>
+          <h1>All Papers</h1>
+
+          <ul>
+            {ps}
+          </ul>
+        </body></xml>
+
+    and one id =
+        checkPaper id;
+        ro <- oneOrNoRows (SELECT paper.{{map fst M.paper}}, octet_length(paper.Document) AS N
+                           FROM paper
+                           WHERE paper.Id = {[id]});
+        case ro of
+            None => error <xml>Paper not found!</xml>
+          | Some r => return <xml><body>
+            <h1>Paper #{[id]}</h1>
+
+            {allContent M.paper r.Paper M.paperFolder}<br/>
+
+            {if r.N = 0 then
+                 <xml><div>No paper uploaded yet.</div></xml>
+             else
+                 <xml><a link={download id}>Download paper</a> ({[r.N]} bytes)</xml>}
+          </body></xml>
+
+    and download id =
+        checkPaper id;
+        ro <- oneOrNoRows (SELECT paper.Document
+                           FROM paper
+                           WHERE paper.Id = {[id]});
+        case ro of
+            None => error <xml>Paper not found!</xml>
+          | Some r => returnBlob r.Paper.Document (blessMime "application/pdf")
 
 end

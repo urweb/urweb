@@ -13,6 +13,8 @@ val bool : string -> meta (bool, bool)
 
 val textarea : string -> meta (string, string)
 
+val allContent : ts ::: {(Type * Type)} -> $(map meta ts) -> $(map fst ts) -> folder ts -> xbody
+
 val allWidgets : ts ::: {(Type * Type)} -> $(map meta ts) -> folder ts
                  -> xml form [] (map snd ts)
 

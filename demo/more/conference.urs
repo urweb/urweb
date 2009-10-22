@@ -9,6 +9,7 @@ functor Make(M : sig
                  val review : $(map Meta.meta review)
 
                  val submissionDeadline : time
+                 val summarizePaper : $(map fst paper) -> xbody
              end) : sig
 
     val main : unit -> transaction page

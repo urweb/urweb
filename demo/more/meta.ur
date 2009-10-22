@@ -35,6 +35,13 @@ fun textarea name = {Nam = name,
                      Parse = fn s => s,
                      Inject = _}
 
+fun allContent [ts ::: {(Type * Type)}] (r : $(map meta ts)) (vs : $(map fst ts)) (fl : folder ts) =
+    foldRX2 [meta] [fst] [_]
+            (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest]
+                             (m : meta p) v =>
+                <xml><b>{[m.Nam]}</b>: {m.Show v}<br/></xml>)
+            [_] fl r vs
+
 fun allWidgets [ts ::: {(Type * Type)}] (r : $(map meta ts)) (fl : folder ts) =
     foldR [meta] [fn ts :: {(Type * Type)} => xml form [] (map snd ts)]
           (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
