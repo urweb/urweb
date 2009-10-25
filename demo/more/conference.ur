@@ -76,30 +76,6 @@ functor Make(M : sig
                                         val t = user
                                     end)
 
-    datatype dnat = O | S of source dnat
-    type dnatS = source dnat
-
-    fun inc n =
-        v <- get n;
-        case v of
-            O =>
-            n' <- source O;
-            set n (S n')
-          | S n => inc n
-
-    fun dec n =
-        let
-            fun dec' last n =
-                v <- get n;
-                case v of
-                    O => (case last of
-                              None => return ()
-                            | Some n' => set n' O)
-                  | S n' => dec' (Some n) n'
-        in
-            dec' None n
-        end
-
     fun doRegister r =
         n <- oneRowE1 (SELECT COUNT( * ) AS N
                        FROM user
@@ -203,21 +179,9 @@ functor Make(M : sig
                     return <xml><body>
                       Thanks for submitting!
                     </body></xml>
-
-            fun authorBlanks n =
-                case n of
-                    O => <xml/>
-                  | S n => <xml>
-                    <entry><b>Author:</b> <textbox{#Nam}/><br/></entry>
-                    <dyn signal={authorBlanksS n}/>
-                  </xml>
-
-            and authorBlanksS n =
-                n <- signal n;
-                return (authorBlanks n)
         in
             me <- getLogin;
-            numAuthors <- source O;
+            numAuthors <- Dnat.zero;
 
             return <xml><body>
               <h1>Submit a Paper</h1>
@@ -225,10 +189,10 @@ functor Make(M : sig
               <form>
                 <b>Author:</b> {[me.Nam]}<br/>
                 <subforms{#Authors}>
-                  <dyn signal={authorBlanksS numAuthors}/>
+                  {Dnat.render <xml><entry><b>Author:</b> <textbox{#Nam}/><br/></entry></xml> numAuthors}
                 </subforms>
-                <button value="Add author" onclick={inc numAuthors}/><br/>
-                <button value="Remove author" onclick={dec numAuthors}/><br/>
+                <button value="Add author" onclick={Dnat.inc numAuthors}/><br/>
+                <button value="Remove author" onclick={Dnat.dec numAuthors}/><br/>
                 <br/>
 
                 {useMore (allWidgets M.paper M.paperFolder)}
