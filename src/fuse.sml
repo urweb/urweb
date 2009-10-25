@@ -55,38 +55,60 @@ fun fuse file =
     let
         fun doDecl (d as (_, loc), (funcs, maxName)) =
             let
+                exception GetBody
+
+                fun doVi ((x, n, t, e, s), funcs, maxName) =
+                    case returnsString t of
+                        NONE => (NONE, funcs, maxName)
+                      | SOME (args, t') =>
+                        let
+                            fun getBody (e, args) =
+                                case (#1 e, args) of
+                                    (_, []) => (e, [])
+                                  | (EAbs (x, t, _, e), _ :: args) =>
+                                    let
+                                        val (body, args') = getBody (e, args)
+                                    in
+                                        (body, (x, t) :: args')
+                                    end
+                                  | _ => raise GetBody
+
+                            val (body, args) = getBody (e, args)
+                            val body = MonoOpt.optExp (EWrite body, loc)
+                            val (body, _) = foldr (fn ((x, dom), (body, ran)) =>
+                                                      ((EAbs (x, dom, ran, body), loc),
+                                                       (TFun (dom, ran), loc)))
+                                                  (body, (TRecord [], loc)) args
+                        in
+                            (SOME (x, maxName, t', body, s),
+                             IM.insert (funcs, n, maxName),
+                             maxName + 1)
+                        end
+                        handle GetBody => (NONE, funcs, maxName)
+
                 val (d, funcs, maxName) =
                     case #1 d of
-                        DValRec vis =>
+                        DVal vi =>
+                        let
+                            val (vi', funcs, maxName) = doVi (vi, funcs, maxName)
+                        in
+                            (case vi' of
+                                 NONE => d
+                               | SOME vi' => (DValRec [vi, vi'], loc),
+                             funcs, maxName)
+                        end
+                      | DValRec vis =>
                         let
                             val (vis', funcs, maxName) =
-                                foldl (fn ((x, n, t, e, s), (vis', funcs, maxName)) =>
-                                          case returnsString t of
-                                              NONE => (vis', funcs, maxName)
-                                            | SOME (args, t') =>
-                                              let
-                                                  fun getBody (e, args) =
-                                                      case (#1 e, args) of
-                                                          (_, []) => (e, [])
-                                                        | (EAbs (x, t, _, e), _ :: args) =>
-                                                          let
-                                                              val (body, args') = getBody (e, args)
-                                                          in
-                                                              (body, (x, t) :: args')
-                                                          end
-                                                        | _ => raise Fail "Fuse: getBody"
-
-                                                  val (body, args) = getBody (e, args)
-                                                  val body = MonoOpt.optExp (EWrite body, loc)
-                                                  val (body, _) = foldr (fn ((x, dom), (body, ran)) =>
-                                                                            ((EAbs (x, dom, ran, body), loc),
-                                                                             (TFun (dom, ran), loc)))
-                                                                        (body, (TRecord [], loc)) args
-                                              in
-                                                  ((x, maxName, t', body, s) :: vis',
-                                                   IM.insert (funcs, n, maxName),
-                                                   maxName + 1)
-                                              end)
+                                foldl (fn (vi, (vis', funcs, maxName)) =>
+                                          let
+                                              val (vi', funcs, maxName) = doVi (vi, funcs, maxName)
+                                          in
+                                              (case vi' of
+                                                   NONE => vis'
+                                                 | SOME vi' => vi' :: vis',
+                                               funcs, maxName)
+                                          end)
                                 ([], funcs, maxName) vis
                         in
                             ((DValRec (vis @ vis'), loc), funcs, maxName)
