@@ -900,10 +900,9 @@ fun process file =
                                  st)
                             end
 
-                          | EServerCall (e, ek, t, eff) =>
+                          | EServerCall (e, t, eff) =>
                             let
                                 val (e, st) = jsE inner (e, st)
-                                val (ek, st) = jsE inner (ek, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
                                 (strcat [str ("{c:\"f\",f:rc,a:cons({c:\"c\",v:\""
@@ -911,9 +910,7 @@ fun process file =
                                               ^ "\"},cons("),
                                          e,
                                          str (",cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
-                                              ^ unurl ^ "}},cons("),
-                                         ek,
-                                         str (",cons({c:\"c\",v:"
+                                              ^ unurl ^ "}},cons({c:\"K\"},cons({c:\"c\",v:"
                                               ^ (case eff of
                                                      ReadCookieWrite => "true"
                                                    | _ => "false")
@@ -1165,12 +1162,11 @@ fun process file =
                      ((ESignalSource e, loc), st)
                  end
                  
-               | EServerCall (e1, e2, t, ef) =>
+               | EServerCall (e1, t, ef) =>
                  let
                      val (e1, st) = exp outer (e1, st)
-                     val (e2, st) = exp outer (e2, st)
                  in
-                     ((EServerCall (e1, e2, t, ef), loc), st)
+                     ((EServerCall (e1, t, ef), loc), st)
                  end
                | ERecv (e1, e2, t) =>
                  let

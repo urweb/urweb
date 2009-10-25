@@ -46,7 +46,7 @@ fun effectize file =
                 EFfi f => effectful f
               | EFfiApp (m, x, _) => effectful (m, x)
               | ENamed n => IM.inDomain (evs, n)
-              | EServerCall (n, _, _, _, _) => IM.inDomain (evs, n)
+              | EServerCall (n, _, _) => IM.inDomain (evs, n)
               | _ => false
 
         fun couldWriteOnload evs = U.Exp.exists {kind = fn _ => false,
@@ -70,7 +70,7 @@ fun effectize file =
             case e of
                 EFfi ("Basis", "getCookie") => true
               | ENamed n => IM.inDomain (evs, n)
-              | EServerCall (n, _, _, _, _) => IM.inDomain (evs, n)
+              | EServerCall (n, _, _) => IM.inDomain (evs, n)
               | _ => false
 
         fun couldReadCookie evs = U.Exp.exists {kind = fn _ => false,

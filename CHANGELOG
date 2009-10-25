@@ -1,4 +1,13 @@
 ========
+Next
+========
+
+- Bug fixes
+- Optimization improvements
+- Removed a restriction that prevented some RPCs from compiling
+- New extra demo: conference1
+
+========
 20091012
 ========
 

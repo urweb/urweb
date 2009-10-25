@@ -115,8 +115,7 @@ datatype exp' =
 
        | ELet of string * con * exp * exp
 
-       | EServerCall of int * exp list * exp * con * con
-       | ETailCall of int * exp list * exp * con * con
+       | EServerCall of int * exp list * con
 
 withtype exp = exp' located
 

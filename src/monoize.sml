@@ -3201,22 +3201,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ELet (x, t', e1, e2), loc), fm)
             end
 
-          | L.ETailCall (n, es, ek, _, (L.TRecord (L.CRecord (_, []), _), _)) =>
-            let
-                val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
-                val (ek, fm) = monoExp (env, st, fm) ek
-
-                val e = (L'.ENamed n, loc)
-                val e = foldl (fn (arg, e) => (L'.EApp (e, arg), loc)) e es
-                val e = (L'.EApp (e, ek), loc)
-            in
-                (e, fm)
-            end
-          | L.ETailCall _ => (E.errorAt loc "Full scope of tail call continuation isn't known";
-                              Print.eprefaces' [("Expression", CorePrint.p_exp env all)];
-                              (dummyExp, fm))
-
-          | L.EServerCall (n, es, ek, t, (L.TRecord (L.CRecord (_, []), _), _)) =>
+          | L.EServerCall (n, es, t) =>
             let
                 val t = monoType env t
                 val (_, ft, _, name) = Env.lookupENamed env n
@@ -3239,37 +3224,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val call = foldl (fn (e, call) => (L'.EStrcat (call, e), loc))
                                  (L'.EPrim (Prim.String name), loc) call
 
-                val (ek, fm) = monoExp (env, st, fm) ek
-
                 val unit = (L'.TRecord [], loc)
 
-                val ekf = (L'.EAbs ("f",
-                                    (L'.TFun (t,
-                                              (L'.TFun ((L'.TRecord [], loc),
-                                                        (L'.TRecord [], loc)), loc)), loc),
-                                    (L'.TFun (t,
-                                              (L'.TRecord [], loc)), loc),
-                                    (L'.EAbs ("x",
-                                              t,
-                                              (L'.TRecord [], loc),
-                                              (L'.EApp ((L'.EApp ((L'.ERel 1, loc),
-                                                                  (L'.ERel 0, loc)), loc),
-                                                        (L'.ERecord [], loc)), loc)), loc)), loc)
-                val ek = (L'.EApp (ekf, ek), loc)
                 val eff = if IS.member (!readCookie, n) then
                               L'.ReadCookieWrite
                           else
                               L'.ReadOnly
 
-                val e = (L'.EServerCall (call, ek, t, eff), loc)
+                val e = (L'.EServerCall (call, t, eff), loc)
                 val e = liftExpInExp 0 e
                 val e = (L'.EAbs ("_", unit, unit, e), loc)
             in
                 (e, fm)
             end
-          | L.EServerCall _ => (E.errorAt loc "Full scope of server call continuation isn't known";
-                                Print.eprefaces' [("Expression", CorePrint.p_exp env all)];
-                                (dummyExp, fm))
 
           | L.EKAbs _ => poly ()
           | L.EKApp _ => poly ()

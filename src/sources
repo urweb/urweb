@@ -131,9 +131,6 @@ especialize.sml
 rpcify.sig
 rpcify.sml
 
-tailify.sig
-tailify.sml
-
 tag.sig
 tag.sml
 

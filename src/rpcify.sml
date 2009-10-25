@@ -112,11 +112,7 @@ fun frob file =
                                 val st = {exported = exported,
                                           export_decls = export_decls}
 
-                                val k = (ECApp ((EFfi ("Basis", "return"), loc),
-                                                (CFfi ("Basis", "transaction"), loc)), loc)
-                                val k = (ECApp (k, ran), loc)
-                                val k = (EApp (k, (EFfi ("Basis", "transaction_monad"), loc)), loc)
-                                val e' = EServerCall (n, args, k, ran, ran)
+                                val e' = EServerCall (n, args, ran)
                             in
                                 (e', st)
                             end

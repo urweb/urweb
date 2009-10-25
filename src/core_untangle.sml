@@ -48,8 +48,7 @@ fun exp thisGroup (e, s) =
         case e of
             ENamed n => try n
           | EClosure (n, _) => try n
-          | EServerCall (n, _, _, _, _) => try n
-          | ETailCall (n, _, _, _, _) => try n
+          | EServerCall (n, _, _) => try n
           | _ => s
     end
 
