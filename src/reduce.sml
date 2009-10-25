@@ -838,6 +838,9 @@ fun reduce file =
             case IM.find (uses, n) of
                 NONE => false
               | SOME count => count <= 1
+                              orelse (case #1 e of
+                                          ERecord _ => true
+                                        | _ => false)
                               orelse isPoly polyC t
                               orelse size e <= Settings.getCoreInline ()
 
