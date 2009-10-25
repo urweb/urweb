@@ -139,6 +139,7 @@ signature COMPILER = sig
     val toMono_reduce2 : (string, Mono.file) transform
     val toMono_shake2 : (string, Mono.file) transform
     val toMono_opt4 : (string, Mono.file) transform
+    val toMono_reduce3 : (string, Mono.file) transform
     val toFuse2 : (string, Mono.file) transform
     val toUntangle3 : (string, Mono.file) transform
     val toMono_shake3 : (string, Mono.file) transform

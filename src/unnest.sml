@@ -339,7 +339,7 @@ fun exp ((ks, ts), e as old, st : state) =
                                                   (*Print.prefaces "Have a vi"
                                                                  [("x", Print.PD.string x),
                                                                   ("e", ElabPrint.p_exp ElabEnv.empty e)];*)
-                                                  (x, n, t, e)
+                                                  ("$" ^ x, n, t, e)
                                               end)
                                           vis
 

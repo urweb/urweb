@@ -337,6 +337,23 @@ fun reduce file =
                       end)
                   (IS.empty, IS.empty, IM.empty) file
 
+        val uses = U.File.fold {typ = fn (_, m) => m,
+                                exp = fn (e, m) =>
+                                         case e of
+                                             ENamed n => IM.insert (m, n, 1 + Option.getOpt (IM.find (m, n), 0))
+                                           | _ => m,
+                                decl = fn (_, m) => m}
+                               IM.empty file
+
+        val size = U.Exp.fold {typ = fn (_, n) => n,
+                               exp = fn (_, n) => n + 1} 0
+
+        fun mayInline (n, e) =
+            case IM.find (uses, n) of
+                NONE => false
+              | SOME count => count <= 1
+                              orelse size e <= Settings.getMonoInline ()
+
         fun summarize d (e, _) =
             let
                 val s =
@@ -452,6 +469,84 @@ fun reduce file =
             let
                 (*val () = Print.prefaces "exp" [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))]*)
 
+                fun doLet (x, t, e', b) =
+                    let
+                        fun doSub () =
+                            let
+                                val r = subExpInExp (0, e') b
+                            in
+                                (*Print.prefaces "doSub" [("e'", MonoPrint.p_exp env e'),
+                                                          ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                                          ("r", MonoPrint.p_exp env r)];*)
+                                #1 (reduceExp env r)
+                            end
+
+                        fun trySub () =
+                            ((*Print.prefaces "trySub"
+                                            [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))];*)
+                             case t of
+                                 (TFfi ("Basis", "string"), _) => doSub ()
+                               | (TSignal _, _) => e
+                               | _ =>
+                                 case e' of
+                                     (ECase _, _) => e
+                                   | _ => doSub ())
+                    in
+                        if impure env e' then
+                            let
+                                val effs_e' = summarize 0 e'
+                                val effs_e' = List.filter (fn x => x <> UseRel) effs_e'
+                                val effs_b = summarize 0 b
+
+                                (*val () = Print.prefaces "Try"
+                                                        [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
+                                                         ("e'", MonoPrint.p_exp env e'),
+                                                         ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                                         ("e'_eff", p_events effs_e'),
+                                                         ("b_eff", p_events effs_b)]*)
+
+                                fun does eff = List.exists (fn eff' => eff' = eff) effs_e'
+                                val writesPage = does WritePage
+                                val readsDb = does ReadDb
+                                val writesDb = does WriteDb
+
+                                fun verifyUnused eff =
+                                    case eff of
+                                        UseRel => false
+                                      | _ => true
+
+                                fun verifyCompatible effs =
+                                    case effs of
+                                        [] => false
+                                      | eff :: effs =>
+                                        case eff of
+                                            Unsure => false
+                                          | UseRel => List.all verifyUnused effs
+                                          | WritePage => not writesPage andalso verifyCompatible effs
+                                          | ReadDb => not writesDb andalso verifyCompatible effs
+                                          | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
+                            in
+                                (*Print.prefaces "verifyCompatible"
+                                                 [("e'", MonoPrint.p_exp env e'),
+                                                  ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                                  ("effs_e'", Print.p_list p_event effs_e'),
+                                                  ("effs_b", Print.p_list p_event effs_b)];*)
+                                if (List.null effs_e'
+                                    orelse (List.all (fn eff => eff <> Unsure) effs_e'
+                                            andalso verifyCompatible effs_b)
+                                    orelse (case effs_b of
+                                                UseRel :: effs => List.all verifyUnused effs
+                                              | _ => false))
+                                   andalso countFree 0 0 b = 1
+                                   andalso not (freeInAbs b) then
+                                    trySub ()
+                                else
+                                    e
+                            end
+                        else
+                            trySub ()
+                    end
+
                 val r =
                     case e of
                         ERel n =>
@@ -546,90 +641,14 @@ fun reduce file =
                         #1 (reduceExp env (ELet (x, t, e,
                                                  (EApp (b, liftExpInExp 0 e'), loc)), loc))
 
-                      | ELet (x, t, e', (EAbs (x', t' as (TRecord [], _), ran, e''), loc)) =>
+                      | ELet (x, t, e', b as (EAbs (x', t' as (TRecord [], _), ran, e''), loc)) =>
                         if impure env e' then
-                            e
+                            doLet (x, t, e', b)
                         else
                             EAbs (x', t', ran, reduceExp (E.pushERel env x' t' NONE)
                                                          (ELet (x, t, liftExpInExp 0 e', swapExpVars 0 e''), loc))
 
-                      | ELet (x, t, e', b) =>
-                        let
-                            fun doSub () =
-                                let
-                                    val r = subExpInExp (0, e') b
-                                in
-                                    (*Print.prefaces "doSub" [("e'", MonoPrint.p_exp env e'),
-                                                            ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                                                            ("r", MonoPrint.p_exp env r)];*)
-                                    #1 (reduceExp env r)
-                                end
-
-                            fun trySub () =
-                                ((*Print.prefaces "trySub"
-                                                [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))];*)
-                                 case t of
-                                     (TFfi ("Basis", "string"), _) => doSub ()
-                                   | (TSignal _, _) => e
-                                   | _ =>
-                                     case e' of
-                                         (ECase _, _) => e
-                                       | _ => doSub ())
-                        in
-                            if impure env e' then
-                                let
-                                    val effs_e' = summarize 0 e'
-                                    val effs_e' = List.filter (fn x => x <> UseRel) effs_e'
-                                    val effs_b = summarize 0 b
-
-                                    (*val () = Print.prefaces "Try"
-                                                            [(*("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),*)
-                                                             ("e'", MonoPrint.p_exp env e'),
-                                                             ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                                                             ("e'_eff", p_events effs_e'),
-                                                             ("b", p_events effs_b)]*)
-
-                                    fun does eff = List.exists (fn eff' => eff' = eff) effs_e'
-                                    val writesPage = does WritePage
-                                    val readsDb = does ReadDb
-                                    val writesDb = does WriteDb
-
-                                    fun verifyUnused eff =
-                                        case eff of
-                                            UseRel => false
-                                          | _ => true
-
-                                    fun verifyCompatible effs =
-                                        case effs of
-                                            [] => false
-                                          | eff :: effs =>
-                                            case eff of
-                                                Unsure => false
-                                              | UseRel => List.all verifyUnused effs
-                                              | WritePage => not writesPage andalso verifyCompatible effs
-                                              | ReadDb => not writesDb andalso verifyCompatible effs
-                                              | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
-                                in
-                                    (*Print.prefaces "verifyCompatible"
-                                                   [("e'", MonoPrint.p_exp env e'),
-                                                    ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                                                    ("effs_e'", Print.p_list p_event effs_e'),
-                                                    ("effs_b", Print.p_list p_event effs_b)];*)
-                                    if (List.null effs_e'
-                                        orelse (List.all (fn eff => eff <> Unsure) effs_e'
-                                                andalso verifyCompatible effs_b)
-                                        orelse (case effs_b of
-                                                    UseRel :: effs => List.all verifyUnused effs
-                                                  | _ => false))
-                                       andalso countFree 0 0 b = 1
-                                       andalso not (freeInAbs b) then
-                                        trySub ()
-                                    else
-                                        e
-                                end
-                            else
-                                trySub ()
-                        end
+                      | ELet (x, t, e', b) => doLet (x, t, e', b)
 
                       | EStrcat ((EPrim (Prim.String s1), _), (EPrim (Prim.String s2), _)) =>
                         EPrim (Prim.String (s1 ^ s2))
@@ -648,7 +667,17 @@ fun reduce file =
             case b of
                 U.Decl.Datatype (x, n, xncs) => E.pushDatatype env x n xncs
               | U.Decl.RelE (x, t) => E.pushERel env x t NONE
-              | U.Decl.NamedE (x, n, t, eo, s) => E.pushENamed env x n t (Option.map (reduceExp env) eo) s
+              | U.Decl.NamedE (x, n, t, eo, s) =>
+                let
+                    val eo = case eo of
+                                 NONE => NONE
+                               | SOME e => if mayInline (n, e) then
+                                               SOME e
+                                           else
+                                               NONE
+                in
+                    E.pushENamed env x n t (Option.map (reduceExp env) eo) s
+                end
 
         and reduceExp env = U.Exp.mapB {typ = typ, exp = exp, bind = bind} env
 

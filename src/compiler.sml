@@ -862,7 +862,8 @@ val toUntangle2 = transform untangle "untangle2" o toFuse
 val toMono_reduce2 = transform mono_reduce "mono_reduce2" o toUntangle2
 val toMono_shake2 = transform mono_shake "mono_shake2" o toMono_reduce2
 val toMono_opt4 = transform mono_opt "mono_opt4" o toMono_shake2
-val toFuse2 = transform fuse "shake2" o toMono_opt4
+val toMono_reduce3 = transform mono_reduce "mono_reduce3" o toMono_opt4
+val toFuse2 = transform fuse "shake2" o toMono_reduce3
 val toUntangle3 = transform untangle "untangle3" o toFuse2
 val toMono_shake3 = transform mono_shake "mono_shake3" o toUntangle3
 
