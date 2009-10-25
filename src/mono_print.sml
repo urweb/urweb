@@ -338,16 +338,15 @@ fun p_exp' par env (e, _) =
       | EServerCall (n, _, _) => box [string "Server(",
                                       p_exp env n,
                                       string ")"]
-      | ERecv (n, e, _) => box [string "Recv(",
-                                p_exp env n,
-                                string ")[",
-                                p_exp env e,
-                                string "]"]
-      | ESleep (n, e) => box [string "Sleep(",
-                              p_exp env n,
-                              string ")[",
-                              p_exp env e,
-                              string "]"]
+      | ERecv (n, _) => box [string "Recv(",
+                             p_exp env n,
+                             string ")"]
+      | ESleep n => box [string "Sleep(",
+                         p_exp env n,
+                         string ")"]
+      | ESpawn n => box [string "Spawn(",
+                         p_exp env n,
+                         string ")"]
 
 and p_exp env = p_exp' false env
 

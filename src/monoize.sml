@@ -1207,42 +1207,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.EApp ((L.EApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "bind"), _), _), _), _), _), t2), _),
-                             (L.EFfi ("Basis", "transaction_monad"), _)), _),
-                    (L.EApp ((L.ECApp ((L.EFfi ("Basis", "recv"), _), t1), _),
-                             ch), loc)) =>
+          | L.EApp ((L.ECApp ((L.EFfi ("Basis", "recv"), _), t1), _), ch) =>
             let
-                val t1 = monoType env t1
-                val t2 = monoType env t2
                 val un = (L'.TRecord [], loc)
-                val mt2 = (L'.TFun (un, t2), loc)
+                val t1 = monoType env t1
                 val (ch, fm) = monoExp (env, st, fm) ch
             in
-                ((L'.EAbs ("m2", (L'.TFun (t1, mt2), loc), (L'.TFun (un, un), loc),
-                           (L'.EAbs ("_", un, un,
-                                     (L'.ERecv (liftExpInExp 0 (liftExpInExp 0 ch),
-                                                (L'.ERel 1, loc),
-                                                t1), loc)), loc)), loc),
-                 fm)
+                ((L'.EAbs ("_", un, un, (L'.ERecv (liftExpInExp 0 ch, t1), loc)), loc), fm)
             end
           | L.EFfiApp ("Basis", "recv", _) => poly ()
 
-          | L.EApp ((L.EApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "bind"), _), _), _), _), _), t2), _),
-                             (L.EFfi ("Basis", "transaction_monad"), _)), _),
-                    (L.EAbs (_, _, _,
-                             (L.EFfiApp ("Basis", "sleep", [n]), _)), loc)) =>
+          | L.EFfiApp ("Basis", "sleep", [n]) =>
             let
-                val t2 = monoType env t2
-                val un = (L'.TRecord [], loc)
-                val mt2 = (L'.TFun (un, t2), loc)
                 val (n, fm) = monoExp (env, st, fm) n
             in
-                ((L'.EAbs ("m2", (L'.TFun (un, mt2), loc), (L'.TFun (un, un), loc),
-                           (L'.EAbs ("_", un, un,
-                                     (L'.ESleep (liftExpInExp 0 n, (L'.EApp ((L'.ERel 1, loc),
-                                                              (L'.ERecord [], loc)), loc)),
-                                      loc)), loc)), loc),
-                 fm)
+                ((L'.ESleep n, loc), fm)
             end
           | L.EFfiApp ("Basis", "sleep", _) => poly ()
 
@@ -1302,7 +1281,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EApp (e, (L'.ERecord [], loc)), loc), fm)
+                ((L'.ESpawn e, loc), fm)
             end
 
           | L.EFfi ("Basis", "signal_monad") => ((L'.ERecord [], loc), fm)

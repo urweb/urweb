@@ -918,31 +918,35 @@ fun process file =
                                  st)
                             end
 
-                          | ERecv (e, ek, t) =>
+                          | ERecv (e, t) =>
                             let
                                 val (e, st) = jsE inner (e, st)
-                                val (ek, st) = jsE inner (ek, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
                                 (strcat [str ("{c:\"f\",f:rv,a:cons("),
                                          e,
                                          str (",cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
-                                              ^ unurl ^ "}},cons("),
-                                         ek,
-                                         str (",null)))}")],
+                                              ^ unurl ^ "}},cons({c:\"K\"},null)))}")],
                                  st)
                             end
 
-                          | ESleep (e, ek) =>
+                          | ESleep e =>
                             let
                                 val (e, st) = jsE inner (e, st)
-                                val (ek, st) = jsE inner (ek, st)
                             in
                                 (strcat [str "{c:\"f\",f:sl,a:cons(",
                                          e,
-                                         str ",cons(",
-                                         ek,
-                                         str ",null))}"],
+                                         str ",cons({c:\"K\"},null))}"],
+                                 st)
+                            end
+
+                          | ESpawn e =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                            in
+                                (strcat [str "{c:\"f\",f:sp,a:cons(",
+                                         e,
+                                         str ",null)}"],
                                  st)
                             end
                     end
@@ -1168,19 +1172,23 @@ fun process file =
                  in
                      ((EServerCall (e1, t, ef), loc), st)
                  end
-               | ERecv (e1, e2, t) =>
+               | ERecv (e1, t) =>
                  let
                      val (e1, st) = exp outer (e1, st)
-                     val (e2, st) = exp outer (e2, st)
                  in
-                     ((ERecv (e1, e2, t), loc), st)
+                     ((ERecv (e1, t), loc), st)
                  end
-               | ESleep (e1, e2) =>
+               | ESleep e1 =>
                  let
                      val (e1, st) = exp outer (e1, st)
-                     val (e2, st) = exp outer (e2, st)
                  in
-                     ((ESleep (e1, e2), loc), st)
+                     ((ESleep e1, loc), st)
+                 end
+               | ESpawn e1 =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                 in
+                     ((ESpawn e1, loc), st)
                  end)
 
         fun decl (d as (_, loc), st) =

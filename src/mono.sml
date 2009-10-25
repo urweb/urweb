@@ -115,8 +115,9 @@ datatype exp' =
        | ESignalSource of exp
                               
        | EServerCall of exp * typ * effect
-       | ERecv of exp * exp * typ
-       | ESleep of exp * exp
+       | ERecv of exp * typ
+       | ESleep of exp
+       | ESpawn of exp
 
 withtype exp = exp' located
 

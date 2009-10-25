@@ -368,20 +368,21 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                             S.map2 (mft t,
                                   fn t' =>
                                      (EServerCall (s', t', eff), loc)))
-              | ERecv (s, ek, t) =>
+              | ERecv (s, t) =>
                 S.bind2 (mfe ctx s,
                       fn s' =>
-                         S.bind2 (mfe ctx ek,
-                               fn ek' =>
-                                  S.map2 (mft t,
-                                       fn t' =>
-                                          (ERecv (s', ek', t'), loc))))
-              | ESleep (s, ek) =>
-                S.bind2 (mfe ctx s,
+                         S.map2 (mft t,
+                              fn t' =>
+                                 (ERecv (s', t'), loc)))
+              | ESleep s =>
+                S.map2 (mfe ctx s,
                       fn s' =>
-                         S.map2 (mfe ctx ek,
-                               fn ek' =>
-                                  (ESleep (s', ek'), loc)))
+                         (ESleep s', loc))
+
+              | ESpawn s =>
+                S.map2 (mfe ctx s,
+                      fn s' =>
+                         (ESpawn s', loc))
 
         and mfmode ctx mode =
             case mode of
