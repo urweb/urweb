@@ -402,4 +402,12 @@ val sql = ref (NONE : string option)
 fun setSql so = sql := so
 fun getSql () = !sql
 
+val coreInline = ref 20
+fun setCoreInline n = coreInline := n
+fun getCoreInline () = !coreInline
+
+val monoInline = ref 20
+fun setMonoInline n = monoInline := n
+fun getMonoInline () = !monoInline
+
 end

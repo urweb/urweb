@@ -175,4 +175,10 @@ signature SETTINGS = sig
     val setSql : string option -> unit
     val getSql : unit -> string option
 
+    val setCoreInline : int -> unit
+    val getCoreInline : unit -> int
+
+    val setMonoInline : int -> unit
+    val getMonoInline : unit -> int
+
 end

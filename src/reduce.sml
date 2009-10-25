@@ -31,6 +31,7 @@ structure Reduce :> REDUCE = struct
 
 open Core
 
+structure IS = IntBinarySet
 structure IM = IntBinaryMap
 
 structure E = CoreEnv
@@ -814,7 +815,33 @@ fun exp (namedC, namedE) env e = #exp (kindConAndExp (namedC, namedE)) env e
 
 fun reduce file =
     let
-        fun doDecl (d as (_, loc), st as (namedC, namedE)) =
+        val uses = CoreUtil.File.fold {kind = fn (_, m) => m,
+                                       con = fn (_, m) => m,
+                                       exp = fn (e, m) =>
+                                                case e of
+                                                    ENamed n => IM.insert (m, n, 1 + Option.getOpt (IM.find (m, n), 0))
+                                                  | _ => m,
+                                       decl = fn (_, m) => m}
+                                      IM.empty file
+
+        fun isPoly names = CoreUtil.Con.exists {kind = fn _ => false,
+                                                con = fn TCFun _ => true
+                                                       | TKFun _ => true
+                                                       | CNamed n => IS.member (names, n)
+                                                       | _ => false}
+
+        val size = CoreUtil.Exp.fold {kind = fn (_, n) => n,
+                                      con = fn (_, n) => n,
+                                      exp = fn (_, n) => n + 1} 0
+
+        fun mayInline (polyC, n, t, e) =
+            case IM.find (uses, n) of
+                NONE => false
+              | SOME count => count <= 1
+                              orelse isPoly polyC t
+                              orelse size e <= Settings.getCoreInline ()
+
+        fun doDecl (d as (_, loc), st as (polyC, namedC, namedE)) =
             case #1 d of
                 DCon (x, n, k, c) =>
                 let
@@ -822,7 +849,12 @@ fun reduce file =
                     val c = con namedC [] c
                 in
                     ((DCon (x, n, k, c), loc),
-                     (IM.insert (namedC, n, c), namedE))
+                     (if isPoly polyC c then
+                          IS.add (polyC, n)
+                      else
+                          polyC,
+                      IM.insert (namedC, n, c),
+                      namedE))
                 end
               | DDatatype dts =>
                 ((DDatatype (map (fn (x, n, ps, cs) =>
@@ -831,14 +863,27 @@ fun reduce file =
                                      in
                                          (x, n, ps, map (fn (x, n, co) => (x, n, Option.map (con namedC env) co)) cs)
                                      end) dts), loc),
-                 st)
+                 (if List.exists (fn (_, _, _, cs) => List.exists (fn (_, _, co) => case co of
+                                                                                        NONE => false
+                                                                                      | SOME c => isPoly polyC c) cs)
+                                 dts then
+                      foldl (fn ((_, n, _, _), polyC) => IS.add (polyC, n)) polyC dts
+                  else
+                      polyC,
+                  namedC,
+                  namedE))
               | DVal (x, n, t, e, s) =>
                 let
                     val t = con namedC [] t
                     val e = exp (namedC, namedE) [] e
                 in
                     ((DVal (x, n, t, e, s), loc),
-                     (namedC, IM.insert (namedE, n, e)))
+                     (polyC,
+                      namedC,
+                      if mayInline (polyC, n, t, e) then
+                          IM.insert (namedE, n, e)
+                      else
+                          namedE))
                 end
               | DValRec vis =>
                 ((DValRec (map (fn (x, n, t, e, s) => (x, n, con namedC [] t,
@@ -856,7 +901,7 @@ fun reduce file =
               | DCookie (s, n, c, s') => ((DCookie (s, n, con namedC [] c, s'), loc), st)
               | DStyle (s, n, s') => ((DStyle (s, n, s'), loc), st)
 
-        val (file, _) = ListUtil.foldlMap doDecl (IM.empty, IM.empty) file
+        val (file, _) = ListUtil.foldlMap doDecl (IS.empty, IM.empty, IM.empty) file
     in
         file
     end

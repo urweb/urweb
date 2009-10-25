@@ -162,12 +162,19 @@ fun exp (e, st : state) =
                                         val vis' = map (fn (x, n, _, t, e, s) =>
                                                            (x, n, t, e, s)) vis
 
-                                        val funcs = IM.insert (#funcs st, n,
-                                                               {kinds = ks,
-                                                                defs = old_vis,
-                                                                replacements = M.insert (replacements,
-                                                                                         cargs,
-                                                                                         thisName)})
+                                        val funcs = foldl (fn ((_, n, n_old, _, _, _), funcs) =>
+                                                              let
+                                                                  val replacements = case IM.find (funcs, n_old) of
+                                                                                         NONE => M.empty
+                                                                                       | SOME {replacements = r, ...} => r
+                                                              in
+                                                                  IM.insert (funcs, n_old,
+                                                                             {kinds = ks,
+                                                                              defs = old_vis,
+                                                                              replacements = M.insert (replacements,
+                                                                                                       cargs,
+                                                                                                       n)})
+                                                              end) (#funcs st) vis
 
                                         val ks' = List.drop (ks, length cargs)
 
