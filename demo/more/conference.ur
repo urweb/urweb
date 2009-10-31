@@ -1,3 +1,36 @@
+signature INPUT = sig
+    con paper :: {(Type * Type)}
+    constraint [Id, Document] ~ paper
+
+    type userId
+    val userId_inj : sql_injectable_prim userId
+    table user : {Id : userId, Nam : string, Password : string, Chair : bool, OnPc : bool}
+                     PRIMARY KEY Id,
+          CONSTRAINT Nam UNIQUE Nam
+
+    type paperId
+    val paperId_inj : sql_injectable_prim paperId
+    table paper : ([Id = paperId, Document = blob] ++ map fst paper)
+                      PRIMARY KEY Id
+
+    val checkLogin : transaction (option {Id : userId, Nam : string, Chair : bool, OnPc : bool})
+    val getLogin : transaction {Id : userId, Nam : string, Chair : bool, OnPc : bool}
+end
+
+signature OUTPUT = sig
+    type userId
+    type paperId
+
+    val linksForPc : xbody
+
+    con yourPaperTables :: {{Type}}
+    constraint [Paper] ~ yourPaperTables
+    val joinYourPaper : tabs ::: {{Type}} -> paper ::: {Type}
+        -> [[Paper] ~ tabs] => [[Paper] ~ yourPaperTables] => [tabs ~ yourPaperTables] => [[Id] ~ paper] =>
+        sql_from_items ([Paper = [Id = paperId] ++ paper] ++ tabs)
+        -> sql_from_items (yourPaperTables ++ [Paper = [Id = paperId] ++ paper] ++ tabs)
+end
+
 open Meta
 
 functor Make(M : sig
@@ -13,6 +46,10 @@ functor Make(M : sig
 
                  val submissionDeadline : time
                  val summarizePaper : $(map fst paper) -> xbody
+
+                 functor Make (M : INPUT where con paper = paper)
+                         : OUTPUT where con userId = M.userId
+                                  where con paperId = M.paperId
              end) = struct
 
     table user : {Id : int, Nam : string, Password : string, Chair : bool, OnPc : bool}
@@ -54,6 +91,20 @@ functor Make(M : sig
         case ro of
             None => error <xml>You must be logged in to do that.</xml>
           | Some r => return r
+
+    structure O = M.Make(struct
+                             val user = user
+                             val paper = paper
+                             val checkLogin = checkLogin
+                             val getLogin = getLogin
+                         end)
+
+    val checkOnPc =
+        r <- getLogin;
+        if r.OnPc then
+            return ()
+        else
+            error <xml>You aren't authorized to do that.</xml>
 
     fun checkPaper id =
         r <- getLogin;
@@ -142,7 +193,10 @@ functor Make(M : sig
                     <xml/>}
 
                {if me.OnPc then
-                    <xml><li><a link={all ()}>All papers</a></li></xml>
+                    <xml>
+                      <li><a link={all ()}>All papers</a></li>
+                      {O.linksForPc}
+                    </xml>
                 else
                     <xml/>}
 
@@ -202,16 +256,36 @@ functor Make(M : sig
             </body></xml>
         end
 
-    and all () =
-        ps <- queryX (SELECT paper.Id, paper.{{map fst M.paper}} FROM paper)
-              (fn r => <xml><li><a link={one r.Paper.Id}>{M.summarizePaper (r.Paper -- #Id)}</a></li></xml>);
+    and listPapers [tabs] [[Paper] ~ tabs] (q : sql_query ([Paper = [Id = int] ++ map fst M.paper] ++ tabs) []) =
+        checkOnPc;
+        ps <- queryX q
+                     (fn r => <xml><li><a link={one r.Paper.Id}>{M.summarizePaper (r.Paper -- #Id)}</a></li></xml>);
         return <xml><body>
           <h1>All Papers</h1>
-
+          
           <ul>
             {ps}
           </ul>
         </body></xml>
+
+    and all () =
+        checkOnPc;
+        listPapers (SELECT paper.Id, paper.{{map fst M.paper}} FROM paper)
+
+    and your () =
+        me <- getLogin;
+        listPapers (sql_query {Rows = sql_query1 {Distinct = False,
+                                                  From = O.joinYourPaper (sql_from_table [#Paper] paper),
+                                                  Where = (WHERE TRUE),
+                                                  GroupBy = sql_subset_all [_],
+                                                  Having = (WHERE TRUE),
+                                                  SelectFields = sql_subset [[Paper = ([Id = _] ++ map fst M.paper, _)]
+                                                                                 ++ map (fn ts => ([], ts))
+                                                                                            O.yourPaperTables],
+                                                  SelectExps = {}},
+                               OrderBy = sql_order_by_Nil [_],
+                               Limit = sql_no_limit,
+                               Offset = sql_no_offset})
 
     and one id =
         let

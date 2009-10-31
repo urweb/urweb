@@ -3418,6 +3418,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     val denv' =
                         case #1 str' of
                             L'.StrConst _ => dopenConstraints (loc, env', denv) {str = x, strs = []}
+                          | L'.StrApp _ => dopenConstraints (loc, env', denv) {str = x, strs = []}
                           | _ => denv
                 in
                     case #1 (hnormSgn env sgn') of
