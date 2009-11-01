@@ -115,6 +115,7 @@ uw_unit uw_Basis_urlifyChannel_w(uw_context, uw_Basis_channel);
 uw_Basis_int uw_Basis_unurlifyInt(uw_context, char **);
 uw_Basis_float uw_Basis_unurlifyFloat(uw_context, char **);
 uw_Basis_string uw_Basis_unurlifyString(uw_context, char **);
+uw_Basis_string uw_Basis_unurlifyString_fromClient(uw_context, char **);
 uw_Basis_bool uw_Basis_unurlifyBool(uw_context, char **);
 uw_Basis_time uw_Basis_unurlifyTime(uw_context, char **);
 
@@ -127,6 +128,7 @@ uw_Basis_int *uw_Basis_strindex(uw_context, const char *, uw_Basis_char);
 uw_Basis_string uw_Basis_strchr(uw_context, const char *, uw_Basis_char);
 uw_Basis_int uw_Basis_strcspn(uw_context, const char *, const char *);
 uw_Basis_string uw_Basis_substring(uw_context, const char *, uw_Basis_int, uw_Basis_int);
+uw_Basis_string uw_Basis_str1(uw_context, uw_Basis_char);
 
 uw_Basis_string uw_strdup(uw_context, const char *);
 uw_Basis_string uw_maybe_strdup(uw_context, const char *);

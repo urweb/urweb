@@ -7,9 +7,9 @@ open Conference.Make(struct
 
                          val submissionDeadline = readError "2009-11-22 23:59:59"
 
-                         fun summarizePaper r = cdata r.Title
+                         fun summarizePaper [ctx] [[Body] ~ ctx] r = cdata r.Title
 
-                         functor Make (M : Conference.INPUT where con paper = _) = struct
+                         functor Make (M : Conference.INPUT where con paper = [Title = string, Abstract = string]) = struct
                              open Bid.Make(M)
                          end
                      end)

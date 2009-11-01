@@ -1,5 +1,7 @@
 type t = Basis.string
 
+val str = Basis.str1
+
 val length = Basis.strlen
 val append = Basis.strcat
 

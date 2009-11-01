@@ -62,6 +62,7 @@ val strchr : string -> char -> option string
 val strindex : string -> char -> option int
 val strcspn : string -> string -> option int
 val substring : string -> int -> int -> string
+val str1 : char -> string
 
 class show
 val show : t ::: Type -> show t -> t -> string

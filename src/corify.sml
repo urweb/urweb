@@ -43,8 +43,10 @@ fun doRestify k (mods, s) =
                     String.extract (s, 5, NONE)
                 else
                     s
+        val s = String.concatWith "/" (rev (s :: mods))
+        val s = String.implode (List.filter (fn ch => ch <> #"$") (String.explode s))
     in
-        Settings.rewrite k (String.concatWith "/" (rev (s :: mods)))
+        Settings.rewrite k s
     end
 
 val relify = CharVector.map (fn #"/" => #"_"

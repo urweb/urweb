@@ -1668,14 +1668,16 @@ uw_Basis_time uw_Basis_unurlifyTime(uw_context ctx, char **s) {
   return uw_Basis_unurlifyInt(ctx, s);
 }
 
-static uw_Basis_string uw_unurlifyString_to(uw_context ctx, char *r, char *s) {
+static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char *r, char *s) {
   char *s1, *s2 = s;
   int n;
 
-  if (*s2 == '_')
-    ++s2;
-  else if (s2[0] == '%' && s2[1] == '5' && (s2[2] == 'f' || s2[2] == 'F'))
-    s2 += 3;
+  if (!fromClient) {
+    if (*s2 == '_')
+      ++s2;
+    else if (s2[0] == '%' && s2[1] == '5' && (s2[2] == 'f' || s2[2] == 'F'))
+      s2 += 3;
+  }
 
   for (s1 = r; *s2; ++s1, ++s2) {
     char c = *s2;
@@ -1724,7 +1726,21 @@ uw_Basis_string uw_Basis_unurlifyString(uw_context ctx, char **s) {
   uw_check_heap(ctx, len + 1);
 
   r = ctx->heap.front;
-  ctx->heap.front = uw_unurlifyString_to(ctx, ctx->heap.front, *s);
+  ctx->heap.front = uw_unurlifyString_to(0, ctx, ctx->heap.front, *s);
+  *s = new_s;
+  return r;
+}
+
+uw_Basis_string uw_Basis_unurlifyString_fromClient(uw_context ctx, char **s) {
+  char *new_s = uw_unurlify_advance(*s);
+  char *r, *s1, *s2;
+  int len, n;
+
+  len = strlen(*s);
+  uw_check_heap(ctx, len + 1);
+
+  r = ctx->heap.front;
+  ctx->heap.front = uw_unurlifyString_to(1, ctx, ctx->heap.front, *s);
   *s = new_s;
   return r;
 }
@@ -1961,6 +1977,19 @@ uw_Basis_string uw_Basis_substring(uw_context ctx, uw_Basis_string s, uw_Basis_i
     return r;
   }
     
+}
+
+uw_Basis_string uw_Basis_str1(uw_context ctx, uw_Basis_char ch) {
+  char *r;
+
+  uw_check_heap(ctx, 2);
+  r = ctx->heap.front;
+  r[0] = ch;
+  r[1] = 0;
+
+  ctx->heap.front += 2;
+
+  return r;
 }
 
 uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {

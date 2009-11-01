@@ -561,11 +561,15 @@ fun capitalize s =
     else
         str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
-fun unurlify env (t, loc) =
+fun unurlify fromClient env (t, loc) =
     let
         fun unurlify' rf t =
             case t of
-                TFfi ("Basis", "unit") => string ("uw_unit_v")
+                TFfi ("Basis", "unit") => string "uw_unit_v"
+              | TFfi ("Basis", "string") => string (if fromClient then
+                                                        "uw_Basis_unurlifyString_fromClient(ctx, &request)"
+                                                    else
+                                                        "uw_Basis_unurlifyString(ctx, &request)")
               | TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
 
               | TRecord 0 => string "uw_unit_v"
@@ -1835,7 +1839,7 @@ fun p_exp' par env (e, loc) =
         let
             fun getIt () =
                 if isUnboxable t then
-                    unurlify env t
+                    unurlify false env t
                 else
                     box [string "({",
                          newline,
@@ -1845,7 +1849,7 @@ fun p_exp' par env (e, loc) =
                          string "));",
                          newline,
                          string "*tmp = ",
-                         unurlify env t,
+                         unurlify false env t,
                          string ";",
                          newline,
                          string "tmp;",
@@ -2441,7 +2445,7 @@ fun p_file env (ds, ps) =
                               space,
                               string "=",
                               space,
-                              unurlify env t,
+                              unurlify true env t,
                               string ";",
                               newline]
             end
@@ -2599,7 +2603,7 @@ fun p_file env (ds, ps) =
                                                                 space,
                                                                 string "=",
                                                                 space,
-                                                                unurlify env t,
+                                                                unurlify false env t,
                                                                 string ";",
                                                                 newline]) ts),
                           defInputs,

@@ -1,5 +1,7 @@
 type t = string
 
+val str : char -> t
+
 val length : t -> int
 
 val append : t -> t -> t
