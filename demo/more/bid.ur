@@ -7,6 +7,79 @@ functor Make(M : Conference.INPUT) = struct
     table assignment : {User : userId, Paper : paperId}
           PRIMARY KEY (User, Paper)
 
+    fun intOut ch =
+        case ch of
+            #"_" => "Maybe"
+          | #"-" => "No"
+          | #"+" => "Yes"
+          | _ => error <xml>Bid: Invalid Interest code</xml>
+
+    val linksForChair =
+        let
+            fun assignPapers () =
+                tup <- query (SELECT paper.Id, paper.{{M.paper}}, user.Id, user.Nam, bid.Interest
+                              FROM paper JOIN bid ON bid.Paper = paper.Id
+                                JOIN user ON bid.User = user.Id
+                              ORDER BY paper.Id, bid.Interest, user.Nam)
+                       (fn r (pid, int, acc, ints, papers) =>
+                           if pid = Some r.Paper.Id then
+                               if int = r.Bid.Interest then
+                                   return (pid, int, (r.User.Id, r.User.Nam) :: acc, ints, papers)
+                               else
+                                   return (pid, r.Bid.Interest, (r.User.Id, r.User.Nam) :: [],
+                                           (int, acc) :: ints, papers)
+                           else
+                               return (Some r.Paper.Id, r.Bid.Interest,
+                                       (r.User.Id, r.User.Nam) :: [], [],
+                                       case pid of
+                                           None => papers
+                                         | Some pid => (pid, (int, acc) :: ints) :: papers))
+                       (None, #" ", [], [], []);
+                let
+                    val papersL = case tup.1 of
+                                      Some pid => (pid, (tup.2, tup.3) :: tup.4) :: tup.5
+                                    | _ => []
+
+                    fun makePapers () = List.mapM (fn (pid, ints) =>
+                                                      ints <- List.mapM (fn (int, users) =>
+                                                                            cg <- CheckGroup.create
+                                                                                      (List.mp
+                                                                                           (fn (id, nam) => (id, txt nam,
+                                                                                                             False))
+                                                                                           users);
+                                                                            ex <- Expandable.create
+                                                                                      (CheckGroup.render cg);
+                                                                            return (int, cg, ex)) ints;
+                                                      return (pid, ints)) papersL
+                in
+                    papers <- source [];
+
+                    return <xml><body onload={papersL <- makePapers ();
+                                              set papers papersL}>
+                      <h1>Assign papers</h1>
+
+                      <dyn signal={papers <- signal papers;
+                                   return (List.mapX (fn (pid, ints) => <xml>
+                                     <hr/>
+                                     Paper #{[pid]}:
+                                     <dyn signal={n <- List.foldl (fn (_, cg, _) total =>
+                                                                      this <- CheckGroup.selected cg;
+                                                                      total <- total;
+                                                                      return (List.length this + total)) (return 0) ints;
+                                                  return (txt n)}/><br/>
+                                       
+                                     {List.mapX (fn (int, _, ex) => <xml>
+                                       {[intOut int]}: {Expandable.render ex}
+                                     </xml>) ints}
+                                   </xml>) papers)}/>
+                    </body></xml>
+                end
+        in
+            <xml>
+              <li><a link={assignPapers ()}> Assign papers to people</a></li>
+            </xml>
+        end
+
     val linksForPc =
         let
             fun yourBids () =
@@ -14,16 +87,15 @@ functor Make(M : Conference.INPUT) = struct
                 ps <- queryX (SELECT paper.Id, paper.{{M.paper}}, bid.Interest
                               FROM paper LEFT JOIN bid ON bid.Paper = paper.Id
                                 AND bid.User = {[me.Id]})
-                             (fn r => <xml><entry>
-                               <hidden{#Paper} value={show r.Paper.Id}/>
-                               {useMore <xml><tr>
-                                 <td>{summarizePaper (r.Paper -- #Id)}</td>
-                                 <td><select{#Bid}>
-                                   {Select.selectChar ((#"-", "No") :: (#"_", "Maybe") :: (#"+", "Yes") :: [])
-                                                      r.Bid.Interest}
-                                 </select></td>
-                               </tr></xml>}
-                             </entry></xml>);
+                             (fn r => <xml><tr>
+                               <td>{useMore (summarizePaper (r.Paper -- #Id))}</td>
+                               <td><entry>
+                                 <hidden{#Paper} value={show r.Paper.Id}/>
+                                 <select{#Bid}>
+                                   {useMore (Select.selectChar ((#"-", "No") :: (#"_", "Maybe") :: (#"+", "Yes") :: [])
+                                                      r.Bid.Interest)}
+                                 </select></entry></td>
+                             </tr></xml>);
                 return <xml><body>
                   <h1>Bid on papers</h1>
 

@@ -122,6 +122,7 @@ fun process file =
                 end
 
               | TFfi ("Basis", "string") => ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
+              | TFfi ("Basis", "char") => ((EFfiApp ("Basis", "jsifyChar", [e]), loc), st)
               | TFfi ("Basis", "int") => ((EFfiApp ("Basis", "htmlifyInt", [e]), loc), st)
               | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [e]), loc), st)
               | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "jsifyChannel", [e]), loc), st)
@@ -307,6 +308,7 @@ fun process file =
                 end
 
               | TFfi ("Basis", "string") => ("uu(t[i++])", st)
+              | TFfi ("Basis", "char") => ("uu(t[i++])", st)
               | TFfi ("Basis", "int") => ("parseInt(t[i++])", st)
               | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
               | TFfi ("Basis", "channel") => ("(t[i++].length > 0 ? parseInt(t[i]) : null)", st)

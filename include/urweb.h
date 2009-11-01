@@ -153,6 +153,7 @@ uw_Basis_string uw_Basis_sqlifyTimeN(uw_context, uw_Basis_time*);
 char *uw_Basis_ensqlBool(uw_Basis_bool);
 
 char *uw_Basis_jsifyString(uw_context, uw_Basis_string);
+char *uw_Basis_jsifyChar(uw_context, uw_Basis_char);
 char *uw_Basis_jsifyChannel(uw_context, uw_Basis_channel);
 
 uw_Basis_string uw_Basis_intToString(uw_context, uw_Basis_int);

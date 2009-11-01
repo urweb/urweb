@@ -1232,6 +1232,37 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   return r;
 }
 
+uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c) {
+  char *r, *s2;
+
+  uw_check_heap(ctx, 6);
+
+  r = s2 = ctx->heap.front;
+  *s2++ = '"';
+
+  switch (c) {
+  case '"':
+    strcpy(s2, "\\\"");
+    s2 += 2;
+    break;
+  case '\\':
+    strcpy(s2, "\\\\");
+    s2 += 2;
+    break;
+  default:
+    if (isprint(c))
+      *s2++ = c;
+    else {
+      sprintf(s2, "\\%3o", c);
+      s2 += 4;
+    }
+  }
+
+  strcpy(s2, "\"");
+  ctx->heap.front = s2 + 2;
+  return r;
+}
+
 uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
 

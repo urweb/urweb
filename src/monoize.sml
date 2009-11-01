@@ -3006,7 +3006,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                  action
 
             in
-                ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form method=\"post\""), loc),
+                ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form method=\"get\""), loc),
                                            (L'.EStrcat (action,
                                                         (L'.EPrim (Prim.String ">"), loc)), loc)), loc),
                               (L'.EStrcat (xml,

@@ -12,12 +12,14 @@ signature INPUT = sig
     val paperId_inj : sql_injectable_prim paperId
     val paperId_show : show paperId
     val paperId_read : read paperId
+    val paperId_eq : eq paperId
     table paper : ([Id = paperId, Document = blob] ++ paper)
                       PRIMARY KEY Id
 
     val checkLogin : transaction (option {Id : userId, Nam : string, Chair : bool, OnPc : bool})
     val getLogin : transaction {Id : userId, Nam : string, Chair : bool, OnPc : bool}
     val getPcLogin : transaction {Id : userId, Nam : string, Chair : bool}
+    val checkChair : transaction unit
     val summarizePaper : ctx ::: {Unit} -> [[Body] ~ ctx] => $paper -> xml ([Body] ++ ctx) [] []
 end
 
@@ -27,6 +29,7 @@ signature OUTPUT = sig
     type paperId
 
     val linksForPc : xbody
+    val linksForChair : xbody
 
     con yourPaperTables :: {{Type}}
     constraint [Paper] ~ yourPaperTables
@@ -105,12 +108,20 @@ functor Make(M : sig
         else
             error <xml>You are not on the PC.</xml>
 
+    val checkChair =
+        r <- getLogin;
+        if r.Chair then
+            return ()
+        else
+            error <xml>You are not a chair.</xml>
+
     structure O = M.Make(struct
                              val user = user
                              val paper = paper
                              val checkLogin = checkLogin
                              val getLogin = getLogin
                              val getPcLogin = getPcLogin
+                             val checkChair = checkChair
                              val summarizePaper = @@M.summarizePaper
                          end)
 
@@ -203,7 +214,10 @@ functor Make(M : sig
                <div>Welcome, {[me.Nam]}!</div>
 
                {if me.Chair then
-                    <xml><li><a link={Users.main ()}>Manage users</a></li></xml>
+                    <xml>
+                      <li><a link={Users.main ()}>Manage users</a></li>
+                      {O.linksForChair}
+                    </xml>
                 else
                     <xml/>}
 

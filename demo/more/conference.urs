@@ -12,12 +12,14 @@ signature INPUT = sig
     val paperId_inj : sql_injectable_prim paperId
     val paperId_show : show paperId
     val paperId_read : read paperId
+    val paperId_eq : eq paperId
     table paper : ([Id = paperId, Document = blob] ++ paper)
                       PRIMARY KEY Id
 
     val checkLogin : transaction (option {Id : userId, Nam : string, Chair : bool, OnPc : bool})
     val getLogin : transaction {Id : userId, Nam : string, Chair : bool, OnPc : bool}
     val getPcLogin : transaction {Id : userId, Nam : string, Chair : bool}
+    val checkChair : transaction unit
     val summarizePaper : ctx ::: {Unit} -> [[Body] ~ ctx] => $paper -> xml ([Body] ++ ctx) [] []
 end
 
@@ -27,6 +29,7 @@ signature OUTPUT = sig
     type paperId
 
     val linksForPc : xbody
+    val linksForChair : xbody
 
     con yourPaperTables :: {{Type}}
     constraint [Paper] ~ yourPaperTables
