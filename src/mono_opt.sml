@@ -502,6 +502,13 @@ fun exp e =
                    | [] => raise Fail "MonoOpt impossible nil")
               | NONE => e
         end
+
+      | EFfiApp ("Basis", "str1", [(EPrim (Prim.Char ch), _)]) =>
+        EPrim (Prim.String (str ch))
+      | EFfiApp ("Basis", "attrifyString", [(EFfiApp ("Basis", "str1", [e]), _)]) =>
+        EFfiApp ("Basis", "attrifyChar", [e])
+      | EFfiApp ("Basis", "attrifyString_w", [(EFfiApp ("Basis", "str1", [e]), _)]) =>
+        EFfiApp ("Basis", "attrifyChar_w", [e])
         
       | _ => e
 
