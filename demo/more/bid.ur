@@ -17,20 +17,23 @@ functor Make(M : Conference.INPUT) = struct
     val linksForChair =
         let
             fun assignPapers () =
-                tup <- query (SELECT paper.Id, paper.{{M.paper}}, user.Id, user.Nam, bid.Interest
+                tup <- query (SELECT paper.Id, paper.{{M.paper}}, user.Id, user.Nam, bid.Interest, assignment.User
                               FROM paper JOIN bid ON bid.Paper = paper.Id
                                 JOIN user ON bid.User = user.Id
+                                LEFT JOIN assignment ON assignment.Paper = paper.Id AND assignment.User = user.Id
                               ORDER BY paper.Id, bid.Interest, user.Nam)
                        (fn r (paper, int, acc, ints, papers) =>
                            if (case paper of None => False | Some r' => r'.Id = r.Paper.Id) then
                                if int = r.Bid.Interest then
-                                   return (paper, int, (r.User.Id, r.User.Nam) :: acc, ints, papers)
+                                   return (paper, int, (r.User.Id, r.User.Nam, Option.isSome r.Assignment.User) :: acc,
+                                           ints, papers)
                                else
-                                   return (paper, r.Bid.Interest, (r.User.Id, r.User.Nam) :: [],
+                                   return (paper, r.Bid.Interest, (r.User.Id, r.User.Nam,
+                                                                   Option.isSome r.Assignment.User) :: [],
                                            (int, acc) :: ints, papers)
                            else
                                return (Some r.Paper, r.Bid.Interest,
-                                       (r.User.Id, r.User.Nam) :: [], [],
+                                       (r.User.Id, r.User.Nam, Option.isSome r.Assignment.User) :: [], [],
                                        case paper of
                                            None => papers
                                          | Some r => (r.Id, r -- #Id, (int, acc) :: ints) :: papers))
@@ -44,8 +47,8 @@ functor Make(M : Conference.INPUT) = struct
                                                       ints <- List.mapM (fn (int, users) =>
                                                                             cg <- CheckGroup.create
                                                                                       (List.mp
-                                                                                           (fn (id, nam) => (id, txt nam,
-                                                                                                             False))
+                                                                                           (fn (id, nam, sel) =>
+                                                                                               (id, txt nam, sel))
                                                                                            users);
                                                                             ex <- Expandable.create
                                                                                       (CheckGroup.render cg);
