@@ -1213,6 +1213,10 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
       strcpy(s2, "\\\"");
       s2 += 2;
       break;
+    case '\'':
+      strcpy(s2, "\\047");
+      s2 += 4;
+      break;
     case '\\':
       strcpy(s2, "\\\\");
       s2 += 2;
@@ -1245,6 +1249,10 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c) {
     strcpy(s2, "\\\"");
     s2 += 2;
     break;
+  case '\'':
+    strcpy(s2, "\\047");
+    s2 += 4;
+    break;
   case '\\':
     strcpy(s2, "\\\\");
     s2 += 2;
@@ -1276,7 +1284,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
 
     switch (c) {
     case '\'':
-      strcpy(s2, "\\\"");
+      strcpy(s2, "\\");
       s2 += 2;
       break;
     case '\\':

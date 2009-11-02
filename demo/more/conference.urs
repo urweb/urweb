@@ -35,7 +35,8 @@ signature OUTPUT = sig
     constraint [Paper] ~ yourPaperTables
     val joinYourPaper : tabs ::: {{Type}} -> paper ::: {Type}
         -> [[Paper] ~ tabs] => [[Paper] ~ yourPaperTables] => [tabs ~ yourPaperTables] => [[Id] ~ paper] =>
-        sql_from_items ([Paper = [Id = paperId] ++ paper] ++ tabs)
+        userId (* Current user *)
+        -> sql_from_items ([Paper = [Id = paperId] ++ paper] ++ tabs)
         -> sql_from_items (yourPaperTables ++ [Paper = [Id = paperId] ++ paper] ++ tabs)
 end
 

@@ -35,7 +35,8 @@ signature OUTPUT = sig
     constraint [Paper] ~ yourPaperTables
     val joinYourPaper : tabs ::: {{Type}} -> paper ::: {Type}
         -> [[Paper] ~ tabs] => [[Paper] ~ yourPaperTables] => [tabs ~ yourPaperTables] => [[Id] ~ paper] =>
-        sql_from_items ([Paper = [Id = paperId] ++ paper] ++ tabs)
+        userId
+        -> sql_from_items ([Paper = [Id = paperId] ++ paper] ++ tabs)
         -> sql_from_items (yourPaperTables ++ [Paper = [Id = paperId] ++ paper] ++ tabs)
 end
 
@@ -305,7 +306,7 @@ functor Make(M : sig
     and your () =
         me <- getLogin;
         listPapers (sql_query {Rows = sql_query1 {Distinct = False,
-                                                  From = O.joinYourPaper (sql_from_table [#Paper] paper),
+                                                  From = O.joinYourPaper me.Id (sql_from_table [#Paper] paper),
                                                   Where = (WHERE TRUE),
                                                   GroupBy = sql_subset_all [_],
                                                   Having = (WHERE TRUE),
