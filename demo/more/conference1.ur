@@ -3,7 +3,8 @@ open ConferenceFields
 open Conference.Make(struct
                          val paper = {Title = title,
                                       Abstract = abstract}
-                         val review = {Rating = dropdown "Rating" (#"A" :: #"B" :: #"C" :: #"D" :: [])}
+                         val review = {Rating = dropdown "Rating" (#"A" :: #"B" :: #"C" :: #"D" :: []),
+                                       CommentsForAuthors = commentsForAuthors}
 
                          val submissionDeadline = readError "2009-11-22 23:59:59"
 

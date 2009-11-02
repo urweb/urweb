@@ -348,6 +348,16 @@ functor Make(M : sig
                                       FROM review
                                       WHERE review.User = {[me.Id]}
                                         AND review.Paper = {[id]});
+            otherReviews <- queryX (SELECT user.Nam, review.{{map fst M.review}}
+                                    FROM review JOIN user ON review.User = user.Id
+                                    WHERE review.Paper = {[id]}
+                                      AND review.User <> {[me.Id]})
+                            (fn r => <xml>
+                              <hr/>
+                              <b>User:</b> {[r.User.Nam]}<br/>
+                              {allContent M.review r.Review M.reviewFolder}
+                            </xml>);
+
             case ro of
                 None => error <xml>Paper not found!</xml>
               | Some r => return <xml><body>
@@ -384,6 +394,11 @@ functor Make(M : sig
                        <submit value="Save" action={saveReview}/>
                      </form>
                    </xml>}
+
+                <hr/>
+                <h2>Other reviews</h2>
+
+                {otherReviews}
               </body></xml>
         end
 

@@ -2,6 +2,7 @@ open Meta
 
 val title = string "Title"
 val abstract = textarea "Abstract"
+val commentsForAuthors = textarea "Comments for Authors"
 
 fun charIn s =
     if String.length s = 0 then
