@@ -17,6 +17,9 @@ open Conference.Make(struct
                                                       structure O2 = Decision.Make(struct
                                                                                        con paperOther = _
                                                                                        open M
+
+                                                                                       fun status [ctx] [[Body] ~ ctx]
+                                                                                                  r = <xml>!</xml>
                                                                                    end)
                                                   end)
                          end

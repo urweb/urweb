@@ -5,6 +5,8 @@ functor Make (M : sig
                   constraint [Id, Decision] ~ paperOther
                   include Conference.INPUT
                           where con paper = [Decision = option bool] ++ paperOther
+
+                  val status : ctx ::: {Unit} -> [[Body] ~ ctx] => $paperOther -> xml ([Body] ++ ctx) [] []
               end) : Conference.OUTPUT where con paper = [Decision = option bool] ++ M.paperOther
                                        where con userId = M.userId
                                        where con paperId = M.paperId

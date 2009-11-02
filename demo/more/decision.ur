@@ -11,6 +11,8 @@ functor Make(M : sig
                  constraint [Id, Decision] ~ paperOther
                  include Conference.INPUT
                          where con paper = [Decision = option bool] ++ paperOther
+
+                 val status : ctx ::: {Unit} -> [[Body] ~ ctx] => $paperOther -> xml ([Body] ++ ctx) [] []
              end) = struct
     open M
 
@@ -22,6 +24,7 @@ functor Make(M : sig
                               ORDER BY paper.Id)
                       (fn r => <xml><tr>
                         <td>{useMore (summarizePaper (r.Paper -- #Id))}</td>
+                        <td>{useMore (status (r.Paper -- #Id -- #Decision))}</td>
                         <td><entry>
                           <hidden{#Paper} value={show r.Paper.Id}/>
                           <select{#Decision}>
@@ -35,7 +38,7 @@ functor Make(M : sig
 
                   <form><subforms{#Papers}>
                     <table>
-                      <tr> <th>Paper</th> <th>Decision</th> </tr>
+                      <tr> <th>Paper</th> <th>Status</th> <th>Decision</th> </tr>
                       {ps}
                     </table>
                   </subforms></form>
