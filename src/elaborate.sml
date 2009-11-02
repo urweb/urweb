@@ -1996,14 +1996,30 @@ fun dopenConstraints (loc, env, denv) {str, strs} =
                                                    (strerror, sgnerror))
                                         | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                                   ((L'.StrVar n, loc), sgn) strs
-                            
-            val cso = E.projectConstraints env {sgn = sgn, str = st}
+
+            fun collect first (st, sgn) =
+                case E.projectConstraints env {sgn = sgn, str = st} of
+                    NONE => (if first then
+                                 strError env (UnboundStr (loc, str))
+                             else
+                               ();
+                             [])
+                  | SOME cs =>
+                    case #1 (hnormSgn env sgn) of
+                        L'.SgnConst sgis =>
+                        foldl (fn (sgi, cs) =>
+                                  case #1 sgi of
+                                      L'.SgiStr (x, _, _) =>
+                                      (case E.projectStr env {sgn = sgn, str = st, field = x} of
+                                           NONE => raise Fail "Elaborate: projectStr in collect"
+                                         | SOME sgn' =>
+                                           List.revAppend (collect false ((L'.StrProj (st, x), loc), sgn'),
+                                                           cs))
+                                    | _ => cs) cs sgis
+                      | _ => cs
         in
-            case cso of
-                NONE => (strError env (UnboundStr (loc, str));
-                         denv)
-              | SOME cs => foldl (fn ((c1, c2), denv) =>
-                                     D.assert env denv (c1, c2)) denv cs
+            foldl (fn ((c1, c2), denv) =>
+                      D.assert env denv (c1, c2)) denv (collect true (st, sgn))
         end
 
 fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
@@ -3445,12 +3461,14 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                               ([], (env, denv, gs)))
                    | SOME (n, sgn) =>
                      let
-                         val (_, sgn) = foldl (fn (m, (str, sgn)) =>
-                                                  case E.projectStr env {str = str, sgn = sgn, field = m} of
-                                                      NONE => (strError env (UnboundStr (loc, m));
-                                                               (strerror, sgnerror))
-                                                    | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
-                                              ((L'.StrVar n, loc), sgn) ms
+                         val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                                    case E.projectStr env {str = str, sgn = sgn, field = m} of
+                                                        NONE => (strError env (UnboundStr (loc, m));
+                                                                 (strerror, sgnerror))
+                                                      | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                                ((L'.StrVar n, loc), sgn) ms
+
+                         val sgn = selfifyAt env {str = str, sgn = sgn}
 
                          val (ds, env') = dopen env {str = n, strs = ms, sgn = sgn}
                          val denv' = dopenConstraints (loc, env', denv) {str = m, strs = ms}

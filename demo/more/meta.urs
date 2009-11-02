@@ -26,3 +26,11 @@ val allPopulatedTr : ts ::: {(Type * Type)} -> $(map meta ts) -> $(map fst ts) -
 
 val ensql : avail ::: {{Type}} -> ts ::: {(Type * Type)} -> $(map meta ts) -> $(map snd ts) -> folder ts
             -> $(map (sql_exp avail [] []) (map fst ts))
+
+con private = fn t :: Type =>
+                 {Nam : string,
+                  Initialize : t,
+                  Show : t -> xbody,
+                  Inject : sql_injectable t}
+
+val initialize : ts ::: {Type} -> $(map private ts) -> folder ts -> $(map (sql_exp [] [] []) ts)

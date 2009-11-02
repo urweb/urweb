@@ -46,16 +46,23 @@ functor Make(M : sig
                  val paper : $(map Meta.meta paper)
                  val paperFolder : folder paper
 
+                 con paperPrivate :: {Type}
+                 constraint [Id, Document, Authors] ~ paperPrivate
+                 constraint paper ~ paperPrivate
+                 val paperPrivate : $(map Meta.private paperPrivate)
+                 val paperPrivateFolder : folder paperPrivate
+
                  con review :: {(Type * Type)}
                  constraint [Paper, User] ~ review
                  val review : $(map Meta.meta review)
                  val reviewFolder : folder review
 
                  val submissionDeadline : time
-                 val summarizePaper : ctx ::: {Unit} -> [[Body] ~ ctx] => $(map fst paper) -> xml ([Body] ++ ctx) [] []
+                 val summarizePaper : ctx ::: {Unit} -> [[Body] ~ ctx] => $(map fst paper ++ paperPrivate)
+                                                                          -> xml ([Body] ++ ctx) [] []
 
-                 functor Make (M : INPUT where con paper = map fst paper)
-                         : OUTPUT where con paper = map fst paper
+                 functor Make (M : INPUT where con paper = map fst paper ++ paperPrivate)
+                         : OUTPUT where con paper = map fst paper ++ paperPrivate
                                   where con userId = M.userId
                                   where con paperId = M.paperId
              end) : sig
@@ -63,3 +70,16 @@ functor Make(M : sig
     val main : unit -> transaction page
 
 end
+
+functor Join(M : sig
+                 structure O1 : OUTPUT
+
+                 structure O2 : OUTPUT where con paper = O1.paper
+                                       where con userId = O1.userId
+                                       where con paperId = O1.paperId
+
+                 constraint O1.yourPaperTables ~ O2.yourPaperTables
+             end) : OUTPUT where con paper = M.O1.paper
+                           where con userId = M.O1.userId
+                           where con paperId = M.O1.paperId
+                           where con yourPaperTables = M.O1.yourPaperTables ++ M.O2.yourPaperTables

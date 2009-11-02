@@ -45,19 +45,26 @@ open Meta
 functor Make(M : sig
                  con paper :: {(Type * Type)}
                  constraint [Id, Document, Authors] ~ paper
-                 val paper : $(map meta paper)
+                 val paper : $(map Meta.meta paper)
                  val paperFolder : folder paper
+
+                 con paperPrivate :: {Type}
+                 constraint [Id, Document, Authors] ~ paperPrivate
+                 constraint paper ~ paperPrivate
+                 val paperPrivate : $(map Meta.private paperPrivate)
+                 val paperPrivateFolder : folder paperPrivate
 
                  con review :: {(Type * Type)}
                  constraint [Paper, User] ~ review
-                 val review : $(map meta review)
+                 val review : $(map Meta.meta review)
                  val reviewFolder : folder review
 
                  val submissionDeadline : time
-                 val summarizePaper : ctx ::: {Unit} -> [[Body] ~ ctx] => $(map fst paper) -> xml ([Body] ++ ctx) [] []
+                 val summarizePaper : ctx ::: {Unit} -> [[Body] ~ ctx] => $(map fst paper ++ paperPrivate)
+                                                                          -> xml ([Body] ++ ctx) [] []
 
-                 functor Make (M : INPUT where con paper = map fst paper)
-                         : OUTPUT where con paper = map fst paper
+                 functor Make (M : INPUT where con paper = map fst paper ++ paperPrivate)
+                         : OUTPUT where con paper = map fst paper ++ paperPrivate
                                   where con userId = M.userId
                                   where con paperId = M.paperId
              end) = struct
@@ -67,7 +74,7 @@ functor Make(M : sig
           CONSTRAINT Nam UNIQUE Nam
     sequence userId
 
-    con paper = [Id = int, Document = blob] ++ map fst M.paper
+    con paper = [Id = int, Document = blob] ++ map fst M.paper ++ M.paperPrivate
     table paper : paper
           PRIMARY KEY Id
     sequence paperId
@@ -254,7 +261,8 @@ functor Make(M : sig
                 else
                     id <- nextval paperId;
                     dml (insert paper ({Id = sql_inject id, Document = sql_inject (fileData r.Document)}
-                                           ++ ensql M.paper (r -- #Authors -- #Document) M.paperFolder));
+                                           ++ ensql M.paper (r -- #Authors -- #Document) M.paperFolder
+                                           ++ initialize M.paperPrivate M.paperPrivateFolder));
                     List.app (fn uid =>
                                  case uid of
                                      None => error <xml>Impossible empty uid!</xml>
@@ -287,10 +295,12 @@ functor Make(M : sig
             </body></xml>
         end
 
-    and listPapers [tabs] [[Paper] ~ tabs] (q : sql_query ([Paper = [Id = int] ++ map fst M.paper] ++ tabs) []) =
+    and listPapers [tabs] [[Paper] ~ tabs]
+                   (q : sql_query ([Paper = [Id = int] ++ map fst M.paper ++ M.paperPrivate] ++ tabs) []) =
         checkOnPc;
         ps <- queryX q
-                     (fn r => <xml><li><a link={one r.Paper.Id}>{M.summarizePaper (r.Paper -- #Id)}</a></li></xml>);
+                     (fn r => <xml><li><a link={one r.Paper.Id}>{M.summarizePaper (r.Paper -- #Id)}</a>
+                     </li></xml>);
         return <xml><body>
           <h1>All Papers</h1>
           
@@ -301,7 +311,7 @@ functor Make(M : sig
 
     and all () =
         checkOnPc;
-        listPapers (SELECT paper.Id, paper.{{map fst M.paper}} FROM paper)
+        listPapers (SELECT paper.Id, paper.{{map fst M.paper ++ M.paperPrivate}} FROM paper)
 
     and your () =
         me <- getLogin;
@@ -310,7 +320,10 @@ functor Make(M : sig
                                                   Where = (WHERE TRUE),
                                                   GroupBy = sql_subset_all [_],
                                                   Having = (WHERE TRUE),
-                                                  SelectFields = sql_subset [[Paper = ([Id = _] ++ map fst M.paper, _)]
+                                                  SelectFields = sql_subset [[Paper =
+                                                                              ([Id = _]
+                                                                                   ++ map fst M.paper
+                                                                                   ++ M.paperPrivate, _)]
                                                                                  ++ map (fn ts => ([], ts))
                                                                                             O.yourPaperTables],
                                                   SelectExps = {}},
@@ -412,3 +425,28 @@ functor Make(M : sig
           | Some r => returnBlob r.Paper.Document (blessMime "application/pdf")
 
 end
+
+
+functor Join(M : sig
+                 structure O1 : OUTPUT
+
+                 structure O2 : OUTPUT where con paper = O1.paper
+                                       where con userId = O1.userId
+                                       where con paperId = O1.paperId
+
+                 constraint O1.yourPaperTables ~ O2.yourPaperTables
+             end)
+        = struct
+            open M
+            open O1
+
+            val linksForPc = <xml>{O1.linksForPc}{O2.linksForPc}</xml>
+            val linksForChair = <xml>{O1.linksForChair}{O2.linksForChair}</xml>
+
+            con yourPaperTables = O1.yourPaperTables ++ O2.yourPaperTables
+            constraint [Paper] ~ yourPaperTables
+
+            fun joinYourPaper [tabs] [paper] [[Paper] ~ tabs] [[Paper] ~ _] [tabs ~ yourPaperTables] [[Id] ~ paper]
+                              uid (fi : sql_from_items ([Paper = [Id = paperId] ++ paper] ++ tabs)) =
+                O2.joinYourPaper uid (O1.joinYourPaper uid fi)
+        end

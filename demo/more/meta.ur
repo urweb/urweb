@@ -80,3 +80,12 @@ fun ensql [avail] [ts ::: {(Type * Type)}] (r : $(map meta ts)) (vs : $(map snd 
     map2 [meta] [snd] [fn ts :: (Type * Type) => sql_exp avail [] [] ts.1]
          (fn [ts] meta v => @sql_inject meta.Inject (meta.Parse v))
          [_] fl r vs
+
+con private = fn t :: Type =>
+                 {Nam : string,
+                  Initialize : t,
+                  Show : t -> xbody,
+                  Inject : sql_injectable t}
+
+fun initialize [ts] (r : $(map private ts)) (fl : folder ts) =
+    mp [private] [sql_exp [] [] []] (fn [t] r => @sql_inject r.Inject r.Initialize) [_] fl r

@@ -1,3 +1,5 @@
+con fields userId paperId = [User = userId, Paper = paperId]
+
 functor Make(M : Conference.INPUT) = struct
     open M
 
