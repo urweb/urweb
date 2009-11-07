@@ -224,10 +224,10 @@ fun queryX [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Ty
           (fn fs acc => return <xml>{acc}{f fs}</xml>)
           <xml/>
 
-fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}]
+fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
             [tables ~ exps] (q : sql_query tables exps)
             (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
-                 -> transaction (xml ctx [] [])) =
+                 -> transaction (xml ctx inp [])) =
     query q
           (fn fs acc =>
               r <- f fs;

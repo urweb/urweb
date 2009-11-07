@@ -132,12 +132,12 @@ val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp :::
                  -> xml ctx inp [])
              -> transaction (xml ctx inp [])
 
-val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit}
+val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
               -> [tables ~ exps] =>
               sql_query tables exps
               -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
-                  -> transaction (xml ctx [] []))
-              -> transaction (xml ctx [] [])
+                  -> transaction (xml ctx inp []))
+              -> transaction (xml ctx inp [])
                        
 val oneOrNoRows : tables ::: {{Type}} -> exps ::: {Type}
                   -> [tables ~ exps] =>

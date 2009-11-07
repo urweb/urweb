@@ -22,3 +22,4 @@ fun dropdown name opts = {Nam = name,
                           Parse = charIn,
                           Inject = _}
 
+val dropdown_show = _

@@ -16,6 +16,11 @@ signature INPUT = sig
     table paper : ([Id = paperId, Document = blob] ++ paper)
                       PRIMARY KEY Id
 
+    con review :: {Type}
+    constraint [Paper, User] ~ review
+    table review : ([Paper = paperId, User = userId] ++ review)
+                       PRIMARY KEY (Paper, User)
+
     val checkLogin : transaction (option {Id : userId, Nam : string, Chair : bool, OnPc : bool})
     val getLogin : transaction {Id : userId, Nam : string, Chair : bool, OnPc : bool}
     val getPcLogin : transaction {Id : userId, Nam : string, Chair : bool}
@@ -61,7 +66,8 @@ functor Make(M : sig
                  val summarizePaper : ctx ::: {Unit} -> [[Body] ~ ctx] => $(map fst paper ++ paperPrivate)
                                                                           -> xml ([Body] ++ ctx) [] []
 
-                 functor Make (M : INPUT where con paper = map fst paper ++ paperPrivate)
+                 functor Make (M : INPUT where con paper = map fst paper ++ paperPrivate
+                                         where con review = map fst review)
                          : OUTPUT where con paper = map fst paper ++ paperPrivate
                                   where con userId = M.userId
                                   where con paperId = M.paperId
