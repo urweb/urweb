@@ -1,12 +1,11 @@
 ========
-Next
+20091108
 ========
 
 - Bug fixes
 - Optimization improvements
 - Removed a restriction that prevented some RPCs and calls to sleep or recv
   from compiling
-- New extra demo: conference1
 
 ========
 20091012
