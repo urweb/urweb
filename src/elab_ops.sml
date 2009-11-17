@@ -143,6 +143,13 @@ val occurs =
                                | _ => n}
                   0
 
+val identity = ref 0
+val distribute = ref 0
+val fuse = ref 0
+
+fun reset () = (identity := 0;
+                distribute := 0;
+                fuse := 0)
 
 fun hnormCon env (cAll as (c, loc)) =
     case c of
@@ -219,6 +226,8 @@ fun hnormCon env (cAll as (c, loc)) =
                                       (TDisjoint (_, _, c), _) => unconstraint c
                                     | c => c
 
+                              fun inc r = r := !r + 1
+
                               fun tryDistributivity () =
                                   case hnormCon env c2 of
                                       (CConcat (c1, c2'), _) =>
@@ -230,6 +239,7 @@ fun hnormCon env (cAll as (c, loc)) =
                                           val c2 = (CApp (c, c2'), loc)
                                           val c = (CConcat (c1, c2), loc)
                                       in
+                                          inc distribute;
                                           hnormCon env c
                                       end
                                     | _ => default ()
@@ -253,6 +263,7 @@ fun hnormCon env (cAll as (c, loc)) =
                                                     val c = (CApp (c, f'), loc)
                                                     val c = (CApp (c, r'), loc)
                                                 in
+                                                    inc fuse;
                                                     hnormCon env c
                                                 end
                                               | _ => tryDistributivity ())
@@ -275,7 +286,8 @@ fun hnormCon env (cAll as (c, loc)) =
                                       case unconstraint c of
                                           (CUnif (_, _, _, vR'), _) =>
                                           if vR' = vR then
-                                              hnormCon env c2
+                                              (inc identity;
+                                               hnormCon env c2)
                                           else
                                               tryFusion ()
                                         | _ => tryFusion ()

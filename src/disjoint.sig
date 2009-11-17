@@ -40,4 +40,7 @@ signature DISJOINT = sig
 
     val p_env : env -> unit
 
+    val proved : int ref
+    val reset : unit -> unit
+
 end

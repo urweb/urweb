@@ -161,6 +161,10 @@ fun prove1 denv (p1, p2) =
             NONE => false
           | SOME pset => PS.member (pset, p2)
 
+val proved = ref 0
+fun reset () = (ElabOps.reset ();
+                proved := 0)
+
 fun decomposeRow env c =
     let
         val loc = #2 c
@@ -248,6 +252,7 @@ and assert env denv (c1, c2) =
 
 and prove env denv (c1, c2, loc) =
     let
+        val () = proved := !proved + 1
         val ps1 = decomposeRow env c1
         val ps2 = decomposeRow env c2
 

@@ -39,4 +39,9 @@ signature ELAB_OPS = sig
 
     val hnormCon : ElabEnv.env -> Elab.con -> Elab.con
 
+    val identity : int ref
+    val distribute : int ref
+    val fuse : int ref
+    val reset : unit -> unit
+
 end
