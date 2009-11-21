@@ -2575,16 +2575,16 @@ fun p_file env (ds, ps) =
                                     end,
                                     string "\");",
                                     newline,
-                                    string "uw_set_needs_push(ctx, ",
-                                    string (case side of
-                                                ServerAndPullAndPush => "1"
-                                              | _ => "0"),
-                                    string ");",
-                                    newline,
                                     string "uw_set_url_prefix(ctx, \"",
                                     string (Settings.getUrlPrefix ()),
                                     string "\");",
                                     newline]),
+                     string "uw_set_needs_push(ctx, ",
+                     string (case side of
+                                 ServerAndPullAndPush => "1"
+                               | _ => "0"),
+                     string ");",
+                     newline,
                      string "uw_set_needs_sig(ctx, ",
                      string (if couldWrite ek then
                                  "1"

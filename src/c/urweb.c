@@ -672,6 +672,8 @@ static input *check_input_space(uw_context ctx, size_t len) {
 }
 
 int uw_set_input(uw_context ctx, const char *name, char *value) {
+  printf("Input name %s\n", name);
+
   if (!strcasecmp(name, ".b")) {
     int n = uw_input_num(value);
     input *inps;
@@ -760,6 +762,8 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
     int n = uw_input_num(name);
 
     if (n < 0) {
+      if (!strcmp(name, "null"))
+        return 0;
       uw_set_error(ctx, "Bad input name %s", name);
       return -1;
     }
