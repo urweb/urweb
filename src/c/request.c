@@ -172,8 +172,9 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   if (!strcmp(method, "POST")) {
     char *clen_s = uw_Basis_requestHeader(ctx, "Content-length");
     if (!clen_s) {
-      log_error(logger_data, "No Content-length with POST\n");
-      return FAILED;
+      clen_s = "0";
+      /*log_error(logger_data, "No Content-length with POST\n");
+      return FAILED;*/
     }
     int clen = atoi(clen_s);
     if (clen < 0) {
