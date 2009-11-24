@@ -2483,13 +2483,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     else
                         attrs
 
-                fun findOnload (attrs, acc) =
+                fun findOnload (attrs, onload, onunload, acc) =
                     case attrs of
-                        [] => (NONE, acc)
-                      | ("Onload", e, _) :: rest => (SOME e, List.revAppend (acc, rest))
-                      | x :: rest => findOnload (rest, x :: acc)
+                        [] => (onload, onunload, acc)
+                      | ("Onload", e, _) :: rest => findOnload (rest, SOME e, onunload, acc)
+                      | ("Onunload", e, _) :: rest => findOnload (rest, onload, SOME e, acc)
+                      | x :: rest => findOnload (rest, onload, onunload, x :: acc)
                                      
-                val (onload, attrs) = findOnload (attrs, [])
+                val (onload, onunload, attrs) = findOnload (attrs, NONE, NONE, [])
 
                 val (class, fm) = monoExp (env, st, fm) class
 
@@ -2669,26 +2670,33 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          :: str ";"
                                          :: assgns)
                     end
+
+                fun execify e =
+                    case e of
+                        NONE => (L'.EPrim (Prim.String ""), loc)
+                      | SOME e =>
+                        let
+                            val e = (L'.EApp (e, (L'.ERecord [], loc)), loc)
+                        in
+                            (L'.EStrcat ((L'.EPrim (Prim.String "exec("), loc),
+                                         (L'.EStrcat ((L'.EJavaScript (L'.Attribute, e), loc),
+                                                      (L'.EPrim (Prim.String ")"), loc)), loc)), loc)
+                        end
             in
                 case tag of
                     "body" => let
-                        val onload = case onload of
-                                         NONE => (L'.EPrim (Prim.String ""), loc)
-                                       | SOME e =>
-                                         let
-                                             val e = (L'.EApp (e, (L'.ERecord [], loc)), loc)
-                                         in
-                                             (L'.EStrcat ((L'.EPrim (Prim.String "exec("), loc),
-                                                          (L'.EStrcat ((L'.EJavaScript (L'.Attribute, e), loc),
-                                                                       (L'.EPrim (Prim.String ")"), loc)), loc)), loc)
-                                         end
+                        val onload = execify onload
+                        val onunload = execify onunload
                     in
                         normal ("body",
-                                SOME (L'.EFfiApp ("Basis", "maybe_onload",
-                                                  [(L'.EStrcat ((L'.EFfiApp ("Basis", "get_settings",
-                                                                             [(L'.ERecord [], loc)]), loc),
-                                                                onload), loc)]),
-                                      loc),
+                                SOME (L'.EStrcat ((L'.EFfiApp ("Basis", "maybe_onload",
+                                                               [(L'.EStrcat ((L'.EFfiApp ("Basis", "get_settings",
+                                                                                          [(L'.ERecord [], loc)]), loc),
+                                                                             onload), loc)]),
+                                                   loc),
+                                                  (L'.EFfiApp ("Basis", "maybe_onunload",
+                                                               [onunload]),
+                                                   loc)), loc),
                                 SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
                     end
 

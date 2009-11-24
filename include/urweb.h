@@ -69,6 +69,7 @@ const char *uw_Basis_get_settings(uw_context, uw_unit);
 const char *uw_Basis_get_script(uw_context, uw_unit);
 
 uw_Basis_string uw_Basis_maybe_onload(uw_context, uw_Basis_string);
+uw_Basis_string uw_Basis_maybe_onunload(uw_context, uw_Basis_string);
 
 void uw_set_needs_push(uw_context, int);
 void uw_set_needs_sig(uw_context, int);
