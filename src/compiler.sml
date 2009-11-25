@@ -927,17 +927,13 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
 
         val link = foldl (fn (s, link) => link ^ " " ^ s) link link'
     in
-        if not (OS.Process.isSuccess (OS.Process.system compile)) then
-            OS.Process.exit OS.Process.failure
-        else if not (OS.Process.isSuccess (OS.Process.system link)) then
-            OS.Process.exit OS.Process.failure
-        else
-            ()
+        OS.Process.isSuccess (OS.Process.system compile)
+        andalso OS.Process.isSuccess (OS.Process.system link)
     end
 
 fun compile job =
     case run toChecknest job of
-        NONE => OS.Process.exit OS.Process.failure
+        NONE => false
       | SOME file =>
         let
             val job = valOf (run (transform parseUrp "parseUrp") job)
@@ -991,11 +987,17 @@ fun compile job =
                     end;
 
                 compileC {cname = cname, oname = oname, ename = ename, libs = libs,
-                          profile = #profile job, debug = #debug job, link = #link job};
+                          profile = #profile job, debug = #debug job, link = #link job}
                 
-                cleanup ()
+                before cleanup ()
             end
             handle ex => (((cleanup ()) handle _ => ()); raise ex)
         end
+
+fun compiler job =
+    if compile job then
+        ()
+    else
+        OS.Process.exit OS.Process.failure
 
 end

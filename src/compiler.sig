@@ -53,9 +53,10 @@ signature COMPILER = sig
          protocol : string option,
          dbms : string option
     }
-    val compile : string -> unit
+    val compile : string -> bool
+    val compiler : string -> unit
     val compileC : {cname : string, oname : string, ename : string, libs : string,
-                    profile : bool, debug : bool, link : string list} -> unit
+                    profile : bool, debug : bool, link : string list} -> bool
 
     type ('src, 'dst) phase
     type ('src, 'dst) transform

@@ -81,4 +81,4 @@ val () =
         if !timing then
             Compiler.time Compiler.toCjrize job
         else
-            Compiler.compile job
+            Compiler.compiler job

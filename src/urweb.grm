@@ -289,6 +289,7 @@ fun patType loc (p : pat) =
  | rexp of (con * exp) list
  | xml of exp
  | xmlOne of exp
+ | xmlOpt of exp
  | tag of (string * exp) * exp
  | tagHead of string * exp
  | bind of string * con option * exp
@@ -1294,6 +1295,11 @@ xml    : xmlOne xml                     (let
                                          end)
        | xmlOne                         (xmlOne)
 
+xmlOpt : xml                            (xml)
+       |                                (EApp ((EVar (["Basis"], "cdata", Infer), dummy),
+                                               (EPrim (Prim.String ""), dummy)),
+                                         dummy)
+
 xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer), s (NOTAGSleft, NOTAGSright)),
                                                (EPrim (Prim.String NOTAGS), s (NOTAGSleft, NOTAGSright))),
                                          s (NOTAGSleft, NOTAGSright))
@@ -1318,25 +1324,25 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                              (EApp (#2 tag, cdata), pos)
                                          end)
          
-       | tag GT xml END_TAG             (let
+       | tag GT xmlOpt END_TAG          (let
                                              val pos = s (tagleft, GTright)
                                              val et = tagIn END_TAG
                                          in
                                              if #1 (#1 tag) = et then
                                                  if et = "form" then
                                                      (EApp ((EVar (["Basis"], "form", Infer), pos),
-                                                            xml), pos)
+                                                            xmlOpt), pos)
                                                  else if et = "subform" then
                                                      (EApp ((EDisjointApp (#2 (#1 tag)), pos),
-                                                            xml), pos)
+                                                            xmlOpt), pos)
                                                  else if et = "subforms" then
                                                      (EApp ((EDisjointApp (#2 (#1 tag)), pos),
-                                                            xml), pos)
+                                                            xmlOpt), pos)
                                                  else if et = "entry" then
                                                      (EApp ((EVar (["Basis"], "entry", Infer), pos),
-                                                            xml), pos)
+                                                            xmlOpt), pos)
                                                  else
-                                                     (EApp (#2 tag, xml), pos)
+                                                     (EApp (#2 tag, xmlOpt), pos)
                                              else
                                                  (if ErrorMsg.anyErrors () then
                                                       ()
