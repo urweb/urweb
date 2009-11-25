@@ -41,6 +41,10 @@ structure SM = BinaryMapFn(struct
 fun kind (k, s) = (k, s)
 fun con (c, s) = (c, s)
 
+fun both (loc, f) = (ErrorMsg.errorAt loc ("Function " ^ f ^ " needed for both a link and a form");
+                     TextIO.output (TextIO.stdErr,
+                                    "Make sure that the signature of the containing module hides any form handlers.\n"))
+
 fun exp env (e, s) =
     case e of
         EApp (
@@ -105,8 +109,7 @@ fun exp env (e, s) =
                                                                         if ek = ek' then
                                                                             ()
                                                                         else
-                                                                            ErrorMsg.errorAt loc 
-                                                                                             "Function needed as both a link and a form ";
+                                                                            both (loc, s);
                                                                         byTag)
 
                                                        val e = (EClosure (cn, args), loc)
@@ -166,7 +169,7 @@ fun tag file =
                         (if ek = ek' then
                              ()
                          else
-                             ErrorMsg.errorAt loc "Function needed for both a link and a form";
+                             both (loc, s);
                          ([], (env, count, tags, byTag)))
                 end
               | _ =>
