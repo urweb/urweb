@@ -928,16 +928,16 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
         val link = foldl (fn (s, link) => link ^ " " ^ s) link link'
     in
         if not (OS.Process.isSuccess (OS.Process.system compile)) then
-            print "C compilation failed\n"
+            OS.Process.exit OS.Process.failure
         else if not (OS.Process.isSuccess (OS.Process.system link)) then
-            print "C linking failed\n"
+            OS.Process.exit OS.Process.failure
         else
             ()
     end
 
 fun compile job =
     case run toChecknest job of
-        NONE => print "Ur compilation failed\n"
+        NONE => OS.Process.exit OS.Process.failure
       | SOME file =>
         let
             val job = valOf (run (transform parseUrp "parseUrp") job)
