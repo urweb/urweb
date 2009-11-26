@@ -672,7 +672,7 @@ static input *check_input_space(uw_context ctx, size_t len) {
 }
 
 int uw_set_input(uw_context ctx, const char *name, char *value) {
-  printf("Input name %s\n", name);
+  //printf("Input name %s\n", name);
 
   if (!strcasecmp(name, ".b")) {
     int n = uw_input_num(value);
@@ -2680,14 +2680,37 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   return NULL;
 }
 
-uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v) {
+uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v, uw_Basis_time *expires, uw_Basis_bool secure) {
   uw_write_header(ctx, "Set-Cookie: ");
   uw_write_header(ctx, c);
   uw_write_header(ctx, "=");
   uw_write_header(ctx, v);
   uw_write_header(ctx, "; path=");
   uw_write_header(ctx, prefix);
+  if (expires) {
+    char formatted[30];
+    struct tm tm;
+
+    gmtime_r(expires, &tm);
+
+    strftime(formatted, sizeof formatted, "%a, %d-%b-%Y %T GMT", &tm);
+
+    uw_write_header(ctx, "; expires=");
+    uw_write_header(ctx, formatted);
+  }
+  if (secure)
+    uw_write_header(ctx, "; secure");
   uw_write_header(ctx, "\r\n");
+
+  return uw_unit_v;
+}
+
+uw_unit uw_Basis_clear_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c) {
+  uw_write_header(ctx, "Set-Cookie: ");
+  uw_write_header(ctx, c);
+  uw_write_header(ctx, "=; path=");
+  uw_write_header(ctx, prefix);
+  uw_write_header(ctx, "; expires=Mon, 01-01-1970 00:00:00 GMT\r\n");
 
   return uw_unit_v;
 }
@@ -3076,6 +3099,8 @@ uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {
 
   return r;
 }
+
+const uw_Basis_time minTime = 0;
 
 uw_Basis_time uw_Basis_now(uw_context ctx) {
   return time(NULL);

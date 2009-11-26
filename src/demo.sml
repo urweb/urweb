@@ -430,7 +430,7 @@ fun make {prefix, dirname, guided} =
 
                 TextIO.closeOut outf;
 
-                Compiler.compile (OS.Path.base fname)
+                Compiler.compiler (OS.Path.base fname)
             end;
 
         TextIO.output (demosOut, "\n</body></html>\n");

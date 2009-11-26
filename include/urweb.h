@@ -185,7 +185,8 @@ uw_Basis_string uw_Basis_requestHeader(uw_context, uw_Basis_string);
 void uw_write_header(uw_context, uw_Basis_string);
 
 uw_Basis_string uw_Basis_get_cookie(uw_context, uw_Basis_string c);
-uw_unit uw_Basis_set_cookie(uw_context, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v);
+uw_unit uw_Basis_set_cookie(uw_context, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v, uw_Basis_time *expires, uw_Basis_bool secure);
+uw_unit uw_Basis_clear_cookie(uw_context, uw_Basis_string prefix, uw_Basis_string c);
 
 uw_Basis_channel uw_Basis_new_channel(uw_context, uw_unit);
 uw_unit uw_Basis_send(uw_context, uw_Basis_channel, uw_Basis_string);
@@ -210,6 +211,7 @@ uw_Basis_int uw_Basis_blobSize(uw_context, uw_Basis_blob);
 __attribute__((noreturn)) void uw_return_blob(uw_context, uw_Basis_blob, uw_Basis_string mimeType);
 
 uw_Basis_time uw_Basis_now(uw_context);
+extern const uw_Basis_time uw_Basis_minTime;
 
 void uw_register_transactional(uw_context, void *data, uw_callback commit, uw_callback rollback, uw_callback free);
 

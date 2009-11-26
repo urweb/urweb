@@ -1288,7 +1288,8 @@ $$\begin{array}{l}
   \\
   \mt{con} \; \mt{http\_cookie} :: \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{getCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{transaction} \; (\mt{option} \; \mt{t}) \\
-  \mt{val} \; \mt{setCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{t} \to \mt{transaction} \; \mt{unit}
+  \mt{val} \; \mt{setCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \{\mt{Value} : \mt{t}, \mt{Expires} : \mt{option} \; \mt{time}, \mt{Secure} : \mt{bool}\} \to \mt{transaction} \; \mt{unit} \\
+  \mt{val} \; \mt{clearCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
 There are also an abstract $\mt{url}$ type and functions for converting to it, based on the policy defined by \texttt{[allow|deny] url} directives in the project file.
