@@ -223,7 +223,7 @@ static int read_funny_len(unsigned char **buf, int *len) {
   else if (*len < 4)
     return -1;
   else {
-    int r = (((*buf)[3] & 0x7f) << 24) + ((*buf)[2] << 16) + ((*buf)[1] << 8) + (*buf)[0];
+    int r = (((*buf)[0] & 0x7f) << 24) + ((*buf)[1] << 16) + ((*buf)[2] << 8) + (*buf)[3];
     *buf += 4;
     *len -= 4;
     return r;
@@ -236,9 +236,9 @@ static int read_nvp(unsigned char **buf, int len, nvp *nv) {
   if ((nameLength = read_funny_len(buf, &len)) < 0)
     return -1;
   if ((valueLength = read_funny_len(buf, &len)) < 0)
-    return -1;
+    return -2;
   if (len < nameLength + valueLength)
-    return -1;
+    return -3;
 
   if (nameLength+1 > nv->name_len) {
     nv->name_len = nameLength+1;
@@ -374,7 +374,7 @@ static void *worker(void *data) {
           goto done;
         }
 
-        write_stderr(out, "PARAM: %s -> %s\n", hs.nvps[used_nvps].name, hs.nvps[used_nvps].value);
+        //write_stderr(out, "PARAM: %s -> %s\n", hs.nvps[used_nvps].name, hs.nvps[used_nvps].value);
 
         ++used_nvps;
       }
