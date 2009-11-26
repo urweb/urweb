@@ -2667,10 +2667,19 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   }
 
   if (p = uw_Basis_requestHeader(ctx, "Cookie")) {
+    char *p2;
+
     while (1) {
-      if (!strncmp(p, c, len) && p[len] == '=')
-        return p + 1 + len;
-      else if (p = strchr(p, ';'))
+      if (!strncmp(p, c, len) && p[len] == '=') {
+        if (p2 = strchr(p, ';')) {
+          size_t n = p2 - (p + len);
+          char *r = uw_malloc(ctx, n);
+          memcpy(r, p + 1 + len, n-1);
+          r[n-1] = 0;
+          return r;
+        } else
+          return p + 1 + len;
+      } else if (p = strchr(p, ';'))
         p += 2;
       else
         return NULL;
