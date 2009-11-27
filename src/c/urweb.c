@@ -2645,6 +2645,8 @@ uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, siz
   return b;
 }
 
+#define THE_PAST "expires=Mon, 01-01-1970 00:00:00 GMT"
+
 uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   int len = strlen(c);
   char *p = ctx->outHeaders.start;
@@ -2658,10 +2660,14 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
       size_t sz = strcspn(p2+1, ";\r\n");
 
       if (!strncasecmp(p, c, p2 - p)) {
-        char *ret = uw_malloc(ctx, sz + 1);
-        memcpy(ret, p2+1, sz);
-        ret[sz] = 0;
-        return ret;
+        if (sz == 0 && strstr(p2+2, THE_PAST))
+          return NULL;
+        else {
+          char *ret = uw_malloc(ctx, sz + 1);
+          memcpy(ret, p2+1, sz);
+          ret[sz] = 0;
+          return ret;
+        }
       }
     }
   }
@@ -2719,7 +2725,7 @@ uw_unit uw_Basis_clear_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_s
   uw_write_header(ctx, c);
   uw_write_header(ctx, "=; path=");
   uw_write_header(ctx, prefix);
-  uw_write_header(ctx, "; expires=Mon, 01-01-1970 00:00:00 GMT\r\n");
+  uw_write_header(ctx, "; " THE_PAST "\r\n");
 
   return uw_unit_v;
 }
