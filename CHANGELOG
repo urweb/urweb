@@ -1,9 +1,10 @@
 ========
-Next
+20091203
 ========
 
 - Extended cookie interface (breaks backward compatibility for 'setCookie')
 - Bug fixes
+- Extended UTF-8 characters in HTML
 
 ========
 20091124
