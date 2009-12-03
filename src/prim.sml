@@ -74,10 +74,20 @@ fun pad (n, ch, s) =
     else
         str ch ^ pad (n-1, ch, s)
 
-val gccify = String.translate (fn ch => if Char.isPrint ch then
-                                            str ch
-                                        else
-                                            "\\" ^ pad (3, #"0", Int.fmt StringCvt.OCT (ord ch)))
+val gccify = String.translate (fn ch =>
+                                  case ch of
+                                      #"\"" => "\\\""
+                                    | #"\\" => "\\\\"
+                                    | #"'" => "\\'"
+                                    | #"\n" => "\\n"
+                                    | #"\r" => "\\r"
+                                    | #"\t" => "\\t"
+                                    | #" " => " "
+                                    | _ =>
+                                      if Char.isPrint ch then
+                                          str ch
+                                      else
+                                          "\\" ^ pad (3, #"0", Int.fmt StringCvt.OCT (ord ch)))
 
 fun p_t_GCC t =
     case t of

@@ -45,6 +45,37 @@ fun attrifyFloat n =
     else
         Real.toString n
 
+fun attrifyString s =
+    let
+        fun hs (pos, acc) =
+            if pos >= size s then
+                String.concat (rev acc)
+            else
+                case String.sub (s, pos) of
+                    #"\"" => hs (pos+1, "&quot;" :: acc)
+                  | #"&" => hs (pos+1, "&amp;" :: acc)
+                  | ch =>
+                    let
+                        val n = ord ch
+                        fun isCont k = pos + k < size s
+                                       andalso ord (String.sub (s, pos + k)) div 64 = 2
+                        fun unicode k = hs (pos+k+1, String.substring (s, pos, k+1) :: acc)
+                    in
+                        if Char.isPrint ch orelse Char.isSpace ch then
+                            hs (pos+1, str ch :: acc)
+                        else if n div 32 = 6 andalso isCont 1 then
+                            unicode 1
+                        else if n div 16 = 14 andalso isCont 1 andalso isCont 2 then
+                            unicode 2
+                        else if n div 8 = 30 andalso isCont 1 andalso isCont 2 andalso isCont 3 then
+                            unicode 3
+                        else
+                            hs (pos+1, "&#" ^ Int.toString (ord ch) ^ ";" :: acc)
+                    end
+    in
+        hs (0, [])
+    end
+
 fun attrifyChar ch =
     case ch of
         #"\"" => "&quot;"
@@ -53,8 +84,6 @@ fun attrifyChar ch =
                   str ch
               else
                   "&#" ^ Int.toString (ord ch) ^ ";"
-
-val attrifyString = String.translate attrifyChar
 
 val urlifyInt = attrifyInt
 val urlifyFloat = attrifyFloat
@@ -78,7 +107,7 @@ fun htmlifyString s =
                                        andalso ord (String.sub (s, pos + k)) div 64 = 2
                         fun unicode k = hs (pos+k+1, String.substring (s, pos, k+1) :: acc)
                     in
-                        if Char.isPrint ch orelse Char.isSpace ch then
+                        if Char.isPrint ch then
                             hs (pos+1, str ch :: acc)
                         else if n div 32 = 6 andalso isCont 1 then
                             unicode 1
