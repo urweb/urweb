@@ -68,12 +68,23 @@ fun toString t =
       | String s => s
       | Char ch => str ch
 
+fun pad (n, ch, s) =
+    if size s >= n then
+        s
+    else
+        str ch ^ pad (n-1, ch, s)
+
+val gccify = String.translate (fn ch => if Char.isPrint ch then
+                                            str ch
+                                        else
+                                            "\\" ^ pad (3, #"0", Int.fmt StringCvt.OCT (ord ch)))
+
 fun p_t_GCC t =
     case t of
         Int n => string (int2s n)
       | Float n => string (float2s n)
-      | String s => box [string "\"", string (String.toString s), string "\""]
-      | Char ch => box [string "'", string (String.toString (str ch)), string "'"]
+      | String s => box [string "\"", string (gccify s), string "\""]
+      | Char ch => box [string "'", string (gccify (str ch)), string "'"]
 
 fun equal x =
     case x of
