@@ -25,7 +25,7 @@ fun main () =
     </body></xml>
 
 and set r =
-    setCookie username r.User;
+    setCookie username {Value = r.User, Expires = None, Secure = False};
     main ()
 
 and imHere () =

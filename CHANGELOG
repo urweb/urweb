@@ -1,4 +1,11 @@
 ========
+Next
+========
+
+- Extended cookie interface (breaks backward compatibility for 'setCookie')
+- Bug fixes
+
+========
 20091124
 ========
 

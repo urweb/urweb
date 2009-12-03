@@ -672,7 +672,7 @@ static input *check_input_space(uw_context ctx, size_t len) {
 }
 
 int uw_set_input(uw_context ctx, const char *name, char *value) {
-  printf("Input name %s\n", name);
+  //printf("Input name %s\n", name);
 
   if (!strcasecmp(name, ".b")) {
     int n = uw_input_num(value);
@@ -2703,6 +2703,8 @@ uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, siz
   return b;
 }
 
+#define THE_PAST "expires=Mon, 01-01-1970 00:00:00 GMT"
+
 uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   int len = strlen(c);
   char *p = ctx->outHeaders.start;
@@ -2716,19 +2718,32 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
       size_t sz = strcspn(p2+1, ";\r\n");
 
       if (!strncasecmp(p, c, p2 - p)) {
-        char *ret = uw_malloc(ctx, sz + 1);
-        memcpy(ret, p2+1, sz);
-        ret[sz] = 0;
-        return ret;
+        if (sz == 0 && strstr(p2+2, THE_PAST))
+          return NULL;
+        else {
+          char *ret = uw_malloc(ctx, sz + 1);
+          memcpy(ret, p2+1, sz);
+          ret[sz] = 0;
+          return ret;
+        }
       }
     }
   }
 
   if (p = uw_Basis_requestHeader(ctx, "Cookie")) {
+    char *p2;
+
     while (1) {
-      if (!strncmp(p, c, len) && p[len] == '=')
-        return p + 1 + len;
-      else if (p = strchr(p, ';'))
+      if (!strncmp(p, c, len) && p[len] == '=') {
+        if (p2 = strchr(p, ';')) {
+          size_t n = p2 - (p + len);
+          char *r = uw_malloc(ctx, n);
+          memcpy(r, p + 1 + len, n-1);
+          r[n-1] = 0;
+          return r;
+        } else
+          return p + 1 + len;
+      } else if (p = strchr(p, ';'))
         p += 2;
       else
         return NULL;
@@ -2738,14 +2753,37 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   return NULL;
 }
 
-uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v) {
+uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v, uw_Basis_time *expires, uw_Basis_bool secure) {
   uw_write_header(ctx, "Set-Cookie: ");
   uw_write_header(ctx, c);
   uw_write_header(ctx, "=");
   uw_write_header(ctx, v);
   uw_write_header(ctx, "; path=");
   uw_write_header(ctx, prefix);
+  if (expires) {
+    char formatted[30];
+    struct tm tm;
+
+    gmtime_r(expires, &tm);
+
+    strftime(formatted, sizeof formatted, "%a, %d-%b-%Y %T GMT", &tm);
+
+    uw_write_header(ctx, "; expires=");
+    uw_write_header(ctx, formatted);
+  }
+  if (secure)
+    uw_write_header(ctx, "; secure");
   uw_write_header(ctx, "\r\n");
+
+  return uw_unit_v;
+}
+
+uw_unit uw_Basis_clear_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c) {
+  uw_write_header(ctx, "Set-Cookie: ");
+  uw_write_header(ctx, c);
+  uw_write_header(ctx, "=; path=");
+  uw_write_header(ctx, prefix);
+  uw_write_header(ctx, "; " THE_PAST "\r\n");
 
   return uw_unit_v;
 }
@@ -3134,6 +3172,8 @@ uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {
 
   return r;
 }
+
+const uw_Basis_time minTime = 0;
 
 uw_Basis_time uw_Basis_now(uw_context ctx) {
   return time(NULL);

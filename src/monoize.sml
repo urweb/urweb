@@ -1338,19 +1338,43 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 val un = (L'.TRecord [], loc)
                 val t = monoType env t
-                val (e, fm) = urlifyExp env fm ((L'.ERel 1, loc), t)
+                val rt = (L'.TRecord [("Value", t),
+                                      ("Expires", (L'.TOption (L'.TFfi ("Basis", "time"),
+                                                               loc), loc)),
+                                      ("Secure", (L'.TFfi ("Basis", "bool"), loc))], loc)
+
+                fun fd x = (L'.EField ((L'.ERel 1, loc), x), loc)
+                val (e, fm) = urlifyExp env fm (fd "Value", t)
             in
-                ((L'.EAbs ("c", s, (L'.TFun (t, (L'.TFun (un, un), loc)), loc),
-                           (L'.EAbs ("v", t, (L'.TFun (un, un), loc),
+                ((L'.EAbs ("c", s, (L'.TFun (rt, (L'.TFun (un, un), loc)), loc),
+                           (L'.EAbs ("r", rt, (L'.TFun (un, un), loc),
                                      (L'.EAbs ("_", un, un,
                                                (L'.EFfiApp ("Basis", "set_cookie", [(L'.EPrim (Prim.String
                                                                                                    (Settings.getUrlPrefix ())),
                                                                                      loc),
                                                                                     (L'.ERel 2, loc),
-                                                                                    e]), loc)),
+                                                                                    e,
+                                                                                    fd "Expires",
+                                                                                    fd "Secure"])
+                                              , loc)), loc)), loc)), loc),
+                 fm)
+            end
+
+          | L.ECApp ((L.EFfi ("Basis", "clearCookie"), _), t) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                val un = (L'.TRecord [], loc)
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (un, un), loc),
+                           (L'.EAbs ("_", un, un,
+                                     (L'.EFfiApp ("Basis", "clear_cookie",
+                                                  [(L'.EPrim (Prim.String
+                                                                  (Settings.getUrlPrefix ())),
+                                                    loc),
+                                                   (L'.ERel 1, loc)]),
                                       loc)), loc)), loc),
                  fm)
-            end            
+            end
 
           | L.ECApp ((L.EFfi ("Basis", "channel"), _), t) =>
                 ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "channel"), loc),
