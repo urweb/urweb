@@ -1088,7 +1088,7 @@ and hnormSgn env (all as (sgn, loc)) =
                                  sgn = sgn,
                                  field = x} of
                 NONE => raise Fail "ElabEnv.hnormSgn: projectSgn failed"
-              | SOME sgn => sgn
+              | SOME sgn => hnormSgn env sgn
         end
       | SgnWhere (sgn, x, c) =>
         case #1 (hnormSgn env sgn) of
