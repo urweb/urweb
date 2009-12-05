@@ -21,7 +21,7 @@ val eq = fn [a] (_ : eq a) =>
                 mkEq eq'
             end
 
-fun foldl [a] [b] f =
+fun foldl [a] [b] (f : a -> b -> b) =
     let
         fun foldl' acc ls =
             case ls of
@@ -30,6 +30,18 @@ fun foldl [a] [b] f =
     in
         foldl'
     end
+
+val rev = fn [a] =>
+             let
+                 fun rev' acc (ls : list a) =
+                     case ls of
+                         [] => acc
+                       | x :: ls => rev' (x :: acc) ls
+             in
+                 rev' []
+             end
+
+fun foldr [a] [b] f (acc : b) (ls : list a) = foldl f acc (rev ls)
 
 fun foldlAbort [a] [b] f =
     let
@@ -53,16 +65,6 @@ val length = fn [a] =>
                 in
                     length' 0
                 end
-
-val rev = fn [a] =>
-             let
-                 fun rev' acc (ls : list a) =
-                     case ls of
-                         [] => acc
-                       | x :: ls => rev' (x :: acc) ls
-             in
-                 rev' []
-             end
 
 fun foldlMapAbort [a] [b] [c] f =
     let

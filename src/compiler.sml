@@ -421,7 +421,7 @@ fun parseUrp' fname =
                             dbms = mergeO #2 (#dbms old, #dbms new)
                         }
                     in
-                        foldr (fn (fname, job) => merge (job, pu fname)) job (!libs)
+                        foldr (fn (job', job) => merge (job, job')) job (!libs)
                     end
 
                 fun parsePkind s =
@@ -551,7 +551,7 @@ fun parseUrp' fname =
                                          fkind := {action = Settings.Deny, kind = kind, pattern = pattern} :: !fkind
                                      end
                                    | _ => ErrorMsg.error "Bad 'deny' syntax")
-                              | "library" => libs := relify arg :: !libs
+                              | "library" => libs := pu (relify arg) :: !libs
                               | "path" =>
                                 (case String.fields (fn ch => ch = #"=") arg of
                                      [n, v] => pathmap := M.insert (!pathmap, n, v)

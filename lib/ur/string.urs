@@ -18,3 +18,5 @@ val substring : t -> {Start : int, Len : int} -> string
 
 val split : t -> char -> option (string * string)
 val msplit : {Haystack : t, Needle : t} -> option (string * char * string)
+
+val all : (char -> bool) -> string -> bool

@@ -8,6 +8,8 @@ val foldlAbort : a ::: Type -> b ::: Type -> (a -> b -> option b) -> b -> t a ->
 val foldlMapAbort : a ::: Type -> b ::: Type -> c ::: Type
                     -> (a -> b -> option (c * b)) -> b -> t a -> option (t c * b)
 
+val foldr : a ::: Type -> b ::: Type -> (a -> b -> b) -> b -> t a -> b
+
 val length : a ::: Type -> t a -> int
 
 val rev : a ::: Type -> t a -> t a

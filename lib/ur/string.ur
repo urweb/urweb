@@ -26,3 +26,14 @@ fun msplit {Haystack = s, Needle = chs} =
       | Some i => Some (substring s {Start = 0, Len = i},
                         sub s i,
                         substring s {Start = i + 1, Len = length s - i - 1})
+
+fun all f s =
+    let
+        val len = length s
+
+        fun al i =
+            i >= len
+            || (f (sub s i) && al (i + 1))
+    in
+        al 0
+    end
