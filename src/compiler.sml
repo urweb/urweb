@@ -753,13 +753,16 @@ val toRpcify = transform rpcify "rpcify" o toShake1
 
 val toCore_untangle2 = transform core_untangle "core_untangle2" o toRpcify
 val toShake2 = transform shake "shake2" o toCore_untangle2
+val toEspecialize1 = transform especialize "especialize1" o toShake2
+val toCore_untangle3 = transform core_untangle "core_untangle3" o toEspecialize1
+val toShake3 = transform shake "shake3" o toCore_untangle3
 
 val tag = {
     func = Tag.tag,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toTag = transform tag "tag" o toCore_untangle2
+val toTag = transform tag "tag" o toShake3
 
 val reduce = {
     func = Reduce.reduce,
@@ -782,20 +785,20 @@ val specialize = {
 
 val toSpecialize = transform specialize "specialize" o toUnpoly
 
-val toShake3 = transform shake "shake3" o toSpecialize
+val toShake4 = transform shake "shake4" o toSpecialize
 
-val toEspecialize = transform especialize "especialize" o toShake3
+val toEspecialize2 = transform especialize "especialize2" o toShake4
 
-val toReduce2 = transform reduce "reduce2" o toEspecialize
+val toReduce2 = transform reduce "reduce2" o toEspecialize2
 
-val toShake4 = transform shake "shake4" o toReduce2
+val toShake5 = transform shake "shake5" o toReduce2
 
 val marshalcheck = {
     func = (fn file => (MarshalCheck.check file; file)),
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toMarshalcheck = transform marshalcheck "marshalcheck" o toShake4
+val toMarshalcheck = transform marshalcheck "marshalcheck" o toShake5
 
 val effectize = {
     func = Effective.effectize,

@@ -33,6 +33,12 @@ open Core
 
 structure IM = IntBinaryMap
 
+fun multiLiftExpInExp n e =
+    if n = 0 then
+        e
+    else
+        multiLiftExpInExp (n - 1) (CoreEnv.liftExpInExp 0 e)
+
 datatype env_item =
          Unknown
        | Known of exp
@@ -43,6 +49,76 @@ type env = env_item list
 
 val deKnown = List.filter (fn Known _ => false
                             | _ => true)
+
+datatype result = Yes of env | No | Maybe
+
+fun match (env, p : pat, e : exp) =
+    let
+        val baseline = length env
+
+        fun match (env, p, e) =
+            case (#1 p, #1 e) of
+                (PWild, _) => Yes env
+              | (PVar (x, t), _) => Yes (Known (multiLiftExpInExp (length env - baseline) e) :: env)
+
+              | (PPrim p, EPrim p') =>
+                if Prim.equal (p, p') then
+                    Yes env
+                else
+                    No
+
+              | (PCon (_, PConVar n1, _, NONE), ECon (_, PConVar n2, _, NONE)) =>
+                if n1 = n2 then
+                    Yes env
+                else
+                    No
+
+              | (PCon (_, PConVar n1, _, SOME p), ECon (_, PConVar n2, _, SOME e)) =>
+                if n1 = n2 then
+                    match (env, p, e)
+                else
+                    No
+
+              | (PCon (_, PConFfi {mod = m1, con = con1, ...}, _, NONE),
+                 ECon (_, PConFfi {mod = m2, con = con2, ...}, _, NONE)) =>
+                if m1 = m2 andalso con1 = con2 then
+                    Yes env
+                else
+                    No
+
+              | (PCon (_, PConFfi {mod = m1, con = con1, ...}, _, SOME ep),
+                 ECon (_, PConFfi {mod = m2, con = con2, ...}, _, SOME e)) =>
+                if m1 = m2 andalso con1 = con2 then
+                    match (env, p, e)
+                else
+                    No
+
+              | (PRecord xps, ERecord xes) =>
+                if List.exists (fn ((CName _, _), _, _) => false
+                                 | _ => true) xes then
+                    Maybe
+                else
+                    let
+                        fun consider (xps, env) =
+                            case xps of
+                                [] => Yes env
+                              | (x, p, _) :: rest =>
+                                case List.find (fn ((CName x', _), _, _) => x' = x
+                                                 | _ => false) xes of
+                                    NONE => No
+                                  | SOME (_, e, _) =>
+                                    case match (env, p, e) of
+                                        No => No
+                                      | Maybe => Maybe
+                                      | Yes env => consider (rest, env)
+                    in
+                        consider (xps, env)
+                    end
+
+              | _ => Maybe
+    in
+        match (env, p, e)
+    end
 
 fun exp env (all as (e, loc)) =
     case e of
@@ -127,11 +203,24 @@ fun exp env (all as (e, loc)) =
                   | PCon (_, _, _, NONE) => 0
                   | PCon (_, _, _, SOME p) => patBinds p
                   | PRecord xpts => foldl (fn ((_, p, _), n) => n + patBinds p) 0 xpts
+
+            fun push () =
+                (ECase (exp env e,
+                        map (fn (p, e) => (p,
+                                           exp (List.tabulate (patBinds p,
+                                                            fn _ => Unknown) @ env) e))
+                            pes, others), loc)
+
+            fun search pes =
+                case pes of
+                    [] => push ()
+                  | (p, body) :: pes =>
+                    case match (env, p, e) of
+                        No => search pes
+                      | Maybe => push ()
+                      | Yes env' => exp env' body
         in
-            (ECase (exp env e,
-                    map (fn (p, e) => (p,
-                                       exp (List.tabulate (patBinds p, fn _ => Unknown) @ env) e))
-                        pes, others), loc)
+            search pes
         end
 
       | EWrite e => (EWrite (exp env e), loc)

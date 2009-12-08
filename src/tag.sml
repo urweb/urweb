@@ -74,6 +74,8 @@ fun exp env (e, s) =
                                            let
                                                fun tagIt (ek, newAttr) =
                                                    let
+                                                       val eOrig = e
+
                                                        fun unravel (e, _) =
                                                            case e of
                                                                ENamed n => (n, [])
@@ -83,7 +85,10 @@ fun exp env (e, s) =
                                                                in
                                                                    (n, es @ [e2])
                                                                end
-                                                             | _ => (ErrorMsg.errorAt loc "Invalid link expression";
+                                                             | _ => (ErrorMsg.errorAt loc ("Invalid " ^ newAttr
+                                                                                           ^ " expression");
+                                                                     Print.epreface ("Expression",
+                                                                                     CorePrint.p_exp CoreEnv.empty eOrig);
                                                                      (0, []))
 
                                                        val (f, args) = unravel e

@@ -67,7 +67,7 @@ fun shake file =
 
         val (usedE, usedC) =
             List.foldl
-                (fn ((DExport (_, n), _), (usedE, usedC)) => (IS.add (usedE, n), usedE)
+                (fn ((DExport (_, n), _), (usedE, usedC)) => (IS.add (usedE, n), usedC)
                   | ((DTable (_, _, c, _, pe, pc, ce, cc), _), (usedE, usedC)) =>
                     let
                         val usedC = usedVarsC usedC c
@@ -170,7 +170,7 @@ fun shake file =
 
         val s = IS.foldl (fn (n, s) =>
                              case IM.find (cdef, n) of
-                                 NONE => raise Fail "Shake: Couldn't find 'con'"
+                                 NONE => raise Fail ("Shake: Couldn't find 'con' " ^ Int.toString n)
                                | SOME cs => foldl (fn (c, s) => shakeCon s c) s cs) s usedC
     in
         List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
