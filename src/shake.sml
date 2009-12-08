@@ -44,8 +44,17 @@ type free = {
 val dummyt = (TRecord (CRecord ((KType, ErrorMsg.dummySpan), []), ErrorMsg.dummySpan), ErrorMsg.dummySpan)
 val dummye = (EPrim (Prim.String ""), ErrorMsg.dummySpan)
 
+fun tupleC cs = (CTuple cs, ErrorMsg.dummySpan)
+fun tupleE es = (ERecord (map (fn e => (dummyt, e, dummyt)) es), ErrorMsg.dummySpan)
+
 fun shake file =
     let
+        val usedVarsC = U.Con.fold {kind = fn (_, st) => st,
+                                    con = fn (c, cs) =>
+                                             case c of
+                                                 CNamed n => IS.add (cs, n)
+                                               | _ => cs}
+
         val usedVars = U.Exp.fold {kind = fn (_, st) => st,
                                    con = fn (c, st as (es, cs)) =>
                                             case c of
@@ -56,17 +65,21 @@ fun shake file =
                                                 ENamed n => (IS.add (es, n), cs)
                                               | _ => st}
 
-        val (usedE, usedC, table_cs) =
+        val (usedE, usedC) =
             List.foldl
-                (fn ((DExport (_, n), _), (usedE, usedC, table_cs)) => (IS.add (usedE, n), usedE, table_cs)
-                  | ((DTable (_, _, c, _, pe, _, ce, _), _), (usedE, usedC, table_cs)) =>
+                (fn ((DExport (_, n), _), (usedE, usedC)) => (IS.add (usedE, n), usedE)
+                  | ((DTable (_, _, c, _, pe, pc, ce, cc), _), (usedE, usedC)) =>
                     let
+                        val usedC = usedVarsC usedC c
+                        val usedC = usedVarsC usedC pc
+                        val usedC = usedVarsC usedC cc
+
                         val (usedE, usedC) = usedVars (usedE, usedC) pe
                         val (usedE, usedC) = usedVars (usedE, usedC) ce
                     in
-                        (usedE, usedC, c :: table_cs)
+                        (usedE, usedC)
                     end
-                  | (_, acc) => acc) (IS.empty, IS.empty, []) file
+                  | (_, acc) => acc) (IS.empty, IS.empty) file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
                                    | ((DDatatype dts, _), (cdef, edef)) =>
@@ -81,8 +94,8 @@ fun shake file =
                                                           IM.insert (edef, n, (all_ns, t, e))) edef vis)
                                      end
                                    | ((DExport _, _), acc) => acc
-                                   | ((DTable (_, n, c, _, _, _, _, _), _), (cdef, edef)) =>
-                                     (cdef, IM.insert (edef, n, ([], c, dummye)))
+                                   | ((DTable (_, n, c, _, e1, c1, e2, c2), _), (cdef, edef)) =>
+                                     (cdef, IM.insert (edef, n, ([], tupleC [c, c1, c2], tupleE [e1, e2])))
                                    | ((DSequence (_, n, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], dummyt, dummye)))
                                    | ((DView (_, n, _, _, c), _), (cdef, edef)) =>
@@ -155,7 +168,10 @@ fun shake file =
                                      foldl (fn (n, s) => exp (ENamed n, s)) s ns
                                  end) s usedE
 
-        val s = foldl (fn (c, s) => shakeCon s c) s table_cs
+        val s = IS.foldl (fn (n, s) =>
+                             case IM.find (cdef, n) of
+                                 NONE => raise Fail "Shake: Couldn't find 'con'"
+                               | SOME cs => foldl (fn (c, s) => shakeCon s c) s cs) s usedC
     in
         List.filter (fn (DCon (_, n, _, _), _) => IS.member (#con s, n)
                       | (DDatatype dts, _) => List.exists (fn (_, n, _, _) => IS.member (#con s, n)) dts
