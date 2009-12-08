@@ -3140,50 +3140,51 @@ void uw_set_global(uw_context ctx, char *name, void *data, void (*free)(void*)) 
 }
 
 uw_Basis_bool uw_Basis_isalnum(uw_context ctx, uw_Basis_char c) {
-  return isalnum(c);
+  return !!isalnum(c);
 }
 
 uw_Basis_bool uw_Basis_isalpha(uw_context ctx, uw_Basis_char c) {
-  return isalpha(c);
+  return !!isalpha(c);
 }
 
 uw_Basis_bool uw_Basis_isblank(uw_context ctx, uw_Basis_char c) {
-  return isblank(c);
+  return !!isblank(c);
 }
 
 uw_Basis_bool uw_Basis_iscntrl(uw_context ctx, uw_Basis_char c) {
-  return iscntrl(c);
+  return !!iscntrl(c);
 }
 
 uw_Basis_bool uw_Basis_isdigit(uw_context ctx, uw_Basis_char c) {
-  return isdigit(c);
+  return !!isdigit(c);
 }
 
 uw_Basis_bool uw_Basis_isgraph(uw_context ctx, uw_Basis_char c) {
-  return isgraph(c);
+  return !!isgraph(c);
 }
 
 uw_Basis_bool uw_Basis_islower(uw_context ctx, uw_Basis_char c) {
-  return islower(c);
+  return !!islower(c);
 }
 
 uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char c) {
-  return isprint(c);
+  return !!isprint(c);
 }
 
 uw_Basis_bool uw_Basis_ispunct(uw_context ctx, uw_Basis_char c) {
-  return ispunct(c);
+  return !!ispunct(c);
 }
 
 uw_Basis_bool uw_Basis_isspace(uw_context ctx, uw_Basis_char c) {
-  return isspace(c);
+  return !!isspace(c);
 }
+
 uw_Basis_bool uw_Basis_isupper(uw_context ctx, uw_Basis_char c) {
-  return isupper(c);
+  return !!isupper(c);
 }
 
 uw_Basis_bool uw_Basis_isxdigit(uw_context ctx, uw_Basis_char c) {
-  return isxdigit(c);
+  return !!isxdigit(c);
 }
 
 uw_Basis_char uw_Basis_tolower(uw_context ctx, uw_Basis_char c) {
