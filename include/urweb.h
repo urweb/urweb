@@ -229,4 +229,22 @@ extern char *uw_sqlsuffixChar;
 extern char *uw_sqlsuffixBlob;
 extern char *uw_sqlfmtUint4;
 
+void *uw_get_global(uw_context, char *name);
+void uw_set_global(uw_context, char *name, void *data, void (*free)(void*));
+
+uw_Basis_bool uw_Basis_isalnum(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_isalpha(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_isblank(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_iscntrl(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_isdigit(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_isgraph(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_islower(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_isprint(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_ispunct(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_isspace(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_isupper(uw_context, uw_Basis_char);
+uw_Basis_bool uw_Basis_isxdigit(uw_context, uw_Basis_char);
+uw_Basis_char uw_Basis_tolower(uw_context, uw_Basis_char);
+uw_Basis_char uw_Basis_toupper(uw_context, uw_Basis_char);
+
 #endif

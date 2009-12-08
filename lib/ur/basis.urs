@@ -52,6 +52,24 @@ val ord_time : ord time
 val mkOrd : t ::: Type -> {Lt : t -> t -> bool, Le : t -> t -> bool} -> ord t
 
 
+(** Character operations *)
+
+val isalnum : char -> bool
+val isalpha : char -> bool
+val isblank : char -> bool
+val iscntrl : char -> bool
+val isdigit : char -> bool
+val isgraph : char -> bool
+val islower : char -> bool
+val isprint : char -> bool
+val ispunct : char -> bool
+val isspace : char -> bool
+val isupper : char -> bool
+val isxdigit : char -> bool
+val tolower : char -> char
+val toupper : char -> char
+
+
 (** String operations *)
 
 val strlen : string -> int

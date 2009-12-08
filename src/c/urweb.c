@@ -341,6 +341,12 @@ typedef struct {
   uw_callback commit, rollback, free;
 } transactional;
 
+typedef struct {
+  char *name;
+  void *data;
+  void (*free)(void*);
+} global;
+
 struct uw_context {
   char *(*get_header)(void *, const char *);
   void *get_header_data;
@@ -373,6 +379,9 @@ struct uw_context {
 
   transactional *transactionals;
   size_t n_transactionals, used_transactionals;
+
+  global *globals;
+  size_t n_globals;
 
   char error_message[ERROR_BUF_LEN];
 };
@@ -424,6 +433,9 @@ uw_context uw_init() {
   ctx->transactionals = malloc(0);
   ctx->n_transactionals = ctx->used_transactionals = 0;
 
+  ctx->globals = malloc(0);
+  ctx->n_globals = 0;
+
   return ctx;
 }
 
@@ -449,6 +461,9 @@ void uw_free(uw_context ctx) {
 
   for (i = 0; i < ctx->n_deltas; ++i)
     buf_free(&ctx->deltas[i].msgs);
+
+  for (i = 0; i < ctx->n_globals; ++i)
+    ctx->globals[i].free(ctx->globals[i].data);
 
   free(ctx);
 }
@@ -3091,4 +3106,90 @@ const uw_Basis_time minTime = 0;
 
 uw_Basis_time uw_Basis_now(uw_context ctx) {
   return time(NULL);
+}
+
+void *uw_get_global(uw_context ctx, char *name) {
+  int i;
+
+  for (i = 0; i < ctx->n_globals; ++i)
+    if (!strcmp(name, ctx->globals[i].name))
+      return ctx->globals[i].data;
+
+  return NULL;
+}
+
+void uw_set_global(uw_context ctx, char *name, void *data, void (*free)(void*)) {
+  int i;
+
+  if (data == NULL) uw_error(ctx, FATAL, "NULL data value for global '%s'", name);
+
+  for (i = 0; i < ctx->n_globals; ++i)
+    if (!strcmp(name, ctx->globals[i].name)) {
+      if (ctx->globals[i].data)
+        ctx->globals[i].free(ctx->globals[i].data);
+      ctx->globals[i].data = data;
+      ctx->globals[i].free = free;
+      return;
+    }
+      
+  ++ctx->n_globals;
+  ctx->globals = realloc(ctx->globals, ctx->n_globals * sizeof(global));
+  ctx->globals[ctx->n_globals-1].name = name;
+  ctx->globals[ctx->n_globals-1].data = data;
+  ctx->globals[ctx->n_globals-1].free = free;
+}
+
+uw_Basis_bool uw_Basis_isalnum(uw_context ctx, uw_Basis_char c) {
+  return isalnum(c);
+}
+
+uw_Basis_bool uw_Basis_isalpha(uw_context ctx, uw_Basis_char c) {
+  return isalpha(c);
+}
+
+uw_Basis_bool uw_Basis_isblank(uw_context ctx, uw_Basis_char c) {
+  return isblank(c);
+}
+
+uw_Basis_bool uw_Basis_iscntrl(uw_context ctx, uw_Basis_char c) {
+  return iscntrl(c);
+}
+
+uw_Basis_bool uw_Basis_isdigit(uw_context ctx, uw_Basis_char c) {
+  return isdigit(c);
+}
+
+uw_Basis_bool uw_Basis_isgraph(uw_context ctx, uw_Basis_char c) {
+  return isgraph(c);
+}
+
+uw_Basis_bool uw_Basis_islower(uw_context ctx, uw_Basis_char c) {
+  return islower(c);
+}
+
+uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char c) {
+  return isprint(c);
+}
+
+uw_Basis_bool uw_Basis_ispunct(uw_context ctx, uw_Basis_char c) {
+  return ispunct(c);
+}
+
+uw_Basis_bool uw_Basis_isspace(uw_context ctx, uw_Basis_char c) {
+  return isspace(c);
+}
+uw_Basis_bool uw_Basis_isupper(uw_context ctx, uw_Basis_char c) {
+  return isupper(c);
+}
+
+uw_Basis_bool uw_Basis_isxdigit(uw_context ctx, uw_Basis_char c) {
+  return isxdigit(c);
+}
+
+uw_Basis_char uw_Basis_tolower(uw_context ctx, uw_Basis_char c) {
+  return tolower(c);
+}
+
+uw_Basis_char uw_Basis_toupper(uw_context ctx, uw_Basis_char c) {
+  return toupper(c);
 }

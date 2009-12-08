@@ -508,7 +508,14 @@ fun parseUrp' fname =
                                    | SOME _ => ErrorMsg.error "Duplicate 'timeout' directive";
                                  timeout := SOME (valOf (Int.fromString arg)))
                               | "ffi" => ffi := relify arg :: !ffi
-                              | "link" => link := relifyA arg :: !link
+                              | "link" => let
+                                    val arg = if size arg >= 2 andalso String.substring (arg, 0, 2) = "-l" then
+                                                  arg
+                                              else
+                                                  relifyA arg
+                                in
+                                    link := arg :: !link
+                                end
                               | "include" => headers := relifyA arg :: !headers
                               | "script" => scripts := arg :: !scripts
                               | "clientToServer" => clientToServer := ffiS () :: !clientToServer

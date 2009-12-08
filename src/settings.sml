@@ -168,7 +168,18 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("strchr", "schr"),
                           ("substring", "ssub"),
                           ("strcspn", "sspn"),
-                          ("kc", "kc")]
+                          ("kc", "kc"),
+
+                          ("islower", "isLower"),
+                          ("isupper", "isUpper"),
+                          ("isalpha", "isAlpha"),
+                          ("isdigit", "isDigit"),
+                          ("isalnum", "isAlnum"),
+                          ("isblank", "isBlank"),
+                          ("isspace", "isSpace"),
+                          ("isxdigit", "isXdigit"),
+                          ("tolower", "toLower"),
+                          ("toupper", "toUpper")]
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)
