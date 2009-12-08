@@ -1431,25 +1431,8 @@ char *uw_Basis_attrifyString(uw_context ctx, uw_Basis_string s) {
       strcpy(p, "&amp;");
       p += 5;
     }
-    else if (isprint(c))
+    else
       *p++ = c;
-    else if (c / 32 == 6 && isCont(s[1])) {
-      memcpy(p, s, 2);
-      p += 2;
-      ++s;
-    } else if (c / 16 == 14 && isCont(s[1]) && isCont(s[2])) {
-      memcpy(p, s, 3);
-      p += 3;
-      s += 2;
-    } else if (c / 8 == 30 && isCont(s[1]) && isCont(s[2]) && isCont(s[3])) {
-      memcpy(p, s, 4);
-      p += 4;
-      s += 3;
-    } else {
-      int len2;
-      sprintf(p, "&#%d;%n", c, &len2);
-      p += len2;
-    }
   }
 
   *p++ = 0;
@@ -1470,13 +1453,8 @@ char *uw_Basis_attrifyChar(uw_context ctx, uw_Basis_char c) {
     strcpy(p, "&amp;");
     p += 5;
   }
-  else if (isprint(c))
+  else
     *p++ = c;
-  else {
-    int len2;
-    sprintf(p, "&#%d;%n", c, &len2);
-    p += len2;
-  }
 
   *p++ = 0;
   ctx->heap.front = p;
@@ -1521,28 +1499,8 @@ uw_unit uw_Basis_attrifyString_w(uw_context ctx, uw_Basis_string s) {
       uw_write_unsafe(ctx, "&quot;");
     else if (c == '&')
       uw_write_unsafe(ctx, "&amp;");
-    else if (isprint(c))
+    else
       uw_writec_unsafe(ctx, c);
-    else if (c / 32 == 6 && isCont(s[1])) {
-      uw_writec_unsafe(ctx, c);
-      uw_writec_unsafe(ctx, s[1]);
-      ++s;
-    } else if (c / 16 == 14 && isCont(s[1]) && isCont(s[2])) {
-      uw_writec_unsafe(ctx, c);
-      uw_writec_unsafe(ctx, s[1]);
-      uw_writec_unsafe(ctx, s[2]);
-      s += 2;
-    } else if (c / 8 == 30 && isCont(s[1]) && isCont(s[2]) && isCont(s[3])) {
-      uw_writec_unsafe(ctx, c);
-      uw_writec_unsafe(ctx, s[1]);
-      uw_writec_unsafe(ctx, s[2]);
-      uw_writec_unsafe(ctx, s[3]);
-      s += 3;
-    } else {
-      uw_write_unsafe(ctx, "&#");
-      uw_Basis_attrifyInt_w_unsafe(ctx, c);
-      uw_writec_unsafe(ctx, ';');
-    }
   }
 
   return uw_unit_v;
@@ -1555,13 +1513,8 @@ uw_unit uw_Basis_attrifyChar_w(uw_context ctx, uw_Basis_char c) {
     uw_write_unsafe(ctx, "&quot;");
   else if (c == '&')
     uw_write_unsafe(ctx, "&amp;");
-  else if (isprint(c))
+  else
     uw_writec_unsafe(ctx, c);
-  else {
-    uw_write_unsafe(ctx, "&#");
-    uw_Basis_attrifyInt_w_unsafe(ctx, c);
-    uw_writec_unsafe(ctx, ';');
-  }
 
   return uw_unit_v;
 }
@@ -1890,25 +1843,7 @@ char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
       s2 += 5;
       break;
     default:
-      if (isprint(c) || isspace(c))
-        *s2++ = c;
-      else if (c / 32 == 6 && isCont(s[1])) {
-        memcpy(s2, s, 2);
-        s2 += 2;
-        ++s;
-      } else if (c / 16 == 14 && isCont(s[1]) && isCont(s[2])) {
-        memcpy(s2, s, 3);
-        s2 += 3;
-        s += 2;
-      } else if (c / 8 == 30 && isCont(s[1]) && isCont(s[2]) && isCont(s[3])) {
-        memcpy(s2, s, 4);
-        s2 += 4;
-        s += 3;
-      } else {
-        int len2;
-        sprintf(s2, "&#%d;%n", c, &len2);
-        s2 += len2;
-      }
+      *s2++ = c;
     }
   }
 
@@ -1931,28 +1866,7 @@ uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
       uw_write_unsafe(ctx, "&amp;");
       break;
     default:
-      if (isprint(c) || isspace(c))
-        uw_writec_unsafe(ctx, c);
-      else if (c / 32 == 6 && isCont(s[1])) {
-        uw_writec_unsafe(ctx, c);
-        uw_writec_unsafe(ctx, s[1]);
-        ++s;
-      } else if (c / 16 == 14 && isCont(s[1]) && isCont(s[2])) {
-        uw_writec_unsafe(ctx, c);
-        uw_writec_unsafe(ctx, s[1]);
-        uw_writec_unsafe(ctx, s[2]);
-        s += 2;
-      } else if (c / 8 == 30 && isCont(s[1]) && isCont(s[2]) && isCont(s[3])) {
-        uw_writec_unsafe(ctx, c);
-        uw_writec_unsafe(ctx, s[1]);
-        uw_writec_unsafe(ctx, s[2]);
-        uw_writec_unsafe(ctx, s[3]);
-        s += 3;
-      } else {
-        uw_write_unsafe(ctx, "&#");
-        uw_Basis_attrifyInt_w_unsafe(ctx, c);
-        uw_writec_unsafe(ctx, ';');
-      }
+      uw_writec_unsafe(ctx, c);
     }
   }
 
