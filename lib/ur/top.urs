@@ -163,9 +163,9 @@ val oneRow : tables ::: {{Type}} -> exps ::: {Type}
                     $(exps
                           ++ map (fn fields :: {Type} => $fields) tables)
 
-val oneRowE1 : tab ::: Name -> nm ::: Name -> t ::: Type
-               -> [[tab] ~ [nm]] =>
-    sql_query [tab = []] [nm = t]
+val oneRowE1 : tabs ::: {Unit} -> nm ::: Name -> t ::: Type
+               -> [tabs ~ [nm]] =>
+    sql_query (mapU [] tabs) [nm = t]
     -> transaction t
 
 val eqNullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}

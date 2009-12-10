@@ -258,7 +258,7 @@ fun oneRow [tables ::: {{Type}}] [exps ::: {Type}]
                 None => error <xml>Query returned no rows</xml>
               | Some r => r)
 
-fun oneRowE1 [tab ::: Name] [nm ::: Name] [t ::: Type] [[tab] ~ [nm]] (q : sql_query [tab = []] [nm = t]) =
+fun oneRowE1 [tabs ::: {Unit}] [nm ::: Name] [t ::: Type] [tabs ~ [nm]] (q : sql_query (mapU [] tabs) [nm = t]) =
     o <- oneOrNoRows q;
     return (case o of
                 None => error <xml>Query returned no rows</xml>
