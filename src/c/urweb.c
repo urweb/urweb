@@ -3083,7 +3083,6 @@ __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) 
     char *s2;
     for (++s; s2 = strchr(s, '\n'); s = s2+1) {
       *s2 = 0;
-      printf("Line: %s\n", s);
       if (!strncmp(s, "Set-Cookie: ", 12)) {
         uw_write_header(ctx, s);
         uw_write_header(ctx, "\n");

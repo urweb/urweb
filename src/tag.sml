@@ -169,7 +169,7 @@ fun exp env (e, s) =
             let
                 val (e, s) = tagIt (e, Link, "Url", s)
             in
-                (#1 e, s)
+                (EFfiApp ("Basis", "url", [e]), s)
             end
 
           | EApp ((ENamed n, _), e') =>
@@ -181,7 +181,7 @@ fun exp env (e, s) =
                     let
                         val (e, s) = tagIt (e', Link, "Url", s)
                     in
-                        (#1 e, s)
+                        (EFfiApp ("Basis", "url", [e]), s)
                     end
                   | _ => (e, s)
             end

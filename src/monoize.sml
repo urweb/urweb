@@ -395,8 +395,6 @@ fun capitalize s =
     else
         str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
-val inTag = ref false
-
 fun fooifyExp fk env =
     let
         fun fooify fm (e, tAll as (t, loc)) =
@@ -2480,9 +2478,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              tag), _),
             xml) =>
             let
-                val inT = !inTag
-                val () = inTag := true
-
                 fun getTag' (e, _) =
                     case e of
                         L.EFfi ("Basis", tag) => (tag, [])
@@ -2918,7 +2913,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                    | "tabl" => normal ("table", NONE, NONE)
                    | _ => normal (tag, NONE, NONE))
-                before inTag := inT
             end
 
           | L.EApp ((L.ECApp (
@@ -3144,6 +3138,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.EFfiApp ("Basis", "url", [e]) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                urlifyExp env fm (e, dummyTyp)
+            end
+
           | L.EApp (e1, e2) =>
             let
                 val (e1, fm) = monoExp (env, st, fm) e1
@@ -3223,10 +3224,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                  fm es
                 val e = (L'.EClosure (n, es), loc)
             in
-                if !inTag then
-                    (e, fm)
-                else
-                    urlifyExp env fm (e, dummyTyp)
+                (e, fm)
             end
 
           | L.ELet (x, t, e1, e2) =>
