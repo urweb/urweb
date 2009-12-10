@@ -384,6 +384,8 @@ struct uw_context {
   global *globals;
   size_t n_globals;
 
+  char *current_url;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -436,6 +438,8 @@ uw_context uw_init() {
 
   ctx->globals = malloc(0);
   ctx->n_globals = 0;
+
+  ctx->current_url = "";
 
   return ctx;
 }
@@ -3048,7 +3052,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   buf_check(&ctx->outHeaders, INTS_MAX);
   sprintf(ctx->outHeaders.front, "%d%n", b.size, &len);
   ctx->outHeaders.front += len;
-  uw_write_header(ctx, "\r\n");  
+  uw_write_header(ctx, "\r\n");
 
   buf_append(&ctx->page, b.data, b.size);
 
@@ -3063,12 +3067,30 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
 __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) {
   cleanup *cl;
   int len;
+  char *s;
 
   ctx->returning_indirectly = 1;
-  buf_reset(&ctx->outHeaders);
   buf_reset(&ctx->page);
+  buf_check(&ctx->page, buf_used(&ctx->outHeaders)+1);
+  memcpy(ctx->page.start, ctx->outHeaders.start, buf_used(&ctx->outHeaders));
+  ctx->page.start[buf_used(&ctx->outHeaders)] = 0;
+  buf_reset(&ctx->outHeaders);
 
   uw_write_header(ctx, on_redirect);
+
+  s = strchr(ctx->page.start, '\n');
+  if (s) {
+    char *s2;
+    for (++s; s2 = strchr(s, '\n'); s = s2+1) {
+      *s2 = 0;
+      printf("Line: %s\n", s);
+      if (!strncmp(s, "Set-Cookie: ", 12)) {
+        uw_write_header(ctx, s);
+        uw_write_header(ctx, "\n");
+      }
+    }
+  }
+
   uw_write_header(ctx, "Location: ");
   uw_write_header(ctx, url);
   uw_write_header(ctx, "\r\n\r\n");
@@ -3227,4 +3249,12 @@ uw_Basis_char uw_Basis_tolower(uw_context ctx, uw_Basis_char c) {
 
 uw_Basis_char uw_Basis_toupper(uw_context ctx, uw_Basis_char c) {
   return toupper(c);
+}
+
+uw_Basis_string uw_Basis_currentUrl(uw_context ctx) {
+  return ctx->current_url;
+}
+
+void uw_set_currentUrl(uw_context ctx, char *s) {
+  ctx->current_url = s;
 }

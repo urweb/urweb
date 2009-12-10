@@ -565,6 +565,7 @@ val bless : string -> url
 val checkUrl : string -> option url
 val url : transaction page -> url
 val redirect : t ::: Type -> url -> transaction t
+val currentUrl : transaction url
 
 val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ body] => unit
           -> tag [Signal = signal (xml (body ++ ctx) use bind)] (body ++ ctx) [] use bind

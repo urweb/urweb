@@ -169,6 +169,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   size_t boundary_len;
   char *inputs;
 
+  uw_set_currentUrl(ctx, path);
+
   if (!strcmp(method, "POST")) {
     char *clen_s = uw_Basis_requestHeader(ctx, "Content-length");
     if (!clen_s) {
