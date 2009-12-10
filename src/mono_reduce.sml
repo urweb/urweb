@@ -98,6 +98,7 @@ fun impure (e, _) =
 
       | EError (e, _) => impure e
       | EReturnBlob {blob = e1, mimeType = e2, ...} => impure e1 orelse impure e2
+      | ERedirect (e, _) => impure e
 
       | EStrcat (e1, e2) => impure e1 orelse impure e2
 
@@ -429,6 +430,7 @@ fun reduce file =
 
                       | EError (e, _) => summarize d e @ [Unsure]
                       | EReturnBlob {blob = e1, mimeType = e2, ...} => summarize d e1 @ summarize d e2 @ [Unsure]
+                      | ERedirect (e, _) => summarize d e @ [Unsure]
 
                       | EWrite e => summarize d e @ [WritePage]
                                     

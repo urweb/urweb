@@ -46,115 +46,148 @@ fun both (loc, f) = (ErrorMsg.errorAt loc ("Function " ^ f ^ " needed for both a
                                     "Make sure that the signature of the containing module hides any form handlers.\n"))
 
 fun exp env (e, s) =
-    case e of
-        EApp (
-        (EApp (
-         (EApp (
-          (EApp (
-           (ECApp (
-            (ECApp (
-             (ECApp (
-              (ECApp (
+    let
+        fun tagIt (e, ek : export_kind, newAttr, (count, tags, byTag, newTags)) =
+            let
+                val loc = #2 e
+
+                val eOrig = e
+
+                fun unravel (e, _) =
+                    case e of
+                        ENamed n => (n, [])
+                      | EApp (e1, e2) =>
+                        let
+                            val (n, es) = unravel e1
+                        in
+                            (n, es @ [e2])
+                        end
+                      | _ => (ErrorMsg.errorAt loc ("Invalid " ^ newAttr
+                                                    ^ " expression");
+                              Print.epreface ("Expression",
+                                              CorePrint.p_exp CoreEnv.empty eOrig);
+                              (0, []))
+
+                val (f, args) = unravel e
+
+                val (cn, count, tags, newTags) =
+                    case IM.find (tags, f) of
+                        NONE =>
+                        (count, count + 1, IM.insert (tags, f, count),
+                         (ek, f, count) :: newTags)
+                      | SOME cn => (cn, count, tags, newTags)
+                                   
+                val (_, _, _, s) = E.lookupENamed env f
+
+                val byTag = case SM.find (byTag, s) of
+                                NONE => SM.insert (byTag, s, (ek, f))
+                              | SOME (ek', f') =>
+                                (if f = f' then
+                                     ()
+                                 else
+                                     ErrorMsg.errorAt loc 
+                                                      ("Duplicate HTTP tag "
+                                                       ^ s);
+                                 if ek = ek' then
+                                     ()
+                                 else
+                                     both (loc, s);
+                                 byTag)
+
+                val e = (EClosure (cn, args), loc)
+            in
+                (e, (count, tags, byTag, newTags))
+            end
+    in
+        case e of
+            EApp (
+            (EApp (
+             (EApp (
+              (EApp (
                (ECApp (
                 (ECApp (
                  (ECApp (
                   (ECApp (
-                   (EFfi ("Basis", "tag"),
-                    loc), given), _), absent), _), outer), _), inner), _),
-               useOuter), _), useInner), _), bindOuter), _), bindInner), _),
-           class), _),
-          attrs), _),
-         tag), _),
-        xml) =>
-        (case attrs of
-             (ERecord xets, _) =>
-             let
-                 val (xets, s) =
-                     ListUtil.foldlMap (fn ((x, e, t), (count, tags, byTag, newTags)) =>
-                                           let
-                                               fun tagIt (ek, newAttr) =
-                                                   let
-                                                       val eOrig = e
-
-                                                       fun unravel (e, _) =
-                                                           case e of
-                                                               ENamed n => (n, [])
-                                                             | EApp (e1, e2) =>
-                                                               let
-                                                                   val (n, es) = unravel e1
-                                                               in
-                                                                   (n, es @ [e2])
-                                                               end
-                                                             | _ => (ErrorMsg.errorAt loc ("Invalid " ^ newAttr
-                                                                                           ^ " expression");
-                                                                     Print.epreface ("Expression",
-                                                                                     CorePrint.p_exp CoreEnv.empty eOrig);
-                                                                     (0, []))
-
-                                                       val (f, args) = unravel e
-
-                                                       val (cn, count, tags, newTags) =
-                                                           case IM.find (tags, f) of
-                                                               NONE =>
-                                                               (count, count + 1, IM.insert (tags, f, count),
-                                                                (ek, f, count) :: newTags)
-                                                             | SOME cn => (cn, count, tags, newTags)
-                                                                          
-                                                       val (_, _, _, s) = E.lookupENamed env f
-
-                                                       val byTag = case SM.find (byTag, s) of
-                                                                       NONE => SM.insert (byTag, s, (ek, f))
-                                                                     | SOME (ek', f') =>
-                                                                       (if f = f' then
-                                                                            ()
-                                                                        else
-                                                                            ErrorMsg.errorAt loc 
-                                                                                             ("Duplicate HTTP tag "
-                                                                                              ^ s);
-                                                                        if ek = ek' then
-                                                                            ()
-                                                                        else
-                                                                            both (loc, s);
-                                                                        byTag)
-
-                                                       val e = (EClosure (cn, args), loc)
-                                                       val t = (CFfi ("Basis", "string"), loc)
-                                                   in
-                                                       (((CName newAttr, loc), e, t),
-                                                        (count, tags, byTag, newTags))
-                                                   end
-                                           in
-                                               case x of
-                                                   (CName "Link", _) => tagIt (Link, "Link")
-                                                 | (CName "Action", _) => tagIt (Action ReadWrite, "Action")
-                                                 | _ => ((x, e, t), (count, tags, byTag, newTags))
-                                           end)
-                     s xets
-             in
-                 (EApp (
-                  (EApp (
-                   (EApp (
-                    (EApp (
+                   (ECApp (
+                    (ECApp (
                      (ECApp (
                       (ECApp (
-                       (ECApp (
-                        (ECApp (
+                       (EFfi ("Basis", "tag"),
+                        loc), given), _), absent), _), outer), _), inner), _),
+                   useOuter), _), useInner), _), bindOuter), _), bindInner), _),
+               class), _),
+              attrs), _),
+             tag), _),
+            xml) =>
+            (case attrs of
+                 (ERecord xets, _) =>
+                 let
+                     val (xets, s) =
+                         ListUtil.foldlMap (fn ((x, e, t), s) =>
+                                               let
+                                                   fun tagIt' (ek, newAttr) =
+                                                       let
+                                                           val (e', s) = tagIt (e, ek, newAttr, s)
+                                                           val t = (CFfi ("Basis", "string"), loc)
+                                                       in
+                                                           (((CName newAttr, loc), e', t), s)
+                                                       end
+                                               in
+                                                   case x of
+                                                       (CName "Link", _) => tagIt' (Link, "Link")
+                                                     | (CName "Action", _) => tagIt' (Action ReadWrite, "Action")
+                                                     | _ => ((x, e, t), s)
+                                               end)
+                                           s xets
+                 in
+                     (EApp (
+                      (EApp (
+                       (EApp (
+                        (EApp (
                          (ECApp (
                           (ECApp (
                            (ECApp (
                             (ECApp (
-                             (EFfi ("Basis", "tag"),
-                              loc), given), loc), absent), loc), outer), loc), inner), loc),
-                         useOuter), loc), useInner), loc), bindOuter), loc), bindInner), loc),
-                     class), loc),
-                    (ERecord xets, loc)), loc),
-                   tag), loc),
-                  xml), s)
-             end
-           | _ => (ErrorMsg.errorAt loc "Attribute record is too complex";
-                   (e, s)))
+                             (ECApp (
+                              (ECApp (
+                               (ECApp (
+                                (ECApp (
+                                 (EFfi ("Basis", "tag"),
+                                  loc), given), loc), absent), loc), outer), loc), inner), loc),
+                             useOuter), loc), useInner), loc), bindOuter), loc), bindInner), loc),
+                         class), loc),
+                        (ERecord xets, loc)), loc),
+                       tag), loc),
+                      xml), s)
+                 end
+               | _ => (ErrorMsg.errorAt loc "Attribute record is too complex";
+                       (e, s)))
 
-      | _ => (e, s)
+          | EFfiApp ("Basis", "url", [(ERel 0, _)]) => (e, s)
+
+          | EFfiApp ("Basis", "url", [e]) =>
+            let
+                val (e, s) = tagIt (e, Link, "Url", s)
+            in
+                (#1 e, s)
+            end
+
+          | EApp ((ENamed n, _), e') =>
+            let
+                val (_, _, eo, _) = E.lookupENamed env n
+            in
+                case eo of
+                    SOME (EAbs (_, _, _, (EFfiApp ("Basis", "url", [(ERel 0, _)]), _)), _) =>
+                    let
+                        val (e, s) = tagIt (e', Link, "Url", s)
+                    in
+                        (#1 e, s)
+                    end
+                  | _ => (e, s)
+            end
+
+          | _ => (e, s)
+    end
 
 fun decl (d, s) = (d, s)
 

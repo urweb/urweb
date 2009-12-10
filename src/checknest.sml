@@ -57,6 +57,7 @@ fun expUses globals =
 
               | EError (e, _) => eu e
               | EReturnBlob {blob, mimeType, ...} => IS.union (eu blob, eu mimeType)
+              | ERedirect (e, _) => eu e
 
               | EWrite e => eu e
               | ESeq (e1, e2) => IS.union (eu e1, eu e2)
@@ -117,6 +118,7 @@ fun annotateExp globals =
 
               | EError (e, t) => (EError (ae e, t), loc)
               | EReturnBlob {blob, mimeType, t} => (EReturnBlob {blob = ae blob, mimeType = ae mimeType, t = t}, loc)
+              | ERedirect (e, t) => (ERedirect (ae e, t), loc)
 
               | EWrite e => (EWrite (ae e), loc)
               | ESeq (e1, e2) => (ESeq (ae e1, ae e2), loc)

@@ -870,6 +870,7 @@ fun process file =
                           | ENextval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
                           | EReturnBlob _ => unsupported "EUnurlify"
+                          | ERedirect _ => unsupported "ERedirect"
 
                           | ESignalReturn e =>
                             let
@@ -1080,6 +1081,12 @@ fun process file =
                      val (mimeType, st) = exp outer (mimeType, st)
                  in
                      ((EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), st)
+                 end
+               | ERedirect (e, t) =>
+                 let
+                     val (e, st) = exp outer (e, st)
+                 in
+                     ((ERedirect (e, t), loc), st)
                  end
 
                | EWrite e =>

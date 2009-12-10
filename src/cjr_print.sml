@@ -1451,6 +1451,20 @@ fun p_exp' par env (e, loc) =
              string "tmp;",
              newline,
              string "})"]
+      | ERedirect (e, t) =>
+        box [string "({",
+             newline,
+             p_typ env t,
+             space,
+             string "tmp;",
+             newline,
+             string "uw_redirect(ctx, ",
+             p_exp env e,
+             string ");",
+             newline,
+             string "tmp;",
+             newline,
+             string "})"]
       | EApp ((EError (e, (TFun (_, ran), _)), loc), _) =>
         p_exp env (EError (e, ran), loc)
       | EApp ((EReturnBlob {blob, mimeType, t = (TFun (_, ran), _)}, loc), _) =>

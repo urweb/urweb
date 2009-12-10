@@ -263,6 +263,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                      S.map2 (mft t,
                                           fn t' =>
                                              (EReturnBlob {blob = blob', mimeType = mimeType', t = t'}, loc))))
+              | ERedirect (e, t) =>
+                S.bind2 (mfe ctx e,
+                         fn e' =>
+                            S.map2 (mft t,
+                                    fn t' =>
+                                       (ERedirect (e', t'), loc)))
                             
               | EStrcat (e1, e2) =>
                 S.bind2 (mfe ctx e1,

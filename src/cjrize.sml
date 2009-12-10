@@ -367,6 +367,13 @@ fun cifyExp (eAll as (e, loc), sm) =
         in
             ((L'.EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), sm)
         end
+      | L.ERedirect (e, t) =>
+        let
+            val (e, sm) = cifyExp (e, sm)
+            val (t, sm) = cifyTyp (t, sm)
+        in
+            ((L'.ERedirect (e, t), loc), sm)
+        end
 
       | L.EStrcat (e1, e2) =>
         let

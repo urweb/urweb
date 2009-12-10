@@ -39,7 +39,7 @@ typedef struct uw_Basis_file {
   uw_Basis_blob data;
 } uw_Basis_file;
 
-typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY, RETURN_BLOB } failure_kind;
+typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY, RETURN_INDIRECTLY } failure_kind;
 
 typedef enum { SERVED, KEEP_OPEN, FAILED } request_result;
 

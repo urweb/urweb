@@ -202,6 +202,13 @@ fun prepExp (e as (_, loc), st) =
             ((EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), st)
         end
 
+      | ERedirect (e, t) =>
+        let
+            val (e, st) = prepExp (e, st)
+        in
+            ((ERedirect (e, t), loc), st)
+        end
+
       | EWrite e =>
         let
             val (e, st) = prepExp (e, st)

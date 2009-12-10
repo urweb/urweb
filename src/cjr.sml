@@ -77,6 +77,7 @@ datatype exp' =
 
        | EError of exp * typ
        | EReturnBlob of {blob : exp, mimeType : exp, t : typ}
+       | ERedirect of exp * typ
 
        | EWrite of exp
        | ESeq of exp * exp

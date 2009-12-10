@@ -239,6 +239,14 @@ fun p_exp' par env (e, _) =
                                                 space,
                                                 p_typ env t,
                                                 string ")"]
+      | ERedirect (e, t) => box [string "(redirect",
+                                 space,
+                                 p_exp env e,
+                                 space,
+                                 string ":",
+                                 space,
+                                 p_typ env t,
+                                 string ")"]
 
       | EStrcat (e1, e2) => parenIf par (box [p_exp' true env e1,
                                               space,

@@ -106,6 +106,7 @@ fun classify (ds, ps) =
                       | ECase (e, pes, _) => hasClient e orelse List.exists (hasClient o #2) pes
                       | EError (e, _) => hasClient e
                       | EReturnBlob {blob = e1, mimeType = e2, ...} => hasClient e1 orelse hasClient e2
+                      | ERedirect (e, _) => hasClient e
                       | EWrite e => hasClient e
                       | ESeq (e1, e2) => hasClient e1 orelse hasClient e2
                       | ELet (_, _, e1, e2) => hasClient e1 orelse hasClient e2

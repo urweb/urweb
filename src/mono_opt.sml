@@ -115,6 +115,8 @@ fun unAs s =
         doChars (String.explode s, [])
     end
 
+fun checkUrl s = CharVector.all Char.isGraph s andalso Settings.checkUrl s
+
 fun exp e =
     case e of
         EPrim (Prim.String s) =>
@@ -405,11 +407,16 @@ fun exp e =
         optExp (EApp (e2, e1), loc)
 
       | EFfiApp ("Basis", "bless", [(se as EPrim (Prim.String s), loc)]) =>
-        (if Settings.checkUrl s then
+        (if checkUrl s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid URL " ^ s ^ " passed to 'bless'");
          se)
+      | EFfiApp ("Basis", "checkUrl", [(se as EPrim (Prim.String s), loc)]) =>
+        (if checkUrl s then
+             ESome ((TFfi ("Basis", "string"), loc), (se, loc))
+         else
+             ENone (TFfi ("Basis", "string"), loc))
       | EFfiApp ("Basis", "blessMime", [(se as EPrim (Prim.String s), loc)]) =>
         (if Settings.checkMime s then
              ()

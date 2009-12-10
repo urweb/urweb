@@ -560,8 +560,11 @@ con tabl = [Body, Table]
 con tr = [Body, Tr]
 
 type url
+val show_url : show url
 val bless : string -> url
 val checkUrl : string -> option url
+val url : transaction page -> url
+val redirect : t ::: Type -> url -> transaction t
 
 val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ body] => unit
           -> tag [Signal = signal (xml (body ++ ctx) use bind)] (body ++ ctx) [] use bind

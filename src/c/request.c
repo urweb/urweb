@@ -374,7 +374,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     }
     strcpy(rc->path_copy, path);
     fk = uw_begin(ctx, rc->path_copy);
-    if (fk == SUCCESS || fk == RETURN_BLOB) {
+    if (fk == SUCCESS || fk == RETURN_INDIRECTLY) {
       uw_commit(ctx);
       return SERVED;
     } else if (fk == BOUNDED_RETRY) {

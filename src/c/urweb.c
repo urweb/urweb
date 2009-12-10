@@ -199,6 +199,7 @@ static client *find_client(unsigned id) {
 }
 
 static char *on_success = "HTTP/1.1 200 OK\r\n";
+static char *on_redirect = "HTTP/1.1 303 See Other\r\n";
 
 void uw_set_on_success(char *s) {
   on_success = s;
@@ -352,7 +353,7 @@ struct uw_context {
   void *get_header_data;
 
   buf outHeaders, page, heap, script;
-  int returning_blob;
+  int returning_indirectly;
   input *inputs, *subinputs, *cur_container;
   size_t n_subinputs, used_subinputs;
 
@@ -396,7 +397,7 @@ uw_context uw_init() {
 
   buf_init(&ctx->outHeaders, 0);
   buf_init(&ctx->page, 0);
-  ctx->returning_blob = 0;
+  ctx->returning_indirectly = 0;
   buf_init(&ctx->heap, 0);
   buf_init(&ctx->script, 1);
   ctx->script.start[0] = 0;
@@ -475,7 +476,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   buf_reset(&ctx->script);
   ctx->script.start[0] = 0;
   buf_reset(&ctx->page);
-  ctx->returning_blob = 0;
+  ctx->returning_indirectly = 0;
   buf_reset(&ctx->heap);
   ctx->regions = NULL;
   ctx->cleanup_front = ctx->cleanup;
@@ -2793,7 +2794,7 @@ void uw_commit(uw_context ctx) {
     ctx->transactionals[i].free(ctx->transactionals[i].data);
 
   // Splice script data into appropriate part of page
-  if (ctx->returning_blob || ctx->script_header[0] == 0) {
+  if (ctx->returning_indirectly || ctx->script_header[0] == 0) {
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {
       memmove(start, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 4);
@@ -2942,7 +2943,17 @@ failure_kind uw_initialize(uw_context ctx) {
 extern int uw_check_url(const char *);
 extern int uw_check_mime(const char *);
 
+static int url_bad(uw_Basis_string s) {
+  for (; *s; ++s)
+    if (!isgraph(*s))
+      return 1;
+
+  return 0;
+}
+
 uw_Basis_string uw_Basis_bless(uw_context ctx, uw_Basis_string s) {
+  if (url_bad(s))
+    uw_error(ctx, FATAL, "Invalid URL %s", uw_Basis_htmlifyString(ctx, s));
   if (uw_check_url(s))
     return s;
   else
@@ -2950,6 +2961,8 @@ uw_Basis_string uw_Basis_bless(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_string uw_Basis_checkUrl(uw_context ctx, uw_Basis_string s) {
+  if (url_bad(s))
+    return NULL;
   if (uw_check_url(s))
     return s;
   else
@@ -3024,7 +3037,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   cleanup *cl;
   int len;
 
-  ctx->returning_blob = 1;
+  ctx->returning_indirectly = 1;
   buf_reset(&ctx->outHeaders);
   buf_reset(&ctx->page);
 
@@ -3044,7 +3057,28 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
 
   ctx->cleanup_front = ctx->cleanup;
 
-  longjmp(ctx->jmp_buf, RETURN_BLOB);
+  longjmp(ctx->jmp_buf, RETURN_INDIRECTLY);
+}
+
+__attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) {
+  cleanup *cl;
+  int len;
+
+  ctx->returning_indirectly = 1;
+  buf_reset(&ctx->outHeaders);
+  buf_reset(&ctx->page);
+
+  uw_write_header(ctx, on_redirect);
+  uw_write_header(ctx, "Location: ");
+  uw_write_header(ctx, url);
+  uw_write_header(ctx, "\r\n\r\n");
+
+  for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
+    cl->func(cl->arg);
+
+  ctx->cleanup_front = ctx->cleanup;
+
+  longjmp(ctx->jmp_buf, RETURN_INDIRECTLY);
 }
 
 uw_Basis_string uw_Basis_unAs(uw_context ctx, uw_Basis_string s) {
