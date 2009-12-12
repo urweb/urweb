@@ -56,6 +56,7 @@ fun simpleImpure (tsyms, syms) =
                               | ERecv _ => true
                               | ESleep _ => true
                               | ENamed n => IS.member (syms, n)
+                              | EError _ => true
                               | ERel n =>
                                 let
                                     val (_, t, _) = E.lookupERel env n
@@ -96,7 +97,7 @@ fun impure (e, _) =
 
       | ECase (e, pes, _) => impure e orelse List.exists (fn (_, e) => impure e) pes
 
-      | EError (e, _) => impure e
+      | EError _ => true
       | EReturnBlob {blob = e1, mimeType = e2, ...} => impure e1 orelse impure e2
       | ERedirect (e, _) => impure e
 

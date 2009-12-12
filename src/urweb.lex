@@ -290,7 +290,7 @@ notags = [^<{\n]+;
                                        ("Expected float, received: " ^ yytext);
                                        continue ()));
 <XMLTAG> "\""         => (YYBEGIN STRING;
-			  xmlString := true;
+			  xmlString := true; strEnder := #"\"";
 			  strStart := yypos; str := []; continue ());
 
 <XMLTAG> "{"          => (YYBEGIN INITIAL;
