@@ -680,7 +680,7 @@ val blobSize : blob -> int
 
 con radio = [Body, Radio]
 val radio : formTag string radio [Id = string]
-val radioOption : unit -> tag ([Value = string] ++ boxAttrs) radio [] [] []
+val radioOption : unit -> tag ([Value = string, Checked = bool] ++ boxAttrs) radio [] [] []
 
 con select = [Select]
 val select : formTag string select ([Onchange = transaction unit] ++ boxAttrs)

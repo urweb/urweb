@@ -8,3 +8,5 @@ val isSome : a ::: Type -> t a -> bool
 
 val mp : a ::: Type -> b ::: Type -> (a -> b) -> t a -> t b
 val bind : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> t b
+
+val get : a ::: Type -> a -> option a -> a

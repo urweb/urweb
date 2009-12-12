@@ -38,3 +38,8 @@ fun bind [a] [b] f x =
     case x of
         None => None
       | Some y => f y
+
+fun get [a] (x : a) (o : option a) =
+    case o of
+        None => x
+      | Some v => v
