@@ -867,6 +867,48 @@ fun nextvalPrepared {loc, id, query} =
                                                 string (String.toString query),
                                                 string "\""]}]
 
+fun setvalCommon {loc, query} =
+    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating setval result.\");",
+         newline,
+         newline,
+
+         string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+         newline,
+         box [string "PQclear(res);",
+              newline,
+              string "uw_error(ctx, FATAL, \"",
+              string (ErrorMsg.spanToString loc),
+              string ": Query failed:\\n%s\\n%s\", ",
+              query,
+              string ", PQerrorMessage(conn));",
+              newline],
+         string "}",
+         newline,
+         newline,
+
+         string "PQclear(res);",
+         newline]
+
+fun setval {loc, seqE, count} =
+    let
+        val query = box [string "uw_Basis_strcat(ctx, \"SELECT SETVAL('\", uw_Basis_strcat(ctx, ",
+                         seqE,
+                         string ", uw_Basis_strcat(ctx, \"', \", uw_Basis_strcat(ctx, uw_Basis_sqlifyInt(ctx, ",
+                         count,
+                         string "), \")\"))))"]
+    in
+        box [string "char *query = ",
+             query,
+             string ";",
+             newline,
+             string "PGconn *conn = uw_get_db(ctx);",
+             newline,
+             string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
+             newline,
+             newline,
+             setvalCommon {loc = loc, query = string "query"}]
+    end
+
 fun sqlifyString s = "E'" ^ String.translate (fn #"'" => "\\'"
                                                | #"\\" => "\\\\"
                                                | ch =>
@@ -892,6 +934,7 @@ val () = addDbms {name = "postgres",
                   dmlPrepared = dmlPrepared,
                   nextval = nextval,
                   nextvalPrepared = nextvalPrepared,
+                  setval = setval,
                   sqlifyString = sqlifyString,
                   p_cast = p_cast,
                   p_blank = p_blank,

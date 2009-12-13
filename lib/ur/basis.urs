@@ -523,6 +523,7 @@ val delete : fields ::: {Type} -> uniques ::: {{Unit}}
 
 type sql_sequence
 val nextval : sql_sequence -> transaction int
+val setval : sql_sequence -> int -> transaction unit
 
 
 (** XML *)

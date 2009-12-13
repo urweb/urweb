@@ -51,6 +51,7 @@ fun simpleImpure (tsyms, syms) =
                               | EQuery _ => true
                               | EDml _ => true
                               | ENextval _ => true
+                              | ESetval _ => true
                               | EFfiApp (m, x, _) => Settings.isEffectful (m, x)
                               | EServerCall _ => true
                               | ERecv _ => true
@@ -75,6 +76,7 @@ fun impure (e, _) =
       | EQuery _ => true
       | EDml _ => true
       | ENextval _ => true
+      | ESetval _ => true
       | EUnurlify _ => true
       | EAbs _ => false
 
@@ -448,6 +450,7 @@ fun reduce file =
 
                       | EDml e => summarize d e @ [WriteDb]
                       | ENextval e => summarize d e @ [WriteDb]
+                      | ESetval (e1, e2) => summarize d e1 @ summarize d e2 @ [WriteDb]
                       | EUnurlify (e, _) => summarize d e
                       | EJavaScript (_, e) => summarize d e
                       | ESignalReturn e => summarize d e

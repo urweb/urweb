@@ -106,6 +106,7 @@ datatype exp' =
                      initial : exp }
        | EDml of exp
        | ENextval of exp
+       | ESetval of exp * exp
 
        | EUnurlify of exp * typ
 
@@ -137,6 +138,8 @@ datatype decl' =
 
        | DCookie of string
        | DStyle of string
+
+       | DInitializer of exp
 
 withtype decl = decl' located
 

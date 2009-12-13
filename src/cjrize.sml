@@ -468,6 +468,13 @@ fun cifyExp (eAll as (e, loc), sm) =
         in
             ((L'.ENextval {seq = e, prepared = NONE}, loc), sm)
         end
+      | L.ESetval (e1, e2) =>
+        let
+            val (e1, sm) = cifyExp (e1, sm)
+            val (e2, sm) = cifyExp (e2, sm)
+        in
+            ((L'.ESetval {seq = e1, count = e2}, loc), sm)
+        end
 
       | L.EUnurlify (e, t) =>
         let
@@ -653,6 +660,16 @@ fun cifyDecl ((d, loc), sm) =
       | L.DJavaScript s => (SOME (L'.DJavaScript s, loc), NONE, sm)
       | L.DCookie args => (SOME (L'.DCookie args, loc), NONE, sm)
       | L.DStyle args => (SOME (L'.DStyle args, loc), NONE, sm)
+      | L.DInitializer e =>
+        (case #1 e of
+             L.EAbs (_, _, _, e) =>
+             let
+                 val (e, sm) = cifyExp (e, sm)
+             in
+                 (SOME (L'.DInitializer e, loc), NONE, sm)
+             end
+           | _ => (ErrorMsg.errorAt loc "Initializer has not been fully determined";
+                   (NONE, NONE, sm)))
 
 fun cjrize ds =
     let

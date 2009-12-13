@@ -6,6 +6,7 @@ Next
 - More syntactic sugar for SQL
 - Typing of SQL queries no longer exposes which tables were used in joins but
   had none of their fields projected
+- Module-level initializers
 
 ========
 20091203

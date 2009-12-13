@@ -2548,6 +2548,7 @@ and sgiOfDecl (d, loc) =
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
       | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
+      | L'.DInitializer _ => []
 
 and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
@@ -3667,6 +3668,15 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     val (env, n) = E.pushENamed env x (styleOf ())
                 in
                     ([(L'.DStyle (!basis_r, x, n), loc)], (env, denv, gs))
+                end
+              | L.DInitializer e =>
+                let
+                    val (e', t, gs) = elabExp (env, denv) e
+                    val t' = (L'.CApp ((L'.CModProj (!basis_r, [], "transaction"), loc),
+                                       (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc)), loc)
+                in
+                    checkCon env e' t t';
+                    ([(L'.DInitializer e', loc)], (env, denv, gs))
                 end
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)

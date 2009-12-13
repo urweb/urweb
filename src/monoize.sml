@@ -2475,6 +2475,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.ENextval e, loc), fm)
             end
+          | L.EFfiApp ("Basis", "setval", [e1, e2]) =>
+            let
+                val (e1, fm) = monoExp (env, st, fm) e1
+                val (e2, fm) = monoExp (env, st, fm) e2
+            in
+                ((L'.ESetval (e1, e2), loc), fm)
+            end
 
           | L.EApp (
             (L.ECApp (
@@ -3470,6 +3477,14 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                       fm,
                       [(L'.DStyle s, loc),
                        (L'.DVal (x, n, t', e, s), loc)])
+            end
+          | L.DInitializer e =>
+            let
+                val (e, fm) = monoExp (env, St.empty, fm) e
+            in
+                SOME (env,
+                      fm,
+                      [(L'.DInitializer e, loc)])
             end
     end
 

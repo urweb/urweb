@@ -662,6 +662,9 @@ fun p_decl ((d, _) : decl) =
       | DStyle x => box [string "style",
                          space,
                          string x]
+      | DInitializer e => box [string "initializer",
+                               space,
+                               p_exp e]
 
 and p_str (str, _) =
     case str of

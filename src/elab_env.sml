@@ -1622,5 +1622,6 @@ fun declBinds env (d, loc) =
         in
             pushENamedAs env x n t
         end
+      | DInitializer _ => env
 
 end

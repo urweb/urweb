@@ -340,6 +340,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                      fn e' =>
                         (ENextval e', loc))
+              | ESetval (e1, e2) =>
+                S.bind2 (mfe ctx e1,
+                     fn e1' =>
+                        S.map2 (mfe ctx e2,
+                             fn e2' =>
+                                (ESetval (e1', e2'), loc)))
               | EUnurlify (e, t) =>
                 S.bind2 (mfe ctx e,
                      fn e' =>
@@ -522,6 +528,10 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
               | DJavaScript _ => S.return2 dAll
               | DCookie _ => S.return2 dAll
               | DStyle _ => S.return2 dAll
+              | DInitializer e =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (DInitializer e', loc))
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mft t,
@@ -608,6 +618,7 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DJavaScript _ => ctx
                                       | DCookie _ => ctx
                                       | DStyle _ => ctx
+                                      | DInitializer _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
                                      fn ds' =>
@@ -660,7 +671,8 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DDatabase _ => count
                           | DJavaScript _ => count
                           | DCookie _ => count
-                          | DStyle _ => count) 0
+                          | DStyle _ => count
+                          | DInitializer _ => count) 0
 
 end
 

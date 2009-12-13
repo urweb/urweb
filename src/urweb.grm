@@ -201,7 +201,7 @@ fun patType loc (p : pat) =
  | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL | SELECT1
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE | VIEW
- | COOKIE | STYLE
+ | COOKIE | STYLE | INITIALIZER
  | CASE | IF | THEN | ELSE | ANDALSO | ORELSE
 
  | XML_BEGIN of string | XML_END | XML_BEGIN_END of string
@@ -479,6 +479,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                          end)
        | COOKIE SYMBOL COLON cexp       ([(DCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))])
        | STYLE SYMBOL                   ([(DStyle SYMBOL, s (STYLEleft, SYMBOLright))])
+       | INITIALIZER eexp               ([(DInitializer eexp, s (INITIALIZERleft, eexpright))])
 
 dtype  : SYMBOL dargs EQ barOpt dcons   (SYMBOL, dargs, dcons)
 

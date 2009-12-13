@@ -804,6 +804,15 @@ fun reduce file =
               | DDatabase _ => (d, st)
               | DCookie (s, n, c, s') => ((DCookie (s, n, con namedC [] c, s'), loc), st)
               | DStyle (s, n, s') => ((DStyle (s, n, s'), loc), st)
+              | DInitializer e =>
+                let
+                    val e = exp (namedC, namedE) [] e
+                in
+                    ((DInitializer e, loc),
+                     (polyC,
+                      namedC,
+                      namedE))
+                end
 
         val (file, _) = ListUtil.foldlMap doDecl (IS.empty, IM.empty, IM.empty) file
     in

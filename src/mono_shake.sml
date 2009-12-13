@@ -43,10 +43,22 @@ type free = {
 
 fun shake file =
     let
-        val page_es = List.foldl
-                          (fn ((DExport (_, _, n, _, _), _), page_es) => n :: page_es
-                            | ((DDatabase {expunge = n1, initialize = n2, ...}, _), page_es) => n1 :: n2 :: page_es
-                            | (_, page_es) => page_es) [] file
+        val usedVars = U.Exp.fold {typ = fn (c, st as (cs, es)) =>
+                                            case c of
+                                                TDatatype (n, _) => (IS.add (cs, n), es)
+                                              | _ => st,
+                                   exp = fn (e, st as (cs, es)) =>
+                                            case e of
+                                                ENamed n => (cs, IS.add (es, n))
+                                              | _ => st}
+
+        val (page_cs, page_es) =
+            List.foldl
+                (fn ((DExport (_, _, n, _, _), _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
+                  | ((DDatabase {expunge = n1, initialize = n2, ...}, _), (page_cs, page_es)) =>
+                    (page_cs, IS.addList (page_es, [n1, n2]))
+                  | ((DInitializer e, _), st) => usedVars st e
+                  | (_, st) => st) (IS.empty, IS.empty) file
 
         val (cdef, edef) = foldl (fn ((DDatatype dts, _), (cdef, edef)) =>
                                      (foldl (fn ((_, n, xncs), cdef) => IM.insert (cdef, n, xncs)) cdef dts, edef)
@@ -61,7 +73,8 @@ fun shake file =
                                    | ((DDatabase _, _), acc) => acc
                                    | ((DJavaScript _, _), acc) => acc
                                    | ((DCookie _, _), acc) => acc
-                                   | ((DStyle _, _), acc) => acc)
+                                   | ((DStyle _, _), acc) => acc
+                                   | ((DInitializer _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
         fun typ (c, s) =
@@ -104,12 +117,18 @@ fun shake file =
 
         and shakeExp s = U.Exp.fold {typ = typ, exp = exp} s
 
-        val s = {con = IS.empty, exp = IS.addList (IS.empty, page_es)}
+        val s = {con = page_cs, exp = page_es}
 
-        val s = foldl (fn (n, s) =>
-                          case IM.find (edef, n) of
-                              NONE => raise Fail "Shake: Couldn't find 'val'"
-                            | SOME (t, e) => shakeExp s e) s page_es
+        val s = IS.foldl (fn (n, s) =>
+                             case IM.find (cdef, n) of
+                                 NONE => raise Fail "MonoShake: Couldn't find 'datatype'"
+                               | SOME xncs => foldl (fn ((_, _, SOME c), s) => shakeTyp s c
+                                                      | _ => s) s xncs) s page_cs
+
+        val s = IS.foldl (fn (n, s) =>
+                             case IM.find (edef, n) of
+                                 NONE => raise Fail "MonoShake: Couldn't find 'val'"
+                               | SOME (t, e) => shakeExp s e) s page_es
     in
         List.filter (fn (DDatatype dts, _) => List.exists (fn (_, n, _) => IS.member (#con s, n)) dts
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
@@ -121,7 +140,8 @@ fun shake file =
                       | (DDatabase _, _) => true
                       | (DJavaScript _, _) => true
                       | (DCookie _, _) => true
-                      | (DStyle _, _) => true) file
+                      | (DStyle _, _) => true
+                      | (DInitializer _, _) => true) file
     end
 
 end

@@ -95,6 +95,7 @@ datatype exp' =
                    prepared : {id : int, dml : string} option }
        | ENextval of { seq : exp,
                        prepared : {id : int, query : string} option }
+       | ESetval of { seq : exp, count : exp }
        | EUnurlify of exp * typ
 
 withtype exp = exp' located
@@ -116,6 +117,8 @@ datatype decl' =
        | DJavaScript of string
        | DCookie of string
        | DStyle of string
+
+       | DInitializer of exp
 
 withtype decl = decl' located
 

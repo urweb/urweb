@@ -868,6 +868,7 @@ fun process file =
                           | EQuery _ => unsupported "Query"
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
+                          | ESetval _ => unsupported "Nextval"
                           | EUnurlify _ => unsupported "EUnurlify"
                           | EReturnBlob _ => unsupported "EUnurlify"
                           | ERedirect _ => unsupported "ERedirect"
@@ -1141,6 +1142,13 @@ fun process file =
                      val (e, st) = exp outer (e, st)
                  in
                      ((ENextval e, loc), st)
+                 end
+               | ESetval (e1, e2) =>
+                 let
+                     val (e1, st) = exp outer (e1, st)
+                     val (e2, st) = exp outer (e2, st)
+                 in
+                     ((ESetval (e1, e2), loc), st)
                  end
 
                | EUnurlify (e, t) =>

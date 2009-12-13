@@ -320,6 +320,12 @@ fun p_exp' par env (e, _) =
       | ENextval e => box [string "nextval(",
                            p_exp env e,
                            string ")"]
+      | ESetval (e1, e2) => box [string "setval(",
+                                 p_exp env e1,
+                                 string ",",
+                                 space,
+                                 p_exp env e2,
+                                 string ")"]
       | EUnurlify (e, _) => box [string "unurlify(",
                                  p_exp env e,
                                  string ")"]
@@ -485,6 +491,9 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DStyle s => box [string "style",
                          space,
                          string s]
+      | DInitializer e => box [string "initializer",
+                               space,
+                               p_exp env e]
 
                           
 fun p_file env file =

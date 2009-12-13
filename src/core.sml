@@ -134,6 +134,7 @@ datatype decl' =
        | DDatabase of string
        | DCookie of string * int * con * string
        | DStyle of string * int * string
+       | DInitializer of exp
 
 withtype decl = decl' located
 

@@ -611,6 +611,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                                  string "as",
                                  space,
                                  string s]
+      | DInitializer e => box [string "initializer",
+                               space,
+                               p_exp env e]
 
 fun p_file env file =
     let

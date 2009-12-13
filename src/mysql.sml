@@ -1503,6 +1503,8 @@ fun nextval {loc, seqE, seqName} =
 
 fun nextvalPrepared _ = raise Fail "MySQL.nextvalPrepared called"
 
+fun setval _ = raise Fail "MySQL.setval called"
+
 fun sqlifyString s = "'" ^ String.translate (fn #"'" => "\\'"
                                               | #"\\" => "\\\\"
                                               | ch =>
@@ -1529,6 +1531,7 @@ val () = addDbms {name = "mysql",
                   dmlPrepared = dmlPrepared,
                   nextval = nextval,
                   nextvalPrepared = nextvalPrepared,
+                  setval = setval,
                   sqlifyString = sqlifyString,
                   p_cast = p_cast,
                   p_blank = p_blank,

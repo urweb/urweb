@@ -1849,6 +1849,20 @@ fun p_exp' par env (e, loc) =
              newline,
              string "})"]
 
+      | ESetval {seq, count} =>
+        box [string "({",
+             newline,
+
+             #setval (Settings.currentDbms ()) {loc = loc,
+                                                seqE = p_exp env seq,
+                                                count = p_exp env count},
+             newline,
+             newline,
+
+             string "uw_unit_v;",
+             newline,
+             string "})"]
+
       | EUnurlify (e, t) =>
         let
             fun getIt () =
@@ -2084,6 +2098,8 @@ fun p_decl env (dAll as (d, _) : decl) =
                          string s,
                          space,
                          string "*/"]
+
+      | DInitializer _ => box []
 
 datatype 'a search =
          Found of 'a
@@ -2716,6 +2732,8 @@ fun p_file env (ds, ps) =
                       newline],
                  string "}",
                  newline]
+
+        val initializers = List.mapPartial (fn (DInitializer e, _) => SOME e | _ => NONE) ds
     in
         box [string "#include <stdio.h>",
              newline,
@@ -2849,7 +2867,10 @@ fun p_file env (ds, ps) =
 
                       string "void uw_initializer(uw_context ctx) {",
                       newline,
-                      box [p_enamed env (!initialize),
+                      box [p_list_sep (box []) (fn e => box [p_exp env e,
+                                                             string ";",
+                                                             newline]) initializers,
+                           p_enamed env (!initialize),
                            string "(ctx, uw_unit_v);",
                            newline],
                       string "}",

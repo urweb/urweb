@@ -114,6 +114,7 @@ fun classify (ds, ps) =
                                                               orelse hasClient initial
                       | EDml {dml, ...} => hasClient dml
                       | ENextval {seq, ...} => hasClient seq
+                      | ESetval {seq, count, ...} => hasClient seq orelse hasClient count
                       | EUnurlify (e, _) => hasClient e
             in
                 hasClient

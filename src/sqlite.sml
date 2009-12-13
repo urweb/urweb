@@ -757,6 +757,7 @@ fun nextval {loc, seqE, seqName} =
          newline]
 
 fun nextvalPrepared _ = raise Fail "SQLite.nextvalPrepared called"
+fun setval _ = raise Fail "SQLite.setval called"
 
 fun sqlifyString s = "'" ^ String.translate (fn #"'" => "''"
                                               | ch =>
@@ -783,6 +784,7 @@ val () = addDbms {name = "sqlite",
                   dmlPrepared = dmlPrepared,
                   nextval = nextval,
                   nextvalPrepared = nextvalPrepared,
+                  setval = setval,
                   sqlifyString = sqlifyString,
                   p_cast = p_cast,
                   p_blank = p_blank,

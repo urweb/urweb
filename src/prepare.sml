@@ -273,6 +273,14 @@ fun prepExp (e as (_, loc), st) =
         else
             (e, st)
 
+      | ESetval {seq = e1, count = e2} =>
+        let
+            val (e1, st) = prepExp (e1, st)
+            val (e2, st) = prepExp (e2, st)
+        in
+            ((ESetval {seq = e1, count = e2}, loc), st)
+        end
+
       | EUnurlify (e, t) =>
         let
             val (e, st) = prepExp (e, st)
@@ -317,6 +325,12 @@ fun prepDecl (d as (_, loc), st) =
       | DJavaScript _ => (d, st)
       | DCookie _ => (d, st)
       | DStyle _ => (d, st)
+      | DInitializer e =>
+        let
+            val (e, st) = prepExp (e, st)
+        in
+            ((DInitializer e, loc), st)
+        end
 
 fun prepare (ds, ps) =
     let

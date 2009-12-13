@@ -971,6 +971,10 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, decl = fd, bind} =
                      fn c' =>
                         (DCookie (x, n, c', s), loc))
               | DStyle _ => S.return2 dAll
+              | DInitializer e =>
+                S.map2 (mfe ctx e,
+                     fn e' =>
+                        (DInitializer e', loc))
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mfc ctx t,
@@ -1125,6 +1129,7 @@ fun mapfoldB (all as {bind, ...}) =
                                         in
                                             bind (ctx, NamedE (x, n, t, NONE, s))
                                         end
+                                      | DInitializer _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
                                      fn ds' =>
@@ -1187,7 +1192,8 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DView (_, n, _, _, _) => Int.max (n, count)
                           | DDatabase _ => count
                           | DCookie (_, n, _, _) => Int.max (n, count)
-                          | DStyle (_, n, _) => Int.max (n, count)) 0
+                          | DStyle (_, n, _) => Int.max (n, count)
+                          | DInitializer _ => count) 0
               
 end
 
