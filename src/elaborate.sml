@@ -817,7 +817,24 @@
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
          val empty = (L'.CRecord (k, []), loc)
-         fun failure () = raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2))
+         fun failure () =
+             let
+                 val fs2 = #fields s2
+
+                 fun findPointwise fs1 =
+                     case fs1 of
+                         [] => NONE
+                       | (nm1, c1) :: fs1 =>
+                         case List.find (fn (nm2, _) => consEq env loc (nm1, nm2)) fs2 of
+                             NONE => findPointwise fs1
+                           | SOME (_, c2) =>
+                             if consEq env loc (c1, c2) then
+                                 findPointwise fs1
+                             else
+                                 SOME (nm1, c1, c2)
+             in
+                 raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2, findPointwise (#fields s1)))
+             end
      in
          (case (unifs1, fs1, others1, unifs2, fs2, others2) of
               (_, [], [], [], [], []) =>

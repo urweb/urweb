@@ -119,7 +119,7 @@ datatype cunify_error =
        | CIncompatible of con * con
        | CExplicitness of con * con
        | CKindof of kind * con * string
-       | CRecordFailure of con * con
+       | CRecordFailure of con * con * (con * con * con) option
 
 fun cunifyError env err =
     case err of
@@ -144,10 +144,16 @@ fun cunifyError env err =
         eprefaces ("Unexpected kind for kindof calculation (expecting " ^ expected ^ ")")
                   [("Kind", p_kind env k),
                    ("Con", p_con env c)]
-      | CRecordFailure (c1, c2) =>
+      | CRecordFailure (c1, c2, fo) =>
         eprefaces "Can't unify record constructors"
-                  [("Summary 1", p_con env c1),
-                   ("Summary 2", p_con env c2)]
+                  (("Summary 1", p_con env c1)
+                   :: ("Summary 2", p_con env c2)
+                   :: (case fo of
+                           NONE => []
+                         | SOME (nm, t1, t2) =>
+                           [("Field", p_con env nm),
+                            ("Value 1", p_con env t1),
+                            ("Value 2", p_con env t2)]))
 
 datatype exp_error =
        UnboundExp of ErrorMsg.span * string

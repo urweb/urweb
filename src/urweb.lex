@@ -420,6 +420,7 @@ notags = [^<{\n]+;
 <INITIAL> "LIMIT"     => (Tokens.LIMIT (pos yypos, pos yypos + size yytext));
 <INITIAL> "OFFSET"    => (Tokens.OFFSET (pos yypos, pos yypos + size yytext));
 <INITIAL> "ALL"       => (Tokens.ALL (pos yypos, pos yypos + size yytext));
+<INITIAL> "SELECT1"   => (Tokens.SELECT1 (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "JOIN"      => (Tokens.JOIN (pos yypos, pos yypos + size yytext));
 <INITIAL> "INNER"     => (Tokens.INNER (pos yypos, pos yypos + size yytext));

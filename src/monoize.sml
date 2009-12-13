@@ -2292,6 +2292,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                        sc "))"]), loc)), loc)), loc),
                  fm)
             end
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.EFfi ("Basis", "sql_forget_tables"), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("x", s, s, (L'.ERel 0, loc)), loc),
+                 fm)
+            end
 
           | L.EFfi ("Basis", "sql_union") => ((L'.EPrim (Prim.String "UNION"), loc), fm)
           | L.EFfi ("Basis", "sql_intersect") => ((L'.EPrim (Prim.String "INTERSECT"), loc), fm)

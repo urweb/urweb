@@ -199,7 +199,7 @@ fun patType loc (p : pat) =
  | ARROW | LARROW | DARROW | STAR | SEMI | KARROW | DKARROW | BANG
  | FN | PLUSPLUS | MINUSMINUS | MINUSMINUSMINUS | DOLLAR | TWIDDLE | CARET
  | LET | IN
- | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL
+ | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | EXTERN | SQL | SELECT1
  | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE | VIEW
  | COOKIE | STYLE
  | CASE | IF | THEN | ELSE | ANDALSO | ORELSE
@@ -1170,6 +1170,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | LPAREN CWHERE sqlexp RPAREN    (sqlexp)
        | LPAREN SQL sqlexp RPAREN       (sqlexp)
        | LPAREN FROM tables RPAREN      (#2 tables)
+       | LPAREN SELECT1 query1 RPAREN   (query1)
 
        | LPAREN INSERT INTO texp LPAREN fields RPAREN VALUES LPAREN sqlexps RPAREN RPAREN
                                         (let
@@ -1540,6 +1541,7 @@ tables : fitem                          (fitem)
                                          end)
 
 fitem  : table'                         ([#1 table'], #2 table')
+       | LBRACE LBRACE eexp RBRACE RBRACE ([], eexp)
        | fitem JOIN fitem ON sqlexp     (let
                                              val loc = s (fitem1left, sqlexpright)
                                                        

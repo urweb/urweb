@@ -150,7 +150,7 @@ See doc for the variable `urweb-mode-info'."
                  "ASC" "DESC" "INSERT" "INTO" "VALUES" "UPDATE" "SET" "DELETE"
                  "PRIMARY" "KEY" "CONSTRAINT" "UNIQUE" "CHECK"
                  "FOREIGN" "REFERENCES" "ON" "NO" "ACTION" "CASCADE" "RESTRICT" "NULL"
-                 "JOIN" "INNER" "OUTER" "LEFT" "RIGHT" "FULL" "CROSS")
+                 "JOIN" "INNER" "OUTER" "LEFT" "RIGHT" "FULL" "CROSS" "SELECT1")
   "A regexp that matches SQL keywords.")
 
 (defconst urweb-lident-regexp "\\<[a-z_][A-Za-z0-9_']*\\>"
@@ -530,7 +530,7 @@ If anyone has a good algorithm for this..."
     (current-indentation)))
 
 (defconst urweb-sql-main-starters
-  '("SQL" "SELECT" "INSERT" "UPDATE" "DELETE"))
+  '("SQL" "SELECT" "INSERT" "UPDATE" "DELETE" "FROM" "SELECT1" "WHERE"))
 
 (defconst urweb-sql-starters
   (append urweb-sql-main-starters

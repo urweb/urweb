@@ -344,6 +344,9 @@ val sql_relop : tables1 ::: {{Type}}
                 -> sql_query1 tables1 selectedFields selectedExps
                 -> sql_query1 tables2 selectedFields selectedExps
                 -> sql_query1 selectedFields selectedFields selectedExps
+val sql_forget_tables : tables ::: {{Type}} -> selectedFields ::: {{Type}} -> selectedExps ::: {Type}
+                        -> sql_query1 tables selectedFields selectedExps
+                        -> sql_query1 selectedFields selectedFields selectedExps
 
 type sql_direction
 val sql_asc : sql_direction

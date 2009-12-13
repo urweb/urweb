@@ -55,7 +55,7 @@ signature ELAB_ERR = sig
            | CIncompatible of Elab.con * Elab.con
            | CExplicitness of Elab.con * Elab.con
            | CKindof of Elab.kind * Elab.con * string
-           | CRecordFailure of Elab.con * Elab.con
+           | CRecordFailure of Elab.con * Elab.con * (Elab.con * Elab.con * Elab.con) option
 
     val cunifyError : ElabEnv.env -> cunify_error -> unit
 
