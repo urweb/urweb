@@ -3,6 +3,9 @@ Next
 ========
 
 - Reifying expressions as URLs and redirecting to them explicitly
+- More syntactic sugar for SQL
+- Typing of SQL queries no longer exposes which tables were used in joins but
+  had none of their fields projected
 
 ========
 20091203

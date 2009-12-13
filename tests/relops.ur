@@ -25,6 +25,6 @@ val r2 : transaction string =
 
 val main : unit -> transaction page = fn () =>
         s <- r2;
-        return <html><body>
+        return <xml><body>
                 {cdata s}
-        </body></html>
+        </body></xml>

@@ -1169,6 +1169,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | LPAREN query RPAREN            (query)
        | LPAREN CWHERE sqlexp RPAREN    (sqlexp)
        | LPAREN SQL sqlexp RPAREN       (sqlexp)
+       | LPAREN FROM tables RPAREN      (#2 tables)
 
        | LPAREN INSERT INTO texp LPAREN fields RPAREN VALUES LPAREN sqlexps RPAREN RPAREN
                                         (let
@@ -1449,9 +1450,10 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                         (let
                                              val loc = s (SELECTleft, tablesright)
 
-                                             val (sel, exps) =
+                                             val (empties, sel, exps) =
                                                  case select of
-                                                     Star => (map (fn nm =>
+                                                     Star => ([],
+                                                              map (fn nm =>
                                                                       (nm, (CTuple [(CWild (KRecord (KType, loc), loc),
                                                                                      loc),
                                                                                     (CRecord [], loc)],
@@ -1461,8 +1463,12 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                                      let
                                                          val tabs = map (fn nm => (nm, (CRecord [], loc))) (#1 tables)
                                                          val (tabs, exps) = foldl (amend_select loc) (tabs, []) sis
+                                                         val empties = List.mapPartial (fn (nm, (CRecord [], _)) =>
+                                                                                           SOME nm
+                                                                                         | _ => NONE) tabs
                                                      in
-                                                         (map (fn (nm, c) => (nm,
+                                                         (empties,
+                                                          map (fn (nm, c) => (nm,
                                                                               (CTuple [c,
                                                                                        (CWild (KRecord (KType, loc), loc),
                                                                                         loc)], loc))) tabs,
@@ -1494,6 +1500,9 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                                            end
 
                                              val e = (EVar (["Basis"], "sql_query1", Infer), loc)
+                                             val e = (ECApp (e, (CRecord (map (fn nm => (nm, (CUnit, loc))) empties),
+                                                                 loc)), loc)
+                                             val e = (EDisjointApp e, loc)
                                              val re = (ERecord [((CName "Distinct", loc),
                                                                  dopt),
                                                                 ((CName "From", loc),
@@ -1517,6 +1526,7 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
        | query1 UNION query1            (sql_relop ("union", query11, query12, s (query11left, query12right)))
        | query1 INTERSECT query1        (sql_relop ("intersect", query11, query12, s (query11left, query12right)))
        | query1 EXCEPT query1           (sql_relop ("except", query11, query12, s (query11left, query12right)))
+       | LBRACE LBRACE LBRACE eexp RBRACE RBRACE RBRACE (eexp)
 
 tables : fitem                          (fitem)
        | fitem COMMA tables             (let

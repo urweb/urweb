@@ -320,12 +320,14 @@ val sql_query1 : tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}
                  -> selectedExps ::: {Type}
-                 -> {Distinct : bool,
+                 -> empties :: {Unit}
+                 -> [empties ~ selectedFields]
+                 => {Distinct : bool,
                      From : sql_from_items tables,
                      Where : sql_exp tables [] [] bool,
                      GroupBy : sql_subset tables grouped,
                      Having : sql_exp grouped tables [] bool,
-                     SelectFields : sql_subset grouped selectedFields,
+                     SelectFields : sql_subset grouped (map (fn _ => []) empties ++ selectedFields),
                      SelectExps : $(map (sql_exp grouped tables [])
                                             selectedExps) }
                  -> sql_query1 tables selectedFields selectedExps

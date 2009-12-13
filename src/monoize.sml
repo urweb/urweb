@@ -1772,11 +1772,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             (L.ECApp (
              (L.ECApp (
               (L.ECApp (
-               (L.EFfi ("Basis", "sql_query1"), _),
-               (L.CRecord (_, tables), _)), _),
-              (L.CRecord (_, grouped), _)), _),
-             (L.CRecord (_, stables), _)), _),
-            sexps) =>
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_query1"), _),
+                (L.CRecord (_, tables), _)), _),
+               (L.CRecord (_, grouped), _)), _),
+              (L.CRecord (_, stables), _)), _),
+             sexps), _),
+            _) =>
             let
                 fun sc s = (L'.EPrim (Prim.String s), loc)
                 val s = (L'.TFfi ("Basis", "string"), loc)
