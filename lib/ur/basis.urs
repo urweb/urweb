@@ -256,6 +256,11 @@ val foreign_key : mine1 ::: Name -> t ::: Type -> mine ::: {Type} -> munused :::
        -> sql_constraint ([mine1 = t] ++ mine ++ munused) []
 
 con sql_exp :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
+val sql_exp_weaken : fs ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+                     -> fs' ::: {{Type}} -> agg' ::: {{Type}} -> exps' ::: {Type}
+                     -> [fs ~ fs'] => [agg ~ agg'] => [exps ~ exps'] =>
+                     sql_exp fs agg exps t
+                     -> sql_exp (fs ++ fs') (agg ++ agg') (exps ++ exps') t
 
 val check : fs ::: {Type}
             -> sql_exp [] [] fs bool
@@ -274,6 +279,12 @@ val sql_subset : keep_drop :: {({Type} * {Type})}
                                      (map (fn fields :: ({Type} * {Type}) => fields.1 ++ fields.2) keep_drop)
                                      (map (fn fields :: ({Type} * {Type}) => fields.1) keep_drop)
 val sql_subset_all : tables :: {{Type}} -> sql_subset tables tables
+val sql_subset_concat : big1 ::: {{Type}} -> little1 ::: {{Type}}
+                        -> big2 ::: {{Type}} -> little2 ::: {{Type}}
+                        -> [big1 ~ big2] => [little1 ~ little2] =>
+    sql_subset big1 little1
+    -> sql_subset big2 little2
+    -> sql_subset (big1 ++ big2) (little1 ++ little2)
 
 con sql_from_items :: {{Type}} -> Type
 
@@ -343,10 +354,10 @@ val sql_relop : tables1 ::: {{Type}}
                 -> sql_relop
                 -> sql_query1 tables1 selectedFields selectedExps
                 -> sql_query1 tables2 selectedFields selectedExps
-                -> sql_query1 selectedFields selectedFields selectedExps
+                -> sql_query1 [] selectedFields selectedExps
 val sql_forget_tables : tables ::: {{Type}} -> selectedFields ::: {{Type}} -> selectedExps ::: {Type}
                         -> sql_query1 tables selectedFields selectedExps
-                        -> sql_query1 selectedFields selectedFields selectedExps
+                        -> sql_query1 [] selectedFields selectedExps
 
 type sql_direction
 val sql_asc : sql_direction

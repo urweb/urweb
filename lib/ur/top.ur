@@ -234,6 +234,13 @@ fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {T
               return <xml>{acc}{r}</xml>)
           <xml/>
 
+fun hasRows [tables ::: {{Type}}] [exps ::: {Type}]
+            [tables ~ exps]
+            (q : sql_query tables exps) =
+    query q
+          (fn _ _ => return True)
+          False
+
 fun oneOrNoRows [tables ::: {{Type}}] [exps ::: {Type}]
                 [tables ~ exps]
                 (q : sql_query tables exps) =

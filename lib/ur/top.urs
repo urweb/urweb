@@ -139,6 +139,11 @@ val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp ::
                   -> transaction (xml ctx inp []))
               -> transaction (xml ctx inp [])
                        
+val hasRows : tables ::: {{Type}} -> exps ::: {Type}
+              -> [tables ~ exps] =>
+    sql_query tables exps
+    -> transaction bool
+
 val oneOrNoRows : tables ::: {{Type}} -> exps ::: {Type}
                   -> [tables ~ exps] =>
                   sql_query tables exps

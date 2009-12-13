@@ -1587,6 +1587,28 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.ECApp (
+                 (L.ECApp (
+                  (L.EFfi ("Basis", "sql_exp_weaken"), _),
+                  _), _),
+                 _), _),
+                _), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val string = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("e", string, string, (L'.ERel 0, loc)), loc),
+                 fm)
+            end
+
           | L.ECApp ((L.EFfi ("Basis", "check"), _), _) =>
             let
                 val string = (L'.TFfi ("Basis", "string"), loc)
@@ -1993,6 +2015,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.ERecord [], loc), fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_subset_all"), _), _) =>
             ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_subset_concat"),
+                                                    _), _), _), _), _), _), _), _) =>
+            let
+                val un = (L'.TRecord [], loc) 
+            in
+                ((L'.EAbs ("_", un, (L'.TFun (un, un), loc),
+                           (L'.EAbs ("_", un, un,
+                                     (L'.ERecord [], loc)), loc)), loc),
+                 fm)
+            end
 
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "fieldsOf_table"), _), _), _), _) =>
             ((L'.ERecord [], loc), fm)
