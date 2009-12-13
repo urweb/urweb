@@ -3671,12 +3671,12 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                 end
               | L.DInitializer e =>
                 let
-                    val (e', t, gs) = elabExp (env, denv) e
+                    val (e', t, gs') = elabExp (env, denv) e
                     val t' = (L'.CApp ((L'.CModProj (!basis_r, [], "transaction"), loc),
                                        (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc)), loc)
                 in
                     checkCon env e' t t';
-                    ([(L'.DInitializer e', loc)], (env, denv, gs))
+                    ([(L'.DInitializer e', loc)], (env, denv, gs' @ gs))
                 end
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)

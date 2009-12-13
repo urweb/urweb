@@ -271,6 +271,9 @@ fun oneRowE1 [tabs ::: {Unit}] [nm ::: Name] [t ::: Type] [tabs ~ [nm]] (q : sql
                 None => error <xml>Query returned no rows</xml>
               | Some r => r.nm)
 
+fun nonempty [fs] [us] (t : sql_table fs us) =
+    oneRowE1 (SELECT COUNT( * ) > 0 AS B FROM t)
+
 fun eqNullable [tables ::: {{Type}}] [agg ::: {{Type}}] [exps ::: {Type}]
     [t ::: Type] (_ : sql_injectable (option t))
     (e1 : sql_exp tables agg exps (option t))

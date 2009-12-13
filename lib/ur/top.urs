@@ -173,6 +173,9 @@ val oneRowE1 : tabs ::: {Unit} -> nm ::: Name -> t ::: Type
     sql_query (mapU [] tabs) [nm = t]
     -> transaction t
 
+val nonempty : fs ::: {Type} -> us ::: {{Unit}} -> sql_table fs us
+               -> transaction bool
+
 val eqNullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type -> sql_injectable (option t)
                  -> sql_exp tables agg exps (option t)
