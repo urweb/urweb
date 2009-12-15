@@ -703,7 +703,7 @@ sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, 
        | VIEW SYMBOL COLON cexp         (let
                                              val loc = s (VIEWleft, cexpright)
                                              val t = (CVar (["Basis"], "sql_view"), loc)
-                                             val t = (CApp (t, cexp), loc)
+                                             val t = (CApp (t, entable cexp), loc)
                                          in
                                              (SgiVal (SYMBOL, t), loc)
                                          end)

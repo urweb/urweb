@@ -224,6 +224,13 @@ fun queryX [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Ty
           (fn fs acc => return <xml>{acc}{f fs}</xml>)
           <xml/>
 
+fun queryX1 [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
+            (q : sql_query [nm = fs] [])
+            (f : $fs -> xml ctx inp []) =
+    query q
+          (fn fs acc => return <xml>{acc}{f fs.nm}</xml>)
+          <xml/>
+
 fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
             [tables ~ exps] (q : sql_query tables exps)
             (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
@@ -253,7 +260,7 @@ fun oneOrNoRows1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [nm = fs] []) =
           (fn fs _ => return (Some fs.nm))
           None
 
-fun oneOrNoRowsE1 [tab ::: Name] [nm ::: Name] [t ::: Type] [[tab] ~ [nm]] (q : sql_query [tab = []] [nm = t]) =
+fun oneOrNoRowsE1 [tabs ::: {Unit}] [nm ::: Name] [t ::: Type] [tabs ~ [nm]] (q : sql_query (mapU [] tabs) [nm = t]) =
     query q
           (fn fs _ => return (Some fs.nm))
           None
@@ -264,6 +271,12 @@ fun oneRow [tables ::: {{Type}}] [exps ::: {Type}]
     return (case o of
                 None => error <xml>Query returned no rows</xml>
               | Some r => r)
+
+fun oneRow1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [nm = fs] []) =
+    o <- oneOrNoRows q;
+    return (case o of
+                None => error <xml>Query returned no rows</xml>
+              | Some r => r.nm)
 
 fun oneRowE1 [tabs ::: {Unit}] [nm ::: Name] [t ::: Type] [tabs ~ [nm]] (q : sql_query (mapU [] tabs) [nm = t]) =
     o <- oneOrNoRows q;

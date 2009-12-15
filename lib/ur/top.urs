@@ -132,6 +132,11 @@ val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp :::
                  -> xml ctx inp [])
              -> transaction (xml ctx inp [])
 
+val queryX1 : nm ::: Name -> fs ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
+              -> sql_query [nm = fs] []
+              -> ($fs -> xml ctx inp [])
+              -> transaction (xml ctx inp [])
+
 val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
               -> [tables ~ exps] =>
               sql_query tables exps
@@ -156,9 +161,9 @@ val oneOrNoRows1 : nm ::: Name -> fs ::: {Type}
                    -> sql_query [nm = fs] []
                    -> transaction (option $fs)
 
-val oneOrNoRowsE1 : tab ::: Name -> nm ::: Name -> t ::: Type
-                    -> [[tab] ~ [nm]] =>
-    sql_query [tab = []] [nm = t]
+val oneOrNoRowsE1 : tabs ::: {Unit} -> nm ::: Name -> t ::: Type
+                    -> [tabs ~ [nm]] =>
+    sql_query (mapU [] tabs) [nm = t]
     -> transaction (option t)
 
 val oneRow : tables ::: {{Type}} -> exps ::: {Type}
@@ -167,6 +172,10 @@ val oneRow : tables ::: {{Type}} -> exps ::: {Type}
              -> transaction
                     $(exps
                           ++ map (fn fields :: {Type} => $fields) tables)
+
+val oneRow1 : nm ::: Name -> fs ::: {Type}
+    -> sql_query [nm = fs] []
+    -> transaction $fs
 
 val oneRowE1 : tabs ::: {Unit} -> nm ::: Name -> t ::: Type
                -> [tabs ~ [nm]] =>
