@@ -5,6 +5,8 @@ table t : { Id : int, Parent : option int, Nam : string }
 
 open TreeFun.Make(struct
                       val tab = t
+                      con id = #Id
+                      con parent = #Parent
                   end)
 
 fun row r = <xml>

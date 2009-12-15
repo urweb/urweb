@@ -165,20 +165,32 @@ fun specialize' file =
                                                                       | _ => false}
                             val loc = ErrorMsg.dummySpan
 
-                            fun findSplit (xs, typ, fxs, fvs, ts) =
+                            fun hasFuncArg t =
+                                case #1 t of
+                                    TFun (dom, ran) => functionInside dom orelse hasFuncArg ran
+                                  | _ => false
+
+                            fun findSplit hfa (xs, typ, fxs, fvs, ts) =
                                 case (#1 typ, xs) of
                                     (TFun (dom, ran), e :: xs') =>
-                                    if functionInside dom then
-                                        findSplit (xs',
-                                                   ran,
-                                                   (true, e) :: fxs,
-                                                   IS.union (fvs, freeVars e),
-                                                   ts)
-                                    else
-                                        findSplit (xs', ran, (false, e) :: fxs, fvs, dom :: ts)
+                                    let
+                                        val isVar = case #1 e of
+                                                        ERel _ => true
+                                                      | _ => false
+                                        val hfa = hfa andalso isVar
+                                    in
+                                        if hfa orelse functionInside dom then
+                                            findSplit hfa (xs',
+                                                           ran,
+                                                           (true, e) :: fxs,
+                                                           IS.union (fvs, freeVars e),
+                                                           ts)
+                                        else
+                                            findSplit hfa (xs', ran, (false, e) :: fxs, fvs, dom :: ts)
+                                    end
                                   | _ => (List.revAppend (fxs, map (fn e => (false, e)) xs), fvs, rev ts)
 
-                            val (xs, fvs, ts) = findSplit (xs, typ, [], IS.empty, [])
+                            val (xs, fvs, ts) = findSplit (hasFuncArg typ) (xs, typ, [], IS.empty, [])
                             val fxs = List.mapPartial (fn (true, e) => SOME e | _ => NONE) xs
                             val untouched = length (List.filter (fn (false, _) => true | _ => false) xs)
                             val squish = squish (untouched, IS.listItems fvs)
@@ -332,11 +344,11 @@ fun specialize' file =
                     if isPoly d then
                         (d, st)
                     else
-                        (mayNotSpec := (case #1 d of
+                        (mayNotSpec := SS.empty(*(case #1 d of
                                             DValRec vis => foldl (fn ((x, _, _, _, _), mns) =>
                                                                      SS.add (mns, x)) SS.empty vis
                                           | DVal (x, _, _, _, _) => SS.singleton x
-                                          | _ => SS.empty);
+                                          | _ => SS.empty)*);
                          specDecl [] st d
                          before mayNotSpec := SS.empty)
 
