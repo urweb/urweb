@@ -195,7 +195,7 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DDatabase s => SOME (L'.DDatabase s, loc)
       | L.DCookie (nt, x, n, c) => SOME (L'.DCookie (nt, x, n, explifyCon c), loc)
       | L.DStyle (nt, x, n) => SOME (L'.DStyle (nt, x, n), loc)
-      | L.DInitializer e => SOME (L'.DInitializer (explifyExp e), loc)
+      | L.DTask (e1, e2) => SOME (L'.DTask (explifyExp e1, explifyExp e2), loc)
 
 and explifyStr (str, loc) =
     case str of

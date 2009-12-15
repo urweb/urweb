@@ -167,7 +167,7 @@ datatype decl' =
        | DDatabase of string
        | DCookie of string * con
        | DStyle of string
-       | DInitializer of exp
+       | DTask of exp * exp
 
      and str' =
          StrConst of decl list

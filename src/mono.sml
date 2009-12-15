@@ -139,7 +139,7 @@ datatype decl' =
        | DCookie of string
        | DStyle of string
 
-       | DInitializer of exp
+       | DTask of exp * exp
 
 withtype decl = decl' located
 

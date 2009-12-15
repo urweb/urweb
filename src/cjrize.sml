@@ -660,13 +660,17 @@ fun cifyDecl ((d, loc), sm) =
       | L.DJavaScript s => (SOME (L'.DJavaScript s, loc), NONE, sm)
       | L.DCookie args => (SOME (L'.DCookie args, loc), NONE, sm)
       | L.DStyle args => (SOME (L'.DStyle args, loc), NONE, sm)
-      | L.DInitializer e =>
-        (case #1 e of
+      | L.DTask (e1, e2) =>
+        (case #1 e2 of
              L.EAbs (_, _, _, e) =>
              let
+                 val tk = case #1 e1 of
+                              L.EFfi ("Basis", "initialize") => L'.Initialize
+                            | _ => (ErrorMsg.errorAt loc "Task kind not fully determined";
+                                    L'.Initialize)
                  val (e, sm) = cifyExp (e, sm)
              in
-                 (SOME (L'.DInitializer e, loc), NONE, sm)
+                 (SOME (L'.DTask (tk, e), loc), NONE, sm)
              end
            | _ => (ErrorMsg.errorAt loc "Initializer has not been fully determined";
                    (NONE, NONE, sm)))

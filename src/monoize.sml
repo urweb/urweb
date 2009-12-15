@@ -3478,13 +3478,14 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                       [(L'.DStyle s, loc),
                        (L'.DVal (x, n, t', e, s), loc)])
             end
-          | L.DInitializer e =>
+          | L.DTask (e1, e2) =>
             let
-                val (e, fm) = monoExp (env, St.empty, fm) e
+                val (e1, fm) = monoExp (env, St.empty, fm) e1
+                val (e2, fm) = monoExp (env, St.empty, fm) e2
             in
                 SOME (env,
                       fm,
-                      [(L'.DInitializer e, loc)])
+                      [(L'.DTask (e1, e2), loc)])
             end
     end
 

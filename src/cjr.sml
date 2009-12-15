@@ -100,6 +100,8 @@ datatype exp' =
 
 withtype exp = exp' located
 
+datatype task = Initialize
+
 datatype decl' =
          DStruct of int * (string * typ) list
        | DDatatype of (datatype_kind * string * int * (string * int * typ option) list) list
@@ -118,7 +120,7 @@ datatype decl' =
        | DCookie of string
        | DStyle of string
 
-       | DInitializer of exp
+       | DTask of task * exp
 
 withtype decl = decl' located
 

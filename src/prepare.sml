@@ -325,11 +325,11 @@ fun prepDecl (d as (_, loc), st) =
       | DJavaScript _ => (d, st)
       | DCookie _ => (d, st)
       | DStyle _ => (d, st)
-      | DInitializer e =>
+      | DTask (tk, e) =>
         let
             val (e, st) = prepExp (e, st)
         in
-            ((DInitializer e, loc), st)
+            ((DTask (tk, e), loc), st)
         end
 
 fun prepare (ds, ps) =

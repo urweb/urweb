@@ -2099,7 +2099,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                          space,
                          string "*/"]
 
-      | DInitializer _ => box []
+      | DTask _ => box []
 
 datatype 'a search =
          Found of 'a
@@ -2733,7 +2733,7 @@ fun p_file env (ds, ps) =
                  string "}",
                  newline]
 
-        val initializers = List.mapPartial (fn (DInitializer e, _) => SOME e | _ => NONE) ds
+        val initializers = List.mapPartial (fn (DTask (Initialize, e), _) => SOME e | _ => NONE) ds
     in
         box [string "#include <stdio.h>",
              newline,

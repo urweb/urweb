@@ -713,9 +713,13 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DStyle (_, x, n) => box [string "style",
                                  space,
                                  p_named x n]
-      | DInitializer e => box [string "initializer",
+      | DTask (e1, e2) => box [string "task",
                                space,
-                               p_exp env e]
+                               p_exp env e1,
+                               space,
+                               string "=",
+                               space,
+                               p_exp env e2]
 
 and p_str env (str, _) =
     case str of

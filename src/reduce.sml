@@ -804,11 +804,12 @@ fun reduce file =
               | DDatabase _ => (d, st)
               | DCookie (s, n, c, s') => ((DCookie (s, n, con namedC [] c, s'), loc), st)
               | DStyle (s, n, s') => ((DStyle (s, n, s'), loc), st)
-              | DInitializer e =>
+              | DTask (e1, e2) =>
                 let
-                    val e = exp (namedC, namedE) [] e
+                    val e1 = exp (namedC, namedE) [] e1
+                    val e2 = exp (namedC, namedE) [] e2
                 in
-                    ((DInitializer e, loc),
+                    ((DTask (e1, e2), loc),
                      (polyC,
                       namedC,
                       namedE))

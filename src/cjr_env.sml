@@ -171,6 +171,6 @@ fun declBinds env (d, loc) =
       | DJavaScript _ => env
       | DCookie _ => env
       | DStyle _ => env
-      | DInitializer _ => env
+      | DTask _ => env
 
 end

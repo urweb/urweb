@@ -79,7 +79,7 @@ fun shake file =
                     in
                         (usedE, usedC)
                     end
-                  | ((DInitializer e, _), st) => usedVars st e
+                  | ((DTask (e1, e2), _), st) => usedVars (usedVars st e1) e2
                   | (_, acc) => acc) (IS.empty, IS.empty) file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
@@ -106,7 +106,7 @@ fun shake file =
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
                                    | ((DStyle (_, n, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], dummyt, dummye)))
-                                   | ((DInitializer _, _), acc) => acc)
+                                   | ((DTask _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
         fun kind (_, s) = s
@@ -186,7 +186,7 @@ fun shake file =
                       | (DDatabase _, _) => true
                       | (DCookie _, _) => true
                       | (DStyle _, _) => true
-                      | (DInitializer _, _) => true) file
+                      | (DTask _, _) => true) file
     end
 
 end

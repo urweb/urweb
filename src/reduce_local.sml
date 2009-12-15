@@ -251,7 +251,7 @@ fun reduce file =
               | DDatabase _ => d
               | DCookie _ => d
               | DStyle _ => d
-              | DInitializer e => (DInitializer (exp [] e), loc)
+              | DTask (e1, e2) => (DTask (exp [] e1, exp [] e2), loc)
     in
         map doDecl file
     end

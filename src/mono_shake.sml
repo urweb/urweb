@@ -57,7 +57,7 @@ fun shake file =
                 (fn ((DExport (_, _, n, _, _), _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
                   | ((DDatabase {expunge = n1, initialize = n2, ...}, _), (page_cs, page_es)) =>
                     (page_cs, IS.addList (page_es, [n1, n2]))
-                  | ((DInitializer e, _), st) => usedVars st e
+                  | ((DTask (e1, e2), _), st) => usedVars (usedVars st e2) e1
                   | (_, st) => st) (IS.empty, IS.empty) file
 
         val (cdef, edef) = foldl (fn ((DDatatype dts, _), (cdef, edef)) =>
@@ -74,7 +74,7 @@ fun shake file =
                                    | ((DJavaScript _, _), acc) => acc
                                    | ((DCookie _, _), acc) => acc
                                    | ((DStyle _, _), acc) => acc
-                                   | ((DInitializer _, _), acc) => acc)
+                                   | ((DTask _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
         fun typ (c, s) =
@@ -141,7 +141,7 @@ fun shake file =
                       | (DJavaScript _, _) => true
                       | (DCookie _, _) => true
                       | (DStyle _, _) => true
-                      | (DInitializer _, _) => true) file
+                      | (DTask _, _) => true) file
     end
 
 end

@@ -854,7 +854,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                                                 c), loc)))
                                                  | DStyle (tn, x, n) =>
                                                    bind (ctx, NamedE (x, (CModProj (n, [], "css_class"), loc)))
-                                                 | DInitializer _ => ctx,
+                                                 | DTask _ => ctx,
                                                mfd ctx d)) ctx ds,
                      fn ds' => (StrConst ds', loc))
               | StrVar _ => S.return2 strAll
@@ -979,10 +979,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                         fn c' =>
                            (DCookie (tn, x, n, c'), loc))
               | DStyle _ => S.return2 dAll
-              | DInitializer e =>
-                S.map2 (mfe ctx e,
-                        fn e' =>
-                           (DInitializer e', loc))
+              | DTask (e1, e2) =>
+                S.bind2 (mfe ctx e1,
+                        fn e1' =>
+                           S.map2 (mfe ctx e2,
+                                fn e2' =>
+                                   (DTask (e1', e2'), loc)))
 
         and mfvi ctx (x, n, c, e) =
             S.bind2 (mfc ctx c,
@@ -1125,7 +1127,7 @@ and maxNameDecl (d, _) =
       | DDatabase _ => 0
       | DCookie (n1, _, n2, _) => Int.max (n1, n2)
       | DStyle (n1, _, n2) => Int.max (n1, n2)
-      | DInitializer _ => 0
+      | DTask _ => 0
 and maxNameStr (str, _) =
     case str of
         StrConst ds => maxName ds

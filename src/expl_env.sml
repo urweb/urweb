@@ -343,7 +343,7 @@ fun declBinds env (d, loc) =
         in
             pushENamed env x n t
         end
-      | DInitializer _ => env
+      | DTask _ => env
 
 fun sgiBinds env (sgi, loc) =
     case sgi of
