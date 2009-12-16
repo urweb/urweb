@@ -4,9 +4,9 @@ table t : { Id : int, Parent : option int, Nam : string }
   CONSTRAINT F FOREIGN KEY Parent REFERENCES t (Id) ON DELETE CASCADE
 
 open TreeFun.Make(struct
-                      val tab = t
                       con id = #Id
                       con parent = #Parent
+                      val tab = t
                   end)
 
 fun row r = <xml>

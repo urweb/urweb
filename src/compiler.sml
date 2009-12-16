@@ -71,10 +71,20 @@ type ('src, 'dst) transform = {
      time : 'src * pmap -> 'dst option * pmap
 }
 
+val debug = ref false
+
 fun transform (ph : ('src, 'dst) phase) name = {
     func = fn input => let
+                  val () = if !debug then
+                               print ("Starting " ^ name ^ "....\n")
+                           else
+                               ()
                   val v = #func ph input
               in
+                  if !debug then
+                      print ("Finished " ^ name ^ ".\n")
+                  else
+                      ();
                   if ErrorMsg.anyErrors () then
                       NONE
                   else

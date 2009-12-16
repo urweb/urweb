@@ -27,7 +27,7 @@
 
 structure Demo :> DEMO = struct
 
-fun make {prefix, dirname, guided} =
+fun make' {prefix, dirname, guided} =
     let
         val prose = OS.Path.joinDirFile {dir = dirname,
                                          file = "prose"}
@@ -430,13 +430,23 @@ fun make {prefix, dirname, guided} =
 
                 TextIO.closeOut outf;
 
-                Compiler.compiler (OS.Path.base fname)
-            end;
-
-        TextIO.output (demosOut, "\n</body></html>\n");
-        TextIO.closeOut demosOut;
-
-        prettyPrint ()
+                let
+                    val b = Compiler.compile (OS.Path.base fname)
+                in
+                    TextIO.output (demosOut, "\n</body></html>\n");
+                    TextIO.closeOut demosOut;
+                    if b then
+                        prettyPrint ()
+                    else
+                        ();
+                    b
+                end
+            end
     end
+
+fun make args = if make' args then
+                    ()
+                else
+                    OS.Process.exit OS.Process.failure
 
 end

@@ -152,4 +152,6 @@ signature COMPILER = sig
     val toChecknest : (string, Cjr.file) transform
     val toSqlify : (string, Cjr.file) transform
 
+    val debug : bool ref
+
 end
