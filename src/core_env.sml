@@ -368,4 +368,13 @@ fun patBindsN (p, loc) =
       | PCon (_, _, _, SOME p) => patBindsN p
       | PRecord xps => foldl (fn ((_, p, _), count) => count + patBindsN p) 0 xps
 
+fun patBindsL (p, loc) =
+    case p of
+        PWild => []
+      | PVar (x, t) => [(x, t)]
+      | PPrim _ => []
+      | PCon (_, _, _, NONE) => []
+      | PCon (_, _, _, SOME p) => patBindsL p
+      | PRecord xps => rev (ListUtil.mapConcat (rev o patBindsL o #2) xps)
+
 end

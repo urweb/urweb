@@ -129,6 +129,9 @@ fun shake file =
 
         and shakeCon s = U.Con.fold {kind = kind, con = con} s
 
+        (*val () = print "=====\nSHAKE\n=====\n"
+        val current = ref 0*)
+
         fun exp (e, s) =
             let
                 fun check n =
@@ -139,13 +142,16 @@ fun shake file =
                             val s' = {exp = IS.add (#exp s, n),
                                       con = #con s}
                         in
-                            (*print ("Need " ^ Int.toString n ^ "\n");*)
+                            (*print ("Need " ^ Int.toString n ^ " <-- " ^ Int.toString (!current) ^ "\n");*)
                             case IM.find (edef, n) of
                                 NONE => s'
                               | SOME (ns, t, e) =>
                                 let
+                                    (*val old = !current
+                                    val () = current := n*)
                                     val s' = shakeExp (shakeCon s' t) e
                                 in
+                                    (*current := old;*)
                                     foldl (fn (n, s') => exp (ENamed n, s')) s' ns
                                 end
                         end
@@ -165,6 +171,7 @@ fun shake file =
                                  NONE => raise Fail "Shake: Couldn't find 'val'"
                                | SOME (ns, t, e) =>
                                  let
+                                     (*val () = current := n*)
                                      val s = shakeExp (shakeCon s t) e
                                  in
                                      foldl (fn (n, s) => exp (ENamed n, s)) s ns
