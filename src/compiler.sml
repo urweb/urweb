@@ -104,20 +104,6 @@ fun transform (ph : ('src, 'dst) phase) name = {
               end
 }
 
-fun op o (tr2 : ('b, 'c) transform, tr1 : ('a, 'b) transform) = {
-    func = fn input => case #func tr1 input of
-                           NONE => NONE
-                         | SOME v => #func tr2 v,
-    print = #print tr2,
-    time = fn (input, pmap) => let
-                  val (ro, pmap) = #time tr1 (input, pmap)
-              in
-                  case ro of
-                      NONE => (NONE, pmap)
-                    | SOME v => #time tr2 (v, pmap)
-              end
-}
-
 fun check (tr : ('src, 'dst) transform) x = (ErrorMsg.resetErrors ();
                                              ignore (#func tr x))
 
@@ -284,9 +270,10 @@ structure M = BinaryMapFn(struct
                           val compare = String.compare
                           end)
 
-fun parseUrp' fname =
+fun parseUrp' accLibs fname =
     let
         val pathmap = ref (M.insert (M.empty, "", Config.libUr))
+        val bigLibs = ref []
 
         fun pu filename =
             let
@@ -431,7 +418,10 @@ fun parseUrp' fname =
                             dbms = mergeO #2 (#dbms old, #dbms new)
                         }
                     in
-                        foldr (fn (job', job) => merge (job, job')) job (!libs)
+                        if accLibs then
+                            foldr (fn (job', job) => merge (job, job')) job (!libs)
+                        else
+                            job
                     end
 
                 fun parsePkind s =
@@ -568,7 +558,10 @@ fun parseUrp' fname =
                                          fkind := {action = Settings.Deny, kind = kind, pattern = pattern} :: !fkind
                                      end
                                    | _ => ErrorMsg.error "Bad 'deny' syntax")
-                              | "library" => libs := pu (relify arg) :: !libs
+                              | "library" => if accLibs then
+                                                 libs := pu (relify arg) :: !libs
+                                             else
+                                                 bigLibs := relify arg :: !bigLibs
                               | "path" =>
                                 (case String.fields (fn ch => ch = #"=") arg of
                                      [n, v] => pathmap := M.insert (!pathmap, n, v)
@@ -597,15 +590,37 @@ fun parseUrp' fname =
                 job
             end
     in
-        pu fname
+        {Job = pu fname, Libs = !bigLibs}
     end
 
+fun p_job' {Job = j, Libs = _ : string list} = p_job j
+
 val parseUrp = {
-    func = parseUrp',
+    func = #Job o parseUrp' false,
     print = p_job
 }
 
+val parseUrp' = {
+    func = parseUrp' true,
+    print = p_job'
+}
+
 val toParseJob = transform parseUrp "parseJob"
+val toParseJob' = transform parseUrp' "parseJob'"
+
+fun op o (tr2 : ('b, 'c) transform, tr1 : ('a, 'b) transform) = {
+    func = fn input => case #func tr1 input of
+                           NONE => NONE
+                         | SOME v => #func tr2 v,
+    print = #print tr2,
+    time = fn (input, pmap) => let
+                  val (ro, pmap) = #time tr1 (input, pmap)
+              in
+                  case ro of
+                      NONE => (NONE, pmap)
+                    | SOME v => #time tr2 (v, pmap)
+              end
+}
 
 fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)

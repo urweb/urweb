@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,6 +73,7 @@ signature COMPILER = sig
     val parseUr : (string, Source.file) phase
     val parseUrs : (string, Source.sgn_item list) phase
     val parseUrp : (string, job) phase
+    val parseUrp' : (string, {Job : job, Libs : string list}) phase
 
     val parse : (job, Source.file) phase
     val elaborate : (Source.file, Elab.file) phase
@@ -104,6 +105,7 @@ signature COMPILER = sig
     val sqlify : (Mono.file, Cjr.file) phase
 
     val toParseJob : (string, job) transform
+    val toParseJob' : (string, {Job : job, Libs : string list}) transform
     val toParse : (string, Source.file) transform
     val toElaborate : (string, Elab.file) transform
     val toUnnest : (string, Elab.file) transform
