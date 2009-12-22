@@ -484,6 +484,11 @@ val sql_ufunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
 val sql_octet_length : sql_ufunc blob int
 
 
+val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+                   -> sql_injectable_prim t
+                   -> sql_exp tables agg exps t
+                   -> sql_exp tables agg exps (option t)
+
 (*** Executing queries *)
 
 val query : tables ::: {{Type}} -> exps ::: {Type}

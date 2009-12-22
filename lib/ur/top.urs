@@ -118,6 +118,11 @@ val foldRX3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Typ
               -> r :: {K} -> folder r
               -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> xml ctx [] []
 
+val queryL : tables ::: {{Type}} -> exps ::: {Type}
+             -> [tables ~ exps] =>
+                  sql_query tables exps
+                  -> transaction (list $(exps ++ map (fn fields :: {Type} => $fields) tables))
+
 val queryI : tables ::: {{Type}} -> exps ::: {Type}
              -> [tables ~ exps] =>
              sql_query tables exps
