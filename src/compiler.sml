@@ -596,12 +596,12 @@ fun parseUrp' accLibs fname =
 fun p_job' {Job = j, Libs = _ : string list} = p_job j
 
 val parseUrp = {
-    func = #Job o parseUrp' false,
+    func = #Job o parseUrp' true,
     print = p_job
 }
 
 val parseUrp' = {
-    func = parseUrp' true,
+    func = parseUrp' false,
     print = p_job'
 }
 

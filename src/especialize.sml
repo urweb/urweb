@@ -324,10 +324,13 @@ fun specialize' (funcs, specialized) file =
                                                  | _ => false) fxs'
                                orelse (IS.numItems fvs >= length fxs
                                        andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs) then
-                                default ()
+                                ((*Print.prefaces "No" [("name", Print.PD.string name),
+                                                      ("fxs'",
+                                                       Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
+                                 default ())
                             else
                                 case (KM.find (args, fxs'),
-                                      SS.member (!mayNotSpec, name) orelse IS.member (#specialized st, f)) of
+                                      SS.member (!mayNotSpec, name) (*orelse IS.member (#specialized st, f)*)) of
                                     (SOME f', _) =>
                                     let
                                         val e = (ENamed f', loc)
@@ -340,7 +343,7 @@ fun specialize' (funcs, specialized) file =
                                                        [("e'", CorePrint.p_exp CoreEnv.empty e)];*)
                                         (e, st)
                                     end
-                                  | (_, true) => ((*Print.prefaces ("No(" ^ name ^ ")")
+                                  | (_, true) => ((*Print.prefaces ("No!(" ^ name ^ ")")
                                                                  [("fxs'",
                                                                    Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
                                                   default ())

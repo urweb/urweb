@@ -6,6 +6,7 @@
 #include "types.h"
 
 int uw_really_send(int sock, const void *buf, ssize_t len);
+int uw_really_write(int fd, const void *buf, size_t len);
 
 extern uw_unit uw_unit_v;
 

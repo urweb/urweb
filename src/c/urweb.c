@@ -2773,11 +2773,13 @@ void uw_commit(uw_context ctx) {
 
   for (i = 0; i < ctx->used_transactionals; ++i)
     if (ctx->transactionals[i].rollback != NULL)
-      ctx->transactionals[i].commit(ctx->transactionals[i].data);
+      if (ctx->transactionals[i].commit)
+        ctx->transactionals[i].commit(ctx->transactionals[i].data);
 
   for (i = 0; i < ctx->used_transactionals; ++i)
     if (ctx->transactionals[i].rollback == NULL)
-      ctx->transactionals[i].commit(ctx->transactionals[i].data);
+      if (ctx->transactionals[i].commit)
+        ctx->transactionals[i].commit(ctx->transactionals[i].data);
 
   if (uw_db_commit(ctx))
     uw_error(ctx, FATAL, "Error running SQL COMMIT");
@@ -2795,7 +2797,8 @@ void uw_commit(uw_context ctx) {
     release_client(ctx->client);
 
   for (i = 0; i < ctx->used_transactionals; ++i)
-    ctx->transactionals[i].free(ctx->transactionals[i].data);
+    if (ctx->transactionals[i].free)
+      ctx->transactionals[i].free(ctx->transactionals[i].data);
 
   // Splice script data into appropriate part of page
   if (ctx->returning_indirectly || ctx->script_header[0] == 0) {
@@ -2855,9 +2858,6 @@ int uw_rollback(uw_context ctx) {
 
 void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
                                uw_callback free) {
-  if (commit == NULL)
-    uw_error(ctx, FATAL, "uw_register_transactional: NULL commit callback");
-
   if (ctx->used_transactionals >= ctx->n_transactionals) {
     ctx->transactionals = realloc(ctx->transactionals, ctx->used_transactionals+1);
     ++ctx->n_transactionals;
