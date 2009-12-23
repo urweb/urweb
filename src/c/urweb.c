@@ -2851,7 +2851,8 @@ int uw_rollback(uw_context ctx) {
       ctx->transactionals[i].rollback(ctx->transactionals[i].data);
 
   for (i = 0; i < ctx->used_transactionals; ++i)
-    ctx->transactionals[i].free(ctx->transactionals[i].data);
+    if (ctx->transactionals[i].free)
+      ctx->transactionals[i].free(ctx->transactionals[i].data);
 
   return uw_db_rollback(ctx);
 }
@@ -2859,7 +2860,7 @@ int uw_rollback(uw_context ctx) {
 void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
                                uw_callback free) {
   if (ctx->used_transactionals >= ctx->n_transactionals) {
-    ctx->transactionals = realloc(ctx->transactionals, ctx->used_transactionals+1);
+    ctx->transactionals = realloc(ctx->transactionals, sizeof(transactional) * (ctx->used_transactionals+1));
     ++ctx->n_transactionals;
   }
 

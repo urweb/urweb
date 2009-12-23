@@ -561,7 +561,7 @@ fun parseUrp' accLibs fname =
                               | "library" => if accLibs then
                                                  libs := pu (relify arg) :: !libs
                                              else
-                                                 bigLibs := relify arg :: !bigLibs
+                                                 bigLibs := arg :: !bigLibs
                               | "path" =>
                                 (case String.fields (fn ch => ch = #"=") arg of
                                      [n, v] => pathmap := M.insert (!pathmap, n, v)
