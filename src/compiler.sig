@@ -157,5 +157,6 @@ signature COMPILER = sig
     val debug : bool ref
 
     val addPath : string * string -> unit
+    val addModuleRoot : string * string -> unit
 
 end

@@ -643,9 +643,24 @@ fun op o (tr2 : ('b, 'c) transform, tr1 : ('a, 'b) transform) = {
 fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
+structure SM = BinaryMapFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
+val moduleRoots = ref ([] : (string * string) list)
+fun addModuleRoot (k, v) = moduleRoots := (k, v) :: !moduleRoots
+
+structure SS = BinarySetFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
 val parse = {
     func = fn {database, sources = fnames, ffi, ...} : job =>
               let
+                  val mrs = !moduleRoots
+
                   val anyErrors = ref false
                   fun checkErrors () = anyErrors := (!anyErrors orelse ErrorMsg.anyErrors ())
                   fun nameOf fname = capitalize (OS.Path.file fname)
@@ -664,6 +679,8 @@ val parse = {
                           checkErrors ();
                           (Source.DFfiStr (mname, sgn), loc)
                       end
+
+                  val defed = ref SS.empty
 
                   fun parseOne fname =
                       let
@@ -686,13 +703,51 @@ val parse = {
                                      last = ErrorMsg.dummyPos}
 
                           val ds = #func parseUr ur
+                          val d = (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
+
+                          val d = case List.find (fn (root, name) =>
+                                                     String.isPrefix (root ^ "/") fname) mrs of
+                                      NONE => d
+                                    | SOME (root, name) =>
+                                      let
+                                          val fname = String.extract (fname, size root + 1, NONE)
+                                          val pieces = name :: String.tokens (fn ch => ch = #"/") fname
+                                          val pieces = List.filter (fn s => size s > 0
+                                                                            andalso Char.isAlpha (String.sub (s, 0)))
+                                                                   pieces
+                                          val pieces = map capitalize pieces
+
+                                          fun makeD prefix pieces =
+                                              case pieces of
+                                                  [] => (ErrorMsg.error "Empty module path";
+                                                         (Source.DStyle "Boo", loc))
+                                                | [_] => d
+                                                | piece :: pieces =>
+                                                  let
+                                                      val this = prefix ^ "." ^ piece
+                                                      val old = SS.member (!defed, this)
+                                                  in
+                                                      defed := SS.add (!defed, this);
+                                                      (Source.DStr (piece, NONE,
+                                                                    (Source.StrConst (if old then
+                                                                                          [(Source.DOpen (piece, []),
+                                                                                            loc),
+                                                                                           makeD prefix pieces]
+                                                                                      else
+                                                                                          [makeD prefix pieces]), loc)),
+                                                       loc)
+                                                  end
+                                      in
+                                          makeD "" pieces
+                                      end
                       in
                           checkErrors ();
-                          (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
+                          d
                       end
 
                   val dsFfi = map parseFfi ffi
                   val ds = map parseOne fnames
+                  val loc = ErrorMsg.dummySpan
               in
                   if !anyErrors then
                       ErrorMsg.error "Parse failure"
@@ -703,11 +758,13 @@ val parse = {
                       val final = nameOf (List.last fnames)
 
                       val ds = dsFfi @ ds
-                               @ [(Source.DExport (Source.StrVar final, ErrorMsg.dummySpan), ErrorMsg.dummySpan)]
+                               @ [(Source.DExport (Source.StrVar final, loc), loc)]
+
+                      val ds = case database of
+                                   NONE => ds
+                                 | SOME s => (Source.DDatabase s, loc) :: ds
                   in
-                      case database of
-                          NONE => ds
-                        | SOME s => (Source.DDatabase s, ErrorMsg.dummySpan) :: ds
+                      ds
                   end handle Empty => ds
               end,
     print = SourcePrint.p_file
