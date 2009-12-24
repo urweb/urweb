@@ -26,6 +26,7 @@
  *)
 
 val timing = ref false
+val tc = ref false
 val sources = ref ([] : string list)
 val demo = ref (NONE : (string * bool) option)
 
@@ -53,6 +54,9 @@ fun doArgs args =
       | "-timing" :: rest =>
         (timing := true;
          doArgs rest)
+      | "-tc" :: rest =>
+        (tc := true;
+         doArgs rest)
       | "-output" :: s :: rest =>
         (Settings.setExe (SOME s);
          doArgs rest)
@@ -78,7 +82,13 @@ val () =
         SOME (prefix, guided) =>
         Demo.make {prefix = prefix, dirname = job, guided = guided}
       | NONE =>
-        if !timing then
+        if !tc then
+            (Compiler.check Compiler.toElaborate job;
+             if ErrorMsg.anyErrors () then
+                 OS.Process.exit OS.Process.failure
+             else
+                 ())
+        else if !timing then
             Compiler.time Compiler.toCjrize job
         else
             Compiler.compiler job
