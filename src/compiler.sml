@@ -270,9 +270,13 @@ structure M = BinaryMapFn(struct
                           val compare = String.compare
                           end)
 
+val pathmap = ref (M.insert (M.empty, "", Config.libUr))
+
+fun addPath (k, v) = pathmap := M.insert (!pathmap, k, v)
+
 fun parseUrp' accLibs fname =
     let
-        val pathmap = ref (M.insert (M.empty, "", Config.libUr))
+        val pathmap = ref (!pathmap)
         val bigLibs = ref []
 
         fun pu filename =
@@ -303,6 +307,20 @@ fun parseUrp' accLibs fname =
                         OS.Path.concat (dir, fname)
                         handle OS.Path.Path => fname
                     end
+
+                fun libify path =
+                    (if Posix.FileSys.access (path ^ ".urp", []) then
+                         path
+                     else
+                         path ^ "/lib")
+                    handle SysErr => path
+
+                fun libify' path =
+                    (if Posix.FileSys.access (relify path ^ ".urp", []) then
+                         path
+                     else
+                         path ^ "/lib")
+                    handle SysErr => path
 
                 val absDir = OS.Path.mkAbsolute {path = dir, relativeTo = OS.FileSys.getDir ()}
 
@@ -559,9 +577,9 @@ fun parseUrp' accLibs fname =
                                      end
                                    | _ => ErrorMsg.error "Bad 'deny' syntax")
                               | "library" => if accLibs then
-                                                 libs := pu (relify arg) :: !libs
+                                                 libs := pu (libify (relify arg)) :: !libs
                                              else
-                                                 bigLibs := arg :: !bigLibs
+                                                 bigLibs := libify' arg :: !bigLibs
                               | "path" =>
                                 (case String.fields (fn ch => ch = #"=") arg of
                                      [n, v] => pathmap := M.insert (!pathmap, n, v)

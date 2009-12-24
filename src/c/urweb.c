@@ -468,7 +468,8 @@ void uw_free(uw_context ctx) {
     buf_free(&ctx->deltas[i].msgs);
 
   for (i = 0; i < ctx->n_globals; ++i)
-    ctx->globals[i].free(ctx->globals[i].data);
+    if (ctx->globals[i].free)
+      ctx->globals[i].free(ctx->globals[i].data);
 
   free(ctx);
 }
@@ -3177,17 +3178,15 @@ void *uw_get_global(uw_context ctx, char *name) {
 void uw_set_global(uw_context ctx, char *name, void *data, void (*free)(void*)) {
   int i;
 
-  if (data == NULL) uw_error(ctx, FATAL, "NULL data value for global '%s'", name);
-
   for (i = 0; i < ctx->n_globals; ++i)
     if (!strcmp(name, ctx->globals[i].name)) {
-      if (ctx->globals[i].data)
+      if (ctx->globals[i].free)
         ctx->globals[i].free(ctx->globals[i].data);
       ctx->globals[i].data = data;
       ctx->globals[i].free = free;
       return;
     }
-      
+
   ++ctx->n_globals;
   ctx->globals = realloc(ctx->globals, ctx->n_globals * sizeof(global));
   ctx->globals[ctx->n_globals-1].name = name;
