@@ -1590,7 +1590,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
     *p++ = '_';
 
   for (; *s; s++) {
-    char c = *s;
+    unsigned char c = *s;
 
     if (c == ' ')
       *p++ = '+';
@@ -1667,7 +1667,7 @@ uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
     uw_writec_unsafe(ctx, '_');
 
   for (; *s; s++) {
-    char c = *s;
+    unsigned char c = *s;
 
     if (c == ' ')
       uw_writec_unsafe(ctx, '+');
@@ -1737,7 +1737,7 @@ static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char
   }
 
   for (s1 = r; *s2; ++s1, ++s2) {
-    char c = *s2;
+    unsigned char c = *s2;
 
     switch (c) {
     case '+':
