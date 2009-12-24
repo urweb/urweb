@@ -425,6 +425,7 @@ $$\begin{array}{rrcll}
   &&& \mt{cookie} \; x : \tau & \textrm{HTTP cookie} \\
   &&& \mt{style} \; x : \tau & \textrm{CSS class} \\
   &&& \mt{class} \; x :: \kappa = c & \textrm{concrete constructor class} \\
+  &&& \mt{task} \; e = e & \textrm{recurring task} \\
   \\
   \textrm{Modules} & M &::=& \mt{struct} \; d^* \; \mt{end} & \textrm{constant} \\
   &&& X & \textrm{variable} \\
@@ -894,6 +895,11 @@ $$\infer{\Gamma \vdash \mt{cookie} \; x : \tau \leadsto \Gamma, x : \mt{Basis}.\
 }
 \quad \infer{\Gamma \vdash \mt{style} \; x \leadsto \Gamma, x : \mt{Basis}.\mt{css\_class}}{}$$
 
+$$\infer{\Gamma \vdash \mt{task} \; e_1 = e_2 \leadsto \Gamma}{
+  \Gamma \vdash e_1 :: \mt{Basis}.\mt{task\_kind}
+  & \Gamma \vdash e_2 :: \mt{Basis}.\mt{transaction} \; \{\}
+}$$
+
 $$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa = c}{
   \Gamma \vdash c :: \kappa
 }$$
@@ -1300,6 +1306,17 @@ $$\begin{array}{l}
 \end{array}$$
 $\mt{bless}$ raises a runtime error if the string passed to it fails the URL policy.
 
+It is possible to grab the current page's URL or to build a URL for an arbitrary transaction that would also be an acceptable value of a \texttt{link} attribute of the \texttt{a} tag.
+$$\begin{array}{l}
+  \mt{val} \; \mt{currentUrl} : \mt{transaction} \; \mt{url} \\
+  \mt{val} \; \mt{url} : \mt{transaction} \; \mt{page} \to \mt{url}
+\end{array}$$
+
+Page generation may be interrupted at any time with a request to redirect to a particular URL instead.
+$$\begin{array}{l}
+  \mt{val} \; \mt{redirect} : \mt{t} ::: \mt{Type} \to \mt{url} \to \mt{transaction} \; \mt{t}
+\end{array}$$
+
 It's possible for pages to return files of arbitrary MIME types.  A file can be input from the user using this data type, along with the $\mt{upload}$ form tag.
 $$\begin{array}{l}
   \mt{type} \; \mt{file} \\
@@ -1470,12 +1487,14 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{grouped} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \{\mt{Distinct} : \mt{bool}, \\
+  \hspace{.1in} \to \mt{empties} :: \{\mt{Unit}\} \\
+  \hspace{.1in} \to [\mt{empties} \sim \mt{selectedFields}] \\
+  \hspace{.1in} \Rightarrow \{\mt{Distinct} : \mt{bool}, \\
   \hspace{.2in} \mt{From} : \mt{sql\_from\_items} \; \mt{tables}, \\
   \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; \mt{tables} \; [] \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{GroupBy} : \mt{sql\_subset} \; \mt{tables} \; \mt{grouped}, \\
   \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; [] \; \mt{bool}, \\
-  \hspace{.2in} \mt{SelectFields} : \mt{sql\_subset} \; \mt{grouped} \; \mt{selectedFields}, \\
+  \hspace{.2in} \mt{SelectFields} : \mt{sql\_subset} \; \mt{grouped} \; (\mt{map} \; (\lambda \_ \Rightarrow []) \; \mt{empties} \rc \mt{selectedFields}), \\
   \hspace{.2in} \mt {SelectExps} : \$(\mt{map} \; (\mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; []) \; \mt{selectedExps}) \} \\
   \hspace{.1in} \to \mt{sql\_query1} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
@@ -1683,7 +1702,8 @@ SQL sequences are counters with concurrency control, often used to assign unique
 
 $$\begin{array}{l}
   \mt{type} \; \mt{sql\_sequence} \\
-  \mt{val} \; \mt{nextval} : \mt{sql\_sequence} \to \mt{transaction} \; \mt{int}
+  \mt{val} \; \mt{nextval} : \mt{sql\_sequence} \to \mt{transaction} \; \mt{int} \\
+  \mt{val} \; \mt{setval} : \mt{sql\_sequence} \to \mt{int} \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
 
@@ -1857,8 +1877,8 @@ Queries $Q$ are added to the rules for expressions $e$.
 
 $$\begin{array}{rrcll}
   \textrm{Queries} & Q &::=& (q \; [\mt{ORDER} \; \mt{BY} \; (E \; [o],)^+] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N]) \\
-  \textrm{Pre-queries} & q &::=& \mt{SELECT} \; [\mt{DISTINCT}] \; P \; \mt{FROM} \; T,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
-  &&& \mid q \; R \; q \\
+  \textrm{Pre-queries} & q &::=& \mt{SELECT} \; [\mt{DISTINCT}] \; P \; \mt{FROM} \; F,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
+  &&& \mid q \; R \; q \mid \{\{\{e\}\}\} \\
   \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT}
 \end{array}$$
 
@@ -1875,6 +1895,10 @@ $$\begin{array}{rrcll}
   \textrm{Tables} & T &::=& x & \textrm{table variable, named locally by its own capitalization} \\
   &&& x \; \mt{AS} \; t & \textrm{table variable, with local name} \\
   &&& \{\{e\}\} \; \mt{AS} \; t & \textrm{computed table expression, with local name} \\
+  \textrm{$\mt{FROM}$ items} & F &::=& T \mid \{\{e\}\} \mid F \; J \; \mt{JOIN} \; F \; \mt{ON} \; E \\
+  &&& \mid F \; \mt{CROSS} \; \mt{JOIN} \ F \\
+  \textrm{Joins} & J &::=& [\mt{INNER}] \\
+  &&& \mid [\mt{LEFT} \mid \mt{RIGHT} \mid \mt{FULL}] \; [\mt{OUTER}] \\
   \textrm{SQL expressions} & E &::=& p & \textrm{column references} \\
   &&& X & \textrm{named expression references} \\
   &&& \{\{e\}\} & \textrm{injected native Ur expressions} \\
@@ -1897,7 +1921,7 @@ $$\begin{array}{rrcll}
   \textrm{SQL integer} & N &::=& n \mid \{e\} \\
 \end{array}$$
 
-Additionally, an SQL expression may be inserted into normal Ur code with the syntax $(\mt{SQL} \; E)$ or $(\mt{WHERE} \; E)$.
+Additionally, an SQL expression may be inserted into normal Ur code with the syntax $(\mt{SQL} \; E)$ or $(\mt{WHERE} \; E)$.  Similar shorthands exist for other nonterminals, with the prefix $\mt{FROM}$ for $\mt{FROM}$ items and $\mt{SELECT1}$ for pre-queries.
 
 \subsubsection{DML}
 
@@ -2005,9 +2029,15 @@ void uw_register_transactional(uw_context, void *data, uw_callback commit,
   \end{verbatim}
   All side effects in Ur/Web programs need to be compatible with transactions, such that any set of actions can be undone at any time.  Thus, you should not perform actions with non-local side effects directly; instead, register handlers to be called when the current transaction is committed or rolled back.  The arguments here give an arbitary piece of data to be passed to callbacks, a function to call on commit, a function to call on rollback, and a function to call afterward in either case to clean up any allocated resources.  A rollback handler may be called after the associated commit handler has already been called, if some later part of the commit process fails.
 
-  To accommodate some stubbornly non-transactional real-world actions like sending an e-mail message, Ur/Web allows the \texttt{rollback} parameter to be \texttt{NULL}.  When a transaction commits, all \texttt{commit} actions that have non-\texttt{NULL} rollback actions are tried before any \texttt{commit} actions that have \texttt{NULL} rollback actions.  Thus, if a single execution uses only one non-transactional action, and if that action never fails partway through its execution while still causing an observable side effect, then Ur/Web can maintain the transactional abstraction.
-\end{itemize}
+  Any of the callbacks may be \texttt{NULL}.  To accommodate some stubbornly non-transactional real-world actions like sending an e-mail message, Ur/Web treats \texttt{NULL} \texttt{rollback} callbacks specially.  When a transaction commits, all \texttt{commit} actions that have non-\texttt{NULL} rollback actions are tried before any \texttt{commit} actions that have \texttt{NULL} rollback actions.  Thus, if a single execution uses only one non-transactional action, and if that action never fails partway through its execution while still causing an observable side effect, then Ur/Web can maintain the transactional abstraction.
 
+  \item \begin{verbatim}
+void *uw_get_global(uw_context, char *name);
+void uw_set_global(uw_context, char *name, void *data, uw_callback free);
+  \end{verbatim}
+  Different FFI-based extensions may want to associate their own pieces of data with contexts.  The global interface provides a way of doing that, where each extension must come up with its own unique key.  The \texttt{free} argument to \texttt{uw\_set\_global()} explains how to deallocate the saved data.
+
+\end{itemize}
 
 \subsection{Writing JavaScript FFI Code}
 

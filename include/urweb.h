@@ -232,7 +232,7 @@ extern char *uw_sqlsuffixBlob;
 extern char *uw_sqlfmtUint4;
 
 void *uw_get_global(uw_context, char *name);
-void uw_set_global(uw_context, char *name, void *data, void (*free)(void*));
+void uw_set_global(uw_context, char *name, void *data, uw_callback free);
 
 uw_Basis_bool uw_Basis_isalnum(uw_context, uw_Basis_char);
 uw_Basis_bool uw_Basis_isalpha(uw_context, uw_Basis_char);
