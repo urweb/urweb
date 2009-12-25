@@ -431,7 +431,9 @@ fun parseUrp' accLibs fname =
                             rewrites = #rewrites old @ #rewrites new,
                             filterUrl = #filterUrl old @ #filterUrl new,
                             filterMime = #filterMime old @ #filterMime new,
-                            sources = #sources new @ #sources old,
+                            sources = #sources new
+                                      @ List.filter (fn s => List.all (fn s' => s' <> s) (#sources new))
+                                                    (#sources old),
                             protocol = mergeO #2 (#protocol old, #protocol new),
                             dbms = mergeO #2 (#dbms old, #dbms new)
                         }
@@ -681,6 +683,7 @@ val parse = {
                       end
 
                   val defed = ref SS.empty
+                  val fulls = ref SS.empty
 
                   fun parseOne fname =
                       let
@@ -716,6 +719,7 @@ val parse = {
                                                                             andalso Char.isAlpha (String.sub (s, 0)))
                                                                    pieces
                                           val pieces = map capitalize pieces
+                                          val full = String.concatWith "." pieces
 
                                           fun makeD prefix pieces =
                                               case pieces of
@@ -738,6 +742,12 @@ val parse = {
                                                        loc)
                                                   end
                                       in
+                                          if SS.member (!fulls, full) then
+                                              ErrorMsg.error ("Rooted module " ^ full ^ " has multiple versions.")
+                                          else
+                                              ();
+                                          fulls := SS.add (!fulls, full);
+
                                           makeD "" pieces
                                       end
                       in
