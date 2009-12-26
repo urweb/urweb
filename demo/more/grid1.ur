@@ -35,13 +35,13 @@ open Make(struct
                                                fun render r = r.A
                                            end)
 
-              val cols = {Id = Direct.readOnly [#Id] ! "Id" Direct.int,
-                          A = Direct.editable [#A] ! "A" Direct.int,
-                          B = Direct.editable [#B] ! "B" Direct.string,
-                          C = Direct.editable [#C] ! "C" Direct.bool,
-                          D = Direct.editable [#D] ! "D" F.meta,
-                          E = Direct.editable [#E] ! "E" (Direct.nullable Direct.int),
-                          F = Direct.editable [#F] ! "F" (Direct.nullable F.meta),
+              val cols = {Id = Direct.readOnly [#Id] "Id" Direct.int,
+                          A = Direct.editable [#A] "A" Direct.int,
+                          B = Direct.editable [#B] "B" Direct.string,
+                          C = Direct.editable [#C] "C" Direct.bool,
+                          D = Direct.editable [#D] "D" F.meta,
+                          E = Direct.editable [#E] "E" (Direct.nullable Direct.int),
+                          F = Direct.editable [#F] "F" (Direct.nullable F.meta),
                           DA = computed "2A" (fn r => 2 * r.A),
                           Link = computedHtml "Link" (fn r => <xml><a link={page (r.A, r.B)}>Go</a></xml>)}
 

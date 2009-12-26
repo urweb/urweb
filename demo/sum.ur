@@ -1,7 +1,7 @@
 fun sum [fs ::: {Unit}] (fl : folder fs) (x : $(mapU int fs)) =
-    foldUR [int] [fn _ => int]
-    (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] n acc => n + acc)
-    0 [fs] fl x
+    @foldUR [int] [fn _ => int]
+     (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] n acc => n + acc)
+     0 fl x
 
 fun main () = return <xml><body>
   {[sum {}]}<br/>

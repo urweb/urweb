@@ -384,31 +384,31 @@ functor Make(M : sig
                        val wholeRow = @Folder.concat ! M.keyFolder M.rowFolder
 
                        fun ensql [env] (r : $(M.key ++ M.row)) =
-                           map2 [rawMeta] [id] [sql_exp env [] []]
-                           (fn [t] meta v => @sql_inject meta.Inj v)
-                           [_] wholeRow M.raw r
+                           @map2 [rawMeta] [id] [sql_exp env [] []]
+                            (fn [t] meta v => @sql_inject meta.Inj v)
+                            wholeRow M.raw r
 
                        val new =
-                           row <- Monad.mapR [rawMeta] [id]
-                                              (fn [nm :: Name] [t :: Type] meta => meta.New)
-                                              [_] wholeRow M.raw;
+                           row <- @Monad.mapR _ [rawMeta] [id]
+                                   (fn [nm :: Name] [t :: Type] meta => meta.New)
+                                   wholeRow M.raw;
                            dml (insert M.tab (ensql row));
                            return row
 
                        fun selector (r : $M.key) : sql_exp [T = M.key ++ M.row] [] [] bool =
-                         foldR2 [rawMeta] [id]
-                                [fn key => rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] bool]
-                                (fn [nm :: Name] [t :: Type] [key :: {Type}] [[nm] ~ key]
-                                    (meta : rawMeta t) (v : t)
-                                    (exp : rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] bool)
-                                    [rest :: {Type}] [rest ~ [nm = t] ++ key] =>
-                                    (WHERE T.{nm} = {@sql_inject meta.Inj v} AND {exp [[nm = t] ++ rest] !}))
-                                (fn [rest :: {Type}] [rest ~ []] => (WHERE TRUE))
-                                [_] M.keyFolder (M.raw --- map rawMeta M.row) r
-                                [_] !
+                         @foldR2 [rawMeta] [id]
+                          [fn key => rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] bool]
+                          (fn [nm :: Name] [t :: Type] [key :: {Type}] [[nm] ~ key]
+                                           (meta : rawMeta t) (v : t)
+                                           (exp : rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] bool)
+                                           [rest :: {Type}] [rest ~ [nm = t] ++ key] =>
+                              (WHERE T.{nm} = {@sql_inject meta.Inj v} AND {exp [[nm = t] ++ rest] !}))
+                          (fn [rest :: {Type}] [rest ~ []] => (WHERE TRUE))
+                          M.keyFolder (M.raw --- map rawMeta M.row) r
+                          [_] !
 
                        fun save key row =
-                           dml (update [M.key ++ M.row] !
+                           dml (update [M.key ++ M.row]
                                        (ensql row)
                                        M.tab
                                        (selector key))

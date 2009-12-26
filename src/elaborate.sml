@@ -693,6 +693,13 @@
  and consNeq env (c1, c2) =
      case (#1 (hnormCon env c1), #1 (hnormCon env c2)) of
          (L'.CName x1, L'.CName x2) => x1 <> x2
+       | (L'.CName _, L'.CRel _) => true
+       | (L'.CRel _, L'.CName _) => true
+       | (L'.CRel n1, L'.CRel n2) => n1 <> n2
+       | (L'.CRel _, L'.CNamed _) => true
+       | (L'.CNamed _, L'.CRel _) => true
+       | (L'.CRel _, L'.CModProj _) => true
+       | (L'.CModProj _, L'.CRel _) => true
        | _ => false
 
  and unifySummaries env (loc, k, s1 : record_summary, s2 : record_summary) =
@@ -1619,6 +1626,34 @@ fun normClassConstraint env (c, loc) =
       | L'.CUnif (_, _, _, ref (SOME c)) => normClassConstraint env c
       | _ => unmodCon env (c, loc)
 
+fun findHead e e' =
+    let
+        fun findHead (e, _) =
+            case e of
+                L.EVar (_, _, infer) =>
+                let
+                    fun findHead' (e, _) =
+                        case e of
+                            L'.ENamed _ => true
+                          | L'.EModProj _ => true
+                          | L'.EApp (e, _) => findHead' e
+                          | L'.ECApp (e, _) => findHead' e
+                          | L'.EKApp (e, _) => findHead' e
+                          | _ => false
+                in
+                    if findHead' e' then
+                        SOME infer
+                    else
+                        NONE
+                end
+              | L.EApp (e, _) => findHead e
+              | L.ECApp (e, _) => findHead e
+              | L.EDisjointApp e => findHead e
+              | _ => NONE
+    in
+        findHead e
+    end
+
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
         (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)]*)
@@ -1674,15 +1709,23 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
           | L.EApp (e1, e2) =>
             let
                 val (e1', t1, gs1) = elabExp (env, denv) e1
+
                 val (e2', t2, gs2) = elabExp (env, denv) e2
 
                 val dom = cunif (loc, ktype)
                 val ran = cunif (loc, ktype)
                 val t = (L'.TFun (dom, ran), loc)
+
+                val () = checkCon env e1' t1 t
+                val () = checkCon env e2' t2 dom
+
+                val ef = (L'.EApp (e1', e2'), loc)
+                val (ef, et, gs3) =
+                    case findHead e1 e1' of
+                        NONE => (ef, ran, [])
+                      | SOME infer => elabHead (env, denv) infer ef ran
             in
-                checkCon env e1' t1 t;
-                checkCon env e2' t2 dom;
-                ((L'.EApp (e1', e2'), loc), ran, gs1 @ gs2)
+                (ef, et, gs1 @ gs2 @ gs3)
             end
           | L.EAbs (x, to, e) =>
             let
@@ -1705,6 +1748,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
           | L.ECApp (e, c) =>
             let
                 val (e', et, gs1) = elabExp (env, denv) e
+
                 val oldEt = et
                 val (c', ck, gs2) = elabCon (env, denv) c
                 val (et', _) = hnormCon env et
@@ -1717,6 +1761,12 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                         val eb' = subConInCon (0, c') eb
                             handle SynUnif => (expError env (Unif ("substitution", loc, eb));
                                                cerror)
+
+                        val ef = (L'.ECApp (e', c'), loc)
+                        val (ef, eb', gs3) =
+                            case findHead e e' of
+                                NONE => (ef, eb', [])
+                              | SOME infer => elabHead (env, denv) infer ef eb'
                     in
                         (*prefaces "Elab ECApp" [("e", SourcePrint.p_exp eAll),
                                                ("et", p_con env oldEt),
@@ -1724,7 +1774,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                                ("eb", p_con (E.pushCRel env x k) eb),
                                                ("c", p_con env c'),
                                                ("eb'", p_con env eb')];*)
-                        ((L'.ECApp (e', c'), loc), eb', gs1 @ enD gs2)
+                        (ef, eb', gs1 @ enD gs2 @ gs3)
                     end
 
                   | _ =>

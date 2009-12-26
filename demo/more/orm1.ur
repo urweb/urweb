@@ -1,13 +1,13 @@
 open Orm
 
 structure T = Table(struct
-                        val cols = {A = local [int] _,
-                                    B = local [string] _}
+                        val cols = {A = local [int],
+                                    B = local [string]}
                     end)
 
 structure S = Table(struct
                         val cols = {C = T.id,
-                                    D = local [float] _}
+                                    D = local [float]}
                     end)
 
 fun action () =

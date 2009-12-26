@@ -5,23 +5,23 @@ functor Make (M : sig
               end) = struct
 
     fun handler values = return <xml><body>
-      {foldURX2 [string] [string] [body]
-       (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] name value => <xml>
-         <li> {[name]} = {[value]}</li>
-       </xml>)
-       [M.fs] M.fl M.names values}
+      {@foldURX2 [string] [string] [body]
+        (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] name value => <xml>
+          <li> {[name]} = {[value]}</li>
+        </xml>)
+        M.fl M.names values}
     </body></xml>
 
     fun main () = return <xml><body>
       <form>
-        {foldUR [string] [fn cols :: {Unit} => xml form [] (mapU string cols)]
-                (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] name
-                                 (acc : xml form [] (mapU string rest)) => <xml>
-                                   <li> {[name]}: <textbox{nm}/></li>
-                                   {useMore acc}
-                                 </xml>)
-                <xml/>
-                [M.fs] M.fl M.names}
+        {@foldUR [string] [fn cols :: {Unit} => xml form [] (mapU string cols)]
+          (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] name
+                           (acc : xml form [] (mapU string rest)) => <xml>
+                             <li> {[name]}: <textbox{nm}/></li>
+                             {useMore acc}
+                           </xml>)
+          <xml/>
+          M.fl M.names}
         <submit action={handler}/>
       </form>
     </body></xml>

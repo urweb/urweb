@@ -540,9 +540,8 @@ cst    : UNIQUE tnames                  (let
                                              val e = (EVar (["Basis"], "unique", Infer), loc)
                                              val e = (ECApp (e, #1 (#1 tnames)), loc)
                                              val e = (ECApp (e, (CRecord (#2 tnames), loc)), loc)
-                                             val e = (EDisjointApp e, loc)
                                          in
-                                             (EDisjointApp e, loc)
+                                             e
                                          end)
 
        | CHECK sqlexp                   (let
@@ -562,9 +561,6 @@ cst    : UNIQUE tnames                  (let
                                                                val e = (EVar (["Basis"], "mat_cons", Infer), loc)
                                                                val e = (ECApp (e, nm1), loc)
                                                                val e = (ECApp (e, nm2), loc)
-                                                               val e = (EDisjointApp e, loc)
-                                                               val e = (EDisjointApp e, loc)
-                                                               val e = (EApp (e, (EWild, loc)), loc)
                                                            in
                                                                (EApp (e, mat), loc)
                                                            end)
@@ -634,7 +630,7 @@ pkopt  :                                (EVar (["Basis"], "no_primary_key", Infe
        | PRIMARY KEY tnames             (let
                                              val loc = s (PRIMARYleft, tnamesright)
 
-                                             val e = (EVar (["Basis"], "primary_key", Infer), loc)
+                                             val e = (EVar (["Basis"], "primary_key", TypesOnly), loc)
                                              val e = (ECApp (e, #1 (#1 tnames)), loc)
                                              val e = (ECApp (e, (CRecord (#2 tnames), loc)), loc)
                                              val e = (EDisjointApp e, loc)
@@ -1192,7 +1188,6 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
                                              val e = (EVar (["Basis"], "update", Infer), loc)
                                              val e = (ECApp (e, (CWild (KRecord (KType, loc), loc), loc)), loc)
-                                             val e = (EDisjointApp e, loc)
                                              val e = (EApp (e, (ERecord fsets, loc)), loc)
                                              val e = (EApp (e, texp), loc)
                                          in
@@ -1335,11 +1330,8 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                  if et = "form" then
                                                      (EApp ((EVar (["Basis"], "form", Infer), pos),
                                                             xmlOpt), pos)
-                                                 else if et = "subform" then
-                                                     (EApp ((EDisjointApp (#2 (#1 tag)), pos),
-                                                            xmlOpt), pos)
-                                                 else if et = "subforms" then
-                                                     (EApp ((EDisjointApp (#2 (#1 tag)), pos),
+                                                 else if et = "subform" orelse et = "subforms" then
+                                                     (EApp (#2 (#1 tag),
                                                             xmlOpt), pos)
                                                  else if et = "entry" then
                                                      (EApp ((EVar (["Basis"], "entry", Infer), pos),
@@ -1504,7 +1496,6 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                              val e = (EVar (["Basis"], "sql_query1", Infer), loc)
                                              val e = (ECApp (e, (CRecord (map (fn nm => (nm, (CUnit, loc))) empties),
                                                                  loc)), loc)
-                                             val e = (EDisjointApp e, loc)
                                              val re = (ERecord [((CName "Distinct", loc),
                                                                  dopt),
                                                                 ((CName "From", loc),

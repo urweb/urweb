@@ -6,7 +6,7 @@ val fold : K --> tf :: ({K} -> Type)
            -> (nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
                tf r -> tf ([nm = v] ++ r))
            -> tf []
-           -> r :: {K} -> folder r -> tf r
+           -> r ::: {K} -> folder r -> tf r
 
 structure Folder : sig
     val nil : K --> folder (([]) :: {K})
@@ -47,40 +47,40 @@ val txt : t ::: Type -> ctx ::: {Unit} -> use ::: {Type} -> show t -> t
 
 val map0 : K --> tf :: (K -> Type)
            -> (t :: K -> tf t)
-           -> r :: {K} -> folder r -> $(map tf r)
+           -> r ::: {K} -> folder r -> $(map tf r)
 val mp : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
          -> (t ::: K -> tf1 t -> tf2 t)
-         -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r)
+         -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r)
 val map2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf :: (K -> Type)
            -> (t ::: K -> tf1 t -> tf2 t -> tf t)
-           -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf r)
+           -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf r)
 val map3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type) -> tf :: (K -> Type)
            -> (t ::: K -> tf1 t -> tf2 t -> tf3 t -> tf t)
-           -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> $(map tf r)
+           -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> $(map tf r)
 
 val foldUR : tf :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}
                  -> [[nm] ~ rest] =>
                        tf -> tr rest -> tr ([nm] ++ rest))
-             -> tr [] -> r :: {Unit} -> folder r -> $(mapU tf r) -> tr r
+             -> tr [] -> r ::: {Unit} -> folder r -> $(mapU tf r) -> tr r
 
 val foldUR2 : tf1 :: Type -> tf2 :: Type -> tr :: ({Unit} -> Type)
              -> (nm :: Name -> rest :: {Unit}
                  -> [[nm] ~ rest] =>
                        tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
-             -> tr [] -> r :: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> tr r
+             -> tr [] -> r ::: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> tr r
 
 val foldURX2: tf1 :: Type -> tf2 :: Type -> ctx :: {Unit}
               -> (nm :: Name -> rest :: {Unit}
                   -> [[nm] ~ rest] =>
                         tf1 -> tf2 -> xml ctx [] [])
-              -> r :: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> xml ctx [] []
+              -> r ::: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> xml ctx [] []
 
 val foldR : K --> tf :: (K -> Type) -> tr :: ({K} -> Type)
              -> (nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
                        tf t -> tr rest -> tr ([nm = t] ++ rest))
-             -> tr [] -> r :: {K} -> folder r -> $(map tf r) -> tr r
+             -> tr [] -> r ::: {K} -> folder r -> $(map tf r) -> tr r
 
 val foldR2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
              -> tr :: ({K} -> Type)
@@ -88,7 +88,7 @@ val foldR2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
                  -> [[nm] ~ rest] =>
                        tf1 t -> tf2 t -> tr rest -> tr ([nm = t] ++ rest))
              -> tr []
-             -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> tr r
+             -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> tr r
 
 val foldR3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type)
              -> tr :: ({K} -> Type)
@@ -96,26 +96,26 @@ val foldR3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type
                  -> [[nm] ~ rest] =>
                        tf1 t -> tf2 t -> tf3 t -> tr rest -> tr ([nm = t] ++ rest))
              -> tr []
-             -> r :: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> tr r
+             -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> tr r
 
 val foldRX : K --> tf :: (K -> Type) -> ctx :: {Unit}
              -> (nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
                        tf t -> xml ctx [] [])
-             -> r :: {K} -> folder r -> $(map tf r) -> xml ctx [] []
+             -> r ::: {K} -> folder r -> $(map tf r) -> xml ctx [] []
 
 val foldRX2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> ctx :: {Unit}
               -> (nm :: Name -> t :: K -> rest :: {K}
                   -> [[nm] ~ rest] =>
                         tf1 t -> tf2 t -> xml ctx [] [])
-              -> r :: {K} -> folder r
+              -> r ::: {K} -> folder r
               -> $(map tf1 r) -> $(map tf2 r) -> xml ctx [] []
 
 val foldRX3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type) -> ctx :: {Unit}
               -> (nm :: Name -> t :: K -> rest :: {K}
                   -> [[nm] ~ rest] =>
                         tf1 t -> tf2 t -> tf3 t -> xml ctx [] [])
-              -> r :: {K} -> folder r
+              -> r ::: {K} -> folder r
               -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> xml ctx [] []
 
 val queryL : tables ::: {{Type}} -> exps ::: {Type}

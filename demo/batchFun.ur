@@ -45,14 +45,14 @@ functor Make(M : sig
 
     fun add r =
         dml (insert t
-                    (foldR2 [fst] [colMeta]
-                            [fn cols => $(map (fn t :: (Type * Type) =>
-                                                  sql_exp [] [] [] t.1) cols)]
-                            (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                                             [[nm] ~ rest] input col acc =>
-                                acc ++ {nm = @sql_inject col.Inject input})
-                            {} [M.cols] M.fl (r -- #Id) M.cols
-                            ++ {Id = (SQL {[r.Id]})}))
+                    (@foldR2 [fst] [colMeta]
+                      [fn cols => $(map (fn t :: (Type * Type) =>
+                                            sql_exp [] [] [] t.1) cols)]
+                      (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
+                                       [[nm] ~ rest] input col acc =>
+                          acc ++ {nm = @sql_inject col.Inject input})
+                      {} M.fl (r -- #Id) M.cols
+                      ++ {Id = (SQL {[r.Id]})}))
 
     fun doBatch ls =
         case ls of
@@ -72,11 +72,11 @@ functor Make(M : sig
                   | Cons (r, ls) => <xml>
                     <tr>
                       <td>{[r.Id]}</td>
-                      {foldRX2 [colMeta] [fst] [_]
-                               (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                                [[nm] ~ rest] m v =>
-                                   <xml><td>{m.Show v}</td></xml>)
-                               [M.cols] M.fl M.cols (r -- #Id)}
+                      {@foldRX2 [colMeta] [fst] [_]
+                        (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
+                                         [[nm] ~ rest] m v =>
+                            <xml><td>{m.Show v}</td></xml>)
+                        M.fl M.cols (r -- #Id)}
                       {if withDel then
                            <xml><td><button value="Delete" onclick={rpc (del r.Id)}/></td></xml>
                        else
@@ -88,11 +88,11 @@ functor Make(M : sig
             <xml><dyn signal={ls <- signal lss; return <xml><table>
               <tr>
                 <th>Id</th>
-                {foldRX [colMeta] [_]
-                        (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                         [[nm] ~ rest] m =>
-                            <xml><th>{[m.Nam]}</th></xml>)
-                        [M.cols] M.fl M.cols}
+                {@foldRX [colMeta] [_]
+                  (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
+                                   [[nm] ~ rest] m =>
+                      <xml><th>{[m.Nam]}</th></xml>)
+                  M.fl M.cols}
               </tr>
               {show' ls}
             </table></xml>}/></xml>
@@ -103,25 +103,25 @@ functor Make(M : sig
         batched <- source Nil;
 
         id <- source "";
-        inps <- foldR [colMeta] [fn r => transaction ($(map snd r))]
-                (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest] m acc =>
-                    s <- m.NewState;
-                    r <- acc;
-                    return ({nm = s} ++ r))
-                (return {})
-                [M.cols] M.fl M.cols;
-
+        inps <- @foldR [colMeta] [fn r => transaction ($(map snd r))]
+                 (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest] m acc =>
+                     s <- m.NewState;
+                     r <- acc;
+                     return ({nm = s} ++ r))
+                 (return {})
+                 M.fl M.cols;
+        
         let
             fun add () =
                 id <- get id;
-                vs <- foldR2 [colMeta] [snd] [fn r => transaction ($(map fst r))]
-                             (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                              [[nm] ~ rest] m s acc =>
-                                 v <- m.ReadState s;
-                                 r <- acc;
-                                 return ({nm = v} ++ r))
-                             (return {})
-                             [M.cols] M.fl M.cols inps;
+                vs <- @foldR2 [colMeta] [snd] [fn r => transaction ($(map fst r))]
+                       (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
+                                        [[nm] ~ rest] m s acc =>
+                           v <- m.ReadState s;
+                           r <- acc;
+                           return ({nm = v} ++ r))
+                       (return {})
+                       M.fl M.cols inps;
                 ls <- get batched;
 
                 set batched (Cons ({Id = readError id} ++ vs, ls))
@@ -144,11 +144,11 @@ functor Make(M : sig
 
               <table>
                 <tr> <th>Id:</th> <td><ctextbox source={id}/></td> </tr>
-                {foldRX2 [colMeta] [snd] [_]
-                 (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                  [[nm] ~ rest] m s =>
-                     <xml><tr> <th>{[m.Nam]}:</th> <td>{m.Widget s}</td> </tr></xml>)
-                 [M.cols] M.fl M.cols inps}
+                {@foldRX2 [colMeta] [snd] [_]
+                  (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
+                                   [[nm] ~ rest] m s =>
+                      <xml><tr> <th>{[m.Nam]}:</th> <td>{m.Widget s}</td> </tr></xml>)
+                  M.fl M.cols inps}
                 <tr> <th/> <td><button value="Batch it" onclick={add ()}/></td> </tr>
               </table>
 
