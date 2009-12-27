@@ -11,6 +11,7 @@ int uw_really_write(int fd, const void *buf, size_t len);
 extern uw_unit uw_unit_v;
 
 void uw_global_init(void);
+void uw_app_init(uw_app*);
 
 void uw_client_connect(unsigned id, int pass, int sock,
                        int (*send)(int sockfd, const void *buf, size_t len),
@@ -20,12 +21,14 @@ void uw_prune_clients(uw_context);
 failure_kind uw_initialize(uw_context);
 
 uw_context uw_init(void);
+void uw_set_app(uw_context, uw_app*);
 void uw_set_db(uw_context, void*);
 void *uw_get_db(uw_context);
 void uw_free(uw_context);
 void uw_reset(uw_context);
 void uw_reset_keep_request(uw_context);
 void uw_reset_keep_error_message(uw_context);
+const char *uw_get_url_prefix(uw_context);
 
 failure_kind uw_begin_init(uw_context);
 void uw_set_on_success(char *);

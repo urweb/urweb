@@ -16,6 +16,8 @@
 #include "request.h"
 #include "queue.h"
 
+extern uw_app uw_application;
+
 int uw_backlog = 10;
 
 static char *get_header(void *data, const char *h) {
@@ -61,7 +63,7 @@ static void log_debug(void *data, const char *fmt, ...) {
 
 static void *worker(void *data) {
   int me = *(int *)data;
-  uw_context ctx = uw_request_new_context(NULL, log_error, log_debug);
+  uw_context ctx = uw_request_new_context(&uw_application, NULL, log_error, log_debug);
   size_t buf_size = 2;
   char *buf = malloc(buf_size);
   uw_request_context rc = uw_new_request_context();
@@ -214,7 +216,7 @@ static void sigint(int signum) {
   exit(0);
 }
 
-static loggers ls = {NULL, log_error, log_debug};
+static loggers ls = {&uw_application, NULL, log_error, log_debug};
 
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
@@ -262,7 +264,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  uw_request_init(NULL, log_error, log_debug);
+  uw_request_init(&uw_application, NULL, log_error, log_debug);
 
   names = calloc(nthreads, sizeof(int));
 

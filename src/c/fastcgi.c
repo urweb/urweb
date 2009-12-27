@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include <pthread.h>
 
@@ -18,6 +19,8 @@
 #include "queue.h"
 
 #include "fastcgi.h"
+
+extern uw_app uw_application;
 
 typedef struct {
   unsigned char version;
@@ -300,7 +303,7 @@ static void *worker(void *data) {
   int me = *(int *)data;
   FCGI_Input *in = fastcgi_input();
   FCGI_Output *out = fastcgi_output();
-  uw_context ctx = uw_request_new_context(out, log_error, log_debug);
+  uw_context ctx = uw_request_new_context(&uw_application, out, log_error, log_debug);
   uw_request_context rc = uw_new_request_context();
   headers hs;
   size_t body_size = 0;
@@ -489,7 +492,7 @@ static void sigint(int signum) {
   exit(0);
 }
 
-static loggers ls = {NULL, log_error, log_debug};
+static loggers ls = {&uw_application, NULL, log_error, log_debug};
 
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
@@ -538,7 +541,7 @@ int main(int argc, char *argv[]) {
   }
 
   uw_set_on_success("");
-  uw_request_init(NULL, log_error, log_debug);
+  uw_request_init(&uw_application, NULL, log_error, log_debug);
 
   names = calloc(nthreads, sizeof(int));
 

@@ -52,4 +52,26 @@ typedef struct input *uw_input;
 typedef void (*uw_callback)(void *);
 typedef void (*uw_logger)(void*, const char *fmt, ...);
 
+typedef struct {
+  int inputs_len, timeout;
+  char *url_prefix;
+
+  void (*client_init)();
+  void (*initializer)(uw_context);
+  void (*expunger)(uw_context, uw_Basis_client);
+
+  void (*db_init)(uw_context);
+  int (*db_begin)(uw_context);
+  int (*db_commit)(uw_context);
+  int (*db_rollback)(uw_context);
+  void (*db_close)(uw_context);
+
+  void (*handle)(uw_context, char *);
+
+  int (*input_num)(const char*);
+  uw_Basis_string (*cookie_sig)(uw_context);
+  int (*check_url)(const char *);
+  int (*check_mime)(const char *);
+} uw_app;
+
 #endif

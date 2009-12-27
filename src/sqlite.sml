@@ -156,7 +156,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline,
              newline,
 
-             string "void uw_client_init(void) {",
+             string "static void uw_client_init(void) {",
              newline,
              box [string "uw_sqlfmtInt = \"%lld%n\";",
                   newline,
@@ -256,7 +256,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline,
              newline,
              
-             string "void uw_db_init(uw_context ctx) {",
+             string "static void uw_db_init(uw_context ctx) {",
              newline,
              string "sqlite3 *sqlite;",
              newline,
@@ -283,7 +283,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline,
              newline,
 
-             string "void uw_db_close(uw_context ctx) {",
+             string "static void uw_db_close(uw_context ctx) {",
              newline,
              string "uw_conn *conn = uw_get_db(ctx);",
              newline,
@@ -302,7 +302,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline,
              newline,
 
-             string "int uw_db_begin(uw_context ctx) {",
+             string "static int uw_db_begin(uw_context ctx) {",
              newline,
              string "uw_conn *conn = uw_get_db(ctx);",
              newline,
@@ -321,7 +321,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline,
              string "}",
              newline,
-             string "int uw_db_commit(uw_context ctx) {",
+             string "static int uw_db_commit(uw_context ctx) {",
              newline,
              string "uw_conn *conn = uw_get_db(ctx);",
              newline,
@@ -341,7 +341,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline,
              newline,
 
-             string "int uw_db_rollback(uw_context ctx) {",
+             string "static int uw_db_rollback(uw_context ctx) {",
              newline,
              string "uw_conn *conn = uw_get_db(ctx);",
              newline,

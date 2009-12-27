@@ -24,7 +24,7 @@ clean:
 	rm -rf .cm src/.cm
 
 lib/c/%.o: src/c/%.c include/*.h
-	gcc -O3 -I include -c $< -o $@ $(CFLAGS)
+	gcc -Wimplicit -O3 -I include -c $< -o $@ $(CFLAGS)
 
 src/urweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \

@@ -31,9 +31,10 @@ static int try_rollback(uw_context ctx, void *logger_data, uw_logger log_error) 
   return r;
 }
 
-uw_context uw_request_new_context(void *logger_data, uw_logger log_error, uw_logger log_debug) {
+uw_context uw_request_new_context(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
   uw_context ctx = uw_init();
   int retries_left = MAX_RETRIES;
+  uw_set_app(ctx, app);
 
   while (1) {
     failure_kind fk = uw_begin_init(ctx);
@@ -95,26 +96,27 @@ static void init_crypto(void *logger_data, uw_logger log_error) {
   }
 }
 
-void uw_request_init(void *logger_data, uw_logger log_error, uw_logger log_debug) {
+void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
   uw_context ctx;
   failure_kind fk;
 
   uw_global_init();
+  uw_app_init(app);
 
-  ctx = uw_request_new_context(logger_data, log_error, log_debug);
+  ctx = uw_request_new_context(app, logger_data, log_error, log_debug);
 
   if (!ctx)
     exit(1);
 
   for (fk = uw_initialize(ctx); fk == UNLIMITED_RETRY; fk = uw_initialize(ctx)) {
     log_debug(logger_data, "Unlimited retry during init: %s\n", uw_error_message(ctx));
-    uw_db_rollback(ctx);
+    uw_rollback(ctx);
     uw_reset(ctx);
   }
 
   if (fk != SUCCESS) {
     log_error(logger_data, "Failed to initialize database!  %s\n", uw_error_message(ctx));
-    uw_db_rollback(ctx);
+    uw_rollback(ctx);
     exit(1);
   }
 
@@ -151,8 +153,6 @@ void uw_free_request_context(uw_request_context r) {
   free(r);
 }
 
-extern char *uw_url_prefix;
-
 request_result uw_request(uw_request_context rc, uw_context ctx,
                           char *method, char *path, char *query_string,
                           char *body, size_t body_len,
@@ -168,6 +168,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   char *boundary = NULL;
   size_t boundary_len;
   char *inputs;
+  const char *prefix = uw_get_url_prefix(ctx);
 
   uw_set_currentUrl(ctx, path);
 
@@ -208,8 +209,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     return FAILED;
   }
 
-  if (!strncmp(path, uw_url_prefix, strlen(uw_url_prefix))
-      && !strcmp(path + strlen(uw_url_prefix), ".msgs")) {
+  if (!strncmp(path, prefix, strlen(prefix))
+      && !strcmp(path + strlen(prefix), ".msgs")) {
     char *id = uw_Basis_requestHeader(ctx, "UrWeb-Client");
     char *pass = uw_Basis_requestHeader(ctx, "UrWeb-Pass");
 
@@ -435,13 +436,14 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 }
 
 typedef struct {
+  uw_app *app;
   void *logger_data;
   uw_logger log_error, log_debug;
 } loggers;
 
 void *client_pruner(void *data) {
   loggers *ls = (loggers *)data;
-  uw_context ctx = uw_request_new_context(ls->logger_data, ls->log_error, ls->log_debug);
+  uw_context ctx = uw_request_new_context(ls->app, ls->logger_data, ls->log_error, ls->log_debug);
 
   if (!ctx)
     exit(1);

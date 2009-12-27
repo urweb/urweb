@@ -5,7 +5,10 @@
 #include <unistd.h>
 #include <stdarg.h>
 
+#include "urweb.h"
 #include "request.h"
+
+extern uw_app uw_application;
 
 static char *uppercased;
 static size_t uppercased_len;
@@ -51,7 +54,7 @@ static void log_debug(void *data, const char *fmt, ...) {
 }
 
 int main(int argc, char *argv[]) {
-  uw_context ctx = uw_request_new_context(NULL, log_error, log_debug);
+  uw_context ctx = uw_request_new_context(&uw_application, NULL, log_error, log_debug);
   uw_request_context rc = uw_new_request_context();
   request_result rr;
   char *method = getenv("REQUEST_METHOD"),
@@ -97,7 +100,7 @@ int main(int argc, char *argv[]) {
 
   uw_set_on_success("");
   uw_set_headers(ctx, get_header, NULL);
-  uw_request_init(NULL, log_error, log_debug);
+  uw_request_init(&uw_application, NULL, log_error, log_debug);
 
   body[body_pos] = 0;
   rr = uw_request(rc, ctx, method, path, query_string, body, body_pos,

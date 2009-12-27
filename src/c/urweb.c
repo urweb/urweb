@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 600
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,6 +9,8 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <ctype.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include <pthread.h>
 
@@ -287,14 +289,14 @@ static void client_send(client *c, buf *msg) {
 
 // Global entry points
 
-extern void uw_client_init();
-
 void uw_global_init() {
   srand(time(NULL) ^ getpid());
 
   clients = malloc(0);
+}
 
-  uw_client_init();
+void uw_app_init(uw_app *app) {
+  app->client_init();
 }
 
 
@@ -349,13 +351,15 @@ typedef struct {
 } global;
 
 struct uw_context {
+  uw_app *app;
+
   char *(*get_header)(void *, const char *);
   void *get_header_data;
 
   buf outHeaders, page, heap, script;
   int returning_indirectly;
   input *inputs, *subinputs, *cur_container;
-  size_t n_subinputs, used_subinputs;
+  size_t sz_inputs, n_subinputs, used_subinputs;
 
   int source_count;
 
@@ -367,14 +371,12 @@ struct uw_context {
 
   cleanup *cleanup, *cleanup_front, *cleanup_back;
 
-  const char *script_header, *url_prefix;
+  const char *script_header;
 
   int needs_push, needs_sig;
 
   size_t n_deltas, used_deltas;
   delta *deltas;
-
-  int timeout;
 
   client *client;
 
@@ -389,10 +391,10 @@ struct uw_context {
   char error_message[ERROR_BUF_LEN];
 };
 
-extern int uw_inputs_len, uw_timeout;
-
 uw_context uw_init() {
   uw_context ctx = malloc(sizeof(struct uw_context));
+
+  ctx->app = NULL;
 
   ctx->get_header = NULL;
   ctx->get_header_data = NULL;
@@ -404,10 +406,10 @@ uw_context uw_init() {
   buf_init(&ctx->script, 1);
   ctx->script.start[0] = 0;
 
-  ctx->inputs = calloc(uw_inputs_len, sizeof(input));
+  ctx->inputs = malloc(0);
   ctx->cur_container = NULL;
   ctx->subinputs = malloc(0);
-  ctx->n_subinputs = ctx->used_subinputs = 0;
+  ctx->sz_inputs = ctx->n_subinputs = ctx->used_subinputs = 0;
 
   ctx->db = NULL;
 
@@ -416,7 +418,6 @@ uw_context uw_init() {
   ctx->cleanup_front = ctx->cleanup_back = ctx->cleanup = malloc(0);
 
   ctx->script_header = "";
-  ctx->url_prefix = "/";
   ctx->needs_push = 0;
   ctx->needs_sig = 0;
   
@@ -426,8 +427,6 @@ uw_context uw_init() {
 
   ctx->n_deltas = ctx->used_deltas = 0;
   ctx->deltas = malloc(0);
-
-  ctx->timeout = uw_timeout;
 
   ctx->client = NULL;
 
@@ -442,6 +441,16 @@ uw_context uw_init() {
   ctx->current_url = "";
 
   return ctx;
+}
+
+void uw_set_app(uw_context ctx, uw_app *app) {
+  ctx->app = app;
+
+  if (app->inputs_len > ctx->sz_inputs) {
+    ctx->sz_inputs = app->inputs_len;
+    ctx->inputs = realloc(ctx->inputs, ctx->sz_inputs * sizeof(input));
+    memset(ctx->inputs, 0, ctx->sz_inputs * sizeof(input));
+  }
 }
 
 void uw_set_db(uw_context ctx, void *db) {
@@ -499,19 +508,16 @@ void uw_reset_keep_request(uw_context ctx) {
 
 void uw_reset(uw_context ctx) {
   uw_reset_keep_request(ctx);
-  memset(ctx->inputs, 0, uw_inputs_len * sizeof(input));
+  memset(ctx->inputs, 0, ctx->app->inputs_len * sizeof(input));
   memset(ctx->subinputs, 0, ctx->n_subinputs * sizeof(input));
   ctx->used_subinputs = 0;
 }
-
-void uw_db_init(uw_context);
-void uw_handle(uw_context, char *);
 
 failure_kind uw_begin_init(uw_context ctx) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0)
-    uw_db_init(ctx);
+    ctx->app->db_init(ctx);
 
   return r;
 }
@@ -520,8 +526,6 @@ void uw_set_headers(uw_context ctx, char *(*get_header)(void *, const char *), v
   ctx->get_header = get_header;
   ctx->get_header_data = get_header_data;
 }
-
-int uw_db_begin(uw_context);
 
 static void uw_set_error(uw_context ctx, const char *fmt, ...) {
   va_list ap;
@@ -600,10 +604,10 @@ failure_kind uw_begin(uw_context ctx, char *path) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0) {
-    if (uw_db_begin(ctx))
+    if (ctx->app->db_begin(ctx))
       uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
 
-    uw_handle(ctx, path);
+    ctx->app->handle(ctx, path);
   }
 
   return r;
@@ -627,8 +631,6 @@ void uw_pop_cleanup(uw_context ctx) {
 char *uw_error_message(uw_context ctx) {
   return ctx->error_message;
 }
-
-extern int uw_input_num(const char*);
 
 static input *INP(uw_context ctx) {
   if (ctx->cur_container == NULL)
@@ -674,7 +676,7 @@ static input *check_input_space(uw_context ctx, size_t len) {
     if (ctx->subinputs != new_subinputs) {
       for (i = 0; i < ctx->used_subinputs; ++i)
         adjust_input(&new_subinputs[i], ctx->subinputs, new_subinputs, ctx->used_subinputs);
-      for (i = 0; i < uw_inputs_len; ++i)
+      for (i = 0; i < ctx->app->inputs_len; ++i)
         adjust_input(&ctx->inputs[i], ctx->subinputs, new_subinputs, ctx->used_subinputs);
 
       adjust_pointer(&ctx->cur_container, ctx->subinputs, new_subinputs, ctx->used_subinputs);
@@ -696,7 +698,7 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
   //printf("Input name %s\n", name);
 
   if (!strcasecmp(name, ".b")) {
-    int n = uw_input_num(value);
+    int n = ctx->app->input_num(value);
     input *inps;
 
     if (n < 0) {
@@ -704,12 +706,12 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
       return -1;
     }
 
-    if (n >= uw_inputs_len) {
+    if (n >= ctx->app->inputs_len) {
       uw_set_error(ctx, "For subform name %s, index %d is out of range", value, n);
       return -1;
     }
 
-    inps = check_input_space(ctx, uw_inputs_len);
+    inps = check_input_space(ctx, ctx->app->inputs_len);
 
     INP(ctx)[n].kind = SUBFORM;
     INP(ctx)[n].data.subform.parent = ctx->cur_container;
@@ -741,14 +743,14 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
       return -1;
     }
   } else if (!strcasecmp(name, ".s")) {
-    int n = uw_input_num(value);
+    int n = ctx->app->input_num(value);
 
     if (n < 0) {
       uw_set_error(ctx, "Bad subforms name %s", value);
       return -1;
     }
 
-    if (n >= uw_inputs_len) {
+    if (n >= ctx->app->inputs_len) {
       uw_set_error(ctx, "For subforms name %s, index %d is out of range", value, n);
       return -1;
     }
@@ -770,7 +772,7 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
       return -1;
     }
 
-    inps = check_input_space(ctx, uw_inputs_len + 1);
+    inps = check_input_space(ctx, ctx->app->inputs_len + 1);
 
     inps->kind = ENTRY;
     inps->data.entry.parent = ctx->cur_container;
@@ -780,7 +782,7 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
     inps->data.entry.fields = inps+1;
     ctx->cur_container = inps;
   } else {
-    int n = uw_input_num(name);
+    int n = ctx->app->input_num(name);
 
     if (n < 0) {
       if (!strcmp(name, "null"))
@@ -789,7 +791,7 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
       return -1;
     }
 
-    if (n >= uw_inputs_len) {
+    if (n >= ctx->app->inputs_len) {
       uw_set_error(ctx, "For input name %s, index %d is out of range", name, n);
       return -1;
     }
@@ -804,7 +806,7 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
 char *uw_get_input(uw_context ctx, int n) {
   if (n < 0)
     uw_error(ctx, FATAL, "Negative input index %d", n);
-  if (n >= uw_inputs_len)
+  if (n >= ctx->app->inputs_len)
     uw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
 
   switch (INP(ctx)[n].kind) {
@@ -828,7 +830,7 @@ char *uw_get_input(uw_context ctx, int n) {
 char *uw_get_optional_input(uw_context ctx, int n) {
   if (n < 0)
     uw_error(ctx, FATAL, "Negative input index %d", n);
-  if (n >= uw_inputs_len)
+  if (n >= ctx->app->inputs_len)
     uw_error(ctx, FATAL, "Out-of-bounds input index %d", n);
 
   switch (INP(ctx)[n].kind) {
@@ -850,14 +852,14 @@ char *uw_get_optional_input(uw_context ctx, int n) {
 }
 
 int uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
-  int n = uw_input_num(name);
+  int n = ctx->app->input_num(name);
 
   if (n < 0) {
     uw_set_error(ctx, "Bad file input name %s", name);
     return -1;
   }
 
-  if (n >= uw_inputs_len) {
+  if (n >= ctx->app->inputs_len) {
     uw_set_error(ctx, "For file input name %s, index %d is out of range", name, n);
     return -1;
   }
@@ -869,7 +871,6 @@ int uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
 }
 
 void *uw_malloc(uw_context ctx, size_t len);
-
 
 static void parents(input *inp) {
   printf("Stack: %p\n", inp);
@@ -902,7 +903,7 @@ static void parents(input *inp) {
 uw_Basis_file uw_get_file_input(uw_context ctx, int n) {
   if (n < 0)
     uw_error(ctx, FATAL, "Negative file input index %d", n);
-  if (n >= uw_inputs_len)
+  if (n >= ctx->app->inputs_len)
     uw_error(ctx, FATAL, "Out-of-bounds file input index %d", n);
 
   switch (INP(ctx)[n].kind) {
@@ -930,7 +931,7 @@ uw_Basis_file uw_get_file_input(uw_context ctx, int n) {
 void uw_enter_subform(uw_context ctx, int n) {
   if (n < 0)
     uw_error(ctx, FATAL, "Negative subform index %d", n);
-  if (n >= uw_inputs_len)
+  if (n >= ctx->app->inputs_len)
     uw_error(ctx, FATAL, "Out-of-bounds subform index %d", n);
 
   switch (INP(ctx)[n].kind) {
@@ -969,7 +970,7 @@ int uw_enter_subforms(uw_context ctx, int n) {
 
   if (n < 0)
     uw_error(ctx, FATAL, "Negative subforms index %d", n);
-  if (n >= uw_inputs_len)
+  if (n >= ctx->app->inputs_len)
     uw_error(ctx, FATAL, "Out-of-bounds subforms index %d", n);
 
   switch (INP(ctx)[n].kind) {
@@ -1028,8 +1029,8 @@ void uw_set_script_header(uw_context ctx, const char *s) {
   ctx->script_header = s;
 }
 
-void uw_set_url_prefix(uw_context ctx, const char *s) {
-  ctx->url_prefix = s;
+const char *uw_get_url_prefix(uw_context ctx) {
+  return ctx->app->url_prefix;
 }
 
 void uw_set_needs_push(uw_context ctx, int n) {
@@ -1204,12 +1205,10 @@ uw_Basis_string uw_Basis_maybe_onunload(uw_context ctx, uw_Basis_string s) {
   }
 }
 
-extern uw_Basis_string uw_cookie_sig(uw_context);
-
 const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
   if (ctx->client == NULL) {
     if (ctx->needs_sig) {
-      char *sig = uw_cookie_sig(ctx);
+      char *sig = ctx->app->cookie_sig(ctx);
       char *r = uw_malloc(ctx, strlen(sig) + 8);
       sprintf(r, "sig=\"%s\";", sig);
       return r;
@@ -1217,14 +1216,14 @@ const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
     else
       return "";
   } else {
-    char *sig = ctx->needs_sig ? uw_cookie_sig(ctx) : "";
-    char *r = uw_malloc(ctx, 59 + 3 * INTS_MAX + strlen(ctx->url_prefix)
+    char *sig = ctx->needs_sig ? ctx->app->cookie_sig(ctx) : "";
+    char *r = uw_malloc(ctx, 59 + 3 * INTS_MAX + strlen(ctx->app->url_prefix)
                         + (ctx->needs_sig ? strlen(sig) + 7 : 0));
     sprintf(r, "client_id=%u;client_pass=%d;url_prefix=\"%s\";timeout=%d;%s%s%slistener();",
             ctx->client->id,
             ctx->client->pass,
-            ctx->url_prefix,
-            ctx->timeout,
+            ctx->app->url_prefix,
+            ctx->app->timeout,
             ctx->needs_sig ? "sig=\"" : "",
             sig,
             ctx->needs_sig ? "\";" : "");
@@ -2766,9 +2765,6 @@ uw_unit uw_Basis_send(uw_context ctx, uw_Basis_channel chn, uw_Basis_string msg)
   return uw_unit_v;
 }
 
-int uw_db_commit(uw_context);
-int uw_db_rollback(uw_context);
-
 void uw_commit(uw_context ctx) {
   unsigned i;
 
@@ -2782,7 +2778,7 @@ void uw_commit(uw_context ctx) {
       if (ctx->transactionals[i].commit)
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
 
-  if (uw_db_commit(ctx))
+  if (ctx->app->db_commit(ctx))
     uw_error(ctx, FATAL, "Error running SQL COMMIT");
 
   for (i = 0; i < ctx->used_deltas; ++i) {
@@ -2855,7 +2851,7 @@ int uw_rollback(uw_context ctx) {
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data);
 
-  return uw_db_rollback(ctx);
+  return ctx->app->db_rollback(ctx);
 }
 
 void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
@@ -2874,16 +2870,14 @@ void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, u
 
 // "Garbage collection"
 
-void uw_expunger(uw_context ctx, uw_Basis_client cli);
-
 static failure_kind uw_expunge(uw_context ctx, uw_Basis_client cli) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0) {
-    if (uw_db_begin(ctx))
+    if (ctx->app->db_begin(ctx))
       uw_error(ctx, FATAL, "Error running SQL BEGIN");
-    uw_expunger(ctx, cli);
-    if (uw_db_commit(ctx))
+    ctx->app->expunger(ctx, cli);
+    if (ctx->app->db_commit(ctx))
       uw_error(ctx, FATAL, "Error running SQL COMMIT");
   }
 
@@ -2894,7 +2888,7 @@ void uw_prune_clients(uw_context ctx) {
   client *c, *next, *prev = NULL;
   time_t cutoff;
 
-  cutoff = time(NULL) - uw_timeout;
+  cutoff = time(NULL) - ctx->app->timeout;
 
   pthread_mutex_lock(&clients_mutex);
 
@@ -2911,14 +2905,14 @@ void uw_prune_clients(uw_context ctx) {
       while (fk == UNLIMITED_RETRY) {
         fk = uw_expunge(ctx, c->id);
         if (fk == UNLIMITED_RETRY) {
-          uw_db_rollback(ctx);
+          ctx->app->db_rollback(ctx);
           printf("Unlimited retry during expunge: %s\n", uw_error_message(ctx));
         }
       }
       if (fk == SUCCESS)
         free_client(c);
       else {
-        uw_db_rollback(ctx);
+        ctx->app->db_rollback(ctx);
         fprintf(stderr, "Expunge blocked by error: %s\n", uw_error_message(ctx));
       }
     }
@@ -2930,24 +2924,19 @@ void uw_prune_clients(uw_context ctx) {
   pthread_mutex_unlock(&clients_mutex);
 }
 
-void uw_initializer(uw_context ctx);
-
 failure_kind uw_initialize(uw_context ctx) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0) {
-    if (uw_db_begin(ctx))
+    if (ctx->app->db_begin(ctx))
       uw_error(ctx, FATAL, "Error running SQL BEGIN");
-    uw_initializer(ctx);
-    if (uw_db_commit(ctx))
+    ctx->app->initializer(ctx);
+    if (ctx->app->db_commit(ctx))
       uw_error(ctx, FATAL, "Error running SQL COMMIT");
   }
 
   return r;
 }
-
-extern int uw_check_url(const char *);
-extern int uw_check_mime(const char *);
 
 static int url_bad(uw_Basis_string s) {
   for (; *s; ++s)
@@ -2960,7 +2949,7 @@ static int url_bad(uw_Basis_string s) {
 uw_Basis_string uw_Basis_bless(uw_context ctx, uw_Basis_string s) {
   if (url_bad(s))
     uw_error(ctx, FATAL, "Invalid URL %s", uw_Basis_htmlifyString(ctx, s));
-  if (uw_check_url(s))
+  if (ctx->app->check_url(s))
     return s;
   else
     uw_error(ctx, FATAL, "Disallowed URL %s", uw_Basis_htmlifyString(ctx, s));
@@ -2969,7 +2958,7 @@ uw_Basis_string uw_Basis_bless(uw_context ctx, uw_Basis_string s) {
 uw_Basis_string uw_Basis_checkUrl(uw_context ctx, uw_Basis_string s) {
   if (url_bad(s))
     return NULL;
-  if (uw_check_url(s))
+  if (ctx->app->check_url(s))
     return s;
   else
     return NULL;
@@ -2987,7 +2976,7 @@ uw_Basis_string uw_Basis_blessMime(uw_context ctx, uw_Basis_string s) {
   if (!mime_format(s))
     uw_error(ctx, FATAL, "MIME type \"%s\" contains invalid character", uw_Basis_htmlifyString(ctx, s));
 
-  if (uw_check_mime(s))
+  if (ctx->app->check_mime(s))
     return s;
   else
     uw_error(ctx, FATAL, "Disallowed MIME type %s", uw_Basis_htmlifyString(ctx, s));
@@ -2997,7 +2986,7 @@ uw_Basis_string uw_Basis_checkMime(uw_context ctx, uw_Basis_string s) {
   if (!mime_format(s))
     return NULL;
 
-  if (uw_check_mime(s))
+  if (ctx->app->check_mime(s))
     return s;
   else
     return NULL;
@@ -3020,7 +3009,7 @@ uw_Basis_string uw_Basis_makeSigString(uw_context ctx, uw_Basis_string sig) {
 }
 
 uw_Basis_string uw_Basis_sigString(uw_context ctx, uw_unit u) {
-  return uw_cookie_sig(ctx);
+  return ctx->app->cookie_sig(ctx);
 }
 
 uw_Basis_string uw_Basis_fileName(uw_context ctx, uw_Basis_file f) {

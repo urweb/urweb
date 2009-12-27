@@ -2604,10 +2604,6 @@ fun p_file env (ds, ps) =
                                         string scripts
                                     end,
                                     string "\");",
-                                    newline,
-                                    string "uw_set_url_prefix(ctx, \"",
-                                    string (Settings.getUrlPrefix ()),
-                                    string "\");",
                                     newline]),
                      string "uw_set_needs_push(ctx, ",
                      string (case side of
@@ -2706,7 +2702,7 @@ fun p_file env (ds, ps) =
                          NONE cookies
 
         fun makeChecker (name, rules : Settings.rule list) =
-            box [string "int ",
+            box [string "static int ",
                  string name,
                  string "(const char *s) {",
                  newline,
@@ -2772,15 +2768,11 @@ fun p_file env (ds, ps) =
                       newline,
                       string "int uw_db_begin(uw_context ctx) { return 0; };",
                       newline,
+                      string "void uw_db_close(uw_context ctx) { };",
+                      newline,
                       string "int uw_db_commit(uw_context ctx) { return 0; };",
                       newline,
                       string "int uw_db_rollback(uw_context ctx) { return 0; };"],
-             newline,
-             newline,
-
-             string "const char *uw_url_prefix = \"",
-             string (Settings.getUrlPrefix ()),
-             string "\";",
              newline,
              newline,
 
@@ -2790,16 +2782,8 @@ fun p_file env (ds, ps) =
 
              p_list_sep newline (fn x => x) pds,
              newline,
-             string "int uw_inputs_len = ",
-             string (Int.toString (SM.foldl Int.max 0 fnums + 1)),
-             string ";",
              newline,
-             string "int uw_timeout = ",
-             string (Int.toString (Settings.getTimeout ())),
-             string ";",
-             newline,
-             newline,
-             string "int uw_input_num(char *name) {",
+             string "static int uw_input_num(const char *name) {",
              newline,
              makeSwitch (fnums, 0),
              string "}",
@@ -2816,7 +2800,7 @@ fun p_file env (ds, ps) =
              newline,
              string "extern int uw_hash_blocksize;",
              newline,
-             string "uw_Basis_string uw_cookie_sig(uw_context ctx) {",
+             string "static uw_Basis_string uw_cookie_sig(uw_context ctx) {",
              newline,
              box [string "uw_Basis_string r = uw_malloc(ctx, uw_hash_blocksize);",
                   newline,
@@ -2832,7 +2816,7 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
-             string "void uw_handle(uw_context ctx, char *request) {",
+             string "static void uw_handle(uw_context ctx, char *request) {",
              newline,
              string "if (!strcmp(request, \"",
              string (OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
@@ -2856,7 +2840,7 @@ fun p_file env (ds, ps) =
              newline,
 
              if hasDb then
-                 box [string "void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
+                 box [string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
                       newline,
                       box [p_enamed env (!expunge),
                            string "(ctx, cli);",
@@ -2865,7 +2849,7 @@ fun p_file env (ds, ps) =
                       newline,
                       newline,
 
-                      string "void uw_initializer(uw_context ctx) {",
+                      string "static void uw_initializer(uw_context ctx) {",
                       newline,
                       box [p_list_sep (box []) (fn e => box [p_exp env e,
                                                              string ";",
@@ -2876,10 +2860,22 @@ fun p_file env (ds, ps) =
                       string "}",
                       newline]
              else
-                 box [string "void uw_expunger(uw_context ctx, uw_Basis_client cli) { };",
+                 box [string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) { };",
                       newline,
-                      string "void uw_initializer(uw_context ctx) { };",
-                      newline]]
+                      string "static void uw_initializer(uw_context ctx) { };",
+                      newline],
+
+             string "uw_app uw_application = {",
+             p_list_sep (box [string ",", newline]) string
+                        [Int.toString (SM.foldl Int.max 0 fnums + 1),
+                         Int.toString (Settings.getTimeout ()),
+                         "\"" ^ Settings.getUrlPrefix () ^ "\"",
+                         "uw_client_init", "uw_initializer", "uw_expunger",
+                         "uw_db_init", "uw_db_begin", "uw_db_commit", "uw_db_rollback", "uw_db_close",
+                         "uw_handle",
+                         "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime"],
+             string "};",
+             newline]
     end
 
 fun p_sql env (ds, _) =
