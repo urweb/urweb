@@ -30,6 +30,7 @@ structure Fastcgi :> FASTCGI = struct
 open Settings
 
 val () = addProtocol {name = "fastcgi",
+                      compile = "",
                       linkStatic = clibFile "fastcgi.o",
                       linkDynamic = "-lurweb_fastcgi",
                       persistent = true}

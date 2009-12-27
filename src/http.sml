@@ -30,6 +30,7 @@ structure Http :> HTTP = struct
 open Settings
 
 val () = addProtocol {name = "http",
+                      compile = "",
                       linkStatic = clibFile "http.o",
                       linkDynamic = "-lurweb_http",
                       persistent = true}

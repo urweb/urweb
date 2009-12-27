@@ -93,6 +93,7 @@ signature SETTINGS = sig
     (* Web protocols that generated programs may speak *)
     type protocol = {
         name : string,       (* Call it this on the command line *)
+        compile : string,    (* Pass these `gcc -c' arguments *)
         linkStatic : string, (* Pass these static linker arguments *)
         linkDynamic : string,(* Pass these dynamic linker arguments *)
         persistent : bool    (* Multiple requests per process? *)

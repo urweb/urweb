@@ -529,7 +529,8 @@ fun parseUrp' accLibs fname =
                                  timeout := SOME (valOf (Int.fromString arg)))
                               | "ffi" => ffi := relify arg :: !ffi
                               | "link" => let
-                                    val arg = if size arg >= 2 andalso String.substring (arg, 0, 2) = "-l" then
+                                    val arg = if size arg >= 1
+                                                 andalso String.sub (arg, 0) = #"-" then
                                                   arg
                                               else
                                                   relifyA arg
@@ -1033,7 +1034,9 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                       "-L" ^ Config.libC ^ " -lurweb " ^ #linkDynamic proto
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wimplicit -Werror -O3 -fno-inline -I " ^ Config.includ
+                      ^ " " ^ #compile proto
                       ^ " -c " ^ cname ^ " -o " ^ oname
+
         val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ lib ^ " " ^ oname
                    ^ " -o " ^ ename
 

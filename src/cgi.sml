@@ -30,6 +30,7 @@ structure Cgi :> CGI = struct
 open Settings
 
 val () = addProtocol {name = "cgi",
+                      compile = "",
                       linkStatic = clibFile "cgi.o",
                       linkDynamic = "-lurweb_cgi",
                       persistent = false}

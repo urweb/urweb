@@ -270,6 +270,7 @@ val checkMime = check
 
 type protocol = {
      name : string,
+     compile : string,
      linkStatic : string,
      linkDynamic : string,
      persistent : bool
@@ -282,6 +283,7 @@ fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
                                       file = s}
 
 val curProto = ref {name = "",
+                    compile = "",
                     linkStatic = "",
                     linkDynamic = "",
                     persistent = false}
