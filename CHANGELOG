@@ -8,6 +8,7 @@ Next
 - Typing of SQL queries no longer exposes which tables were used in joins but
   had none of their fields projected
 - Tasks
+- Dynamic linking of the runtime system
 - Optimization improvements
 
 ========

@@ -1025,13 +1025,17 @@ val toSqlify = transform sqlify "sqlify" o toMono_opt2
 fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
     let
         val proto = Settings.currentProtocol ()
-        val urweb_o = clibFile "urweb.o"
-        val memmem_o = clibFile "memmem.o"
+
+        val lib = if Settings.getStaticLinking () then
+                      clibFile "request.o" ^ " " ^ clibFile "queue.o" ^ " " ^ clibFile "urweb.o"
+                      ^ " " ^ clibFile "memmem.o" ^ " " ^ #linkStatic proto
+                  else
+                      "-L" ^ Config.libC ^ " -lurweb " ^ #linkDynamic proto
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wimplicit -Werror -O3 -fno-inline -I " ^ Config.includ
                       ^ " -c " ^ cname ^ " -o " ^ oname
-        val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ urweb_o ^ " " ^ oname
-                   ^ " " ^ memmem_o ^ " " ^ #link proto ^ " -o " ^ ename
+        val link = "gcc -Werror -O3 -lm -lmhash -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ lib ^ " " ^ oname
+                   ^ " -o " ^ ename
 
         val (compile, link) =
             if profile then

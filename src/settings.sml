@@ -270,7 +270,8 @@ val checkMime = check
 
 type protocol = {
      name : string,
-     link : string,
+     linkStatic : string,
+     linkDynamic : string,
      persistent : bool
 }
 val protocols = ref ([] : protocol list)
@@ -281,7 +282,8 @@ fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
                                       file = s}
 
 val curProto = ref {name = "",
-                    link = "",
+                    linkStatic = "",
+                    linkDynamic = "",
                     persistent = false}
 fun setProtocol name =
     case getProtocol name of
@@ -426,5 +428,9 @@ fun getCoreInline () = !coreInline
 val monoInline = ref 20
 fun setMonoInline n = monoInline := n
 fun getMonoInline () = !monoInline
+
+val staticLinking = ref false
+fun setStaticLinking b = staticLinking := b
+fun getStaticLinking () = !staticLinking
 
 end

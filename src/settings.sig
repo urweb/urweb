@@ -92,9 +92,10 @@ signature SETTINGS = sig
 
     (* Web protocols that generated programs may speak *)
     type protocol = {
-        name : string,      (* Call it this on the command line *)
-        link : string,      (* Pass these linker arguments *)
-        persistent : bool   (* Multiple requests per process? *)
+        name : string,       (* Call it this on the command line *)
+        linkStatic : string, (* Pass these static linker arguments *)
+        linkDynamic : string,(* Pass these dynamic linker arguments *)
+        persistent : bool    (* Multiple requests per process? *)
     }
     val addProtocol : protocol -> unit
     val setProtocol : string -> unit
@@ -181,5 +182,8 @@ signature SETTINGS = sig
 
     val setMonoInline : int -> unit
     val getMonoInline : unit -> int
+
+    val setStaticLinking : bool -> unit
+    val getStaticLinking : unit -> bool
 
 end

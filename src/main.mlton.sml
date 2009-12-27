@@ -63,6 +63,9 @@ fun doArgs args =
       | "-sql" :: s :: rest =>
         (Settings.setSql (SOME s);
          doArgs rest)
+      | "-static" :: rest =>
+        (Settings.setStaticLinking true;
+         doArgs rest)
       | arg :: rest =>
         (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
              raise Fail ("Unknown flag " ^ arg)

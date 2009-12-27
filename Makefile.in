@@ -5,7 +5,10 @@ SITELISP := @SITELISP@
 
 LIB_UR   := $(LIB)/ur
 LIB_C    := $(LIB)/c
-LIB_JS    := $(LIB)/js
+LIB_JS   := $(LIB)/js
+
+LD_MAJOR := 1
+LD_MINOR := 0
 
 all: smlnj mlton c
 
@@ -14,17 +17,28 @@ all: smlnj mlton c
 smlnj: src/urweb.cm
 mlton: bin/urweb
 
-OBJS := urweb request queue http cgi fastcgi memmem
-c: $(OBJS:%=lib/c/%.o)
+OBJS := memmem urweb request queue http cgi fastcgi
+SOS  := urweb urweb_http urweb_cgi urweb_fastcgi
+c: $(OBJS:%=lib/c/%.o) $(SOS:%=lib/c/lib%.so.$(LD_MAJOR).$(LD_MINOR))
 
 clean:
 	rm -f src/*.mlton.grm.* src/*.mlton.lex.* \
 		src/urweb.cm src/urweb.mlb \
-		lib/c/*.o
+		lib/c/*.o lib/c/*.so.*
 	rm -rf .cm src/.cm
+
+lib/c/%.do: src/c/%.c include/*.h
+	gcc -fPIC -Wimplicit -O3 -I include -c $< -o $@ $(CFLAGS)
 
 lib/c/%.o: src/c/%.c include/*.h
 	gcc -Wimplicit -O3 -I include -c $< -o $@ $(CFLAGS)
+
+URWEB_OS := memmem urweb queue request
+lib/c/liburweb.so.$(LD_MAJOR).$(LD_MINOR): $(URWEB_OS:%=lib/c/%.do)
+	gcc -shared -Wl,-soname,liburweb.so.$(LD_MAJOR) -o $@ $^
+
+lib/c/liburweb_%.so.$(LD_MAJOR).$(LD_MINOR): lib/c/%.do
+	gcc -shared -Wl,-soname,liburweb_$*.so.$(LD_MAJOR) -o $@ $^
 
 src/urweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \
@@ -70,12 +84,18 @@ install:
 	cp lib/ur/*.ur $(LIB_UR)/
 	mkdir -p $(LIB_C)
 	cp lib/c/*.o $(LIB_C)/
+	cp lib/c/*.so.$(LD_MAJOR).$(LD_MINOR) $(LIB_C)/
 	mkdir -p $(LIB_JS)
 	cp lib/js/*.js $(LIB_JS)/
 	mkdir -p $(INCLUDE)
 	cp include/*.h $(INCLUDE)/
 	mkdir -p $(SITELISP)
 	cp src/elisp/*.el $(SITELISP)/
+	ldconfig $(LIB_C)
+	ln -sf $(LIB_C)/liburweb.so.$(LD_MAJOR) $(LIB_C)/liburweb.so
+	ln -sf $(LIB_C)/liburweb_http.so.$(LD_MAJOR) $(LIB_C)/liburweb_http.so
+	ln -sf $(LIB_C)/liburweb_cgi.so.$(LD_MAJOR) $(LIB_C)/liburweb_cgi.so
+	ln -sf $(LIB_C)/liburweb_fastcgi.so.$(LD_MAJOR) $(LIB_C)/liburweb_fastcgi.so
 
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz
