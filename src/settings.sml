@@ -80,6 +80,7 @@ fun mayClientToServer x = S.member (!clientToServer, x)
 val effectfulBase = basis ["dml",
                            "nextval",
                            "setval",
+                           "get_cookie",
                            "set_cookie",
                            "clear_cookie",
                            "new_client_source",
