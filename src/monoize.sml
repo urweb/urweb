@@ -2985,6 +2985,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                    | "coption" => normal ("option", NONE, NONE)
 
+                   | "ctextarea" =>
+                     (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                          NONE =>
+                          let
+                              val (ts, fm) = tagStart "textarea"
+                          in
+                              ((L'.EStrcat (ts,
+                                            (L'.EPrim (Prim.String " />"), loc)),
+                                loc), fm)
+                          end
+                        | SOME (_, src, _) =>
+                          let
+                              val sc = strcat [str "tbx(exec(",
+                                               (L'.EJavaScript (L'.Script, src), loc),
+                                               str "))"]
+                              val sc = setAttrs sc
+                          in
+                              (strcat [str "<script type=\"text/javascript\">",
+                                       sc,
+                                       str "</script>"],
+                               fm)
+                          end)
+
                    | "tabl" => normal ("table", NONE, NONE)
                    | _ => normal (tag, NONE, NONE))
             end

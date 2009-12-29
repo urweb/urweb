@@ -734,6 +734,9 @@ con cselect = [Cselect]
 val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxAttrs) cselect
 val coption : unit -> tag [Value = string, Selected = bool] cselect [] [] []
 
+val ctextarea : cformTag ([Value = string, Rows = int, Cols = int, Source = source string, Onchange = transaction unit,
+                           Ontext = transaction unit] ++ boxAttrs) []
+
 (*** Tables *)
 
 val tabl : other ::: {Unit} -> [other ~ [Body, Table]] => unit
