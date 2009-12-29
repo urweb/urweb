@@ -168,6 +168,8 @@ ws = [\ \t\012];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
 notags = [^<{\n]+;
+oint = [0-9][0-9][0-9];
+xint = x[0-9a-fA-F][0-9a-fA-F];
 
 %%
 
@@ -199,6 +201,16 @@ notags = [^<{\n]+;
 <STRING,CHAR> "\\t"   => (str := #"\t" :: !str; continue());
 <STRING,CHAR> "\n"    => (newline yypos;
 			  str := #"\n" :: !str; continue());
+<STRING,CHAR> "\\" {oint} => (case StringCvt.scanString (Int.scan StringCvt.OCT)
+                                                        (String.extract (yytext, 1, NONE)) of
+                                  NONE => ErrorMsg.errorAt' (pos yypos, pos yypos) "Illegal string escape"
+                                | SOME n => str := chr n :: !str;
+                              continue());
+<STRING,CHAR> "\\" {xint} => (case StringCvt.scanString (Int.scan StringCvt.HEX)
+                                                        (String.extract (yytext, 2, NONE)) of
+                                  NONE => ErrorMsg.errorAt' (pos yypos, pos yypos) "Illegal string escape"
+                                | SOME n => str := chr n :: !str;
+                              continue());
 
 <INITIAL> "#\""       => (YYBEGIN CHAR; strEnder := #"\""; strStart := pos yypos; str := []; continue());
 
