@@ -1,5 +1,5 @@
 ========
-Next
+20091230
 ========
 
 - Automatic insertion of implicit arguments in more positions
@@ -10,6 +10,7 @@ Next
 - Tasks
 - Dynamic linking of the runtime system
 - Optimization improvements
+- Bug fixes
 
 ========
 20091203
