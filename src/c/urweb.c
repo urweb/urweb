@@ -450,7 +450,7 @@ uw_context uw_init() {
 void uw_set_app(uw_context ctx, uw_app *app) {
   ctx->app = app;
 
-  if (app->inputs_len > ctx->sz_inputs) {
+  if (app && app->inputs_len > ctx->sz_inputs) {
     ctx->sz_inputs = app->inputs_len;
     ctx->inputs = realloc(ctx->inputs, ctx->sz_inputs * sizeof(input));
     memset(ctx->inputs, 0, ctx->sz_inputs * sizeof(input));
@@ -512,7 +512,8 @@ void uw_reset_keep_request(uw_context ctx) {
 
 void uw_reset(uw_context ctx) {
   uw_reset_keep_request(ctx);
-  memset(ctx->inputs, 0, ctx->app->inputs_len * sizeof(input));
+  if (ctx->app)
+    memset(ctx->inputs, 0, ctx->app->inputs_len * sizeof(input));
   memset(ctx->subinputs, 0, ctx->n_subinputs * sizeof(input));
   ctx->used_subinputs = 0;
 }
@@ -520,7 +521,7 @@ void uw_reset(uw_context ctx) {
 failure_kind uw_begin_init(uw_context ctx) {
   int r = setjmp(ctx->jmp_buf);
 
-  if (r == 0)
+  if (r == 0 && ctx->app)
     ctx->app->db_init(ctx);
 
   return r;
