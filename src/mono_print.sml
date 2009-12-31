@@ -206,18 +206,26 @@ fun p_exp' par env (e, _) =
              string ".",
              string x]
 
-      | ECase (e, pes, _) => parenIf true (box [string "case",
-                                                space,
-                                                p_exp env e,
-                                                space,
-                                                string "of",
-                                                space,
-                                                p_list_sep (box [space, string "|", space])
-                                                           (fn (p, e) => box [p_pat env p,
-                                                                              space,
-                                                                              string "=>",
-                                                                              space,
-                                                                              p_exp (E.patBinds env p) e]) pes])
+      | ECase (e, pes, {result, ...}) => parenIf true (box [string "case",
+                                                            space,
+                                                            p_exp env e,
+                                                            space,
+                                                            if !debug then
+                                                                box [string "return",
+                                                                     space,
+                                                                     p_typ env result,
+                                                                     space]
+                                                            else
+                                                                box [],
+                                                            string "of",
+                                                            space,
+                                                            p_list_sep (box [space, string "|", space])
+                                                                       (fn (p, e) => box [p_pat env p,
+                                                                                          space,
+                                                                                          string "=>",
+                                                                                          space,
+                                                                                          p_exp (E.patBinds env p) e])
+                                                                       pes])
 
       | EError (e, t) => box [string "(error",
                               space,

@@ -3440,6 +3440,29 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             end
           | L.DValRec vis =>
             let
+                val vis = map (fn (x, n, t, e, s) =>
+                                  let
+                                      fun maybeTransaction (t, e) =
+                                          case (#1 t, #1 e) of
+                                              (L.CApp ((L.CFfi ("Basis", "transaction"), _), _), _) =>
+                                              SOME (L.EAbs ("_",
+                                                            (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc),
+                                                            t,
+                                                            (L.EApp (CoreEnv.liftExpInExp 0 e,
+                                                                     (L.ERecord [], loc)), loc)), loc)
+                                            | (L.TFun (dom, ran), L.EAbs (x, _, _, e)) =>
+                                              (case maybeTransaction (ran, e) of
+                                                   NONE => NONE
+                                                 | SOME e => SOME (L.EAbs (x, dom, ran, e), loc))
+                                            | _ => NONE
+                                  in
+                                      (x, n, t,
+                                       case maybeTransaction (t, e) of
+                                           NONE => e
+                                         | SOME e => e,
+                                       s)
+                                  end) vis
+
                 val env = foldl (fn ((x, n, t, e, s), env) => Env.pushENamed env x n t NONE s) env vis
 
                 val (vis, fm) = ListUtil.foldlMap

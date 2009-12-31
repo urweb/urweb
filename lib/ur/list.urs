@@ -27,6 +27,8 @@ val mapX : a ::: Type -> ctx ::: {Unit} -> (a -> xml ctx [] []) -> t a -> xml ct
 val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
            -> (a -> m b) -> t a -> m (t b)
 
+val mapPartialM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> (a -> m (option b)) -> t a -> m (t b)
+                                                                        
 val mapXM : m ::: (Type -> Type) -> monad m -> a ::: Type -> ctx ::: {Unit}
             -> (a -> m (xml ctx [] [])) -> t a -> m (xml ctx [] [])
 
@@ -51,6 +53,18 @@ val mapQuery : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                -> [tables ~ exps] =>
     sql_query tables exps
     -> ($(exps ++ map (fn fields :: {Type} => $fields) tables) -> t)
+    -> transaction (list t)
+
+val mapQueryM : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+               -> [tables ~ exps] =>
+    sql_query tables exps
+    -> ($(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction t)
+    -> transaction (list t)
+
+val mapQueryPartialM : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+               -> [tables ~ exps] =>
+    sql_query tables exps
+    -> ($(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction (option t))
     -> transaction (list t)
 
 (** Association lists *)

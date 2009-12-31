@@ -582,23 +582,22 @@ fun reduce file =
                             fun push () =
                                 case result of
                                     (TFun (dom, result), loc) =>
-                                    if List.all (fn (_, (EAbs _, _)) => true | _ => false) pes then
-                                        let
-                                            val r =
-                                                EAbs ("y", dom, result,
-                                                      (ECase (liftExpInExp 0 e',
-                                                              map (fn (p, (EAbs (_, _, _, e), _)) =>
-                                                                      (p, swapExpVarsPat (0, patBinds p) e)
-                                                                    | _ => raise Fail "MonoReduce ECase") pes,
-                                                              {disc = disc, result = result}), loc))
-                                        in
-                                            (*Print.prefaces "Swapped"
-                                                           [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
-                                                            ("r", MonoPrint.p_exp env (r, ErrorMsg.dummySpan))];*)
-                                            r
-                                        end
-                                    else
-                                        e
+                                    let
+                                        fun safe (e, _) =
+                                            case e of
+                                                EAbs _ => true
+                                              | _ => false
+                                    in
+                                        if List.all (safe o #2) pes then
+                                            EAbs ("y", dom, result,
+                                                  (ECase (liftExpInExp 0 e',
+                                                          map (fn (p, (EAbs (_, _, _, e), _)) =>
+                                                                  (p, swapExpVarsPat (0, patBinds p) e)
+                                                                | _ => raise Fail "MonoReduce ECase") pes,
+                                                          {disc = disc, result = result}), loc))
+                                        else
+                                            e
+                                    end
                                   | _ => e
 
                             fun search pes =

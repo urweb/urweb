@@ -133,6 +133,20 @@ fun mapM [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
         mapM' []
     end
 
+fun mapPartialM [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
+    let
+        fun mapPartialM' acc ls =
+            case ls of
+                [] => return (rev acc)
+              | x :: ls =>
+                v <- f x;
+                mapPartialM' (case v of
+                                  None => acc
+                                | Some x' => x' :: acc) ls
+    in
+        mapPartialM' []
+    end
+
 fun mapXM [m ::: (Type -> Type)] (_ : monad m) [a] [ctx ::: {Unit}] f =
     let
         fun mapXM' ls =
@@ -234,6 +248,25 @@ fun mapQuery [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
              (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> t) =
     ls <- query q
                 (fn fs acc => return (f fs :: acc))
+                [];
+    return (rev ls)
+
+fun mapQueryM [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
+             [tables ~ exps] (q : sql_query tables exps)
+             (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction t) =
+    ls <- query q
+                (fn fs acc => v <- f fs; return (v :: acc))
+                [];
+    return (rev ls)
+
+fun mapQueryPartialM [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
+             [tables ~ exps] (q : sql_query tables exps)
+             (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction (option t)) =
+    ls <- query q
+                (fn fs acc => v <- f fs;
+                    return (case v of
+                                None => acc
+                              | Some v => v :: acc))
                 [];
     return (rev ls)
 
