@@ -89,7 +89,7 @@ fun check file =
                                               foldl (fn ((_, n, t, _, tag), emap) => IM.insert (emap, n, (t, tag)))
                                                     emap vis)
 
-                            | DExport (_, n) =>
+                            | DExport (_, n, _) =>
                               (case IM.find (emap, n) of
                                    NONE => raise Fail "MarshalCheck: Unknown export"
                                  | SOME (t, tag) =>

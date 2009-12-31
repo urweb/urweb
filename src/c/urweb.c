@@ -289,10 +289,14 @@ static void client_send(client *c, buf *msg) {
 
 // Global entry points
 
+extern void uw_init_crypto();
+
 void uw_global_init() {
   srand(time(NULL) ^ getpid());
 
   clients = malloc(0);
+
+  uw_init_crypto();
 }
 
 void uw_app_init(uw_app *app) {
@@ -420,7 +424,7 @@ uw_context uw_init() {
   ctx->script_header = "";
   ctx->needs_push = 0;
   ctx->needs_sig = 0;
-  
+
   ctx->error_message[0] = 0;
 
   ctx->source_count = 0;
@@ -2766,14 +2770,14 @@ uw_unit uw_Basis_send(uw_context ctx, uw_Basis_channel chn, uw_Basis_string msg)
 }
 
 void uw_commit(uw_context ctx) {
-  unsigned i;
+  int i;
 
-  for (i = 0; i < ctx->used_transactionals; ++i)
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].rollback != NULL)
       if (ctx->transactionals[i].commit)
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
 
-  for (i = 0; i < ctx->used_transactionals; ++i)
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].rollback == NULL)
       if (ctx->transactionals[i].commit)
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
@@ -2793,7 +2797,7 @@ void uw_commit(uw_context ctx) {
   if (ctx->client)
     release_client(ctx->client);
 
-  for (i = 0; i < ctx->used_transactionals; ++i)
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data);
 
@@ -2832,7 +2836,7 @@ void uw_commit(uw_context ctx) {
 }
 
 int uw_rollback(uw_context ctx) {
-  size_t i;
+  int i;
   cleanup *cl;
 
   if (ctx->client)
@@ -2843,11 +2847,11 @@ int uw_rollback(uw_context ctx) {
 
   ctx->cleanup_front = ctx->cleanup;
 
-  for (i = 0; i < ctx->used_transactionals; ++i)
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].rollback != NULL)
       ctx->transactionals[i].rollback(ctx->transactionals[i].data);
 
-  for (i = 0; i < ctx->used_transactionals; ++i)
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data);
 

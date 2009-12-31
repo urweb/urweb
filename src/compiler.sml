@@ -1029,7 +1029,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
 
         val lib = if Settings.getStaticLinking () then
                       clibFile "request.o" ^ " " ^ clibFile "queue.o" ^ " " ^ clibFile "urweb.o"
-                      ^ " " ^ clibFile "memmem.o" ^ " " ^ #linkStatic proto
+                      ^ " " ^ clibFile "memmem.o" ^ " " ^ clibFile "mhash.o" ^ " " ^ #linkStatic proto
                   else
                       "-L" ^ Config.libC ^ " -lurweb " ^ #linkDynamic proto
 

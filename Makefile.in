@@ -17,7 +17,7 @@ all: smlnj mlton c
 smlnj: src/urweb.cm
 mlton: bin/urweb
 
-OBJS := memmem urweb request queue http cgi fastcgi
+OBJS := memmem mhash urweb request queue http cgi fastcgi
 SOS  := urweb urweb_http urweb_cgi urweb_fastcgi
 c: $(OBJS:%=lib/c/%.o) $(SOS:%=lib/c/lib%.so.$(LD_MAJOR).$(LD_MINOR))
 
@@ -33,7 +33,7 @@ lib/c/%.do: src/c/%.c include/*.h
 lib/c/%.o: src/c/%.c include/*.h
 	gcc -Wimplicit -O3 -I include -c $< -o $@ $(CFLAGS)
 
-URWEB_OS := memmem urweb queue request
+URWEB_OS := memmem urweb queue request mhash
 lib/c/liburweb.so.$(LD_MAJOR).$(LD_MINOR): $(URWEB_OS:%=lib/c/%.do)
 	gcc -shared -Wl,-soname,liburweb.so.$(LD_MAJOR) -o $@ $^
 

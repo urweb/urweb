@@ -107,7 +107,7 @@ fun frob file =
                                         (#exported st, #export_decls st)
                                     else
                                         (IS.add (#exported st, n),
-                                         (DExport (Rpc ReadWrite, n), loc) :: #export_decls st)
+                                         (DExport (Rpc ReadWrite, n, false), loc) :: #export_decls st)
 
                                 val st = {exported = exported,
                                           export_decls = export_decls}

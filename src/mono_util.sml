@@ -507,12 +507,12 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                          fn vis' =>
                             (DValRec vis', loc))
                 end
-              | DExport (ek, s, n, ts, t) =>
+              | DExport (ek, s, n, ts, t, b) =>
                 S.bind2 (ListUtil.mapfold mft ts,
                         fn ts' =>
                            S.map2 (mft t,
                                    fn t' =>
-                                      (DExport (ek, s, n, ts', t'), loc)))
+                                      (DExport (ek, s, n, ts', t', b), loc)))
               | DTable (s, xts, pe, ce) =>
                 S.bind2 (mfe ctx pe,
                       fn pe' =>

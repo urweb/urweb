@@ -162,6 +162,9 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "css_class") => (L'.TFfi ("Basis", "string"), loc)
 
+                  | L.CApp ((L.CFfi ("Basis", "serialized"), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+
                   | L.CApp ((L.CFfi ("Basis", "transaction"), _), t) =>
                     (L'.TFun ((L'.TRecord [], loc), mt env dtmap t), loc)
                   | L.CApp ((L.CFfi ("Basis", "source"), _), t) =>
@@ -1975,6 +1978,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "client"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyClient", [(L'.ERel 0, loc)]), loc)), loc),
              fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_serialized"), _), _) =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyString", [(L'.ERel 0, loc)]), loc)), loc),
+             fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_prim"), _), t) =>
             let
                 val t = monoType env t
@@ -3235,6 +3242,22 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.ECApp ((L.EFfi ("Basis", "serialize"), _), t) =>
+            let
+                val t = monoType env t
+                val (e, fm) = urlifyExp env fm ((L'.ERel 0, loc), t)
+            in
+                ((L'.EAbs ("v", t, (L'.TFfi ("Basis", "string"), loc), e), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "deserialize"), _), t) =>
+            let
+                val t = monoType env t
+            in
+                ((L'.EAbs ("v", (L'.TFfi ("Basis", "string"), loc), t, (L'.EUnurlify ((L'.ERel 0, loc), t), loc)), loc),
+                 fm)
+            end
+
           | L.EFfiApp ("Basis", "url", [e]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
@@ -3432,7 +3455,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                       fm,
                       [(L'.DValRec vis, loc)])
             end
-          | L.DExport (ek, n) =>
+          | L.DExport (ek, n, b) =>
             let
                 val (_, t, _, s) = Env.lookupENamed env n
 
@@ -3447,7 +3470,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                 val ts = map (monoType env) ts
                 val ran = monoType env ran
             in
-                SOME (env, fm, [(L'.DExport (ek, s, n, ts, ran), loc)])
+                SOME (env, fm, [(L'.DExport (ek, s, n, ts, ran, b), loc)])
             end
           | L.DTable (x, n, (L.CRecord (_, xts), _), s, pe, _, ce, _) =>
             let
@@ -3538,8 +3561,8 @@ fun monoize env file =
         (* Calculate which exported functions need cookie signature protection *)
         val rcook = foldl (fn ((d, _), rcook) =>
                               case d of
-                                  L.DExport (L.Action L.ReadCookieWrite, n) => IS.add (rcook, n)
-                                | L.DExport (L.Rpc L.ReadCookieWrite, n) => IS.add (rcook, n)
+                                  L.DExport (L.Action L.ReadCookieWrite, n, _) => IS.add (rcook, n)
+                                | L.DExport (L.Rpc L.ReadCookieWrite, n, _) => IS.add (rcook, n)
                                 | _ => rcook)
                           IS.empty file
         val () = readCookie := rcook

@@ -66,6 +66,15 @@ fun effectize file =
                                            con = fn _ => false,
                                            exp = exp evs}
 
+        fun exp writers readers e =
+            case e of
+                EServerCall (n, _, _) => IM.inDomain (writers, n) andalso IM.inDomain (readers, n)
+              | _ => false
+
+        fun couldWriteWithRpc writers readers = U.Exp.exists {kind = fn _ => false,
+                                                              con = fn _ => false,
+                                                              exp = exp writers readers}
+
         fun exp evs e =
             case e of
                 EFfi ("Basis", "getCookie") => true
@@ -77,7 +86,7 @@ fun effectize file =
                                                 con = fn _ => false,
                                                 exp = exp evs}
 
-        fun doDecl (d, evs as (writers, readers)) =
+        fun doDecl (d, evs as (writers, readers, pushers)) =
             case #1 d of
                 DVal (x, n, t, e, s) =>
                 (d, (if couldWrite writers e then
@@ -87,11 +96,15 @@ fun effectize file =
                      if couldReadCookie readers e then
                          IM.insert (readers, n, (#2 d, s))
                      else
-                         readers))
+                         readers,
+                     if couldWriteWithRpc writers readers e then
+                         IM.insert (pushers, n, (#2 d, s))
+                     else
+                         pushers))
               | DValRec vis =>
                 let
                     fun oneRound evs =
-                        foldl (fn ((_, n, _, e, s), (changed, (writers, readers))) =>
+                        foldl (fn ((_, n, _, e, s), (changed, (writers, readers, pushers))) =>
                                   let
                                       val (changed, writers) =
                                           if couldWrite writers e andalso not (IM.inDomain (writers, n)) then
@@ -104,8 +117,15 @@ fun effectize file =
                                               (true, IM.insert (readers, n, (#2 d, s)))
                                           else
                                               (changed, readers)
+
+                                      val (changed, pushers) =
+                                          if couldWriteWithRpc writers readers e
+                                             andalso not (IM.inDomain (pushers, n)) then
+                                              (true, IM.insert (pushers, n, (#2 d, s)))
+                                          else
+                                              (changed, pushers)
                                   in
-                                      (changed, (writers, readers))
+                                      (changed, (writers, readers, pushers))
                                   end) (false, evs) vis
 
                     fun loop evs =
@@ -118,34 +138,34 @@ fun effectize file =
                                 evs
                         end
                 in
-                    (d, loop (writers, readers))
+                    (d, loop (writers, readers, pushers))
                 end
-              | DExport (Link, n) =>
+              | DExport (Link, n, _) =>
                 (case IM.find (writers, n) of
                      NONE => ()
                    | SOME (loc, s) => ErrorMsg.errorAt loc ("A link (" ^ s ^ ") could cause side effects; try implementing it with a form instead");
-                 (d, evs))
-              | DExport (Action _, n) =>
+                 ((DExport (Link, n, IM.inDomain (pushers, n)), #2 d), evs))
+              | DExport (Action _, n, _) =>
                 ((DExport (Action (if IM.inDomain (writers, n) then
                                        if IM.inDomain (readers, n) then
                                            ReadCookieWrite
                                        else
                                            ReadWrite
                                    else
-                                       ReadOnly), n), #2 d),
+                                       ReadOnly), n, IM.inDomain (pushers, n)), #2 d),
                  evs)
-              | DExport (Rpc _, n) =>
+              | DExport (Rpc _, n, _) =>
                 ((DExport (Rpc (if IM.inDomain (writers, n) then
                                     if IM.inDomain (readers, n) then
                                         ReadCookieWrite
                                     else
                                         ReadWrite
                                 else
-                                    ReadOnly), n), #2 d),
+                                    ReadOnly), n, IM.inDomain (pushers, n)), #2 d),
                  evs)
               | _ => (d, evs)
 
-        val (file, _) = ListUtil.foldlMap doDecl (IM.empty, IM.empty) file
+        val (file, _) = ListUtil.foldlMap doDecl (IM.empty, IM.empty, IM.empty) file
     in
         file
     end

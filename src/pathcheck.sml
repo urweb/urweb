@@ -67,7 +67,7 @@ fun checkDecl ((d, loc), (funcs, rels, cookies, styles)) =
              (funcs, rels, cookies, SS.add (styles, s)))
     in
         case d of
-            DExport (_, s, _, _, _) => doFunc s
+            DExport (_, s, _, _, _, _) => doFunc s
             
           | DTable (s, _, pe, ce) =>
             let

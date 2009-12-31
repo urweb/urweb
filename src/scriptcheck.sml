@@ -159,7 +159,7 @@ fun classify (ds, ps) =
 
         val foundBad = ref false
 
-        val ps = map (fn (ek, x, n, ts, t, _) =>
+        val ps = map (fn (ek, x, n, ts, t, _, b) =>
                          (ek, x, n, ts, t,
                           if IS.member (push_ids, n) then
                               (if not (#persistent proto) andalso not (!foundBad) then
@@ -172,7 +172,8 @@ fun classify (ds, ps) =
                           else if IS.member (pull_ids, n) then
                               ServerAndPull
                           else
-                              ServerOnly)) ps
+                              ServerOnly,
+                          b)) ps
     in
         (ds, ps)
     end

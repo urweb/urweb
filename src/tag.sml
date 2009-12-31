@@ -197,7 +197,7 @@ fun tag file =
 
         fun doDecl (d as (d', loc), (env, count, tags, byTag)) =
             case d' of
-                DExport (ek, n) =>
+                DExport (ek, n, _) =>
                 let
                     val (_, _, _, s) = E.lookupENamed env n
                 in
@@ -276,7 +276,7 @@ fun tag file =
                                                     end
                                         in
                                             (("wrap_" ^ fnam, cn, t, abs, tag),
-                                             (DExport (ek, cn), loc))
+                                             (DExport (ek, cn, false), loc))
                                         end) newTags
 
                     val (newVals, newExports) = ListPair.unzip newDs

@@ -2184,7 +2184,7 @@ fun p_file env (ds, ps) =
                 end
               | _ => NONE
 
-        val fields = foldl (fn ((ek, _, _, ts, _, _), fields) =>
+        val fields = foldl (fn ((ek, _, _, ts, _, _, _), fields) =>
                                case ek of
                                    Link => fields
                                  | Rpc _ => fields
@@ -2480,7 +2480,7 @@ fun p_file env (ds, ps) =
                               newline]
             end
 
-        fun p_page (ek, s, n, ts, ran, side) =
+        fun p_page (ek, s, n, ts, ran, side, tellSig) =
             let
                 val (ts, defInputs, inputsVar, fields) =
                     case ek of
@@ -2612,7 +2612,7 @@ fun p_file env (ds, ps) =
                      string ");",
                      newline,
                      string "uw_set_needs_sig(ctx, ",
-                     string (if couldWrite ek then
+                     string (if tellSig then
                                  "1"
                              else
                                  "0"),

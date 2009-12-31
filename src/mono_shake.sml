@@ -54,7 +54,7 @@ fun shake file =
 
         val (page_cs, page_es) =
             List.foldl
-                (fn ((DExport (_, _, n, _, _), _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
+                (fn ((DExport (_, _, n, _, _, _), _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
                   | ((DDatabase {expunge = n1, initialize = n2, ...}, _), (page_cs, page_es)) =>
                     (page_cs, IS.addList (page_es, [n1, n2]))
                   | ((DTask (e1, e2), _), st) => usedVars (usedVars st e2) e1

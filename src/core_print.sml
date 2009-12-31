@@ -547,16 +547,16 @@ fun p_decl env (dAll as (d, _) : decl) =
                  space,
                  p_list_sep (box [newline, string "and", space]) (p_vali env) vis]
         end
-      | DExport (ek, n) => box [string "export",
-                                space,
-                                Export.p_export_kind ek,
-                                space,
-                                p_enamed env n,
-                                space,
-                                string "as",
-                                space,
-                                (p_con env (#2 (E.lookupENamed env n))
-                                 handle E.UnboundNamed _ => string "UNBOUND")]
+      | DExport (ek, n, _) => box [string "export",
+                                   space,
+                                   Export.p_export_kind ek,
+                                   space,
+                                   p_enamed env n,
+                                   space,
+                                   string "as",
+                                   space,
+                                   (p_con env (#2 (E.lookupENamed env n))
+                                    handle E.UnboundNamed _ => string "UNBOUND")]
       | DTable (x, n, c, s, pe, _, ce, _) => box [string "table",
                                                   space,
                                                   p_named x n,

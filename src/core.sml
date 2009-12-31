@@ -127,7 +127,7 @@ datatype decl' =
        | DDatatype of (string * int * string list * (string * int * con option) list) list
        | DVal of string * int * con * exp * string
        | DValRec of (string * int * con * exp * string) list
-       | DExport of export_kind * int
+       | DExport of export_kind * int * bool
        | DTable of string * int * con * string * exp * con * exp * con
        | DSequence of string * int * string
        | DView of string * int * string * exp * con

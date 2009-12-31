@@ -67,7 +67,7 @@ fun shake file =
 
         val (usedE, usedC) =
             List.foldl
-                (fn ((DExport (_, n), _), (usedE, usedC)) => (IS.add (usedE, n), usedC)
+                (fn ((DExport (_, n, _), _), (usedE, usedC)) => (IS.add (usedE, n), usedC)
                   | ((DTable (_, _, c, _, pe, pc, ce, cc), _), (usedE, usedC)) =>
                     let
                         val usedC = usedVarsC usedC c

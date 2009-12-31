@@ -132,6 +132,6 @@ datatype sidedness =
 datatype effect = datatype Export.effect
 datatype export_kind = datatype Export.export_kind
 
-type file = decl list * (export_kind * string * int * typ list * typ * sidedness) list
+type file = decl list * (export_kind * string * int * typ list * typ * sidedness * bool) list
 
 end

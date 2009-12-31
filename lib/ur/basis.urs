@@ -194,6 +194,11 @@ val sql_blob : sql_injectable_prim blob
 val sql_channel : t ::: Type -> sql_injectable_prim (channel t)
 val sql_client : sql_injectable_prim client
 
+con serialized :: Type -> Type
+val serialize : t ::: Type -> t -> serialized t
+val deserialize : t ::: Type -> serialized t -> t
+val sql_serialized : t ::: Type -> sql_injectable_prim (serialized t)
+
 con primary_key :: {Type} -> {{Unit}} -> Type
 val no_primary_key : fs ::: {Type} -> primary_key fs []
 val primary_key : rest ::: {Type} -> t ::: Type -> key1 :: Name -> keys :: {Type}
