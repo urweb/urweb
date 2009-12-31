@@ -84,18 +84,18 @@ install:
 	cp lib/ur/*.ur $(LIB_UR)/
 	mkdir -p $(LIB_C)
 	cp lib/c/*.o $(LIB_C)/
-	cp lib/c/*.so.$(LD_MAJOR).$(LD_MINOR) $(LIB_C)/
+	cp lib/c/*.so.$(LD_MAJOR).$(LD_MINOR) $(LIB)/..
 	mkdir -p $(LIB_JS)
 	cp lib/js/*.js $(LIB_JS)/
 	mkdir -p $(INCLUDE)
 	cp include/*.h $(INCLUDE)/
 	mkdir -p $(SITELISP)
 	cp src/elisp/*.el $(SITELISP)/
-	ldconfig $(LIB_C)
-	ln -sf $(LIB_C)/liburweb.so.$(LD_MAJOR) $(LIB_C)/liburweb.so
-	ln -sf $(LIB_C)/liburweb_http.so.$(LD_MAJOR) $(LIB_C)/liburweb_http.so
-	ln -sf $(LIB_C)/liburweb_cgi.so.$(LD_MAJOR) $(LIB_C)/liburweb_cgi.so
-	ln -sf $(LIB_C)/liburweb_fastcgi.so.$(LD_MAJOR) $(LIB_C)/liburweb_fastcgi.so
+	ln -sf liburweb.so.$(LD_MAJOR) $(LIB)/../liburweb.so
+	ln -sf liburweb_http.so.$(LD_MAJOR) $(LIB)/../liburweb_http.so
+	ln -sf liburweb_cgi.so.$(LD_MAJOR) $(LIB)/../liburweb_cgi.so
+	ln -sf /liburweb_fastcgi.so.$(LD_MAJOR) $(LIB)/../liburweb_fastcgi.so
+	ldconfig
 
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz

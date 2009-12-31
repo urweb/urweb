@@ -1031,7 +1031,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                       clibFile "request.o" ^ " " ^ clibFile "queue.o" ^ " " ^ clibFile "urweb.o"
                       ^ " " ^ clibFile "memmem.o" ^ " " ^ clibFile "mhash.o" ^ " " ^ #linkStatic proto
                   else
-                      "-L" ^ Config.libC ^ " -lurweb " ^ #linkDynamic proto
+                      "-L" ^ Config.lib ^ "/.. -lurweb " ^ #linkDynamic proto
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wimplicit -Werror -O3 -fno-inline -I " ^ Config.includ
                       ^ " " ^ #compile proto
