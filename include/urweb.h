@@ -117,6 +117,7 @@ uw_unit uw_Basis_urlifyString_w(uw_context, uw_Basis_string);
 uw_unit uw_Basis_urlifyBool_w(uw_context, uw_Basis_bool);
 uw_unit uw_Basis_urlifyChannel_w(uw_context, uw_Basis_channel);
 
+uw_Basis_unit uw_Basis_unurlifyUnit(uw_context ctx, char **s);
 uw_Basis_int uw_Basis_unurlifyInt(uw_context, char **);
 uw_Basis_float uw_Basis_unurlifyFloat(uw_context, char **);
 uw_Basis_string uw_Basis_unurlifyString(uw_context, char **);

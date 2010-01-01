@@ -1793,6 +1793,11 @@ uw_Basis_string uw_Basis_unurlifyString(uw_context ctx, char **s) {
   return r;
 }
 
+uw_Basis_unit uw_Basis_unurlifyUnit(uw_context ctx, char **s) {
+  *s = uw_unurlify_advance(*s);
+  return uw_unit_v;
+}
+
 uw_Basis_string uw_Basis_unurlifyString_fromClient(uw_context ctx, char **s) {
   char *new_s = uw_unurlify_advance(*s);
   char *r, *s1, *s2;

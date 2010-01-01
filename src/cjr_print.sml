@@ -565,14 +565,14 @@ fun unurlify fromClient env (t, loc) =
     let
         fun unurlify' rf t =
             case t of
-                TFfi ("Basis", "unit") => string "uw_unit_v"
+                TFfi ("Basis", "unit") => string "uw_Basis_unurlifyUnit(ctx, &request)"
               | TFfi ("Basis", "string") => string (if fromClient then
                                                         "uw_Basis_unurlifyString_fromClient(ctx, &request)"
                                                     else
                                                         "uw_Basis_unurlifyString(ctx, &request)")
               | TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
 
-              | TRecord 0 => string "uw_unit_v"
+              | TRecord 0 => string "uw_Basis_unurlifyUnit(ctx, &request)"
               | TRecord i =>
                 let
                     val xts = E.lookupStruct env i

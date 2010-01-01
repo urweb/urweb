@@ -433,7 +433,8 @@ fun fooifyExp fk env =
                 end
               | _ =>
                 case t of
-                    L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [e]), loc), fm)
+                    L'.TFfi ("Basis", "unit") => ((L'.EPrim (Prim.String ""), loc), fm)
+                  | L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [e]), loc), fm)
 
                   | L'.TRecord [] => ((L'.EPrim (Prim.String ""), loc), fm)
                   | L'.TRecord ((x, t) :: xts) =>
