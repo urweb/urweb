@@ -869,9 +869,20 @@ fun process file =
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
                           | ESetval _ => unsupported "Nextval"
-                          | EUnurlify _ => unsupported "EUnurlify"
                           | EReturnBlob _ => unsupported "EUnurlify"
                           | ERedirect _ => unsupported "ERedirect"
+
+                          | EUnurlify (e, t) =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                                val (e', st) = unurlifyExp loc (t, st)
+                            in
+                                (strcat [str ("{c:\"f\",f:\"unurlify\",a:cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
+                                              ^ e' ^ "}},cons("),
+                                         e,
+                                         str ",null))}"],
+                                 st)
+                            end
 
                           | ESignalReturn e =>
                             let

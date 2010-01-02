@@ -964,16 +964,15 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                          fun wrapSgi ((sgi, _), (wds, eds))  =
                              case sgi of
                                  L.SgiVal (s, _, t as (L.TFun (dom, ran), _)) =>
-                                 (case (#1 dom, #1 ran) of
-                                      (L.TRecord _,
-                                       L.CApp ((L.CModProj (basis, [], "transaction"), _),
-                                               ran' as
-                                                    (L.CApp
-                                                         ((L.CApp
-                                                               ((L.CApp ((L.CModProj (basis', [], "xml"), _),
-                                                                         (L.CRecord (_, [((L.CName "Html", _),
-                                                                                          _)]), _)), _), _),
-                                                           _), _), _))) =>
+                                 (case #1 ran of
+                                      L.CApp ((L.CModProj (basis, [], "transaction"), _),
+                                              ran' as
+                                                   (L.CApp
+                                                        ((L.CApp
+                                                              ((L.CApp ((L.CModProj (basis', [], "xml"), _),
+                                                                        (L.CRecord (_, [((L.CName "Html", _),
+                                                                                         _)]), _)), _), _),
+                                                          _), _), _)) =>
                                       let
                                           val ran = (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc)
                                           val ranT = (L.CApp ((L.CModProj (basis, [], "transaction"), loc),

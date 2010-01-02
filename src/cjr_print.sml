@@ -2591,15 +2591,19 @@ fun p_file env (ds, ps) =
                                         val scripts =
                                             case side of
                                                 ServerOnly => ""
-                                              | _ => "<script src=\\\""
-                                                     ^ OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
-                                                                            file = "app.js"}
-                                                     ^ "\\\"></script>\\n"
-
-                                        val scripts = foldl (fn (x, scripts) =>
-                                                                scripts
-                                                                ^ "<script src=\\\"" ^ x ^ "\\\"></script>\\n")
-                                                      scripts (Settings.getScripts ())
+                                              | _ =>
+                                                let
+                                                    val scripts =
+                                                        "<script src=\\\""
+                                                        ^ OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
+                                                                               file = "app.js"}
+                                                        ^ "\\\"></script>\\n"
+                                                in
+                                                    foldl (fn (x, scripts) =>
+                                                              scripts
+                                                              ^ "<script src=\\\"" ^ x ^ "\\\"></script>\\n")
+                                                          scripts (Settings.getScripts ())
+                                                end
                                     in
                                         string scripts
                                     end,
