@@ -188,6 +188,7 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_requestHeader(uw_context, uw_Basis_string);
 
 void uw_write_header(uw_context, uw_Basis_string);
+void uw_clear_headers(uw_context);
 
 uw_Basis_string uw_Basis_get_cookie(uw_context, uw_Basis_string c);
 uw_unit uw_Basis_set_cookie(uw_context, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v, uw_Basis_time *expires, uw_Basis_bool secure);

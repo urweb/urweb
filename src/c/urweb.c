@@ -1174,6 +1174,10 @@ void uw_write_header(uw_context ctx, uw_Basis_string s) {
   ctx->outHeaders.front += len;
 }
 
+void uw_clear_headers(uw_context ctx) {
+  buf_reset(&ctx->outHeaders);
+}
+
 static void uw_check_script(uw_context ctx, size_t extra) {
   buf_check(&ctx->script, extra);
 }

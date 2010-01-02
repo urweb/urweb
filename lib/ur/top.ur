@@ -246,6 +246,24 @@ fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {T
               return <xml>{acc}{r}</xml>)
           <xml/>
 
+fun queryX1' [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
+             (q : sql_query [nm = fs] [])
+             (f : $fs -> transaction (xml ctx inp [])) =
+    query q
+          (fn fs acc =>
+              r <- f fs.nm;
+              return <xml>{acc}{r}</xml>)
+          <xml/>
+
+fun queryXE' [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
+             (q : sql_query [] exps)
+             (f : $exps -> transaction (xml ctx inp [])) =
+    query q
+          (fn fs acc =>
+              r <- f fs;
+              return <xml>{acc}{r}</xml>)
+          <xml/>
+
 fun hasRows [tables ::: {{Type}}] [exps ::: {Type}]
             [tables ~ exps]
             (q : sql_query tables exps) =

@@ -148,7 +148,15 @@ val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp ::
               -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
                   -> transaction (xml ctx inp []))
               -> transaction (xml ctx inp [])
-                       
+val queryX1' : nm ::: Name -> fs ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
+              -> sql_query [nm = fs] []
+              -> ($fs -> transaction (xml ctx inp []))
+              -> transaction (xml ctx inp [])
+val queryXE' : exps ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
+              -> sql_query [] exps
+              -> ($exps -> transaction (xml ctx inp []))
+              -> transaction (xml ctx inp [])
+
 val hasRows : tables ::: {{Type}} -> exps ::: {Type}
               -> [tables ~ exps] =>
     sql_query tables exps
