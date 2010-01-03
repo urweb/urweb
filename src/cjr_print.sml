@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1685,6 +1685,13 @@ fun p_exp' par env (e, loc) =
                      string "acc;",
                      newline,
                      newline,
+
+                     if Settings.getDeadlines () then
+                         box [string "uw_check_deadline(ctx);",
+                              newline]
+                     else
+                         box [],
+
                      p_list_sepi (box []) (fn i =>
                                            fn (proj, t) =>
                                               box [string "__uwr_r_",
@@ -1934,7 +1941,7 @@ fun p_exp' par env (e, loc) =
 
 and p_exp env = p_exp' false env
 
-fun p_fun env (fx, n, args, ran, e) =
+fun p_fun isRec env (fx, n, args, ran, e) =
     let
         val nargs = length args
         val env' = foldl (fn ((x, dom), env) => E.pushERel env x dom) env args
@@ -1954,6 +1961,11 @@ fun p_fun env (fx, n, args, ran, e) =
              space,
              string "{",
              newline,
+             if isRec andalso Settings.getDeadlines () then
+                 box [string "uw_check_deadline(ctx);",
+                      newline]
+             else
+                 box [],
              box [string "return(",
                   p_exp env' e,
                   string ");"],
@@ -2060,7 +2072,7 @@ fun p_decl env (dAll as (d, _) : decl) =
              space,
              p_exp env e,
              string ";"]
-      | DFun vi => p_fun env vi
+      | DFun vi => p_fun false env vi
       | DFunRec vis =>
         let
             val env = E.declBinds env dAll
@@ -2077,7 +2089,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                         (fn (_, dom) => p_typ env dom) args,
                                              string ");"]) vis,
                  newline,
-                 p_list_sep newline (p_fun env) vis,
+                 p_list_sep newline (p_fun true env) vis,
                  newline]
         end
       | DTable (x, _, pk, csts) => box [string "/* SQL table ",

@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -338,6 +339,8 @@ void uw_app_init(uw_app *app) {
   app->client_init();
 }
 
+int uw_time = 0;
+
 
 // Single-request state
 
@@ -427,6 +430,8 @@ struct uw_context {
 
   char *current_url;
 
+  int deadline;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -483,6 +488,8 @@ uw_context uw_init() {
   ctx->n_globals = 0;
 
   ctx->current_url = "";
+
+  ctx->deadline = INT_MAX;
 
   return ctx;
 }
@@ -3342,4 +3349,13 @@ uw_Basis_string uw_Basis_currentUrl(uw_context ctx) {
 
 void uw_set_currentUrl(uw_context ctx, char *s) {
   ctx->current_url = s;
+}
+
+void uw_set_deadline(uw_context ctx, int n) {
+  ctx->deadline = n;
+}
+
+void uw_check_deadline(uw_context ctx) {
+  if (uw_time > ctx->deadline)
+    uw_error(ctx, FATAL, "Maximum running time exceeded");
 }

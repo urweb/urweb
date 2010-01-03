@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -435,5 +435,9 @@ fun getMonoInline () = !monoInline
 val staticLinking = ref false
 fun setStaticLinking b = staticLinking := b
 fun getStaticLinking () = !staticLinking
+
+val deadlines = ref false
+fun setDeadlines b = deadlines := b
+fun getDeadlines () = !deadlines
 
 end

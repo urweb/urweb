@@ -260,4 +260,9 @@ void uw_set_currentUrl(uw_context, char *);
 extern size_t uw_messages_max, uw_clients_max, uw_headers_max, uw_page_max, uw_heap_max, uw_script_max;
 extern size_t uw_inputs_max, uw_cleanup_max, uw_subinputs_max, uw_deltas_max, uw_transactionals_max, uw_globals_max;
 
+extern int uw_time;
+
+void uw_set_deadline(uw_context, int);
+void uw_check_deadline(uw_context);
+
 #endif
