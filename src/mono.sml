@@ -108,7 +108,7 @@ datatype exp' =
        | ENextval of exp
        | ESetval of exp * exp
 
-       | EUnurlify of exp * typ
+       | EUnurlify of exp * typ * bool
 
        | EJavaScript of javascript_mode * exp
 

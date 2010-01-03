@@ -346,12 +346,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                         S.map2 (mfe ctx e2,
                              fn e2' =>
                                 (ESetval (e1', e2'), loc)))
-              | EUnurlify (e, t) =>
+              | EUnurlify (e, t, b) =>
                 S.bind2 (mfe ctx e,
                      fn e' =>
                         S.map2 (mft t,
                                 fn t' =>
-                                   (EUnurlify (e', t'), loc)))
+                                   (EUnurlify (e', t', b), loc)))
               | EJavaScript (m, e) =>
                 S.bind2 (mfmode ctx m,
                          fn m' =>

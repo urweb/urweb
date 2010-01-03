@@ -1338,7 +1338,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("c", s, (L'.TFun (un, s), loc),
                            (L'.EAbs ("_", un, s,
                                      (L'.EUnurlify ((L'.EFfiApp ("Basis", "get_cookie", [(L'.ERel 1, loc)]), loc),
-                                                    t),
+                                                    t, true),
                                       loc)), loc)), loc),
                  fm)
             end
@@ -3255,7 +3255,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val t = monoType env t
             in
-                ((L'.EAbs ("v", (L'.TFfi ("Basis", "string"), loc), t, (L'.EUnurlify ((L'.ERel 0, loc), t), loc)), loc),
+                ((L'.EAbs ("v", (L'.TFfi ("Basis", "string"), loc), t, (L'.EUnurlify ((L'.ERel 0, loc), t, false),
+                                                                        loc)), loc),
                  fm)
             end
 

@@ -29,6 +29,8 @@
 
 structure Shake :> SHAKE = struct
 
+val sliceDb = ref false
+
 open Core
 
 structure U = CoreUtil
@@ -67,7 +69,11 @@ fun shake file =
 
         val (usedE, usedC) =
             List.foldl
-                (fn ((DExport (_, n, _), _), (usedE, usedC)) => (IS.add (usedE, n), usedC)
+                (fn ((DExport (_, n, _), _), st as (usedE, usedC)) =>
+                    if !sliceDb then
+                        st
+                    else
+                        (IS.add (usedE, n), usedC)
                   | ((DTable (_, _, c, _, pe, pc, ce, cc), _), (usedE, usedC)) =>
                     let
                         val usedC = usedVarsC usedC c
@@ -79,7 +85,11 @@ fun shake file =
                     in
                         (usedE, usedC)
                     end
-                  | ((DTask (e1, e2), _), st) => usedVars (usedVars st e1) e2
+                  | ((DTask (e1, e2), _), st) =>
+                    if !sliceDb then
+                        st
+                    else
+                        usedVars (usedVars st e1) e2
                   | (_, acc) => acc) (IS.empty, IS.empty) file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
@@ -186,14 +196,14 @@ fun shake file =
                       | (DDatatype dts, _) => List.exists (fn (_, n, _, _) => IS.member (#con s, n)) dts
                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
-                      | (DExport _, _) => true
+                      | (DExport _, _) => not (!sliceDb)
                       | (DView _, _) => true
                       | (DSequence _, _) => true
                       | (DTable _, _) => true
-                      | (DDatabase _, _) => true
-                      | (DCookie _, _) => true
-                      | (DStyle _, _) => true
-                      | (DTask _, _) => true) file
+                      | (DDatabase _, _) => not (!sliceDb)
+                      | (DCookie _, _) => not (!sliceDb)
+                      | (DStyle _, _) => not (!sliceDb)
+                      | (DTask _, _) => not (!sliceDb)) file
     end
 
 end

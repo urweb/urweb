@@ -869,10 +869,11 @@ fun process file =
                           | EDml _ => unsupported "DML"
                           | ENextval _ => unsupported "Nextval"
                           | ESetval _ => unsupported "Nextval"
-                          | EReturnBlob _ => unsupported "EUnurlify"
+                          | EReturnBlob _ => unsupported "EReturnBlob"
                           | ERedirect _ => unsupported "ERedirect"
+                          | EUnurlify (_, _, true) => unsupported "EUnurlify"
 
-                          | EUnurlify (e, t) =>
+                          | EUnurlify (e, t, false) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                                 val (e', st) = unurlifyExp loc (t, st)
@@ -1162,11 +1163,11 @@ fun process file =
                      ((ESetval (e1, e2), loc), st)
                  end
 
-               | EUnurlify (e, t) =>
+               | EUnurlify (e, t, b) =>
                  let
                      val (e, st) = exp outer (e, st)
                  in
-                     ((EUnurlify (e, t), loc), st)
+                     ((EUnurlify (e, t, b), loc), st)
                  end
 
                | EJavaScript (m, e') =>

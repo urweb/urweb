@@ -96,7 +96,7 @@ datatype exp' =
        | ENextval of { seq : exp,
                        prepared : {id : int, query : string} option }
        | ESetval of { seq : exp, count : exp }
-       | EUnurlify of exp * typ
+       | EUnurlify of exp * typ * bool
 
 withtype exp = exp' located
 

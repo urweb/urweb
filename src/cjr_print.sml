@@ -1863,7 +1863,7 @@ fun p_exp' par env (e, loc) =
              newline,
              string "})"]
 
-      | EUnurlify (e, t) =>
+      | EUnurlify (e, t, true) =>
         let
             fun getIt () =
                 if isUnboxable t then
@@ -1894,6 +1894,40 @@ fun p_exp' par env (e, loc) =
                  string "(request ? ",
                  getIt (),
                  string " : NULL);",
+                 newline,
+                 string "})"]
+        end
+
+      | EUnurlify (e, t, false) =>
+        let
+            fun getIt () =
+                if isUnboxable t then
+                    unurlify false env t
+                else
+                    box [string "({",
+                         newline,
+                         p_typ env t,
+                         string " *tmp = uw_malloc(ctx, sizeof(",
+                         p_typ env t,
+                         string "));",
+                         newline,
+                         string "*tmp = ",
+                         unurlify false env t,
+                         string ";",
+                         newline,
+                         string "tmp;",
+                         newline,
+                         string "})"]
+        in
+            box [string "({",
+                 newline,
+                 string "uw_Basis_string request = uw_maybe_strdup(ctx, ",
+                 p_exp env e,
+                 string ");",
+                 newline,
+                 newline,
+                 unurlify false env t,
+                 string ";",
                  newline,
                  string "})"]
         end

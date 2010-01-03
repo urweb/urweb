@@ -31,4 +31,7 @@ signature SHAKE = sig
 
     val shake : Core.file -> Core.file
 
+    val sliceDb : bool ref
+    (* Set this to try to delete anything not needed to determine the database schema. *)
+
 end

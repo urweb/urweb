@@ -476,12 +476,12 @@ fun cifyExp (eAll as (e, loc), sm) =
             ((L'.ESetval {seq = e1, count = e2}, loc), sm)
         end
 
-      | L.EUnurlify (e, t) =>
+      | L.EUnurlify (e, t, b) =>
         let
             val (e, sm) = cifyExp (e, sm)
             val (t, sm) = cifyTyp (t, sm)
         in
-            ((L'.EUnurlify (e, t), loc), sm)
+            ((L'.EUnurlify (e, t, b), loc), sm)
         end
 
       | L.EJavaScript _ => raise Fail "Cjrize: EJavaScript remains"

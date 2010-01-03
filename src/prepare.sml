@@ -281,11 +281,11 @@ fun prepExp (e as (_, loc), st) =
             ((ESetval {seq = e1, count = e2}, loc), st)
         end
 
-      | EUnurlify (e, t) =>
+      | EUnurlify (e, t, b) =>
         let
             val (e, st) = prepExp (e, st)
         in
-            ((EUnurlify (e, t), loc), st)
+            ((EUnurlify (e, t, b), loc), st)
         end
 
 fun prepDecl (d as (_, loc), st) =
