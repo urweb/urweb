@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <ctype.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -53,10 +54,12 @@ int uw_really_write(int fd, const void *buf, size_t len) {
 // Buffers
 
 typedef struct {
+  size_t max;
   char *start, *front, *back;
 } buf;
 
-static void buf_init(buf *b, size_t s) {
+static void buf_init(size_t max, buf *b, size_t s) {
+  b->max = max;
   b->front = b->start = malloc(s);
   b->back = b->front + s;
 }
@@ -69,7 +72,7 @@ static void buf_reset(buf *b) {
   b->front = b->start;
 }
 
-static void buf_check(buf *b, size_t extra) {
+static int buf_check(buf *b, size_t extra) {
   if (b->back - b->front < extra) {
     size_t desired = b->front - b->start + extra, next;
     char *new_heap;
@@ -79,11 +82,26 @@ static void buf_check(buf *b, size_t extra) {
       next = 1;
     for (; next < desired; next *= 2);
 
+    if (next > b->max)
+      if (desired <= b->max)
+        next = desired;
+      else
+        return 1;
+
     new_heap = realloc(b->start, next);
     b->front = new_heap + (b->front - b->start);
     b->back = new_heap + next;
     b->start = new_heap;
   }
+
+  return 0;
+}
+
+__attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *, ...);
+
+static void ctx_buf_check(uw_context ctx, const char *kind, buf *b, size_t extra) {
+  if (buf_check(b, extra))
+    uw_error(ctx, FATAL, "Memory limit exceeded (%s)", kind);
 }
 
 static size_t buf_used(buf *b) {
@@ -94,8 +112,20 @@ static size_t buf_avail(buf *b) {
   return b->back - b->start;
 }
 
-static void buf_append(buf *b, const char *s, size_t len) {
-  buf_check(b, len+1);
+static int buf_append(buf *b, const char *s, size_t len) {
+  if (buf_check(b, len+1))
+    return 1;
+
+  memcpy(b->front, s, len);
+  b->front += len;
+  *b->front = 0;
+
+  return 0;
+}
+
+static void ctx_buf_append(uw_context ctx, const char *kind, buf *b, const char *s, size_t len) {
+  ctx_buf_check(ctx, kind, b, len+1);
+
   memcpy(b->front, s, len);
   b->front += len;
   *b->front = 0;
@@ -129,6 +159,9 @@ static unsigned n_clients;
 
 static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+size_t uw_messages_max = SIZE_MAX;
+size_t uw_clients_max = SIZE_MAX;
+
 static client *new_client() {
   client *c;
 
@@ -138,6 +171,8 @@ static client *new_client() {
     c = clients_free;
     clients_free = clients_free->next;
   }
+  else if (n_clients >= uw_clients_max)
+    return NULL;
   else {
     ++n_clients;
     clients = realloc(clients, sizeof(client) * n_clients);
@@ -145,7 +180,7 @@ static client *new_client() {
     c->id = n_clients-1;
     pthread_mutex_init(&c->lock, NULL);
     pthread_mutex_init(&c->pull_lock, NULL);
-    buf_init(&c->msgs, 0);
+    buf_init(uw_messages_max, &c->msgs, 0);
     clients[n_clients-1] = c;
   }
 
@@ -280,8 +315,8 @@ static void client_send(client *c, buf *msg) {
     c->send(c->sock, msg->start, buf_used(msg));
     c->close(c->sock);
     c->sock = -1;
-  } else
-    buf_append(&c->msgs, msg->start, buf_used(msg));
+  } else if (buf_append(&c->msgs, msg->start, buf_used(msg)))
+    fprintf(stderr, "Client message buffer size exceeded");
 
   pthread_mutex_unlock(&c->lock);
 }
@@ -395,6 +430,11 @@ struct uw_context {
   char error_message[ERROR_BUF_LEN];
 };
 
+size_t uw_headers_max = SIZE_MAX;
+size_t uw_page_max = SIZE_MAX;
+size_t uw_heap_max = SIZE_MAX;
+size_t uw_script_max = SIZE_MAX;
+
 uw_context uw_init() {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
@@ -403,11 +443,11 @@ uw_context uw_init() {
   ctx->get_header = NULL;
   ctx->get_header_data = NULL;
 
-  buf_init(&ctx->outHeaders, 0);
-  buf_init(&ctx->page, 0);
+  buf_init(uw_headers_max, &ctx->outHeaders, 0);
+  buf_init(uw_page_max, &ctx->page, 0);
   ctx->returning_indirectly = 0;
-  buf_init(&ctx->heap, 0);
-  buf_init(&ctx->script, 1);
+  buf_init(uw_heap_max, &ctx->heap, 0);
+  buf_init(uw_script_max, &ctx->script, 1);
   ctx->script.start[0] = 0;
 
   ctx->inputs = malloc(0);
@@ -447,10 +487,15 @@ uw_context uw_init() {
   return ctx;
 }
 
-void uw_set_app(uw_context ctx, uw_app *app) {
+size_t uw_inputs_max = SIZE_MAX;
+
+int uw_set_app(uw_context ctx, uw_app *app) {
   ctx->app = app;
 
   if (app && app->inputs_len > ctx->sz_inputs) {
+    if (app->inputs_len > uw_inputs_max)
+      return 1;
+
     ctx->sz_inputs = app->inputs_len;
     ctx->inputs = realloc(ctx->inputs, ctx->sz_inputs * sizeof(input));
     memset(ctx->inputs, 0, ctx->sz_inputs * sizeof(input));
@@ -555,6 +600,8 @@ __attribute__((noreturn)) void uw_error(uw_context ctx, failure_kind fk, const c
   longjmp(ctx->jmp_buf, fk);
 }
 
+size_t uw_cleanup_max = SIZE_MAX;
+
 void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
   if (ctx->cleanup_front >= ctx->cleanup_back) {
     int len = ctx->cleanup_back - ctx->cleanup, newLen;
@@ -562,6 +609,13 @@ void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
       newLen = 1;
     else
       newLen = len * 2;
+
+    if (newLen > uw_cleanup_max)
+      if (len+1 <= uw_cleanup_max)
+        newLen = uw_cleanup_max;
+      else
+        uw_error(ctx, FATAL, "Exceeded limit on number of cleanup handlers");
+
     ctx->cleanup = realloc(ctx->cleanup, newLen * sizeof(cleanup));
     ctx->cleanup_front = ctx->cleanup + len;
     ctx->cleanup_back = ctx->cleanup + newLen;
@@ -599,6 +653,10 @@ void uw_login(uw_context ctx) {
       }
     } else {
       client *c = new_client();
+
+      if (c == NULL)
+        uw_error(ctx, FATAL, "Limit exceeded on number of message-passing clients");
+
       use_client(c);
       ctx->client = c;
     }
@@ -670,11 +728,16 @@ static void adjust_input(input *x, input *old_start, input *new_start, size_t le
   }  
 }
 
+size_t uw_subinputs_max = SIZE_MAX;
+
 static input *check_input_space(uw_context ctx, size_t len) {
   size_t i;
   input *r;
 
   if (ctx->used_subinputs + len >= ctx->n_subinputs) {
+    if (ctx->used_subinputs + len > uw_subinputs_max)
+      uw_error(ctx, FATAL, "Exceeded limit on number of subinputs");
+
     input *new_subinputs = realloc(ctx->subinputs, sizeof(input) * (ctx->used_subinputs + len));
     size_t offset = new_subinputs - ctx->subinputs;
 
@@ -1047,7 +1110,7 @@ void uw_set_needs_sig(uw_context ctx, int n) {
 }
 
 
-static void buf_check_ctx(uw_context ctx, buf *b, size_t extra, const char *desc) {
+static void buf_check_ctx(uw_context ctx, const char *kind, buf *b, size_t extra, const char *desc) {
   if (b->back - b->front < extra) {
     size_t desired = b->front - b->start + extra, next;
     char *new_heap;
@@ -1056,6 +1119,12 @@ static void buf_check_ctx(uw_context ctx, buf *b, size_t extra, const char *desc
     if (next == 0)
       next = 1;
     for (; next < desired; next *= 2);
+
+    if (next > b->max)
+      if (desired <= b->max)
+        next = desired;
+      else
+        uw_error(ctx, FATAL, "Memory limit exceeded (%s)", kind);
 
     new_heap = realloc(b->start, next);
     b->front = new_heap + (b->front - b->start);
@@ -1071,7 +1140,7 @@ static void buf_check_ctx(uw_context ctx, buf *b, size_t extra, const char *desc
 }
 
 void uw_check_heap(uw_context ctx, size_t extra) {
-  buf_check_ctx(ctx, &ctx->heap, extra, "heap chunk");
+  buf_check_ctx(ctx, "heap", &ctx->heap, extra, "heap chunk");
 }
 
 char *uw_heap_front(uw_context ctx) {
@@ -1163,7 +1232,7 @@ int uw_output(uw_context ctx, int (*output)(void *data, char *buf, size_t len), 
 }
 
 static void uw_check_headers(uw_context ctx, size_t extra) {
-  buf_check(&ctx->outHeaders, extra);
+  ctx_buf_check(ctx, "headers", &ctx->outHeaders, extra);
 }
 
 void uw_write_header(uw_context ctx, uw_Basis_string s) {
@@ -1179,7 +1248,7 @@ void uw_clear_headers(uw_context ctx) {
 }
 
 static void uw_check_script(uw_context ctx, size_t extra) {
-  buf_check(&ctx->script, extra);
+  ctx_buf_check(ctx, "script", &ctx->script, extra);
 }
 
 void uw_write_script(uw_context ctx, uw_Basis_string s) {
@@ -1395,7 +1464,7 @@ uw_unit uw_Basis_set_client_source(uw_context ctx, uw_Basis_int n, uw_Basis_stri
 }
 
 static void uw_check(uw_context ctx, size_t extra) {
-  buf_check(&ctx->page, extra);
+  ctx_buf_check(ctx, "page", &ctx->page, extra);
 }
 
 static void uw_writec_unsafe(uw_context ctx, char c) {
@@ -2736,6 +2805,8 @@ uw_unit uw_Basis_clear_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_s
   return uw_unit_v;
 }
 
+size_t uw_deltas_max = SIZE_MAX;
+
 static delta *allocate_delta(uw_context ctx, unsigned client) {
   unsigned i;
   delta *d;
@@ -2745,8 +2816,11 @@ static delta *allocate_delta(uw_context ctx, unsigned client) {
       return &ctx->deltas[i];
 
   if (ctx->used_deltas >= ctx->n_deltas) {
+    if (ctx->n_deltas + 1 > uw_deltas_max)
+      uw_error(ctx, FATAL, "Exceeded limit on number of deltas");
+
     ctx->deltas = realloc(ctx->deltas, sizeof(delta) * ++ctx->n_deltas);
-    buf_init(&ctx->deltas[ctx->n_deltas-1].msgs, 0);
+    buf_init(uw_messages_max, &ctx->deltas[ctx->n_deltas-1].msgs, 0);
   }
 
   d = &ctx->deltas[ctx->used_deltas++];
@@ -2772,9 +2846,9 @@ uw_unit uw_Basis_send(uw_context ctx, uw_Basis_channel chn, uw_Basis_string msg)
 
   sprintf(pre, "%u\n%n", chn.chn, &preLen);
 
-  buf_append(&d->msgs, pre, preLen);
-  buf_append(&d->msgs, msg, len);
-  buf_append(&d->msgs, "\n", 1);
+  ctx_buf_append(ctx, "messages", &d->msgs, pre, preLen);
+  ctx_buf_append(ctx, "messages", &d->msgs, msg, len);
+  ctx_buf_append(ctx, "messages", &d->msgs, "\n", 1);
 
   return uw_unit_v;
 }
@@ -2822,7 +2896,7 @@ void uw_commit(uw_context ctx) {
     size_t len = strlen(ctx->script_header);
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {
-      buf_check(&ctx->page, buf_used(&ctx->page) - 4 + len);
+      ctx_buf_check(ctx, "page", &ctx->page, buf_used(&ctx->page) - 4 + len);
       start = strstr(ctx->page.start, "<sc>");
       memmove(start + len, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 3);
       ctx->page.front += len - 4;
@@ -2833,7 +2907,7 @@ void uw_commit(uw_context ctx) {
     size_t lenP = lenH + 40 + len;
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {
-      buf_check(&ctx->page, buf_used(&ctx->page) - 4 + lenP);
+      ctx_buf_check(ctx, "page", &ctx->page, buf_used(&ctx->page) - 4 + lenP);
       start = strstr(ctx->page.start, "<sc>");
       memmove(start + lenP, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 3);
       ctx->page.front += lenP - 4;
@@ -2868,9 +2942,13 @@ int uw_rollback(uw_context ctx) {
   return ctx->app->db_rollback(ctx);
 }
 
+size_t uw_transactionals_max = SIZE_MAX;
+
 void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
                                uw_callback free) {
   if (ctx->used_transactionals >= ctx->n_transactionals) {
+    if (ctx->used_transactionals+1 > uw_transactionals_max)
+      uw_error(ctx, FATAL, "Exceeded limit on number of transactionals");
     ctx->transactionals = realloc(ctx->transactionals, sizeof(transactional) * (ctx->used_transactionals+1));
     ++ctx->n_transactionals;
   }
@@ -3054,12 +3132,12 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   uw_write_header(ctx, "Content-Type: ");
   uw_write_header(ctx, mimeType);
   uw_write_header(ctx, "\r\nContent-Length: ");
-  buf_check(&ctx->outHeaders, INTS_MAX);
+  ctx_buf_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
   sprintf(ctx->outHeaders.front, "%d%n", b.size, &len);
   ctx->outHeaders.front += len;
   uw_write_header(ctx, "\r\n");
 
-  buf_append(&ctx->page, b.data, b.size);
+  ctx_buf_append(ctx, "page", &ctx->page, b.data, b.size);
 
   for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
     cl->func(cl->arg);
@@ -3076,7 +3154,7 @@ __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) 
 
   ctx->returning_indirectly = 1;
   buf_reset(&ctx->page);
-  buf_check(&ctx->page, buf_used(&ctx->outHeaders)+1);
+  ctx_buf_check(ctx, "page", &ctx->page, buf_used(&ctx->outHeaders)+1);
   memcpy(ctx->page.start, ctx->outHeaders.start, buf_used(&ctx->outHeaders));
   ctx->page.start[buf_used(&ctx->outHeaders)] = 0;
   buf_reset(&ctx->outHeaders);
@@ -3178,6 +3256,8 @@ void *uw_get_global(uw_context ctx, char *name) {
   return NULL;
 }
 
+size_t uw_globals_max = SIZE_MAX;
+
 void uw_set_global(uw_context ctx, char *name, void *data, void (*free)(void*)) {
   int i;
 
@@ -3189,6 +3269,9 @@ void uw_set_global(uw_context ctx, char *name, void *data, void (*free)(void*)) 
       ctx->globals[i].free = free;
       return;
     }
+
+  if (ctx->n_globals+1 > uw_globals_max)
+    uw_error(ctx, FATAL, "Exceeded limit on number of globals");
 
   ++ctx->n_globals;
   ctx->globals = realloc(ctx->globals, ctx->n_globals * sizeof(global));

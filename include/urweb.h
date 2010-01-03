@@ -21,7 +21,7 @@ void uw_prune_clients(uw_context);
 failure_kind uw_initialize(uw_context);
 
 uw_context uw_init(void);
-void uw_set_app(uw_context, uw_app*);
+int uw_set_app(uw_context, uw_app*);
 void uw_set_db(uw_context, void*);
 void *uw_get_db(uw_context);
 void uw_free(uw_context);
@@ -256,5 +256,8 @@ uw_Basis_char uw_Basis_toupper(uw_context, uw_Basis_char);
 
 uw_Basis_string uw_Basis_currentUrl(uw_context);
 void uw_set_currentUrl(uw_context, char *);
+
+extern size_t uw_messages_max, uw_clients_max, uw_headers_max, uw_page_max, uw_heap_max, uw_script_max;
+extern size_t uw_inputs_max, uw_cleanup_max, uw_subinputs_max, uw_deltas_max, uw_transactionals_max, uw_globals_max;
 
 #endif
