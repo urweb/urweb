@@ -470,8 +470,6 @@ uw_context uw_init() {
   ctx->needs_push = 0;
   ctx->needs_sig = 0;
 
-  ctx->error_message[0] = 0;
-
   ctx->source_count = 0;
 
   ctx->n_deltas = ctx->used_deltas = 0;
@@ -700,6 +698,11 @@ void uw_pop_cleanup(uw_context ctx) {
 
 char *uw_error_message(uw_context ctx) {
   return ctx->error_message;
+}
+
+void uw_set_error_message(uw_context ctx, const char *msg) {
+  strncpy(ctx->error_message, msg, sizeof(ctx->error_message));
+  ctx->error_message[sizeof(ctx->error_message)-1] = 0;
 }
 
 static input *INP(uw_context ctx) {
@@ -3359,3 +3362,5 @@ void uw_check_deadline(uw_context ctx) {
   if (uw_time > ctx->deadline)
     uw_error(ctx, FATAL, "Maximum running time exceeded");
 }
+
+size_t uw_database_max = SIZE_MAX;

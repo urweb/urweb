@@ -40,6 +40,7 @@ int uw_rollback(uw_context);
 
 __attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *fmt, ...);
 char *uw_error_message(uw_context);
+void uw_set_error_message(uw_context, const char *);
 void uw_push_cleanup(uw_context, void (*func)(void *), void *arg);
 void uw_pop_cleanup(uw_context);
 
@@ -259,6 +260,8 @@ void uw_set_currentUrl(uw_context, char *);
 
 extern size_t uw_messages_max, uw_clients_max, uw_headers_max, uw_page_max, uw_heap_max, uw_script_max;
 extern size_t uw_inputs_max, uw_cleanup_max, uw_subinputs_max, uw_deltas_max, uw_transactionals_max, uw_globals_max;
+
+extern size_t uw_database_max;
 
 extern int uw_time;
 

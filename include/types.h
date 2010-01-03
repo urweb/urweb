@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <unistd.h>
+#include <stdint.h>
 
 typedef long long uw_Basis_int;
 typedef double uw_Basis_float;

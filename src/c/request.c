@@ -23,9 +23,10 @@ static int try_rollback(uw_context ctx, void *logger_data, uw_logger log_error) 
   if (r) {
     log_error(logger_data, "Error running SQL ROLLBACK\n");
     uw_reset(ctx);
-    uw_write(ctx, "HTTP/1.1 500 Internal Server Error\n\r");
+    uw_write(ctx, "HTTP/1.1 500 Internal Server Error\r\n");
     uw_write(ctx, "Content-type: text/plain\r\n\r\n");
     uw_write(ctx, "Error running SQL ROLLBACK\n");
+    uw_set_error_message(ctx, "Database error; you are probably out of storage space.");
   }
 
   return r;
