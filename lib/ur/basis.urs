@@ -704,6 +704,7 @@ val blessMime : string -> mimeType
 val checkMime : string -> option mimeType
 val returnBlob : t ::: Type -> blob -> mimeType -> transaction t
 val blobSize : blob -> int
+val textBlob : string -> blob
 
 con radio = [Body, Radio]
 val radio : formTag string radio [Id = string]

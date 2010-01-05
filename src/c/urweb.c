@@ -3131,6 +3131,12 @@ uw_Basis_int uw_Basis_blobSize(uw_context ctx, uw_Basis_blob b) {
   return b.size;
 }
 
+uw_Basis_blob uw_Basis_textBlob(uw_context ctx, uw_Basis_string s) {
+  uw_Basis_blob b = {strlen(s), s};
+
+  return b;
+}
+
 uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
   return f.data;
 }

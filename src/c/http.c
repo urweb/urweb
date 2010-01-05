@@ -147,11 +147,16 @@ static void *worker(void *data) {
           }
         }
 
+        body[-4] = '\r';
+        body[-3] = '\n';
+
         if (!(s = strstr(buf, "\r\n"))) {
           fprintf(stderr, "No newline in request\n");
           close(sock);
           goto done;
         }
+
+        body[-4] = body[-3] = 0;
 
         *s = 0;
         headers = s + 2;
