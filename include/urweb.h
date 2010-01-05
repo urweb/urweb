@@ -21,6 +21,7 @@ void uw_prune_clients(uw_context);
 failure_kind uw_initialize(uw_context);
 
 uw_context uw_init(void);
+void uw_close(uw_context);
 int uw_set_app(uw_context, uw_app*);
 void uw_set_db(uw_context, void*);
 void *uw_get_db(uw_context);

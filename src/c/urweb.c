@@ -578,6 +578,10 @@ failure_kind uw_begin_init(uw_context ctx) {
   return r;
 }
 
+void uw_close(uw_context ctx) {
+  ctx->app->db_close(ctx);
+}
+
 void uw_set_headers(uw_context ctx, char *(*get_header)(void *, const char *), void *get_header_data) {
   ctx->get_header = get_header;
   ctx->get_header_data = get_header_data;
