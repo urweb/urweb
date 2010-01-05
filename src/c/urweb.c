@@ -553,6 +553,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->client = NULL;
   ctx->cur_container = NULL;
   ctx->used_transactionals = 0;
+  ctx->script_header = "";
 }
 
 void uw_reset_keep_request(uw_context ctx) {
