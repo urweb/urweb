@@ -657,7 +657,7 @@ val img : bodyTag ([Src = url, Onabort = transaction unit, Onerror = transaction
                     Onload = transaction unit] ++ boxAttrs)
           
 val form : ctx ::: {Unit} -> bind ::: {Type}
-           -> [[Body, Form] ~ ctx] =>
+           -> [[Body, Form, Table] ~ ctx] =>
     xml ([Body, Form] ++ ctx) [] bind
     -> xml ([Body] ++ ctx) [] []
        
@@ -777,3 +777,6 @@ val show_xml : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> show (xml 
 
 type task_kind
 val initialize : task_kind
+
+
+val debug : string -> transaction unit

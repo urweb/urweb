@@ -95,7 +95,8 @@ val effectfulBase = basis ["dml",
                            "onConnectFail",
                            "onDisconnect",
                            "onServerError",
-                           "kc"]
+                           "kc",
+                           "debug"]
 
 val effectful = ref effectfulBase
 fun setEffectful ls = effectful := S.addList (effectfulBase, ls)

@@ -270,4 +270,6 @@ extern int uw_time;
 void uw_set_deadline(uw_context, int);
 void uw_check_deadline(uw_context);
 
+uw_Basis_unit uw_Basis_debug(uw_context, uw_Basis_string);
+
 #endif

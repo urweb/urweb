@@ -3375,3 +3375,9 @@ void uw_check_deadline(uw_context ctx) {
 }
 
 size_t uw_database_max = SIZE_MAX;
+
+uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
+  fprintf(stderr, "%s\n", s);
+
+  return uw_unit_v;
+}

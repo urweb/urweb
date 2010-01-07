@@ -59,12 +59,18 @@ val freeVars = U.Exp.foldB {kind = fn (_, _, xs) => xs,
                                         | _ => bound}
                            0 IS.empty
 
-val isPoly = U.Decl.exists {kind = fn _ => false,
-                            con = fn _ => false,
-                            exp = fn ECAbs _ => true
-                                   | EKAbs _ => true
-                                   | _ => false,
-                            decl = fn _ => false}
+fun isPolyT (t, _) =
+    case t of
+        TFun (_, ran) => isPolyT ran
+      | TCFun _ => true
+      | TKFun _ => true
+      | _ => false
+
+fun isPoly (d, _) =
+    case d of
+        DVal (_, _, t, _, _) => isPolyT t
+      | DValRec vis => List.exists (isPolyT o #3) vis
+      | _ => false
 
 fun positionOf (v : int, ls) =
     let
@@ -184,8 +190,8 @@ fun specialize' (funcs, specialized) file =
                         in
                             ((ECApp (e, c), loc), st)
                         end
-                      | ECAbs _ => raise Fail "Especialize: Impossible ECAbs"
-                      | EKAbs _ => raise Fail "Especialize: Impossible EKAbs"
+                      | ECAbs _ => (e, st)
+                      | EKAbs _ => (e, st)
                       | EKApp (e, k) =>
                         let
                             val (e, st) = exp (env, e, st)
@@ -325,6 +331,7 @@ fun specialize' (funcs, specialized) file =
                                orelse (IS.numItems fvs >= length fxs
                                        andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs) then
                                 ((*Print.prefaces "No" [("name", Print.PD.string name),
+                                                      ("f", Print.PD.string (Int.toString f)),
                                                       ("fxs'",
                                                        Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
                                  default ())
@@ -417,6 +424,7 @@ fun specialize' (funcs, specialized) file =
                                                                   e' fvs
                                                 val e' = foldl (fn (arg, e) => (EApp (e, arg), loc))
                                                                e' xs
+                                                (*val () = print ("NEW: " ^ name ^ "__" ^ Int.toString f' ^ "\n");*)
                                                 (*val () = Print.prefaces "Brand new"
                                                                         [("e'", CorePrint.p_exp CoreEnv.empty e'),
                                                                          ("e", CorePrint.p_exp CoreEnv.empty e),
@@ -471,8 +479,15 @@ fun specialize' (funcs, specialized) file =
                             end
                           | DValRec vis =>
                             let
+                                (*val () = Print.preface ("Visiting", Print.p_list (fn vi =>
+                                                                                     Print.PD.string (#1 vi ^ "__"
+                                                                                                      ^ Int.toString
+                                                                                                            (#2 vi)))
+                                                                                 vis)*)
+
                                 val (vis, st) = ListUtil.foldlMap (fn ((x, n, t, e, s), st) =>
                                                                       let
+                                                                          val () = mayNotSpec := SS.empty
                                                                           val (e, st) = exp ([], e, st)
                                                                       in
                                                                           ((x, n, t, e, s), st)
@@ -537,6 +552,7 @@ fun specialize' (funcs, specialized) file =
                        specialized = #specialized st}, changed))
             end
 
+        (*val () = Print.preface ("RESET", CorePrint.p_file CoreEnv.empty file)*)
         val (ds, (st, changed)) = ListUtil.foldlMapConcat doDecl
                                                             ({maxName = U.File.maxName file + 1,
                                                               funcs = funcs,
@@ -545,6 +561,7 @@ fun specialize' (funcs, specialized) file =
                                                              false)
                                                             file
     in
+        (*print ("Changed = " ^ Bool.toString changed ^ "\n");*)
         (changed, ds, #funcs st, #specialized st)
     end
 
