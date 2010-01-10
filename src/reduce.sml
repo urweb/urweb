@@ -291,6 +291,8 @@ fun kindConAndExp (namedC, namedE) =
                     case (#1 c1, #1 c2) of
                         (CRecord (k, xcs1), CRecord (_, xcs2)) =>
                         (CRecord (kind env k, xcs1 @ xcs2), loc)
+                      | (CRecord (_, []), _) => c2
+                      | (_, CRecord (_, [])) => c1
                       | _ => (CConcat (c1, c2), loc)
                 end
               | CMap (dom, ran) => (CMap (kind env dom, kind env ran), loc)

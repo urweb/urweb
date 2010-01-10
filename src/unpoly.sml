@@ -207,79 +207,94 @@ fun exp (e, st : state) =
 and polyExp (x, st) = U.Exp.foldMap {kind = kind, con = con, exp = exp} st x
 
 fun decl (d, st : state) =
-    case d of
-        DValRec (vis as ((x, n, t, e, s) :: rest)) =>
-        let
-            fun unravel (e, cargs) =
-                case e of
-                    (ECAbs (_, k, e), _) =>
-                    unravel (e, k :: cargs)
-                  | _ => rev cargs
+    let
+        fun unravel (e, cargs) =
+            case e of
+                (ECAbs (_, k, e), _) =>
+                unravel (e, k :: cargs)
+              | _ => rev cargs
+    in
+        case d of
+            DVal (vi as (x, n, t, e, s)) =>
+            let
+                val cargs = unravel (e, [])
 
-            val cargs = unravel (e, [])
+                val ns = IS.singleton n
+            in
+                (d, {funcs = IM.insert (#funcs st, n, {kinds = cargs,
+                                                       defs = [vi],
+                                                       replacements = M.empty}),
+                     decls = #decls st,
+                     nextName = #nextName st})
+            end
+          | DValRec (vis as ((x, n, t, e, s) :: rest)) =>
+            let
+                val cargs = unravel (e, [])
 
-            fun unravel (e, cargs) =
-                case (e, cargs) of
-                    ((ECAbs (_, k, e), _), k' :: cargs) =>
-                    U.Kind.compare (k, k') = EQUAL
-                    andalso unravel (e, cargs)
-                  | (_, []) => true
-                  | _ => false
-        in
-            if List.exists (fn vi => not (unravel (#4 vi, cargs))) rest then
-                (d, st)
-            else
-                let
-                    val ns = IS.addList (IS.empty, map #2 vis)
-                    val nargs = length cargs
+                fun unravel (e, cargs) =
+                    case (e, cargs) of
+                        ((ECAbs (_, k, e), _), k' :: cargs) =>
+                        U.Kind.compare (k, k') = EQUAL
+                        andalso unravel (e, cargs)
+                      | (_, []) => true
+                      | _ => false
+                             
+                fun deAbs (e, cargs) =
+                    case (e, cargs) of
+                        ((ECAbs (_, _, e), _), _ :: cargs) => deAbs (e, cargs)
+                      | (_, []) => e
+                      | _ => raise Fail "Unpoly: deAbs"
 
-                    fun deAbs (e, cargs) =
-                        case (e, cargs) of
-                            ((ECAbs (_, _, e), _), _ :: cargs) => deAbs (e, cargs)
-                          | (_, []) => e
-                          | _ => raise Fail "Unpoly: deAbs"
+            in
+                if List.exists (fn vi => not (unravel (#4 vi, cargs))) rest then
+                    (d, st)
+                else
+                    let
+                        val ns = IS.addList (IS.empty, map #2 vis)
+                        val nargs = length cargs
 
-                    (** Verifying lack of polymorphic recursion *)
+                        (** Verifying lack of polymorphic recursion *)
 
-                    fun kind _ = false
-                    fun con _ = false
+                        fun kind _ = false
+                        fun con _ = false
 
-                    fun exp e =
-                        case e of
-                            ECApp (e, c) =>
-                            let
-                                fun isIrregular (e, pos) =
-                                    case #1 e of
-                                        ENamed n =>
-                                        IS.member (ns, n)
-                                        andalso
-                                        (case #1 c of
-                                             CRel i => i <> nargs - pos
-                                           | _ => true)
-                                      | ECApp (e, _) => isIrregular (e, pos + 1)
-                                      | _ => false
-                            in
-                                isIrregular (e, 1)
-                            end
-                          | ECAbs _ => true
-                          | _ => false
+                        fun exp e =
+                            case e of
+                                ECApp (e, c) =>
+                                let
+                                    fun isIrregular (e, pos) =
+                                        case #1 e of
+                                            ENamed n =>
+                                            IS.member (ns, n)
+                                            andalso
+                                            (case #1 c of
+                                                 CRel i => i <> nargs - pos
+                                               | _ => true)
+                                          | ECApp (e, _) => isIrregular (e, pos + 1)
+                                          | _ => false
+                                in
+                                    isIrregular (e, 1)
+                                end
+                              | ECAbs _ => true
+                              | _ => false
 
-                    val irregular = U.Exp.exists {kind = kind, con = con, exp = exp}
-                in
-                    if List.exists (fn x => irregular (deAbs (#4 x, cargs))) vis then
-                        (d, st)
-                    else
-                        (d, {funcs = foldl (fn (vi, funcs) =>
-                                               IM.insert (funcs, #2 vi, {kinds = cargs,
-                                                                         defs = vis,
-                                                                         replacements = M.empty}))
-                                           (#funcs st) vis,
-                             decls = #decls st,
-                             nextName = #nextName st})
-                end
-        end
+                        val irregular = U.Exp.exists {kind = kind, con = con, exp = exp}
+                    in
+                        if List.exists (fn x => irregular (deAbs (#4 x, cargs))) vis then
+                            (d, st)
+                        else
+                            (d, {funcs = foldl (fn (vi, funcs) =>
+                                                   IM.insert (funcs, #2 vi, {kinds = cargs,
+                                                                             defs = vis,
+                                                                             replacements = M.empty}))
+                                               (#funcs st) vis,
+                                 decls = #decls st,
+                                 nextName = #nextName st})
+                    end
+            end
 
-      | _ => (d, st)
+          | _ => (d, st)
+    end
 
 val polyDecl = U.Decl.foldMap {kind = kind, con = con, exp = exp, decl = decl}
 

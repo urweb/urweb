@@ -37,3 +37,8 @@ fun all f s =
     in
         al 0
     end
+
+fun newlines [ctx] [[Body] ~ ctx] s : xml ([Body] ++ ctx) [] [] =
+    case split s #"\n" of
+        None => cdata s
+      | Some (s1, s2) => <xml>{[s1]}<br/>{newlines s2}</xml>
