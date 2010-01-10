@@ -150,6 +150,7 @@ typedef struct client {
   time_t last_contact;
   unsigned n_channels;
   unsigned refcount;
+  void *data;
 } client;
 
 
@@ -162,6 +163,10 @@ static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 size_t uw_messages_max = SIZE_MAX;
 size_t uw_clients_max = SIZE_MAX;
+
+void *uw_init_client_data();
+void uw_free_client_data(void *);
+void uw_copy_client_data(void *dst, void *src);
 
 static client *new_client() {
   client *c;
@@ -193,6 +198,7 @@ static client *new_client() {
   buf_reset(&c->msgs);
   c->n_channels = 0;
   c->refcount = 0;
+  c->data = uw_init_client_data();
   pthread_mutex_unlock(&c->lock);
 
   c->next = clients_used;
@@ -432,6 +438,8 @@ struct uw_context {
 
   int deadline;
 
+  void *client_data;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -489,10 +497,16 @@ uw_context uw_init() {
 
   ctx->deadline = INT_MAX;
 
+  ctx->client_data = uw_init_client_data();
+
   return ctx;
 }
 
 size_t uw_inputs_max = SIZE_MAX;
+
+uw_app *uw_get_app(uw_context ctx) {
+  return ctx->app;
+}
 
 int uw_set_app(uw_context ctx, uw_app *app) {
   ctx->app = app;
@@ -505,6 +519,10 @@ int uw_set_app(uw_context ctx, uw_app *app) {
     ctx->inputs = realloc(ctx->inputs, ctx->sz_inputs * sizeof(input));
     memset(ctx->inputs, 0, ctx->sz_inputs * sizeof(input));
   }
+}
+
+void uw_set_client_data(uw_context ctx, void *data) {
+  uw_copy_client_data(ctx->client_data, data);
 }
 
 void uw_set_db(uw_context ctx, void *db) {
@@ -526,6 +544,7 @@ void uw_free(uw_context ctx) {
   free(ctx->subinputs);
   free(ctx->cleanup);
   free(ctx->transactionals);
+  uw_free_client_data(ctx->client_data);
 
   for (i = 0; i < ctx->n_deltas; ++i)
     buf_free(&ctx->deltas[i].msgs);
@@ -668,6 +687,7 @@ void uw_login(uw_context ctx) {
         uw_error(ctx, FATAL, "Limit exceeded on number of message-passing clients");
 
       use_client(c);
+      uw_copy_client_data(c->data, ctx->client_data);
       ctx->client = c;
     }
   }
@@ -2977,16 +2997,18 @@ void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, u
 
 // "Garbage collection"
 
-static failure_kind uw_expunge(uw_context ctx, uw_Basis_client cli) {
+void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data);
+void uw_post_expunge(uw_context ctx, void *data);
+
+static failure_kind uw_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
   int r = setjmp(ctx->jmp_buf);
 
-  if (r == 0) {
-    if (ctx->app->db_begin(ctx))
-      uw_error(ctx, FATAL, "Error running SQL BEGIN");
-    ctx->app->expunger(ctx, cli);
-    if (ctx->app->db_commit(ctx))
-      uw_error(ctx, FATAL, "Error running SQL COMMIT");
-  }
+  if (r == 0)
+    uw_do_expunge(ctx, cli, data);
+  else
+    ctx->app->db_rollback(ctx);
+
+  uw_post_expunge(ctx, data);
 
   return r;
 }
@@ -3010,18 +3032,14 @@ void uw_prune_clients(uw_context ctx) {
         clients_used = next;
       uw_reset(ctx);
       while (fk == UNLIMITED_RETRY) {
-        fk = uw_expunge(ctx, c->id);
-        if (fk == UNLIMITED_RETRY) {
-          ctx->app->db_rollback(ctx);
+        fk = uw_expunge(ctx, c->id, c->data);
+        if (fk == UNLIMITED_RETRY)
           printf("Unlimited retry during expunge: %s\n", uw_error_message(ctx));
-        }
       }
       if (fk == SUCCESS)
         free_client(c);
-      else {
-        ctx->app->db_rollback(ctx);
+      else
         fprintf(stderr, "Expunge blocked by error: %s\n", uw_error_message(ctx));
-      }
     }
     else
       prev = c;

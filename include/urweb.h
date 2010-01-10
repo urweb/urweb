@@ -23,6 +23,7 @@ failure_kind uw_initialize(uw_context);
 uw_context uw_init(void);
 void uw_close(uw_context);
 int uw_set_app(uw_context, uw_app*);
+uw_app *uw_get_app(uw_context);
 void uw_set_db(uw_context, void*);
 void *uw_get_db(uw_context);
 void uw_free(uw_context);
@@ -271,5 +272,7 @@ void uw_set_deadline(uw_context, int);
 void uw_check_deadline(uw_context);
 
 uw_Basis_unit uw_Basis_debug(uw_context, uw_Basis_string);
+
+void uw_set_client_data(uw_context, void *);
 
 #endif

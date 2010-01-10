@@ -114,3 +114,24 @@ int main(int argc, char *argv[]) {
   else
     return 1;
 }
+
+void *uw_init_client_data() {
+  return NULL;
+}
+
+void uw_free_client_data(void *data) {
+}
+
+void uw_copy_client_data(void *dst, void *src) {
+}
+
+void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
+  if (uw_get_app(ctx)->db_begin(ctx))
+    uw_error(ctx, FATAL, "Error running SQL BEGIN");
+  uw_get_app(ctx)->expunger(ctx, cli);
+  if (uw_get_app(ctx)->db_commit(ctx))
+    uw_error(ctx, FATAL, "Error running SQL COMMIT");
+}
+
+void uw_post_expunge(uw_context ctx, void *data) {
+}
