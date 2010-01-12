@@ -205,6 +205,8 @@ sqlite3 path/to/database/file <app.sql
 
 \item \texttt{-output FILENAME}: Set where the application executable is written.
 
+\item \texttt{-path NAME VALUE}: Set the value of path variable \texttt{\$NAME} to \texttt{VALUE}, for use in \texttt{.urp} files.
+
 \item \texttt{-protocol [http|cgi|fastcgi]}: Set the protocol that the generated application speaks.
   \begin{itemize}
   \item \texttt{http}: This is the default.  It is for building standalone web servers that can be accessed by web browsers directly.
@@ -240,6 +242,8 @@ fastcgi.server = (
 
     A FastCGI process reads the environment variable \texttt{URWEB\_NUM\_THREADS} to determine how many threads to spawn for handling client requests.  The default is 1.
   \end{itemize}
+
+\item \texttt{-root Name PATH}: Trigger an alternate module convention for all source files found in directory \texttt{PATH} or any of its subdirectories.  Any file \texttt{PATH/foo.ur} defines a module \texttt{Name.Foo} instead of the usual \texttt{Foo}.  Any file \texttt{PATH/subdir/foo.ur} defines a module \texttt{Name.Subdir.Foo}, and so on for arbitrary nesting of subdirectories.
 
 \item \texttt{-sql FILENAME}: Set where a database set-up SQL script is written.
 
@@ -1977,7 +1981,7 @@ $$\begin{array}{rrcll}
 
 \section{The Structure of Web Applications}
 
-A web application is built from a series of modules, with one module, the last one appearing in the \texttt{.urp} file, designated as the main module.  The signature of the main module determines the URL entry points to the application.  Such an entry point should have type $\mt{unit} \to \mt{transaction} \; \mt{page}$, where $\mt{page}$ is a type synonym for top-level HTML pages, defined in $\mt{Basis}$.  If such a function is at the top level of main module $M$, it will be accessible at URI \texttt{/M/f}, and so on for more deeply-nested functions, as described in Section \ref{tag} below.
+A web application is built from a series of modules, with one module, the last one appearing in the \texttt{.urp} file, designated as the main module.  The signature of the main module determines the URL entry points to the application.  Such an entry point should have type $\mt{t1} \to \ldots \to \mt{tn} \to \mt{transaction} \; \mt{page}$, for any integer $n \geq 0$, where $\mt{page}$ is a type synonym for top-level HTML pages, defined in $\mt{Basis}$.  If such a function is at the top level of main module $M$, with $n = 0$, it will be accessible at URI \texttt{/M/f}, and so on for more deeply-nested functions, as described in Section \ref{tag} below.  Arguments to an entry-point function are deserialized from the part of the URI following \texttt{f}.
 
 When the standalone web server receives a request for a known page, it calls the function for that page, ``running'' the resulting transaction to produce the page to return to the client.  Pages link to other pages with the \texttt{link} attribute of the \texttt{a} HTML tag.  A link has type $\mt{transaction} \; \mt{page}$, and the semantics of a link are that this transaction should be run to compute the result page, when the link is followed.  Link targets are assigned URL names in the same way as top-level entry points.
 
