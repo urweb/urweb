@@ -94,7 +94,7 @@ install:
 	ln -sf liburweb.so.$(LD_MAJOR) $(LIB)/../liburweb.so
 	ln -sf liburweb_http.so.$(LD_MAJOR) $(LIB)/../liburweb_http.so
 	ln -sf liburweb_cgi.so.$(LD_MAJOR) $(LIB)/../liburweb_cgi.so
-	ln -sf /liburweb_fastcgi.so.$(LD_MAJOR) $(LIB)/../liburweb_fastcgi.so
+	ln -sf liburweb_fastcgi.so.$(LD_MAJOR) $(LIB)/../liburweb_fastcgi.so
 	ldconfig
 
 package:
