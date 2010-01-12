@@ -1249,7 +1249,7 @@ $$\begin{array}{l}
   \mt{datatype} \; \mt{list} \; \mt{t} = \mt{Nil} \mid \mt{Cons} \; \mt{of} \; \mt{t} \times \mt{list} \; \mt{t}
 \end{array}$$
 
-The only unusual element of this list is the $\mt{blob}$ type, which stands for binary sequences.
+The only unusual element of this list is the $\mt{blob}$ type, which stands for binary sequences.  Simple blobs can be created from strings via $\mt{Basis.textBlob}$.  Blobs will also be generated from HTTP file uploads.
 
 Another important generic Ur element comes at the beginning of \texttt{top.urs}.
 
@@ -1291,6 +1291,11 @@ Ur is a pure language; we use Haskell's trick to support controlled side effects
 $$\begin{array}{l}
   \mt{con} \; \mt{transaction} :: \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{transaction\_monad} : \mt{monad} \; \mt{transaction}
+\end{array}$$
+
+For debugging purposes, a transactional function is provided for outputting a string on the server process' \texttt{stderr}.
+$$\begin{array}{l}
+  \mt{val} \; \mt{debug} : \mt{string} \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
 \subsection{HTTP}
@@ -1554,6 +1559,14 @@ $$\begin{array}{l}
   \\
   \mt{val} \; \mt{sql\_inject} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \to \mt{sql\_injectable} \; \mt{t} \\
   \hspace{.1in} \to \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+\end{array}$$
+
+Additionally, most function-free types may be injected safely, via the $\mt{serialized}$ type family.
+$$\begin{array}{l}
+  \mt{con} \; \mt{serialized} :: \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{serialize} : \mt{t} ::: \mt{Type} \to \mt{t} \to \mt{serialized} \; \mt{t} \\
+  \mt{val} \; \mt{deserialize} : \mt{t} ::: \mt{Type} \to \mt{serialized} \; \mt{t} \to \mt{t} \\
+  \mt{val} \; \mt{sql\_serialized} : \mt{t} ::: \mt{Type} \to \mt{sql\_injectable\_prim} \; (\mt{serialized} \; \mt{t})
 \end{array}$$
 
 We have the SQL nullness test, which is necessary because of the strange SQL semantics of equality in the presence of null values.

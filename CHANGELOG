@@ -1,4 +1,13 @@
 ========
+20100112
+========
+
+- Basis.serialized type family, for storing more types in the database
+- Basis.textBlob, for building blobs from strings
+- Basis.debug function, for server-side debug printing
+- Bug fixes & optimization improvements
+
+========
 20091230
 ========
 
