@@ -338,7 +338,7 @@ fun parseUrp' accLibs fname =
                                           let
                                               val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
                                                                                       (String.explode line))
-                                              val fname = relify fname
+                                              val fname = relifyA fname
                                           in
                                               fname :: acc
                                           end
@@ -709,6 +709,7 @@ val parse = {
                           val ds = #func parseUr ur
                           val d = (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
 
+                          val fname = OS.Path.mkCanonical fname
                           val d = case List.find (fn (root, name) =>
                                                      String.isPrefix (root ^ "/") fname) mrs of
                                       NONE => d
@@ -766,10 +767,21 @@ val parse = {
                       ();
 
                   let
-                      val final = nameOf (List.last fnames)
+                      val final = List.last fnames
+                      val final = case List.find (fn (root, name) =>
+                                                     String.isPrefix (root ^ "/") final) mrs of
+                                      NONE => (Source.StrVar (nameOf final), loc)
+                                    | SOME (root, name) =>
+                                      let
+                                          val m = (Source.StrVar name, loc)
+                                          val final = String.extract (final, size root + 1, NONE)
+                                      in
+                                          foldl (fn (x, m) => (Source.StrProj (m, capitalize x), loc))
+                                                m (String.fields (fn ch => ch = #"/") final)
+                                      end
 
                       val ds = dsFfi @ ds
-                               @ [(Source.DExport (Source.StrVar final, loc), loc)]
+                               @ [(Source.DExport final, loc)]
 
                       val ds = case database of
                                    NONE => ds

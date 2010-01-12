@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -65,6 +65,12 @@ fun doArgs args =
          doArgs rest)
       | "-static" :: rest =>
         (Settings.setStaticLinking true;
+         doArgs rest)
+      | "-path" :: name :: path :: rest =>
+        (Compiler.addPath (name, path);
+         doArgs rest)
+      | "-root" :: name :: root :: rest =>
+        (Compiler.addModuleRoot (root, name);
          doArgs rest)
       | arg :: rest =>
         (if size arg > 0 andalso String.sub (arg, 0) = #"-" then

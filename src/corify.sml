@@ -1025,6 +1025,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                          val (wds, eds) = foldl wrapSgi ([], []) sgis
                          val wrapper = (L.StrConst wds, loc)
                          val mst = St.lookupStrById st m
+                         val mst = foldl St.lookupStrByName mst ms
                          val (ds, {inner, outer}) = corifyStr (St.name mst) (wrapper, st)
                          val st = St.bindStr outer "wrapper" en inner
                                   
