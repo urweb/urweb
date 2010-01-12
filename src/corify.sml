@@ -963,50 +963,63 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
 
                          fun wrapSgi ((sgi, _), (wds, eds))  =
                              case sgi of
-                                 L.SgiVal (s, _, t as (L.TFun (dom, ran), _)) =>
-                                 (case #1 ran of
-                                      L.CApp ((L.CModProj (basis, [], "transaction"), _),
-                                              ran' as
-                                                   (L.CApp
-                                                        ((L.CApp
-                                                              ((L.CApp ((L.CModProj (basis', [], "xml"), _),
-                                                                        (L.CRecord (_, [((L.CName "Html", _),
-                                                                                         _)]), _)), _), _),
-                                                          _), _), _)) =>
-                                      let
-                                          val ran = (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc)
-                                          val ranT = (L.CApp ((L.CModProj (basis, [], "transaction"), loc),
-                                                              ran), loc)
-                                          val e = (L.EModProj (m, ms, s), loc)
+                                 L.SgiVal (s, _, t) =>
+                                 let
+                                     fun getPage (t, args) =
+                                         case #1 t of
+                                             L.CApp ((L.CModProj (basis, [], "transaction"), _),
+                                                     t' as
+                                                        (L.CApp
+                                                             ((L.CApp
+                                                                   ((L.CApp ((L.CModProj (basis', [], "xml"), _),
+                                                                             (L.CRecord (_, [((L.CName "Html", _),
+                                                                                              _)]), _)), _), _),
+                                                               _), _), _)) =>
+                                             if basis = basis_n andalso basis' = basis_n then
+                                                 SOME (t', rev args)
+                                             else
+                                                 NONE
+                                           | L.TFun (dom, ran) => getPage (ran, dom :: args)
+                                           | _ => NONE
+                                 in
+                                     case getPage (t, []) of
+                                         NONE => (wds, eds)
+                                       | SOME (ran', args) =>
+                                         let
+                                             val ran = (L.TRecord (L.CRecord ((L.KType, loc), []), loc), loc)
+                                             val ranT = (L.CApp ((L.CModProj (basis_n, [], "transaction"), loc),
+                                                                 ran), loc)
+                                             val e = (L.EModProj (m, ms, s), loc)
 
-                                          val ef = (L.EModProj (basis, [], "bind"), loc)
-                                          val ef = (L.ECApp (ef, (L.CModProj (basis, [], "transaction"), loc)), loc)
-                                          val ef = (L.ECApp (ef, ran'), loc)
-                                          val ef = (L.ECApp (ef, ran), loc)
-                                          val ef = (L.EApp (ef, (L.EModProj (basis, [], "transaction_monad"), loc)), loc)
-                                          val ef = (L.EApp (ef, (L.EApp (e, (L.ERel 0, loc)), loc)), loc)
+                                             val ef = (L.EModProj (basis_n, [], "bind"), loc)
+                                             val ef = (L.ECApp (ef, (L.CModProj (basis_n, [], "transaction"), loc)), loc)
+                                             val ef = (L.ECApp (ef, ran'), loc)
+                                             val ef = (L.ECApp (ef, ran), loc)
+                                             val ef = (L.EApp (ef, (L.EModProj (basis_n, [], "transaction_monad"), loc)),
+                                                       loc)
+                                             val ea = ListUtil.foldri (fn (i, _, ea) =>
+                                                                          (L.EApp (ea, (L.ERel i, loc)), loc)) e args
+                                             val ef = (L.EApp (ef, ea), loc)
 
-                                          val eat = (L.CApp ((L.CModProj (basis, [], "transaction"), loc),
-                                                             ran), loc)
-                                          val ea = (L.EAbs ("p", ran', eat,
-                                                            (L.EWrite (L.ERel 0, loc), loc)), loc)
+                                             val eat = (L.CApp ((L.CModProj (basis_n, [], "transaction"), loc),
+                                                                ran), loc)
+                                             val ea = (L.EAbs ("p", ran', eat,
+                                                               (L.EWrite (L.ERel 0, loc), loc)), loc)
 
-                                          val e = (L.EApp (ef, ea), loc)
-                                          val e = (L.EAbs ("vs", dom, ran, e), loc)
-                                      in
-                                          if basis = basis_n andalso basis' = basis_n then
-                                              ((L.DVal ("wrap_" ^ s, 0,
-                                                        (L.TFun (dom, ranT), loc),
-                                                        e), loc) :: wds,
-                                               (fn st =>
-                                                   case #1 (corifyExp st (L.EModProj (en, [], "wrap_" ^ s), loc)) of
-                                                       L'.ENamed n => (L'.DExport (L'.Link, n, false), loc)
-                                                     | _ => raise Fail "Corify: Value to export didn't corify properly")
-                                               :: eds)
-                                          else
-                                              (wds, eds)
-                                      end
-                                    | _ => (wds, eds))
+                                             val (e, tf) = ListUtil.foldri (fn (i, t, (e, tf)) =>
+                                                                               ((L.EAbs ("x" ^ Int.toString i,
+                                                                                         t, tf, e), loc),
+                                                                                (L.TFun (t, tf), loc)))
+                                                           ((L.EApp (ef, ea), loc), ranT) args
+                                         in
+                                             ((L.DVal ("wrap_" ^ s, 0, tf, e), loc) :: wds,
+                                              (fn st =>
+                                                  case #1 (corifyExp st (L.EModProj (en, [], "wrap_" ^ s), loc)) of
+                                                      L'.ENamed n => (L'.DExport (L'.Link, n, false), loc)
+                                                    | _ => raise Fail "Corify: Value to export didn't corify properly")
+                                              :: eds)
+                                         end
+                                 end
                                | _ => (wds, eds)
 
                          val (wds, eds) = foldl wrapSgi ([], []) sgis
