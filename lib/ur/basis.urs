@@ -68,7 +68,8 @@ val isupper : char -> bool
 val isxdigit : char -> bool
 val tolower : char -> char
 val toupper : char -> char
-
+val ord : char -> int
+val chr : int -> char
 
 (** String operations *)
 

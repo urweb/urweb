@@ -14,3 +14,6 @@ val isUpper : t -> bool
 val isXdigit : t -> bool
 val toLower : t -> t
 val toUpper : t -> t
+
+val toInt : t -> int
+val fromInt : int -> t

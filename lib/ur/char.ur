@@ -14,3 +14,6 @@ val isUpper = Basis.isupper
 val isXdigit = Basis.isxdigit
 val toLower = Basis.tolower
 val toUpper = Basis.toupper
+
+val toInt = Basis.ord
+val fromInt = Basis.chr

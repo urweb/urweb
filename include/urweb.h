@@ -258,6 +258,9 @@ uw_Basis_bool uw_Basis_isxdigit(uw_context, uw_Basis_char);
 uw_Basis_char uw_Basis_tolower(uw_context, uw_Basis_char);
 uw_Basis_char uw_Basis_toupper(uw_context, uw_Basis_char);
 
+uw_Basis_int uw_Basis_ord(uw_context, uw_Basis_char);
+uw_Basis_char uw_Basis_chr(uw_context, uw_Basis_int);
+
 uw_Basis_string uw_Basis_currentUrl(uw_context);
 void uw_set_currentUrl(uw_context, char *);
 

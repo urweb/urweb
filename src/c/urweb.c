@@ -3375,6 +3375,14 @@ uw_Basis_char uw_Basis_toupper(uw_context ctx, uw_Basis_char c) {
   return toupper(c);
 }
 
+uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c) {
+  return (unsigned char)c;
+}
+
+uw_Basis_char uw_Basis_chr(uw_context ctx, uw_Basis_int n) {
+  return n;
+}
+
 uw_Basis_string uw_Basis_currentUrl(uw_context ctx) {
   return ctx->current_url;
 }
