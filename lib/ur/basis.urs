@@ -654,7 +654,8 @@ val hr : bodyTag boxAttrs
 
 val a : bodyTag ([Link = transaction page, Href = url] ++ boxAttrs)
 
-val img : bodyTag ([Src = url, Onabort = transaction unit, Onerror = transaction unit,
+val img : bodyTag ([Src = url, Width = int, Height = int,
+                    Onabort = transaction unit, Onerror = transaction unit,
                     Onload = transaction unit] ++ boxAttrs)
           
 val form : ctx ::: {Unit} -> bind ::: {Type}
