@@ -7,8 +7,7 @@ LIB_UR   := $(LIB)/ur
 LIB_C    := $(LIB)/c
 LIB_JS   := $(LIB)/js
 
-LD_MAJOR := 1
-LD_MINOR := 0
+LIB_VERSION := 1:0
 
 all: smlnj mlton c
 
@@ -19,7 +18,7 @@ mlton: bin/urweb
 
 OBJS := memmem mhash urweb request queue http cgi fastcgi
 SOS  := urweb urweb_http urweb_cgi urweb_fastcgi
-c: $(OBJS:%=lib/c/%.o) $(SOS:%=lib/c/lib%.so.$(LD_MAJOR).$(LD_MINOR))
+c: $(OBJS:%=lib/c/%.lo) $(SOS:%=lib/c/lib%.la)
 
 clean:
 	rm -f src/*.mlton.grm.* src/*.mlton.lex.* \
@@ -27,18 +26,17 @@ clean:
 		lib/c/*.o lib/c/*.so.*
 	rm -rf .cm src/.cm
 
-lib/c/%.do: src/c/%.c include/*.h
-	gcc -fPIC -Wimplicit -O3 -I include -c $< -o $@ $(CFLAGS)
+lib/c/%.lo: src/c/%.c include/*.h
+	libtool --mode=compile gcc -Wimplicit -O3 -I include -c $< -o $@ $(CFLAGS)
 
-lib/c/%.o: src/c/%.c include/*.h
-	gcc -Wimplicit -O3 -I include -c $< -o $@ $(CFLAGS)
+LIBARGS := -rpath $(LIB)/.. -version-info $(LIB_VERSION)
 
 URWEB_OS := memmem urweb queue request mhash
-lib/c/liburweb.so.$(LD_MAJOR).$(LD_MINOR): $(URWEB_OS:%=lib/c/%.do)
-	gcc -shared -Wl,-soname,liburweb.so.$(LD_MAJOR) -o $@ $^
+lib/c/liburweb.la: $(URWEB_OS:%=lib/c/%.lo)
+	libtool --mode=link gcc -o $@ $^ $(LIBARGS)
 
-lib/c/liburweb_%.so.$(LD_MAJOR).$(LD_MINOR): lib/c/%.do
-	gcc -shared -Wl,-soname,liburweb_$*.so.$(LD_MAJOR) -o $@ $^
+lib/c/liburweb_%.la: lib/c/%.lo
+	libtool --mode=link gcc -o $@ $^ $(LIBARGS)
 
 src/urweb.cm: src/prefix.cm src/sources
 	cat src/prefix.cm src/sources \
@@ -84,18 +82,16 @@ install:
 	cp lib/ur/*.ur $(LIB_UR)/
 	mkdir -p $(LIB_C)
 	cp lib/c/*.o $(LIB_C)/
-	cp lib/c/*.so.$(LD_MAJOR).$(LD_MINOR) $(LIB)/..
 	mkdir -p $(LIB_JS)
 	cp lib/js/*.js $(LIB_JS)/
 	mkdir -p $(INCLUDE)
 	cp include/*.h $(INCLUDE)/
 	mkdir -p $(SITELISP)
 	cp src/elisp/*.el $(SITELISP)/
-	ln -sf liburweb.so.$(LD_MAJOR) $(LIB)/../liburweb.so
-	ln -sf liburweb_http.so.$(LD_MAJOR) $(LIB)/../liburweb_http.so
-	ln -sf liburweb_cgi.so.$(LD_MAJOR) $(LIB)/../liburweb_cgi.so
-	ln -sf liburweb_fastcgi.so.$(LD_MAJOR) $(LIB)/../liburweb_fastcgi.so
-	ldconfig
+	libtool --silent --mode=install install -c lib/c/liburweb.la $(LIB)/../liburweb.la
+	libtool --silent --mode=install install -c lib/c/liburweb_http.la $(LIB)/../liburweb_http.la
+	libtool --silent --mode=install install -c lib/c/liburweb_cgi.la $(LIB)/../liburweb_cgi.la
+	libtool --silent --mode=install install -c lib/c/liburweb_fastcgi.la $(LIB)/../liburweb_fastcgi.la
 
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz

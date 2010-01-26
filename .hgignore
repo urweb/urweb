@@ -12,8 +12,12 @@ src/urweb.mlb
 *.lex.*
 *.grm.*
 *.o
-*.do
+*.lo
+*.la
+*.a
+*.so
 *.so.*
+*.lai
 
 src/config.sml
 
