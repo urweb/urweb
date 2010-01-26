@@ -38,6 +38,17 @@ fun all f s =
         al 0
     end
 
+fun mp f s =
+    let
+        fun mp' i acc =
+            if i < 0 then
+                acc
+            else
+                mp' (i - 1) (str (f (sub s i)) ^ acc)
+    in
+        mp' (length s - 1) ""
+    end
+
 fun newlines [ctx] [[Body] ~ ctx] s : xml ([Body] ++ ctx) [] [] =
     case split s #"\n" of
         None => cdata s

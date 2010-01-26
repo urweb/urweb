@@ -613,6 +613,10 @@ static void uw_set_error(uw_context ctx, const char *fmt, ...) {
   vsnprintf(ctx->error_message, ERROR_BUF_LEN, fmt, ap);
 }
 
+int uw_has_error(uw_context ctx) {
+  return ctx->error_message[0] != 0;
+}
+
 __attribute__((noreturn)) void uw_error(uw_context ctx, failure_kind fk, const char *fmt, ...) {
   cleanup *cl;
 
@@ -2888,21 +2892,61 @@ uw_unit uw_Basis_send(uw_context ctx, uw_Basis_channel chn, uw_Basis_string msg)
   return uw_unit_v;
 }
 
-void uw_commit(uw_context ctx) {
+int uw_rollback(uw_context ctx) {
   int i;
+  cleanup *cl;
+
+  if (ctx->client)
+    release_client(ctx->client);
+
+  for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
+    cl->func(cl->arg);
+
+  ctx->cleanup_front = ctx->cleanup;
 
   for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].rollback != NULL)
-      if (ctx->transactionals[i].commit)
+      ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
+    if (ctx->transactionals[i].free)
+      ctx->transactionals[i].free(ctx->transactionals[i].data);
+
+  return ctx->app->db_rollback(ctx);
+}
+
+void uw_commit(uw_context ctx) {
+  int i;
+
+  if (uw_has_error(ctx)) {
+    uw_rollback(ctx);
+    return;
+  }
+
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
+    if (ctx->transactionals[i].rollback != NULL)
+      if (ctx->transactionals[i].commit) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
+        if (uw_has_error(ctx)) {
+          uw_rollback(ctx);
+          return;
+        }
+      }
 
   for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].rollback == NULL)
-      if (ctx->transactionals[i].commit)
+      if (ctx->transactionals[i].commit) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
+        if (uw_has_error(ctx)) {
+          uw_rollback(ctx);
+          return;
+        }
+      }
 
-  if (ctx->app->db_commit(ctx))
-    uw_error(ctx, FATAL, "Error running SQL COMMIT");
+  if (ctx->app->db_commit(ctx)) {
+    uw_set_error_message(ctx, "Error running SQL COMMIT");
+    return;
+  }
 
   for (i = 0; i < ctx->used_deltas; ++i) {
     delta *d = &ctx->deltas[i];
@@ -2954,28 +2998,6 @@ void uw_commit(uw_context ctx) {
   }
 }
 
-int uw_rollback(uw_context ctx) {
-  int i;
-  cleanup *cl;
-
-  if (ctx->client)
-    release_client(ctx->client);
-
-  for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
-    cl->func(cl->arg);
-
-  ctx->cleanup_front = ctx->cleanup;
-
-  for (i = ctx->used_transactionals-1; i >= 0; --i)
-    if (ctx->transactionals[i].rollback != NULL)
-      ctx->transactionals[i].rollback(ctx->transactionals[i].data);
-
-  for (i = ctx->used_transactionals-1; i >= 0; --i)
-    if (ctx->transactionals[i].free)
-      ctx->transactionals[i].free(ctx->transactionals[i].data);
-
-  return ctx->app->db_rollback(ctx);
-}
 
 size_t uw_transactionals_max = SIZE_MAX;
 

@@ -339,7 +339,20 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     fk = uw_begin(ctx, rc->path_copy);
     if (fk == SUCCESS || fk == RETURN_INDIRECTLY) {
       uw_commit(ctx);
-      return SERVED;
+      if (uw_has_error(ctx)) {
+        log_error(logger_data, "Fatal error: %s\n", uw_error_message(ctx));
+
+        uw_reset_keep_error_message(ctx);
+        on_failure(ctx);
+        uw_write_header(ctx, "Content-type: text/html\r\n");
+        uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
+        uw_write(ctx, "Fatal error: ");
+        uw_write(ctx, uw_error_message(ctx));
+        uw_write(ctx, "\n</body></html>");
+        
+        return FAILED;
+      } else
+        return SERVED;
     } else if (fk == BOUNDED_RETRY) {
       if (retries_left) {
         log_debug(logger_data, "Error triggers bounded retry: %s\n", uw_error_message(ctx));

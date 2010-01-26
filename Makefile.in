@@ -92,6 +92,10 @@ install:
 	libtool --silent --mode=install install -c lib/c/liburweb_http.la $(LIB)/../liburweb_http.la
 	libtool --silent --mode=install install -c lib/c/liburweb_cgi.la $(LIB)/../liburweb_cgi.la
 	libtool --silent --mode=install install -c lib/c/liburweb_fastcgi.la $(LIB)/../liburweb_fastcgi.la
+	libtool --silent --finish $(LIB)/../liburweb.la
+	libtool --silent --finish $(LIB)/../liburweb_http.la
+	libtool --silent --finish $(LIB)/../liburweb_cgi.la
+	libtool --silent --finish $(LIB)/../liburweb_fastcgi.la
 
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz
