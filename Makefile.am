@@ -11,7 +11,7 @@ all-local: smlnj mlton
 
 SUBDIRS = src/c
 
-.PHONY: smlnj mlton package
+.PHONY: smlnj mlton package reauto
 
 smlnj: src/urweb.cm
 mlton: bin/urweb
@@ -74,3 +74,7 @@ install-exec-local:
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz
 
+reauto:
+	libtoolize -cf
+	automake --add-missing --force-missing --copy
+	autoreconf
