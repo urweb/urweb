@@ -12,12 +12,10 @@ src/urweb.mlb
 *.lex.*
 *.grm.*
 *.o
+.deps
+.libs
 *.lo
 *.la
-*.a
-*.so
-*.so.*
-*.lai
 
 src/config.sml
 
@@ -41,6 +39,7 @@ demo/more/demo.*
 *.pdf
 *.ps
 *.toc
+*.m4
 
 .depend
 Makefile.coq
@@ -48,5 +47,7 @@ Makefile.coq
 
 syntax: regexp
 
-^Makefile
-^src/coq/Makefile
+^Makefile$
+^src/c/Makefile$
+^src/coq/Makefile$
+^libtool$

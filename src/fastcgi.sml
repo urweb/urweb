@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@ open Settings
 
 val () = addProtocol {name = "fastcgi",
                       compile = "",
-                      linkStatic = clibFile "fastcgi.o",
+                      linkStatic = Config.lib ^ "/../liburweb_fastcgi.a",
                       linkDynamic = "-lurweb_fastcgi",
                       persistent = true}
 

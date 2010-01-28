@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1040,8 +1040,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
         val proto = Settings.currentProtocol ()
 
         val lib = if Settings.getStaticLinking () then
-                      clibFile "request.o" ^ " " ^ clibFile "queue.o" ^ " " ^ clibFile "urweb.o"
-                      ^ " " ^ clibFile "memmem.o" ^ " " ^ clibFile "mhash.o" ^ " " ^ #linkStatic proto
+                      #linkStatic proto ^ " " ^ Config.lib ^ "/../liburweb.a"
                   else
                       "-L" ^ Config.lib ^ "/.. -lurweb " ^ #linkDynamic proto
 

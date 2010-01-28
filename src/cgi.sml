@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@ open Settings
 
 val () = addProtocol {name = "cgi",
                       compile = "",
-                      linkStatic = clibFile "cgi.o",
+                      linkStatic = Config.lib ^ "/../liburweb_cgi.a",
                       linkDynamic = "-lurweb_cgi",
                       persistent = false}
 
