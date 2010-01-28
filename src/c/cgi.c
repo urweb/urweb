@@ -28,7 +28,7 @@ static char *get_header(void *data, const char *h) {
     *s++ = *h == '-' ? '_' : toupper(*h);
   *s = 0;
 
-  if (r = getenv(uppercased))
+  if ((r = getenv(uppercased)))
     return r;
   else if (!strcasecmp(saved_h, "Content-length")
            || !strcasecmp(saved_h, "Content-type"))

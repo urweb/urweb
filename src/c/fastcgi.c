@@ -139,7 +139,7 @@ static void write_stderr(FCGI_Output *o, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  len = vsnprintf(o->r.contentData, 65535, fmt, ap);
+  len = vsnprintf((char *)o->r.contentData, 65535, fmt, ap);
   if (len < 0)
     fprintf(stderr, "vsnprintf() failed in write_stderr().\n");
   else if (fastcgi_send(o, FCGI_STDERR, len))
@@ -157,7 +157,7 @@ static void log_error(void *data, const char *fmt, ...) {
   va_start(ap, fmt);
 
   if (o) {
-    int len = vsnprintf(o->r.contentData, 65535, fmt, ap);
+    int len = vsnprintf((char *)o->r.contentData, 65535, fmt, ap);
     if (len < 0)
       fprintf(stderr, "vsnprintf() failed in log_error().\n");
     else if (fastcgi_send(o, FCGI_STDERR, len))
@@ -191,7 +191,7 @@ typedef struct {
 static char *get_header(void *data, const char *h) {
   headers *hs = (headers *)data;
   size_t len = strlen(h);
-  char *s, *r;
+  char *s;
   const char *saved_h = h;
 
   if (len > hs->uppercased_len) {
@@ -206,7 +206,7 @@ static char *get_header(void *data, const char *h) {
 
   if (!strcasecmp(saved_h, "Content-length")
       || !strcasecmp(saved_h, "Content-type")) {
-    if (s = search_nvps(hs->nvps, hs->uppercased + 5))
+    if ((s = search_nvps(hs->nvps, hs->uppercased + 5)))
       return s;
   }
   
@@ -300,7 +300,6 @@ int fastcgi_send_normal(int sock, const void *buf, ssize_t len) {
 }
 
 static void *worker(void *data) {
-  int me = *(int *)data;
   FCGI_Input *in = fastcgi_input();
   FCGI_Output *out = fastcgi_output();
   uw_context ctx = uw_request_new_context(&uw_application, out, log_error, log_debug);
@@ -310,7 +309,6 @@ static void *worker(void *data) {
   char *body = malloc(0);
   size_t path_size = 0;
   char *path_buf = malloc(0);
-  int tries = 0;
 
   hs.uppercased = malloc(0);
   hs.uppercased_len = 0;
@@ -385,7 +383,7 @@ static void *worker(void *data) {
 
     hs.nvps[used_nvps].name[0] = 0;
 
-    if (s = get_header(&hs, "Content-Length")) {
+    if ((s = get_header(&hs, "Content-Length"))) {
       body_len = atoi(s);
       if (body_len < 0) {
         write_stderr(out, "Invalid Content-Length\n");
@@ -400,7 +398,6 @@ static void *worker(void *data) {
     }
 
     for (body_read = 0; body_read < body_len; ) {
-      char *buf;
       int this_len;
 
       if (!(r = fastcgi_recv(in))) {
@@ -441,7 +438,7 @@ static void *worker(void *data) {
       goto done;
     }
 
-    if (path_info = search_nvps(hs.nvps, "PATH_INFO")) {
+    if ((path_info = search_nvps(hs.nvps, "PATH_INFO"))) {
       int len1 = strlen(path), len2 = strlen(path_info);
       int len = len1 + len2 + 1;
 
@@ -497,7 +494,7 @@ static loggers ls = {&uw_application, NULL, log_error, log_debug};
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
   struct sockaddr_in their_addr; // connector's address information
-  int sin_size, yes = 1;
+  socklen_t sin_size;
   int nthreads = 1, i, *names, opt;
   char *fwsa = getenv("FCGI_WEB_SERVER_ADDRS"), *nthreads_s = getenv("URWEB_NUM_THREADS");
  
@@ -549,7 +546,6 @@ int main(int argc, char *argv[]) {
 
   {
     pthread_t thread;
-    int name;
 
     if (pthread_create(&thread, NULL, client_pruner, &ls)) {
       fprintf(stderr, "Error creating pruner thread\n");
@@ -583,7 +579,7 @@ int main(int argc, char *argv[]) {
         return 1;
       }
 
-      for (ips = fwsa; sep = strchr(ips, ','); ips = sep+1) {
+      for (ips = fwsa; (sep = strchr(ips, ',')); ips = sep+1) {
         if (!strncmp(ips, host, sep - ips)) {
           matched = 1;
           break;

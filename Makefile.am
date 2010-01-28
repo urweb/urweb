@@ -69,7 +69,7 @@ install-exec-local:
 	cp include/*.h $(INCLUDE)/
 	mkdir -p $(SITELISP)
 	cp src/elisp/*.el $(SITELISP)/
-	ldconfig
+	-ldconfig
 
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz

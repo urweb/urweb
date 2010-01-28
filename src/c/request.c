@@ -122,11 +122,10 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
                           int (*send)(int sockfd, const void *buf, size_t len),
                           int (*close)(int fd)) {
   int retries_left = MAX_RETRIES;
-  char *s;
   failure_kind fk;
-  int is_post = 0, do_normal_send = 1;
+  int is_post = 0;
   char *boundary = NULL;
-  size_t boundary_len;
+  size_t boundary_len = 0;
   char *inputs;
   const char *prefix = uw_get_url_prefix(ctx);
 
@@ -226,7 +225,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       after_sub_headers[2] = 0;
       after_sub_headers += 4;
 
-      for (header = part; after_header = strstr(header, "\r\n"); header = after_header + 2) {
+      for (header = part; (after_header = strstr(header, "\r\n")); header = after_header + 2) {
         char *colon, *after_colon;
 
         *after_header = 0;
@@ -246,7 +245,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
             return FAILED;
           }
 
-          for (colon += 11; after_colon = strchr(colon, '='); colon = after_colon) {
+          for (colon += 11; (after_colon = strchr(colon, '=')); colon = after_colon) {
             char *data;
             after_colon[0] = 0;
             if (after_colon[1] != '"') {
@@ -304,12 +303,12 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
       while (*inputs) {
         name = inputs;
-        if (inputs = strchr(inputs, '&'))
+        if ((inputs = strchr(inputs, '&')))
           *inputs++ = 0;
         else
           inputs = strchr(name, 0);
 
-        if (value = strchr(name, '=')) {
+        if ((value = strchr(name, '='))) {
           *value++ = 0;
           if (uw_set_input(ctx, name, value)) {
             log_error(logger_data, "%s\n", uw_error_message(ctx));

@@ -83,11 +83,12 @@ static int buf_check(buf *b, size_t extra) {
       next = 1;
     for (; next < desired; next *= 2);
 
-    if (next > b->max)
+    if (next > b->max) {
       if (desired <= b->max)
         next = desired;
       else
         return 1;
+    }
 
     new_heap = realloc(b->start, next);
     b->front = new_heap + (b->front - b->start);
@@ -519,6 +520,8 @@ int uw_set_app(uw_context ctx, uw_app *app) {
     ctx->inputs = realloc(ctx->inputs, ctx->sz_inputs * sizeof(input));
     memset(ctx->inputs, 0, ctx->sz_inputs * sizeof(input));
   }
+
+  return 0;
 }
 
 void uw_set_client_data(uw_context ctx, void *data) {
@@ -557,8 +560,6 @@ void uw_free(uw_context ctx) {
 }
 
 void uw_reset_keep_error_message(uw_context ctx) {
-  size_t i;
-
   buf_reset(&ctx->outHeaders);
   buf_reset(&ctx->script);
   ctx->script.start[0] = 0;
@@ -643,11 +644,12 @@ void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
     else
       newLen = len * 2;
 
-    if (newLen > uw_cleanup_max)
+    if (newLen > uw_cleanup_max) {
       if (len+1 <= uw_cleanup_max)
         newLen = uw_cleanup_max;
       else
         uw_error(ctx, FATAL, "Exceeded limit on number of cleanup handlers");
+    }
 
     ctx->cleanup = realloc(ctx->cleanup, newLen * sizeof(cleanup));
     ctx->cleanup_front = ctx->cleanup + len;
@@ -764,6 +766,9 @@ static void adjust_input(input *x, input *old_start, input *new_start, size_t le
     adjust_pointer(&x->data.entry.fields, old_start, new_start, len);
     adjust_pointer(&x->data.entry.next, old_start, new_start, len);
     adjust_pointer(&x->data.entry.parent, old_start, new_start, len);
+    break;
+  default:
+    break;
   }  
 }
 
@@ -778,7 +783,6 @@ static input *check_input_space(uw_context ctx, size_t len) {
       uw_error(ctx, FATAL, "Exceeded limit on number of subinputs");
 
     input *new_subinputs = realloc(ctx->subinputs, sizeof(input) * (ctx->used_subinputs + len));
-    size_t offset = new_subinputs - ctx->subinputs;
 
     if (ctx->subinputs != new_subinputs) {
       for (i = 0; i < ctx->used_subinputs; ++i)
@@ -979,34 +983,6 @@ int uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
 
 void *uw_malloc(uw_context ctx, size_t len);
 
-static void parents(input *inp) {
-  printf("Stack: %p\n", inp);
-  while (inp) {
-    switch (inp->kind) {
-    case NORMAL:
-      printf("Normal(%p)\n", inp);
-      break;
-    case FIL:
-      printf("File(%p)\n", inp);
-      break;
-    case SUBFORM:
-      printf("Subform; fields = %p\n", inp->data.subform.fields);
-      inp = inp->data.subform.parent;
-      break;
-    case SUBFORMS:
-      printf("Subforms; entries = %p\n", inp->data.subforms.entries);
-      inp = inp->data.subforms.parent;
-      break;
-    case ENTRY:
-      printf("Entry; fields = %p; next = %p\n", inp->data.entry.fields, inp->data.entry.next);
-      inp = inp->data.entry.parent;
-      break;
-    default:
-      inp = NULL;
-    }
-  }
-}
-
 uw_Basis_file uw_get_file_input(uw_context ctx, int n) {
   if (n < 0)
     uw_error(ctx, FATAL, "Negative file input index %d", n);
@@ -1159,11 +1135,12 @@ static void buf_check_ctx(uw_context ctx, const char *kind, buf *b, size_t extra
       next = 1;
     for (; next < desired; next *= 2);
 
-    if (next > b->max)
+    if (next > b->max) {
       if (desired <= b->max)
         next = desired;
       else
         uw_error(ctx, FATAL, "Memory limit exceeded (%s)", kind);
+    }
 
     new_heap = realloc(b->start, next);
     b->front = new_heap + (b->front - b->start);
@@ -1222,10 +1199,10 @@ void uw_end_region(uw_context ctx) {
 }
 
 void uw_memstats(uw_context ctx) {
-  printf("Headers: %d/%d\n", buf_used(&ctx->outHeaders), buf_avail(&ctx->outHeaders));
-  printf("Script: %d/%d\n", buf_used(&ctx->script), buf_avail(&ctx->script));
-  printf("Page: %d/%d\n", buf_used(&ctx->page), buf_avail(&ctx->page));
-  printf("Heap: %d/%d\n", buf_used(&ctx->heap), buf_avail(&ctx->heap));
+  printf("Headers: %lu/%lu\n", (unsigned long)buf_used(&ctx->outHeaders), (unsigned long)buf_avail(&ctx->outHeaders));
+  printf("Script: %lu/%lu\n", (unsigned long)buf_used(&ctx->script), (unsigned long)buf_avail(&ctx->script));
+  printf("Page: %lu/%lu\n", (unsigned long)buf_used(&ctx->page), (unsigned long)buf_avail(&ctx->page));
+  printf("Heap: %lu/%lu\n", (unsigned long)buf_used(&ctx->heap), (unsigned long)buf_avail(&ctx->heap));
 }
 
 int uw_send(uw_context ctx, int sock) {
@@ -1545,10 +1522,6 @@ char *uw_Basis_attrifyFloat(uw_context ctx, uw_Basis_float n) {
   sprintf(result, "%g%n", n, &len);
   ctx->heap.front += len+1;
   return result;
-}
-
-static int isCont(unsigned char ch) {
-  return ch / 64 == 2;
 }
 
 char *uw_Basis_attrifyString(uw_context ctx, uw_Basis_string s) {
@@ -1893,8 +1866,8 @@ uw_Basis_bool uw_Basis_unurlifyBool(uw_context ctx, char **s) {
 
 uw_Basis_string uw_Basis_unurlifyString(uw_context ctx, char **s) {
   char *new_s = uw_unurlify_advance(*s);
-  char *r, *s1, *s2;
-  int len, n;
+  char *r;
+  int len;
 
   len = strlen(*s);
   uw_check_heap(ctx, len + 1);
@@ -1912,8 +1885,8 @@ uw_Basis_unit uw_Basis_unurlifyUnit(uw_context ctx, char **s) {
 
 uw_Basis_string uw_Basis_unurlifyString_fromClient(uw_context ctx, char **s) {
   char *new_s = uw_unurlify_advance(*s);
-  char *r, *s1, *s2;
-  int len, n;
+  char *r;
+  int len;
 
   len = strlen(*s);
   uw_check_heap(ctx, len + 1);
@@ -2765,7 +2738,7 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   int len = strlen(c);
   char *p = ctx->outHeaders.start;
 
-  while (p = strstr(p, "\nSet-Cookie: ")) {
+  while ((p = strstr(p, "\nSet-Cookie: "))) {
     char *p2;
     p += 13;
     p2 = strchr(p, '=');
@@ -2786,12 +2759,12 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
     }
   }
 
-  if (p = uw_Basis_requestHeader(ctx, "Cookie")) {
+  if ((p = uw_Basis_requestHeader(ctx, "Cookie"))) {
     char *p2;
 
     while (1) {
       if (!strncmp(p, c, len) && p[len] == '=') {
-        if (p2 = strchr(p, ';')) {
+        if ((p2 = strchr(p, ';'))) {
           size_t n = p2 - (p + len);
           char *r = uw_malloc(ctx, n);
           memcpy(r, p + 1 + len, n-1);
@@ -2799,7 +2772,7 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
           return r;
         } else
           return p + 1 + len;
-      } else if (p = strchr(p, ';'))
+      } else if ((p = strchr(p, ';')))
         p += 2;
       else
         return NULL;
@@ -3194,7 +3167,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   uw_write_header(ctx, mimeType);
   uw_write_header(ctx, "\r\nContent-Length: ");
   ctx_buf_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
-  sprintf(ctx->outHeaders.front, "%d%n", b.size, &len);
+  sprintf(ctx->outHeaders.front, "%lu%n", (unsigned long)b.size, &len);
   ctx->outHeaders.front += len;
   uw_write_header(ctx, "\r\n");
 
@@ -3210,7 +3183,6 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
 
 __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) {
   cleanup *cl;
-  int len;
   char *s;
 
   ctx->returning_indirectly = 1;
@@ -3225,7 +3197,7 @@ __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) 
   s = strchr(ctx->page.start, '\n');
   if (s) {
     char *s2;
-    for (++s; s2 = strchr(s, '\n'); s = s2+1) {
+    for (++s; (s2 = strchr(s, '\n')); s = s2+1) {
       *s2 = 0;
       if (!strncmp(s, "Set-Cookie: ", 12)) {
         uw_write_header(ctx, s);

@@ -25,7 +25,7 @@ static char *get_header(void *data, const char *h) {
   int len = strlen(h);
   char *p;
 
-  while (p = strchr(s, ':')) {
+  while ((p = strchr(s, ':'))) {
     if (p - s == len && !strncasecmp(s, h, len)) {
       return p + 2;
     } else {
@@ -169,10 +169,10 @@ static void *worker(void *data) {
         }
         path = s;
 
-        if (s = strchr(path, ' '))
+        if ((s = strchr(path, ' ')))
           *s = 0;
 
-        if (s = strchr(path, '?')) {
+        if ((s = strchr(path, '?'))) {
           *s = 0;
           query_string = s+1;
         }
@@ -180,7 +180,7 @@ static void *worker(void *data) {
           query_string = NULL;
 
         s = headers;
-        while (s2 = strchr(s, '\r')) {
+        while ((s2 = strchr(s, '\r'))) {
           s = s2;
 
           if (s[1] == 0)
@@ -228,8 +228,8 @@ int main(int argc, char *argv[]) {
   int sockfd;  // listen on sock_fd
   struct sockaddr_in my_addr;
   struct sockaddr_in their_addr; // connector's address information
-  int sin_size, yes = 1;
-  int uw_port = 8080, nthreads = 1, i, *names, opt;
+  socklen_t sin_size;
+  int yes = 1, uw_port = 8080, nthreads = 1, i, *names, opt;
  
   signal(SIGINT, sigint);
   signal(SIGPIPE, SIG_IGN); 
@@ -306,7 +306,6 @@ int main(int argc, char *argv[]) {
 
   {
     pthread_t thread;
-    int name;
 
     if (pthread_create(&thread, NULL, client_pruner, &ls)) {
       fprintf(stderr, "Error creating pruner thread\n");
