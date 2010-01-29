@@ -230,7 +230,7 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_binary"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
-                  | L.CApp ((L.CFfi ("Basis", "sql_aggregate"), _), t) =>
+                  | L.CApp ((L.CFfi ("Basis", "sql_aggregate"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_summable"), _), _) =>
                     (L'.TRecord [], loc)

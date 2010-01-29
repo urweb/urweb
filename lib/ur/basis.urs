@@ -273,7 +273,6 @@ val check : fs ::: {Type}
             -> sql_constraint fs []
 
 
-
 (*** Queries *)
 
 con sql_query :: {{Type}} -> {Type} -> Type
