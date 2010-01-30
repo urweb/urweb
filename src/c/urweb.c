@@ -2416,7 +2416,6 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
 
   if (localtime_r(&t, &stm)) {
     s = uw_malloc(ctx, TIMES_MAX);
-    --stm.tm_hour;
     len = strftime(s, TIMES_MAX, TIME_FMT, &stm);
     r = uw_malloc(ctx, len + 14);
     sprintf(r, "'%s'::timestamp", s);
