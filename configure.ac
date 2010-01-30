@@ -2,6 +2,7 @@ AC_INIT([urweb], [1.0])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_PROG_CC()
 AC_PROG_LIBTOOL()
+AC_CONFIG_MACRO_DIR([m4])
 
 if test [$prefix = "NONE"]; then
     prefix=/usr/local

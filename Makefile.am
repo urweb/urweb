@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I m4
+
 BIN      := @BIN@
 LIB      := @LIB@
 INCLUDE  := @INCLUDE@

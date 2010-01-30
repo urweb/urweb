@@ -39,7 +39,7 @@ demo/more/demo.*
 *.pdf
 *.ps
 *.toc
-*.m4
+aclocal.m4
 
 .depend
 Makefile.coq
