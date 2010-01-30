@@ -135,6 +135,7 @@ val current : t ::: Type -> signal t -> transaction t
 
 val now : transaction time
 val minTime : time
+val minusSeconds : time -> int -> time
 
 
 (** HTTP operations *)

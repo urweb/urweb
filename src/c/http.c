@@ -210,6 +210,8 @@ static void *worker(void *data) {
   done:
     uw_reset(ctx);
   }
+
+  return NULL;
 }
 
 static void help(char *cmd) {

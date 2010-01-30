@@ -223,6 +223,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context, uw_Basis_blob, uw_Basi
 __attribute__((noreturn)) void uw_redirect(uw_context, uw_Basis_string url);
 
 uw_Basis_time uw_Basis_now(uw_context);
+uw_Basis_time uw_Basis_minusSeconds(uw_context, uw_Basis_time, uw_Basis_int);
 extern const uw_Basis_time uw_Basis_minTime;
 
 void uw_register_transactional(uw_context, void *data, uw_callback commit, uw_callback rollback, uw_callback free);

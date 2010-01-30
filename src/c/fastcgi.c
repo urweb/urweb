@@ -478,6 +478,8 @@ static void *worker(void *data) {
     fastcgi_input_reset(in);
     uw_reset(ctx);
   }
+
+  return NULL;
 }
 
 static void help(char *cmd) {

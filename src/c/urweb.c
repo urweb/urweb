@@ -3279,6 +3279,10 @@ uw_Basis_time uw_Basis_now(uw_context ctx) {
   return time(NULL);
 }
 
+uw_Basis_time uw_Basis_minusSeconds(uw_context ctx, uw_Basis_time tm, uw_Basis_int n) {
+  return tm - n;
+}
+
 void *uw_get_global(uw_context ctx, char *name) {
   int i;
 
