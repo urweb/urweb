@@ -1,4 +1,15 @@
 ========
+20100130
+========
+
+- Conversion to an Automake-based build system, for greater portability in
+  building shared libraries
+- -path and -root command-line flags
+- Exported page handling functions (i.e., those page-generating functions
+  appearing in the main module's signature) may now take any number of
+  arguments, including 0.
+
+========
 20100112
 ========
 
