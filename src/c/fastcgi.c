@@ -336,8 +336,8 @@ static void *worker(void *data) {
     if (r->type != FCGI_BEGIN_REQUEST) {
       write_stderr(out, "First message is not BEGIN_REQUEST\n");
       goto done;
-    } else if (((FCGI_BeginRequestBody *)&r->contentData)->roleB0 != FCGI_RESPONDER) {
-      write_stderr(out, "First message is not BEGIN_REQUEST\n");
+    } else if (r->contentData[1] != FCGI_RESPONDER) {
+      write_stderr(out, "Request is for a role besides RESPONDER\n");
       goto done;
     }
 
