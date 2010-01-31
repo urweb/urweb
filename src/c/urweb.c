@@ -2884,7 +2884,7 @@ int uw_rollback(uw_context ctx) {
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data);
 
-  return ctx->app->db_rollback(ctx);
+  return ctx->app ? ctx->app->db_rollback(ctx) : 0;
 }
 
 void uw_commit(uw_context ctx) {
