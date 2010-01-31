@@ -93,14 +93,7 @@ GCCARGS=-fnested-functions ./configure
 
 Some Mac OS X users have reported needing to use this particular GCCARGS value.
 
-Since the author is still getting a handle on the GNU Autotools that provide the build system, you may need to do some further work to get started, especially in environments with significant differences from Linux (where most testing is done).  One OS X user reported needing to run \texttt{./configure} with \texttt{CFLAGS=-I/opt/local/include}, since this directory wound up holding a header file associated with a \texttt{libmhash} package installed via DarwinPorts.  While that user built Ur/Web successfully with no further tweaks, another OS X user reported that he needed to install Autoconf and Automake from MacPorts and run the following before \texttt{./configure}:
-
-\begin{verbatim}
-aclocal
-autoconf
-\end{verbatim}
-
-He also reported needing to add \texttt{/opt/local/bin/} to his \texttt{\$PATH}, because of an unusual set-up where Autotools files were installed in that directory.
+Since the author is still getting a handle on the GNU Autotools that provide the build system, you may need to do some further work to get started, especially in environments with significant differences from Linux (where most testing is done).  One OS X user reported needing to run \texttt{./configure} with \texttt{CFLAGS=-I/opt/local/include}, since this directory wound up holding a header file associated with a \texttt{libmhash} package installed via DarwinPorts.
 
 The Emacs mode can be set to autoload by adding the following to your \texttt{.emacs} file.
 
