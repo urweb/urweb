@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -428,7 +428,7 @@ fun lookupFunctorById ({funs, ...} : t) n =
 
 fun lookupFunctorByName (m, {current = FNormal {funs, ...}, ...} : t) =
     (case SM.find (funs, m) of
-         NONE => raise Fail "Corify.St.lookupFunctorByName [1]"
+         NONE => raise Fail ("Corify.St.lookupFunctorByName " ^ m ^ "[1]")
        | SOME v => v)
   | lookupFunctorByName _ = raise Fail "Corify.St.lookupFunctorByName [2]"
 

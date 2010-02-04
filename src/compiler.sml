@@ -730,17 +730,54 @@ val parse = {
                                                 | [_] => d
                                                 | piece :: pieces =>
                                                   let
-                                                      val this = prefix ^ "." ^ piece
+                                                      val this = case prefix of
+                                                                     "" => piece
+                                                                   | _ => prefix ^ "." ^ piece
                                                       val old = SS.member (!defed, this)
+
+                                                      fun notThere (ch, s) =
+                                                          Substring.isEmpty (#2 (Substring.splitl
+                                                                                     (fn ch' => ch' <> ch) s))
+
+                                                      fun simOpen () =
+                                                          SS.foldl (fn (full, ds) =>
+                                                                       if String.isPrefix (this ^ ".") full
+                                                                          andalso notThere (#".",
+                                                                                            Substring.extract (full,
+                                                                                                               size
+                                                                                                                   this + 1,
+                                                                                                               NONE)) then
+                                                                           let
+                                                                               val parts = String.tokens
+                                                                                           (fn ch => ch = #".") full
+
+                                                                               val part = List.last parts
+
+                                                                               val imp = if length parts >= 2 then
+                                                                                             (Source.StrProj
+                                                                                                  ((Source.StrVar
+                                                                                                        (List.nth (parts,
+                                                                                                                   length
+                                                                                                                       parts
+                                                                                                                       - 2)),
+                                                                                                    loc),
+                                                                                                   part), loc)
+                                                                                         else
+                                                                                             (Source.StrVar part, loc)
+                                                                           in
+                                                                               (Source.DStr (part, NONE, imp),
+                                                                                loc) :: ds
+                                                                           end
+                                                                       else
+                                                                           ds) [] (!fulls)
                                                   in
                                                       defed := SS.add (!defed, this);
                                                       (Source.DStr (piece, NONE,
                                                                     (Source.StrConst (if old then
-                                                                                          [(Source.DOpen (piece, []),
-                                                                                            loc),
-                                                                                           makeD prefix pieces]
+                                                                                          simOpen ()
+                                                                                          @ [makeD this pieces]
                                                                                       else
-                                                                                          [makeD prefix pieces]), loc)),
+                                                                                          [makeD this pieces]), loc)),
                                                        loc)
                                                   end
                                       in
@@ -748,9 +785,17 @@ val parse = {
                                               ErrorMsg.error ("Rooted module " ^ full ^ " has multiple versions.")
                                           else
                                               ();
-                                          fulls := SS.add (!fulls, full);
-
+                                          
                                           makeD "" pieces
+                                          before ignore (foldl (fn (new, path) =>
+                                                                   let
+                                                                       val new' = case path of
+                                                                                      "" => new
+                                                                                    | _ => path ^ "." ^ new
+                                                                   in
+                                                                       fulls := SS.add (!fulls, new');
+                                                                       new'
+                                                                   end) "" pieces)
                                       end
                       in
                           checkErrors ();
