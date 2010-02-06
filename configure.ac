@@ -1,4 +1,5 @@
 AC_INIT([urweb], [1.0])
+AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-define])
 AC_PROG_CC()
 AC_PROG_LIBTOOL()
