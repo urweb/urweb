@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 1000
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -1350,7 +1350,7 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
       s2 += 2;
       break;
     default:
-      if (isprint(c))
+      if (isprint((int)c))
         *s2++ = c;
       else {
         sprintf(s2, "\\%3o", c);
@@ -1386,7 +1386,7 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c) {
     s2 += 2;
     break;
   default:
-    if (isprint(c))
+    if (isprint((int)c))
       *s2++ = c;
     else {
       sprintf(s2, "\\%3o", c);
@@ -1420,7 +1420,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
       s2 += 2;
       break;
     default:
-      if (isprint(c))
+      if (isprint((int)c))
         *s2++ = c;
       else {
         sprintf(s2, "\\%3o", c);
