@@ -128,7 +128,7 @@ createdb test
 psql -f crud1.sql test
 \end{verbatim}
 
-A blank line always separates the named directives from a list of modules to include in the project; if there are no named directives, a blank line must begin the file.
+A blank line separates the named directives from a list of modules to include in the project.
 
 For each entry \texttt{M} in the module list, the file \texttt{M.urs} is included in the project if it exists, and the file \texttt{M.ur} must exist and is always included.
 

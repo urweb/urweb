@@ -282,7 +282,25 @@ fun parseUrp' accLibs fname =
         fun pu filename =
             let
                 val dir = OS.Path.dir filename
-                val inf = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
+                fun opener () = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
+
+                val inf = opener ()
+
+                fun hasAnyLine () =
+                    case TextIO.inputLine inf of
+                        NONE => false
+                      | SOME "\n" => false
+                      | _ => true
+
+                fun hasBlankLine () =
+                    case TextIO.inputLine inf of
+                        NONE => false
+                      | SOME "\n" => hasAnyLine ()
+                      | _ => hasBlankLine ()
+
+                val hasBlankLine = hasBlankLine ()
+
+                val inf = (TextIO.closeIn inf; opener ())
 
                 fun pathify fname =
                     if size fname > 0 andalso String.sub (fname, 0) = #"$" then
@@ -591,7 +609,10 @@ fun parseUrp' accLibs fname =
                             read ()
                         end
 
-                val job = read ()
+                val job = if hasBlankLine then
+                              read ()
+                          else
+                              finish (readSources [])
             in
                 TextIO.closeIn inf;
                 Settings.setUrlPrefix (#prefix job);

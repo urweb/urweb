@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -197,7 +197,8 @@ fun make' {prefix, dirname, guided} =
                                                                         ext = SOME s}
                                          val src' = OS.Path.file src
                                      in
-                                         if String.isPrefix (OS.Path.mkCanonical dirname) src
+                                         if String.isPrefix (OS.Path.mkAbsolute {path = dirname,
+                                                                                 relativeTo = OS.FileSys.getDir ()}) src
                                             andalso OS.FileSys.access (src, []) then
                                              (TextIO.output (out, " | <a target=\"showcase\" href=\"");
                                               TextIO.output (out, src');
@@ -205,7 +206,9 @@ fun make' {prefix, dirname, guided} =
                                               TextIO.output (out, src');
                                               TextIO.output (out, "</tt></a>"))
                                          else
-                                             ()
+                                             print (src ^ " "
+                                                    ^ OS.Path.mkAbsolute {path = dirname,
+                                                                          relativeTo = OS.FileSys.getDir ()} ^ "\n")
                                      end
                              in
                                  ifEx "urs";
