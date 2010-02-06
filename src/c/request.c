@@ -15,6 +15,8 @@
 
 #define MAX_RETRIES 5
 
+void *memmem(const void *b1, size_t len1, const void *b2, size_t len2);
+
 static int try_rollback(uw_context ctx, void *logger_data, uw_logger log_error) {
   int r = uw_rollback(ctx);
 
