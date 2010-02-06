@@ -1,5 +1,5 @@
 AC_INIT([urweb], [1.0])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign no-define])
 AC_PROG_CC()
 AC_PROG_LIBTOOL()
 AC_CONFIG_MACRO_DIR([m4])
