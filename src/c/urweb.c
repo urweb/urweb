@@ -2230,7 +2230,7 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
         *s2++ = '\\';
       break;
     default:
-      if (isprint(c))
+      if (isprint((int)c))
         *s2++ = c;
       else if (uw_Estrings) {
         sprintf(s2, "\\%03o", c);
@@ -2273,7 +2273,7 @@ uw_Basis_string uw_Basis_sqlifyChar(uw_context ctx, uw_Basis_char c) {
       *s2++ = '\\';
     break;
   default:
-    if (isprint(c))
+    if (isprint((int)c))
       *s2++ = c;
     else if (uw_Estrings) {
       sprintf(s2, "\\%03o", c);
@@ -2321,7 +2321,7 @@ uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
         *s2++ = '\\';
       break;
     default:
-      if (isprint(c))
+      if (isprint((int)c))
         *s2++ = c;
       else if (uw_Estrings) {
         sprintf(s2, "\\\\%03o", c);
