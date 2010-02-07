@@ -289,7 +289,7 @@ fun parseUrp' accLibs fname =
                 fun hasSpaceLine () =
                     case TextIO.inputLine inf of
                         NONE => false
-                      | SOME s => CharVector.exists Char.isSpace s orelse hasSpaceLine ()
+                      | SOME s => CharVector.exists (fn ch => ch = #" " orelse ch = #"\t") s orelse hasSpaceLine ()
 
                 val hasBlankLine = hasSpaceLine ()
 
