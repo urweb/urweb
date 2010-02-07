@@ -2710,7 +2710,7 @@ uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, siz
       if (s[1] == '\\') {
         *r++ = '\\';
         s += 2;
-      } else if (isdigit(s[1]) && isdigit(s[2]) && isdigit(s[3])) {
+      } else if (isdigit((int)s[1]) && isdigit((int)s[2]) && isdigit((int)s[3])) {
         *r++ = (s[1] - '0') * 8 * 8 + ((s[2] - '0') * 8) + (s[3] - '0');
         s += 4;
       }
@@ -3057,7 +3057,7 @@ failure_kind uw_initialize(uw_context ctx) {
 
 static int url_bad(uw_Basis_string s) {
   for (; *s; ++s)
-    if (!isgraph(*s))
+    if (!isgraph((int)*s))
       return 1;
 
   return 0;
@@ -3083,7 +3083,7 @@ uw_Basis_string uw_Basis_checkUrl(uw_context ctx, uw_Basis_string s) {
 
 int mime_format(const char *s) {
   for (; *s; ++s)
-    if (!isalnum(*s) && *s != '/' && *s != '-' && *s != '.')
+    if (!isalnum((int)*s) && *s != '/' && *s != '-' && *s != '.')
       return 0;
 
   return 1;
@@ -3315,59 +3315,59 @@ void uw_set_global(uw_context ctx, char *name, void *data, void (*free)(void*)) 
 }
 
 uw_Basis_bool uw_Basis_isalnum(uw_context ctx, uw_Basis_char c) {
-  return !!isalnum(c);
+  return !!isalnum((int)c);
 }
 
 uw_Basis_bool uw_Basis_isalpha(uw_context ctx, uw_Basis_char c) {
-  return !!isalpha(c);
+  return !!isalpha((int)c);
 }
 
 uw_Basis_bool uw_Basis_isblank(uw_context ctx, uw_Basis_char c) {
-  return !!isblank(c);
+  return !!isblank((int)c);
 }
 
 uw_Basis_bool uw_Basis_iscntrl(uw_context ctx, uw_Basis_char c) {
-  return !!iscntrl(c);
+  return !!iscntrl((int)c);
 }
 
 uw_Basis_bool uw_Basis_isdigit(uw_context ctx, uw_Basis_char c) {
-  return !!isdigit(c);
+  return !!isdigit((int)c);
 }
 
 uw_Basis_bool uw_Basis_isgraph(uw_context ctx, uw_Basis_char c) {
-  return !!isgraph(c);
+  return !!isgraph((int)c);
 }
 
 uw_Basis_bool uw_Basis_islower(uw_context ctx, uw_Basis_char c) {
-  return !!islower(c);
+  return !!islower((int)c);
 }
 
 uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char c) {
-  return !!isprint(c);
+  return !!isprint((int)c);
 }
 
 uw_Basis_bool uw_Basis_ispunct(uw_context ctx, uw_Basis_char c) {
-  return !!ispunct(c);
+  return !!ispunct((int)c);
 }
 
 uw_Basis_bool uw_Basis_isspace(uw_context ctx, uw_Basis_char c) {
-  return !!isspace(c);
+  return !!isspace((int)c);
 }
 
 uw_Basis_bool uw_Basis_isupper(uw_context ctx, uw_Basis_char c) {
-  return !!isupper(c);
+  return !!isupper((int)c);
 }
 
 uw_Basis_bool uw_Basis_isxdigit(uw_context ctx, uw_Basis_char c) {
-  return !!isxdigit(c);
+  return !!isxdigit((int)c);
 }
 
 uw_Basis_char uw_Basis_tolower(uw_context ctx, uw_Basis_char c) {
-  return tolower(c);
+  return tolower((int)c);
 }
 
 uw_Basis_char uw_Basis_toupper(uw_context ctx, uw_Basis_char c) {
-  return toupper(c);
+  return toupper((int)c);
 }
 
 uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c) {
