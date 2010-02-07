@@ -286,19 +286,12 @@ fun parseUrp' accLibs fname =
 
                 val inf = opener ()
 
-                fun hasAnyLine () =
+                fun hasSpaceLine () =
                     case TextIO.inputLine inf of
                         NONE => false
-                      | SOME "\n" => false
-                      | _ => true
+                      | SOME s => CharVector.exists Char.isSpace s orelse hasSpaceLine ()
 
-                fun hasBlankLine () =
-                    case TextIO.inputLine inf of
-                        NONE => false
-                      | SOME "\n" => hasAnyLine ()
-                      | _ => hasBlankLine ()
-
-                val hasBlankLine = hasBlankLine ()
+                val hasBlankLine = hasSpaceLine ()
 
                 val inf = (TextIO.closeIn inf; opener ())
 
