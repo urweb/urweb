@@ -25,7 +25,7 @@ static char *get_header(void *data, const char *h) {
 
   strcpy(uppercased, "HTTP_");
   for (s = uppercased+5; *h; ++h)
-    *s++ = *h == '-' ? '_' : toupper(*h);
+    *s++ = *h == '-' ? '_' : toupper((int)*h);
   *s = 0;
 
   if ((r = getenv(uppercased)))

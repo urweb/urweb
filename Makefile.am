@@ -33,15 +33,15 @@ src/urweb.mlb: src/prefix.mlb src/sources src/suffix.mlb
 	| sed 's/^\(.*\).lex$$/\1.mlton.lex.sml/' \
 	>$@
 
-%.mlton.lex: %.lex
+src/urweb.mlton.lex: src/urweb.lex
 	cp $< $@
-%.mlton.grm: %.grm
+src/urweb.mlton.grm: src/urweb.grm
 	cp $< $@
 
-%.mlton.lex.sml: %.mlton.lex
+src/urweb.mlton.lex.sml: src/urweb.mlton.lex
 	mllex $<
 
-%.mlton.grm.sig %.mlton.grm.sml: %.mlton.grm
+src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml: src/urweb.mlton.grm
 	mlyacc $<
 
 MLTON := mlton

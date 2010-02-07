@@ -16,6 +16,8 @@ src/urweb.mlb
 .libs
 *.lo
 *.la
+*.mlton.grm
+*.mlton.lex
 
 src/config.sml
 
