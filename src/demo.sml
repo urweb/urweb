@@ -206,9 +206,7 @@ fun make' {prefix, dirname, guided} =
                                               TextIO.output (out, src');
                                               TextIO.output (out, "</tt></a>"))
                                          else
-                                             print (src ^ " "
-                                                    ^ OS.Path.mkAbsolute {path = dirname,
-                                                                          relativeTo = OS.FileSys.getDir ()} ^ "\n")
+                                             ()
                                      end
                              in
                                  ifEx "urs";
