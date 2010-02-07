@@ -29,8 +29,8 @@ src/urweb.cm: src/prefix.cm src/sources
 
 src/urweb.mlb: src/prefix.mlb src/sources src/suffix.mlb
 	cat src/prefix.mlb src/sources src/suffix.mlb \
-	| sed 's/^\(.*\).grm$$/\1.mlton.grm.sig:\1.mlton.grm.sml/; y/:/\n/' \
-	| sed 's/^\(.*\).lex$$/\1.mlton.lex.sml/' \
+	| sed -e 's/^\(.*\).grm$$/\1.mlton.grm.sig:\1.mlton.grm.sml/' -e 'y/:/\n/' \
+		-e 's/^\(.*\).lex$$/\1.mlton.lex.sml/' \
 	>$@
 
 src/urweb.mlton.lex: src/urweb.lex
