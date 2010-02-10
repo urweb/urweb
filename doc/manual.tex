@@ -220,6 +220,19 @@ sqlite3 path/to/database/file <app.sql
 ScriptAlias /Hello /path/to/hello.exe
     \end{verbatim}
 
+    A different method can be used for, e.g., a shared host, where you can only configure Apache via \texttt{.htaccess} files.  Drop the generated executable into your web space and mark it as CGI somehow.  For instance, if the script ends in \texttt{.exe}, you might put this in \texttt{.htaccess} in the directory containing the script:
+    \begin{verbatim}
+Options +ExecCGI
+AddHandler cgi-script .exe
+    \end{verbatim}
+
+    Additionally, make sure that Ur/Web knows the proper URI prefix for your script.  For instance, if the script is accessed via \texttt{http://somewhere/dir/script.exe}, then include this line in your \texttt{.urp} file:
+    \begin{verbatim}
+prefix /dir/script.exe/
+    \end{verbatim}
+
+    To access the \texttt{foo} function in the \texttt{Bar} module, you would then hit \texttt{http://somewhere/dir/script.exe/Bar/foo}.
+
   \item \texttt{fastcgi}: This is a newer protocol inspired by CGI, wherein web servers can start and reuse persistent external processes to generate dynamic content.  Ur/Web doesn't implement the whole protocol, but Ur/Web's support has been tested to work with the \texttt{mod\_fastcgi}s of Apache and lighttpd.
 
     To configure a FastCGI program with Apache, one could combine the above \texttt{ScriptAlias} line with a line like this:
