@@ -5,6 +5,30 @@ AC_PROG_CC()
 AC_PROG_LIBTOOL()
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_CHECK_LIB(mhash, mhash_get_block_size, [], [echo "You must install libmhash."; exit 1])
+AC_CHECK_HEADER([mhash.h], [], [echo "You must install libmhash dev files."; exit 1])
+
+AC_CHECK_PROG(MLTON, mlton, yes, [])
+
+if test [-z $MLTON]; then
+    echo "You must install MLton."
+    exit 1
+fi
+
+AC_CHECK_PROG(MLLEX, mllex, yes, [])
+
+if test [-z $MLLEX]; then
+    echo "You must install MLton (to get mllex)."
+    exit 1
+fi
+
+AC_CHECK_PROG(MLYACC, mlyacc, yes, [])
+
+if test [-z $MLYACC]; then
+    echo "You must install MLton (to get mlyacc)."
+    exit 1
+fi
+
 if test [$prefix = "NONE"]; then
     prefix=/usr/local
 fi

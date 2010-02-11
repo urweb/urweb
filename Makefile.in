@@ -146,6 +146,9 @@ LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MLLEX = @MLLEX@
+MLTON := mlton
+MLYACC = @MLYACC@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -224,7 +227,6 @@ LIB_UR := $(LIB)/ur
 LIB_C := $(LIB)/c
 LIB_JS := $(LIB)/js
 SUBDIRS = src/c
-MLTON := mlton
 all: all-recursive
 
 .SUFFIXES:
