@@ -96,7 +96,8 @@ signature SETTINGS = sig
         compile : string,    (* Pass these `gcc -c' arguments *)
         linkStatic : string, (* Pass these static linker arguments *)
         linkDynamic : string,(* Pass these dynamic linker arguments *)
-        persistent : bool    (* Multiple requests per process? *)
+        persistent : bool,   (* Multiple requests per process? *)
+        code : unit -> Print.PD.pp_desc (* Extra code to include in C files *)
     }
     val addProtocol : protocol -> unit
     val setProtocol : string -> unit
@@ -189,5 +190,8 @@ signature SETTINGS = sig
 
     val setDeadlines : bool -> unit
     val getDeadlines : unit -> bool
+
+    val setSigFile : string option -> unit
+    val getSigFile : unit -> string option
 
 end

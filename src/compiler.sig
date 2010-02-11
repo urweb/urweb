@@ -51,7 +51,8 @@ signature COMPILER = sig
          filterUrl : Settings.rule list,
          filterMime : Settings.rule list,
          protocol : string option,
-         dbms : string option
+         dbms : string option,
+         sigFile : string option
     }
     val compile : string -> bool
     val compiler : string -> unit

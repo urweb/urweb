@@ -28,11 +28,24 @@
 structure Fastcgi :> FASTCGI = struct
 
 open Settings
+open Print.PD Print
 
 val () = addProtocol {name = "fastcgi",
                       compile = "",
                       linkStatic = Config.lib ^ "/../liburweb_fastcgi.a",
                       linkDynamic = "-lurweb_fastcgi",
-                      persistent = true}
+                      persistent = true,
+                      code = fn () => box [string "void uw_global_custom() {",
+                                           newline,
+                                           case getSigFile () of
+                                               NONE => box []
+                                             | SOME sf => box [string "extern char *uw_sig_file;",
+                                                               newline,
+                                                               string "uw_sig_file = \"",
+                                                               string sf,
+                                                               string "\";",
+                                                               newline],
+                                           string "}",
+                                           newline]}
 
 end

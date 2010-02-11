@@ -275,7 +275,8 @@ type protocol = {
      compile : string,
      linkStatic : string,
      linkDynamic : string,
-     persistent : bool
+     persistent : bool,
+     code : unit -> Print.PD.pp_desc
 }
 val protocols = ref ([] : protocol list)
 fun addProtocol p = protocols := p :: !protocols
@@ -288,7 +289,8 @@ val curProto = ref {name = "",
                     compile = "",
                     linkStatic = "",
                     linkDynamic = "",
-                    persistent = false}
+                    persistent = false,
+                    code = fn () => Print.box []}
 fun setProtocol name =
     case getProtocol name of
         NONE => raise Fail ("Unknown protocol " ^ name)
@@ -440,5 +442,9 @@ fun getStaticLinking () = !staticLinking
 val deadlines = ref false
 fun setDeadlines b = deadlines := b
 fun getDeadlines () = !deadlines
+
+val sigFile = ref (NONE : string option)
+fun setSigFile v = sigFile := v
+fun getSigFile () = !sigFile
 
 end

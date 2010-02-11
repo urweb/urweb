@@ -72,6 +72,9 @@ fun doArgs args =
       | "-root" :: name :: root :: rest =>
         (Compiler.addModuleRoot (root, name);
          doArgs rest)
+      | "-sigfile" :: name :: rest =>
+        (Settings.setSigFile (SOME name);
+         doArgs rest)
       | arg :: rest =>
         (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
              raise Fail ("Unknown flag " ^ arg)

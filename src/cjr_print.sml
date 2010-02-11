@@ -2805,6 +2805,8 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
+             #code (Settings.currentProtocol ()) (),
+
              if hasDb then
                  #init (Settings.currentDbms ()) {dbstring = !dbstring,
                                                   prepared = !prepped,

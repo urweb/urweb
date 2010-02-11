@@ -330,6 +330,7 @@ static void client_send(client *c, buf *msg) {
 
 // Global entry points
 
+extern void uw_global_custom();
 extern void uw_init_crypto();
 
 void uw_global_init() {
@@ -337,6 +338,7 @@ void uw_global_init() {
 
   clients = malloc(0);
 
+  uw_global_custom();
   uw_init_crypto();
 }
 

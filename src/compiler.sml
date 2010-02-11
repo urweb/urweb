@@ -55,7 +55,8 @@ type job = {
      filterUrl : Settings.rule list,
      filterMime : Settings.rule list,
      protocol : string option,
-     dbms : string option
+     dbms : string option,
+     sigFile : string option
 }
 
 type ('src, 'dst) phase = {
@@ -379,6 +380,7 @@ fun parseUrp' accLibs fname =
                 val libs = ref []
                 val protocol = ref NONE
                 val dbms = ref NONE
+                val sigFile = ref (Settings.getSigFile ())
 
                 fun finish sources =
                     let
@@ -405,7 +407,8 @@ fun parseUrp' accLibs fname =
                             filterMime = rev (!mime),
                             sources = sources,
                             protocol = !protocol,
-                            dbms = !dbms
+                            dbms = !dbms,
+                            sigFile = !sigFile
                         }
 
                         fun mergeO f (old, new) =
@@ -446,7 +449,8 @@ fun parseUrp' accLibs fname =
                                       @ List.filter (fn s => List.all (fn s' => s' <> s) (#sources new))
                                                     (#sources old),
                             protocol = mergeO #2 (#protocol old, #protocol new),
-                            dbms = mergeO #2 (#dbms old, #dbms new)
+                            dbms = mergeO #2 (#dbms old, #dbms new),
+                            sigFile = mergeO #2 (#sigFile old, #sigFile new)
                         }
                     in
                         if accLibs then
@@ -522,6 +526,14 @@ fun parseUrp' accLibs fname =
                               | "database" =>
                                 (case !database of
                                      NONE => database := SOME arg
+                                   | SOME _ => ())
+                              | "dbms" =>
+                                (case !dbms of
+                                     NONE => dbms := SOME arg
+                                   | SOME _ => ())
+                              | "sigfile" =>
+                                (case !sigFile of
+                                     NONE => sigFile := SOME arg
                                    | SOME _ => ())
                               | "exe" =>
                                 (case !exe of

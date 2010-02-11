@@ -28,11 +28,24 @@
 structure Cgi :> CGI = struct
 
 open Settings
+open Print.PD Print
 
 val () = addProtocol {name = "cgi",
                       compile = "",
                       linkStatic = Config.lib ^ "/../liburweb_cgi.a",
                       linkDynamic = "-lurweb_cgi",
-                      persistent = false}
+                      persistent = false,
+                      code = fn () => box [string "void uw_global_custom() {",
+                                           newline,
+                                           case getSigFile () of
+                                               NONE => box []
+                                             | SOME sf => box [string "extern char *uw_sig_file;",
+                                                               newline,
+                                                               string "uw_sig_file = \"",
+                                                               string sf,
+                                                               string "\";",
+                                                               newline],
+                                           string "}",
+                                           newline]}
 
 end
