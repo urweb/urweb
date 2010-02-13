@@ -140,8 +140,6 @@ val minusSeconds : time -> int -> time
 
 (** HTTP operations *)
 
-val requestHeader : string -> transaction (option string)
-
 con http_cookie :: Type -> Type
 val getCookie : t ::: Type -> http_cookie t -> transaction (option t)
 val setCookie : t ::: Type -> http_cookie t -> {Value : t,
