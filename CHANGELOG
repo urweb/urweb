@@ -1,4 +1,15 @@
 ========
+20100213
+========
+
+- Improvements to 'configure'; should now fail if any uncommon but required
+  package is missing
+- Other fixes to configuration, build system, and C code portability
+- sigfile .urp directive & -sigfile command-line option
+- .urp files with no directives no longer need to begin with blank lines.
+- Other bug fixes
+
+========
 20100130
 ========
 
