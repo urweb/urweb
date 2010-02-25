@@ -1657,8 +1657,8 @@ fun p_exp' par env (e, loc) =
                                                 map (fn (x', t) => ("__uwf_" ^ ident x ^ ".__uwf_" ^ ident x', t)) xts)
                                             tables
 
-            val outputs = exps @ tables
-            val outputs = ListMergeSort.sort (fn ((s1, _), (s2, _)) => String.compare (s1, s2) = GREATER) outputs
+            val sort = ListMergeSort.sort (fn ((s1, _), (s2, _)) => String.compare (s1, s2) = GREATER)
+            val outputs = sort exps @ sort tables
 
             val wontLeakStrings = notLeaky env true state
             val wontLeakAnything = notLeaky env false state

@@ -2358,7 +2358,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               (L.EFfi ("Basis", "sql_count"), _),
               _), _),
              _), _),
-            _) => ((L'.EPrim (Prim.String "COUNT(*)"), loc),
+            _) => ((L'.EPrim (Prim.String "COALESCE(COUNT(*),0)"), loc),
                    fm)
 
           | L.ECApp (
@@ -2369,17 +2369,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                _), _),
               _), _),
              _), _),
-            _) =>
+            t) =>
             let
+                val default =
+                    case #1 t of
+                        L.CFfi ("Basis", s) =>
+                        (case s of
+                             "int" => "0"
+                           | "float" => "0.0"
+                           | "string" => "''"
+                           | "time" => "0"
+                           | _ => raise Fail "Illegal type of sql_aggregate [1]")
+                      | _ => raise Fail "Illegal type of sql_aggregate [2]"
+
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
-                                     strcat [(L'.ERel 1, loc),
+                                     strcat [sc "COALESCE(",
+                                             (L'.ERel 1, loc),
                                              sc "(",
                                              (L'.ERel 0, loc),
-                                             sc ")"]), loc)), loc),
+                                             sc (")," ^ default ^ ")")]), loc)), loc),
                  fm)
             end
 
