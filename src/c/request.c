@@ -128,6 +128,14 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   size_t boundary_len = 0;
   char *inputs;
   const char *prefix = uw_get_url_prefix(ctx);
+  char *s;
+
+  for (s = path; *s; ++s) {
+    if (s[0] == '%' && s[1] == '2' && s[2] == '7') {
+      s[0] = '\'';
+      memmove(s+1, s+3, strlen(s+3)+1);
+    }
+  }
 
   uw_set_currentUrl(ctx, path);
 
