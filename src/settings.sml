@@ -80,27 +80,32 @@ fun mayClientToServer x = S.member (!clientToServer, x)
 val effectfulBase = basis ["dml",
                            "nextval",
                            "setval",
-                           "get_cookie",
                            "set_cookie",
                            "clear_cookie",
-                           "new_client_source",
-                           "get_client_source",
-                           "set_client_source",
-                           "current",
-                           "alert",
                            "new_channel",
-                           "send",
-                           "onError",
-                           "onFail",
-                           "onConnectFail",
-                           "onDisconnect",
-                           "onServerError",
-                           "kc",
-                           "debug"]
+                           "send"]
 
 val effectful = ref effectfulBase
 fun setEffectful ls = effectful := S.addList (effectfulBase, ls)
 fun isEffectful x = S.member (!effectful, x)
+
+val benignBase = basis ["get_cookie",
+                        "new_client_source",
+                        "get_client_source",
+                        "set_client_source",
+                        "current",
+                        "alert",
+                        "onError",
+                        "onFail",
+                        "onConnectFail",
+                        "onDisconnect",
+                        "onServerError",
+                        "kc",
+                        "debug"]
+
+val benign = ref benignBase
+fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
+fun isBenignEffectful x = S.member (!benign, x)
 
 val clientBase = basis ["get",
                         "set",

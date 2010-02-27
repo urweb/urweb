@@ -58,6 +58,10 @@ signature SETTINGS = sig
     val setEffectful : ffi list -> unit
     val isEffectful : ffi -> bool
 
+    (* Which FFI functions should not have their calls removed or reordered, but cause no lasting effects? *)
+    val setBenignEffectful : ffi list -> unit
+    val isBenignEffectful : ffi -> bool
+
     (* Which FFI functions may only be run in clients? *)
     val setClientOnly : ffi list -> unit
     val isClientOnly : ffi -> bool

@@ -105,6 +105,7 @@ fun make' {prefix, dirname, guided} =
             scripts = [],
             clientToServer = [],
             effectful = [],
+            benignEffectful = [],
             clientOnly = [],
             serverOnly = [],
             jsFuncs = [],

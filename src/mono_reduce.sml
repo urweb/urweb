@@ -52,7 +52,7 @@ fun simpleImpure (tsyms, syms) =
                               | EDml _ => true
                               | ENextval _ => true
                               | ESetval _ => true
-                              | EFfiApp (m, x, _) => Settings.isEffectful (m, x)
+                              | EFfiApp (m, x, _) => Settings.isEffectful (m, x) orelse Settings.isBenignEffectful (m, x)
                               | EServerCall _ => true
                               | ERecv _ => true
                               | ESleep _ => true
@@ -87,7 +87,7 @@ fun impure (e, _) =
       | ENone _ => false
       | ESome (_, e) => impure e
       | EFfi _ => false
-      | EFfiApp (m, x, _) => Settings.isEffectful (m, x)
+      | EFfiApp (m, x, _) => Settings.isEffectful (m, x) orelse Settings.isBenignEffectful (m, x)
       | EApp ((EFfi _, _), _) => false
       | EApp _ => true
 
@@ -372,7 +372,7 @@ fun reduce file =
                       | ESome (_, e) => summarize d e
                       | EFfi _ => []
                       | EFfiApp (m, x, es) =>
-                        if Settings.isEffectful (m, x) then
+                        if Settings.isEffectful (m, x) orelse Settings.isBenignEffectful (m, x) then
                             List.concat (map (summarize d) es) @ [Unsure]
                         else
                             List.concat (map (summarize d) es)

@@ -48,6 +48,7 @@ type job = {
      scripts : string list,
      clientToServer : Settings.ffi list,
      effectful : Settings.ffi list,
+     benignEffectful : Settings.ffi list,
      clientOnly : Settings.ffi list,
      serverOnly : Settings.ffi list,
      jsFuncs : (Settings.ffi * string) list,
@@ -212,7 +213,7 @@ val parseUr = {
 
 fun p_job ({prefix, database, exe, sql, sources, debug, profile,
             timeout, ffi, link, headers, scripts,
-            clientToServer, effectful, clientOnly, serverOnly, jsFuncs, ...} : job) =
+            clientToServer, effectful, benignEffectful, clientOnly, serverOnly, jsFuncs, ...} : job) =
     let
         open Print.PD
         open Print
@@ -248,6 +249,7 @@ fun p_job ({prefix, database, exe, sql, sources, debug, profile,
              p_list_sep (box []) (fn s => box [string "Link", space, string s, newline]) link,
              p_ffi "ClientToServer" clientToServer,
              p_ffi "Effectful" effectful,
+             p_ffi "BenignEffectful" benignEffectful,
              p_ffi "ClientOnly" clientOnly,
              p_ffi "ServerOnly" serverOnly,
              p_list_sep (box []) (fn ((m, s), s') =>
@@ -371,6 +373,7 @@ fun parseUrp' accLibs fname =
                 val scripts = ref []
                 val clientToServer = ref []
                 val effectful = ref []
+                val benignEffectful = ref []
                 val clientOnly = ref []
                 val serverOnly = ref []
                 val jsFuncs = ref []
@@ -399,6 +402,7 @@ fun parseUrp' accLibs fname =
                             scripts = rev (!scripts),
                             clientToServer = rev (!clientToServer),
                             effectful = rev (!effectful),
+                            benignEffectful = rev (!benignEffectful),
                             clientOnly = rev (!clientOnly),
                             serverOnly = rev (!serverOnly),
                             jsFuncs = rev (!jsFuncs),
@@ -439,6 +443,7 @@ fun parseUrp' accLibs fname =
                             scripts = #scripts old @ #scripts new,
                             clientToServer = #clientToServer old @ #clientToServer new,
                             effectful = #effectful old @ #effectful new,
+                            benignEffectful = #benignEffectful old @ #benignEffectful new,
                             clientOnly = #clientOnly old @ #clientOnly new,
                             serverOnly = #serverOnly old @ #serverOnly new,
                             jsFuncs = #jsFuncs old @ #jsFuncs new,
@@ -564,6 +569,7 @@ fun parseUrp' accLibs fname =
                               | "script" => scripts := arg :: !scripts
                               | "clientToServer" => clientToServer := ffiS () :: !clientToServer
                               | "effectful" => effectful := ffiS () :: !effectful
+                              | "benignEffectful" => benignEffectful := ffiS () :: !benignEffectful
                               | "clientOnly" => clientOnly := ffiS () :: !clientOnly
                               | "serverOnly" => serverOnly := ffiS () :: !serverOnly
                               | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
@@ -626,6 +632,7 @@ fun parseUrp' accLibs fname =
                 Settings.setScripts (#scripts job);
                 Settings.setClientToServer (#clientToServer job);
                 Settings.setEffectful (#effectful job);
+                Settings.setBenignEffectful (#benignEffectful job);
                 Settings.setClientOnly (#clientOnly job);
                 Settings.setServerOnly (#serverOnly job);
                 Settings.setJsFuncs (#jsFuncs job);

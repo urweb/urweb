@@ -44,6 +44,7 @@ signature COMPILER = sig
          scripts : string list,
          clientToServer : Settings.ffi list,
          effectful : Settings.ffi list,
+         benignEffectful : Settings.ffi list,
          clientOnly : Settings.ffi list,
          serverOnly : Settings.ffi list,
          jsFuncs : (Settings.ffi * string) list,
