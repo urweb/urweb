@@ -29,10 +29,14 @@ val timing = ref false
 val tc = ref false
 val sources = ref ([] : string list)
 val demo = ref (NONE : (string * bool) option)
+val css = ref false
 
 fun doArgs args =
     case args of
         [] => ()
+      | "-css" :: rest =>
+        (css := true;
+         doArgs rest)
       | "-demo" :: prefix :: rest =>
         (demo := SOME (prefix, false);
          doArgs rest)
@@ -90,10 +94,22 @@ val job =
       | _ => raise Fail "Zero or multiple job files specified"
 
 val () =
-    case !demo of
-        SOME (prefix, guided) =>
+    case (!css, !demo) of
+        (true, _) =>
+        (case Compiler.run Compiler.toCss job of
+             NONE => OS.Process.exit OS.Process.failure
+           | SOME {Overall = ov, Classes = cl} =>
+             (app (print o Css.inheritableToString) ov;
+              print "\n";
+              app (fn (x, (ins, ots)) =>
+                      (print x;
+                       print " ";
+                       app (print o Css.inheritableToString) ins;
+                       app (print o Css.othersToString) ots;
+                       print "\n")) cl))
+      | (_, SOME (prefix, guided)) =>
         Demo.make {prefix = prefix, dirname = job, guided = guided}
-      | NONE =>
+      | _ =>
         if !tc then
             (Compiler.check Compiler.toElaborate job;
              if ErrorMsg.anyErrors () then

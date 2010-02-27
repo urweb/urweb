@@ -1001,6 +1001,13 @@ val effectize = {
 
 val toEffectize = transform effectize "effectize" o toMarshalcheck
 
+val css = {
+    func = Css.summarize,
+    print = fn _ => Print.box []
+}
+
+val toCss = transform css "css" o toShake5
+
 val monoize = {
     func = Monoize.monoize CoreEnv.empty,
     print = MonoPrint.p_file MonoEnv.empty

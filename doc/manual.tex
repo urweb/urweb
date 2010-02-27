@@ -176,6 +176,12 @@ To stop the compilation process after type-checking, run
 urweb -tc P
 \end{verbatim}
 
+To output information relevant to CSS stylesheets (and not finish regular compilation), run
+\begin{verbatim}
+urweb -css P
+\end{verbatim}
+The first output line is a list of categories of CSS properties that would be worth setting on the document body.  The remaining lines are space-separated pairs of CSS class names and categories of properties that would be worth setting for that class.  The category codes are divided into two varieties.  Codes that reveal properties of a tag or its (recursive) children are \cd{B} for block-level elements, \cd{C} for table captions, \cd{D} for table cells, \cd{L} for lists, and \cd{T} for tables.  Codes that reveal properties of the precise tag that uses a class are \cd{b} for block-level elements, \cd{t} for tables, \cd{d} for table cells, \cd{-} for table rows, \cd{H} for the possibility to set a height, \cd{N} for non-replaced inline-level elements, \cd{R} for replaced inline elements, and \cd{W} for the possibility to set a width.
+
 Some other command-line parameters are accepted:
 \begin{itemize}
 \item \texttt{-db <DBSTRING>}: Set database connection information, using the format expected by Postgres's \texttt{PQconnectdb()}, which is \texttt{name1=value1 ... nameN=valueN}.  The same format is also parsed and used to discover connection parameters for MySQL and SQLite.  The only significant settings for MySQL are \texttt{host}, \texttt{hostaddr}, \texttt{port}, \texttt{dbname}, \texttt{user}, and \texttt{password}.  The only significant setting for SQLite is \texttt{dbname}, which is interpreted as the filesystem path to the database.  Additionally, when using SQLite, a database string may be just a file path.

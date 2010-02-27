@@ -91,6 +91,7 @@ signature COMPILER = sig
     val specialize : (Core.file, Core.file) phase
     val marshalcheck : (Core.file, Core.file) phase
     val effectize : (Core.file, Core.file) phase
+    val css : (Core.file, Css.report) phase
     val monoize : (Core.file, Mono.file) phase
     val mono_opt : (Mono.file, Mono.file) phase
     val untangle : (Mono.file, Mono.file) phase
@@ -131,6 +132,7 @@ signature COMPILER = sig
     val toShake5 : (string, Core.file) transform
     val toMarshalcheck : (string, Core.file) transform
     val toEffectize : (string, Core.file) transform
+    val toCss : (string, Css.report) transform
     val toMonoize : (string, Mono.file) transform
     val toMono_opt1 : (string, Mono.file) transform
     val toUntangle : (string, Mono.file) transform
