@@ -72,7 +72,7 @@ functor Make(M : sig
                   | Cons (r, ls) => <xml>
                     <tr>
                       <td>{[r.Id]}</td>
-                      {@foldRX2 [colMeta] [fst] [_]
+                      {@mapX2 [colMeta] [fst] [_]
                         (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
                                          [[nm] ~ rest] m v =>
                             <xml><td>{m.Show v}</td></xml>)
@@ -88,7 +88,7 @@ functor Make(M : sig
             <xml><dyn signal={ls <- signal lss; return <xml><table>
               <tr>
                 <th>Id</th>
-                {@foldRX [colMeta] [_]
+                {@mapX [colMeta] [_]
                   (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
                                    [[nm] ~ rest] m =>
                       <xml><th>{[m.Nam]}</th></xml>)
@@ -144,7 +144,7 @@ functor Make(M : sig
 
               <table>
                 <tr> <th>Id:</th> <td><ctextbox source={id}/></td> </tr>
-                {@foldRX2 [colMeta] [snd] [_]
+                {@mapX2 [colMeta] [snd] [_]
                   (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
                                    [[nm] ~ rest] m s =>
                       <xml><tr> <th>{[m.Nam]}:</th> <td>{m.Widget s}</td> </tr></xml>)

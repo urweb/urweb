@@ -123,7 +123,7 @@ functor Make(M : sig
       <table class={tabl}>
         <tr class={tr}>
           <th/> <th/> <th><button value="No sort" onclick={set grid.Sort None}/></th>
-          {@foldRX2 [fst3] [colMeta M.row] [_]
+          {@mapX2 [fst3] [colMeta M.row] [_]
             (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
                              data (meta : colMeta M.row p) =>
                 <xml><th class={th}>
@@ -208,7 +208,7 @@ functor Make(M : sig
                                 </td>
 
                                 <dyn signal={cols <- signal colsS;
-                                             return (@foldRX3 [fst3] [colMeta M.row] [snd3] [_]
+                                             return (@mapX3 [fst3] [colMeta M.row] [snd3] [_]
                                                       (fn [nm :: Name] [t :: (Type * Type * Type)]
                                                                        [rest :: {(Type * Type * Type)}]
                                                                        [[nm] ~ rest] data meta v =>
@@ -260,14 +260,14 @@ functor Make(M : sig
                                   M.aggFolder M.aggregates) grid.Rows;
                          return <xml><tr>
                            <th colspan={3}>Aggregates</th>
-                           {@foldRX2 [aggregateMeta M.row] [id] [_]
+                           {@mapX2 [aggregateMeta M.row] [id] [_]
                              (fn [nm :: Name] [t :: Type] [rest :: {Type}] [[nm] ~ rest] meta acc =>
                                  <xml><td class={agg}>{meta.Display acc}</td></xml>)
                              M.aggFolder M.aggregates rows}
                          </tr></xml>}/>
 
               <tr><th colspan={3}>Filters</th>
-                {@foldRX3 [colMeta M.row] [fst3] [thd3] [_]
+                {@mapX3 [colMeta M.row] [fst3] [thd3] [_]
                   (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
                                    meta state filter => <xml><td>{(meta.Handlers state).DisplayFilter filter}</td></xml>)
                   M.folder M.cols grid.Cols grid.Filters}

@@ -51,6 +51,16 @@ fun foldR3 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K
      (fn _ _ _ => return i)
      fl
 
+fun mapR0 [K] [m] (_ : monad m) [tr :: K -> Type]
+         (f : nm :: Name -> t :: K -> m (tr t)) [r ::: {K}] (fl : folder r) =
+    @Top.fold [fn r => m ($(map tr r))]
+    (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] (acc : m ($(map tr rest))) =>
+        v <- f [nm] [t];
+        vs <- acc;
+        return (vs ++ {nm = v}))
+    (return {})
+    fl
+
 fun mapR [K] [m] (_ : monad m) [tf :: K -> Type] [tr :: K -> Type]
          (f : nm :: Name -> t :: K -> tf t -> m (tr t)) =
     @@foldR [m] _ [tf] [fn r => $(map tr r)]

@@ -179,7 +179,14 @@ fun foldR3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [tr :: {
            f [nm] [t] [rest] ! r1.nm r2.nm r3.nm (acc (r1 -- nm) (r2 -- nm) (r3 -- nm)))
        (fn _ _ _ => i)
 
-fun foldRX [K] [tf :: K -> Type] [ctx :: {Unit}]
+fun mapUX [tf :: Type] [ctx :: {Unit}]
+          (f : nm :: Name -> rest :: {Unit} -> [[nm] ~ rest] => tf -> xml ctx [] []) =
+    @@foldR [fn _ => tf] [fn _ => xml ctx [] []]
+      (fn [nm :: Name] [u :: Unit] [rest :: {Unit}] [[nm] ~ rest] r acc =>
+          <xml>{f [nm] [rest] ! r}{acc}</xml>)
+      <xml/>
+
+fun mapX [K] [tf :: K -> Type] [ctx :: {Unit}]
             (f : nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
                        tf t -> xml ctx [] []) =
@@ -188,7 +195,7 @@ fun foldRX [K] [tf :: K -> Type] [ctx :: {Unit}]
           <xml>{f [nm] [t] [rest] ! r}{acc}</xml>)
       <xml/>
 
-fun foldRX2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [ctx :: {Unit}]
+fun mapX2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [ctx :: {Unit}]
              (f : nm :: Name -> t :: K -> rest :: {K}
                   -> [[nm] ~ rest] =>
                         tf1 t -> tf2 t -> xml ctx [] []) =
@@ -198,7 +205,7 @@ fun foldRX2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [ctx :: {Unit}]
           <xml>{f [nm] [t] [rest] ! r1 r2}{acc}</xml>)
       <xml/>
 
-fun foldRX3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [ctx :: {Unit}]
+fun mapX3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [ctx :: {Unit}]
              (f : nm :: Name -> t :: K -> rest :: {K}
                   -> [[nm] ~ rest] =>
                         tf1 t -> tf2 t -> tf3 t -> xml ctx [] []) =

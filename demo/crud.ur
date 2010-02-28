@@ -50,7 +50,7 @@ functor Make(M : sig
                        (fn (fs : {T : $([Id = int] ++ map fst M.cols)}) => <xml>
                          <tr>
                            <td>{[fs.T.Id]}</td>
-                           {@foldRX2 [fst] [colMeta] [tr]
+                           {@mapX2 [fst] [colMeta] [tr]
                              (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
                                               [[nm] ~ rest] v col => <xml>
                                                 <td>{col.Show v}</td>
@@ -66,7 +66,7 @@ functor Make(M : sig
           <table border={1}>
             <tr>
               <th>ID</th>
-              {@foldRX [colMeta] [tr]
+              {@mapX [colMeta] [tr]
                 (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
                                  [[nm] ~ rest] col => <xml>
                                    <th>{cdata col.Nam}</th>
