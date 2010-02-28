@@ -2787,12 +2787,28 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                        (L'.EJavaScript (L'.Script, e), loc),
                                                        str ");"]))
                                      attrs
+
+                        val t = (L'.TFfi ("Basis", "string"), loc)
+                        val setClass = (L'.ECase (class,
+                                                  [((L'.PNone t, loc),
+                                                    str ""),
+                                                   ((L'.PSome (t, (L'.PVar ("x", t), loc)), loc),
+                                                    (L'.EStrcat ((L'.EPrim (Prim.String "d.className=\""), loc),
+                                                                 (L'.EStrcat ((L'.ERel 0, loc),
+                                                                              (L'.EPrim (Prim.String "\";"), loc)), loc)),
+                                                     loc))],
+                                                  {disc = (L'.TOption t, loc),
+                                                   result = t}), loc)
                     in
                         case assgns of
-                            [] => jexp
+                            [] => strcat [str "var d=",
+                                          jexp,
+                                          str ";",
+                                          setClass]
                           | _ => strcat (str "var d="
                                          :: jexp
                                          :: str ";"
+                                         :: setClass
                                          :: assgns)
                     end
 

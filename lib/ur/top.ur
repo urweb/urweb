@@ -138,15 +138,6 @@ fun foldUR2 [tf1 :: Type] [tf2 :: Type] [tr :: {Unit} -> Type]
            f [nm] [rest] ! r1.nm r2.nm (acc (r1 -- nm) (r2 -- nm)))
        (fn _ _ => i)
 
-fun foldURX2 [tf1 :: Type] [tf2 :: Type] [ctx :: {Unit}]
-           (f : nm :: Name -> rest :: {Unit}
-                -> [[nm] ~ rest] =>
-                      tf1 -> tf2 -> xml ctx [] []) =
-    @@foldUR2 [tf1] [tf2] [fn _ => xml ctx [] []]
-      (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] v1 v2 acc =>
-          <xml>{f [nm] [rest] ! v1 v2}{acc}</xml>)
-      <xml/>
-
 fun foldR [K] [tf :: K -> Type] [tr :: {K} -> Type]
            (f : nm :: Name -> t :: K -> rest :: {K}
                 -> [[nm] ~ rest] =>
@@ -193,6 +184,15 @@ fun mapX [K] [tf :: K -> Type] [ctx :: {Unit}]
     @@foldR [tf] [fn _ => xml ctx [] []]
       (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] r acc =>
           <xml>{f [nm] [t] [rest] ! r}{acc}</xml>)
+      <xml/>
+
+fun mapUX2 [tf1 :: Type] [tf2 :: Type] [ctx :: {Unit}]
+           (f : nm :: Name -> rest :: {Unit}
+                -> [[nm] ~ rest] =>
+            tf1 -> tf2 -> xml ctx [] []) =
+    @@foldUR2 [tf1] [tf2] [fn _ => xml ctx [] []]
+      (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] v1 v2 acc =>
+          <xml>{f [nm] [rest] ! v1 v2}{acc}</xml>)
       <xml/>
 
 fun mapX2 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [ctx :: {Unit}]

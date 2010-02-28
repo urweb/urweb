@@ -70,12 +70,6 @@ val foldUR2 : tf1 :: Type -> tf2 :: Type -> tr :: ({Unit} -> Type)
                        tf1 -> tf2 -> tr rest -> tr ([nm] ++ rest))
              -> tr [] -> r ::: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> tr r
 
-val foldURX2: tf1 :: Type -> tf2 :: Type -> ctx :: {Unit}
-              -> (nm :: Name -> rest :: {Unit}
-                  -> [[nm] ~ rest] =>
-                        tf1 -> tf2 -> xml ctx [] [])
-              -> r ::: {Unit} -> folder r -> $(mapU tf1 r) -> $(mapU tf2 r) -> xml ctx [] []
-
 val foldR : K --> tf :: (K -> Type) -> tr :: ({K} -> Type)
              -> (nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
@@ -108,6 +102,13 @@ val mapX : K --> tf :: (K -> Type) -> ctx :: {Unit}
                -> [[nm] ~ rest] =>
                tf t -> xml ctx [] [])
            -> r ::: {K} -> folder r -> $(map tf r) -> xml ctx [] []
+
+val mapUX2 : tf1 :: Type -> tf2 :: Type -> ctx :: {Unit}
+            -> (nm :: Name -> rest :: {Unit}
+                -> [[nm] ~ rest] =>
+                tf1 -> tf2 -> xml ctx [] [])
+            -> r ::: {Unit} -> folder r
+            -> $(mapU tf1 r) -> $(mapU tf2 r) -> xml ctx [] []
 
 val mapX2 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> ctx :: {Unit}
             -> (nm :: Name -> t :: K -> rest :: {K}
