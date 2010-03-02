@@ -53,3 +53,6 @@ fun newlines [ctx] [[Body] ~ ctx] s : xml ([Body] ++ ctx) [] [] =
     case split s #"\n" of
         None => cdata s
       | Some (s1, s2) => <xml>{[s1]}<br/>{newlines s2}</xml>
+
+fun isPrefix {Full = f, Prefix = p} =
+    length f >= length p && substring f {Start = 0, Len = length p} = p

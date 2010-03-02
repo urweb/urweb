@@ -23,3 +23,5 @@ val all : (char -> bool) -> string -> bool
 val mp : (char -> char) -> string -> string
 
 val newlines : ctx ::: {Unit} -> [[Body] ~ ctx] => string -> xml ([Body] ++ ctx) [] []
+
+val isPrefix : {Full : t, Prefix : t} -> bool
