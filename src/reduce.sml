@@ -327,12 +327,12 @@ fun kindConAndExp (namedC, namedE) =
             let
                 (*val () = Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),
                                                ("env", Print.PD.string (e2s env))]*)
-                val () = if dangling (edepth env) all then
+                (*val () = if dangling (edepth env) all then
                              (Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),
                                                     ("env", Print.PD.string (e2s env))];
                               raise Fail "!")
                          else
-                             ()
+                             ()*)
 
                 val r = case e of
                             EPrim _ => all
@@ -516,7 +516,7 @@ fun kindConAndExp (namedC, namedE) =
 
                                 val e1 = exp env e1
                                 val e2 = exp env e2
-                                val e12 = reassoc (EApp (e1, e2), loc)
+                                val e12 = (*reassoc*) (EApp (e1, e2), loc)
                             in
                                 case #1 e12 of
                                     EApp ((EAbs (_, _, _, b), _), e2) =>

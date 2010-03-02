@@ -5,7 +5,7 @@ functor Make (M : sig
               end) = struct
 
     fun handler values = return <xml><body>
-      {@foldURX2 [string] [string] [body]
+      {@mapUX2 [string] [string] [body]
         (fn [nm :: Name] [rest :: {Unit}] [[nm] ~ rest] name value => <xml>
           <li> {[name]} = {[value]}</li>
         </xml>)

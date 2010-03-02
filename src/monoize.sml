@@ -155,6 +155,12 @@ fun monoType env =
                   | L.CApp ((L.CFfi ("Basis", "read"), _), t) =>
                     readType (mt env dtmap t, loc)
 
+                  | L.CFfi ("Basis", "unit") => (L'.TRecord [], loc)
+                  | L.CFfi ("Basis", "page") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "xbody") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "xtr") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "xform") => (L'.TFfi ("Basis", "string"), loc)
+
                   | L.CFfi ("Basis", "url") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "mimeType") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "xml"), _), _), _), _), _), _) =>

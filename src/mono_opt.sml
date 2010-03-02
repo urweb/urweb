@@ -348,6 +348,22 @@ fun exp e =
                             result = ran}), loc)
         end
 
+      | ECase (discE, pes, {disc, result = (TFun (dom, ran), loc)}) =>
+        let
+            fun doBody (p, e) =
+                let
+                    val pb = MonoEnv.patBindsN p
+                in
+                    (EApp (MonoEnv.liftExpInExp pb e, (ERel pb, loc)), loc)
+                end
+        in
+            EAbs ("x", dom, ran,
+                  (optExp (ECase (MonoEnv.liftExpInExp 0 discE,
+                                  map (fn (p, e) => (p, doBody (p, e))) pes,
+                                  {disc = disc,
+                                   result = ran}), loc), loc))
+        end
+
       | EWrite (EQuery {exps, tables, state, query,
                         initial = (EPrim (Prim.String ""), _),
                         body = (EStrcat ((EPrim (Prim.String s), _),

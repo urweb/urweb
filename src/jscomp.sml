@@ -445,7 +445,7 @@ fun process file =
                                 case p of
                                     Prim.String s =>
                                     str ("\"" ^ String.translate jsChar s ^ "\"")
-                                  | Prim.Char ch => str ("'" ^ jsChar ch ^ "'")
+                                  | Prim.Char ch => str ("\"" ^ jsChar ch ^ "\"")
                                   | _ => str (Prim.toString p)
                             end
 
@@ -1173,7 +1173,8 @@ fun process file =
                | EJavaScript (m, e') =>
                  (foundJavaScript := true;
                   jsExp m outer (e', st)
-                  handle CantEmbed _ => (e, st))
+                  handle CantEmbed t => ((*Print.preface ("Can't embed", MonoPrint.p_typ MonoEnv.empty t);*)
+                                         (e, st)))
 
                | ESignalReturn e =>
                  let
