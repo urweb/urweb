@@ -215,6 +215,14 @@ fun mapX3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [ctx :: {
           <xml>{f [nm] [t] [rest] ! r1 r2 r3}{acc}</xml>)
       <xml/>
 
+fun query1 [t ::: Name] [fs ::: {Type}] [state ::: Type] (q : sql_query [t = fs] [])
+           (f : $fs -> state -> transaction state) (i : state) =
+    query q (fn r => f r.t) i
+
+fun query1' [t ::: Name] [fs ::: {Type}] [state ::: Type] (q : sql_query [t = fs] [])
+            (f : $fs -> state -> state) (i : state) =
+    query q (fn r s => return (f r.t s)) i
+
 fun queryL [tables] [exps] [tables ~ exps] (q : sql_query tables exps) =
     query q
     (fn r ls => return (r :: ls))

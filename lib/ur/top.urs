@@ -129,6 +129,18 @@ val queryL : tables ::: {{Type}} -> exps ::: {Type}
                   sql_query tables exps
                   -> transaction (list $(exps ++ map (fn fields :: {Type} => $fields) tables))
 
+val query1 : t ::: Name -> fs ::: {Type} -> state ::: Type
+             -> sql_query [t = fs] []
+             -> ($fs -> state -> transaction state)
+             -> state
+             -> transaction state
+
+val query1' : t ::: Name -> fs ::: {Type} -> state ::: Type
+              -> sql_query [t = fs] []
+              -> ($fs -> state -> state)
+              -> state
+              -> transaction state
+
 val queryI : tables ::: {{Type}} -> exps ::: {Type}
              -> [tables ~ exps] =>
              sql_query tables exps

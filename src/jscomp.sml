@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1173,7 +1173,9 @@ fun process file =
                | EJavaScript (m, e') =>
                  (foundJavaScript := true;
                   jsExp m outer (e', st)
-                  handle CantEmbed t => ((*Print.preface ("Can't embed", MonoPrint.p_typ MonoEnv.empty t);*)
+                  handle CantEmbed t => ((*ErrorMsg.errorAt loc "Unable to embed type in JavaScript";*)
+                                         Print.preface ("Can't embed type in JavaScript",
+                                                        MonoPrint.p_typ MonoEnv.empty t);
                                          (e, st)))
 
                | ESignalReturn e =>
