@@ -42,6 +42,17 @@ fun multiLiftExpInExp n e =
     else
         multiLiftExpInExp (n - 1) (E.liftExpInExp 0 e)
 
+val count = CoreUtil.Exp.foldB {kind = fn (_, _, c) => c,
+                                con = fn (_, _, c) => c,
+                                exp = fn (x, e, c) =>
+                                         case e of
+                                             ERel x' => if x = x' then c + 1 else c
+                                           | _ => c,
+                                bind = fn (x, b) =>
+                                          case b of
+                                              CoreUtil.Exp.RelE _ => x+1
+                                            | _ => x} 0 0
+
 val dangling =
     CoreUtil.Exp.existsB {kind = fn _ => false,
                           con = fn _ => false,
@@ -407,121 +418,13 @@ fun kindConAndExp (namedC, namedE) =
                             let
                                 val env' = deKnown env
 
-                                fun reassoc e =
-                                    case #1 e of
-                                        EApp
-                                            ((EApp
-                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), mt),
-                                                                           _), _), _), t3), _),
-                                                          me), _),
-                                                   (EApp ((EApp
-                                                               ((EApp ((ECApp ((ECApp ((ECApp (
-                                                                                        (EFfi ("Basis", "bind"), _), _), _),
-                                                                                       t1), _), t2), _),
-                                                                       _), _),
-                                                                trans1), _), (EAbs (_, _, _, trans2), _)), _)), _),
-                                             trans3) =>
-                                        let
-                                            val e'' = (EFfi ("Basis", "bind"), loc)
-                                            val e'' = (ECApp (e'', mt), loc)
-                                            val e'' = (ECApp (e'', t2), loc)
-                                            val e'' = (ECApp (e'', t3), loc)
-                                            val e'' = (EApp (e'', me), loc)
-                                            val e'' = (EApp (e'', trans2), loc)
-                                            val e'' = (EApp (e'', E.liftExpInExp 0 trans3), loc)
-                                            val e'' = reassoc e''
-                                            val e'' = (EAbs ("xb", t1, (CApp (mt, t3), loc), e''), loc)
-
-                                            val e' = (EFfi ("Basis", "bind"), loc)
-                                            val e' = (ECApp (e', mt), loc)
-                                            val e' = (ECApp (e', t1), loc)
-                                            val e' = (ECApp (e', t3), loc)
-                                            val e' = (EApp (e', me), loc)
-                                            val e' = (EApp (e', trans1), loc)
-                                            val e' = (EApp (e', e''), loc)
-                                        in
-                                            e'
-                                        end
-
-                                      | EApp
-                                            ((EApp
-                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), mt),
-                                                                           _), _), _), t3), _),
-                                                          me), _),
-                                                   (EApp ((EApp
-                                                               ((EApp ((ECApp ((ECApp ((ECApp (
-                                                                                        (EFfi ("Basis", "bind"), _), _), _),
-                                                                                       t1), _), t2), _),
-                                                                       _), _),
-                                                                trans1), _), trans2), _)), _),
-                                             trans3) =>
-                                        let
-                                            val e'' = (EFfi ("Basis", "bind"), loc)
-                                            val e'' = (ECApp (e'', mt), loc)
-                                            val e'' = (ECApp (e'', t2), loc)
-                                            val e'' = (ECApp (e'', t3), loc)
-                                            val e'' = (EApp (e'', me), loc)
-                                            val () = print "In2\n"
-                                            val e'' = (EApp (e'', exp (UnknownE :: env')
-                                                                      (EApp (E.liftExpInExp 0 trans2, (ERel 0, loc)),
-                                                                       loc)),
-                                                       loc)
-                                            val () = print "Out2\n"
-                                            val e'' = (EApp (e'', E.liftExpInExp 0 trans3), loc)
-                                            val e'' = reassoc e''
-                                            val e'' = (EAbs ("xb", t1, (CApp (mt, t3), loc), e''), loc)
-
-                                            val e' = (EFfi ("Basis", "bind"), loc)
-                                            val e' = (ECApp (e', mt), loc)
-                                            val e' = (ECApp (e', t1), loc)
-                                            val e' = (ECApp (e', t3), loc)
-                                            val e' = (EApp (e', me), loc)
-                                            val e' = (EApp (e', trans1), loc)
-                                            val e' = (EApp (e', e''), loc)
-                                        in
-                                            e'
-                                        end
-
-                                      | EApp
-                                            ((EApp
-                                                  ((EApp ((ECApp ((ECApp ((ECApp ((EFfi ("Basis", "bind"), loc), _), _),
-                                                                          t1),
-                                                                   _), t2), _),
-                                                          (EFfi ("Basis", "transaction_monad"), _)), _),
-                                                   (ECase (e, pes, {disc, ...}), _)), _), trans) =>
-                                        let
-                                            val e' = (EFfi ("Basis", "bind"), loc)
-                                            val e' = (ECApp (e', (CFfi ("Basis", "transaction"), loc)), loc)
-                                            val e' = (ECApp (e', t1), loc)
-                                            val e' = (ECApp (e', t2), loc)
-                                            val e' = (EApp (e', (EFfi ("Basis", "transaction_monad"), loc)), loc)
-
-                                            fun doCase (p, e) =
-                                                let
-                                                    val e' = (EApp (e', e), loc)
-                                                    val e' = (EApp (e',
-                                                                    multiLiftExpInExp (E.patBindsN p)
-                                                                                      trans), loc)
-                                                in
-                                                    (p, reassoc e')
-                                                end
-                                        in
-                                            (ECase (e, map doCase pes,
-                                                    {disc = disc,
-                                                     result = (CApp ((CFfi ("Basis", "transaction"), loc),
-                                                                     t2), loc)}), loc)
-                                        end
-
-                                      | _ => e
-
                                 val e1 = exp env e1
                                 val e2 = exp env e2
-                                val e12 = (*reassoc*) (EApp (e1, e2), loc)
                             in
-                                case #1 e12 of
-                                    EApp ((EAbs (_, _, _, b), _), e2) =>
+                                case #1 e1 of
+                                    EAbs (_, _, _, b) =>
                                     exp (KnownE e2 :: env') b
-                                  | _ => e12
+                                  | _ => (EApp (e1, e2), loc)
                             end
 
                           | EAbs (x, dom, ran, e) => (EAbs (x, con env dom, con env ran, exp (UnknownE :: env) e), loc)
