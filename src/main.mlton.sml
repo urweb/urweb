@@ -55,6 +55,9 @@ fun doArgs args =
       | "-debug" :: rest =>
         (Settings.setDebug true;
          doArgs rest)
+      | "-verbose" :: rest =>
+        (Compiler.debug := true;
+         doArgs rest)
       | "-timing" :: rest =>
         (timing := true;
          doArgs rest)
