@@ -258,9 +258,9 @@ fun decl (d, st : state) =
                         fun kind _ = false
                         fun con _ = false
 
-                        fun exp e =
+                        fun exp (cn, e) =
                             case e of
-                                ECApp (e, c) =>
+                                orig as ECApp (e, c) =>
                                 let
                                     fun isIrregular (e, pos) =
                                         case #1 e of
@@ -268,20 +268,24 @@ fun decl (d, st : state) =
                                             IS.member (ns, n)
                                             andalso
                                             (case #1 c of
-                                                 CRel i => i <> nargs - pos
+                                                 CRel i => i <> nargs - pos + cn
                                                | _ => true)
                                           | ECApp (e, _) => isIrregular (e, pos + 1)
                                           | _ => false
                                 in
                                     isIrregular (e, 1)
                                 end
-                              | ECAbs _ => true
                               | _ => false
 
-                        val irregular = U.Exp.exists {kind = kind, con = con, exp = exp}
+                        fun bind (cn, b) =
+                            case b of
+                                U.Exp.RelC _ => cn+1
+                              | _ => cn
+
+                        val irregular = U.Exp.existsB {kind = kind, con = con, exp = exp, bind = bind} 0
                     in
                         if List.exists (fn x => irregular (deAbs (#4 x, cargs))) vis then
-                            (d, st)
+                            (print "Poppycock!\n"; (d, st))
                         else
                             (d, {funcs = foldl (fn (vi, funcs) =>
                                                    IM.insert (funcs, #2 vi, {kinds = cargs,
