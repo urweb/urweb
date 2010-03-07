@@ -423,7 +423,15 @@ fun kindConAndExp (namedC, namedE) =
                             in
                                 case #1 e1 of
                                     EAbs (_, _, _, b) =>
-                                    exp (KnownE e2 :: env') b
+                                    let
+                                        val r = exp (KnownE e2 :: env') b
+                                    in
+                                        (*Print.prefaces "eapp" [("b", CorePrint.p_exp CoreEnv.empty b),
+                                                               ("env", Print.PD.string (e2s env')),
+                                                               ("e2", CorePrint.p_exp CoreEnv.empty e2),
+                                                               ("r", CorePrint.p_exp CoreEnv.empty r)];*)
+                                        r
+                                    end
                                   | _ => (EApp (e1, e2), loc)
                             end
 
@@ -435,7 +443,17 @@ fun kindConAndExp (namedC, namedE) =
                                 val c = con env c
                             in
                                 case #1 e of
-                                    ECAbs (_, _, b) => exp (KnownC c :: deKnown env) b
+                                    ECAbs (_, _, b) =>
+                                    let
+                                        val r = exp (KnownC c :: deKnown env) b
+                                    in
+                                        (*Print.prefaces "csub" [("l", Print.PD.string (ErrorMsg.spanToString loc)),
+                                                               ("env", Print.PD.string (e2s (deKnown env))),
+                                                               ("b", CorePrint.p_exp CoreEnv.empty b),
+                                                               ("c", CorePrint.p_con CoreEnv.empty c),
+                                                               ("r", CorePrint.p_exp CoreEnv.empty r)];*)
+                                        r
+                                    end
                                   | _ => (ECApp (e, c), loc)
                             end
 
@@ -446,7 +464,16 @@ fun kindConAndExp (namedC, namedE) =
                                 val e = exp env e
                             in
                                 case #1 e of
-                                    EKAbs (_, b) => exp (KnownK k :: deKnown env) b
+                                    EKAbs (_, b) =>
+                                    let
+                                        val r = exp (KnownK k :: deKnown env) b
+                                    in
+                                        (*Print.prefaces "ksub" [("l", Print.PD.string (ErrorMsg.spanToString loc)),
+                                                               ("b", CorePrint.p_exp CoreEnv.empty b),
+                                                               ("k", CorePrint.p_kind CoreEnv.empty k),
+                                                               ("r", CorePrint.p_exp CoreEnv.empty r)];*)
+                                        r
+                                    end
                                   | _ => (EKApp (e, kind env k), loc)
                             end
 

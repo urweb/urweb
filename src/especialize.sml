@@ -43,6 +43,13 @@ structure KM = BinaryMapFn(K)
 structure IM = IntBinaryMap
 structure IS = IntBinarySet
 
+val isOpen = U.Exp.exists {kind = fn _ => false,
+                           con = fn c =>
+                                    case c of
+                                        CRel _ => true
+                                      | _ => false,
+                           exp = fn _ => false}
+
 val freeVars = U.Exp.foldB {kind = fn (_, _, xs) => xs,
                             con = fn (_, _, xs) => xs,
                             exp = fn (bound, e, xs) =>
@@ -221,7 +228,12 @@ fun specialize' (funcs, specialized) file =
                         in
                             ((ECApp (e, c), loc), st)
                         end
-                      | ECAbs _ => (e, st)
+                      | ECAbs (x, k, e) =>
+                        let
+                            val (e, st) = exp (env, e, st)
+                        in
+                            ((ECAbs (x, k, e), loc), st)
+                        end
                       | EKAbs _ => (e, st)
                       | EKApp (e, k) =>
                         let
@@ -349,6 +361,7 @@ fun specialize' (funcs, specialized) file =
                             if not fin
                                orelse List.all (fn (ERel _, _) => true
                                                  | _ => false) fxs'
+                               orelse List.exists isOpen fxs'
                                orelse (IS.numItems fvs >= length fxs
                                        andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs) then
                                 ((*Print.prefaces "No" [("name", Print.PD.string name),

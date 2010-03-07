@@ -120,12 +120,13 @@ signature COMPILER = sig
     val toRpcify : (string, Core.file) transform
     val toCore_untangle2 : (string, Core.file) transform
     val toShake2 : (string, Core.file) transform
+    val toUnpoly1 : (string, Core.file) transform 
     val toEspecialize1 : (string, Core.file) transform 
     val toCore_untangle3 : (string, Core.file) transform
     val toShake3 : (string, Core.file) transform
     val toTag : (string, Core.file) transform
     val toReduce : (string, Core.file) transform
-    val toUnpoly : (string, Core.file) transform 
+    val toUnpoly2 : (string, Core.file) transform 
     val toSpecialize : (string, Core.file) transform 
     val toShake4 : (string, Core.file) transform
     val toEspecialize2 : (string, Core.file) transform 

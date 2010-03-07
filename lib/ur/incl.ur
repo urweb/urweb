@@ -21,7 +21,7 @@ fun inv1 [K] [nm :: Name] [t ::: K] [r :: {K}] [r' :: {K}] [[nm] ~ r]
     i [f nm t r'] (fn [r'' :: {K}] [[nm = t] ++ r ~ r''] (i' : incl' ([nm = t] ++ r) r' r'') =>
                       i'.Hide [f nm t] (f [nm] [t] [r ++ r''] !))
 
-fun inv2 [K] [nm :: Name] [t ::: K] [r :: {K}] [r' :: {K}] [[nm] ~ r]
+fun inv2 [K] [nm :: Name] [t :: K] [r :: {K}] [r' :: {K}] [[nm] ~ r]
          (i : incl ([nm = t] ++ r) r') =
     i [incl r r'] (fn [r'' :: {K}] [[nm = t] ++ r ~ r''] (i' : incl' ([nm = t] ++ r) r' r'') =>
                       fn [tp :: Type] (f : r''' :: {K} -> [r ~ r'''] => incl' r r' r''' -> tp) =>
@@ -35,6 +35,6 @@ fun fold [K] [tf :: {K} -> Type] [r ::: {K}]
     (i : tf []) (fl : folder r) =
     @Top.fold [fn r' => incl r' r -> tf r']
      (fn [nm :: Name] [v :: K] [r' :: {K}] [[nm] ~ r'] acc i =>
-         f [nm] [v] [r'] ! i (acc (inv2 [nm] [r'] [r] i)))
+         f [nm] [v] [r'] ! i (acc (inv2 [nm] [v] [r'] [r] i)))
      (fn _ => i)
      fl (incl [r] [[]])

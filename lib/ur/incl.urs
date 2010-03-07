@@ -9,7 +9,7 @@ val inv1 : K --> nm :: Name -> t ::: K -> r :: {K} -> r' :: {K}
     -> incl ([nm = t] ++ r) r'
     -> (nm :: Name -> t :: K -> r :: {K} -> [[nm] ~ r] => f nm t ([nm = t] ++ r))
     -> f nm t r'
-val inv2 : K --> nm :: Name -> t ::: K -> r :: {K} -> r' :: {K}
+val inv2 : K --> nm :: Name -> t :: K -> r :: {K} -> r' :: {K}
            -> [[nm] ~ r] =>
     incl ([nm = t] ++ r) r' -> incl r r'
 

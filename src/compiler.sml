@@ -955,7 +955,16 @@ val toRpcify = transform rpcify "rpcify" o toShake1
 
 val toCore_untangle2 = transform core_untangle "core_untangle2" o toRpcify
 val toShake2 = transform shake "shake2" o toCore_untangle2
-val toEspecialize1 = transform especialize "especialize1" o toShake2
+
+val unpoly = {
+    func = Unpoly.unpoly,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toUnpoly1 = transform unpoly "unpoly1" o toShake2
+
+val toEspecialize1 = transform especialize "especialize1" o toUnpoly1
+
 val toCore_untangle3 = transform core_untangle "core_untangle3" o toEspecialize1
 val toShake3 = transform shake "shake3" o toCore_untangle3
 
@@ -973,19 +982,14 @@ val reduce = {
 
 val toReduce = transform reduce "reduce" o toTag
 
-val unpoly = {
-    func = Unpoly.unpoly,
-    print = CorePrint.p_file CoreEnv.empty
-}
-
-val toUnpoly = transform unpoly "unpoly" o toReduce
+val toUnpoly2 = transform unpoly "unpoly2" o toReduce
 
 val specialize = {
     func = Specialize.specialize,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toSpecialize = transform specialize "specialize" o toUnpoly
+val toSpecialize = transform specialize "specialize" o toUnpoly2
 
 val toShake4 = transform shake "shake4" o toSpecialize
 
