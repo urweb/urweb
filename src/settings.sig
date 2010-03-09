@@ -198,4 +198,8 @@ signature SETTINGS = sig
     val setSigFile : string option -> unit
     val getSigFile : unit -> string option
 
+    (* Which GET-able functions should be allowed to have side effects? *)
+    val setSafeGets : string list -> unit
+    val isSafeGet : string -> bool
+
 end

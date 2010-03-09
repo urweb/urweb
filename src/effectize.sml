@@ -143,7 +143,12 @@ fun effectize file =
               | DExport (Link, n, _) =>
                 (case IM.find (writers, n) of
                      NONE => ()
-                   | SOME (loc, s) => ErrorMsg.errorAt loc ("A link (" ^ s ^ ") could cause side effects; try implementing it with a form instead");
+                   | SOME (loc, s) =>
+                     if Settings.isSafeGet s then
+                         ()
+                     else
+                         ErrorMsg.errorAt loc ("A link (" ^ s
+                                               ^ ") could cause side effects; try implementing it with a form instead");
                  ((DExport (Link, n, IM.inDomain (pushers, n)), #2 d), evs))
               | DExport (Action _, n, _) =>
                 ((DExport (Action (if IM.inDomain (writers, n) then

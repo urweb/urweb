@@ -57,7 +57,8 @@ type job = {
      filterMime : Settings.rule list,
      protocol : string option,
      dbms : string option,
-     sigFile : string option
+     sigFile : string option,
+     safeGets : string list
 }
 
 type ('src, 'dst) phase = {
@@ -385,6 +386,7 @@ fun parseUrp' accLibs fname =
                 val protocol = ref NONE
                 val dbms = ref NONE
                 val sigFile = ref (Settings.getSigFile ())
+                val safeGets = ref []
 
                 fun finish sources =
                     let
@@ -413,7 +415,8 @@ fun parseUrp' accLibs fname =
                             sources = sources,
                             protocol = !protocol,
                             dbms = !dbms,
-                            sigFile = !sigFile
+                            sigFile = !sigFile,
+                            safeGets = rev (!safeGets)
                         }
 
                         fun mergeO f (old, new) =
@@ -456,7 +459,8 @@ fun parseUrp' accLibs fname =
                                                     (#sources old),
                             protocol = mergeO #2 (#protocol old, #protocol new),
                             dbms = mergeO #2 (#dbms old, #dbms new),
-                            sigFile = mergeO #2 (#sigFile old, #sigFile new)
+                            sigFile = mergeO #2 (#sigFile old, #sigFile new),
+                            safeGets = #safeGets old @ #safeGets new
                         }
                     in
                         if accLibs then
@@ -569,7 +573,7 @@ fun parseUrp' accLibs fname =
                               | "include" => headers := relifyA arg :: !headers
                               | "script" => scripts := arg :: !scripts
                               | "clientToServer" => clientToServer := ffiS () :: !clientToServer
-                              | "effectful" => effectful := ffiS () :: !effectful
+                              | "safeGet" => safeGets := arg :: !safeGets
                               | "benignEffectful" => benignEffectful := ffiS () :: !benignEffectful
                               | "clientOnly" => clientOnly := ffiS () :: !clientOnly
                               | "serverOnly" => serverOnly := ffiS () :: !serverOnly
@@ -642,6 +646,7 @@ fun parseUrp' accLibs fname =
                 Settings.setMimeRules (#filterMime job);
                 Option.app Settings.setProtocol (#protocol job);
                 Option.app Settings.setDbms (#dbms job);
+                Settings.setSafeGets (#safeGets job);
                 job
             end
     in

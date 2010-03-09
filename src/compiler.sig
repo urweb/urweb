@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,8 @@ signature COMPILER = sig
          filterMime : Settings.rule list,
          protocol : string option,
          dbms : string option,
-         sigFile : string option
+         sigFile : string option,
+         safeGets : string list
     }
     val compile : string -> bool
     val compiler : string -> unit

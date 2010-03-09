@@ -114,7 +114,8 @@ fun make' {prefix, dirname, guided} =
             filterMime = #filterMime combined @ #filterMime urp,
             protocol = mergeWith #2 (#protocol combined, #protocol urp),
             dbms = mergeWith #2 (#dbms combined, #dbms urp),
-            sigFile = mergeWith #2 (#sigFile combined, #sigFile urp)
+            sigFile = mergeWith #2 (#sigFile combined, #sigFile urp),
+            safeGets = []
         }
 
         val parse = Compiler.run (Compiler.transform Compiler.parseUrp "Demo parseUrp")

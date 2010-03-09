@@ -452,4 +452,13 @@ val sigFile = ref (NONE : string option)
 fun setSigFile v = sigFile := v
 fun getSigFile () = !sigFile
 
+structure SS = BinarySetFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
+val safeGet = ref SS.empty
+fun setSafeGets ls = safeGet := SS.addList (SS.empty, ls)
+fun isSafeGet x = SS.member (!safeGet, x)
+
 end
