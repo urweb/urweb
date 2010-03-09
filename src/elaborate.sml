@@ -2066,11 +2066,7 @@ fun dopenConstraints (loc, env, denv) {str, strs} =
 
             fun collect first (st, sgn) =
                 case E.projectConstraints env {sgn = sgn, str = st} of
-                    NONE => (if first then
-                                 strError env (UnboundStr (loc, str))
-                             else
-                               ();
-                             [])
+                    NONE => []
                   | SOME cs =>
                     case #1 (hnormSgn env sgn) of
                         L'.SgnConst sgis =>

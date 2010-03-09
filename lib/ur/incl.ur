@@ -14,7 +14,7 @@ fun proj [r1 ::: {Type}] [r2 ::: {Type}] (i : incl r1 r2) (r : $r2) =
     i [$r1] (fn [r' :: {Type}] [r1 ~ r'] (i' : incl' r1 r2 r') =>
                 i'.Expose [fn r => $r] r --- r')
 
-fun inv1 [K] [nm :: Name] [t ::: K] [r :: {K}] [r' :: {K}] [[nm] ~ r]
+fun inv1 [K] [nm :: Name] [t :: K] [r :: {K}] [r' :: {K}] [[nm] ~ r]
          [f :: Name -> K -> {K} -> Type]
          (i : incl ([nm = t] ++ r) r')
          (f : nm :: Name -> t :: K -> r :: {K} -> [[nm] ~ r] => f nm t ([nm = t] ++ r)) =

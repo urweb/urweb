@@ -34,5 +34,5 @@ fun fold [K] [tf :: ({K} -> Type)] [r ::: {K}]
     (i : tf []) (fl : folder r) =
     @@Incl.fold [tf] [r]
       (fn [nm :: Name] [v :: K] [r' :: {K}] [[nm] ~ r'] (i : Incl.incl ([nm = v] ++ r') r) acc =>
-          f [nm] [v] [r'] ! (Incl.inv1 [nm] [r'] [r] [mem] i mem) acc)
+          f [nm] [v] [r'] ! (Incl.inv1 [nm] [v] [r'] [r] [mem] i mem) acc)
       i fl
