@@ -574,6 +574,7 @@ fun parseUrp' accLibs fname =
                               | "script" => scripts := arg :: !scripts
                               | "clientToServer" => clientToServer := ffiS () :: !clientToServer
                               | "safeGet" => safeGets := arg :: !safeGets
+                              | "effectful" => effectful := ffiS () :: !effectful
                               | "benignEffectful" => benignEffectful := ffiS () :: !benignEffectful
                               | "clientOnly" => clientOnly := ffiS () :: !clientOnly
                               | "serverOnly" => serverOnly := ffiS () :: !serverOnly
