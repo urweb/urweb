@@ -95,10 +95,18 @@ fun transform (ph : ('src, 'dst) phase) name = {
               end,
     print = #print ph,
     time = fn (input, pmap) => let
+                  val () = if !debug then
+                               print ("Starting " ^ name ^ "....\n")
+                           else
+                               ()
                   val befor = Time.now ()
                   val v = #func ph input
                   val elapsed = Time.- (Time.now (), befor)
               in
+                  if !debug then
+                      print ("Finished " ^ name ^ ".\n")
+                  else
+                      ();
                   (if ErrorMsg.anyErrors () then
                        NONE
                    else
@@ -962,14 +970,7 @@ val toRpcify = transform rpcify "rpcify" o toShake1
 val toCore_untangle2 = transform core_untangle "core_untangle2" o toRpcify
 val toShake2 = transform shake "shake2" o toCore_untangle2
 
-val unpoly = {
-    func = Unpoly.unpoly,
-    print = CorePrint.p_file CoreEnv.empty
-}
-
-val toUnpoly1 = transform unpoly "unpoly1" o toShake2
-
-val toEspecialize1 = transform especialize "especialize1" o toUnpoly1
+val toEspecialize1 = transform especialize "especialize1" o toShake2
 
 val toCore_untangle3 = transform core_untangle "core_untangle3" o toEspecialize1
 val toShake3 = transform shake "shake3" o toCore_untangle3
@@ -988,14 +989,21 @@ val reduce = {
 
 val toReduce = transform reduce "reduce" o toTag
 
-val toUnpoly2 = transform unpoly "unpoly2" o toReduce
+val toShakey = transform shake "shakey" o toReduce
+
+val unpoly = {
+    func = Unpoly.unpoly,
+    print = CorePrint.p_file CoreEnv.empty
+}
+
+val toUnpoly = transform unpoly "unpoly" o toShakey
 
 val specialize = {
     func = Specialize.specialize,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toSpecialize = transform specialize "specialize" o toUnpoly2
+val toSpecialize = transform specialize "specialize" o toUnpoly
 
 val toShake4 = transform shake "shake4" o toSpecialize
 
