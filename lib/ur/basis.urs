@@ -454,25 +454,27 @@ val sql_ge : t ::: Type -> sql_binary t t bool
 val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps int
 
-con sql_aggregate :: Type -> Type
+con sql_aggregate :: Type -> Type -> Type
 val sql_aggregate : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                    -> t ::: Type
-                    -> sql_aggregate t -> sql_exp agg agg exps t
-                    -> sql_exp tables agg exps t
+                    -> dom ::: Type -> ran ::: Type
+                    -> sql_aggregate dom ran -> sql_exp agg agg exps dom
+                    -> sql_exp tables agg exps ran
+
+val sql_count_col : t ::: Type -> sql_aggregate (option t) int
 
 class sql_summable
 val sql_summable_int : sql_summable int
 val sql_summable_float : sql_summable float
-val sql_avg : t ::: Type -> sql_summable t -> sql_aggregate t
-val sql_sum : t ::: Type -> sql_summable t -> sql_aggregate t
+val sql_avg : t ::: Type -> sql_summable t -> sql_aggregate t t
+val sql_sum : t ::: Type -> sql_summable t -> sql_aggregate t t
 
 class sql_maxable
 val sql_maxable_int : sql_maxable int
 val sql_maxable_float : sql_maxable float
 val sql_maxable_string : sql_maxable string
 val sql_maxable_time : sql_maxable time
-val sql_max : t ::: Type -> sql_maxable t -> sql_aggregate t
-val sql_min : t ::: Type -> sql_maxable t -> sql_aggregate t
+val sql_max : t ::: Type -> sql_maxable t -> sql_aggregate t t
+val sql_min : t ::: Type -> sql_maxable t -> sql_aggregate t t
 
 con sql_nfunc :: Type -> Type
 val sql_nfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}

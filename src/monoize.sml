@@ -236,7 +236,7 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_binary"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
-                  | L.CApp ((L.CFfi ("Basis", "sql_aggregate"), _), _) =>
+                  | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_aggregate"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_summable"), _), _) =>
                     (L'.TRecord [], loc)
@@ -2371,7 +2371,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             (L.ECApp (
              (L.ECApp (
               (L.ECApp (
-               (L.EFfi ("Basis", "sql_aggregate"), _),
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_aggregate"), _),
+                _), _),
                _), _),
               _), _),
              _), _),
@@ -2400,6 +2402,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                              sc (")," ^ default ^ ")")]), loc)), loc),
                  fm)
             end
+
+          | L.ECApp ((L.EFfi ("Basis", "sql_count_col"), _), _) =>
+            ((L'.EPrim (Prim.String "COUNT"), loc),
+             fm)
 
           | L.EFfi ("Basis", "sql_summable_int") => ((L'.ERecord [], loc), fm)
           | L.EFfi ("Basis", "sql_summable_float") => ((L'.ERecord [], loc), fm)

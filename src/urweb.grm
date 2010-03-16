@@ -1738,6 +1738,15 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                          in
                                              (EVar (["Basis"], "sql_count", Infer), loc)
                                          end)
+       | COUNT LPAREN sqlexp RPAREN     (let
+                                             val loc = s (COUNTleft, RPARENright)
+
+                                             val e = (EVar (["Basis"], "sql_count_col", Infer), loc)
+                                             val e = (EApp ((EVar (["Basis"], "sql_aggregate", Infer), loc),
+                                                            e), loc)
+                                         in
+                                             (EApp (e, sqlexp), loc)
+                                         end)
        | sqlagg LPAREN sqlexp RPAREN    (let
                                              val loc = s (sqlaggleft, RPARENright)
 
