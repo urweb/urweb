@@ -1342,7 +1342,11 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                  (if ErrorMsg.anyErrors () then
                                                       ()
                                                   else
-                                                      ErrorMsg.errorAt pos "Begin and end tags don't match.";
+                                                      ErrorMsg.errorAt pos ("Begin tag <"
+                                                                            ^ #1 (#1 tag)
+                                                                            ^ "> and end tag </"
+                                                                            ^ et
+                                                                            ^ "> don't match.");
                                                   (EWild, pos))
                                          end)
        | LBRACE eexp RBRACE             (eexp)
