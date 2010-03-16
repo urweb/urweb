@@ -1647,17 +1647,21 @@ $$\begin{array}{l}
 \end{array}$$
 
 $$\begin{array}{l}
-  \mt{con} \; \mt{sql\_aggregate} :: \mt{Type} \to \mt{Type} \\
-  \mt{val} \; \mt{sql\_aggregate} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_aggregate} \; \mt{t} \to \mt{sql\_exp} \; \mt{agg} \; \mt{agg} \; \mt{exps} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+  \mt{con} \; \mt{sql\_aggregate} :: \mt{Type} \to \mt{Type} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_aggregate} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{dom} ::: \mt{Type} \to \mt{ran} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_aggregate} \; \mt{dom} \; \mt{ran} \to \mt{sql\_exp} \; \mt{agg} \; \mt{agg} \; \mt{exps} \; \mt{dom} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{ran}
+\end{array}$$
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{sql\_count\_col} : \mt{t} ::: \mt{Type} \to \mt{sql\_aggregate} \; (\mt{option} \; \mt{t}) \; \mt{int}
 \end{array}$$
  
 $$\begin{array}{l}
   \mt{class} \; \mt{sql\_summable} \\
   \mt{val} \; \mt{sql\_summable\_int} : \mt{sql\_summable} \; \mt{int} \\
   \mt{val} \; \mt{sql\_summable\_float} : \mt{sql\_summable} \; \mt{float} \\
-  \mt{val} \; \mt{sql\_avg} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \\
-  \mt{val} \; \mt{sql\_sum} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \mt{t} \to \mt{sql\_aggregate} \; \mt{t}
+  \mt{val} \; \mt{sql\_avg} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_sum} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t}
 \end{array}$$
 
 $$\begin{array}{l}
@@ -1666,8 +1670,8 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_maxable\_float} : \mt{sql\_maxable} \; \mt{float} \\
   \mt{val} \; \mt{sql\_maxable\_string} : \mt{sql\_maxable} \; \mt{string} \\
   \mt{val} \; \mt{sql\_maxable\_time} : \mt{sql\_maxable} \; \mt{time} \\
-  \mt{val} \; \mt{sql\_max} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \\
-  \mt{val} \; \mt{sql\_min} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t}
+  \mt{val} \; \mt{sql\_max} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t} \\
+  \mt{val} \; \mt{sql\_min} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t}
 \end{array}$$
 
 \texttt{FROM} clauses are specified using a type family.
@@ -1968,7 +1972,7 @@ $$\begin{array}{rrcll}
   \textrm{Nullary operators} & n &::=& \mt{CURRENT\_TIMESTAMP} \\
   \textrm{Unary operators} & u &::=& \mt{NOT} \\
   \textrm{Binary operators} & b &::=& \mt{AND} \mid \mt{OR} \mid \neq \mid < \mid \leq \mid > \mid \geq \\
-  \textrm{Aggregate functions} & a &::=& \mt{AVG} \mid \mt{SUM} \mid \mt{MIN} \mid \mt{MAX} \\
+  \textrm{Aggregate functions} & a &::=& \mt{COUNT} \mid \mt{AVG} \mid \mt{SUM} \mid \mt{MIN} \mid \mt{MAX} \\
   \textrm{Directions} & o &::=& \mt{ASC} \mid \mt{DESC} \\
   \textrm{SQL integer} & N &::=& n \mid \{e\} \\
 \end{array}$$

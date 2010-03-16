@@ -2,7 +2,12 @@
 Next
 ========
 
-- safeGet .urp directive
+- -verbose flag
+- COUNT(col) SQL aggregate function
+- 'benignEffectful' and 'safeGet' .urp commands
+- Remove Basis.getRequestHeader, since it can be used to circumvent cookie
+  security
+- Bug fixes and optimization improvements
 
 ========
 20100213
