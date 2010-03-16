@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2009, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,13 +42,6 @@ end
 structure KM = BinaryMapFn(K)
 structure IM = IntBinaryMap
 structure IS = IntBinarySet
-
-val isOpen = U.Exp.exists {kind = fn _ => false,
-                           con = fn c =>
-                                    case c of
-                                        CRel _ => true
-                                      | _ => false,
-                           exp = fn _ => false}
 
 val freeVars = U.Exp.foldB {kind = fn (_, _, xs) => xs,
                             con = fn (_, _, xs) => xs,
@@ -136,37 +129,6 @@ val mayNotSpec = ref SS.empty
 
 fun specialize' (funcs, specialized) file =
     let
-        fun functionInside functiony = U.Con.exists {kind = fn _ => false,
-                                                     con = fn TFun _ => true
-                                                            | CFfi ("Basis", "transaction") => true
-                                                            | CFfi ("Basis", "eq") => true
-                                                            | CFfi ("Basis", "num") => true
-                                                            | CFfi ("Basis", "ord") => true
-                                                            | CFfi ("Basis", "show") => true
-                                                            | CFfi ("Basis", "read") => true
-                                                            | CFfi ("Basis", "sql_injectable_prim") => true
-                                                            | CFfi ("Basis", "sql_injectable") => true
-                                                            | CNamed n => IS.member (functiony, n)
-                                                            | _ => false}
-
-        val functiony = foldl (fn ((d, _), functiony) =>
-                                  case d of
-                                      DCon (_, n, _, c) =>
-                                      if functionInside functiony c then
-                                          IS.add (functiony, n)
-                                      else
-                                          functiony
-                                    | DDatatype dts =>
-                                      if List.exists (fn (_, _, _, cs) =>
-                                                         List.exists (fn (_, _, SOME c) => functionInside functiony c
-                                                                       | _ => false) cs) dts then
-                                          IS.addList (functiony, map #2 dts)
-                                      else
-                                          functiony
-                                    | _ => functiony) IS.empty file
-
-        val functionInside = functionInside functiony
-
         fun bind (env, b) =
             case b of
                 U.Decl.RelE xt => xt :: env
@@ -228,12 +190,7 @@ fun specialize' (funcs, specialized) file =
                         in
                             ((ECApp (e, c), loc), st)
                         end
-                      | ECAbs (x, k, e) =>
-                        let
-                            val (e, st) = exp (env, e, st)
-                        in
-                            ((ECAbs (x, k, e), loc), st)
-                        end
+                      | ECAbs _ => (e, st)
                       | EKAbs _ => (e, st)
                       | EKApp (e, k) =>
                         let
@@ -329,7 +286,17 @@ fun specialize' (funcs, specialized) file =
                             (*val () = Print.prefaces "Consider" [("e", CorePrint.p_exp CoreEnv.empty
                                                                                       (e, ErrorMsg.dummySpan))]*)
 
-
+                            val functionInside = U.Con.exists {kind = fn _ => false,
+                                                               con = fn TFun _ => true
+                                                                      | CFfi ("Basis", "transaction") => true
+                                                                      | CFfi ("Basis", "eq") => true
+                                                                      | CFfi ("Basis", "num") => true
+                                                                      | CFfi ("Basis", "ord") => true
+                                                                      | CFfi ("Basis", "show") => true
+                                                                      | CFfi ("Basis", "read") => true
+                                                                      | CFfi ("Basis", "sql_injectable_prim") => true
+                                                                      | CFfi ("Basis", "sql_injectable") => true
+                                                                      | _ => false}
                             val loc = ErrorMsg.dummySpan
 
                             fun findSplit av (xs, typ, fxs, fvs, fin) =
@@ -361,13 +328,10 @@ fun specialize' (funcs, specialized) file =
                             if not fin
                                orelse List.all (fn (ERel _, _) => true
                                                  | _ => false) fxs'
-                               orelse List.exists isOpen fxs'
                                orelse (IS.numItems fvs >= length fxs
                                        andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs) then
                                 ((*Print.prefaces "No" [("name", Print.PD.string name),
                                                       ("f", Print.PD.string (Int.toString f)),
-                                                      ("xs",
-                                                       Print.p_list (CorePrint.p_exp CoreEnv.empty) xs),
                                                       ("fxs'",
                                                        Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
                                  default ())

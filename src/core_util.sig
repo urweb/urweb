@@ -73,6 +73,11 @@ structure Con : sig
                                         
     val exists : {kind : Core.kind' -> bool,
                   con : Core.con' -> bool} -> Core.con -> bool
+
+    val existsB : {kind : 'context * Core.kind' -> bool,
+                   con : 'context * Core.con' -> bool,
+                   bind : 'context * binder -> 'context}
+                  -> 'context -> Core.con -> bool
                                                           
     val foldMap : {kind : Core.kind' * 'state -> Core.kind' * 'state,
                    con : Core.con' * 'state -> Core.con' * 'state}

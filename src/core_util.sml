@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -372,6 +372,21 @@ fun exists {kind, con} k =
                                         S.Return ()
                                     else
                                         S.Continue (c, ())} k () of
+        S.Return _ => true
+      | S.Continue _ => false
+
+fun existsB {kind, con, bind} ctx c =
+    case mapfoldB {kind = fn ctx => fn k => fn () =>
+                                               if kind (ctx, k) then
+                                                   S.Return ()
+                                               else
+                                                   S.Continue (k, ()),
+                   con = fn ctx => fn c => fn () =>
+                                              if con (ctx, c) then
+                                                  S.Return ()
+                                              else
+                                                  S.Continue (c, ()),
+                   bind = bind} ctx c () of
         S.Return _ => true
       | S.Continue _ => false
 

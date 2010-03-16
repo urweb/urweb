@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,11 +46,15 @@ val subConInCon = E.subConInCon
 val liftConInExp = E.liftConInExp
 val subConInExp = E.subConInExp
 
-val isOpen = U.Con.exists {kind = fn _ => false,
-                           con = fn c =>
-                                    case c of
-                                        CRel _ => true
-                                      | _ => false}
+val isOpen = U.Con.existsB {kind = fn _ => false,
+                            con = fn (n, c) =>
+                                     case c of
+                                         CRel n' => n' >= n
+                                       | _ => false,
+                            bind = fn (n, b) =>
+                                      case b of
+                                          U.Con.RelC _ => n + 1
+                                        | _ => n} 0
 
 fun unpolyNamed (xn, rep) =
     U.Exp.map {kind = fn k => k,
@@ -142,9 +146,11 @@ fun exp (e, st : state) =
                                               | _ => NONE
                                     in
                                         (*Print.prefaces "specialize"
-                                                         [("t", CorePrint.p_con CoreEnv.empty t),
-                                                          ("e", CorePrint.p_exp CoreEnv.empty e),
-                                                          ("|cargs|", Print.PD.string (Int.toString (length cargs)))];*)
+                                                       [("n", Print.PD.string (Int.toString n)),
+                                                        ("nold", Print.PD.string (Int.toString n_old)),
+                                                        ("t", CorePrint.p_con CoreEnv.empty t),
+                                                        ("e", CorePrint.p_exp CoreEnv.empty e),
+                                                        ("|cargs|", Print.PD.string (Int.toString (length cargs)))];*)
                                         Option.map (fn (t, e) => (x, n, n_old, t, e, s))
                                                    (trim (t, e, cargs))
                                     end
@@ -285,7 +291,7 @@ fun decl (d, st : state) =
                         val irregular = U.Exp.existsB {kind = kind, con = con, exp = exp, bind = bind} 0
                     in
                         if List.exists (fn x => irregular (deAbs (#4 x, cargs))) vis then
-                            (print "Poppycock!\n"; (d, st))
+                            (d, st)
                         else
                             (d, {funcs = foldl (fn (vi, funcs) =>
                                                    IM.insert (funcs, #2 vi, {kinds = cargs,
