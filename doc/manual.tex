@@ -1959,6 +1959,7 @@ $$\begin{array}{rrcll}
   &&& p,^+ & \textrm{particular columns} \\
   \textrm{Pre-projections} & p &::=& t.f & \textrm{one column from a table} \\
   &&& t.\{\{c\}\} & \textrm{a record of columns from a table (of kind $\{\mt{Type}\}$)} \\
+  &&& E \; [\mt{AS} \; f] & \textrm{expression column} \\
   \textrm{Table names} & t &::=& x & \textrm{constant table name (automatically capitalized)} \\
   &&& X & \textrm{constant table name} \\
   &&& \{\{c\}\} & \textrm{computed table name (of kind $\mt{Name}$)} \\
@@ -1996,6 +1997,8 @@ $$\begin{array}{rrcll}
 \end{array}$$
 
 Additionally, an SQL expression may be inserted into normal Ur code with the syntax $(\mt{SQL} \; E)$ or $(\mt{WHERE} \; E)$.  Similar shorthands exist for other nonterminals, with the prefix $\mt{FROM}$ for $\mt{FROM}$ items and $\mt{SELECT1}$ for pre-queries.
+
+Unnamed expression columns in $\mt{SELECT}$ clauses are assigned consecutive natural numbers, starting with 1.
 
 \subsubsection{DML}
 

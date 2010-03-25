@@ -42,7 +42,7 @@ fun entable t =
 
 datatype select_item =
          Field of con * con
-       | Exp of con * exp
+       | Exp of con option * exp
        | Fields of con * con
 
 datatype select =
@@ -58,7 +58,7 @@ fun eqTnames ((c1, _), (c2, _)) =
       | (CName x1, CName x2) => x1 = x2
       | _ => false
 
-fun amend_select loc (si, (tabs, exps)) =
+fun amend_select loc (si, (count, tabs, exps)) =
     case si of
         Field (tx, fx) =>
         let
@@ -76,7 +76,7 @@ fun amend_select loc (si, (tabs, exps)) =
             else
                 ErrorMsg.errorAt loc "Select of field from unbound table";
             
-            (tabs, exps)
+            (count, tabs, exps)
         end
       | Fields (tx, fs) =>
         let
@@ -92,9 +92,10 @@ fun amend_select loc (si, (tabs, exps)) =
             else
                 ErrorMsg.errorAt loc "Select of field from unbound table";
             
-            (tabs, exps)
+            (count, tabs, exps)
         end
-      | Exp (c, e) => (tabs, (c, e) :: exps)
+      | Exp (SOME c, e) => (count, tabs, (c, e) :: exps)
+      | Exp (NONE, e) => (count+1, tabs, ((CName (Int.toString count), loc), e) :: exps)
 
 fun amend_group loc (gi, tabs) =
     let
@@ -1460,7 +1461,8 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                                    | Items sis =>
                                                      let
                                                          val tabs = map (fn nm => (nm, (CRecord [], loc))) (#1 tables)
-                                                         val (tabs, exps) = foldl (amend_select loc) (tabs, []) sis
+                                                         val (_, tabs, exps) = foldl (amend_select loc)
+                                                                                     (1, tabs, []) sis
                                                          val empties = List.mapPartial (fn (nm, (CRecord [], _)) =>
                                                                                            SOME nm
                                                                                          | _ => NONE) tabs
@@ -1662,7 +1664,8 @@ fident : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLr
        | LBRACE cexp RBRACE             (cexp)
 
 seli   : tident DOT fident              (Field (tident, fident))
-       | sqlexp AS fident               (Exp (fident, sqlexp))
+       | sqlexp                         (Exp (NONE, sqlexp))
+       | sqlexp AS fident               (Exp (SOME fident, sqlexp))
        | tident DOT LBRACE LBRACE cexp RBRACE RBRACE (Fields (tident, cexp))
 
 selis  : seli                           ([seli])
