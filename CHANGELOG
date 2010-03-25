@@ -1,5 +1,5 @@
 ========
-Next
+20100325
 ========
 
 - -verbose flag
@@ -7,6 +7,7 @@ Next
 - 'benignEffectful' and 'safeGet' .urp commands
 - Remove Basis.getRequestHeader, since it can be used to circumvent cookie
   security
+- Rename Top.foldR*X to map*X
 - Bug fixes and optimization improvements
 
 ========
