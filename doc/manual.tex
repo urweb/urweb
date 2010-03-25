@@ -1487,30 +1487,32 @@ Section \ref{tables} shows the expanded syntax of the $\mt{table}$ declaration a
 
 \subsubsection{Queries}
 
-A final query is constructed via the $\mt{sql\_query}$ function.  Constructor arguments respectively specify the table fields we select (as records mapping tables to the subsets of their fields that we choose) and the (always named) extra expressions that we select.
+A final query is constructed via the $\mt{sql\_query}$ function.  Constructor arguments respectively specify the free table variables (which will only be available in subqueries), table fields we select (as records mapping tables to the subsets of their fields that we choose) and the (always named) extra expressions that we select.
 $$\begin{array}{l}
-  \mt{con} \; \mt{sql\_query} :: \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
-  \mt{val} \; \mt{sql\_query} : \mt{tables} ::: \{\{\mt{Type}\}\} \\
+  \mt{con} \; \mt{sql\_query} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_query} : \mt{free} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{tables} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \{\mt{Rows} : \mt{sql\_query1} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}, \\
-  \hspace{.2in} \mt{OrderBy} : \mt{sql\_order\_by} \; \mt{tables} \; \mt{selectedExps}, \\
+  \hspace{.1in} \to [\mt{free} \sim \mt{tables}] \\
+  \hspace{.1in} \Rightarrow \{\mt{Rows} : \mt{sql\_query1} \; \mt{free} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}, \\
+  \hspace{.2in} \mt{OrderBy} : \mt{sql\_order\_by} \; (\mt{free} \rc \mt{tables}) \; \mt{selectedExps}, \\
   \hspace{.2in} \mt{Limit} : \mt{sql\_limit}, \\
   \hspace{.2in} \mt{Offset} : \mt{sql\_offset}\} \\
-  \hspace{.1in} \to \mt{sql\_query} \; \mt{selectedFields} \; \mt{selectedExps}
+  \hspace{.1in} \to \mt{sql\_query} \; \mt{free} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
 
 Queries are used by folding over their results inside transactions.
 $$\begin{array}{l}
-  \mt{val} \; \mt{query} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \lambda [\mt{tables} \sim \mt{exps}] \Rightarrow \mt{state} ::: \mt{Type} \to \mt{sql\_query} \; \mt{tables} \; \mt{exps} \\
+  \mt{val} \; \mt{query} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \lambda [\mt{tables} \sim \mt{exps}] \Rightarrow \mt{state} ::: \mt{Type} \to \mt{sql\_query} \; [] \; \mt{tables} \; \mt{exps} \\
   \hspace{.1in} \to (\$(\mt{exps} \rc \mt{map} \; (\lambda \mt{fields} :: \{\mt{Type}\} \Rightarrow \$\mt{fields}) \; \mt{tables}) \\
   \hspace{.2in} \to \mt{state} \to \mt{transaction} \; \mt{state}) \\
   \hspace{.1in} \to \mt{state} \to \mt{transaction} \; \mt{state}
 \end{array}$$
 
-Most of the complexity of the query encoding is in the type $\mt{sql\_query1}$, which includes simple queries and derived queries based on relational operators.  Constructor arguments respectively specify the tables we select from, the subset of fields that we keep from each table for the result rows, and the extra expressions that we select.
+Most of the complexity of the query encoding is in the type $\mt{sql\_query1}$, which includes simple queries and derived queries based on relational operators.  Constructor arguments respectively specify the free table veriables, the tables we select from, the subset of fields that we keep from each table for the result rows, and the extra expressions that we select.
 $$\begin{array}{l}
-  \mt{con} \; \mt{sql\_query1} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
+  \mt{con} \; \mt{sql\_query1} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
   \\
   \mt{type} \; \mt{sql\_relop} \\
   \mt{val} \; \mt{sql\_union} : \mt{sql\_relop} \\
@@ -1527,20 +1529,23 @@ $$\begin{array}{l}
 \end{array}$$
 
 $$\begin{array}{l}
-  \mt{val} \; \mt{sql\_query1} : \mt{tables} ::: \{\{\mt{Type}\}\} \\
+  \mt{val} \; \mt{sql\_query1} : \mt{free} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{tables} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{grouped} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
   \hspace{.1in} \to \mt{empties} :: \{\mt{Unit}\} \\
-  \hspace{.1in} \to [\mt{empties} \sim \mt{selectedFields}] \\
+  \hspace{.1in} \to [\mt{free} \sim \mt{tables}] \\
+  \hspace{.1in} \Rightarrow [\mt{free} \sim \mt{grouped}] \\
+  \hspace{.1in} \Rightarrow [\mt{empties} \sim \mt{selectedFields}] \\
   \hspace{.1in} \Rightarrow \{\mt{Distinct} : \mt{bool}, \\
-  \hspace{.2in} \mt{From} : \mt{sql\_from\_items} \; \mt{tables}, \\
-  \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; \mt{tables} \; [] \; [] \; \mt{bool}, \\
+  \hspace{.2in} \mt{From} : \mt{sql\_from\_items} \; \mt{free} \; \mt{tables}, \\
+  \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; (\mt{free} \rc \mt{tables}) \; [] \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{GroupBy} : \mt{sql\_subset} \; \mt{tables} \; \mt{grouped}, \\
-  \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; [] \; \mt{bool}, \\
+  \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; \mt{tables} \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{SelectFields} : \mt{sql\_subset} \; \mt{grouped} \; (\mt{map} \; (\lambda \_ \Rightarrow []) \; \mt{empties} \rc \mt{selectedFields}), \\
-  \hspace{.2in} \mt {SelectExps} : \$(\mt{map} \; (\mt{sql\_exp} \; \mt{grouped} \; \mt{tables} \; []) \; \mt{selectedExps}) \} \\
-  \hspace{.1in} \to \mt{sql\_query1} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}
+  \hspace{.2in} \mt {SelectExps} : \$(\mt{map} \; (\mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; \mt{tables} \; []) \; \mt{selectedExps}) \} \\
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{free} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
 
 To encode projection of subsets of fields in $\mt{SELECT}$ clauses, and to encode $\mt{GROUP} \; \mt{BY}$ clauses, we rely on a type family $\mt{sql\_subset}$, capturing what it means for one record of table fields to be a subset of another.  The main constructor $\mt{sql\_subset}$ ``proves subset facts'' by requiring a split of a record into kept and dropped parts.  The extra constructor $\mt{sql\_subset\_all}$ is a convenience for keeping all fields of a record.
@@ -1674,17 +1679,27 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_min} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t}
 \end{array}$$
 
-\texttt{FROM} clauses are specified using a type family.
+Any SQL query that returns single columns may be turned into a subquery expression.
+
 $$\begin{array}{l}
-  \mt{con} \; \mt{sql\_from\_items} :: \{\{\mt{Type}\}\} \to \mt{Type} \\
-  \mt{val} \; \mt{sql\_from\_table} : \mt{t} ::: \mt{Type} \to \mt{fs} ::: \{\mt{Type}\} \to \mt{fieldsOf} \; \mt{t} \; \mt{fs} \to \mt{name} :: \mt{Name} \to \mt{t} \to \mt{sql\_from\_items} \; [\mt{name} = \mt{fs}] \\
-  \mt{val} \; \mt{sql\_from\_comma} : \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{\mt{Type}\}\} \to [\mt{tabs1} \sim \mt{tabs2}] \\
-  \hspace{.1in} \Rightarrow \mt{sql\_from\_items} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{tabs2} \\
-  \hspace{.1in} \to \mt{sql\_from\_items} \; (\mt{tabs1} \rc \mt{tabs2}) \\
-  \mt{val} \; \mt{sql\_inner\_join} : \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{\mt{Type}\}\} \to [\mt{tabs1} \sim \mt{tabs2}] \\
-  \hspace{.1in} \Rightarrow \mt{sql\_from\_items} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{tabs2} \\
-  \hspace{.1in} \to \mt{sql\_exp} \; (\mt{tabs1} \rc \mt{tabs2}) \; [] \; [] \; \mt{bool} \\
-  \hspace{.1in} \to \mt{sql\_from\_items} \; (\mt{tabs1} \rc \mt{tabs2})
+\mt{val} \; \mt{sql\_subquery} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{nm} ::: \mt{Name} \to \mt{t} ::: \mt{Type} \\
+\hspace{.1in} \to \mt{sql\_query} \; \mt{tables} \; [] \; [\mt{nm} = \mt{t}] \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+\end{array}$$
+
+\texttt{FROM} clauses are specified using a type family, whose arguments are the free table variables and the table variables bound by this clause.
+$$\begin{array}{l}
+  \mt{con} \; \mt{sql\_from\_items} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \mt{Type} \\
+  \mt{val} \; \mt{sql\_from\_table} : \mt{free} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{t} ::: \mt{Type} \to \mt{fs} ::: \{\mt{Type}\} \to \mt{fieldsOf} \; \mt{t} \; \mt{fs} \to \mt{name} :: \mt{Name} \to \mt{t} \to \mt{sql\_from\_items} \; \mt{free} \; [\mt{name} = \mt{fs}] \\
+  \mt{val} \; \mt{sql\_from\_query} : \mt{free} ::: \{\{\mt{Type}\}\} \to \mt{fs} ::: \{\mt{Type}\} \to \mt{name} :: \mt{Name} \to \mt{sql\_query} \; \mt{free} \; [] \; \mt{fs} \to \mt{sql\_from\_items} \; \mt{free} \; [\mt{name} = \mt{fs}] \\
+  \mt{val} \; \mt{sql\_from\_comma} : \mt{free} ::: \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{\mt{Type}\}\} \to [\mt{tabs1} \sim \mt{tabs2}] \\
+  \hspace{.1in} \Rightarrow \mt{sql\_from\_items} \; \mt{free} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{free} \; \mt{tabs2} \\
+  \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{free} \; (\mt{tabs1} \rc \mt{tabs2}) \\
+  \mt{val} \; \mt{sql\_inner\_join} : \mt{free} ::: \{\{\mt{Type}\}\} \to \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to [\mt{free} \sim \mt{tabs1}] \Rightarrow [\mt{free} \sim \mt{tabs2}] \Rightarrow [\mt{tabs1} \sim \mt{tabs2}] \\
+  \hspace{.1in} \Rightarrow \mt{sql\_from\_items} \; \mt{free} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{free} \; \mt{tabs2} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; (\mt{free} \rc \mt{tabs1} \rc \mt{tabs2}) \; [] \; [] \; \mt{bool} \\
+  \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{free} \; (\mt{tabs1} \rc \mt{tabs2})
 \end{array}$$
 
 Besides these basic cases, outer joins are supported, which requires a type class for turning non-$\mt{option}$ columns into $\mt{option}$ columns.
@@ -1697,11 +1712,12 @@ $$\begin{array}{l}
 Left, right, and full outer joins can now be expressed using functions that accept records of $\mt{nullify}$ instances.  Here, we give only the type for a left join as an example.
 
 $$\begin{array}{l}
- \mt{val} \; \mt{sql\_left\_join} : \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{(\mt{Type} \times \mt{Type})\}\} \to [\mt{tabs1} \sim \mt{tabs2}] \\
+ \mt{val} \; \mt{sql\_left\_join} : \mt{free} ::: \{\{\mt{Type}\}\} \to \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{(\mt{Type} \times \mt{Type})\}\} \\
+  \hspace{.1in} \to [\mt{free} \sim \mt{tabs1}] \Rightarrow [\mt{free} \sim \mt{tabs2}] \Rightarrow [\mt{tabs1} \sim \mt{tabs2}] \\
  \hspace{.1in} \Rightarrow \$(\mt{map} \; (\lambda \mt{r} \Rightarrow \$(\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{nullify} \; \mt{p}.1 \; \mt{p}.2) \; \mt{r})) \; \mt{tabs2}) \\
- \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{tabs1} \to \mt{sql\_from\_items} \; (\mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \\
- \hspace{.1in} \to \mt{sql\_exp} \; (\mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \; [] \; [] \; \mt{bool} \\
- \hspace{.1in} \to \mt{sql\_from\_items} \; (\mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.2)) \; \mt{tabs2})
+ \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{free} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{free} \; (\mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \\
+ \hspace{.1in} \to \mt{sql\_exp} \; (\mt{free} \rc \mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \; [] \; [] \; \mt{bool} \\
+ \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{free} \; (\mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.2)) \; \mt{tabs2})
 \end{array}$$
 
 We wrap up the definition of query syntax with the types used in representing $\mt{ORDER} \; \mt{BY}$, $\mt{LIMIT}$, and $\mt{OFFSET}$ clauses.
@@ -1953,6 +1969,7 @@ $$\begin{array}{rrcll}
   &&& \{\{e\}\} \; \mt{AS} \; t & \textrm{computed table expression, with local name} \\
   \textrm{$\mt{FROM}$ items} & F &::=& T \mid \{\{e\}\} \mid F \; J \; \mt{JOIN} \; F \; \mt{ON} \; E \\
   &&& \mid F \; \mt{CROSS} \; \mt{JOIN} \ F \\
+  &&& \mid (Q) \; \mt{AS} \; t \\
   \textrm{Joins} & J &::=& [\mt{INNER}] \\
   &&& \mid [\mt{LEFT} \mid \mt{RIGHT} \mid \mt{FULL}] \; [\mt{OUTER}] \\
   \textrm{SQL expressions} & E &::=& p & \textrm{column references} \\
@@ -1968,6 +1985,7 @@ $$\begin{array}{rrcll}
   &&& E \; b \; E & \textrm{binary operators} \\
   &&& \mt{COUNT}(\ast) & \textrm{count number of rows} \\
   &&& a(E) & \textrm{other aggregate function} \\
+  &&& (Q) & \textrm{subquery (must return a single expression column)} \\
   &&& (E) & \textrm{explicit precedence} \\
   \textrm{Nullary operators} & n &::=& \mt{CURRENT\_TIMESTAMP} \\
   \textrm{Unary operators} & u &::=& \mt{NOT} \\
