@@ -295,6 +295,9 @@ con sql_from_items :: {{Type}} -> {{Type}} -> Type
 val sql_from_table : free ::: {{Type}} -> t ::: Type -> fs ::: {Type}
                      -> fieldsOf t fs -> name :: Name
                      -> t -> sql_from_items free [name = fs]
+val sql_from_query : free ::: {{Type}} -> fs ::: {Type} -> name :: Name
+                     -> sql_query free [] fs
+                     -> sql_from_items free [name = fs]
 val sql_from_comma : free ::: {{Type}} -> tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
                      -> [tabs1 ~ tabs2]
     => sql_from_items free tabs1 -> sql_from_items free tabs2

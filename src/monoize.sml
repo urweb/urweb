@@ -1882,7 +1882,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                            strcatComma (map (fn (x, t) =>
                                                                 strcat [
                                                                 (L'.EField (gf "SelectExps", x), loc),
-                                                                sc (" AS _" ^ x)
+                                                                sc (" AS uw_" ^ x)
                                                             ]) sexps
                                                         @ map (fn (x, xts) =>
                                                                   strcatComma
@@ -2057,6 +2057,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("tab", s, s,
                            strcat [(L'.ERel 0, loc),
                                    (L'.EPrim (Prim.String (" AS T_" ^ name)), loc)]), loc),
+                 fm)
+            end
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_query"), _), _),
+                                          _), _), _),
+                     (L.CName name, _)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("q", s, s,
+                           strcat [sc "(",
+                                   (L'.ERel 0, loc),
+                                   sc (") AS T_" ^ name)]), loc),
                  fm)
             end
           | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_comma"), _), _), _), _), _), _) =>
@@ -2317,7 +2330,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                _), _),
               _), _),
              _), _),
-            (L.CName nm, _)) => ((L'.EPrim (Prim.String ("_" ^ lowercaseFirst nm)), loc), fm)
+            (L.CName nm, _)) => ((L'.EPrim (Prim.String ("uw_" ^ lowercaseFirst nm)), loc), fm)
 
           | L.ECApp (
             (L.ECApp (

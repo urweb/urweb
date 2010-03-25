@@ -1629,6 +1629,14 @@ fitem  : table'                         ([#1 table'], #2 table')
                                              (#1 fitem1 @ #1 fitem2,
                                               (EApp (e, sqlexp), loc))
                                          end)
+       | LPAREN query RPAREN AS tname   (let
+                                             val loc = s (LPARENleft, RPARENright)
+                                                       
+                                             val e = (EVar (["Basis"], "sql_from_query", Infer), loc)
+                                             val e = (ECApp (e, tname), loc)
+                                         in
+                                             ([tname], (EApp (e, query), loc))
+                                         end)
 
 tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | LBRACE cexp RBRACE             (cexp)
