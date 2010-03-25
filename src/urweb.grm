@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1767,6 +1767,13 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                              val e = (EApp (e, fname), loc)
                                          in
                                              (EApp (e, sqlexp), loc)
+                                         end)
+       | LPAREN query RPAREN            (let
+                                             val loc = s (LPARENleft, RPARENright)
+
+                                             val e = (EVar (["Basis"], "sql_subquery", Infer), loc)
+                                         in
+                                             (EApp (e, query), loc)
                                          end)
 
 fname  : SYMBOL                         (EVar (["Basis"], "sql_" ^ SYMBOL, Infer), s (SYMBOLleft, SYMBOLright))

@@ -274,8 +274,8 @@ val check : fs ::: {Type}
 
 (*** Queries *)
 
-con sql_query :: {{Type}} -> {Type} -> Type
-con sql_query1 :: {{Type}} -> {{Type}} -> {Type} -> Type
+con sql_query :: {{Type}} -> {{Type}} -> {Type} -> Type
+con sql_query1 :: {{Type}} -> {{Type}} -> {{Type}} -> {Type} -> Type
 
 con sql_subset :: {{Type}} -> {{Type}} -> Type
 val sql_subset : keep_drop :: {({Type} * {Type})}
@@ -290,78 +290,82 @@ val sql_subset_concat : big1 ::: {{Type}} -> little1 ::: {{Type}}
     -> sql_subset big2 little2
     -> sql_subset (big1 ++ big2) (little1 ++ little2)
 
-con sql_from_items :: {{Type}} -> Type
+con sql_from_items :: {{Type}} -> {{Type}} -> Type
 
-val sql_from_table : t ::: Type -> fs ::: {Type}
+val sql_from_table : free ::: {{Type}} -> t ::: Type -> fs ::: {Type}
                      -> fieldsOf t fs -> name :: Name
-                     -> t -> sql_from_items [name = fs]
-val sql_from_comma : tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
+                     -> t -> sql_from_items free [name = fs]
+val sql_from_comma : free ::: {{Type}} -> tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
                      -> [tabs1 ~ tabs2]
-    => sql_from_items tabs1 -> sql_from_items tabs2
-       -> sql_from_items (tabs1 ++ tabs2)
-val sql_inner_join : tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
-                     -> [tabs1 ~ tabs2]
-    => sql_from_items tabs1 -> sql_from_items tabs2
-       -> sql_exp (tabs1 ++ tabs2) [] [] bool
-       -> sql_from_items (tabs1 ++ tabs2)
+    => sql_from_items free tabs1 -> sql_from_items free tabs2
+       -> sql_from_items free (tabs1 ++ tabs2)
+val sql_inner_join : free ::: {{Type}} -> tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
+                     -> [free ~ tabs1] => [free ~ tabs2] => [tabs1 ~ tabs2]
+    => sql_from_items free tabs1 -> sql_from_items free tabs2
+       -> sql_exp (free ++ tabs1 ++ tabs2) [] [] bool
+       -> sql_from_items free (tabs1 ++ tabs2)
 
 class nullify :: Type -> Type -> Type
 val nullify_option : t ::: Type -> nullify (option t) (option t)
 val nullify_prim : t ::: Type -> sql_injectable_prim t -> nullify t (option t)
 
-val sql_left_join : tabs1 ::: {{Type}} -> tabs2 ::: {{(Type * Type)}}
-                     -> [tabs1 ~ tabs2]
+val sql_left_join : free ::: {{Type}} -> tabs1 ::: {{Type}} -> tabs2 ::: {{(Type * Type)}}
+                     -> [free ~ tabs1] => [free ~ tabs2] => [tabs1 ~ tabs2]
     => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) tabs2)
-       -> sql_from_items tabs1 -> sql_from_items (map (map (fn p :: (Type * Type) => p.1)) tabs2)
-       -> sql_exp (tabs1 ++ map (map (fn p :: (Type * Type) => p.1)) tabs2) [] [] bool
-       -> sql_from_items (tabs1 ++ map (map (fn p :: (Type * Type) => p.2)) tabs2)
+       -> sql_from_items free tabs1 -> sql_from_items free (map (map (fn p :: (Type * Type) => p.1)) tabs2)
+       -> sql_exp (free ++ tabs1 ++ map (map (fn p :: (Type * Type) => p.1)) tabs2) [] [] bool
+       -> sql_from_items free (tabs1 ++ map (map (fn p :: (Type * Type) => p.2)) tabs2)
 
-val sql_right_join : tabs1 ::: {{(Type * Type)}} -> tabs2 ::: {{Type}}
-                     -> [tabs1 ~ tabs2]
+val sql_right_join : free ::: {{Type}} -> tabs1 ::: {{(Type * Type)}} -> tabs2 ::: {{Type}}
+                     -> [free ~ tabs1] => [free ~ tabs2] => [tabs1 ~ tabs2]
     => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) tabs1)
-       -> sql_from_items (map (map (fn p :: (Type * Type) => p.1)) tabs1) -> sql_from_items tabs2
-       -> sql_exp (map (map (fn p :: (Type * Type) => p.1)) tabs1 ++ tabs2) [] [] bool
-       -> sql_from_items (map (map (fn p :: (Type * Type) => p.2)) tabs1 ++ tabs2)
+       -> sql_from_items free (map (map (fn p :: (Type * Type) => p.1)) tabs1) -> sql_from_items free tabs2
+       -> sql_exp (free ++ map (map (fn p :: (Type * Type) => p.1)) tabs1 ++ tabs2) [] [] bool
+       -> sql_from_items free (map (map (fn p :: (Type * Type) => p.2)) tabs1 ++ tabs2)
 
-val sql_full_join : tabs1 ::: {{(Type * Type)}} -> tabs2 ::: {{(Type * Type)}}
-                     -> [tabs1 ~ tabs2]
+val sql_full_join : free ::: {{Type}} -> tabs1 ::: {{(Type * Type)}} -> tabs2 ::: {{(Type * Type)}}
+                     -> [free ~ tabs1] => [free ~ tabs2] => [tabs1 ~ tabs2]
     => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) (tabs1 ++ tabs2))
-       -> sql_from_items (map (map (fn p :: (Type * Type) => p.1)) tabs1)
-       -> sql_from_items (map (map (fn p :: (Type * Type) => p.1)) tabs2)
-       -> sql_exp (map (map (fn p :: (Type * Type) => p.1)) (tabs1 ++ tabs2)) [] [] bool
-       -> sql_from_items (map (map (fn p :: (Type * Type) => p.2)) (tabs1 ++ tabs2))
+       -> sql_from_items free (map (map (fn p :: (Type * Type) => p.1)) tabs1)
+       -> sql_from_items free (map (map (fn p :: (Type * Type) => p.1)) tabs2)
+       -> sql_exp (free ++ map (map (fn p :: (Type * Type) => p.1)) (tabs1 ++ tabs2)) [] [] bool
+       -> sql_from_items free (map (map (fn p :: (Type * Type) => p.2)) (tabs1 ++ tabs2))
 
-val sql_query1 : tables ::: {{Type}}
+val sql_query1 : free ::: {{Type}}
+                 -> tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}
                  -> selectedExps ::: {Type}
                  -> empties :: {Unit}
-                 -> [empties ~ selectedFields]
+                 -> [free ~ tables]
+                 => [free ~ grouped]
+                 => [empties ~ selectedFields]
                  => {Distinct : bool,
-                     From : sql_from_items tables,
-                     Where : sql_exp tables [] [] bool,
+                     From : sql_from_items free tables,
+                     Where : sql_exp (free ++ tables) [] [] bool,
                      GroupBy : sql_subset tables grouped,
-                     Having : sql_exp grouped tables [] bool,
+                     Having : sql_exp (free ++ grouped) tables [] bool,
                      SelectFields : sql_subset grouped (map (fn _ => []) empties ++ selectedFields),
-                     SelectExps : $(map (sql_exp grouped tables [])
+                     SelectExps : $(map (sql_exp (free ++ grouped) tables [])
                                             selectedExps) }
-                 -> sql_query1 tables selectedFields selectedExps
+                 -> sql_query1 free tables selectedFields selectedExps
 
 type sql_relop 
 val sql_union : sql_relop
 val sql_intersect : sql_relop
 val sql_except : sql_relop
-val sql_relop : tables1 ::: {{Type}}
+val sql_relop : free ::: {{Type}}
+                -> tables1 ::: {{Type}}
                 -> tables2 ::: {{Type}}
                 -> selectedFields ::: {{Type}}
                 -> selectedExps ::: {Type}
                 -> sql_relop
-                -> sql_query1 tables1 selectedFields selectedExps
-                -> sql_query1 tables2 selectedFields selectedExps
-                -> sql_query1 [] selectedFields selectedExps
-val sql_forget_tables : tables ::: {{Type}} -> selectedFields ::: {{Type}} -> selectedExps ::: {Type}
-                        -> sql_query1 tables selectedFields selectedExps
-                        -> sql_query1 [] selectedFields selectedExps
+                -> sql_query1 free tables1 selectedFields selectedExps
+                -> sql_query1 free tables2 selectedFields selectedExps
+                -> sql_query1 free [] selectedFields selectedExps
+val sql_forget_tables : free ::: {{Type}} -> tables ::: {{Type}} -> selectedFields ::: {{Type}} -> selectedExps ::: {Type}
+                        -> sql_query1 free tables selectedFields selectedExps
+                        -> sql_query1 free [] selectedFields selectedExps
 
 type sql_direction
 val sql_asc : sql_direction
@@ -382,14 +386,16 @@ type sql_offset
 val sql_no_offset : sql_offset
 val sql_offset : int -> sql_offset
 
-val sql_query : tables ::: {{Type}}
+val sql_query : free ::: {{Type}}
+                -> tables ::: {{Type}}
                 -> selectedFields ::: {{Type}}
                 -> selectedExps ::: {Type}
-                -> {Rows : sql_query1 tables selectedFields selectedExps,
-                    OrderBy : sql_order_by tables selectedExps,
+                -> [free ~ tables]
+                => {Rows : sql_query1 free tables selectedFields selectedExps,
+                    OrderBy : sql_order_by (free ++ tables) selectedExps,
                     Limit : sql_limit,
                     Offset : sql_offset}
-                -> sql_query selectedFields selectedExps
+                -> sql_query free selectedFields selectedExps
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type}
                 -> fieldType ::: Type -> agg ::: {{Type}}
@@ -495,12 +501,16 @@ val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} ->
                    -> sql_exp tables agg exps t
                    -> sql_exp tables agg exps (option t)
 
+val sql_subquery : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> nm ::: Name -> t ::: Type
+                   -> sql_query tables [] [nm = t]
+                   -> sql_exp tables agg exps t
+
 (*** Executing queries *)
 
 val query : tables ::: {{Type}} -> exps ::: {Type}
             -> [tables ~ exps] =>
                   state ::: Type
-                  -> sql_query tables exps
+                  -> sql_query [] tables exps
                   -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
                       -> state
                       -> transaction state)

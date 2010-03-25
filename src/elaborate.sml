@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -3680,6 +3680,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     val (env', n) = E.pushENamed env x cv
 
                     val ct = queryOf ()
+                    val ct = (L'.CApp (ct, (L'.CRecord ((L'.KRecord (L'.KType, loc), loc), []), loc)), loc)
                     val ct = (L'.CApp (ct, ts), loc)
                     val ct = (L'.CApp (ct, fs), loc)
                 in

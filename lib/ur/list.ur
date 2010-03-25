@@ -244,7 +244,7 @@ fun app [m] (_ : monad m) [a] f =
     end
 
 fun mapQuery [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
-             [tables ~ exps] (q : sql_query tables exps)
+             [tables ~ exps] (q : sql_query [] tables exps)
              (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> t) =
     ls <- query q
                 (fn fs acc => return (f fs :: acc))
@@ -252,7 +252,7 @@ fun mapQuery [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
     return (rev ls)
 
 fun mapQueryM [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
-             [tables ~ exps] (q : sql_query tables exps)
+             [tables ~ exps] (q : sql_query [] tables exps)
              (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction t) =
     ls <- query q
                 (fn fs acc => v <- f fs; return (v :: acc))
@@ -260,7 +260,7 @@ fun mapQueryM [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
     return (rev ls)
 
 fun mapQueryPartialM [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
-             [tables ~ exps] (q : sql_query tables exps)
+             [tables ~ exps] (q : sql_query [] tables exps)
              (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction (option t)) =
     ls <- query q
                 (fn fs acc => v <- f fs;

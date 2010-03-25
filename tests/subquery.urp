@@ -1,0 +1,4 @@
+database /tmp/test
+sql subquery.sql
+
+subquery

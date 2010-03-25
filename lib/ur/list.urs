@@ -51,19 +51,19 @@ val app : m ::: (Type -> Type) -> monad m -> a ::: Type
 
 val mapQuery : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                -> [tables ~ exps] =>
-    sql_query tables exps
+    sql_query [] tables exps
     -> ($(exps ++ map (fn fields :: {Type} => $fields) tables) -> t)
     -> transaction (list t)
 
 val mapQueryM : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                -> [tables ~ exps] =>
-    sql_query tables exps
+    sql_query [] tables exps
     -> ($(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction t)
     -> transaction (list t)
 
 val mapQueryPartialM : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                -> [tables ~ exps] =>
-    sql_query tables exps
+    sql_query [] tables exps
     -> ($(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction (option t))
     -> transaction (list t)
 
