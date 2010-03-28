@@ -292,6 +292,7 @@ val sql_subset_concat : big1 ::: {{Type}} -> little1 ::: {{Type}}
 
 con sql_from_items :: {{Type}} -> {{Type}} -> Type
 
+val sql_from_nil : free ::: {{Type}} -> sql_from_items free []
 val sql_from_table : free ::: {{Type}} -> t ::: Type -> fs ::: {Type}
                      -> fieldsOf t fs -> name :: Name
                      -> t -> sql_from_items free [name = fs]
