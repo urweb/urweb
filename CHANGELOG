@@ -1,4 +1,12 @@
 ========
+20100401
+========
+
+- Subquery expressions and FROM items
+- Low-level support for SELECT with no FROM clause
+- Fixes for DBMS-portability of relational operators
+
+========
 20100325
 ========
 
