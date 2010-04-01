@@ -2403,16 +2403,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
             in
-                ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
-                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
-                                     (L'.EAbs ("e2", s, s,
-                                               strcat [sc "((",
-                                                       (L'.ERel 1, loc),
-                                                       sc ") ",
-                                                       (L'.ERel 2, loc),
-                                                       sc " (",
-                                                       (L'.ERel 0, loc),
-                                                       sc "))"]), loc)), loc)), loc),
+                (if #nestedRelops (Settings.currentDbms ()) then
+                     (L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                               (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                         (L'.EAbs ("e2", s, s,
+                                                   strcat [sc "((",
+                                                           (L'.ERel 1, loc),
+                                                           sc ") ",
+                                                           (L'.ERel 2, loc),
+                                                           sc " (",
+                                                           (L'.ERel 0, loc),
+                                                           sc "))"]), loc)), loc)), loc)
+                 else
+                   (L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                               (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                         (L'.EAbs ("e2", s, s,
+                                                   strcat [(L'.ERel 1, loc),
+                                                           sc " ",
+                                                           (L'.ERel 2, loc),
+                                                           sc " ",
+                                                           (L'.ERel 0, loc)]), loc)), loc)), loc),
                  fm)
             end
           | L.ECApp (
@@ -2433,8 +2443,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
 
           | L.EFfi ("Basis", "sql_union") => ((L'.EPrim (Prim.String "UNION"), loc), fm)
-          | L.EFfi ("Basis", "sql_intersect") => ((L'.EPrim (Prim.String "INTERSECT"), loc), fm)
-          | L.EFfi ("Basis", "sql_except") => ((L'.EPrim (Prim.String "EXCEPT"), loc), fm)
+          | L.EFfi ("Basis", "sql_intersect") =>
+            (if #onlyUnion (Settings.currentDbms ()) then
+                 ErrorMsg.errorAt loc "The DBMS you've selected doesn't support INTERSECT."
+             else
+                 ();
+             ((L'.EPrim (Prim.String "INTERSECT"), loc), fm))
+          | L.EFfi ("Basis", "sql_except") =>
+            (if #onlyUnion (Settings.currentDbms ()) then
+                 ErrorMsg.errorAt loc "The DBMS you've selected doesn't support EXCEPT."
+             else
+                 ();
+             ((L'.EPrim (Prim.String "EXCEPT"), loc), fm))
 
           | L.ECApp (
             (L.ECApp (

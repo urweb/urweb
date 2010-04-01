@@ -167,7 +167,9 @@ signature SETTINGS = sig
          sqlPrefix : string,
          supportsOctetLength : bool,
          trueString : string,
-         falseString : string
+         falseString : string,
+         onlyUnion : bool,
+         nestedRelops : bool
     }
 
     val addDbms : dbms -> unit

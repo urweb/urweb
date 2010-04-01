@@ -1544,6 +1544,8 @@ val () = addDbms {name = "mysql",
                   sqlPrefix = "SET storage_engine=InnoDB;\n\n",
                   supportsOctetLength = true,
                   trueString = "TRUE",
-                  falseString = "FALSE"}
+                  falseString = "FALSE",
+                  onlyUnion = true,
+                  nestedRelops = false}
 
 end
