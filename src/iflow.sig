@@ -51,7 +51,7 @@ signature IFLOW = sig
            | Reln of reln * exp list
            | Select of int * lvar * lvar * prop * exp
 
-    exception Summaries of (string * exp * prop * (exp * prop) list) list
+    exception Imply of prop * prop
 
     val check : Mono.file -> unit
 

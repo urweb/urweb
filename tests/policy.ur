@@ -1,11 +1,11 @@
 table fruit : { Id : int, Nam : string, Weight : float, Secret : string }
 
-policy query_policy (SELECT fruit.Id, fruit.Nam, fruit.Weight FROM fruit)
+policy query_policy (SELECT fruit.Id, fruit.Nam FROM fruit)
 
 fun main () =
-    xml <- queryX (SELECT fruit.Id, fruit.Nam
+    xml <- queryX (SELECT fruit.Id, fruit.Nam, fruit.Secret
                    FROM fruit)
-           (fn x => <xml><li>{[x.Fruit.Nam]}</li></xml>);
+           (fn x => <xml><li>{[x.Fruit.Secret]}</li></xml>);
 
     return <xml><body>
       {xml}
