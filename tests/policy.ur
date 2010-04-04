@@ -8,8 +8,11 @@ table order : { Id : order, Fruit : fruit, Qty : int, Code : int }
   PRIMARY KEY Id,
   CONSTRAINT Fruit FOREIGN KEY Fruit REFERENCES fruit(Id)
 
-policy query_policy (SELECT fruit.Id, fruit.Nam, fruit.Weight FROM fruit)
-policy query_policy (SELECT order.Id, order.Fruit, order.Qty FROM order)
+policy query_policy (SELECT fruit.Id, fruit.Nam, fruit.Weight
+                     FROM fruit)
+policy query_policy (SELECT order.Id, order.Fruit, order.Qty
+                     FROM order, fruit
+                     WHERE order.Fruit = fruit.Id)
 
 fun main () =
     x1 <- queryX (SELECT fruit.Id, fruit.Nam
@@ -18,7 +21,7 @@ fun main () =
 
     x2 <- queryX (SELECT fruit.Nam, order.Qty
                   FROM fruit, order
-                  WHERE order.Fruit = fruit.Id)
+                  WHERE fruit.Id = order.Fruit)
                  (fn x => <xml><li>{[x.Fruit.Nam]}: {[x.Order.Qty]}</li></xml>);
 
     return <xml><body>

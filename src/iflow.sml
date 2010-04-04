@@ -508,15 +508,39 @@ fun queryProp rv oe e =
                                                       else
                                                           fs) [] (#Select r))])))
                       True (#From r)
+
+            fun expIn e =
+                case e of
+                    Field (v, f) => inl (Proj (Proj (Lvar rv, v), f))
+                  | Binop (bo, e1, e2) =>
+                    (case (expIn e1, expIn e2) of
+                         (inr _, _) => inr Unknown
+                       | (_, inr _) => inr Unknown
+                       | (inl e1, inl e2) =>
+                         let
+                             val bo = case bo of
+                                          "=" => SOME Eq
+                                        | _ => NONE
+                         in
+                             case bo of
+                                 NONE => inr Unknown
+                               | SOME bo => inr (Reln (bo, [e1, e2]))
+                         end)
+
+            val p = case #Where r of
+                        NONE => p
+                      | SOME e =>
+                        case expIn e of
+                            inr p' => And (p, p')
+                          | _ => p
         in
             case oe of
                 NONE => p
               | SOME oe =>
-                And (p,
-                     foldl (fn ((v, f), p) =>
-                               Or (p,
-                                   Reln (Eq, [oe, Proj (Proj (Lvar rv, v), f)])))
-                           False (#Select r))
+                And (p, foldl (fn ((v, f), p) =>
+                                  Or (p,
+                                      Reln (Eq, [oe, Proj (Proj (Lvar rv, v), f)])))
+                              False (#Select r))
         end
 
 fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
