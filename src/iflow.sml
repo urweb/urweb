@@ -385,6 +385,11 @@ fun alt p1 p2 chs =
         NONE => p2 chs
       | v => v
 
+fun opt p chs =
+    case p chs of
+        NONE => SOME (NONE, chs)
+      | SOME (v, chs) => SOME (SOME v, chs)
+
 fun skip cp chs =
     case chs of
         String "" :: chs => skip cp chs
@@ -412,7 +417,14 @@ fun keep cp chs =
         end
       | _ => NONE
 
-fun ws p = wrap (follow p (skip (fn ch => ch = #" "))) #1
+fun ws p = wrap (follow (skip (fn ch => ch = #" "))
+                        (follow p (skip (fn ch => ch = #" ")))) (#1 o #2)
+
+fun log name p chs =
+    (case chs of
+         String s :: [] => print (name ^ ": " ^ s ^ "\n")
+       | _ => print (name ^ ": blocked!\n");
+     p chs)
 
 fun list p chs =
     (alt (wrap (follow p (follow (ws (const ",")) (list p)))
@@ -436,6 +448,34 @@ val sitem = wrap (follow t_ident
                                  uw_ident))
                  (fn (t, ((), f)) => (t, f))
 
+datatype sqexp =
+         Field of string * string
+       | Binop of string * sqexp * sqexp
+
+val sqbrel = wrap (const "=") (fn () => "=")
+
+datatype ('a, 'b) sum = inl of 'a | inr of 'b
+
+fun sqexp chs =
+    alt
+        (wrap (follow (ws (const "("))
+                      (follow (ws sqexp)
+                              (ws (const ")"))))
+              (fn ((), (e, ())) => e))
+         (wrap
+              (follow (wrap sitem Field)
+                      (alt
+                           (wrap
+                                (follow (ws sqbrel)
+                                        (ws sqexp))
+                                inl)
+                           (always (inr ()))))
+              (fn (e1, sm) =>
+                  case sm of
+                      inl (bo, e2) => Binop (bo, e1, e2)
+                    | inr () => e1))
+         chs
+     
 val select = wrap (follow (const "SELECT ") (list sitem))
                   (fn ((), ls) => ls)
 
@@ -447,12 +487,15 @@ val fitem = wrap (follow uw_ident
 val from = wrap (follow (const "FROM ") (list fitem))
                 (fn ((), ls) => ls)
 
-val query = wrap (follow select from)
-            (fn (fs, ts) => {Select = fs, From = ts})
+val wher = wrap (follow (ws (const "WHERE ")) sqexp)
+           (fn ((), ls) => ls)
+
+val query = wrap (follow (follow select from) (opt wher))
+            (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher})
 
 fun queryProp rv oe e =
     case parse query e of
-        NONE => Unknown
+        NONE => (print "Crap\n"; Unknown)
       | SOME r =>
         let
             val p =
