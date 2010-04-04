@@ -186,6 +186,10 @@ fun decomp fals or =
 
 val unif = ref (IM.empty : exp IM.map)
 
+fun reset () = unif := IM.empty
+fun save () = !unif
+fun restore x = unif := x
+
 fun lvarIn lv =
     let
         fun lvi e =
@@ -242,12 +246,12 @@ fun eq' (e1, e2) =
 
 fun eq (e1, e2) =
     let
-        val saved = !unif
+        val saved = save ()
     in
         if eq' (simplify e1, simplify e2) then
             true
         else
-            (unif := saved;
+            (restore saved;
              false)
     end
 
@@ -260,16 +264,15 @@ fun rimp ((r1, es1), (r2, es2)) =
         (case (es1, es2) of
              ([Recd xes1], [Recd xes2]) =>
              let
-                 val saved = !unif
+                 val saved = save ()
              in
-                 (*print ("Go: " ^ r1' ^ "\n");*)
-                 (*raise Imply (Reln (r1, es1), Reln (r2, es2));*)
                  if List.all (fn (f, e2) =>
-                                 List.exists (fn (f', e1) =>
-                                                 f' = f andalso eq (e1, e2)) xes1) xes2 then
+                                 case ListUtil.search (fn (f', e1) => if f' = f then SOME e1 else NONE) xes1 of
+                                     NONE => true
+                                   | SOME e1 => eq (e1, e2)) xes2 then
                      true
                  else
-                     (unif := saved;
+                     (restore saved;
                       false)
              end
            | _ => false)
@@ -277,12 +280,12 @@ fun rimp ((r1, es1), (r2, es2)) =
         (case (es1, es2) of
              ([x1, y1], [x2, y2]) =>
              let
-                 val saved = !unif
+                 val saved = save ()
              in
                  if eq (x1, x2) andalso eq (y1, y2) then
                      true
                  else
-                     (unif := saved;
+                     (restore saved;
                       (*raise Imply (Reln (Eq, es1), Reln (Eq, es2));*)
                       eq (x1, y2) andalso eq (y1, x2))
              end
@@ -290,7 +293,7 @@ fun rimp ((r1, es1), (r2, es2)) =
       | _ => false
 
 fun imply (p1, p2) =
-    (unif := IM.empty;
+    (reset ();
      (*raise (Imply (p1, p2));*)
      decomp true (fn (e1, e2) => e1 andalso e2 ()) p1
             (fn hyps =>
@@ -307,13 +310,13 @@ fun imply (p1, p2) =
                                             [] => onFail ()
                                           | h :: hyps =>
                                             let
-                                                val saved = !unif
+                                                val saved = save ()
                                             in
                                                 if rimp (h, g) then
                                                     let
-                                                        val changed = IM.numItems (!unif) = IM.numItems saved
+                                                        val changed = IM.numItems (!unif) <> IM.numItems saved
                                                     in
-                                                        gls goals (fn () => (unif := saved;
+                                                        gls goals (fn () => (restore saved;
                                                                              changed andalso hps hyps))
                                                     end
                                                 else
@@ -660,7 +663,7 @@ fun check file =
 
               | _ => (vals, pols)
 
-        val () = unif := IM.empty
+        val () = reset ()
 
         val (vals, pols) = foldl decl ([], []) file
     in
