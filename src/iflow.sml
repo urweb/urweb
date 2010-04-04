@@ -420,10 +420,15 @@ fun keep cp chs =
 fun ws p = wrap (follow (skip (fn ch => ch = #" "))
                         (follow p (skip (fn ch => ch = #" ")))) (#1 o #2)
 
+val debug = ref false
+
 fun log name p chs =
-    (case chs of
-         String s :: [] => print (name ^ ": " ^ s ^ "\n")
-       | _ => print (name ^ ": blocked!\n");
+    (if !debug then
+         case chs of
+             String s :: [] => print (name ^ ": " ^ s ^ "\n")
+           | _ => print (name ^ ": blocked!\n")
+     else
+         ();
      p chs)
 
 fun list p chs =
@@ -448,34 +453,64 @@ val sitem = wrap (follow t_ident
                                  uw_ident))
                  (fn (t, ((), f)) => (t, f))
 
-datatype sqexp =
-         Field of string * string
-       | Binop of string * sqexp * sqexp
+datatype Rel =
+         Exps of exp * exp -> prop
+       | Props of prop * prop -> prop
 
-val sqbrel = wrap (const "=") (fn () => "=")
+datatype sqexp =
+         SqConst of Prim.t
+       | Field of string * string
+       | Binop of Rel * sqexp * sqexp
+
+val sqbrel = alt (wrap (const "=") (fn () => Exps (fn (e1, e2) => Reln (Eq, [e1, e2]))))
+                 (alt (wrap (const "AND") (fn () => Props And))
+                      (wrap (const "OR") (fn () => Props Or)))
 
 datatype ('a, 'b) sum = inl of 'a | inr of 'b
 
+fun int chs =
+    case chs of
+        String s :: chs' =>
+        let
+            val (befor, after) = Substring.splitl Char.isDigit (Substring.full s)
+        in
+            if Substring.isEmpty befor then
+                NONE
+            else case Int64.fromString (Substring.string befor) of
+                     NONE => NONE
+                   | SOME n => SOME (n, if Substring.isEmpty after then
+                                            chs'
+                                        else
+                                            String (Substring.string after) :: chs')
+        end
+      | _ => NONE
+
+val prim = wrap (follow (wrap int Prim.Int) (opt (const "::int8"))) #1
+
 fun sqexp chs =
-    alt
-        (wrap (follow (ws (const "("))
-                      (follow (ws sqexp)
-                              (ws (const ")"))))
-              (fn ((), (e, ())) => e))
-         (wrap
-              (follow (wrap sitem Field)
-                      (alt
-                           (wrap
-                                (follow (ws sqbrel)
-                                        (ws sqexp))
-                                inl)
-                           (always (inr ()))))
-              (fn (e1, sm) =>
-                  case sm of
-                      inl (bo, e2) => Binop (bo, e1, e2)
-                    | inr () => e1))
-         chs
-     
+    log "sqexp"
+    (alt
+         (wrap prim SqConst)
+         (alt
+              (wrap sitem Field)
+              (wrap
+                   (follow (ws (const "("))
+                           (follow (wrap
+                                        (follow sqexp
+                                                (alt
+                                                     (wrap
+                                                          (follow (ws sqbrel)
+                                                                  (ws sqexp))
+                                                          inl)
+                                                     (always (inr ()))))
+                                        (fn (e1, sm) =>
+                                            case sm of
+                                                inl (bo, e2) => Binop (bo, e1, e2)
+                                              | inr () => e1))
+                                   (const ")")))
+                   (fn ((), (e, ())) => e))))
+        chs
+
 val select = wrap (follow (const "SELECT ") (list sitem))
                   (fn ((), ls) => ls)
 
@@ -511,21 +546,13 @@ fun queryProp rv oe e =
 
             fun expIn e =
                 case e of
-                    Field (v, f) => inl (Proj (Proj (Lvar rv, v), f))
+                    SqConst p => inl (Const p)
+                  | Field (v, f) => inl (Proj (Proj (Lvar rv, v), f))
                   | Binop (bo, e1, e2) =>
-                    (case (expIn e1, expIn e2) of
-                         (inr _, _) => inr Unknown
-                       | (_, inr _) => inr Unknown
-                       | (inl e1, inl e2) =>
-                         let
-                             val bo = case bo of
-                                          "=" => SOME Eq
-                                        | _ => NONE
-                         in
-                             case bo of
-                                 NONE => inr Unknown
-                               | SOME bo => inr (Reln (bo, [e1, e2]))
-                         end)
+                    inr (case (bo, expIn e1, expIn e2) of
+                             (Exps f, inl e1, inl e2) => f (e1, e2)
+                           | (Props f, inr p1, inr p2) => f (p1, p2)
+                           | _ => Unknown)
 
             val p = case #Where r of
                         NONE => p

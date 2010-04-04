@@ -55,4 +55,6 @@ signature IFLOW = sig
 
     val check : Mono.file -> unit
 
+    val debug : bool ref
+
 end

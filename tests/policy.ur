@@ -12,7 +12,8 @@ policy query_policy (SELECT fruit.Id, fruit.Nam, fruit.Weight
                      FROM fruit)
 policy query_policy (SELECT order.Id, order.Fruit, order.Qty
                      FROM order, fruit
-                     WHERE order.Fruit = fruit.Id)
+                     WHERE order.Fruit = fruit.Id
+                       AND order.Qty = 13)
 
 fun main () =
     x1 <- queryX (SELECT fruit.Id, fruit.Nam
@@ -21,7 +22,8 @@ fun main () =
 
     x2 <- queryX (SELECT fruit.Nam, order.Qty
                   FROM fruit, order
-                  WHERE fruit.Id = order.Fruit)
+                  WHERE fruit.Id = order.Fruit
+                    AND order.Qty = 13)
                  (fn x => <xml><li>{[x.Fruit.Nam]}: {[x.Order.Qty]}</li></xml>);
 
     return <xml><body>
