@@ -222,17 +222,122 @@ fun chunkify e =
       | EStrcat (e1, e2) => chunkify e1 @ chunkify e2
       | _ => [Exp e]
 
+type 'a parser = chunk list -> ('a * chunk list) option
+
+fun always v chs = SOME (v, chs)
+
+fun parse p chs =
+    case p chs of
+        SOME (v, []) => SOME v
+      | _ => NONE
+
+fun const s chs =
+    case chs of
+        String s' :: chs => if String.isPrefix s s' then
+                                SOME ((), if size s = size s' then
+                                              chs
+                                          else
+                                              String (String.extract (s', size s, NONE)) :: chs)
+                            else
+                                NONE
+      | _ => NONE
+
+fun follow p1 p2 chs =
+    case p1 chs of
+        NONE => NONE
+      | SOME (v1, chs) =>
+        case p2 chs of
+            NONE => NONE
+          | SOME (v2, chs) => SOME ((v1, v2), chs)
+
+fun wrap p f chs =
+    case p chs of
+        NONE => NONE
+      | SOME (v, chs) => SOME (f v, chs)
+
+fun alt p1 p2 chs =
+    case p1 chs of
+        NONE => p2 chs
+      | v => v
+
+fun skip cp chs =
+    case chs of
+        String "" :: chs => skip cp chs
+      | String s :: chs' => if cp (String.sub (s, 0)) then
+                                skip cp (String (String.extract (s, 1, NONE)) :: chs')
+                            else
+                                SOME ((), chs)
+      | _ => SOME ((), chs)
+
+fun keep cp chs =
+    case chs of
+        String "" :: chs => keep cp chs
+      | String s :: chs' =>
+        let
+            val (befor, after) = Substring.splitl cp (Substring.full s)
+        in
+            if Substring.isEmpty befor then
+                NONE
+            else
+                SOME (Substring.string befor,
+                      if Substring.isEmpty after then
+                          chs'
+                      else
+                          String (Substring.string after) :: chs')
+        end
+      | _ => NONE
+
+fun ws p = wrap (follow p (skip (fn ch => ch = #" "))) #1
+
+fun list p chs =
+    (alt (wrap (follow p (follow (ws (const ",")) (list p)))
+               (fn (v, ((), ls)) => v :: ls))
+         (alt (wrap (ws p) (fn v => [v]))
+              (always []))) chs
+
+val ident = keep (fn ch => Char.isAlphaNum ch orelse ch = #"_")
+
+val t_ident = wrap ident (fn s => if String.isPrefix "T_" s then
+                                      String.extract (s, 2, NONE)
+                                  else
+                                      raise Fail "Iflow: Bad table variable")
+val uw_ident = wrap ident (fn s => if String.isPrefix "uw_" s then
+                                       String.extract (s, 3, NONE)
+                                   else
+                                       raise Fail "Iflow: Bad uw_* variable")
+
+val sitem = wrap (follow t_ident
+                         (follow (const ".")
+                                 uw_ident))
+                 (fn (t, ((), f)) => (t, f))
+
+val select = wrap (follow (const "SELECT ") (list sitem))
+                  (fn ((), ls) => ls)
+
+val fitem = wrap (follow uw_ident
+                         (follow (const " AS ")
+                                 t_ident))
+                 (fn (t, ((), f)) => (t, f))
+
+val from = wrap (follow (const "FROM ") (list fitem))
+                (fn ((), ls) => ls)
+
+val query = wrap (follow select from)
+            (fn (fs, ts) => {Select = fs, From = ts})
+
 fun queryProp rv e =
-    let
-        fun query chs =
-            case chs of
-                [] => raise Fail "Iflow: Empty query"
-              | Exp _ :: _ => Unknown
-              | String "" :: chs => query chs
-              | String s :: chs => True
-    in
-        query (chunkify e)
-    end
+    case parse query (chunkify e) of
+        NONE => Unknown
+      | SOME r =>
+        foldl (fn ((t, v), p) =>
+                  And (p,
+                       Reln (Sql t,
+                             [Recd (foldl (fn ((v', f), fs) =>
+                                              if v' = v then
+                                                  (f, Proj (Proj (Lvar rv, v), f)) :: fs
+                                             else
+                                                 fs) [] (#Select r))])))
+              True (#From r)
 
 fun evalExp env (e : Mono.exp, st as (nv, p, sent)) =
     let
