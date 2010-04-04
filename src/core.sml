@@ -135,6 +135,7 @@ datatype decl' =
        | DCookie of string * int * con * string
        | DStyle of string * int * string
        | DTask of exp * exp
+       | DPolicy of exp
 
 withtype decl = decl' located
 

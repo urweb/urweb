@@ -795,4 +795,13 @@ type task_kind
 val initialize : task_kind
 
 
+(** Information flow security *)
+
+type sql_policy
+
+val query_policy : tables ::: {{Type}} -> exps ::: {Type}
+                   -> [tables ~ exps] => sql_query [] tables exps
+                   -> sql_policy
+
+
 val debug : string -> transaction unit

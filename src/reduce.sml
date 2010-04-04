@@ -746,6 +746,15 @@ fun reduce file =
                       namedC,
                       namedE))
                 end
+              | DPolicy e1 =>
+                let
+                    val e1 = exp (namedC, namedE) [] e1
+                in
+                    ((DPolicy e1, loc),
+                     (polyC,
+                      namedC,
+                      namedE))
+                end
 
         val (file, _) = ListUtil.foldlMap doDecl (IS.empty, IM.empty, IM.empty) file
     in

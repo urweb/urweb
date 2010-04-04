@@ -674,6 +674,7 @@ fun cifyDecl ((d, loc), sm) =
              end
            | _ => (ErrorMsg.errorAt loc "Initializer has not been fully determined";
                    (NONE, NONE, sm)))
+      | L.DPolicy _ => (NONE, NONE, sm)
 
 fun cjrize ds =
     let

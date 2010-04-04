@@ -349,6 +349,7 @@ fun declBinds env (d, loc) =
             pushENamed env x n t NONE s
         end
       | DTask _ => env
+      | DPolicy _ => env
 
 fun patBinds env (p, loc) =
     case p of

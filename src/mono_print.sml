@@ -412,6 +412,12 @@ fun p_datatype env (x, n, cons) =
                         cons]
     end
 
+fun p_policy env pol =
+    case pol of
+        PolQuery e => box [string "query",
+                           space,
+                           p_exp env e]
+
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DDatatype x => box [string "datatype",
@@ -506,6 +512,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                                string "=",
                                space,
                                p_exp env e2]
+      | DPolicy p => box [string "policy",
+                          space,
+                          p_policy env p]
 
                           
 fun p_file env file =

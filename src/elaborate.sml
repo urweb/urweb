@@ -2595,6 +2595,7 @@ and sgiOfDecl (d, loc) =
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
       | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
       | L'.DTask _ => []
+      | L'.DPolicy _ => []
 
 and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
@@ -3728,6 +3729,15 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     checkCon env e1' t1 t1';
                     checkCon env e2' t2 t2';
                     ([(L'.DTask (e1', e2'), loc)], (env, denv, gs2 @ gs1 @ gs))
+                end
+              | L.DPolicy e1 =>
+                let
+                    val (e1', t1, gs1) = elabExp (env, denv) e1
+
+                    val t1' = (L'.CModProj (!basis_r, [], "sql_policy"), loc)
+                in
+                    checkCon env e1' t1 t1';
+                    ([(L'.DPolicy e1', loc)], (env, denv, gs1 @ gs))
                 end
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)

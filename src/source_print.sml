@@ -669,6 +669,9 @@ fun p_decl ((d, _) : decl) =
                                string "=",
                                space,
                                p_exp e2]
+      | DPolicy e1 => box [string "policy",
+                           space,
+                           p_exp e1]
 
 and p_str (str, _) =
     case str of

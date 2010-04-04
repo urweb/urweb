@@ -148,6 +148,7 @@ datatype decl' =
        | DCookie of int * string * int * con
        | DStyle of int * string * int
        | DTask of exp * exp
+       | DPolicy of exp
 
      and str' =
          StrConst of decl list

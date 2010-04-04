@@ -1623,5 +1623,6 @@ fun declBinds env (d, loc) =
             pushENamedAs env x n t
         end
       | DTask _ => env
+      | DPolicy _ => env
 
 end

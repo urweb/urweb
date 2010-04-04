@@ -90,6 +90,11 @@ fun shake file =
                         st
                     else
                         usedVars (usedVars st e1) e2
+                  | ((DPolicy e1, _), st) =>
+                    if !sliceDb then
+                        st
+                    else
+                        usedVars st e1
                   | (_, acc) => acc) (IS.empty, IS.empty) file
 
         val (cdef, edef) = foldl (fn ((DCon (_, n, _, c), _), (cdef, edef)) => (IM.insert (cdef, n, [c]), edef)
@@ -116,7 +121,8 @@ fun shake file =
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
                                    | ((DStyle (_, n, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], dummyt, dummye)))
-                                   | ((DTask _, _), acc) => acc)
+                                   | ((DTask _, _), acc) => acc
+                                   | ((DPolicy _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
         fun kind (_, s) = s
@@ -203,7 +209,8 @@ fun shake file =
                       | (DDatabase _, _) => not (!sliceDb)
                       | (DCookie _, _) => not (!sliceDb)
                       | (DStyle _, _) => not (!sliceDb)
-                      | (DTask _, _) => not (!sliceDb)) file
+                      | (DTask _, _) => not (!sliceDb)
+                      | (DPolicy _, _) => not (!sliceDb)) file
     end
 
 end

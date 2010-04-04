@@ -3738,6 +3738,20 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                       fm,
                       [(L'.DTask (e1, e2), loc)])
             end
+          | L.DPolicy e =>
+            let
+                val (e, make) =
+                    case #1 e of
+                        L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "query_policy"), _), _), _), _), _), e) =>
+                        (e, L'.PolQuery)
+                      | _ => (poly (); (e, L'.PolQuery))
+
+                val (e, fm) = monoExp (env, St.empty, fm) e
+            in
+                SOME (env,
+                      fm,
+                      [(L'.DPolicy (make e), loc)])
+            end
     end
 
 datatype expungable = Client | Channel

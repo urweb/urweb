@@ -130,6 +130,7 @@ fun declBinds env (d, loc) =
       | DCookie _ => env
       | DStyle _ => env
       | DTask _ => env
+      | DPolicy _ => env
 
 fun patBinds env (p, loc) =
     case p of

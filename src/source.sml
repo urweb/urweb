@@ -168,6 +168,7 @@ datatype decl' =
        | DCookie of string * con
        | DStyle of string
        | DTask of exp * exp
+       | DPolicy of exp
 
      and str' =
          StrConst of decl list
