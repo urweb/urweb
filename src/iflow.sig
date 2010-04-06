@@ -27,38 +27,6 @@
 
 signature IFLOW = sig
 
-    type lvar = int
-
-    datatype exp =
-             Const of Prim.t
-           | Var of int
-           | Lvar of int
-           | Func of string * exp list
-           | Recd of (string * exp) list
-           | Proj of exp * string
-           | Finish
-
-    datatype reln =
-             Known
-           | Sql of string
-           | Eq
-           | Ne
-           | Lt
-           | Le
-           | Gt
-           | Ge
-
-    datatype prop =
-             True
-           | False
-           | Unknown
-           | And of prop * prop
-           | Or of prop * prop
-           | Reln of reln * exp list
-           | Select of int * lvar * lvar * prop * exp
-
-    exception Imply of prop * prop
-
     val check : Mono.file -> unit
 
     val debug : bool ref
