@@ -68,6 +68,11 @@ datatype reln =
          Known
        | Sql of string
        | Eq
+       | Ne
+       | Lt
+       | Le
+       | Gt
+       | Ge
 
 datatype prop =
          True
@@ -92,7 +97,7 @@ fun p_exp e =
                              p_list p_exp es,
                              string ")"]
       | Recd xes => box [string "{",
-                         p_list (fn (x, e) => box [string "x",
+                         p_list (fn (x, e) => box [string x,
                                                    space,
                                                    string "=",
                                                    space,
@@ -101,6 +106,15 @@ fun p_exp e =
       | Proj (e, x) => box [p_exp e,
                             string ("." ^ x)]
       | Finish => string "FINISH"
+
+fun p_bop s es =
+    case es of
+        [e1, e2] => box [p_exp e1,
+                         space,
+                         string s,
+                         space,
+                         p_exp e2]
+      | _ => raise Fail "Iflow.p_bop"
 
 fun p_reln r es =
     case r of
@@ -113,14 +127,12 @@ fun p_reln r es =
       | Sql s => box [string (s ^ "("),
                       p_list p_exp es,
                       string ")"]
-      | Eq =>
-        (case es of
-             [e1, e2] => box [p_exp e1,
-                              space,
-                              string "=",
-                              space,
-                              p_exp e2]
-           | _ => raise Fail "Iflow.p_reln: Eq")
+      | Eq => p_bop "=" es
+      | Ne => p_bop "<>" es
+      | Lt => p_bop "<" es
+      | Le => p_bop "<=" es
+      | Gt => p_bop ">" es
+      | Ge => p_bop ">=" es
 
 fun p_prop p =
     case p of
@@ -660,8 +672,9 @@ val t_ident = wrap ident (fn s => if String.isPrefix "T_" s then
                                       String.extract (s, 2, NONE)
                                   else
                                       raise Fail "Iflow: Bad table variable")
-val uw_ident = wrap ident (fn s => if String.isPrefix "uw_" s then
-                                       String.extract (s, 3, NONE)
+val uw_ident = wrap ident (fn s => if String.isPrefix "uw_" s andalso size s >= 4 then
+                                       str (Char.toUpper (String.sub (s, 3)))
+                                       ^ String.extract (s, 4, NONE)
                                    else
                                        raise Fail "Iflow: Bad uw_* variable")
 
@@ -681,7 +694,14 @@ datatype sqexp =
        | SqKnown of sqexp
        | Inj of Mono.exp
 
-val sqbrel = altL [wrap (const "=") (fn () => Exps (fn (e1, e2) => Reln (Eq, [e1, e2]))),
+fun cmp s r = wrap (const s) (fn () => Exps (fn (e1, e2) => Reln (r, [e1, e2])))
+
+val sqbrel = altL [cmp "=" Eq,
+                   cmp "<>" Ne,
+                   cmp "<=" Le,
+                   cmp "<" Lt,
+                   cmp ">=" Ge,
+                   cmp ">" Gt,
                    wrap (const "AND") (fn () => Props And),
                    wrap (const "OR") (fn () => Props Or)]
 
@@ -788,7 +808,7 @@ fun queryProp env rv oe e =
     case parse query e of
         NONE => (print ("Warning: Information flow checker can't parse SQL query at "
                         ^ ErrorMsg.spanToString (#2 e) ^ "\n");
-                 Unknown)
+                 (Unknown, []))
       | SOME r =>
         let
             val p =
@@ -826,6 +846,14 @@ fun queryProp env rv oe e =
                         inl (deinj e)
                     end
 
+            fun usedFields e =
+                case e of
+                    SqConst _ => []
+                  | Field (v, f) => [Proj (Proj (Lvar rv, v), f)]
+                  | Binop (_, e1, e2) => usedFields e1 @ usedFields e2
+                  | SqKnown _ => []
+                  | Inj _ => []
+
             val p = case #Where r of
                         NONE => p
                       | SOME e =>
@@ -833,13 +861,17 @@ fun queryProp env rv oe e =
                             inr p' => And (p, p')
                           | _ => p
         in
-            case oe of
-                NONE => p
-              | SOME oe =>
-                And (p, foldl (fn ((v, f), p) =>
-                                  Or (p,
-                                      Reln (Eq, [oe, Proj (Proj (Lvar rv, v), f)])))
-                              False (#Select r))
+            (case oe of
+                 NONE => p
+               | SOME oe =>
+                 And (p, foldl (fn ((v, f), p) =>
+                                   Or (p,
+                                       Reln (Eq, [oe, Proj (Proj (Lvar rv, v), f)])))
+                               False (#Select r)),
+             
+             case #Where r of
+                 NONE => []
+               | SOME e => usedFields e)
         end
 
 fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
@@ -979,18 +1011,21 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
 
                 val r' = newLvar ()
                 val acc' = newLvar ()
-                val qp = queryProp env r' NONE q
+                val (qp, used) = queryProp env r' NONE q
 
                 val doSubExp = subExp (r, r') o subExp (acc, acc')
                 val doSubProp = subProp (r, r') o subProp (acc, acc')
 
                 val p = doSubProp (#2 st')
-                val p = And (p, qp)
-                val p = Select (r, r', acc', p, doSubExp b)
+                val p' = And (p, qp)
+                val p = Select (r, r', acc', p', doSubExp b)
+
+                val sent = map (fn (loc, e, p) => (loc,
+                                                   doSubExp e,
+                                                   And (qp, doSubProp p))) (#3 st')
+                val sent = map (fn e => (loc, e, p')) used @ sent
             in
-                (Var r, (#1 st + 1, And (#2 st, p), map (fn (loc, e, p) => (loc,
-                                                                            doSubExp e,
-                                                                            And (qp, doSubProp p))) (#3 st')))
+                (Var r, (#1 st + 1, And (#2 st, p), sent))
             end
           | EDml _ => default ()
           | ENextval _ => default ()
@@ -1036,7 +1071,7 @@ fun check file =
                     (sent @ vals, pols)
                 end
 
-              | DPolicy (PolQuery e) => (vals, queryProp [] 0 (SOME (Var 0)) e :: pols)
+              | DPolicy (PolQuery e) => (vals, #1 (queryProp [] 0 (SOME (Var 0)) e) :: pols)
 
               | _ => (vals, pols)
 

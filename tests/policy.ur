@@ -13,7 +13,7 @@ policy query_policy (SELECT fruit.Id, fruit.Nam
                      FROM fruit)
 
 (* The weight is sensitive information; you must know the secret. *)
-policy query_policy (SELECT fruit.Weight
+policy query_policy (SELECT fruit.Weight, fruit.Secret
                      FROM fruit
                      WHERE known(fruit.Secret))
 
@@ -26,7 +26,12 @@ fun fname r =
     x <- queryX (SELECT fruit.Weight
                  FROM fruit
                  WHERE fruit.Nam = {[r.Nam]}
-                   AND fruit.Secret = {[r.Secret]})
+                   AND fruit.Secret = {[r.Secret]}
+                   AND fruit.Weight <> 3.14
+                   AND fruit.Weight < 100.0
+                   AND fruit.Weight <= 200.1
+                   AND fruit.Weight > 1.23
+                   AND fruit.Weight >= 1.24)
          (fn r => <xml>Weight is {[r.Fruit.Weight]}</xml>);
 
     return <xml><body>
@@ -36,8 +41,7 @@ fun fname r =
 fun main () =
     x1 <- queryX (SELECT fruit.Id, fruit.Nam
                   FROM fruit
-                  WHERE fruit.Nam = "apple"
-                    AND fruit.Weight = 1.23)
+                  WHERE fruit.Nam = "apple")
                  (fn x => <xml><li>{[x.Fruit.Id]}: {[x.Fruit.Nam]}</li></xml>);
 
     x2 <- queryX (SELECT fruit.Nam, order.Qty
@@ -48,6 +52,7 @@ fun main () =
 
     return <xml><body>
       <ul>{x1}</ul>
+
       <ul>{x2}</ul>
 
       <form>

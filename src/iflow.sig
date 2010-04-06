@@ -42,6 +42,11 @@ signature IFLOW = sig
              Known
            | Sql of string
            | Eq
+           | Ne
+           | Lt
+           | Le
+           | Gt
+           | Ge
 
     datatype prop =
              True
