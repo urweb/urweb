@@ -35,7 +35,9 @@ fun fname r =
 
 fun main () =
     x1 <- queryX (SELECT fruit.Id, fruit.Nam
-                  FROM fruit)
+                  FROM fruit
+                  WHERE fruit.Nam = "apple"
+                    AND fruit.Weight = 1.23)
                  (fn x => <xml><li>{[x.Fruit.Id]}: {[x.Fruit.Nam]}</li></xml>);
 
     x2 <- queryX (SELECT fruit.Nam, order.Qty

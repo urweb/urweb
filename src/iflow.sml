@@ -585,6 +585,14 @@ fun wrap p f chs =
         NONE => NONE
       | SOME (v, chs) => SOME (f v, chs)
 
+fun wrapP p f chs =
+    case p chs of
+        NONE => NONE
+      | SOME (v, chs) =>
+        case f v of
+            NONE => NONE
+          | SOME r => SOME (r, chs)
+
 fun alt p1 p2 chs =
     case p1 chs of
         NONE => p2 chs
@@ -679,24 +687,42 @@ val sqbrel = altL [wrap (const "=") (fn () => Exps (fn (e1, e2) => Reln (Eq, [e1
 
 datatype ('a, 'b) sum = inl of 'a | inr of 'b
 
-fun int chs =
+fun string chs =
     case chs of
-        String s :: chs' =>
-        let
-            val (befor, after) = Substring.splitl Char.isDigit (Substring.full s)
-        in
-            if Substring.isEmpty befor then
-                NONE
-            else case Int64.fromString (Substring.string befor) of
-                     NONE => NONE
-                   | SOME n => SOME (n, if Substring.isEmpty after then
-                                            chs'
-                                        else
-                                            String (Substring.string after) :: chs')
-        end
-      | _ => NONE
+        String s :: chs =>
+        if size s >= 2 andalso String.sub (s, 0) = #"'" then
+            let
+                fun loop (cs, acc) =
+                    case cs of
+                        [] => NONE
+                      | c :: cs =>
+                        if c = #"'" then
+                            SOME (String.implode (rev acc), cs)
+                        else if c = #"\\" then
+                            case cs of
+                                c :: cs => loop (cs, c :: acc)
+                              | _ => raise Fail "Iflow.string: Unmatched backslash escape"
+                        else
+                            loop (cs, c :: acc)
+            in
+                case loop (String.explode (String.extract (s, 1, NONE)), []) of
+                    NONE => NONE
+                  | SOME (s, []) => SOME (s, chs)
+                  | SOME (s, cs) => SOME (s, String (String.implode cs) :: chs)
+            end
+        else
+            NONE
+      | _ => NONE                            
 
-val prim = wrap (follow (wrap int Prim.Int) (opt (const "::int8"))) #1
+val prim =
+    altL [wrap (follow (wrapP (follow (keep Char.isDigit) (follow (const ".") (keep Char.isDigit)))
+                              (fn (x, ((), y)) => Option.map Prim.Float (Real64.fromString (x ^ "." ^ y))))
+                       (opt (const "::float8"))) #1,
+          wrap (follow (wrapP (keep Char.isDigit)
+                              (Option.map Prim.Int o Int64.fromString))
+                       (opt (const "::int8"))) #1,
+          wrap (follow (opt (const "E")) (follow string (opt (const "::text"))))
+               (Prim.String o #1 o #2)]
 
 fun known' chs =
     case chs of
