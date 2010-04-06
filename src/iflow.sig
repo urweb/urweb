@@ -39,7 +39,8 @@ signature IFLOW = sig
            | Finish
 
     datatype reln =
-             Sql of string
+             Known
+           | Sql of string
            | Eq
 
     datatype prop =

@@ -498,6 +498,7 @@ val sql_ufunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_ufunc dom ran -> sql_exp tables agg exps dom
                 -> sql_exp tables agg exps ran
 val sql_octet_length : sql_ufunc blob int
+val sql_known : t ::: Type -> sql_ufunc t bool
 
 
 val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type

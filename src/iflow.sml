@@ -29,6 +29,7 @@ structure Iflow :> IFLOW = struct
 
 open Mono
 
+structure IS = IntBinarySet
 structure IM = IntBinaryMap
 
 structure SS = BinarySetFn(struct
@@ -64,7 +65,8 @@ datatype exp =
        | Finish
 
 datatype reln =
-         Sql of string
+         Known
+       | Sql of string
        | Eq
 
 datatype prop =
@@ -75,6 +77,85 @@ datatype prop =
        | Or of prop * prop
        | Reln of reln * exp list
        | Select of int * lvar * lvar * prop * exp
+
+local
+    open Print
+    val string = PD.string
+in
+
+fun p_exp e =
+    case e of
+        Const p => Prim.p_t p
+      | Var n => string ("x" ^ Int.toString n)
+      | Lvar n => string ("X" ^ Int.toString n)
+      | Func (f, es) => box [string (f ^ "("),
+                             p_list p_exp es,
+                             string ")"]
+      | Recd xes => box [string "{",
+                         p_list (fn (x, e) => box [string "x",
+                                                   space,
+                                                   string "=",
+                                                   space,
+                                                   p_exp e]) xes,
+                         string "}"]
+      | Proj (e, x) => box [p_exp e,
+                            string ("." ^ x)]
+      | Finish => string "FINISH"
+
+fun p_reln r es =
+    case r of
+        Known =>
+        (case es of
+             [e] => box [string "known(",
+                         p_exp e,
+                         string ")"]
+           | _ => raise Fail "Iflow.p_reln: Known")
+      | Sql s => box [string (s ^ "("),
+                      p_list p_exp es,
+                      string ")"]
+      | Eq =>
+        (case es of
+             [e1, e2] => box [p_exp e1,
+                              space,
+                              string "=",
+                              space,
+                              p_exp e2]
+           | _ => raise Fail "Iflow.p_reln: Eq")
+
+fun p_prop p =
+    case p of
+        True => string "True"
+      | False => string "False"
+      | Unknown => string "??"
+      | And (p1, p2) => box [string "(",
+                             p_prop p1,
+                             string ")",
+                             space,
+                             string "&&",
+                             space,
+                             string "(",
+                             p_prop p2,
+                             string ")"]
+      | Or (p1, p2) => box [string "(",
+                            p_prop p1,
+                            string ")",
+                            space,
+                            string "||",
+                            space,
+                            string "(",
+                            p_prop p2,
+                            string ")"]
+      | Reln (r, es) => p_reln r es
+      | Select (n1, n2, n3, p, e) => box [string ("select(x" ^ Int.toString n1
+                                                  ^ ",X" ^ Int.toString n2
+                                                  ^ ",X" ^ Int.toString n3
+                                                  ^ "){"),
+                                          p_prop p,
+                                          string "}{",
+                                          p_exp e,
+                                          string "}"]
+
+end
 
 local
     val count = ref 1
@@ -290,6 +371,19 @@ fun rimp ((r1, es1), (r2, es2)) =
                       eq (x1, y2) andalso eq (y1, x2))
              end
            | _ => false)
+      | (Known, Known) =>
+        (case (es1, es2) of
+             ([e1], [e2]) =>
+             let
+                 fun walk e2 =
+                     eq (e1, e2) orelse
+                     case e2 of
+                         Proj (e2, _) => walk e2
+                       | _ => false
+             in
+                 walk e2
+             end
+           | _ => false)
       | _ => false
 
 fun imply (p1, p2) =
@@ -344,7 +438,18 @@ datatype chunk =
 fun chunkify e =
     case #1 e of
         EPrim (Prim.String s) => [String s]
-      | EStrcat (e1, e2) => chunkify e1 @ chunkify e2
+      | EStrcat (e1, e2) =>
+        let
+            val chs1 = chunkify e1
+            val chs2 = chunkify e2
+        in
+            case chs2 of
+                String s2 :: chs2' =>
+                (case List.last chs1 of
+                     String s1 => List.take (chs1, length chs1 - 1) @ String (s1 ^ s2) :: chs2'
+                   | _ => chs1 @ chs2)
+              | _ => chs1 @ chs2
+        end
       | _ => [Exp e]
 
 type 'a parser = chunk list -> ('a * chunk list) option
@@ -384,6 +489,12 @@ fun alt p1 p2 chs =
     case p1 chs of
         NONE => p2 chs
       | v => v
+
+fun altL ps =
+    case rev ps of
+        [] => (fn _ => NONE)
+      | p :: ps =>
+        foldl (fn (p1, p2) => alt p1 p2) p ps
 
 fun opt p chs =
     case p chs of
@@ -425,17 +536,17 @@ val debug = ref false
 fun log name p chs =
     (if !debug then
          case chs of
-             String s :: [] => print (name ^ ": " ^ s ^ "\n")
+             String s :: _ => print (name ^ ": " ^ s ^ "\n")
            | _ => print (name ^ ": blocked!\n")
      else
          ();
      p chs)
 
 fun list p chs =
-    (alt (wrap (follow p (follow (ws (const ",")) (list p)))
-               (fn (v, ((), ls)) => v :: ls))
-         (alt (wrap (ws p) (fn v => [v]))
-              (always []))) chs
+    altL [wrap (follow p (follow (ws (const ",")) (list p)))
+               (fn (v, ((), ls)) => v :: ls),
+          wrap (ws p) (fn v => [v]),
+          always []] chs
 
 val ident = keep (fn ch => Char.isAlphaNum ch orelse ch = #"_")
 
@@ -461,10 +572,12 @@ datatype sqexp =
          SqConst of Prim.t
        | Field of string * string
        | Binop of Rel * sqexp * sqexp
+       | SqKnown of sqexp
+       | Inj of Mono.exp
 
-val sqbrel = alt (wrap (const "=") (fn () => Exps (fn (e1, e2) => Reln (Eq, [e1, e2]))))
-                 (alt (wrap (const "AND") (fn () => Props And))
-                      (wrap (const "OR") (fn () => Props Or)))
+val sqbrel = altL [wrap (const "=") (fn () => Exps (fn (e1, e2) => Reln (Eq, [e1, e2]))),
+                   wrap (const "AND") (fn () => Props And),
+                   wrap (const "OR") (fn () => Props Or)]
 
 datatype ('a, 'b) sum = inl of 'a | inr of 'b
 
@@ -487,50 +600,71 @@ fun int chs =
 
 val prim = wrap (follow (wrap int Prim.Int) (opt (const "::int8"))) #1
 
+fun known' chs =
+    case chs of
+        Exp (EFfi ("Basis", "sql_known"), _) :: chs => SOME ((), chs)
+      | _ => NONE
+
+fun sqlify chs =
+    case chs of
+        Exp (EFfiApp ("Basis", f, [e]), _) :: chs =>
+        if String.isPrefix "sqlify" f then
+            SOME (e, chs)
+        else
+            NONE
+      | _ => NONE
+
 fun sqexp chs =
     log "sqexp"
-    (alt
-         (wrap prim SqConst)
-         (alt
-              (wrap sitem Field)
-              (wrap
-                   (follow (ws (const "("))
-                           (follow (wrap
-                                        (follow sqexp
-                                                (alt
-                                                     (wrap
-                                                          (follow (ws sqbrel)
-                                                                  (ws sqexp))
-                                                          inl)
-                                                     (always (inr ()))))
-                                        (fn (e1, sm) =>
-                                            case sm of
-                                                inl (bo, e2) => Binop (bo, e1, e2)
-                                              | inr () => e1))
-                                   (const ")")))
-                   (fn ((), (e, ())) => e))))
-        chs
+    (altL [wrap prim SqConst,
+           wrap sitem Field,
+           wrap known SqKnown,
+           wrap sqlify Inj,
+           wrap (follow (ws (const "("))
+                        (follow (wrap
+                                     (follow sqexp
+                                             (alt
+                                                  (wrap
+                                                       (follow (ws sqbrel)
+                                                               (ws sqexp))
+                                                       inl)
+                                                  (always (inr ()))))
+                                     (fn (e1, sm) =>
+                                         case sm of
+                                             inl (bo, e2) => Binop (bo, e1, e2)
+                                           | inr () => e1))
+                                (const ")")))
+                (fn ((), (e, ())) => e)])
+    chs
 
-val select = wrap (follow (const "SELECT ") (list sitem))
-                  (fn ((), ls) => ls)
+and known chs = wrap (follow known' (follow (const "(") (follow sqexp (const ")"))))
+                (fn ((), ((), (e, ()))) => e) chs
+
+val select = log "select"
+             (wrap (follow (const "SELECT ") (list sitem))
+                   (fn ((), ls) => ls))
 
 val fitem = wrap (follow uw_ident
                          (follow (const " AS ")
                                  t_ident))
                  (fn (t, ((), f)) => (t, f))
 
-val from = wrap (follow (const "FROM ") (list fitem))
-                (fn ((), ls) => ls)
+val from = log "from"
+           (wrap (follow (const "FROM ") (list fitem))
+                 (fn ((), ls) => ls))
 
 val wher = wrap (follow (ws (const "WHERE ")) sqexp)
            (fn ((), ls) => ls)
 
-val query = wrap (follow (follow select from) (opt wher))
-            (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher})
+val query = log "query"
+                (wrap (follow (follow select from) (opt wher))
+                      (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher}))
 
-fun queryProp rv oe e =
+fun queryProp env rv oe e =
     case parse query e of
-        NONE => (print "Crap\n"; Unknown)
+        NONE => (print ("Warning: Information flow checker can't parse SQL query at "
+                        ^ ErrorMsg.spanToString (#2 e) ^ "\n");
+                 Unknown)
       | SOME r =>
         let
             val p =
@@ -553,6 +687,20 @@ fun queryProp rv oe e =
                              (Exps f, inl e1, inl e2) => f (e1, e2)
                            | (Props f, inr p1, inr p2) => f (p1, p2)
                            | _ => Unknown)
+                  | SqKnown e =>
+                    inr (case expIn e of
+                             inl e => Reln (Known, [e])
+                           | _ => Unknown)
+                  | Inj e =>
+                    let
+                        fun deinj (e, _) =
+                            case e of
+                                ERel n => List.nth (env, n)
+                              | EField (e, f) => Proj (deinj e, f)
+                              | _ => raise Fail "Iflow: non-variable injected into query"
+                    in
+                        inl (deinj e)
+                    end
 
             val p = case #Where r of
                         NONE => p
@@ -707,7 +855,7 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
 
                 val r' = newLvar ()
                 val acc' = newLvar ()
-                val qp = queryProp r' NONE q
+                val qp = queryProp env r' NONE q
 
                 val doSubExp = subExp (r, r') o subExp (acc, acc')
                 val doSubProp = subProp (r, r') o subProp (acc, acc')
@@ -737,23 +885,34 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
 
 fun check file =
     let
+        val exptd = foldl (fn ((d, _), exptd) =>
+                              case d of
+                                  DExport (_, _, n, _, _, _) => IS.add (exptd, n)
+                                | _ => exptd) IS.empty file
+
         fun decl ((d, _), (vals, pols)) =
             case d of
-                DVal (x, _, _, e, _) =>
+                DVal (_, n, _, e, _) =>
                 let
-                    fun deAbs (e, env, nv) =
+                    val isExptd = IS.member (exptd, n)
+
+                    fun deAbs (e, env, nv, p) =
                         case #1 e of
-                            EAbs (_, _, _, e) => deAbs (e, Var nv :: env, nv + 1)
-                          | _ => (e, env, nv)
+                            EAbs (_, _, _, e) => deAbs (e, Var nv :: env, nv + 1,
+                                                        if isExptd then
+                                                            And (p, Reln (Known, [Var nv]))
+                                                        else
+                                                            p)
+                          | _ => (e, env, nv, p)
 
-                    val (e, env, nv) = deAbs (e, [], 1)
+                    val (e, env, nv, p) = deAbs (e, [], 1, True)
 
-                    val (e, (_, p, sent)) = evalExp env (e, (nv, True, []))
+                    val (e, (_, p, sent)) = evalExp env (e, (nv, p, []))
                 in
-                    ((x, e, p, sent) :: vals, pols)
+                    (sent @ vals, pols)
                 end
 
-              | DPolicy (PolQuery e) => (vals, queryProp 0 (SOME (Var 0)) e :: pols)
+              | DPolicy (PolQuery e) => (vals, queryProp [] 0 (SOME (Var 0)) e :: pols)
 
               | _ => (vals, pols)
 
@@ -761,16 +920,16 @@ fun check file =
 
         val (vals, pols) = foldl decl ([], []) file
     in
-        app (fn (name, _, _, sent) =>
-                app (fn (loc, e, p) =>
-                        let
-                            val p = And (p, Reln (Eq, [Var 0, e]))
-                        in
-                            if List.exists (fn pol => imply (p, pol)) pols then
-                                ()
-                            else
-                                ErrorMsg.errorAt loc "The information flow policy may be violated here."
-                        end) sent) vals
+        app (fn (loc, e, p) =>
+                let
+                    val p = And (p, Reln (Eq, [Var 0, e]))
+                in
+                    if List.exists (fn pol => imply (p, pol)) pols then
+                        ()
+                    else
+                        (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
+                         Print.preface ("The state satisifes this predicate:", p_prop p))
+                end) vals
     end
 
 end

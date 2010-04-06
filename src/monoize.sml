@@ -2580,6 +2580,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          "octet_length"
                                      else
                                          "length")), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_known"), _), _) =>
+            ((L'.EFfi ("Basis", "sql_known"), loc), fm)
 
           | (L.ECApp (
              (L.ECApp (

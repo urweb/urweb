@@ -193,6 +193,12 @@ fun match (env, p : pat, e : exp) =
         else
             No
 
+      | (PPrim (Prim.String s), EStrcat (_, (EPrim (Prim.String s'), _))) =>
+        if String.isSuffix s' s then
+            Maybe
+        else
+            No
+
       | (PPrim p, EPrim p') =>
         if Prim.equal (p, p') then
             Yes env
