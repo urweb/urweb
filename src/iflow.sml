@@ -49,7 +49,8 @@ val writers = ["htmlifyInt_w",
                "urlifyInt_w",
                "urlifyFloat_w",
                "urlifyString_w",
-               "urlifyBool_w"]
+               "urlifyBool_w",
+               "set_cookie"]
 
 val writers = SS.addList (SS.empty, writers)
 
@@ -367,7 +368,9 @@ fun eq' (e1, e2) =
              if lvarIn n2 e1 then
                  false
              else
-                 (unif := IM.insert (!unif, n2, e1);
+                 ((*Print.prefaces "unif" [("n2", Print.PD.string (Int.toString n2)),
+                                         ("e1", p_exp e1)];*)
+                  unif := IM.insert (!unif, n2, e1);
                   true))
                                        
       | (Func (f1, es1), Func (f2, es2)) => f1 = f2 andalso ListPair.allEq eq' (es1, es2)
@@ -442,7 +445,7 @@ fun assert (t, e1, e2) =
         val r1 = lookup (t, e1)
         val r2 = lookup (t, e2)
 
-        fun doUn (t', e1, e2) =
+        fun doUn k (t', e1, e2) =
             case e2 of
                 Func (f, [e]) =>
                 if String.isPrefix "un" f then
@@ -453,19 +456,20 @@ fun assert (t, e1, e2) =
                                   case e' of
                                       Func (f'', [e'']) =>
                                       if f'' = f' then
-                                          (lookup (t', e1), e'') :: t'
+                                          (lookup (t', e1), k e'') :: t'
                                       else
                                           t'
                                     | _ => t') t' (allPeers (t, e))
                     end
                 else
                     t'
+              | Proj (e2, f) => doUn (fn e' => k (Proj (e', f))) (t', e1, e2)
               | _ => t'
     in
         if eq (r1, r2) then
             t
         else
-            doUn (doUn ((r1, r2) :: t, e1, e2), e2, e1)
+            doUn (fn x => x) (doUn (fn x => x) ((r1, r2) :: t, e1, e2), e2, e1)
     end
 
 open Print
@@ -558,7 +562,8 @@ fun imply (p1, p2) =
                                                   let
                                                       fun hps hyps =
                                                           case hyps of
-                                                              [] => onFail ()
+                                                              [] => ((*Print.preface ("Fail", p_prop (Reln g));*)
+                                                                     onFail ())
                                                             | ACond _ :: hyps => hps hyps
                                                             | AReln h :: hyps =>
                                                               let
@@ -570,7 +575,12 @@ fun imply (p1, p2) =
                                                                                         <> IM.numItems saved
                                                                       in
                                                                           gls goals (fn () => (restore saved;
-                                                                                               changed andalso hps hyps))
+                                                                                               changed (*andalso 
+                                                                                               (Print.preface ("Retry",
+                                                                                                               p_prop
+                                                                                                                   (Reln g)
+                                                                                                              ); true)*)
+                                                                                               andalso hps hyps))
                                                                       end
                                                                   else
                                                                       hps hyps
@@ -1073,7 +1083,9 @@ fun removeRedundant p1 =
 fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
     let
         fun default () =
-            (Var nv, (nv+1, p, sent))
+            ((*Print.preface ("Default" ^ Int.toString nv,
+                            MonoPrint.p_exp MonoEnv.empty e);*)
+            (Var nv, (nv+1, p, sent)))
 
         fun addSent (p, e, sent) =
             if isKnown e then
@@ -1100,6 +1112,7 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
                 (Func ("Some", [e]), st)
             end
           | EFfi _ => default ()
+
           | EFfiApp (m, s, es) =>
             if m = "Basis" andalso SS.member (writers, s) then
                 let
@@ -1115,7 +1128,16 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
                 in
                     (Func (m ^ "." ^ s, es), st)
                 end
-          | EApp _ => default ()
+
+          | EApp (e1, e2) =>
+            let
+                val (e1, st) = evalExp env (e1, st)
+            in
+                case e1 of
+                    Finish => (Finish, st)
+                  | _ => default ()
+            end
+
           | EAbs _ => default ()
           | EUnop (s, e1) =>
             let
@@ -1252,6 +1274,9 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
           | ENextval _ => default ()
           | ESetval _ => default ()
 
+          | EUnurlify ((EFfiApp ("Basis", "get_cookie", _), _), _, _) =>
+            (Var nv, (nv + 1, And (p, Reln (Known, [Var nv])), sent))
+
           | EUnurlify _ => default ()
           | EJavaScript _ => default ()
           | ESignalReturn _ => default ()
@@ -1265,6 +1290,12 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
 
 fun check file =
     let
+        val file = MonoReduce.reduce file
+        val file = MonoOpt.optimize file
+        val file = Fuse.fuse file
+        val file = MonoOpt.optimize file
+        (*val () = Print.preface ("File", MonoPrint.p_file MonoEnv.empty file)*)
+
         val exptd = foldl (fn ((d, _), exptd) =>
                               case d of
                                   DExport (_, _, n, _, _, _) => IS.add (exptd, n)
@@ -1302,23 +1333,55 @@ fun check file =
     in
         app (fn (loc, e, p) =>
                 let
-                    val p = And (p, Reln (Eq, [Var 0, e]))
+                    fun doOne e =
+                        let
+                            val p = And (p, Reln (Eq, [Var 0, e]))
+                        in
+                            if List.exists (fn pol => if imply (p, pol) then
+                                                          (if !debug then
+                                                               Print.prefaces "Match"
+                                                                              [("Hyp", p_prop p),
+                                                                               ("Goal", p_prop pol)]
+                                                           else
+                                                               ();
+                                                           true)
+                                                      else
+                                                          false) pols then
+                                ()
+                            else
+                                (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
+                                 Print.preface ("The state satisifes this predicate:", p_prop p))
+                        end
+
+                    fun doAll e =
+                        case e of
+                            Const _ => ()
+                          | Var _ => doOne e
+                          | Lvar _ => raise Fail "Iflow.doAll: Lvar"
+                          | Func (f, es) => if String.isPrefix "un" f then
+                                                doOne e
+                                            else
+                                                app doAll es
+                          | Recd xes => app (doAll o #2) xes
+                          | Proj _ => doOne e
+                          | Finish => ()
                 in
-                    if List.exists (fn pol => if imply (p, pol) then
-                                                  (if !debug then
-                                                       Print.prefaces "Match"
-                                                       [("Hyp", p_prop p),
-                                                        ("Goal", p_prop pol)]
-                                                   else
-                                                       ();
-                                                   true)
-                                              else
-                                                  false) pols then
-                        ()
-                    else
-                        (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
-                         Print.preface ("The state satisifes this predicate:", p_prop p))
+                    doAll e
                 end) vals
     end
 
+val check = fn file =>
+               let
+                   val oldInline = Settings.getMonoInline ()
+               in
+                   (Settings.setMonoInline (case Int.maxInt of
+                                                NONE => 1000000
+                                              | SOME n => n);
+                    check file;
+                    Settings.setMonoInline oldInline)
+                   handle ex => (Settings.setMonoInline oldInline;
+                                 raise ex)
+               end
+
 end
+
