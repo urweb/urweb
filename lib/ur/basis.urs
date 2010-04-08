@@ -800,9 +800,9 @@ val initialize : task_kind
 
 type sql_policy
 
-val query_policy : tables ::: {{Type}} -> exps ::: {Type}
-                   -> [tables ~ exps] => sql_query [] tables exps
-                   -> sql_policy
+val sendClient : tables ::: {{Type}} -> exps ::: {Type}
+                 -> [tables ~ exps] => sql_query [] tables exps
+                 -> sql_policy
 
 
 val debug : string -> transaction unit

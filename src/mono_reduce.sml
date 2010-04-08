@@ -423,18 +423,21 @@ fun reduce file =
                       | ERecord xets => List.concat (map (summarize d o #2) xets)
                       | EField (e, _) => summarize d e
 
-                      | ECase (e, pes, _) => summarize d e @ [Unsure]
-                        (*let
+                      | ECase (e, pes, _) =>
+                        let
                             val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
                         in
                             case lss of
                                 [] => raise Fail "Empty pattern match"
                               | ls :: lss =>
-                                if List.all (fn ls' => ls' = ls) lss then
-                                    summarize d e @ ls
-                                else
-                                    [Unsure]
-                        end*)
+                                summarize d e
+                                @ (if List.all (fn ls' => ls' = ls) lss then
+                                       ls
+                                   else if length (List.filter (not o List.null) (ls :: lss)) <= 1 then
+                                       valOf (List.find (not o List.null) (ls :: lss))
+                                   else
+                                       [Unsure])
+                        end
                       | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
 
                       | EError (e, _) => summarize d e @ [Unsure]

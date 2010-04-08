@@ -541,9 +541,9 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
 
         and mfpol ctx pol =
             case pol of
-                PolQuery e =>
+                PolClient e =>
                 S.map2 (mfe ctx e,
-                        PolQuery)
+                        PolClient)
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mft t,

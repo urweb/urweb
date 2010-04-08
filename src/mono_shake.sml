@@ -61,7 +61,7 @@ fun shake file =
                   | ((DPolicy pol, _), st) =>
                     let
                         val e1 = case pol of
-                                     PolQuery e1 => e1
+                                     PolClient e1 => e1
                     in
                         usedVars st e1
                     end

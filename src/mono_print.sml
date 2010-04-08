@@ -414,9 +414,9 @@ fun p_datatype env (x, n, cons) =
 
 fun p_policy env pol =
     case pol of
-        PolQuery e => box [string "query",
-                           space,
-                           p_exp env e]
+        PolClient e => box [string "sendClient",
+                            space,
+                            p_exp env e]
 
 fun p_decl env (dAll as (d, _) : decl) =
     case d of

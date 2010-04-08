@@ -3744,9 +3744,9 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             let
                 val (e, make) =
                     case #1 e of
-                        L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "query_policy"), _), _), _), _), _), e) =>
-                        (e, L'.PolQuery)
-                      | _ => (poly (); (e, L'.PolQuery))
+                        L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sendClient"), _), _), _), _), _), e) =>
+                        (e, L'.PolClient)
+                      | _ => (poly (); (e, L'.PolClient))
 
                 val (e, fm) = monoExp (env, St.empty, fm) e
             in

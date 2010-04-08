@@ -123,7 +123,7 @@ datatype exp' =
 
 withtype exp = exp' located
 
-datatype policy = PolQuery of exp
+datatype policy = PolClient of exp
 
 datatype decl' =
          DDatatype of (string * int * (string * int * typ option) list) list
