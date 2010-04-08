@@ -32,10 +32,13 @@ open Mono
 structure IS = IntBinarySet
 structure IM = IntBinaryMap
 
-structure SS = BinarySetFn(struct
-                           type ord_key = string
-                           val compare = String.compare
-                           end)
+structure SK = struct
+type ord_key = string
+val compare = String.compare
+end
+
+structure SS = BinarySetFn(SK)
+structure SM = BinaryMapFn(SK)
 
 val writers = ["htmlifyInt_w",
                "htmlifyFloat_w",
@@ -56,11 +59,17 @@ val writers = SS.addList (SS.empty, writers)
 
 type lvar = int
 
+datatype func =
+         DtCon0 of string
+       | DtCon1 of string
+       | UnCon of string
+       | Other of string
+
 datatype exp =
          Const of Prim.t
        | Var of int
        | Lvar of lvar
-       | Func of string * exp list
+       | Func of func * exp list
        | Recd of (string * exp) list
        | Proj of exp * string
        | Finish
@@ -68,7 +77,8 @@ datatype exp =
 datatype reln =
          Known
        | Sql of string
-       | DtCon of string
+       | PCon0 of string
+       | PCon1 of string
        | Eq
        | Ne
        | Lt
@@ -85,17 +95,34 @@ datatype prop =
        | Reln of reln * exp list
        | Cond of exp * prop
 
+val unif = ref (IM.empty : exp IM.map)
+
+fun reset () = unif := IM.empty
+fun save () = !unif
+fun restore x = unif := x
+
 local
     open Print
     val string = PD.string
 in
 
+fun p_func f =
+    string (case f of
+                DtCon0 s => s
+              | DtCon1 s => s
+              | UnCon s => "un" ^ s
+              | Other s => s)
+
 fun p_exp e =
     case e of
         Const p => Prim.p_t p
       | Var n => string ("x" ^ Int.toString n)
-      | Lvar n => string ("X" ^ Int.toString n)
-      | Func (f, es) => box [string (f ^ "("),
+      | Lvar n =>
+        (case IM.find (!unif, n) of
+             NONE => string ("X" ^ Int.toString n)
+           | SOME e => p_exp e)
+      | Func (f, es) => box [p_func f,
+                             string "(",
                              p_list p_exp es,
                              string ")"]
       | Recd xes => box [string "{",
@@ -129,7 +156,10 @@ fun p_reln r es =
       | Sql s => box [string (s ^ "("),
                       p_list p_exp es,
                       string ")"]
-      | DtCon s => box [string (s ^ "("),
+      | PCon0 s => box [string (s ^ "("),
+                        p_list p_exp es,
+                        string ")"]
+      | PCon1 s => box [string (s ^ "("),
                         p_list p_exp es,
                         string ")"]
       | Eq => p_bop "=" es
@@ -198,12 +228,6 @@ fun isFinish e =
         Finish => true
       | _ => false
 
-val unif = ref (IM.empty : exp IM.map)
-
-fun reset () = unif := IM.empty
-fun save () = !unif
-fun restore x = unif := x
-
 fun simplify e =
     case e of
         Const _ => e
@@ -212,42 +236,9 @@ fun simplify e =
         (case IM.find (!unif, n) of
              NONE => e
            | SOME e => simplify e)
-      | Func (f, es) =>
-        let
-            val es = map simplify es
-
-            fun default () = Func (f, es)
-        in
-            if List.exists isFinish es then
-                Finish
-            else if String.isPrefix "un" f then
-                case es of
-                    [Func (f', [e])] => if f' = String.extract (f, 2, NONE) then
-                                            e
-                                        else
-                                            default ()
-                  | _ => default ()
-            else
-                default ()
-        end
-      | Recd xes =>
-        let
-            val xes = map (fn (x, e) => (x, simplify e)) xes
-        in
-            if List.exists (isFinish o #2) xes then
-                Finish
-            else
-                Recd xes
-        end
-      | Proj (e, s) =>
-        (case simplify e of
-             Recd xes =>
-             getOpt (ListUtil.search (fn (x, e') => if x = s then SOME e' else NONE) xes, Recd xes)
-           | e' =>
-             if isFinish e' then
-                 Finish
-             else
-                 Proj (e', s))
+      | Func (f, es) => Func (f, map simplify es)
+      | Recd xes => Recd (map (fn (x, e) => (x, simplify e)) xes)
+      | Proj (e, s) => Proj (simplify e, s)
       | Finish => Finish
 
 datatype atom =
@@ -258,25 +249,6 @@ fun p_atom a =
     p_prop (case a of
                 AReln x => Reln x
               | ACond x => Cond x)
-
-fun decomp fals or =
-    let
-        fun decomp p k =
-            case p of
-                True => k []
-              | False => fals
-              | Unknown => k []
-              | And (p1, p2) => 
-                decomp p1 (fn ps1 =>
-                              decomp p2 (fn ps2 =>
-                                            k (ps1 @ ps2)))
-              | Or (p1, p2) =>
-                or (decomp p1 k, fn () => decomp p2 k)
-              | Reln x => k [AReln x]
-              | Cond x => k [ACond x]
-    in
-        decomp
-    end
 
 fun lvarIn lv =
     let
@@ -407,259 +379,522 @@ fun eeq (e1, e2) =
              
 (* Congruence closure *)
 structure Cc :> sig
-    type t
-    val empty : t
-    val assert : t * exp * exp -> t
-    val query : t * exp * exp -> bool
-    val allPeers : t * exp -> exp list
-    val p_t : t Print.printer
+    type database
+    type representative
+
+    exception Contradiction
+    exception Undetermined
+
+    val database : unit -> database
+    val representative : database * exp -> representative
+
+    val assert : database * atom -> unit
+    val check : database * atom -> bool
+
+    val p_database : database Print.printer
 end = struct
 
-fun eq (e1, e2) = eeq (simplify e1, simplify e2)
+exception Contradiction
+exception Undetermined
 
-type t = (exp * exp) list
+structure CM = BinaryMapFn(struct
+                           type ord_key = Prim.t
+                           val compare = Prim.compare
+                           end)
 
-val empty = []
+datatype node = Node of {Rep : node ref option ref,
+                         Cons : node ref SM.map ref,
+                         Variety : variety,
+                         Known : bool ref}
 
-fun lookup (t, e) =
-    case List.find (fn (e', _) => eq (e', e)) t of
-        NONE => e
-      | SOME (_, e2) => lookup (t, e2)
+     and variety =
+         Dt0 of string
+       | Dt1 of string * node ref
+       | Prim of Prim.t
+       | Recrd of node ref SM.map ref
+       | VFinish
+       | Nothing
 
-fun allPeers (t, e) =
-    let
-        val r = lookup (t, e)
-    in
-        r :: List.mapPartial (fn (e1, e2) =>
-                                 let
-                                     val r' = lookup (t, e2)
-                                 in
-                                     if eq (r, r') then
-                                         SOME e1
-                                     else
-                                         NONE
-                                 end) t
-    end
+type representative = node ref
+
+val finish = ref (Node {Rep = ref NONE,
+                        Cons = ref SM.empty,
+                        Variety = VFinish,
+                        Known = ref false})
+
+type database = {Vars : representative IM.map ref,
+                 Consts : representative CM.map ref,
+                 Con0s : representative SM.map ref,
+                 Records : (representative SM.map * representative) list ref,
+                 Funcs : ((string * representative list) * representative) list ref }
+
+fun database () = {Vars = ref IM.empty,
+                   Consts = ref CM.empty,
+                   Con0s = ref SM.empty,
+                   Records = ref [],
+                   Funcs = ref []}
+
+fun unNode n =
+    case !n of
+        Node r => r
 
 open Print
+val string = PD.string
+val newline = PD.newline
 
-val p_t = p_list (fn (e1, e2) => box [p_exp (simplify e1),
-                                      space,
-                                      PD.string "->",
-                                      space,
-                                      p_exp (simplify e2)])
+fun p_rep n =
+    case !(#Rep (unNode n)) of
+        SOME n => p_rep n
+      | NONE =>
+        case #Variety (unNode n) of
+            Nothing => string ("?" ^ Int.toString (Unsafe.cast n))
+          | Dt0 s => string ("Dt0(" ^ s ^ ")")
+          | Dt1 (s, n) => box[string ("Dt1(" ^ s ^ ","),
+                              space,
+                              p_rep n,
+                              string ")"]
+          | Prim p => Prim.p_t p
+          | Recrd (ref m) => box [string "{",
+                                  p_list (fn (x, n) => box [string x,
+                                                            space,
+                                                            string "=",
+                                                            space,
+                                                            p_rep n]) (SM.listItemsi m),
+                                  string "}"]
+          | VFinish => string "FINISH"
 
-fun query (t, e1, e2) =
+fun p_database (db : database) =
+    box [string "Vars:",
+         newline,
+         p_list_sep newline (fn (i, n) => box [string ("x" ^ Int.toString i),
+                                               space,
+                                               string "=",
+                                               space,
+                                               p_rep n]) (IM.listItemsi (!(#Vars db)))]
+
+fun repOf (n : representative) : representative =
+    case !(#Rep (unNode n)) of
+        NONE => n
+      | SOME r =>
+        let
+            val r = repOf r
+        in
+            #Rep (unNode n) := SOME r;
+            r
+        end
+
+fun markKnown r =
+    (#Known (unNode r) := true;
+     case #Variety (unNode r) of
+         Dt1 (_, r) => markKnown r
+       | Recrd xes => SM.app markKnown (!xes)
+       | _ => ())
+
+fun representative (db : database, e) =
     let
-        fun doUn e =
+        fun rep e =
             case e of
-                Func (f, [e1]) =>
-                if String.isPrefix "un" f then
-                    let
-                        val s = String.extract (f, 2, NONE)
-                    in
-                        case ListUtil.search (fn e =>
-                                                 case e of
-                                                     Func (f', [e']) =>
-                                                     if f' = s then
-                                                         SOME e'
-                                                     else
-                                                         NONE
-                                                   | _ => NONE) (allPeers (t, e1)) of
-                            NONE => e
-                          | SOME e => doUn e
-                    end
-                else
-                    e
-              | _ => e
-
-        val e1' = doUn (lookup (t, doUn (simplify e1)))
-        val e2' = doUn (lookup (t, doUn (simplify e2)))
-    in
-        (*prefaces "CC query" [("e1", p_exp (simplify e1)),
-                             ("e2", p_exp (simplify e2)),
-                             ("e1'", p_exp (simplify e1')),
-                             ("e2'", p_exp (simplify e2')),
-                             ("t", p_t t)];*)
-        eq (e1', e2')
-    end
-
-fun assert (t, e1, e2) =
-    let
-        val r1 = lookup (t, e1)
-        val r2 = lookup (t, e2)
-    in
-        if eq (r1, r2) then
-            t
-        else
-            let
-                fun doUn (t, e1, e2) =
-                    case e1 of
-                        Func (f, [e]) => if String.isPrefix "un" f then
-                                             let
-                                                 val s = String.extract (f, 2, NONE)
-                                             in
-                                                 foldl (fn (e', t) =>
-                                                           case e' of
-                                                               Func (f', [e']) =>
-                                                               if f' = s then
-                                                                   assert (assert (t, e', e1), e', e2)
-                                                               else
-                                                                   t
-                                                             | _ => t) t (allPeers (t, e))
-                                             end
-                                         else
-                                             t
-                      | _ => t
-
-                fun doProj (t, e1, e2) =
-                    foldl (fn ((e1', e2'), t) =>
+                Const p => (case CM.find (!(#Consts db), p) of
+                                SOME r => repOf r
+                              | NONE =>
+                                let
+                                    val r = ref (Node {Rep = ref NONE,
+                                                       Cons = ref SM.empty,
+                                                       Variety = Prim p,
+                                                       Known = ref false})
+                                in
+                                    #Consts db := CM.insert (!(#Consts db), p, r);
+                                    r
+                                end)
+              | Var n => (case IM.find (!(#Vars db), n) of
+                              SOME r => repOf r
+                            | NONE =>
                               let
-                                  fun doOne (e, t) =
-                                      case e of
-                                          Proj (e', f) =>
-                                          if query (t, e1, e') then
-                                              assert (t, e, Proj (e2, f))
-                                          else
-                                              t
-                                        | _ => t
+                                  val r = ref (Node {Rep = ref NONE,
+                                                     Cons = ref SM.empty,
+                                                     Variety = Nothing,
+                                                     Known = ref false})
                               in
-                                  doOne (e1', doOne (e2', t))
-                              end) t t
+                                  #Vars db := IM.insert (!(#Vars db), n, r);
+                                  r
+                              end)
+              | Lvar n =>
+                (case IM.find (!unif, n) of
+                     NONE => raise Undetermined
+                   | SOME e => rep e)
+              | Func (DtCon0 f, []) => (case SM.find (!(#Con0s db), f) of
+                                            SOME r => repOf r
+                                          | NONE =>
+                                            let
+                                                val r = ref (Node {Rep = ref NONE,
+                                                                   Cons = ref SM.empty,
+                                                                   Variety = Dt0 f,
+                                                                   Known = ref false})
+                                            in
+                                                #Con0s db := SM.insert (!(#Con0s db), f, r);
+                                                r
+                                            end)
+              | Func (DtCon0 _, _) => raise Fail "Iflow.rep: DtCon0"
+              | Func (DtCon1 f, [e]) =>
+                let
+                    val r = rep e
+                in
+                    case SM.find (!(#Cons (unNode r)), f) of
+                        SOME r => repOf r
+                      | NONE =>
+                        let
+                            val r' = ref (Node {Rep = ref NONE,
+                                                Cons = ref SM.empty,
+                                                Variety = Dt1 (f, r),
+                                                Known = ref false})
+                        in
+                            #Cons (unNode r) := SM.insert (!(#Cons (unNode r)), f, r');
+                            r'
+                        end
+                end
+              | Func (DtCon1 _, _) => raise Fail "Iflow.rep: DtCon1"
+              | Func (UnCon f, [e]) =>
+                let
+                    val r = rep e
+                in
+                    case #Variety (unNode r) of
+                        Dt1 (f', n) => if f' = f then
+                                           repOf n
+                                       else
+                                           raise Contradiction
+                      | Nothing =>
+                        let
+                            val cons = ref SM.empty
+                            val r' = ref (Node {Rep = ref NONE,
+                                                Cons = cons,
+                                                Variety = Nothing,
+                                                Known = ref false})
 
-                val t = (r1, r2) :: t
-                val t = doUn (t, r1, r2)
-                val t = doUn (t, r2, r1)
-                val t = doProj (t, r1, r2)
-                val t = doProj (t, r2, r1)
-            in
-                t
-            end
+                            val r'' = ref (Node {Rep = ref NONE,
+                                                 Cons = #Cons (unNode r),
+                                                 Variety = Dt1 (f, r'),
+                                                 Known = #Known (unNode r)})
+                        in
+                            cons := SM.insert (!cons, f, r'');
+                            #Rep (unNode r) := SOME r'';
+                            r'
+                        end
+                      | VFinish => r
+                      | _ => raise Contradiction
+                end
+              | Func (UnCon _, _) => raise Fail "Iflow.rep: UnCon"
+              | Func (Other f, es) =>
+                let
+                    val rs = map rep es
+                in
+                    case List.find (fn (x : string * representative list, _) => x = (f, rs)) (!(#Funcs db)) of
+                        NONE =>
+                        let
+                            val r = ref (Node {Rep = ref NONE,
+                                               Cons = ref SM.empty,
+                                               Variety = Nothing,
+                                               Known = ref false})
+                        in
+                            #Funcs db := ((f, rs), r) :: (!(#Funcs db));
+                            r
+                        end
+                      | SOME (_, r) => repOf r
+                end
+              | Recd xes =>
+                let
+                    val xes = map (fn (x, e) => (x, rep e)) xes
+                    val len = length xes
+                in
+                    case List.find (fn (xes', _) =>
+                                       SM.numItems xes' = len
+                                       andalso List.all (fn (x, n) =>
+                                                            case SM.find (xes', x) of
+                                                                NONE => false
+                                                             | SOME n' => n = repOf n') xes)
+                         (!(#Records db)) of
+                        SOME (_, r) => repOf r
+                      | NONE =>
+                        let
+                            val xes = foldl SM.insert' SM.empty xes
+
+                            val r' = ref (Node {Rep = ref NONE,
+                                                Cons = ref SM.empty,
+                                                Variety = Recrd (ref xes),
+                                                Known = ref false})
+                        in
+                            #Records db := (xes, r') :: (!(#Records db));
+                            r'
+                        end
+                end
+              | Proj (e, f) =>
+                let
+                    val r = rep e
+                in
+                    case #Variety (unNode r) of
+                        Recrd xes =>
+                        (case SM.find (!xes, f) of
+                             SOME r => repOf r
+                           | NONE =>let
+                                  val r = ref (Node {Rep = ref NONE,
+                                                     Cons = ref SM.empty,
+                                                     Variety = Nothing,
+                                                     Known = ref false})
+                              in
+                                 xes := SM.insert (!xes, f, r);
+                                 r
+                              end)
+                      | Nothing =>
+                        let
+                            val r' = ref (Node {Rep = ref NONE,
+                                                Cons = ref SM.empty,
+                                                Variety = Nothing,
+                                                Known = ref false})
+                                     
+                            val r'' = ref (Node {Rep = ref NONE,
+                                                 Cons = #Cons (unNode r),
+                                                 Variety = Recrd (ref (SM.insert (SM.empty, f, r'))),
+                                                 Known = #Known (unNode r)})
+                        in
+                            #Rep (unNode r) := SOME r'';
+                            r'
+                        end
+                      | VFinish => r 
+                      | _ => raise Contradiction                             
+                end
+              | Finish => finish
+    in
+        rep e
     end
+
+fun assert (db, a) =
+    case a of
+        ACond _ => ()
+      | AReln x =>
+        case x of
+            (Known, [e]) => markKnown (representative (db, e))
+          | (PCon0 f, [e]) =>
+            let
+                val r = representative (db, e)
+            in
+                case #Variety (unNode r) of
+                    Dt0 f' => if f = f' then
+                                  ()
+                              else
+                                  raise Contradiction
+                  | Nothing =>
+                    let
+                        val r' = ref (Node {Rep = ref NONE,
+                                            Cons = ref SM.empty,
+                                            Variety = Dt0 f,
+                                            Known = ref false})
+                    in
+                        #Rep (unNode r) := SOME r'
+                    end
+                  | _ => raise Contradiction
+            end
+          | (PCon1 f, [e]) =>
+            let
+                val r = representative (db, e)
+            in
+                case #Variety (unNode r) of
+                    Dt1 (f', e') => if f = f' then
+                                        ()
+                                    else
+                                        raise Contradiction
+                  | Nothing =>
+                    let
+                        val r'' = ref (Node {Rep = ref NONE,
+                                             Cons = ref SM.empty,
+                                             Variety = Nothing,
+                                             Known = ref false})
+
+                        val r' = ref (Node {Rep = ref NONE,
+                                            Cons = ref SM.empty,
+                                            Variety = Dt1 (f, r''),
+                                            Known = ref false})
+                    in
+                        #Rep (unNode r) := SOME r'
+                    end
+                  | _ => raise Contradiction
+            end
+          | (Eq, [e1, e2]) =>
+            let
+                fun markEq (r1, r2) =
+                    if r1 = r2 then
+                        ()
+                    else case (#Variety (unNode r1), #Variety (unNode r2)) of
+                             (Prim p1, Prim p2) => if Prim.equal (p1, p2) then
+                                                       ()
+                                                   else
+                                                       raise Contradiction
+                           | (Dt0 f1, Dt0 f2) => if f1 = f2 then
+                                                     ()
+                                                 else
+                                                     raise Contradiction
+                           | (Dt1 (f1, r1), Dt1 (f2, r2)) => if f1 = f2 then
+                                                                 markEq (r1, r2)
+                                                             else
+                                                                 raise Contradiction
+                           | (Recrd xes1, Recrd xes2) =>
+                             let
+                                 fun unif (xes1, xes2) =
+                                     SM.appi (fn (x, r1) =>
+                                                 case SM.find (xes2, x) of
+                                                     NONE => ()
+                                                   | SOME r2 => markEq (r1, r2)) xes1
+                             in
+                                 unif (!xes1, !xes2);
+                                 unif (!xes2, !xes1)
+                             end
+                           | (VFinish, VFinish) => ()
+                           | (Nothing, _) =>
+                             (#Rep (unNode r1) := SOME r2;
+                              if !(#Known (unNode r1)) andalso not (!(#Known (unNode r2))) then
+                                  markKnown r2
+                              else
+                                  ();
+                              #Cons (unNode r2) := SM.unionWith #1 (!(#Cons (unNode r2)), !(#Cons (unNode r1)));
+                              compactFuncs ())
+                           | (_, Nothing) =>
+                             (#Rep (unNode r2) := SOME r1;
+                              if !(#Known (unNode r2)) andalso not (!(#Known (unNode r1))) then
+                                  markKnown r1
+                              else
+                                  ();
+                              #Cons (unNode r1) := SM.unionWith #1 (!(#Cons (unNode r1)), !(#Cons (unNode r2)));
+                              compactFuncs ())
+                           | _ => raise Contradiction
+
+                and compactFuncs () =
+                    let
+                        fun loop funcs =
+                            case funcs of
+                                [] => []
+                              | (fr as ((f, rs), r)) :: rest =>
+                                let
+                                    val rest = List.filter (fn ((f' : string, rs'), r') =>
+                                                               if f' = f
+                                                                  andalso ListPair.allEq (fn (r1, r2) =>
+                                                                                             repOf r1 = repOf r2)
+                                                                                         (rs, rs') then
+                                                                   (markEq (r, r');
+                                                                    false)
+                                                               else
+                                                                   true) rest
+                                in
+                                    fr :: loop rest
+                                end
+                    in
+                        #Funcs db := loop (!(#Funcs db))
+                    end
+            in
+                markEq (representative (db, e1), representative (db, e2))
+            end
+          | _ => ()
+
+fun check (db, a) =
+    case a of
+        ACond _ => false
+      | AReln x =>
+        case x of
+            (Known, [e]) => !(#Known (unNode (representative (db, e))))
+          | (PCon0 f, [e]) =>
+            (case #Variety (unNode (representative (db, e))) of
+                 Dt0 f' => f' = f
+               | _ => false)
+          | (PCon1 f, [e]) =>
+            (case #Variety (unNode (representative (db, e))) of
+                 Dt1 (f', _) => f' = f
+               | _ => false)
+          | (Eq, [e1, e2]) =>
+            let
+                val r1 = representative (db, e1)
+                val r2 = representative (db, e2)
+            in
+                repOf r1 = repOf r2
+            end
+          | _ => false
 
 end
 
-fun rimp cc ((r1, es1), (r2, es2)) =
-    case (r1, r2) of
-        (Sql r1', Sql r2') =>
-        r1' = r2' andalso
-        (case (es1, es2) of
-             ([e1], [e2]) => eq (e1, e2)
-           | _ => false)
-      | (Eq, Eq) =>
-        (case (es1, es2) of
-             ([x1, y1], [x2, y2]) =>
-             let
-                 val saved = save ()
-             in
-                 if eq (x1, x2) andalso eq (y1, y2) then
-                     true
-                 else
-                     (restore saved;
-                      if eq (x1, y2) andalso eq (y1, x2) then
-                          true
-                      else
-                          (restore saved;
-                           false))
-             end
-           | _ => false)
-      | (Known, Known) =>
-        (case (es1, es2) of
-             ([Var v], [e2]) =>
-             let
-                 fun matches e =
-                     case e of
-                         Var v' => v' = v
-                       | Proj (e, _) => matches e
-                       | Func (f, [e]) => String.isPrefix "un" f andalso matches e
-                       | _ => false
-             in
-                 (*Print.prefaces "Checking peers" [("e2", p_exp e2),
-                                                  ("peers", Print.p_list p_exp (Cc.allPeers (cc, e2))),
-                                                  ("db", Cc.p_t cc)];*)
-                 List.exists matches (Cc.allPeers (cc, e2))
-             end
-           | _ => false)
-      | _ => false
+fun decomp fals or =
+    let
+        fun decomp p k =
+            case p of
+                True => k []
+              | False => fals
+              | Unknown => k []
+              | And (p1, p2) => 
+                decomp p1 (fn ps1 =>
+                              decomp p2 (fn ps2 =>
+                                            k (ps1 @ ps2)))
+              | Or (p1, p2) =>
+                or (decomp p1 k, fn () => decomp p2 k)
+              | Reln x => k [AReln x]
+              | Cond x => k [ACond x]
+    in
+        decomp
+    end
 
 fun imply (p1, p2) =
-    let
-        fun doOne doKnown =
-            decomp true (fn (e1, e2) => e1 andalso e2 ()) p1
-                   (fn hyps =>
-                       decomp false (fn (e1, e2) => e1 orelse e2 ()) p2
-                              (fn goals =>
-                                  let
-                                      val cc = foldl (fn (p, cc) =>
-                                                         case p of
-                                                             AReln (Eq, [e1, e2]) => Cc.assert (cc, e1, e2)
-                                                           | _ => cc) Cc.empty hyps
-
-                                      fun gls goals onFail =
-                                          case goals of
-                                              [] => true
-                                            | ACond _ :: _ => false
-                                            | AReln g :: goals =>
-                                              case (doKnown, g) of
-                                                  (false, (Known, _)) => gls goals onFail
-                                                | _ =>
-                                                  let
-                                                      fun hps hyps =
-                                                          case hyps of
-                                                              [] => ((*Print.prefaces "Fail" [("g", p_prop (Reln g)),
-                                                                                            ("db", Cc.p_t cc)];*)
-                                                                     onFail ())
-                                                            | ACond _ :: hyps => hps hyps
-                                                            | AReln h :: hyps =>
-                                                              let
-                                                                  val saved = save ()
-                                                              in
-                                                                  if rimp cc (h, g) then
-                                                                      let
-                                                                          val changed = IM.numItems (!unif)
-                                                                                        <> IM.numItems saved
-                                                                      in
-                                                                          gls goals (fn () => (restore saved;
-                                                                                               changed (*andalso 
-                                                                                               (Print.preface ("Retry",
-                                                                                                               p_prop
-                                                                                                                   (Reln g)
-                                                                                                              ); true)*)
-                                                                                               andalso hps hyps))
-                                                                      end
-                                                                  else
-                                                                      hps hyps
-                                                              end
-                                                  in
-                                                      (case g of
-                                                           (Eq, [e1, e2]) => Cc.query (cc, e1, e2)
-                                                         | _ => false)
-                                                      orelse hps hyps
-                                                  end
-                                  in
-                                      if List.exists (fn AReln (DtCon c1, [e]) =>
-                                                         List.exists (fn AReln (DtCon c2, [e']) =>
-                                                                         c1 <> c2 andalso
-                                                                         Cc.query (cc, e, e')
-                                                                       | _ => false) hyps
-                                                         orelse List.exists (fn Func (c2, []) => c1 <> c2
-                                                                              | Finish => true
-                                                                              | _ => false)
-                                                                            (Cc.allPeers (cc, e))
-                                                       | _ => false) hyps
-                                         orelse gls goals (fn () => false) then
-                                          true
-                                      else
-                                          ((*Print.prefaces "Can't prove"
-                                                          [("hyps", Print.p_list p_atom hyps),
-                                                           ("goals", Print.p_list p_atom goals)];*)
-                                           false)
-                                  end))
-    in
-        reset ();
-        doOne false;
-        doOne true
-    end
+    (reset ();
+     decomp true (fn (e1, e2) => e1 andalso e2 ()) p1
+            (fn hyps =>
+                decomp false (fn (e1, e2) => e1 orelse e2 ()) p2
+                       (fn goals =>
+                           let
+                               fun gls goals onFail acc =
+                                   case goals of
+                                       [] =>
+                                       (let
+                                            val cc = Cc.database ()
+                                            val () = app (fn a => Cc.assert (cc, a)) hyps
+                                        in
+                                            (List.all (fn a =>
+                                                          if Cc.check (cc, a) then
+                                                              true
+                                                          else
+                                                              ((*Print.prefaces "Can't prove"
+                                                                              [("a", p_atom a),
+                                                                               ("hyps", Print.p_list p_atom hyps),
+                                                                               ("db", Cc.p_database cc)];*)
+                                                               false)) acc
+                                             orelse onFail ())
+                                            handle Cc.Contradiction => onFail ()
+                                        end handle Cc.Undetermined => onFail ())
+                                     | AReln (Sql gf, [ge]) :: goals =>
+                                       let
+                                           fun hps hyps =
+                                               case hyps of
+                                                   [] => onFail ()
+                                                 | AReln (Sql hf, [he]) :: hyps =>
+                                                   if gf = hf then
+                                                       let
+                                                           val saved = save ()
+                                                       in
+                                                           if eq (ge, he) then
+                                                               let
+                                                                   val changed = IM.numItems (!unif)
+                                                                                 <> IM.numItems saved
+                                                               in
+                                                                   gls goals (fn () => (restore saved;
+                                                                                        changed
+                                                                                        andalso hps hyps))
+                                                                       acc
+                                                               end
+                                                           else
+                                                               hps hyps
+                                                       end
+                                                   else
+                                                       hps hyps
+                                                 | _ :: hyps => hps hyps 
+                                       in
+                                           hps hyps
+                                       end
+                                     | g :: goals => gls goals onFail (g :: acc)
+                           in
+                               gls goals (fn () => false) []
+                           end handle Cc.Contradiction => true)))
 
 fun patCon pc =
     case pc of
@@ -953,7 +1188,7 @@ val query = log "query"
                 (wrap (follow (follow select from) (opt wher))
                       (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher}))
 
-fun removeDups ls =
+fun removeDups (ls : (string * string) list) =
     case ls of
         [] => []
       | x :: ls =>
@@ -1029,7 +1264,7 @@ fun queryProp env rvN rv oe e =
                     end
                   | SqFunc (f, e) =>
                     inl (case expIn e of
-                         inl e => Func (f, [e])
+                         inl e => Func (Other f, [e])
                        | _ => raise Fail ("Iflow: non-expresion passed to function " ^ f))
                   | Count => inl count
 
@@ -1081,12 +1316,12 @@ fun evalPat env e (pt, _) =
         PWild => (env, True)
       | PVar _ => (e :: env, True)
       | PPrim _ => (env, True)
-      | PCon (_, pc, NONE) => (env, Reln (DtCon (patCon pc), [e]))
+      | PCon (_, pc, NONE) => (env, Reln (PCon0 (patCon pc), [e]))
       | PCon (_, pc, SOME pt) =>
         let
-            val (env, p) = evalPat env (Func ("un" ^ patCon pc, [e])) pt
+            val (env, p) = evalPat env (Func (UnCon (patCon pc), [e])) pt
         in
-            (env, And (p, Reln (DtCon (patCon pc), [e])))
+            (env, And (p, Reln (PCon1 (patCon pc), [e])))
         end
       | PRecord xpts =>
         foldl (fn ((x, pt, _), (env, p)) =>
@@ -1095,12 +1330,12 @@ fun evalPat env e (pt, _) =
                   in
                       (env, And (p', p))
                   end) (env, True) xpts
-      | PNone _ => (env, Reln (DtCon "None", [e]))
+      | PNone _ => (env, Reln (PCon0 "None", [e]))
       | PSome (_, pt) =>
         let
-            val (env, p) = evalPat env (Func ("unSome", [e])) pt
+            val (env, p) = evalPat env (Func (UnCon "Some", [e])) pt
         in
-            (env, And (p, Reln (DtCon "Some", [e])))
+            (env, And (p, Reln (PCon1 "Some", [e])))
         end
 
 fun peq (p1, p2) =
@@ -1145,19 +1380,19 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
             EPrim p => (Const p, st)
           | ERel n => (List.nth (env, n), st)
           | ENamed _ => default ()
-          | ECon (_, pc, NONE) => (Func (patCon pc, []), st)
+          | ECon (_, pc, NONE) => (Func (DtCon0 (patCon pc), []), st)
           | ECon (_, pc, SOME e) =>
             let
                 val (e, st) = evalExp env (e, st)
             in
-                (Func (patCon pc, [e]), st)
+                (Func (DtCon1 (patCon pc), [e]), st)
             end
-          | ENone _ => (Func ("None", []), st)
+          | ENone _ => (Func (DtCon0 "None", []), st)
           | ESome (_, e) =>
             let
                 val (e, st) = evalExp env (e, st)
             in
-                (Func ("Some", [e]), st)
+                (Func (DtCon1 "Some", [e]), st)
             end
           | EFfi _ => default ()
 
@@ -1174,7 +1409,7 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
                 let
                     val (es, st) = ListUtil.foldlMap (evalExp env) st es
                 in
-                    (Func (m ^ "." ^ s, es), st)
+                    (Func (Other (m ^ "." ^ s), es), st)
                 end
 
           | EApp (e1, e2) =>
@@ -1191,14 +1426,14 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
             let
                 val (e1, st) = evalExp env (e1, st)
             in
-                (Func (s, [e1]), st)
+                (Func (Other s, [e1]), st)
             end
           | EBinop (s, e1, e2) =>
             let
                 val (e1, st) = evalExp env (e1, st)
                 val (e2, st) = evalExp env (e2, st)
             in
-                (Func (s, [e1, e2]), st)
+                (Func (Other s, [e1, e2]), st)
             end
           | ERecord xets =>
             let
@@ -1241,7 +1476,7 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
                 val (e1, st) = evalExp env (e1, st)
                 val (e2, st) = evalExp env (e2, st)
             in
-                (Func ("cat", [e1, e2]), st)
+                (Func (Other "cat", [e1, e2]), st)
             end
           | EError _ => (Finish, st)
           | EReturnBlob {blob = b, mimeType = m, ...} =>
@@ -1279,7 +1514,7 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
             let
                 val (es, st) = ListUtil.foldlMap (evalExp env) st es
             in
-                (Func ("Cl" ^ Int.toString n, es), st)
+                (Func (Other ("Cl" ^ Int.toString n), es), st)
             end
 
           | EQuery {query = q, body = b, initial = i, ...} =>
@@ -1409,10 +1644,8 @@ fun check file =
                             Const _ => ()
                           | Var _ => doOne e
                           | Lvar _ => raise Fail "Iflow.doAll: Lvar"
-                          | Func (f, es) => if String.isPrefix "un" f then
-                                                doOne e
-                                            else
-                                                app doAll es
+                          | Func (UnCon _, [e]) => doOne e
+                          | Func (_, es) => app doAll es
                           | Recd xes => app (doAll o #2) xes
                           | Proj _ => doOne e
                           | Finish => ()
