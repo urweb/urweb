@@ -837,68 +837,66 @@ fun decomp fals or =
     end
 
 fun imply (p1, p2) =
-    (reset ();
-     (*Print.prefaces "Bigger go" [("p1", p_prop p1),
-                                 ("p2", p_prop p2)];*)
-     decomp true (fn (e1, e2) => e1 andalso e2 ()) p1
-            (fn hyps =>
-                decomp false (fn (e1, e2) => e1 orelse e2 ()) p2
-                       (fn goals =>
-                           let
-                               fun gls goals onFail acc =
-                                   case goals of
-                                       [] =>
-                                       (let
-                                            val cc = Cc.database ()
-                                            val () = app (fn a => Cc.assert (cc, a)) hyps
-                                        in
-                                            (List.all (fn a =>
-                                                          if Cc.check (cc, a) then
-                                                              true
-                                                          else
-                                                              ((*Print.prefaces "Can't prove"
-                                                                              [("a", p_atom a),
-                                                                               ("hyps", Print.p_list p_atom hyps),
-                                                                               ("db", Cc.p_database cc)];*)
-                                                               false)) acc
-                                             orelse onFail ())
-                                            handle Cc.Contradiction => onFail ()
-                                        end handle Cc.Undetermined => ((*print "Undetermined\n";*) onFail ()))
-                                     | (g as AReln (Sql gf, [ge])) :: goals =>
-                                       let
-                                           fun hps hyps =
-                                               case hyps of
-                                                   [] => gls goals onFail (g :: acc)
-                                                 | AReln (Sql hf, [he]) :: hyps =>
-                                                   if gf = hf then
-                                                       let
-                                                           val saved = save ()
-                                                       in
-                                                           if eq (ge, he) then
-                                                               let
-                                                                   val changed = IM.numItems (!unif)
-                                                                                 <> IM.numItems saved
-                                                               in
-                                                                   gls goals (fn () => (restore saved;
-                                                                                        changed
-                                                                                        andalso hps hyps))
-                                                                       acc
-                                                               end
-                                                           else
-                                                               hps hyps
-                                                       end
-                                                   else
-                                                       hps hyps
-                                                 | _ :: hyps => hps hyps 
+    decomp true (fn (e1, e2) => e1 andalso e2 ()) p1
+           (fn hyps =>
+               decomp false (fn (e1, e2) => e1 orelse e2 ()) p2
+                      (fn goals =>
+                          let
+                              fun gls goals onFail acc =
+                                  case goals of
+                                      [] =>
+                                      (let
+                                           val cc = Cc.database ()
+                                           val () = app (fn a => Cc.assert (cc, a)) hyps
                                        in
-                                           hps hyps
-                                       end
-                                     | g :: goals => gls goals onFail (g :: acc)
-                           in
-                               (*Print.prefaces "Big go" [("hyps", Print.p_list p_atom hyps),
-                                                        ("goals", Print.p_list p_atom goals)];*)
-                               gls goals (fn () => false) []
-                           end handle Cc.Contradiction => true)))
+                                           (List.all (fn a =>
+                                                         if Cc.check (cc, a) then
+                                                             true
+                                                         else
+                                                             ((*Print.prefaces "Can't prove"
+                                                                             [("a", p_atom a),
+                                                                              ("hyps", Print.p_list p_atom hyps),
+                                                                              ("db", Cc.p_database cc)];*)
+                                                              false)) acc)
+                                           handle Cc.Contradiction => false
+                                       end handle Cc.Undetermined => false)
+                                      orelse onFail ()
+                                    | (g as AReln (Sql gf, [ge])) :: goals =>
+                                      let
+                                          fun hps hyps =
+                                              case hyps of
+                                                  [] => gls goals onFail (g :: acc)
+                                                | (h as AReln (Sql hf, [he])) :: hyps =>
+                                                  if gf = hf then
+                                                      let
+                                                          val saved = save ()
+                                                      in
+                                                          if eq (ge, he) then
+                                                              let
+                                                                  val changed = IM.numItems (!unif)
+                                                                                <> IM.numItems saved
+                                                              in
+                                                                  gls goals (fn () => (restore saved;
+                                                                                       changed
+                                                                                       andalso hps hyps))
+                                                                      acc
+                                                              end
+                                                          else
+                                                              hps hyps
+                                                      end
+                                                  else
+                                                      hps hyps
+                                                | _ :: hyps => hps hyps 
+                                      in
+                                          hps hyps
+                                      end
+                                    | g :: goals => gls goals onFail (g :: acc)
+                          in
+                              reset ();
+                              (*Print.prefaces "Big go" [("hyps", Print.p_list p_atom hyps),
+                                                       ("goals", Print.p_list p_atom goals)];*)
+                              gls goals (fn () => false) []
+                          end handle Cc.Contradiction => true))
 
 fun patCon pc =
     case pc of
@@ -1215,7 +1213,7 @@ fun queryProp env rvN rv oe e =
     let
         fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
                                  ^ ErrorMsg.spanToString (#2 e) ^ "\n");
-                          (rvN, Unknown, []))
+                          (rvN, Unknown, Unknown, []))
     in
         case parse query e of
             NONE => default ()
@@ -1283,8 +1281,7 @@ fun queryProp env rvN rv oe e =
                               | _ => p
 
                 fun normal () =
-                    (rvN,
-                     And (p, case oe of
+                    (And (p, case oe of
                                  SomeCol oe =>
                                  foldl (fn (si, p) =>
                                            let
@@ -1312,27 +1309,29 @@ fun queryProp env rvN rv oe e =
                                                And (p, p')
                                            end)
                                        True (#Select r)),
-                     case #Where r of
-                         NONE => []
-                       | SOME e => map (fn (v, f) => Proj (rvOf v, f)) (usedFields e))
+                     True)
+
+                val (p, wp) =
+                    case #Select r of
+                        [SqExp (Binop (Exps bo, Count, SqConst (Prim.Int 0)), f)] =>
+                        (case bo (Const (Prim.Int 1), Const (Prim.Int 2)) of
+                             Reln (Gt, [Const (Prim.Int 1), Const (Prim.Int 2)]) =>
+                             let
+                                 val oe = case oe of
+                                              SomeCol oe => oe
+                                            | AllCols oe => Proj (oe, f)
+                             in
+                                 (Or (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.False", [])]),
+                                      And (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
+                                           p)),
+                                  Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]))
+                             end
+                           | _ => normal ())
+                      | _ => normal ()
             in
-                case #Select r of
-                    [SqExp (Binop (Exps bo, Count, SqConst (Prim.Int 0)), f)] =>
-                    (case bo (Const (Prim.Int 1), Const (Prim.Int 2)) of
-                         Reln (Gt, [Const (Prim.Int 1), Const (Prim.Int 2)]) =>
-                         let
-                             val oe = case oe of
-                                          SomeCol oe => oe
-                                        | AllCols oe => Proj (oe, f)
-                         in
-                             (rvN,
-                              Or (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.False", [])]),
-                                  And (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
-                                       p)),
-                              [])
-                         end
-                       | _ => normal ())
-                  | _ => normal ()
+                (rvN, p, wp, case #Where r of
+                                 NONE => []
+                               | SOME e => map (fn (v, f) => Proj (rvOf v, f)) (usedFields e))
             end
             handle Default => default ()
     end
@@ -1389,18 +1388,83 @@ fun removeRedundant p1 =
         rr
     end
 
-fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
+structure St :> sig
+    type t
+    val create : {Var : int,
+                  Ambient : prop} -> t
+
+    val curVar : t -> int
+    val nextVar : t -> t * int
+
+    val ambient : t -> prop
+    val setAmbient : t * prop -> t
+
+    type check = ErrorMsg.span * exp * prop
+
+    val path : t -> check list
+    val addPath : t * check -> t
+
+    val sent : t -> check list
+    val addSent : t * check -> t
+    val setSent : t * check list -> t
+end = struct
+
+type check = ErrorMsg.span * exp * prop
+
+type t = {Var : int,
+          Ambient : prop,
+          Path : check list,
+          Sent : check list}
+
+fun create {Var = v, Ambient = p} = {Var = v,
+                                     Ambient = p,
+                                     Path = [],
+                                     Sent = []}
+
+fun curVar (t : t) = #Var t
+fun nextVar (t : t) = ({Var = #Var t + 1,
+                        Ambient = #Ambient t,
+                        Path = #Path t,
+                        Sent = #Sent t}, #Var t)
+
+fun ambient (t : t) = #Ambient t
+fun setAmbient (t : t, p) = {Var = #Var t,
+                             Ambient = p,
+                             Path = #Path t,
+                             Sent = #Sent t}
+
+fun path (t : t) = #Path t
+fun addPath (t : t, c) = {Var = #Var t,
+                          Ambient = #Ambient t,
+                          Path = c :: #Path t,
+                          Sent = #Sent t}
+
+fun sent (t : t) = #Sent t
+fun addSent (t : t, c) = {Var = #Var t,
+                          Ambient = #Ambient t,
+                          Path = #Path t,
+                          Sent = c :: #Sent t}
+fun setSent (t : t, cs) = {Var = #Var t,
+                           Ambient = #Ambient t,
+                           Path = #Path t,
+                           Sent = cs}
+
+end
+
+fun evalExp env (e as (_, loc), st) =
     let
         fun default () =
-            ((*Print.preface ("Default" ^ Int.toString nv,
-                            MonoPrint.p_exp MonoEnv.empty e);*)
-            (Var nv, (nv+1, p, sent)))
+            let
+                val (st, nv) = St.nextVar st
+            in
+                (Var nv, st)
+            end
 
-        fun addSent (p, e, sent) =
+        fun addSent (p, e, st) =
             if isKnown e then
-                sent
+                st
             else
-                (loc, e, p) :: sent
+                St.addSent (st, (loc, e, p))
     in
         case #1 e of
             EPrim p => (Const p, st)
@@ -1427,7 +1491,7 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
                 let
                     val (es, st) = ListUtil.foldlMap (evalExp env) st es
                 in
-                    (Recd [], (#1 st, p, foldl (fn (e, sent) => addSent (#2 st, e, sent)) sent es))
+                    (Recd [], foldl (fn (e, st) => addSent (St.ambient st, e, st)) st es)
                 end
             else if Settings.isEffectful (m, s) andalso not (Settings.isBenignEffectful (m, s)) then
                 default ()
@@ -1481,14 +1545,13 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
           | ECase (e, pes, _) =>
             let
                 val (e, st) = evalExp env (e, st)
-                val r = #1 st
-                val st = (r + 1, #2 st, #3 st)
-                val orig = #2 st
+                val (st, r) = St.nextVar st
+                val orig = St.ambient st
 
                 val st = foldl (fn ((pt, pe), st) =>
                                    let
                                        val (env, pp) = evalPat env e pt
-                                       val (pe, st') = evalExp env (pe, (#1 st, And (orig, pp), #3 st))
+                                       val (pe, st') = evalExp env (pe, St.setAmbient (st, And (orig, pp)))
                                        (*val () = Print.prefaces "Case" [("loc", Print.PD.string
                                                                                    (ErrorMsg.spanToString (#2 pt))),
                                                                        ("env", Print.p_list p_exp env),
@@ -1506,12 +1569,13 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
                                                                                 (List.take (#3 st', length (#3 st')
                                                                                                     - length (#3 st))))]*)
                                                        
-                                       val this = And (removeRedundant orig (#2 st'), Reln (Eq, [Var r, pe]))
+                                       val this = And (removeRedundant orig (St.ambient st'),
+                                                       Reln (Eq, [Var r, pe]))
                                    in
-                                       (#1 st', Or (#2 st, this), #3 st')
-                                   end) (#1 st, False, #3 st) pes
+                                       St.setAmbient (st', Or (St.ambient st, this))
+                                   end) (St.setAmbient (st, False)) pes
             in
-                (Var r, (#1 st, And (orig, #2 st), #3 st))
+                (Var r, St.setAmbient (st, And (orig, St.ambient st)))
             end
           | EStrcat (e1, e2) =>
             let
@@ -1526,19 +1590,19 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
                 val (b, st) = evalExp env (b, st)
                 val (m, st) = evalExp env (m, st)
             in
-                (Finish, (#1 st, p, addSent (#2 st, b, addSent (#2 st, m, sent))))
+                (Finish, addSent (St.ambient st, b, addSent (St.ambient st, m, st)))
             end
           | ERedirect (e, _) =>
             let
                 val (e, st) = evalExp env (e, st)
             in
-                (Finish, (#1 st, p, addSent (#2 st, e, sent)))
+                (Finish, addSent (St.ambient st, e, st))
             end
           | EWrite e =>
             let
                 val (e, st) = evalExp env (e, st)
             in
-                (Recd [], (#1 st, p, addSent (#2 st, e, sent)))
+                (Recd [], addSent (St.ambient st, e, st))
             end
           | ESeq (e1, e2) =>
             let
@@ -1564,43 +1628,57 @@ fun evalExp env (e as (_, loc), st as (nv, p, sent)) =
                 val (_, st) = evalExp env (q, st)
                 val (i, st) = evalExp env (i, st)
 
-                val r = #1 st
-                val acc = #1 st + 1
-                val st' = (#1 st + 2, #2 st, #3 st)
+                val (st', r) = St.nextVar st
+                val (st', acc) = St.nextVar st'
 
                 val (b, st') = evalExp (Var acc :: Var r :: env) (b, st')
 
-                val (rvN, qp, used) =
+                val (st', qp, qwp, used) =
                     queryProp env
-                              (#1 st') (fn rvN => (rvN + 1, Var rvN))
+                              st' (fn st' =>
+                                      let
+                                          val (st', rv) = St.nextVar st'
+                                      in
+                                          (st', Var rv)
+                                      end)
                               (AllCols (Var r)) q
 
-                val p' = And (qp, #2 st')
+                val p' = And (qp, St.ambient st')
 
-                val (nvs, p, res) = if varInP acc (#2 st') then
-                                        (#1 st + 1, #2 st, Var r)
-                                    else
-                                        let
-                                            val out = rvN
+                val (st, res) = if varInP acc (St.ambient st') then
+                                    let
+                                        val (st, r) = St.nextVar st
+                                    in
+                                        (st, Var r)
+                                    end
+                                else
+                                    let
+                                        val (st, out) = St.nextVar st'
+                                                  
+                                        val p = Or (Reln (Eq, [Var out, i]),
+                                                    And (Reln (Eq, [Var out, b]),
+                                                         p'))
+                                    in
+                                        (St.setAmbient (st, p), Var out)
+                                    end
 
-                                            val p = Or (Reln (Eq, [Var out, i]),
-                                                        And (Reln (Eq, [Var out, b]),
-                                                             p'))
-                                        in
-                                            (out + 1, p, Var out)
-                                        end
+                val sent = map (fn (loc, e, p) => (loc, e, And (qp, p))) (St.sent st')
 
-                val sent = map (fn (loc, e, p) => (loc, e, And (qp, p))) (#3 st')
+                val p' = And (p', qwp)
                 val sent = map (fn e => (loc, e, p')) used @ sent
             in
-                (res, (nvs, p, sent))
+                (res, St.setSent (st, sent))
             end
           | EDml _ => default ()
           | ENextval _ => default ()
           | ESetval _ => default ()
 
           | EUnurlify ((EFfiApp ("Basis", "get_cookie", _), _), _, _) =>
-            (Var nv, (nv + 1, And (p, Reln (Known, [Var nv])), sent))
+            let
+                val (st, nv) = St.nextVar st
+            in
+                (Var nv, St.setAmbient (st, And (St.ambient st, Reln (Known, [Var nv]))))
+            end
 
           | EUnurlify _ => default ()
           | EJavaScript _ => default ()
@@ -1644,9 +1722,10 @@ fun check file =
 
                     val (e, env, nv, p) = deAbs (e, [], 1, True)
 
-                    val (e, (_, p, sent)) = evalExp env (e, (nv, p, []))
+                    val (_, st) = evalExp env (e, St.create {Var = nv,
+                                                             Ambient = p})
                 in
-                    (sent @ vals, pols)
+                    (St.sent st @ vals, pols)
                 end
 
               | DPolicy (PolClient e) => (vals, #2 (queryProp [] 0 (fn rvN => (rvN + 1, Lvar rvN))
