@@ -510,7 +510,7 @@ fun representative (db : database, e) =
                                     val r = ref (Node {Rep = ref NONE,
                                                        Cons = ref SM.empty,
                                                        Variety = Prim p,
-                                                       Known = ref false})
+                                                       Known = ref true})
                                 in
                                     #Consts db := CM.insert (!(#Consts db), p, r);
                                     r
