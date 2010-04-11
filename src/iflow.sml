@@ -310,6 +310,66 @@ fun varInP lv =
         lvi
     end
 
+fun bumpLvars by =
+    let
+        fun lvi e =
+            case e of
+                Const _ => e
+              | Var _ => e
+              | Lvar lv => Lvar (lv + by)
+              | Func (f, es) => Func (f, map lvi es)
+              | Recd xes => Recd (map (fn (x, e) => (x, lvi e)) xes)
+              | Proj (e, f) => Proj (lvi e, f)
+              | Finish => e
+    in
+        lvi
+    end
+
+fun bumpLvarsP by =
+    let
+        fun lvi p =
+            case p of
+                True => p
+              | False => p
+              | Unknown => p
+              | And (p1, p2) => And (lvi p1, lvi p2)
+              | Or (p1, p2) => And (lvi p1, lvi p2)
+              | Reln (r, es) => Reln (r, map (bumpLvars by) es)
+              | Cond (e, p) => Cond (bumpLvars by e, lvi p)
+    in
+        lvi
+    end
+
+fun maxLvar e =
+    let
+        fun lvi e =
+            case e of
+                Const _ => 0
+              | Var _ => 0
+              | Lvar lv => lv
+              | Func (f, es) => foldl Int.max 0 (map lvi es)
+              | Recd xes => foldl Int.max 0 (map (lvi o #2) xes)
+              | Proj (e, f) => lvi e
+              | Finish => 0
+    in
+        lvi e
+    end
+
+fun maxLvarP p =
+    let
+        fun lvi p =
+            case p of
+                True => 0
+              | False => 0
+              | Unknown => 0
+              | And (p1, p2) => Int.max (lvi p1, lvi p2)
+              | Or (p1, p2) => Int.max (lvi p1, lvi p2)
+              | Reln (r, es) => foldl Int.max 0 (map maxLvar es)
+              | Cond (e, p) => Int.max (maxLvar e, lvi p)
+    in
+        lvi p
+    end
+
 fun eq' (e1, e2) =
     case (e1, e2) of
         (Const p1, Const p2) => Prim.equal (p1, p2)
@@ -2390,16 +2450,50 @@ fun check file =
                         in
                             if decompH p
                                        (fn hyps =>
-                                           (fl <> Control Where
-                                            andalso imply (hyps, [AReln (Known, [Var 0])], SOME [Var 0]))
-                                           orelse List.exists (fn (p', outs) =>
-                                                                  decompG p'
-                                                                          (fn goals => imply (hyps, goals, SOME outs)))
-                                                              client) then
+                                           let
+                                               val avail = foldl (fn (AReln (Sql tab, _), avail) => SS.add (avail, tab)
+                                                                   | (_, avail) => avail) SS.empty hyps
+
+                                               fun tryCombos (maxLv, pols, g, outs) =
+                                                   case pols of
+                                                       [] =>
+                                                       decompG g
+                                                               (fn goals => imply (hyps, goals, SOME outs))
+                                                     | (g1, outs1) :: pols =>
+                                                       let
+                                                           val g1 = bumpLvarsP (maxLv + 1) g1
+                                                           val outs1 = map (bumpLvars (maxLv + 1)) outs1
+                                                           fun skip () = tryCombos (maxLv, pols, g, outs)
+                                                       in
+                                                           if decompG g1
+                                                                      (List.all (fn AReln (Sql tab, _) =>
+                                                                                    SS.member (avail, tab)
+                                                                                  | _ => true)) then
+                                                               skip ()
+                                                               orelse tryCombos (Int.max (maxLv,
+                                                                                          maxLvarP g1),
+                                                                                 pols,
+                                                                                 And (g1, g),
+                                                                                 outs1 @ outs)
+                                                           else
+                                                               skip ()
+                                                       end
+                                           in
+                                               (fl <> Control Where
+                                                andalso imply (hyps, [AReln (Known, [Var 0])], SOME [Var 0]))
+                                               orelse List.exists (fn (p', outs) =>
+                                                                      decompG p'
+                                                                              (fn goals => imply (hyps, goals, SOME outs)))
+                                                                  client
+                                               orelse tryCombos (0, client, True, [])
+                                               orelse (reset ();
+                                                       Print.preface ("Untenable hypotheses",
+                                                                      Print.p_list p_atom hyps);
+                                                       false)
+                                           end) then
                                 ()
                             else
-                                (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
-                                 Print.preface ("The state satisifies this predicate:", p_prop p))
+                                ErrorMsg.errorAt loc "The information flow policy may be violated here."
                         end
 
                     fun doAll e =

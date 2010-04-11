@@ -9,7 +9,9 @@ table order : { Id : order, Fruit : fruit, Qty : int, Code : int }
   CONSTRAINT Fruit FOREIGN KEY Fruit REFERENCES fruit(Id)
 
 (* Everyone may knows IDs and names. *)
-policy sendClient (SELECT fruit.Id, fruit.Nam
+policy sendClient (SELECT fruit.Id
+                   FROM fruit)
+policy sendClient (SELECT fruit.Nam
                    FROM fruit)
 
 (* The weight is sensitive information; you must know the secret. *)
@@ -50,10 +52,17 @@ fun main () =
                     AND order.Qty = 13)
                  (fn x => <xml><li>{[x.Fruit.Nam]}: {[x.Order.Qty]}</li></xml>);
 
+    ro <- oneOrNoRows (SELECT fruit.Id, fruit.Nam
+                       FROM fruit);
+
     return <xml><body>
       <ul>{x1}</ul>
 
       <ul>{x2}</ul>
+
+      {case ro of
+           None => <xml>None</xml>
+         | Some _ => <xml>Some</xml>}
 
       <form>
         Fruit name: <textbox{#Nam}/><br/>
