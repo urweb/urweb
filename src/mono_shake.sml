@@ -62,6 +62,7 @@ fun shake file =
                     let
                         val e1 = case pol of
                                      PolClient e1 => e1
+                                   | PolInsert e1 => e1
                     in
                         usedVars st e1
                     end

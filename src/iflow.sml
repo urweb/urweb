@@ -884,8 +884,10 @@ fun imply (hyps, goals, outs) =
                                                         ("db", Cc.p_database cc)];*)
                                         false)) acc
                       (*andalso (Print.preface ("Finding", Cc.p_database cc); true)*)
-                      andalso Cc.builtFrom (cc, {Derived = Var 0,
-                                                 Base = outs}))
+                      andalso (case outs of
+                                   NONE => true
+                                 | SOME outs => Cc.builtFrom (cc, {Derived = Var 0,
+                                                                   Base = outs})))
                      handle Cc.Contradiction => false
                  end handle Cc.Undetermined => false)
                 orelse onFail ()
@@ -1218,6 +1220,24 @@ val query = log "query"
                 (wrap (follow (follow select from) (opt wher))
                       (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher}))
 
+datatype dml =
+         Insert of string * (string * sqexp) list
+
+val insert = log "insert"
+             (wrapP (follow (const "INSERT INTO ")
+                            (follow uw_ident
+                                    (follow (const " (")
+                                            (follow (list uw_ident)
+                                                    (follow (const ") VALUES (")
+                                                            (follow (list sqexp)
+                                                                    (const ")")))))))
+              (fn ((), (tab, ((), (fs, ((), (es, ())))))) =>
+                  (SOME (Insert (tab, ListPair.zipEq (fs, es))))
+                  handle ListPair.UnequalLengths => NONE))
+
+val dml = log "dml"
+              insert
+
 fun removeDups (ls : (string * string) list) =
     case ls of
         [] => []
@@ -1235,7 +1255,66 @@ datatype queryMode =
          SomeCol
        | AllCols of exp
 
-exception Default
+fun expIn rv env rvOf =
+    let
+        fun expIn (e, rvN) =
+            let
+                fun default () =
+                    let
+                        val (rvN, e) = rv rvN
+                    in
+                        (inl e, rvN)
+                    end
+            in
+                case e of
+                    SqConst p => (inl (Const p), rvN)
+                  | Field (v, f) => (inl (Proj (rvOf v, f)), rvN)
+                  | Binop (bo, e1, e2) =>
+                    let
+                        val (e1, rvN) = expIn (e1, rvN)
+                        val (e2, rvN) = expIn (e2, rvN)
+                    in
+                        (inr (case (bo, e1, e2) of
+                                  (Exps f, inl e1, inl e2) => f (e1, e2)
+                                | (Props f, inr p1, inr p2) => f (p1, p2)
+                                | _ => Unknown), rvN)
+                    end
+                  | SqKnown e =>
+                    (case expIn (e, rvN) of
+                         (inl e, rvN) => (inr (Reln (Known, [e])), rvN)
+                       | _ => (inr Unknown, rvN))
+                  | Inj e =>
+                    let
+                        fun deinj e =
+                            case #1 e of
+                                ERel n => (List.nth (env, n), rvN)
+                              | EField (e, f) =>
+                                let
+                                    val (e, rvN) = deinj e
+                                in
+                                    (Proj (e, f), rvN)
+                                end
+                              | _ =>
+                                let
+                                    val (rvN, e) = rv rvN
+                                in
+                                    (e, rvN)
+                                end
+
+                        val (e, rvN) = deinj e
+                    in
+                        (inl e, rvN)
+                    end
+                  | SqFunc (f, e) =>
+                    (case expIn (e, rvN) of
+                         (inl e, rvN) => (inl (Func (Other f, [e])), rvN)
+                       | _ => default ())
+                     
+                  | Count => default ()
+            end
+    in
+        expIn
+    end
 
 fun queryProp env rvN rv oe e =
     let
@@ -1272,68 +1351,56 @@ fun queryProp env rvN rv oe e =
                 val p =
                     foldl (fn ((t, v), p) => And (p, Reln (Sql t, [rvOf v]))) True (#From r)
 
-                fun expIn e =
-                    case e of
-                        SqConst p => inl (Const p)
-                      | Field (v, f) => inl (Proj (rvOf v, f))
-                      | Binop (bo, e1, e2) =>
-                        inr (case (bo, expIn e1, expIn e2) of
-                                 (Exps f, inl e1, inl e2) => f (e1, e2)
-                               | (Props f, inr p1, inr p2) => f (p1, p2)
-                               | _ => Unknown)
-                      | SqKnown e =>
-                        inr (case expIn e of
-                                 inl e => Reln (Known, [e])
-                               | _ => Unknown)
-                      | Inj e =>
-                        let
-                            fun deinj (e, _) =
-                                case e of
-                                    ERel n => List.nth (env, n)
-                                  | EField (e, f) => Proj (deinj e, f)
-                                  | _ => raise Fail "Iflow: non-variable injected into query"
-                        in
-                            inl (deinj e)
-                        end
-                      | SqFunc (f, e) =>
-                        inl (case expIn e of
-                                 inl e => Func (Other f, [e])
-                               | _ => raise Fail ("Iflow: non-expresion passed to function " ^ f))
-                      | Count => raise Default
+                val expIn = expIn rv env rvOf
 
-                val p = case #Where r of
-                            NONE => p
-                          | SOME e =>
-                            case expIn e of
-                                inr p' => And (p, p')
-                              | _ => p
+                val (p, rvN) = case #Where r of
+                                   NONE => (p, rvN)
+                                 | SOME e =>
+                                   case expIn (e, rvN) of
+                                       (inr p', rvN) => (And (p, p'), rvN)
+                                     | _ => (p, rvN)
 
                 fun normal () =
                     case oe of
                         SomeCol =>
-                        (rvN, p, True,
-                         List.mapPartial (fn si =>
-                                             case si of
-                                                 SqField (v, f) => SOME (Proj (rvOf v, f))
-                                               | SqExp (e, f) =>
-                                                 case expIn e of
-                                                     inr _ => NONE
-                                                   | inl e => SOME e) (#Select r))
-                      | AllCols oe =>
-                        (rvN, And (p, foldl (fn (si, p) =>
+                        let
+                            val (sis, rvN) =
+                                ListUtil.foldlMap
+                                    (fn (si, rvN) =>
+                                        case si of
+                                            SqField (v, f) => (Proj (rvOf v, f), rvN)
+                                          | SqExp (e, f) =>
+                                            case expIn (e, rvN) of
+                                                (inr _, _) =>
                                                 let
-                                                    val p' = case si of
-                                                                 SqField (v, f) => Reln (Eq, [Proj (Proj (oe, v), f),
-                                                                                              Proj (rvOf v, f)])
-                                                               | SqExp (e, f) =>
-                                                                 case expIn e of
-                                                                     inr p => Cond (Proj (oe, f), p)
-                                                                   | inl e => Reln (Eq, [Proj (oe, f), e])
+                                                    val (rvN, e) = rv rvN
                                                 in
-                                               And (p, p')
-                                                end)
-                                            True (#Select r)),
-                         True, [])
+                                                    (e, rvN)
+                                                end
+                                              | (inl e, rvN) => (e, rvN)) rvN (#Select r)
+                        in
+                            (rvN, p, True, sis)
+                        end
+                      | AllCols oe =>
+                        let
+                            val (p', rvN) =
+                                foldl (fn (si, (p, rvN)) =>
+                                          let
+                                              val (p', rvN) =
+                                                  case si of
+                                                      SqField (v, f) => (Reln (Eq, [Proj (Proj (oe, v), f),
+                                                                                    Proj (rvOf v, f)]), rvN)
+                                                    | SqExp (e, f) =>
+                                                      case expIn (e, rvN) of
+                                                          (inr p, rvN) => (Cond (Proj (oe, f), p), rvN)
+                                                        | (inl e, rvN) => (Reln (Eq, [Proj (oe, f), e]), rvN)
+                                          in
+                                              (And (p, p'), rvN)
+                                          end)
+                                      (True, rvN) (#Select r)
+                        in
+                            (rvN, And (p, p'), True, [])
+                        end
 
                 val (rvN, p, wp, outs) =
                     case #Select r of
@@ -1370,7 +1437,50 @@ fun queryProp env rvN rv oe e =
                                  NONE => []
                                | SOME e => map (fn (v, f) => Proj (rvOf v, f)) (usedFields e), outs)
             end
-            handle Default => default ()
+    end
+
+fun insertProp rvN rv e =
+    let
+        fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
+                                 ^ ErrorMsg.spanToString (#2 e) ^ "\n");
+                          Unknown)
+    in
+        case parse query e of
+            NONE => default ()
+          | SOME r =>
+            let
+                val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
+                                                       let
+                                                           val (rvN, e) = rv rvN
+                                                       in
+                                                           ((v, e), rvN)
+                                                       end) rvN (#From r)
+
+                fun rvOf v =
+                    case List.find (fn (v', _) => v' = v) rvs of
+                        NONE => raise Fail "Iflow.insertProp: Bad table variable"
+                      | SOME (_, e) => e
+
+                val p =
+                    foldl (fn ((t, v), p) =>
+                              let
+                                  val t =
+                                      case v of
+                                          "New" => "$New"
+                                        | _ => t
+                              in
+                                  And (p, Reln (Sql t, [rvOf v]))
+                              end) True (#From r)
+
+                val expIn = expIn rv [] rvOf
+            in
+                case #Where r of
+                    NONE => p
+                  | SOME e =>
+                    case expIn (e, rvN) of
+                        (inr p', _) => And (p, p')
+                      | _ => p
+            end
     end
 
 fun evalPat env e (pt, _) =
@@ -1428,6 +1538,7 @@ fun removeRedundant p1 =
 datatype cflow = Case | Where
 datatype flow = Data | Control of cflow
 type check = ErrorMsg.span * exp * prop
+type insert = ErrorMsg.span * prop
 
 structure St :> sig
     type t
@@ -1449,57 +1560,77 @@ structure St :> sig
     val sent : t -> (check * flow) list
     val addSent : t * (check * flow) -> t
     val setSent : t * (check * flow) list -> t
+
+    val inserted : t -> insert list
+    val addInsert : t * insert -> t
 end = struct
 
 type t = {Var : int,
           Ambient : prop,
           Path : (check * cflow) list,
-          Sent : (check * flow) list}
+          Sent : (check * flow) list,
+          Insert : insert list}
 
 fun create {Var = v, Ambient = p} = {Var = v,
                                      Ambient = p,
                                      Path = [],
-                                     Sent = []}
+                                     Sent = [],
+                                     Insert = []}
 
 fun curVar (t : t) = #Var t
 fun nextVar (t : t) = ({Var = #Var t + 1,
                         Ambient = #Ambient t,
                         Path = #Path t,
-                        Sent = #Sent t}, #Var t)
+                        Sent = #Sent t,
+                        Insert = #Insert t}, #Var t)
 
 fun ambient (t : t) = #Ambient t
 fun setAmbient (t : t, p) = {Var = #Var t,
                              Ambient = p,
                              Path = #Path t,
-                             Sent = #Sent t}
+                             Sent = #Sent t,
+                             Insert = #Insert t}
 
 fun paths (t : t) = #Path t
 fun addPath (t : t, c) = {Var = #Var t,
                           Ambient = #Ambient t,
                           Path = c :: #Path t,
-                          Sent = #Sent t}
+                          Sent = #Sent t,
+                          Insert = #Insert t}
 fun addPaths (t : t, cs) = {Var = #Var t,
                             Ambient = #Ambient t,
                             Path = cs @ #Path t,
-                            Sent = #Sent t}
+                            Sent = #Sent t,
+                            Insert = #Insert t}
 fun clearPaths (t : t) = {Var = #Var t,
                           Ambient = #Ambient t,
                           Path = [],
-                          Sent = #Sent t}
+                          Sent = #Sent t,
+                          Insert = #Insert t}
 fun setPaths (t : t, cs) = {Var = #Var t,
                             Ambient = #Ambient t,
                             Path = cs,
-                            Sent = #Sent t}
+                            Sent = #Sent t,
+                            Insert = #Insert t}
 
 fun sent (t : t) = #Sent t
 fun addSent (t : t, c) = {Var = #Var t,
                           Ambient = #Ambient t,
                           Path = #Path t,
-                          Sent = c :: #Sent t}
+                          Sent = c :: #Sent t,
+                          Insert = #Insert t}
 fun setSent (t : t, cs) = {Var = #Var t,
                            Ambient = #Ambient t,
                            Path = #Path t,
-                           Sent = cs}
+                           Sent = cs,
+                           Insert = #Insert t}
+
+fun inserted (t : t) = #Insert t
+fun addInsert (t : t, c) = {Var = #Var t,
+                            Ambient = #Ambient t,
+                            Path = #Path t,
+                            Sent = #Sent t,
+                            Insert = c :: #Insert t}
 
 end
 
@@ -1720,7 +1851,44 @@ fun evalExp env (e as (_, loc), st) =
             in
                 (res, St.addPaths (St.setSent (st, sent), paths))
             end
-          | EDml _ => default ()
+          | EDml e =>
+            (case parse dml e of
+                 NONE => (print ("Warning: Information flow checker can't parse DML command at "
+                                 ^ ErrorMsg.spanToString loc ^ "\n");
+                          default ())
+               | SOME d =>
+                 case d of
+                     Insert (tab, es) =>
+                     let
+                         val (st, new) = St.nextVar st
+
+                         fun rv st =
+                             let
+                                 val (st, n) = St.nextVar st
+                             in
+                                 (st, Var n)
+                             end
+
+                         val expIn = expIn rv env (fn "New" => Var new
+                                                    | _ => raise Fail "Iflow.evalExp: Bad field expression in EDml")
+
+                         val (es, st) = ListUtil.foldlMap
+                                            (fn ((x, e), st) =>
+                                                let
+                                                    val (e, st) = case expIn (e, st) of
+                                                                      (inl e, st) => (e, st)
+                                                                    | (inr _, _) => raise Fail
+                                                                                              ("Iflow.evalExp: Selecting "
+                                                                                               ^ "boolean expression")
+                                                in
+                                                    ((x, e), st)
+                                                end)
+                                            st es
+                     in
+                         (Recd [], St.addInsert (st, (loc, And (St.ambient st,
+                                                                Reln (Sql "$New", [Recd es])))))
+                     end)
+                     
           | ENextval _ => default ()
           | ESetval _ => default ()
 
@@ -1756,7 +1924,7 @@ fun check file =
                                   DExport (_, _, n, _, _, _) => IS.add (exptd, n)
                                 | _ => exptd) IS.empty file
 
-        fun decl ((d, _), (vals, pols)) =
+        fun decl ((d, _), (vals, inserts, client, insert)) =
             case d of
                 DVal (_, n, _, e, _) =>
                 let
@@ -1776,21 +1944,36 @@ fun check file =
                     val (_, st) = evalExp env (e, St.create {Var = nv,
                                                              Ambient = p})
                 in
-                    (St.sent st @ vals, pols)
+                    (St.sent st @ vals, St.inserted st @ inserts, client, insert)
                 end
 
-              | DPolicy (PolClient e) =>
+              | DPolicy pol =>
                 let
-                    val (_, p, _, _, outs) = queryProp [] 0 (fn rvN => (rvN + 1, Lvar rvN)) SomeCol e
+                    fun rv rvN = (rvN + 1, Lvar rvN)
                 in
-                    (vals, (p, outs) :: pols)
+                    case pol of
+                        PolClient e =>
+                        let
+                            val (_, p, _, _, outs) = queryProp [] 0 rv SomeCol e
+                        in
+                            (vals, inserts, (p, outs) :: client, insert)
+                        end
+                      | PolInsert e =>
+                        let
+                            val p = insertProp 0 rv e
+                        in
+                            (vals, inserts,client, p :: insert)
+                        end
                 end
                                         
-              | _ => (vals, pols)
+              | _ => (vals, inserts, client, insert)
 
         val () = reset ()
 
-        val (vals, pols) = foldl decl ([], []) file
+        val (vals, inserts, client, insert) = foldl decl ([], [], [], []) file
+
+        val decompH = decomp true (fn (e1, e2) => e1 andalso e2 ())
+        val decompG = decomp false (fn (e1, e2) => e1 orelse e2 ())
     in
         app (fn ((loc, e, p), fl) =>
                 let
@@ -1798,14 +1981,14 @@ fun check file =
                         let
                             val p = And (p, Reln (Eq, [Var 0, e]))
                         in
-                            if decomp true (fn (e1, e2) => e1 andalso e2 ()) p
-                                      (fn hyps =>
-                                          (fl <> Control Where
-                                           andalso imply (hyps, [AReln (Known, [Var 0])], [Var 0]))
-                                          orelse List.exists (fn (p', outs) =>
-                                                                 decomp false (fn (e1, e2) => e1 orelse e2 ()) p'
-                                                                        (fn goals => imply (hyps, goals, outs)))
-                                                             pols) then
+                            if decompH p
+                                       (fn hyps =>
+                                           (fl <> Control Where
+                                            andalso imply (hyps, [AReln (Known, [Var 0])], SOME [Var 0]))
+                                           orelse List.exists (fn (p', outs) =>
+                                                                  decompG p'
+                                                                          (fn goals => imply (hyps, goals, SOME outs)))
+                                                              client) then
                                 ()
                             else
                                 (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
@@ -1824,7 +2007,19 @@ fun check file =
                           | Finish => ()
                 in
                     doAll e
-                end) vals
+                end) vals;
+
+        app (fn (loc, p) =>
+                if decompH p
+                           (fn hyps =>
+                               List.exists (fn p' =>
+                                               decompG p'
+                                                       (fn goals => imply (hyps, goals, NONE)))
+                                           insert) then
+                    ()
+                else
+                    (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
+                     Print.preface ("The state satisifies this predicate:", p_prop p))) inserts
     end
 
 val check = fn file =>

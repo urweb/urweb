@@ -3746,6 +3746,8 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                     case #1 e of
                         L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sendClient"), _), _), _), _), _), e) =>
                         (e, L'.PolClient)
+                      | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayInsert"), _), _), _), _), _), e) =>
+                        (e, L'.PolInsert)
                       | _ => (poly (); (e, L'.PolClient))
 
                 val (e, fm) = monoExp (env, St.empty, fm) e

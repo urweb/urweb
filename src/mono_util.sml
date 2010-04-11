@@ -544,6 +544,9 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                 PolClient e =>
                 S.map2 (mfe ctx e,
                         PolClient)
+              | PolInsert e =>
+                S.map2 (mfe ctx e,
+                        PolInsert)
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mft t,
