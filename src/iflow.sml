@@ -1834,6 +1834,8 @@ fun addUpdate (t : t, c) = {Var = #Var t,
 
 end
 
+val tabs = ref (SM.empty : string list SM.map)
+
 fun evalExp env (e as (_, loc), st) =
     let
         fun default () =
@@ -2139,6 +2141,16 @@ fun evalExp env (e as (_, loc), st) =
                                                 end)
                                             st fs
 
+                         val fs' = case SM.find (!tabs, "uw_" ^ tab) of
+                                       NONE => raise Fail "Iflow.evalExp: Updating unknown table"
+                                     | SOME fs' => fs'
+
+                         val fs = foldl (fn (f, fs) =>
+                                            if List.exists (fn (f', _) => f' = f) fs then
+                                                fs
+                                            else
+                                                (f, Proj (Var old, f)) :: fs) fs fs'
+
                          val (p, st) = case expIn (e, st) of
                                            (inl e, _) => raise Fail "Iflow.evalExp: UPDATE with non-boolean" 
                                          | (inr p, st) => (p, st)
@@ -2188,7 +2200,10 @@ fun check file =
 
         fun decl ((d, _), (vals, inserts, deletes, updates, client, insert, delete, update)) =
             case d of
-                DVal (_, n, _, e, _) =>
+                DTable (tab, fs, _, _) =>
+                (tabs := SM.insert (!tabs, tab, map #1 fs);
+                 (vals, inserts, deletes, updates, client, insert, delete, update))
+              | DVal (_, n, _, e, _) =>
                 let
                     val isExptd = IS.member (exptd, n)
 
@@ -2247,6 +2262,7 @@ fun check file =
 
         val (vals, inserts, deletes, updates, client, insert, delete, update) =
             foldl decl ([], [], [], [], [], [], [], []) file
+
 
         val decompH = decomp true (fn (e1, e2) => e1 andalso e2 ())
         val decompG = decomp false (fn (e1, e2) => e1 orelse e2 ())
