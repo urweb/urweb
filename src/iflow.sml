@@ -969,7 +969,7 @@ fun imply (hyps, goals, outs) =
                                                         ("hyps", Print.p_list p_atom hyps),
                                                         ("db", Cc.p_database cc)];*)
                                         false)) acc
-                      (*andalso (Print.preface ("Finding", Cc.p_database cc); true)*)
+                      andalso ((*Print.preface ("Finding", Cc.p_database cc);*) true)
                       andalso (case outs of
                                    NONE => true
                                  | SOME outs => Cc.builtFrom (cc, {Derived = Var 0,
@@ -1129,9 +1129,10 @@ fun ws p = wrap (follow (skip (fn ch => ch = #" "))
 
 fun log name p chs =
     (if !debug then
-         case chs of
-             String s :: _ => print (name ^ ": " ^ s ^ "\n")
-           | _ => print (name ^ ": blocked!\n")
+         (print (name ^ ": ");
+          app (fn String s => print s
+                | _ => print "???") chs;
+          print "\n")
      else
          ();
      p chs)
@@ -1302,9 +1303,26 @@ val from = log "from"
 val wher = wrap (follow (ws (const "WHERE ")) sqexp)
            (fn ((), ls) => ls)
 
-val query = log "query"
+type query1 = {Select : sitem list,
+              From : (string * string) list,
+              Where : sqexp option}
+
+val query1 = log "query1"
                 (wrap (follow (follow select from) (opt wher))
                       (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher}))
+
+datatype query =
+         Query1 of query1
+       | Union of query * query
+
+fun query chs = log "query"
+                (alt (wrap (follow (const "((")
+                                   (follow query
+                                           (follow (const ") UNION (")
+                                                   (follow query (const "))")))))
+                           (fn ((), (q1, ((), (q2, ())))) => Union (q1, q2)))
+                     (wrap query1 Query1))
+                chs
 
 datatype dml =
          Insert of string * (string * sqexp) list
@@ -1431,135 +1449,154 @@ fun queryProp env rvN rv oe e =
     let
         fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
                                  ^ ErrorMsg.spanToString (#2 e) ^ "\n");
-                          (rvN, Unknown, Unknown, [], []))
+                          (rvN, Unknown, [], []))
     in
         case parse query e of
             NONE => default ()
-          | SOME r =>
+          | SOME q =>
             let
-                val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
-                                                       let
-                                                           val (rvN, e) = rv rvN
-                                                       in
-                                                           ((v, e), rvN)
-                                                       end) rvN (#From r)
-
-                fun rvOf v =
-                    case List.find (fn (v', _) => v' = v) rvs of
-                        NONE => raise Fail "Iflow.queryProp: Bad table variable"
-                      | SOME (_, e) => e
-
-                fun usedFields e =
-                    case e of
-                        SqConst _ => []
-                      | Field (v, f) => [(v, f)]
-                      | Binop (_, e1, e2) => removeDups (usedFields e1 @ usedFields e2)
-                      | SqKnown _ => []
-                      | Inj _ => []
-                      | SqFunc (_, e) => usedFields e
-                      | Count => []
-
-                val p =
-                    foldl (fn ((t, v), p) => And (p, Reln (Sql t, [rvOf v]))) True (#From r)
-
-                val expIn = expIn rv env rvOf
-
-                val (p, rvN) = case #Where r of
-                                   NONE => (p, rvN)
-                                 | SOME e =>
-                                   case expIn (e, rvN) of
-                                       (inr p', rvN) => (And (p, p'), rvN)
-                                     | _ => (p, rvN)
-
-                fun normal () =
-                    case oe of
-                        SomeCol =>
+                fun doQuery (q, rvN) =
+                    case q of
+                        Query1 r =>
                         let
-                            val (sis, rvN) =
-                                ListUtil.foldlMap
-                                    (fn (si, rvN) =>
-                                        case si of
-                                            SqField (v, f) => (Proj (rvOf v, f), rvN)
-                                          | SqExp (e, f) =>
-                                            case expIn (e, rvN) of
-                                                (inr _, _) =>
-                                                let
-                                                    val (rvN, e) = rv rvN
-                                                in
-                                                    (e, rvN)
-                                                end
-                                              | (inl e, rvN) => (e, rvN)) rvN (#Select r)
-                        in
-                            (rvN, p, True, sis)
-                        end
-                      | AllCols oe =>
-                        let
-                            val (ts, es, rvN) =
-                                foldl (fn (si, (ts, es, rvN)) =>
-                                          case si of
-                                              SqField (v, f) =>
-                                              let
-                                                  val fs = getOpt (SM.find (ts, v), SM.empty)
-                                              in
-                                                  (SM.insert (ts, v, SM.insert (fs, f, Proj (rvOf v, f))), es, rvN)
-                                              end
-                                            | SqExp (e, f) =>
-                                              let
-                                                  val (e, rvN) =
-                                                      case expIn (e, rvN) of
-                                                          (inr _, rvN) =>
+                            val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
+                                                                   let
+                                                                       val (rvN, e) = rv rvN
+                                                                   in
+                                                                       ((v, e), rvN)
+                                                                   end) rvN (#From r)
+
+                            fun rvOf v =
+                                case List.find (fn (v', _) => v' = v) rvs of
+                                    NONE => raise Fail "Iflow.queryProp: Bad table variable"
+                                  | SOME (_, e) => e
+
+                            fun usedFields e =
+                                case e of
+                                    SqConst _ => []
+                                  | Field (v, f) => [(v, f)]
+                                  | Binop (_, e1, e2) => removeDups (usedFields e1 @ usedFields e2)
+                                  | SqKnown _ => []
+                                  | Inj _ => []
+                                  | SqFunc (_, e) => usedFields e
+                                  | Count => []
+
+                            val p =
+                                foldl (fn ((t, v), p) => And (p, Reln (Sql t, [rvOf v]))) True (#From r)
+
+                            val expIn = expIn rv env rvOf
+
+                            val (p, rvN) = case #Where r of
+                                               NONE => (p, rvN)
+                                             | SOME e =>
+                                               case expIn (e, rvN) of
+                                                   (inr p', rvN) => (And (p, p'), rvN)
+                                                 | _ => (p, rvN)
+
+                            fun normal () =
+                                case oe of
+                                    SomeCol =>
+                                    let
+                                        val (sis, rvN) =
+                                            ListUtil.foldlMap
+                                                (fn (si, rvN) =>
+                                                    case si of
+                                                        SqField (v, f) => (Proj (rvOf v, f), rvN)
+                                                      | SqExp (e, f) =>
+                                                        case expIn (e, rvN) of
+                                                            (inr _, _) =>
+                                                            let
+                                                                val (rvN, e) = rv rvN
+                                                            in
+                                                                (e, rvN)
+                                                            end
+                                                          | (inl e, rvN) => (e, rvN)) rvN (#Select r)
+                                    in
+                                        (rvN, p, True, sis)
+                                    end
+                                  | AllCols oe =>
+                                    let
+                                        val (ts, es, rvN) =
+                                            foldl (fn (si, (ts, es, rvN)) =>
+                                                      case si of
+                                                          SqField (v, f) =>
                                                           let
-                                                              val (rvN, e) = rv rvN
+                                                              val fs = getOpt (SM.find (ts, v), SM.empty)
                                                           in
-                                                              (e, rvN)
+                                                              (SM.insert (ts, v, SM.insert (fs, f, Proj (rvOf v, f))), es, rvN)
                                                           end
-                                                        | (inl e, rvN) => (e, rvN)
+                                                        | SqExp (e, f) =>
+                                                          let
+                                                              val (e, rvN) =
+                                                                  case expIn (e, rvN) of
+                                                                      (inr _, rvN) =>
+                                                                      let
+                                                                          val (rvN, e) = rv rvN
+                                                                      in
+                                                                          (e, rvN)
+                                                                      end
+                                                                    | (inl e, rvN) => (e, rvN)
+                                                          in
+                                                              (ts, SM.insert (es, f, e), rvN)
+                                                          end)
+                                                  (SM.empty, SM.empty, rvN) (#Select r)
+
+                                        val p' = Reln (Eq, [oe, Recd (map (fn (t, fs) => (t, Recd (SM.listItemsi fs)))
+                                                                          (SM.listItemsi ts)
+                                                                      @ SM.listItemsi es)])
+                                    in
+                                        (rvN, And (p, p'), True, [])
+                                    end
+
+                            val (rvN, p, wp, outs) =
+                                case #Select r of
+                                    [SqExp (Binop (Exps bo, Count, SqConst (Prim.Int 0)), f)] =>
+                                    (case bo (Const (Prim.Int 1), Const (Prim.Int 2)) of
+                                         Reln (Gt, [Const (Prim.Int 1), Const (Prim.Int 2)]) =>
+                                         (case oe of
+                                              SomeCol =>
+                                              let
+                                                  val (rvN, oe) = rv rvN
                                               in
-                                                  (ts, SM.insert (es, f, e), rvN)
+                                                  (rvN,
+                                                   Or (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.False", [])]),
+                                                       And (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
+                                                            p)),
+                                                   Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
+                                                   [oe])
+                                              end
+                                            | AllCols oe =>
+                                              let
+                                                  fun oeEq e = Reln (Eq, [oe, Recd [(f, e)]])
+                                              in
+                                                  (rvN,
+                                                   Or (oeEq (Func (DtCon0 "Basis.bool.False", [])),
+                                                       And (oeEq (Func (DtCon0 "Basis.bool.True", [])),
+                                                            p)),
+                                                   oeEq (Func (DtCon0 "Basis.bool.True", [])),
+                                                   [])
                                               end)
-                                      (SM.empty, SM.empty, rvN) (#Select r)
-
-                            val p' = Reln (Eq, [oe, Recd (map (fn (t, fs) => (t, Recd (SM.listItemsi fs)))
-                                                              (SM.listItemsi ts)
-                                                          @ SM.listItemsi es)])
+                                       | _ => normal ())
+                                  | _ => normal ()
                         in
-                            (rvN, And (p, p'), True, [])
+                            (rvN, p, map (fn x => (wp, x))
+                                     (case #Where r of
+                                          NONE => []
+                                        | SOME e => map (fn (v, f) => Proj (rvOf v, f)) (usedFields e)), outs)
                         end
-
-                val (rvN, p, wp, outs) =
-                    case #Select r of
-                        [SqExp (Binop (Exps bo, Count, SqConst (Prim.Int 0)), f)] =>
-                        (case bo (Const (Prim.Int 1), Const (Prim.Int 2)) of
-                             Reln (Gt, [Const (Prim.Int 1), Const (Prim.Int 2)]) =>
-                             (case oe of
-                                  SomeCol =>
-                                  let
-                                      val (rvN, oe) = rv rvN
-                                  in
-                                      (rvN,
-                                       Or (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.False", [])]),
-                                           And (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
-                                                p)),
-                                       Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
-                                       [oe])
-                                  end
-                                | AllCols oe =>
-                                  let
-                                      fun oeEq e = Reln (Eq, [oe, Recd [(f, e)]])
-                                  in
-                                      (rvN,
-                                       Or (oeEq (Func (DtCon0 "Basis.bool.False", [])),
-                                           And (oeEq (Func (DtCon0 "Basis.bool.True", [])),
-                                                p)),
-                                       oeEq (Func (DtCon0 "Basis.bool.True", [])),
-                                       [])
-                                  end)
-                           | _ => normal ())
-                      | _ => normal ()
+                      | Union (q1, q2) =>
+                        let
+                            val (rvN, p1, used1, outs1) = doQuery (q1, rvN)
+                            val (rvN, p2, used2, outs2) = doQuery (q2, rvN)
+                        in
+                            case (outs1, outs2) of
+                                ([], []) => (rvN, Or (p1, p2),
+                                             map (fn (p, e) => (And (p1, p), e)) used1
+                                             @ map (fn (p, e) => (And (p2, p), e)) used2, [])
+                              | _ => default ()
+                        end
             in
-                (rvN, p, wp, case #Where r of
-                                 NONE => []
-                               | SOME e => map (fn (v, f) => Proj (rvOf v, f)) (usedFields e), outs)
+                doQuery (q, rvN)
             end
     end
 
@@ -1570,8 +1607,7 @@ fun insertProp rvN rv e =
                           Unknown)
     in
         case parse query e of
-            NONE => default ()
-          | SOME r =>
+            SOME (Query1 r) =>
             let
                 val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
                                                        let
@@ -1605,6 +1641,7 @@ fun insertProp rvN rv e =
                         (inr p', _) => And (p, p')
                       | _ => p
             end
+          | _ => default ()
     end
 
 fun deleteProp rvN rv e =
@@ -1614,8 +1651,7 @@ fun deleteProp rvN rv e =
                           Unknown)
     in
         case parse query e of
-            NONE => default ()
-          | SOME r =>
+            SOME (Query1 r) =>
             let
                 val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
                                                        let
@@ -1642,6 +1678,7 @@ fun deleteProp rvN rv e =
                              (inr p', _) => And (p, p')
                            | _ => p)
             end
+          | _ => default ()
     end
 
 fun updateProp rvN rv e =
@@ -1651,8 +1688,7 @@ fun updateProp rvN rv e =
                           Unknown)
     in
         case parse query e of
-            NONE => default ()
-          | SOME r =>
+            SOME (Query1 r) =>
             let
                 val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
                                                        let
@@ -1687,6 +1723,7 @@ fun updateProp rvN rv e =
                              (inr p', _) => And (p, p')
                            | _ => p)
             end
+          | _ => default ()
     end
 
 fun evalPat env e (pt, _) =
@@ -2067,7 +2104,7 @@ fun evalExp env (e as (_, loc), st) =
 
                 val (b, st') = evalExp (Var acc :: Var r :: env) (b, st')
 
-                val (st', qp, qwp, used, _) =
+                val (st', qp, used, _) =
                     queryProp env
                               st' (fn st' =>
                                       let
@@ -2098,8 +2135,7 @@ fun evalExp env (e as (_, loc), st) =
 
                 val sent = map (fn ((loc, e, p), fl) => ((loc, e, And (qp, p)), fl)) (St.sent st')
 
-                val p' = And (p', qwp)
-                val paths = map (fn e => ((loc, e, p'), Where)) used
+                val paths = map (fn (p'', e) => ((loc, e, And (p', p'')), Where)) used
             in
                 (res, St.addPaths (St.setSent (st, sent), paths))
             end
@@ -2298,7 +2334,7 @@ fun check file =
                     case pol of
                         PolClient e =>
                         let
-                            val (_, p, _, _, outs) = queryProp [] 0 rv SomeCol e
+                            val (_, p, _, outs) = queryProp [] 0 rv SomeCol e
                         in
                             (vals, inserts, deletes, updates, (p, outs) :: client, insert, delete, update)
                         end
