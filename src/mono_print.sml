@@ -423,6 +423,9 @@ fun p_policy env pol =
       | PolDelete e => box [string "mayDelete",
                             space,
                             p_exp env e]
+      | PolUpdate e => box [string "mayUpdate",
+                            space,
+                            p_exp env e]
 
 fun p_decl env (dAll as (d, _) : decl) =
     case d of

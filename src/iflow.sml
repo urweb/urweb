@@ -958,7 +958,7 @@ fun imply (hyps, goals, outs) =
     in
         reset ();
         (*Print.prefaces "Big go" [("hyps", Print.p_list p_atom hyps),
-                                   ("goals", Print.p_list p_atom goals)];*)
+                                 ("goals", Print.p_list p_atom goals)];*)
         gls goals (fn () => false) []
     end handle Cc.Contradiction => true
 
@@ -1257,6 +1257,7 @@ val query = log "query"
 datatype dml =
          Insert of string * (string * sqexp) list
        | Delete of string * sqexp
+       | Update of string * (string * sqexp) list * sqexp
 
 val insert = log "insert"
              (wrapP (follow (const "INSERT INTO ")
@@ -1277,9 +1278,24 @@ val delete = log "delete"
                                                sqexp)))
                        (fn ((), (tab, ((), es))) => (tab, es)))
 
+val setting = log "setting"
+              (wrap (follow uw_ident (follow (const " = ") sqexp))
+               (fn (f, ((), e)) => (f, e)))
+
+val update = log "update"
+                 (wrap (follow (const "UPDATE ")
+                               (follow uw_ident
+                                       (follow (const " AS T_T SET ")
+                                               (follow (list setting)
+                                                       (follow (ws (const "WHERE "))
+                                                               sqexp)))))
+                       (fn ((), (tab, ((), (fs, ((), e))))) =>
+                           (tab, fs, e)))
+
 val dml = log "dml"
               (altL [wrap insert Insert,
-                     wrap delete Delete])
+                     wrap delete Delete,
+                     wrap update Update])
 
 fun removeDups (ls : (string * string) list) =
     case ls of
@@ -1576,6 +1592,51 @@ fun deleteProp rvN rv e =
             end
     end
 
+fun updateProp rvN rv e =
+    let
+        fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
+                                 ^ ErrorMsg.spanToString (#2 e) ^ "\n");
+                          Unknown)
+    in
+        case parse query e of
+            NONE => default ()
+          | SOME r =>
+            let
+                val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
+                                                       let
+                                                           val (rvN, e) = rv rvN
+                                                       in
+                                                           ((v, e), rvN)
+                                                       end) rvN (#From r)
+
+                fun rvOf v =
+                    case List.find (fn (v', _) => v' = v) rvs of
+                        NONE => raise Fail "Iflow.insertProp: Bad table variable"
+                      | SOME (_, e) => e
+
+                val p =
+                    foldl (fn ((t, v), p) =>
+                              let
+                                  val t =
+                                      case v of
+                                          "New" => "$New"
+                                        | _ => t
+                              in
+                                  And (p, Reln (Sql t, [rvOf v]))
+                              end) True (#From r)
+
+                val expIn = expIn rv [] rvOf
+            in
+                And (Reln (Sql "$Old", [rvOf "Old"]),
+                     case #Where r of
+                         NONE => p
+                       | SOME e =>
+                         case expIn (e, rvN) of
+                             (inr p', _) => And (p, p')
+                           | _ => p)
+            end
+    end
+
 fun evalPat env e (pt, _) =
     case pt of
         PWild => (env, True)
@@ -1659,6 +1720,9 @@ structure St :> sig
 
     val deleted : t -> dml list
     val addDelete : t * dml -> t
+
+    val updated : t -> dml list
+    val addUpdate : t * dml -> t
 end = struct
 
 type t = {Var : int,
@@ -1666,14 +1730,16 @@ type t = {Var : int,
           Path : (check * cflow) list,
           Sent : (check * flow) list,
           Insert : dml list,
-          Delete : dml list}
+          Delete : dml list,
+          Update : dml list}
 
 fun create {Var = v, Ambient = p} = {Var = v,
                                      Ambient = p,
                                      Path = [],
                                      Sent = [],
                                      Insert = [],
-                                     Delete = []}
+                                     Delete = [],
+                                     Update = []}
 
 fun curVar (t : t) = #Var t
 fun nextVar (t : t) = ({Var = #Var t + 1,
@@ -1681,7 +1747,8 @@ fun nextVar (t : t) = ({Var = #Var t + 1,
                         Path = #Path t,
                         Sent = #Sent t,
                         Insert = #Insert t,
-                        Delete = #Delete t}, #Var t)
+                        Delete = #Delete t,
+                        Update = #Update t}, #Var t)
 
 fun ambient (t : t) = #Ambient t
 fun setAmbient (t : t, p) = {Var = #Var t,
@@ -1689,7 +1756,8 @@ fun setAmbient (t : t, p) = {Var = #Var t,
                              Path = #Path t,
                              Sent = #Sent t,
                              Insert = #Insert t,
-                             Delete = #Delete t}
+                             Delete = #Delete t,
+                             Update = #Update t}
 
 fun paths (t : t) = #Path t
 fun addPath (t : t, c) = {Var = #Var t,
@@ -1697,25 +1765,29 @@ fun addPath (t : t, c) = {Var = #Var t,
                           Path = c :: #Path t,
                           Sent = #Sent t,
                           Insert = #Insert t,
-                          Delete = #Delete t}
+                          Delete = #Delete t,
+                          Update = #Update t}
 fun addPaths (t : t, cs) = {Var = #Var t,
                             Ambient = #Ambient t,
                             Path = cs @ #Path t,
                             Sent = #Sent t,
                             Insert = #Insert t,
-                            Delete = #Delete t}
+                            Delete = #Delete t,
+                            Update = #Update t}
 fun clearPaths (t : t) = {Var = #Var t,
                           Ambient = #Ambient t,
                           Path = [],
                           Sent = #Sent t,
                           Insert = #Insert t,
-                          Delete = #Delete t}
+                          Delete = #Delete t,
+                          Update = #Update t}
 fun setPaths (t : t, cs) = {Var = #Var t,
                             Ambient = #Ambient t,
                             Path = cs,
                             Sent = #Sent t,
                             Insert = #Insert t,
-                            Delete = #Delete t}
+                            Delete = #Delete t,
+                            Update = #Update t}
 
 fun sent (t : t) = #Sent t
 fun addSent (t : t, c) = {Var = #Var t,
@@ -1723,13 +1795,15 @@ fun addSent (t : t, c) = {Var = #Var t,
                           Path = #Path t,
                           Sent = c :: #Sent t,
                           Insert = #Insert t,
-                          Delete = #Delete t}
+                          Delete = #Delete t,
+                          Update = #Update t}
 fun setSent (t : t, cs) = {Var = #Var t,
                            Ambient = #Ambient t,
                            Path = #Path t,
                            Sent = cs,
                            Insert = #Insert t,
-                           Delete = #Delete t}
+                           Delete = #Delete t,
+                           Update = #Update t}
 
 fun inserted (t : t) = #Insert t
 fun addInsert (t : t, c) = {Var = #Var t,
@@ -1737,7 +1811,8 @@ fun addInsert (t : t, c) = {Var = #Var t,
                             Path = #Path t,
                             Sent = #Sent t,
                             Insert = c :: #Insert t,
-                            Delete = #Delete t}
+                            Delete = #Delete t,
+                            Update = #Update t}
 
 fun deleted (t : t) = #Delete t
 fun addDelete (t : t, c) = {Var = #Var t,
@@ -1745,7 +1820,17 @@ fun addDelete (t : t, c) = {Var = #Var t,
                             Path = #Path t,
                             Sent = #Sent t,
                             Insert = #Insert t,
-                            Delete = c :: #Delete t}
+                            Delete = c :: #Delete t,
+                            Update = #Update t}
+
+fun updated (t : t) = #Update t
+fun addUpdate (t : t, c) = {Var = #Var t,
+                            Ambient = #Ambient t,
+                            Path = #Path t,
+                            Sent = #Sent t,
+                            Insert = #Insert t,
+                            Delete = #Delete t,
+                            Update = c :: #Update t}
 
 end
 
@@ -1984,8 +2069,7 @@ fun evalExp env (e as (_, loc), st) =
                                  (st, Var n)
                              end
 
-                         val expIn = expIn rv env (fn "New" => Var new
-                                                    | _ => raise Fail "Iflow.evalExp: Bad field expression in UPDATE")
+                         val expIn = expIn rv env (fn _ => raise Fail "Iflow.evalExp: Bad field expression in INSERT")
 
                          val (es, st) = ListUtil.foldlMap
                                             (fn ((x, e), st) =>
@@ -2026,6 +2110,45 @@ fun evalExp env (e as (_, loc), st) =
                                            Reln (Sql tab, [Var old])))
                      in
                          (Recd [], St.addDelete (st, (loc, And (St.ambient st, p))))
+                     end
+                   | Update (tab, fs, e) =>
+                     let
+                         val (st, new) = St.nextVar st
+                         val (st, old) = St.nextVar st
+
+                         fun rv st =
+                             let
+                                 val (st, n) = St.nextVar st
+                             in
+                                 (st, Var n)
+                             end
+
+                         val expIn = expIn rv env (fn "T" => Var old
+                                                    | _ => raise Fail "Iflow.evalExp: Bad field expression in UPDATE")
+
+                         val (fs, st) = ListUtil.foldlMap
+                                            (fn ((x, e), st) =>
+                                                let
+                                                    val (e, st) = case expIn (e, st) of
+                                                                      (inl e, st) => (e, st)
+                                                                    | (inr _, _) => raise Fail
+                                                                                              ("Iflow.evalExp: Selecting "
+                                                                                               ^ "boolean expression")
+                                                in
+                                                    ((x, e), st)
+                                                end)
+                                            st fs
+
+                         val (p, st) = case expIn (e, st) of
+                                           (inl e, _) => raise Fail "Iflow.evalExp: UPDATE with non-boolean" 
+                                         | (inr p, st) => (p, st)
+
+                         val p = And (p,
+                                      And (Reln (Sql "$New", [Recd fs]),
+                                           And (Reln (Sql "$Old", [Var old]),
+                                                Reln (Sql tab, [Var old]))))
+                     in
+                         (Recd [], St.addUpdate (st, (loc, And (St.ambient st, p))))
                      end)
                      
           | ENextval _ => default ()
@@ -2063,7 +2186,7 @@ fun check file =
                                   DExport (_, _, n, _, _, _) => IS.add (exptd, n)
                                 | _ => exptd) IS.empty file
 
-        fun decl ((d, _), (vals, inserts, deletes, client, insert, delete)) =
+        fun decl ((d, _), (vals, inserts, deletes, updates, client, insert, delete, update)) =
             case d of
                 DVal (_, n, _, e, _) =>
                 let
@@ -2083,7 +2206,8 @@ fun check file =
                     val (_, st) = evalExp env (e, St.create {Var = nv,
                                                              Ambient = p})
                 in
-                    (St.sent st @ vals, St.inserted st @ inserts, St.deleted st @ deletes, client, insert, delete)
+                    (St.sent st @ vals, St.inserted st @ inserts, St.deleted st @ deletes, St.updated st @ updates,
+                     client, insert, delete, update)
                 end
 
               | DPolicy pol =>
@@ -2095,27 +2219,34 @@ fun check file =
                         let
                             val (_, p, _, _, outs) = queryProp [] 0 rv SomeCol e
                         in
-                            (vals, inserts, deletes, (p, outs) :: client, insert, delete)
+                            (vals, inserts, deletes, updates, (p, outs) :: client, insert, delete, update)
                         end
                       | PolInsert e =>
                         let
                             val p = insertProp 0 rv e
                         in
-                            (vals, inserts, deletes, client, p :: insert, delete)
+                            (vals, inserts, deletes, updates, client, p :: insert, delete, update)
                         end
                       | PolDelete e =>
                         let
                             val p = deleteProp 0 rv e
                         in
-                            (vals, inserts, deletes, client, insert, p :: delete)
+                            (vals, inserts, deletes, updates, client, insert, p :: delete, update)
+                        end
+                      | PolUpdate e =>
+                        let
+                            val p = updateProp 0 rv e
+                        in
+                            (vals, inserts, deletes, updates, client, insert, delete, p :: update)
                         end
                 end
                                         
-              | _ => (vals, inserts, deletes, client, insert, delete)
+              | _ => (vals, inserts, deletes, updates, client, insert, delete, update)
 
         val () = reset ()
 
-        val (vals, inserts, deletes, client, insert, delete) = foldl decl ([], [], [], [], [], []) file
+        val (vals, inserts, deletes, updates, client, insert, delete, update) =
+            foldl decl ([], [], [], [], [], [], [], []) file
 
         val decompH = decomp true (fn (e1, e2) => e1 andalso e2 ())
         val decompG = decomp false (fn (e1, e2) => e1 orelse e2 ())
@@ -2168,7 +2299,8 @@ fun check file =
                 end) vals;
 
         doDml (inserts, insert);
-        doDml (deletes, delete)
+        doDml (deletes, delete);
+        doDml (updates, update)
     end
 
 val check = fn file =>

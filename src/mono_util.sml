@@ -550,6 +550,9 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
               | PolDelete e =>
                 S.map2 (mfe ctx e,
                         PolDelete)
+              | PolUpdate e =>
+                S.map2 (mfe ctx e,
+                        PolUpdate)
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mft t,

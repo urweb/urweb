@@ -812,5 +812,9 @@ val mayDelete : fs ::: {Type} -> tables ::: {{Type}} -> [[Old] ~ tables]
                 => sql_query [] ([Old = fs] ++ tables) []
                 -> sql_policy
 
+val mayUpdate : fs ::: {Type} -> tables ::: {{Type}} -> [[Old, New] ~ tables]
+                => sql_query [] ([Old = fs, New = fs] ++ tables) []
+                -> sql_policy
+
 
 val debug : string -> transaction unit

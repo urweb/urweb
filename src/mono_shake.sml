@@ -64,6 +64,7 @@ fun shake file =
                                      PolClient e1 => e1
                                    | PolInsert e1 => e1
                                    | PolDelete e1 => e1
+                                   | PolUpdate e1 => e1
                     in
                         usedVars st e1
                     end
