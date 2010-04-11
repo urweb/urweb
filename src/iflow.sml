@@ -1426,21 +1426,34 @@ fun queryProp env rvN rv oe e =
                         end
                       | AllCols oe =>
                         let
-                            val (p', rvN) =
-                                foldl (fn (si, (p, rvN)) =>
-                                          let
-                                              val (p', rvN) =
-                                                  case si of
-                                                      SqField (v, f) => (Reln (Eq, [Proj (Proj (oe, v), f),
-                                                                                    Proj (rvOf v, f)]), rvN)
-                                                    | SqExp (e, f) =>
+                            val (ts, es, rvN) =
+                                foldl (fn (si, (ts, es, rvN)) =>
+                                          case si of
+                                              SqField (v, f) =>
+                                              let
+                                                  val fs = getOpt (SM.find (ts, v), SM.empty)
+                                              in
+                                                  (SM.insert (ts, v, SM.insert (fs, f, Proj (rvOf v, f))), es, rvN)
+                                              end
+                                            | SqExp (e, f) =>
+                                              let
+                                                  val (e, rvN) =
                                                       case expIn (e, rvN) of
-                                                          (inr p, rvN) => (Cond (Proj (oe, f), p), rvN)
-                                                        | (inl e, rvN) => (Reln (Eq, [Proj (oe, f), e]), rvN)
-                                          in
-                                              (And (p, p'), rvN)
-                                          end)
-                                      (True, rvN) (#Select r)
+                                                          (inr _, rvN) =>
+                                                          let
+                                                              val (rvN, e) = rv rvN
+                                                          in
+                                                              (e, rvN)
+                                                          end
+                                                        | (inl e, rvN) => (e, rvN)
+                                              in
+                                                  (ts, SM.insert (es, f, e), rvN)
+                                              end)
+                                      (SM.empty, SM.empty, rvN) (#Select r)
+
+                            val p' = Reln (Eq, [oe, Recd (map (fn (t, fs) => (t, Recd (SM.listItemsi fs)))
+                                                              (SM.listItemsi ts)
+                                                          @ SM.listItemsi es)])
                         in
                             (rvN, And (p, p'), True, [])
                         end
