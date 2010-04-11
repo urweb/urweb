@@ -77,7 +77,7 @@ fun impure (e, _) =
       | EDml _ => true
       | ENextval _ => true
       | ESetval _ => true
-      | EUnurlify _ => true
+      | EUnurlify _ => false
       | EAbs _ => false
 
       | EPrim _ => false
@@ -257,8 +257,11 @@ datatype event =
          WritePage
        | ReadDb
        | WriteDb
+       | ReadCookie
+       | WriteCookie
        | UseRel
        | Unsure
+       | Abort
 
 fun p_event e =
     let
@@ -268,8 +271,11 @@ fun p_event e =
             WritePage => string "WritePage"
           | ReadDb => string "ReadDb"
           | WriteDb => string "WriteDb"
+          | ReadCookie => string "ReadCookie"
+          | WriteCookie => string "WriteCookie"
           | UseRel => string "UseRel"
           | Unsure => string "Unsure"
+          | Abort => string "Abort"
     end
 
 val p_events = Print.p_list p_event
@@ -377,6 +383,8 @@ fun reduce file =
                       | ENone _ => []
                       | ESome (_, e) => summarize d e
                       | EFfi _ => []
+                      | EFfiApp ("Basis", "get_cookie", [e]) =>
+                        summarize d e @ [ReadCookie]
                       | EFfiApp (m, x, es) =>
                         if Settings.isEffectful (m, x) orelse Settings.isBenignEffectful (m, x) then
                             List.concat (map (summarize d) es) @ [Unsure]
@@ -440,9 +448,9 @@ fun reduce file =
                         end
                       | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
 
-                      | EError (e, _) => summarize d e @ [Unsure]
-                      | EReturnBlob {blob = e1, mimeType = e2, ...} => summarize d e1 @ summarize d e2 @ [Unsure]
-                      | ERedirect (e, _) => summarize d e @ [Unsure]
+                      | EError (e, _) => summarize d e @ [Abort]
+                      | EReturnBlob {blob = e1, mimeType = e2, ...} => summarize d e1 @ summarize d e2 @ [Abort]
+                      | ERedirect (e, _) => summarize d e @ [Abort]
 
                       | EWrite e => summarize d e @ [WritePage]
                                     
@@ -526,6 +534,8 @@ fun reduce file =
                                 val writesPage = does WritePage
                                 val readsDb = does ReadDb
                                 val writesDb = does WriteDb
+                                val readsCookie = does ReadCookie
+                                val writesCookie = does ReadCookie
 
                                 fun verifyUnused eff =
                                     case eff of
@@ -542,6 +552,10 @@ fun reduce file =
                                           | WritePage => not writesPage andalso verifyCompatible effs
                                           | ReadDb => not writesDb andalso verifyCompatible effs
                                           | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
+                                          | ReadCookie => not writesCookie andalso verifyCompatible effs
+                                          | WriteCookie => not writesCookie andalso not readsCookie
+                                                           andalso verifyCompatible effs
+                                          | Abort => true
                             in
                                 (*Print.prefaces "verifyCompatible"
                                                  [("e'", MonoPrint.p_exp env e'),
