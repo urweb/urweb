@@ -3752,6 +3752,8 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                         (e, L'.PolDelete)
                       | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayUpdate"), _), _), _), _), _), e) =>
                         (e, L'.PolUpdate)
+                      | L.EFfiApp ("Basis", "sendOwnIds", [e]) =>
+                        (e, L'.PolSequence)
                       | _ => (poly (); (e, L'.PolClient))
 
                 val (e, fm) = monoExp (env, St.empty, fm) e

@@ -426,6 +426,9 @@ fun p_policy env pol =
       | PolUpdate e => box [string "mayUpdate",
                             space,
                             p_exp env e]
+      | PolSequence e => box [string "sendOwnIds",
+                              space,
+                              p_exp env e]
 
 fun p_decl env (dAll as (d, _) : decl) =
     case d of

@@ -804,6 +804,8 @@ val sendClient : tables ::: {{Type}} -> exps ::: {Type}
                  -> [tables ~ exps] => sql_query [] tables exps
                  -> sql_policy
 
+val sendOwnIds : sql_sequence -> sql_policy
+
 val mayInsert : fs ::: {Type} -> tables ::: {{Type}} -> [[New] ~ tables]
                 => sql_query [] ([New = fs] ++ tables) []
                 -> sql_policy

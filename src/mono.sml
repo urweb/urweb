@@ -128,6 +128,7 @@ datatype policy =
        | PolInsert of exp
        | PolDelete of exp
        | PolUpdate of exp
+       | PolSequence of exp
 
 datatype decl' =
          DDatatype of (string * int * (string * int * typ option) list) list

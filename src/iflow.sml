@@ -482,7 +482,7 @@ type database = {Vars : representative IM.map ref,
                  Consts : representative CM.map ref,
                  Con0s : representative SM.map ref,
                  Records : (representative SM.map * representative) list ref,
-                 Funcs : ((string * representative list) * representative) list ref }
+                 Funcs : ((string * representative list) * representative) list ref}
 
 fun database () = {Vars = ref IM.empty,
                    Consts = ref CM.empty,
@@ -847,6 +847,7 @@ fun assert (db, a) =
                      else
                          ();
                      #Cons (unNode r2) := SM.unionWith #1 (!(#Cons (unNode r2)), !(#Cons (unNode r1)));
+
                      compactFuncs ())
 
                 and compactFuncs () =
@@ -1450,9 +1451,9 @@ fun expIn rv env rvOf =
             let
                 fun default () =
                     let
-                        val (rvN, e) = rv rvN
+                        val (rvN, e') = rv rvN
                     in
-                        (inl e, rvN)
+                        (inl e', rvN)
                     end
             in
                 case e of
@@ -1686,7 +1687,7 @@ fun insertProp rvN rv e =
                               let
                                   val t =
                                       case v of
-                                          "New" => "$New"
+                                          "New" => t ^ "$New"
                                         | _ => t
                               in
                                   And (p, Reln (Sql t, [rvOf v]))
@@ -1767,7 +1768,7 @@ fun updateProp rvN rv e =
                               let
                                   val t =
                                       case v of
-                                          "New" => "$New"
+                                          "New" => t ^ "$New"
                                         | _ => t
                               in
                                   And (p, Reln (Sql t, [rvOf v]))
@@ -1989,6 +1990,8 @@ fun evalExp env (e as (_, loc), st) =
             let
                 val (st, nv) = St.nextVar st
             in
+                (*Print.prefaces "default" [("e", MonoPrint.p_exp MonoEnv.empty e),
+                                          ("nv", p_exp (Var nv))];*)
                 (Var nv, st)
             end
 
@@ -2233,7 +2236,7 @@ fun evalExp env (e as (_, loc), st) =
                                             st es
                      in
                          (Recd [], St.addInsert (st, (loc, And (St.ambient st,
-                                                                Reln (Sql "$New", [Recd es])))))
+                                                                Reln (Sql (tab ^ "$New"), [Recd es])))))
                      end
                    | Delete (tab, e) =>
                      let
@@ -2302,13 +2305,19 @@ fun evalExp env (e as (_, loc), st) =
                                          | (inr p, st) => (p, st)
 
                          val p = And (p,
-                                      And (Reln (Sql "$New", [Recd fs]),
+                                      And (Reln (Sql (tab ^ "$New"), [Recd fs]),
                                            And (Reln (Sql "$Old", [Var old]),
                                                 Reln (Sql tab, [Var old]))))
                      in
                          (Recd [], St.addUpdate (st, (loc, And (St.ambient st, p))))
                      end)
                      
+          | ENextval (EPrim (Prim.String seq), _) =>
+            let
+                val (st, nv) = St.nextVar st
+            in
+                (Var nv, St.setAmbient (st, And (St.ambient st, Reln (Sql (String.extract (seq, 3, NONE)), [Var nv]))))
+            end
           | ENextval _ => default ()
           | ESetval _ => default ()
 
@@ -2416,6 +2425,16 @@ fun check file =
                         in
                             (vals, inserts, deletes, updates, client, insert, delete, p :: update)
                         end
+                      | PolSequence e =>
+                        (case #1 e of
+                             EPrim (Prim.String seq) =>
+                             let
+                                 val p = Reln (Sql (String.extract (seq, 3, NONE)), [Lvar 0])
+                                 val outs = [Lvar 0]
+                             in
+                                 (vals, inserts, deletes, updates, (p, outs) :: client, insert, delete, update)
+                             end
+                           | _ => (vals, inserts, deletes, updates, client, insert, delete, update))
                 end
                                         
               | _ => (vals, inserts, deletes, updates, client, insert, delete, update)
@@ -2434,8 +2453,14 @@ fun check file =
                     if decompH p
                                (fn hyps =>
                                    List.exists (fn p' =>
-                                                   decompG p'
-                                                           (fn goals => imply (hyps, goals, NONE)))
+                                                   if decompG p'
+                                                              (fn goals => imply (hyps, goals, NONE)) then
+                                                       ((*reset ();
+                                                        Print.prefaces "Match" [("hyp", p_prop p),
+                                                                                ("goal", p_prop p')];*)
+                                                        true)
+                                                   else
+                                                       false)
                                                pols) then
                         ()
                     else
@@ -2487,7 +2512,11 @@ fun check file =
                                                                   client
                                                orelse tryCombos (0, client, True, [])
                                                orelse (reset ();
-                                                       Print.preface ("Untenable hypotheses",
+                                                       Print.preface ("Untenable hypotheses"
+                                                                      ^ (case fl of
+                                                                             Control Where => " (WHERE clause)"
+                                                                           | Control Case => " (case discriminee)"
+                                                                           | Data => " (returned data value)"),
                                                                       Print.p_list p_atom hyps);
                                                        false)
                                            end) then
