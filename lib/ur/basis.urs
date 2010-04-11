@@ -808,5 +808,9 @@ val mayInsert : fs ::: {Type} -> tables ::: {{Type}} -> [[New] ~ tables]
                 => sql_query [] ([New = fs] ++ tables) []
                 -> sql_policy
 
+val mayDelete : fs ::: {Type} -> tables ::: {{Type}} -> [[Old] ~ tables]
+                => sql_query [] ([Old = fs] ++ tables) []
+                -> sql_policy
+
 
 val debug : string -> transaction unit

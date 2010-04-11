@@ -411,7 +411,7 @@ datatype node = Node of {Rep : node ref option ref,
          Dt0 of string
        | Dt1 of string * node ref
        | Prim of Prim.t
-       | Recrd of node ref SM.map ref
+       | Recrd of node ref SM.map ref * bool
        | VFinish
        | Nothing
 
@@ -446,22 +446,29 @@ fun p_rep n =
     case !(#Rep (unNode n)) of
         SOME n => p_rep n
       | NONE =>
-        case #Variety (unNode n) of
-            Nothing => string ("?" ^ Int.toString (Unsafe.cast n))
-          | Dt0 s => string ("Dt0(" ^ s ^ ")")
-          | Dt1 (s, n) => box[string ("Dt1(" ^ s ^ ","),
-                              space,
-                              p_rep n,
-                              string ")"]
-          | Prim p => Prim.p_t p
-          | Recrd (ref m) => box [string "{",
-                                  p_list (fn (x, n) => box [string x,
-                                                            space,
-                                                            string "=",
-                                                            space,
-                                                            p_rep n]) (SM.listItemsi m),
-                                  string "}"]
-          | VFinish => string "FINISH"
+        box [string (Int.toString (Unsafe.cast n) ^ ":"),
+             space,
+             case #Variety (unNode n) of
+                 Nothing => string "?"
+               | Dt0 s => string ("Dt0(" ^ s ^ ")")
+               | Dt1 (s, n) => box[string ("Dt1(" ^ s ^ ","),
+                                   space,
+                                   p_rep n,
+                                   string ")"]
+               | Prim p => Prim.p_t p
+               | Recrd (ref m, b) => box [string "{",
+                                          p_list (fn (x, n) => box [string x,
+                                                                    space,
+                                                                    string "=",
+                                                                    space,
+                                                                    p_rep n]) (SM.listItemsi m),
+                                          string "}",
+                                          if b then
+                                              box [space,
+                                                   string "(complete)"]
+                                          else
+                                              box []]
+               | VFinish => string "FINISH"]
 
 fun p_database (db : database) =
     box [string "Vars:",
@@ -489,15 +496,20 @@ fun repOf (n : representative) : representative =
         end
 
 fun markKnown r =
-    if !(#Known (unNode r)) then
-        ()
-    else
-        (#Known (unNode r) := true;
-         SM.app markKnown (!(#Cons (unNode r)));
-         case #Variety (unNode r) of
-             Dt1 (_, r) => markKnown r
-           | Recrd xes => SM.app markKnown (!xes)
-           | _ => ())
+    let
+        val r = repOf r
+    in
+        (*Print.preface ("markKnown", p_rep r);*)
+        if !(#Known (unNode r)) then
+            ()(*TextIO.print "Already known\n"*)
+        else
+            (#Known (unNode r) := true;
+             SM.app markKnown (!(#Cons (unNode r)));
+             case #Variety (unNode r) of
+                 Dt1 (_, r) => markKnown r
+               | Recrd (xes, _) => SM.app markKnown (!xes)
+               | _ => ())
+    end
 
 fun representative (db : database, e) =
     let
@@ -555,7 +567,7 @@ fun representative (db : database, e) =
                             val r' = ref (Node {Rep = ref NONE,
                                                 Cons = ref SM.empty,
                                                 Variety = Dt1 (f, r),
-                                                Known = #Known (unNode r)})
+                                                Known = ref (!(#Known (unNode r)))})
                         in
                             #Cons (unNode r) := SM.insert (!(#Cons (unNode r)), f, r');
                             r'
@@ -577,7 +589,7 @@ fun representative (db : database, e) =
                             val r' = ref (Node {Rep = ref NONE,
                                                 Cons = cons,
                                                 Variety = Nothing,
-                                                Known = #Known (unNode r)})
+                                                Known = ref (!(#Known (unNode r)))})
 
                             val r'' = ref (Node {Rep = ref NONE,
                                                  Cons = #Cons (unNode r),
@@ -628,7 +640,7 @@ fun representative (db : database, e) =
 
                             val r' = ref (Node {Rep = ref NONE,
                                                 Cons = ref SM.empty,
-                                                Variety = Recrd (ref xes),
+                                                Variety = Recrd (ref xes, true),
                                                 Known = ref false})
                         in
                             #Records db := (xes, r') :: (!(#Records db));
@@ -640,14 +652,14 @@ fun representative (db : database, e) =
                     val r = rep e
                 in
                     case #Variety (unNode r) of
-                        Recrd xes =>
+                        Recrd (xes, _) =>
                         (case SM.find (!xes, f) of
                              SOME r => repOf r
                            | NONE => let
                                   val r = ref (Node {Rep = ref NONE,
                                                      Cons = ref SM.empty,
                                                      Variety = Nothing,
-                                                     Known = #Known (unNode r)})
+                                                     Known = ref (!(#Known (unNode r)))})
                               in
                                  xes := SM.insert (!xes, f, r);
                                  r
@@ -657,11 +669,11 @@ fun representative (db : database, e) =
                             val r' = ref (Node {Rep = ref NONE,
                                                 Cons = ref SM.empty,
                                                 Variety = Nothing,
-                                                Known = #Known (unNode r)})
+                                                Known = ref (!(#Known (unNode r)))})
                                      
                             val r'' = ref (Node {Rep = ref NONE,
                                                  Cons = #Cons (unNode r),
-                                                 Variety = Recrd (ref (SM.insert (SM.empty, f, r'))),
+                                                 Variety = Recrd (ref (SM.insert (SM.empty, f, r')), false),
                                                  Known = #Known (unNode r)})
                         in
                             #Rep (unNode r) := SOME r'';
@@ -680,7 +692,12 @@ fun assert (db, a) =
         ACond _ => ()
       | AReln x =>
         case x of
-            (Known, [e]) => markKnown (representative (db, e))
+            (Known, [e]) =>
+            ((*Print.prefaces "Before" [("e", p_exp e),
+                                      ("db", p_database db)];*)
+             markKnown (representative (db, e))(*;
+             Print.prefaces "After" [("e", p_exp e),
+                                     ("db", p_database db)]*))
           | (PCon0 f, [e]) =>
             let
                 val r = representative (db, e)
@@ -744,7 +761,7 @@ fun assert (db, a) =
                                                                  markEq (r1, r2)
                                                              else
                                                                  raise Contradiction
-                           | (Recrd xes1, Recrd xes2) =>
+                           | (Recrd (xes1, _), Recrd (xes2, _)) =>
                              let
                                  fun unif (xes1, xes2) =
                                      SM.appi (fn (x, r1) =>
@@ -805,7 +822,23 @@ fun check (db, a) =
         ACond _ => false
       | AReln x =>
         case x of
-            (Known, [e]) => !(#Known (unNode (representative (db, e))))
+            (Known, [e]) =>
+            let
+                fun isKnown r =
+                    let
+                        val r = repOf r
+                    in
+                        !(#Known (unNode r))
+                        orelse case #Variety (unNode r) of
+                                   Dt1 (_, r) => isKnown r
+                                 | Recrd (xes, true) => List.all isKnown (SM.listItems (!xes))
+                                 | _ => false
+                    end
+
+                val r = representative (db, e)
+            in
+                isKnown r
+            end
           | (PCon0 f, [e]) =>
             (case #Variety (unNode (representative (db, e))) of
                  Dt0 f' => f' = f
@@ -836,7 +869,7 @@ fun builtFrom (db, {Base = bs, Derived = d}) =
                            Dt0 _ => true
                          | Dt1 (_, d) => loop d
                          | Prim _ => true
-                         | Recrd xes => List.all loop (SM.listItems (!xes))
+                         | Recrd (xes, _) => List.all loop (SM.listItems (!xes))
                          | VFinish => true
                          | Nothing => false
             end
@@ -874,6 +907,7 @@ fun imply (hyps, goals, outs) =
                      val cc = Cc.database ()
                      val () = app (fn a => Cc.assert (cc, a)) hyps
                  in
+                     (*Print.preface ("db", Cc.p_database cc);*)
                      (List.all (fn a =>
                                    if Cc.check (cc, a) then
                                        true
@@ -1222,6 +1256,7 @@ val query = log "query"
 
 datatype dml =
          Insert of string * (string * sqexp) list
+       | Delete of string * sqexp
 
 val insert = log "insert"
              (wrapP (follow (const "INSERT INTO ")
@@ -1232,11 +1267,19 @@ val insert = log "insert"
                                                             (follow (list sqexp)
                                                                     (const ")")))))))
               (fn ((), (tab, ((), (fs, ((), (es, ())))))) =>
-                  (SOME (Insert (tab, ListPair.zipEq (fs, es))))
+                  (SOME (tab, ListPair.zipEq (fs, es)))
                   handle ListPair.UnequalLengths => NONE))
 
+val delete = log "delete"
+                 (wrap (follow (const "DELETE FROM ")
+                               (follow uw_ident
+                                       (follow (const " AS T_T WHERE ")
+                                               sqexp)))
+                       (fn ((), (tab, ((), es))) => (tab, es)))
+
 val dml = log "dml"
-              insert
+              (altL [wrap insert Insert,
+                     wrap delete Delete])
 
 fun removeDups (ls : (string * string) list) =
     case ls of
@@ -1421,13 +1464,13 @@ fun queryProp env rvN rv oe e =
                                   end
                                 | AllCols oe =>
                                   let
-                                      val oe = Proj (oe, f)
+                                      fun oeEq e = Reln (Eq, [oe, Recd [(f, e)]])
                                   in
                                       (rvN,
-                                       Or (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.False", [])]),
-                                           And (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
+                                       Or (oeEq (Func (DtCon0 "Basis.bool.False", [])),
+                                           And (oeEq (Func (DtCon0 "Basis.bool.True", [])),
                                                 p)),
-                                       Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
+                                       oeEq (Func (DtCon0 "Basis.bool.True", [])),
                                        [])
                                   end)
                            | _ => normal ())
@@ -1480,6 +1523,43 @@ fun insertProp rvN rv e =
                     case expIn (e, rvN) of
                         (inr p', _) => And (p, p')
                       | _ => p
+            end
+    end
+
+fun deleteProp rvN rv e =
+    let
+        fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
+                                 ^ ErrorMsg.spanToString (#2 e) ^ "\n");
+                          Unknown)
+    in
+        case parse query e of
+            NONE => default ()
+          | SOME r =>
+            let
+                val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
+                                                       let
+                                                           val (rvN, e) = rv rvN
+                                                       in
+                                                           ((v, e), rvN)
+                                                       end) rvN (#From r)
+
+                fun rvOf v =
+                    case List.find (fn (v', _) => v' = v) rvs of
+                        NONE => raise Fail "Iflow.deleteProp: Bad table variable"
+                      | SOME (_, e) => e
+
+                val p =
+                    foldl (fn ((t, v), p) => And (p, Reln (Sql t, [rvOf v]))) True (#From r)
+
+                val expIn = expIn rv [] rvOf
+            in
+                And (Reln (Sql "$Old", [rvOf "Old"]),
+                     case #Where r of
+                         NONE => p
+                       | SOME e =>
+                         case expIn (e, rvN) of
+                             (inr p', _) => And (p, p')
+                           | _ => p)
             end
     end
 
@@ -1538,7 +1618,7 @@ fun removeRedundant p1 =
 datatype cflow = Case | Where
 datatype flow = Data | Control of cflow
 type check = ErrorMsg.span * exp * prop
-type insert = ErrorMsg.span * prop
+type dml = ErrorMsg.span * prop
 
 structure St :> sig
     type t
@@ -1561,76 +1641,98 @@ structure St :> sig
     val addSent : t * (check * flow) -> t
     val setSent : t * (check * flow) list -> t
 
-    val inserted : t -> insert list
-    val addInsert : t * insert -> t
+    val inserted : t -> dml list
+    val addInsert : t * dml -> t
+
+    val deleted : t -> dml list
+    val addDelete : t * dml -> t
 end = struct
 
 type t = {Var : int,
           Ambient : prop,
           Path : (check * cflow) list,
           Sent : (check * flow) list,
-          Insert : insert list}
+          Insert : dml list,
+          Delete : dml list}
 
 fun create {Var = v, Ambient = p} = {Var = v,
                                      Ambient = p,
                                      Path = [],
                                      Sent = [],
-                                     Insert = []}
+                                     Insert = [],
+                                     Delete = []}
 
 fun curVar (t : t) = #Var t
 fun nextVar (t : t) = ({Var = #Var t + 1,
                         Ambient = #Ambient t,
                         Path = #Path t,
                         Sent = #Sent t,
-                        Insert = #Insert t}, #Var t)
+                        Insert = #Insert t,
+                        Delete = #Delete t}, #Var t)
 
 fun ambient (t : t) = #Ambient t
 fun setAmbient (t : t, p) = {Var = #Var t,
                              Ambient = p,
                              Path = #Path t,
                              Sent = #Sent t,
-                             Insert = #Insert t}
+                             Insert = #Insert t,
+                             Delete = #Delete t}
 
 fun paths (t : t) = #Path t
 fun addPath (t : t, c) = {Var = #Var t,
                           Ambient = #Ambient t,
                           Path = c :: #Path t,
                           Sent = #Sent t,
-                          Insert = #Insert t}
+                          Insert = #Insert t,
+                          Delete = #Delete t}
 fun addPaths (t : t, cs) = {Var = #Var t,
                             Ambient = #Ambient t,
                             Path = cs @ #Path t,
                             Sent = #Sent t,
-                            Insert = #Insert t}
+                            Insert = #Insert t,
+                            Delete = #Delete t}
 fun clearPaths (t : t) = {Var = #Var t,
                           Ambient = #Ambient t,
                           Path = [],
                           Sent = #Sent t,
-                          Insert = #Insert t}
+                          Insert = #Insert t,
+                          Delete = #Delete t}
 fun setPaths (t : t, cs) = {Var = #Var t,
                             Ambient = #Ambient t,
                             Path = cs,
                             Sent = #Sent t,
-                            Insert = #Insert t}
+                            Insert = #Insert t,
+                            Delete = #Delete t}
 
 fun sent (t : t) = #Sent t
 fun addSent (t : t, c) = {Var = #Var t,
                           Ambient = #Ambient t,
                           Path = #Path t,
                           Sent = c :: #Sent t,
-                          Insert = #Insert t}
+                          Insert = #Insert t,
+                          Delete = #Delete t}
 fun setSent (t : t, cs) = {Var = #Var t,
                            Ambient = #Ambient t,
                            Path = #Path t,
                            Sent = cs,
-                           Insert = #Insert t}
+                           Insert = #Insert t,
+                           Delete = #Delete t}
 
 fun inserted (t : t) = #Insert t
 fun addInsert (t : t, c) = {Var = #Var t,
                             Ambient = #Ambient t,
                             Path = #Path t,
                             Sent = #Sent t,
-                            Insert = c :: #Insert t}
+                            Insert = c :: #Insert t,
+                            Delete = #Delete t}
+
+fun deleted (t : t) = #Delete t
+fun addDelete (t : t, c) = {Var = #Var t,
+                            Ambient = #Ambient t,
+                            Path = #Path t,
+                            Sent = #Sent t,
+                            Insert = #Insert t,
+                            Delete = c :: #Delete t}
 
 end
 
@@ -1870,7 +1972,7 @@ fun evalExp env (e as (_, loc), st) =
                              end
 
                          val expIn = expIn rv env (fn "New" => Var new
-                                                    | _ => raise Fail "Iflow.evalExp: Bad field expression in EDml")
+                                                    | _ => raise Fail "Iflow.evalExp: Bad field expression in UPDATE")
 
                          val (es, st) = ListUtil.foldlMap
                                             (fn ((x, e), st) =>
@@ -1887,6 +1989,30 @@ fun evalExp env (e as (_, loc), st) =
                      in
                          (Recd [], St.addInsert (st, (loc, And (St.ambient st,
                                                                 Reln (Sql "$New", [Recd es])))))
+                     end
+                   | Delete (tab, e) =>
+                     let
+                         val (st, old) = St.nextVar st
+
+                         fun rv st =
+                             let
+                                 val (st, n) = St.nextVar st
+                             in
+                                 (st, Var n)
+                             end
+
+                         val expIn = expIn rv env (fn "T" => Var old
+                                                    | _ => raise Fail "Iflow.evalExp: Bad field expression in DELETE")
+
+                         val (p, st) = case expIn (e, st) of
+                                           (inl e, _) => raise Fail "Iflow.evalExp: DELETE with non-boolean" 
+                                         | (inr p, st) => (p, st)
+
+                         val p = And (p,
+                                      And (Reln (Sql "$Old", [Var old]),
+                                           Reln (Sql tab, [Var old])))
+                     in
+                         (Recd [], St.addDelete (st, (loc, And (St.ambient st, p))))
                      end)
                      
           | ENextval _ => default ()
@@ -1924,7 +2050,7 @@ fun check file =
                                   DExport (_, _, n, _, _, _) => IS.add (exptd, n)
                                 | _ => exptd) IS.empty file
 
-        fun decl ((d, _), (vals, inserts, client, insert)) =
+        fun decl ((d, _), (vals, inserts, deletes, client, insert, delete)) =
             case d of
                 DVal (_, n, _, e, _) =>
                 let
@@ -1944,7 +2070,7 @@ fun check file =
                     val (_, st) = evalExp env (e, St.create {Var = nv,
                                                              Ambient = p})
                 in
-                    (St.sent st @ vals, St.inserted st @ inserts, client, insert)
+                    (St.sent st @ vals, St.inserted st @ inserts, St.deleted st @ deletes, client, insert, delete)
                 end
 
               | DPolicy pol =>
@@ -1956,24 +2082,43 @@ fun check file =
                         let
                             val (_, p, _, _, outs) = queryProp [] 0 rv SomeCol e
                         in
-                            (vals, inserts, (p, outs) :: client, insert)
+                            (vals, inserts, deletes, (p, outs) :: client, insert, delete)
                         end
                       | PolInsert e =>
                         let
                             val p = insertProp 0 rv e
                         in
-                            (vals, inserts,client, p :: insert)
+                            (vals, inserts, deletes, client, p :: insert, delete)
+                        end
+                      | PolDelete e =>
+                        let
+                            val p = deleteProp 0 rv e
+                        in
+                            (vals, inserts, deletes, client, insert, p :: delete)
                         end
                 end
                                         
-              | _ => (vals, inserts, client, insert)
+              | _ => (vals, inserts, deletes, client, insert, delete)
 
         val () = reset ()
 
-        val (vals, inserts, client, insert) = foldl decl ([], [], [], []) file
+        val (vals, inserts, deletes, client, insert, delete) = foldl decl ([], [], [], [], [], []) file
 
         val decompH = decomp true (fn (e1, e2) => e1 andalso e2 ())
         val decompG = decomp false (fn (e1, e2) => e1 orelse e2 ())
+
+        fun doDml (cmds, pols) =
+            app (fn (loc, p) =>
+                    if decompH p
+                               (fn hyps =>
+                                   List.exists (fn p' =>
+                                                   decompG p'
+                                                           (fn goals => imply (hyps, goals, NONE)))
+                                               pols) then
+                        ()
+                    else
+                        (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
+                         Print.preface ("The state satisifies this predicate:", p_prop p))) cmds
     in
         app (fn ((loc, e, p), fl) =>
                 let
@@ -2009,17 +2154,8 @@ fun check file =
                     doAll e
                 end) vals;
 
-        app (fn (loc, p) =>
-                if decompH p
-                           (fn hyps =>
-                               List.exists (fn p' =>
-                                               decompG p'
-                                                       (fn goals => imply (hyps, goals, NONE)))
-                                           insert) then
-                    ()
-                else
-                    (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
-                     Print.preface ("The state satisifies this predicate:", p_prop p))) inserts
+        doDml (inserts, insert);
+        doDml (deletes, delete)
     end
 
 val check = fn file =>
