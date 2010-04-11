@@ -392,6 +392,8 @@ structure Cc :> sig
     val p_database : database Print.printer
 
     val builtFrom : database * {Base : exp list, Derived : exp} -> bool
+
+    val p_repOf : database -> exp Print.printer
 end = struct
 
 exception Contradiction
@@ -412,15 +414,9 @@ datatype node = Node of {Rep : node ref option ref,
        | Dt1 of string * node ref
        | Prim of Prim.t
        | Recrd of node ref SM.map ref * bool
-       | VFinish
        | Nothing
 
 type representative = node ref
-
-val finish = ref (Node {Rep = ref NONE,
-                        Cons = ref SM.empty,
-                        Variety = VFinish,
-                        Known = ref true})
 
 type database = {Vars : representative IM.map ref,
                  Consts : representative CM.map ref,
@@ -467,8 +463,7 @@ fun p_rep n =
                                               box [space,
                                                    string "(complete)"]
                                           else
-                                              box []]
-               | VFinish => string "FINISH"]
+                                              box []]]
 
 fun p_database (db : database) =
     box [string "Vars:",
@@ -600,7 +595,6 @@ fun representative (db : database, e) =
                             #Rep (unNode r) := SOME r'';
                             r'
                         end
-                      | VFinish => r
                       | _ => raise Contradiction
                 end
               | Func (UnCon _, _) => raise Fail "Iflow.rep: UnCon"
@@ -679,13 +673,14 @@ fun representative (db : database, e) =
                             #Rep (unNode r) := SOME r'';
                             r'
                         end
-                      | VFinish => r 
                       | _ => raise Contradiction                             
                 end
-              | Finish => finish
+              | Finish => raise Contradiction
     in
         rep e
     end
+
+fun p_repOf db e = p_rep (representative (db, e))
 
 fun assert (db, a) =
     case a of
@@ -746,36 +741,40 @@ fun assert (db, a) =
           | (Eq, [e1, e2]) =>
             let
                 fun markEq (r1, r2) =
-                    if r1 = r2 then
-                        ()
-                    else case (#Variety (unNode r1), #Variety (unNode r2)) of
-                             (Prim p1, Prim p2) => if Prim.equal (p1, p2) then
-                                                       ()
-                                                   else
-                                                       raise Contradiction
-                           | (Dt0 f1, Dt0 f2) => if f1 = f2 then
-                                                     ()
-                                                 else
-                                                     raise Contradiction
-                           | (Dt1 (f1, r1), Dt1 (f2, r2)) => if f1 = f2 then
-                                                                 markEq (r1, r2)
-                                                             else
-                                                                 raise Contradiction
-                           | (Recrd (xes1, _), Recrd (xes2, _)) =>
-                             let
-                                 fun unif (xes1, xes2) =
-                                     SM.appi (fn (x, r1) =>
-                                                 case SM.find (xes2, x) of
-                                                     NONE => ()
-                                                   | SOME r2 => markEq (r1, r2)) xes1
-                             in
-                                 unif (!xes1, !xes2);
-                                 unif (!xes2, !xes1)
-                             end
-                           | (VFinish, VFinish) => ()
-                           | (Nothing, _) => mergeNodes (r1, r2)
-                           | (_, Nothing) => mergeNodes (r2, r1)
-                           | _ => raise Contradiction
+                    let
+                        val r1 = repOf r1
+                        val r2 = repOf r2
+                    in
+                        if r1 = r2 then
+                            ()
+                        else case (#Variety (unNode r1), #Variety (unNode r2)) of
+                                 (Prim p1, Prim p2) => if Prim.equal (p1, p2) then
+                                                           ()
+                                                       else
+                                                           raise Contradiction
+                               | (Dt0 f1, Dt0 f2) => if f1 = f2 then
+                                                         ()
+                                                     else
+                                                         raise Contradiction
+                               | (Dt1 (f1, r1), Dt1 (f2, r2)) => if f1 = f2 then
+                                                                     markEq (r1, r2)
+                                                                 else
+                                                                     raise Contradiction
+                               | (Recrd (xes1, _), Recrd (xes2, _)) =>
+                                 let
+                                     fun unif (xes1, xes2) =
+                                         SM.appi (fn (x, r1) =>
+                                                     case SM.find (!xes2, x) of
+                                                         NONE => xes2 := SM.insert (!xes2, x, r1)
+                                                       | SOME r2 => markEq (r1, r2)) (!xes1)
+                                 in
+                                     unif (xes1, xes2);
+                                     unif (xes2, xes1)
+                                 end
+                               | (Nothing, _) => mergeNodes (r1, r2)
+                               | (_, Nothing) => mergeNodes (r2, r1)
+                               | _ => raise Contradiction
+                    end
 
                 and mergeNodes (r1, r2) =
                     (#Rep (unNode r1) := SOME r2;
@@ -870,7 +869,6 @@ fun builtFrom (db, {Base = bs, Derived = d}) =
                          | Dt1 (_, d) => loop d
                          | Prim _ => true
                          | Recrd (xes, _) => List.all loop (SM.listItems (!xes))
-                         | VFinish => true
                          | Nothing => false
             end
     in
@@ -898,6 +896,8 @@ fun decomp fals or =
         decomp
     end
 
+val tabs = ref (SM.empty : (string list * string list list) SM.map)
+
 fun imply (hyps, goals, outs) =
     let
         fun gls goals onFail acc =
@@ -906,7 +906,59 @@ fun imply (hyps, goals, outs) =
                 (let
                      val cc = Cc.database ()
                      val () = app (fn a => Cc.assert (cc, a)) hyps
+
+                     (* Take advantage of table key information *)
+                     fun findKeys hyps =
+                         case hyps of
+                             [] => ()
+                           | AReln (Sql tab, [r1]) :: hyps =>
+                             (case SM.find (!tabs, tab) of
+                                  NONE => findKeys hyps
+                                | SOME (_, []) => findKeys hyps
+                                | SOME (_, ks) =>
+                                  let
+                                      fun finder hyps =
+                                          case hyps of
+                                              [] => ()
+                                            | AReln (Sql tab', [r2]) :: hyps =>
+                                              (if tab' = tab andalso
+                                                  List.exists (List.all (fn f =>
+                                                                            let
+                                                                                val r =
+                                                                                    Cc.check (cc,
+                                                                                              AReln (Eq, [Proj (r1, f),
+                                                                                                          Proj (r2, f)]))
+                                                                            in
+                                                                                (*Print.prefaces "Fs"
+                                                                                               [("tab",
+                                                                                                 Print.PD.string tab),
+                                                                                                ("r1",
+                                                                                                 p_exp (Proj (r1, f))),
+                                                                                                ("r2",
+                                                                                                 p_exp (Proj (r2, f))),
+                                                                                                ("r",
+                                                                                                 Print.PD.string
+                                                                                                     (Bool.toString r))];*)
+                                                                                 r
+                                                                            end)) ks then
+                                                   ((*Print.prefaces "Key match" [("tab", Print.PD.string tab),
+                                                                                ("r1", p_exp r1),
+                                                                                ("r2", p_exp r2),
+                                                                                ("rp1", Cc.p_repOf cc r1),
+                                                                                ("rp2", Cc.p_repOf cc r2)];*)
+                                                    Cc.assert (cc, AReln (Eq, [r1, r2])))
+                                               else
+                                                   ();
+                                               finder hyps)
+                                            | _ :: hyps => finder hyps
+                                  in
+                                      finder hyps;
+                                      findKeys hyps
+                                  end)
+                                | _ :: hyps => findKeys hyps
                  in
+                     findKeys hyps;
+
                      (*Print.preface ("db", Cc.p_database cc);*)
                      (List.all (fn a =>
                                    if Cc.check (cc, a) then
@@ -1834,8 +1886,6 @@ fun addUpdate (t : t, c) = {Var = #Var t,
 
 end
 
-val tabs = ref (SM.empty : string list SM.map)
-
 fun evalExp env (e as (_, loc), st) =
     let
         fun default () =
@@ -2141,9 +2191,9 @@ fun evalExp env (e as (_, loc), st) =
                                                 end)
                                             st fs
 
-                         val fs' = case SM.find (!tabs, "uw_" ^ tab) of
+                         val fs' = case SM.find (!tabs, tab) of
                                        NONE => raise Fail "Iflow.evalExp: Updating unknown table"
-                                     | SOME fs' => fs'
+                                     | SOME (fs', _) => fs'
 
                          val fs = foldl (fn (f, fs) =>
                                             if List.exists (fn (f', _) => f' = f) fs then
@@ -2200,9 +2250,25 @@ fun check file =
 
         fun decl ((d, _), (vals, inserts, deletes, updates, client, insert, delete, update)) =
             case d of
-                DTable (tab, fs, _, _) =>
-                (tabs := SM.insert (!tabs, tab, map #1 fs);
-                 (vals, inserts, deletes, updates, client, insert, delete, update))
+                DTable (tab, fs, pk, _) =>
+                let
+                    val ks =
+                        case #1 pk of
+                            EPrim (Prim.String s) =>
+                            (case String.tokens (fn ch => ch = #"," orelse ch = #" ") s of
+                                 [] => []
+                               | pk => [pk])
+                          | _ => []
+                in
+                    if size tab >= 3 then
+                        (tabs := SM.insert (!tabs, String.extract (tab, 3, NONE),
+                                            (map #1 fs,
+                                             map (map (fn s => str (Char.toUpper (String.sub (s, 3)))
+                                                               ^ String.extract (s, 4, NONE))) ks));
+                         (vals, inserts, deletes, updates, client, insert, delete, update))
+                    else
+                        raise Fail "Table name does not begin with uw_"
+                end
               | DVal (_, n, _, e, _) =>
                 let
                     val isExptd = IS.member (exptd, n)
