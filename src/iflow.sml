@@ -2503,8 +2503,19 @@ fun check file =
                                            let
                                                val cc = ccOf hyps
 
-                                               val avail = foldl (fn (AReln (Sql tab, _), avail) => SS.add (avail, tab)
-                                                                   | (_, avail) => avail) SS.empty hyps
+                                               fun relevant () =
+                                                   let
+                                                       val avail = foldl (fn (AReln (Sql tab, _), avail) =>
+                                                                             SS.add (avail, tab)
+                                                                           | (_, avail) => avail) SS.empty hyps
+                                                   in
+                                                       List.filter
+                                                           (fn (g1, _) =>
+                                                               decompG g1
+                                                                       (List.all (fn AReln (Sql tab, _) =>
+                                                                                     SS.member (avail, tab)
+                                                                                   | _ => true))) client
+                                                   end
 
                                                fun tryCombos (maxLv, pols, g, outs) =
                                                    case pols of
@@ -2517,18 +2528,12 @@ fun check file =
                                                            val outs1 = map (bumpLvars (maxLv + 1)) outs1
                                                            fun skip () = tryCombos (maxLv, pols, g, outs)
                                                        in
-                                                           if decompG g1
-                                                                      (List.all (fn AReln (Sql tab, _) =>
-                                                                                    SS.member (avail, tab)
-                                                                                  | _ => true)) then
-                                                               skip ()
-                                                               orelse tryCombos (Int.max (maxLv,
-                                                                                          maxLvarP g1),
-                                                                                 pols,
-                                                                                 And (g1, g),
-                                                                                 outs1 @ outs)
-                                                           else
-                                                               skip ()
+                                                           skip ()
+                                                           orelse tryCombos (Int.max (maxLv,
+                                                                                      maxLvarP g1),
+                                                                             pols,
+                                                                             And (g1, g),
+                                                                             outs1 @ outs)
                                                        end
                                            in
                                                (fl <> Control Where
@@ -2538,7 +2543,7 @@ fun check file =
                                                                               (fn goals => imply (cc, hyps, goals,
                                                                                                   SOME outs)))
                                                                   client
-                                               orelse tryCombos (0, client, True, [])
+                                               orelse tryCombos (0, relevant (), True, [])
                                                orelse (reset ();
                                                        Print.preface ("Untenable hypotheses"
                                                                       ^ (case fl of
