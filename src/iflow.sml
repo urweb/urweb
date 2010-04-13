@@ -1282,7 +1282,8 @@ fun buildable (e, loc) =
                        val (_, hs) = !hyps
                    in
                        ErrorMsg.errorAt loc "The information flow policy may be violated here.";
-                       Print.preface ("Hypotheses", Print.p_list p_atom hs)
+                       Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs),
+                                                   ("User learns", p_exp e)]
                    end)
     end       
 
