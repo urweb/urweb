@@ -164,6 +164,7 @@ signature COMPILER = sig
     val toSqlify : (string, Cjr.file) transform
 
     val debug : bool ref
+    val doIflow : bool ref
 
     val addPath : string * string -> unit
     val addModuleRoot : string * string -> unit

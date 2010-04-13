@@ -502,7 +502,7 @@ fun p_rep n =
     case !(#Rep (unNode n)) of
         SOME n => p_rep n
       | NONE =>
-        box [string (Int.toString (Unsafe.cast n) ^ ":"),
+        box [string (Int.toString 0(*Unsafe.cast n*) ^ ":"),
              space,
              case #Variety (unNode n) of
                  Nothing => string "?"
@@ -2182,7 +2182,7 @@ fun evalExp env (e as (_, loc), st) =
                 (Func (Other ("Cl" ^ Int.toString n), es), st)
             end
 
-          | EQuery {query = q, body = b, initial = i, ...} =>
+          | EQuery {query = q, body = b, initial = i, state = state, ...} =>
             let
                 val (_, st) = evalExp env (q, st)
                 val (i, st) = evalExp env (i, st)
@@ -2203,23 +2203,28 @@ fun evalExp env (e as (_, loc), st) =
                                       end)
                               (AllCols (Var r)) q
 
-                val (st, res) = if varInP acc (St.ambient st') then
-                                    let
-                                        val (st, r) = St.nextVar st
-                                    in
-                                        (st, Var r)
-                                    end
-                                else
-                                    let
-                                        val (st', out) = St.nextVar st'
-                                                  
-                                        val p = And (St.ambient st,
-                                                     Or (Reln (Eq, [Var out, i]),
-                                                         And (Reln (Eq, [Var out, b]),
-                                                              And (qp, amb))))
-                                    in
-                                        (St.setAmbient (st', p), Var out)
-                                    end
+                val (st, res) =
+                    case #1 state of
+                        TRecord [] =>
+                        (st, Func (DtCon0 "unit", []))
+                      | _ =>
+                        if varInP acc (St.ambient st') then
+                            let
+                                val (st, r) = St.nextVar st
+                            in
+                                (st, Var r)
+                            end
+                        else
+                            let
+                                val (st', out) = St.nextVar st'
+                                                 
+                                val p = And (St.ambient st,
+                                             Or (Reln (Eq, [Var out, i]),
+                                                 And (Reln (Eq, [Var out, b]),
+                                                      And (qp, amb))))
+                            in
+                                (St.setAmbient (st', p), Var out)
+                            end
 
                 val sent = map (fn ((loc, e, p), fl) => ((loc, e, And (qp, p)), fl)) (St.sent st')
 
