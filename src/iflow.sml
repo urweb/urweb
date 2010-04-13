@@ -787,12 +787,12 @@ fun assert (db, a) =
                         val r'' = ref (Node {Rep = ref NONE,
                                              Cons = ref SM.empty,
                                              Variety = Nothing,
-                                             Known = ref false})
+                                             Known = ref (!(#Known (unNode r)))})
 
                         val r' = ref (Node {Rep = ref NONE,
                                             Cons = ref SM.empty,
                                             Variety = Dt1 (f, r''),
-                                            Known = ref false})
+                                            Known = #Known (unNode r)})
                     in
                         #Rep (unNode r) := SOME r'
                     end
@@ -2109,8 +2109,12 @@ fun evalExp env (e as (_, loc), st) =
 
                 val st = St.addPath (st, ((loc, e, orig), Case))
 
-                val (st, paths) =
-                    foldl (fn ((pt, pe), (st, paths)) =>
+                (*val () = Print.prefaces "Case" [("loc", Print.PD.string (ErrorMsg.spanToString loc)),
+                                                ("e", Print.p_list (MonoPrint.p_exp MonoEnv.empty o #2) pes),
+                                                ("orig", p_prop orig)]*)
+
+                val (st, ambients, paths) =
+                    foldl (fn ((pt, pe), (st, ambients, paths)) =>
                               let
                                   val (env, pp) = evalPat env e pt
                                   val (pe, st') = evalExp env (pe, St.setAmbient (st, And (orig, pp)))
@@ -2118,15 +2122,16 @@ fun evalExp env (e as (_, loc), st) =
                                   val this = And (removeRedundant orig (St.ambient st'),
                                                   Reln (Eq, [Var r, pe]))
                               in
-                                  (St.setPaths (St.setAmbient (st', Or (St.ambient st, this)), origPaths),
+                                  (St.setPaths (st', origPaths),
+                                   Or (ambients, this),
                                    St.paths st' @ paths)
-                              end) (St.setAmbient (st, False), []) pes
+                              end) (st, False, []) pes
 
                 val st = case #1 res of
                              TRecord [] => St.setPaths (st, origPaths)
                            | _ => St.setPaths (st, paths)
             in
-                (Var r, St.setAmbient (st, And (orig, St.ambient st)))
+                (Var r, St.setAmbient (st, And (orig, ambients)))
             end
           | EStrcat (e1, e2) =>
             let
@@ -2183,6 +2188,7 @@ fun evalExp env (e as (_, loc), st) =
                 val (st', acc) = St.nextVar st'
 
                 val (b, st') = evalExp (Var acc :: Var r :: env) (b, st')
+                val amb = removeRedundant (St.ambient st) (St.ambient st')
 
                 val (st', qp, used, _) =
                     queryProp env
@@ -2194,8 +2200,6 @@ fun evalExp env (e as (_, loc), st) =
                                       end)
                               (AllCols (Var r)) q
 
-                val p' = And (qp, St.ambient st')
-
                 val (st, res) = if varInP acc (St.ambient st') then
                                     let
                                         val (st, r) = St.nextVar st
@@ -2204,17 +2208,19 @@ fun evalExp env (e as (_, loc), st) =
                                     end
                                 else
                                     let
-                                        val (st, out) = St.nextVar st'
+                                        val (st', out) = St.nextVar st'
                                                   
-                                        val p = Or (Reln (Eq, [Var out, i]),
-                                                    And (Reln (Eq, [Var out, b]),
-                                                         p'))
+                                        val p = And (St.ambient st,
+                                                     Or (Reln (Eq, [Var out, i]),
+                                                         And (Reln (Eq, [Var out, b]),
+                                                              And (qp, amb))))
                                     in
-                                        (St.setAmbient (st, p), Var out)
+                                        (St.setAmbient (st', p), Var out)
                                     end
 
                 val sent = map (fn ((loc, e, p), fl) => ((loc, e, And (qp, p)), fl)) (St.sent st')
 
+                val p' = And (qp, St.ambient st')
                 val paths = map (fn (p'', e) => ((loc, e, And (p', p'')), Where)) used
             in
                 (res, St.addPaths (St.setSent (st, sent), paths))
@@ -2508,13 +2514,16 @@ fun check file =
                                                        val avail = foldl (fn (AReln (Sql tab, _), avail) =>
                                                                              SS.add (avail, tab)
                                                                            | (_, avail) => avail) SS.empty hyps
-                                                   in
-                                                       List.filter
-                                                           (fn (g1, _) =>
-                                                               decompG g1
-                                                                       (List.all (fn AReln (Sql tab, _) =>
+
+                                                       val ls = List.filter
+                                                                    (fn (g1, _) =>
+                                                                        decompG g1
+                                                                                (List.all (fn AReln (Sql tab, _) =>
                                                                                      SS.member (avail, tab)
-                                                                                   | _ => true))) client
+                                                                                            | _ => true))) client
+                                                   in
+                                                       (*print ("Max: " ^ Int.toString (length ls) ^ "\n");*)
+                                                       ls
                                                    end
 
                                                fun tryCombos (maxLv, pols, g, outs) =
@@ -2551,6 +2560,7 @@ fun check file =
                                                                            | Control Case => " (case discriminee)"
                                                                            | Data => " (returned data value)"),
                                                                       Print.p_list p_atom hyps);
+                                                       Print.preface ("DB", Cc.p_database cc);
                                                        false)
                                            end handle Cc.Contradiction => true) then
                                 ()
