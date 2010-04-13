@@ -9,9 +9,7 @@ table order : { Id : order, Fruit : fruit, Qty : int, Code : int }
   CONSTRAINT Fruit FOREIGN KEY Fruit REFERENCES fruit(Id)
 
 (* Everyone may knows IDs and names. *)
-policy sendClient (SELECT fruit.Id
-                   FROM fruit)
-policy sendClient (SELECT fruit.Nam
+policy sendClient (SELECT fruit.Id, fruit.Nam
                    FROM fruit)
 
 (* The weight is sensitive information; you must know the secret. *)

@@ -72,7 +72,6 @@ datatype exp =
        | Func of func * exp list
        | Recd of (string * exp) list
        | Proj of exp * string
-       | Finish
 
 datatype reln =
          Known
@@ -95,12 +94,6 @@ datatype prop =
        | Reln of reln * exp list
        | Cond of exp * prop
 
-val unif = ref (IM.empty : exp IM.map)
-
-fun reset () = unif := IM.empty
-fun save () = !unif
-fun restore x = unif := x
-
 local
     open Print
     val string = PD.string
@@ -117,10 +110,7 @@ fun p_exp e =
     case e of
         Const p => Prim.p_t p
       | Var n => string ("x" ^ Int.toString n)
-      | Lvar n =>
-        (case IM.find (!unif, n) of
-             NONE => string ("X" ^ Int.toString n)
-           | SOME e => p_exp e)
+      | Lvar n => string ("X" ^ Int.toString n)
       | Func (f, es) => box [p_func f,
                              string "(",
                              p_list p_exp es,
@@ -134,7 +124,6 @@ fun p_exp e =
                          string "}"]
       | Proj (e, x) => box [p_exp e,
                             string ("." ^ x)]
-      | Finish => string "FINISH"
 
 fun p_bop s es =
     case es of
@@ -203,18 +192,6 @@ fun p_prop p =
 
 end
 
-local
-    val count = ref 1
-in
-fun newLvar () =
-    let
-        val n = !count
-    in
-        count := n + 1;
-        n
-    end
-end
-
 fun isKnown e =
     case e of
         Const _ => true
@@ -223,23 +200,22 @@ fun isKnown e =
       | Proj (e, _) => isKnown e
       | _ => false
 
-fun isFinish e =
-    case e of
-        Finish => true
-      | _ => false
-
-fun simplify e =
-    case e of
-        Const _ => e
-      | Var _ => e
-      | Lvar n =>
-        (case IM.find (!unif, n) of
-             NONE => e
-           | SOME e => simplify e)
-      | Func (f, es) => Func (f, map simplify es)
-      | Recd xes => Recd (map (fn (x, e) => (x, simplify e)) xes)
-      | Proj (e, s) => Proj (simplify e, s)
-      | Finish => Finish
+fun simplify unif =
+    let
+        fun simplify e =
+            case e of
+                Const _ => e
+              | Var _ => e
+              | Lvar n =>
+                (case IM.find (unif, n) of
+                     NONE => e
+                   | SOME e => simplify e)
+              | Func (f, es) => Func (f, map simplify es)
+              | Recd xes => Recd (map (fn (x, e) => (x, simplify e)) xes)
+              | Proj (e, s) => Proj (simplify e, s)
+    in
+        simplify
+    end
 
 datatype atom =
          AReln of reln * exp list
@@ -250,192 +226,7 @@ fun p_atom a =
                 AReln x => Reln x
               | ACond x => Cond x)
 
-fun lvarIn lv =
-    let
-        fun lvi e =
-            case e of
-                Const _ => false
-              | Var _ => false
-              | Lvar lv' => lv' = lv
-              | Func (_, es) => List.exists lvi es
-              | Recd xes => List.exists (lvi o #2) xes
-              | Proj (e, _) => lvi e
-              | Finish => false
-    in
-        lvi
-    end
-
-fun lvarInP lv =
-    let
-        fun lvi p =
-            case p of
-                True => false
-              | False => false
-              | Unknown => true
-              | And (p1, p2) => lvi p1 orelse lvi p2
-              | Or (p1, p2) => lvi p1 orelse lvi p2
-              | Reln (_, es) => List.exists (lvarIn lv) es
-              | Cond (e, p) => lvarIn lv e orelse lvi p
-    in
-        lvi
-    end
-
-fun varIn lv =
-    let
-        fun lvi e =
-            case e of
-                Const _ => false
-              | Lvar _ => false
-              | Var lv' => lv' = lv
-              | Func (_, es) => List.exists lvi es
-              | Recd xes => List.exists (lvi o #2) xes
-              | Proj (e, _) => lvi e
-              | Finish => false
-    in
-        lvi
-    end
-
-fun varInP lv =
-    let
-        fun lvi p =
-            case p of
-                True => false
-              | False => false
-              | Unknown => false
-              | And (p1, p2) => lvi p1 orelse lvi p2
-              | Or (p1, p2) => lvi p1 orelse lvi p2
-              | Reln (_, es) => List.exists (varIn lv) es
-              | Cond (e, p) => varIn lv e orelse lvi p
-    in
-        lvi
-    end
-
-fun bumpLvars by =
-    let
-        fun lvi e =
-            case e of
-                Const _ => e
-              | Var _ => e
-              | Lvar lv => Lvar (lv + by)
-              | Func (f, es) => Func (f, map lvi es)
-              | Recd xes => Recd (map (fn (x, e) => (x, lvi e)) xes)
-              | Proj (e, f) => Proj (lvi e, f)
-              | Finish => e
-    in
-        lvi
-    end
-
-fun bumpLvarsP by =
-    let
-        fun lvi p =
-            case p of
-                True => p
-              | False => p
-              | Unknown => p
-              | And (p1, p2) => And (lvi p1, lvi p2)
-              | Or (p1, p2) => And (lvi p1, lvi p2)
-              | Reln (r, es) => Reln (r, map (bumpLvars by) es)
-              | Cond (e, p) => Cond (bumpLvars by e, lvi p)
-    in
-        lvi
-    end
-
-fun maxLvar e =
-    let
-        fun lvi e =
-            case e of
-                Const _ => 0
-              | Var _ => 0
-              | Lvar lv => lv
-              | Func (f, es) => foldl Int.max 0 (map lvi es)
-              | Recd xes => foldl Int.max 0 (map (lvi o #2) xes)
-              | Proj (e, f) => lvi e
-              | Finish => 0
-    in
-        lvi e
-    end
-
-fun maxLvarP p =
-    let
-        fun lvi p =
-            case p of
-                True => 0
-              | False => 0
-              | Unknown => 0
-              | And (p1, p2) => Int.max (lvi p1, lvi p2)
-              | Or (p1, p2) => Int.max (lvi p1, lvi p2)
-              | Reln (r, es) => foldl Int.max 0 (map maxLvar es)
-              | Cond (e, p) => Int.max (maxLvar e, lvi p)
-    in
-        lvi p
-    end
-
-fun eq' (e1, e2) =
-    case (e1, e2) of
-        (Const p1, Const p2) => Prim.equal (p1, p2)
-      | (Var n1, Var n2) => n1 = n2
-
-      | (Lvar n1, _) =>
-        (case IM.find (!unif, n1) of
-             SOME e1 => eq' (e1, e2)
-           | NONE =>
-             case e2 of
-                 Lvar n2 =>
-                 (case IM.find (!unif, n2) of
-                      SOME e2 => eq' (e1, e2)
-                    | NONE => n1 = n2
-                              orelse (unif := IM.insert (!unif, n2, e1);
-                                      true))
-               | _ =>
-                 if lvarIn n1 e2 then
-                     false
-                 else
-                     (unif := IM.insert (!unif, n1, e2);
-                      true))
-
-      | (_, Lvar n2) =>
-        (case IM.find (!unif, n2) of
-             SOME e2 => eq' (e1, e2)
-           | NONE =>
-             if lvarIn n2 e1 then
-                 false
-             else
-                 ((*Print.prefaces "unif" [("n2", Print.PD.string (Int.toString n2)),
-                                         ("e1", p_exp e1)];*)
-                  unif := IM.insert (!unif, n2, e1);
-                  true))
-                                       
-      | (Func (f1, es1), Func (f2, es2)) => f1 = f2 andalso ListPair.allEq eq' (es1, es2)
-      | (Recd xes1, Recd xes2) => ListPair.allEq (fn ((x1, e1), (x2, e2)) => x1 = x2 andalso eq' (e1, e2)) (xes1, xes2)
-      | (Proj (e1, s1), Proj (e2, s2)) => eq' (e1, e2) andalso s1 = s2
-      | (Finish, Finish) => true
-      | _ => false
-
-fun eq (e1, e2) =
-    let
-        val saved = save ()
-    in
-        if eq' (simplify e1, simplify e2) then
-            true
-        else
-            (restore saved;
-             false)
-    end
-
 val debug = ref false
-
-fun eeq (e1, e2) =
-    case (e1, e2) of
-        (Const p1, Const p2) => Prim.equal (p1, p2)
-      | (Var n1, Var n2) => n1 = n2
-      | (Lvar n1, Lvar n2) => n1 = n2
-      | (Func (f1, es1), Func (f2, es2)) => f1 = f2 andalso ListPair.allEq eeq (es1, es2)
-      | (Recd xes1, Recd xes2) => length xes1 = length xes2 andalso
-                                  List.all (fn (x2, e2) =>
-                                               List.exists (fn (x1, e1) => x1 = x2 andalso eeq (e1, e2)) xes2) xes1
-      | (Proj (e1, x1), Proj (e2, x2)) => eeq (e1, e2) andalso x1 = x2
-      | (Finish, Finish) => true
-      | _ => false
              
 (* Congruence closure *)
 structure Cc :> sig
@@ -445,6 +236,7 @@ structure Cc :> sig
     exception Undetermined
 
     val database : unit -> database
+    val clear : database -> unit
 
     val assert : database * atom -> unit
     val check : database * atom -> bool
@@ -489,6 +281,12 @@ fun database () = {Vars = ref IM.empty,
                    Con0s = ref SM.empty,
                    Records = ref [],
                    Funcs = ref []}
+
+fun clear (t : database) = (#Vars t := IM.empty;
+                            #Consts t := CM.empty;
+                            #Con0s t := SM.empty;
+                            #Records t := [];
+                            #Funcs t := [])
 
 fun unNode n =
     case !n of
@@ -594,10 +392,7 @@ fun representative (db : database, e) =
                                   #Vars db := IM.insert (!(#Vars db), n, r);
                                   r
                               end)
-              | Lvar n =>
-                (case IM.find (!unif, n) of
-                     NONE => raise Undetermined
-                   | SOME e => rep e)
+              | Lvar _ => raise Undetermined
               | Func (DtCon0 f, []) => (case SM.find (!(#Con0s db), f) of
                                             SOME r => repOf r
                                           | NONE =>
@@ -735,7 +530,6 @@ fun representative (db : database, e) =
                         end
                       | _ => raise Contradiction                             
                 end
-              | Finish => raise Contradiction
     in
         rep e
     end
@@ -938,25 +732,6 @@ fun builtFrom (db, {Base = bs, Derived = d}) =
 
 end
 
-fun decomp fals or =
-    let
-        fun decomp p k =
-            case p of
-                True => k []
-              | False => fals
-              | Unknown => k []
-              | And (p1, p2) => 
-                decomp p1 (fn ps1 =>
-                              decomp p2 (fn ps2 =>
-                                            k (ps1 @ ps2)))
-              | Or (p1, p2) =>
-                or (decomp p1 k, fn () => decomp p2 k)
-              | Reln x => k [AReln x]
-              | Cond x => k [ACond x]
-    in
-        decomp
-    end
-
 val tabs = ref (SM.empty : (string list * string list list) SM.map)
 
 fun ccOf hyps =
@@ -1016,65 +791,6 @@ fun ccOf hyps =
     in
         findKeys hyps;
         cc
-    end
-
-fun imply (cc, hyps, goals, outs) =
-    let
-        fun gls goals onFail acc =
-            case goals of
-                [] =>
-                ((List.all (fn a =>
-                               if Cc.check (cc, a) then
-                                   true
-                               else
-                                   ((*Print.prefaces "Can't prove"
-                                                     [("a", p_atom a),
-                                                      ("hyps", Print.p_list p_atom hyps),
-                                                      ("db", Cc.p_database cc)];*)
-                                    false)) acc
-                  andalso ((*Print.preface ("Finding", Cc.p_database cc);*) true)
-                  andalso (case outs of
-                               NONE => true
-                             | SOME outs => Cc.builtFrom (cc, {Derived = Var 0,
-                                                               Base = outs})))
-                 handle Cc.Contradiction => false
-                      | Cc.Undetermined => false)
-                orelse onFail ()
-              | (g as AReln (Sql gf, [ge])) :: goals =>
-                let
-                    fun hps hyps =
-                        case hyps of
-                            [] => gls goals onFail (g :: acc)
-                          | (h as AReln (Sql hf, [he])) :: hyps =>
-                            if gf = hf then
-                                let
-                                    val saved = save ()
-                                in
-                                    if eq (ge, he) then
-                                        let
-                                            val changed = IM.numItems (!unif)
-                                                          <> IM.numItems saved
-                                        in
-                                            gls goals (fn () => (restore saved;
-                                                                 changed
-                                                                 andalso hps hyps))
-                                                acc
-                                        end
-                                    else
-                                        hps hyps
-                                end
-                            else
-                                hps hyps
-                          | _ :: hyps => hps hyps 
-                in
-                    hps hyps
-                end
-              | g :: goals => gls goals onFail (g :: acc)
-    in
-        reset ();
-        (*Print.prefaces "Big go" [("hyps", Print.p_list p_atom hyps),
-                                 ("goals", Print.p_list p_atom goals)];*)
-        gls goals (fn () => false) []
     end
 
 fun patCon pc =
@@ -1430,6 +1146,211 @@ val dml = log "dml"
                      wrap delete Delete,
                      wrap update Update])
 
+type check = exp * ErrorMsg.span
+
+structure St :> sig
+    val reset : unit -> unit
+
+    type stashed
+    val stash : unit -> stashed
+    val reinstate : stashed -> unit
+
+    val nextVar : unit -> int
+
+    val assert : atom list -> unit
+
+    val addPath : check -> unit
+
+    val allowSend : atom list * exp list -> unit
+    val send : check -> unit
+
+    val allowInsert : atom list -> unit
+    val insert : ErrorMsg.span -> unit
+
+    val allowDelete : atom list -> unit
+    val delete : ErrorMsg.span -> unit
+
+    val allowUpdate : atom list -> unit
+    val update : ErrorMsg.span -> unit
+
+    val havocReln : reln -> unit
+end = struct
+
+val hnames = ref 1
+
+type hyps = int * atom list
+
+val db = Cc.database ()
+val path = ref ([] : (hyps * check) option ref list)
+val hyps = ref (0, [] : atom list)
+val nvar = ref 0
+
+fun reset () = (Cc.clear db;
+                path := [];
+                hyps := (0, []);
+                nvar := 0)
+
+fun setHyps (h as (n', hs)) =
+    let
+        val (n, _) = !hyps
+    in
+        if n' = n then
+            ()
+        else
+            (hyps := h;
+             Cc.clear db;
+             app (fn a => Cc.assert (db, a)) hs)
+    end    
+
+type stashed = int * (hyps * check) option ref list * (int * atom list)
+fun stash () = (!nvar, !path, !hyps)
+fun reinstate (nv, p, h) =
+    (nvar := nv;
+     path := p;
+     setHyps h)
+
+fun nextVar () =
+    let
+        val n = !nvar
+    in
+        nvar := n + 1;
+        n
+    end
+
+fun assert ats =
+    let
+        val n = !hnames
+        val (_, hs) = !hyps
+    in
+        hnames := n + 1;
+        hyps := (n, ats @ hs);
+        app (fn a => Cc.assert (db, a)) ats
+    end
+
+fun addPath c = path := ref (SOME (!hyps, c)) :: !path
+
+val sendable = ref ([] : (atom list * exp list) list)
+
+fun checkGoals goals unifs succ fail =
+    case goals of
+        [] => succ (unifs, [])
+      | AReln (Sql tab, [Lvar lv]) :: goals =>
+        let
+            val saved = stash ()
+            val (_, hyps) = !hyps
+
+            fun tryAll unifs hyps =
+                case hyps of
+                    [] => fail ()
+                  | AReln (Sql tab', [e]) :: hyps =>
+                    if tab' = tab then
+                        checkGoals goals (IM.insert (unifs, lv, e)) succ
+                                   (fn () => tryAll unifs hyps)
+                    else
+                        tryAll unifs hyps
+                  | _ :: hyps => tryAll unifs hyps
+        in
+            tryAll unifs hyps
+        end
+      | AReln (r, es) :: goals => checkGoals goals unifs
+                                             (fn (unifs, ls) => succ (unifs, AReln (r, map (simplify unifs) es) :: ls))
+                                             fail
+      | ACond _ :: _ => fail ()
+
+fun buildable (e, loc) =
+    let
+        fun doPols pols acc fail =
+            case pols of
+                [] => ((*Print.prefaces "buildable" [("Base", Print.p_list p_exp acc),
+                                                   ("Derived", p_exp e),
+                                                   ("Hyps", Print.p_list p_atom (#2 (!hyps)))];*)
+                       if Cc.builtFrom (db, {Base = acc, Derived = e}) then
+                           ()
+                       else
+                           fail ())
+              | (goals, es) :: pols =>
+                checkGoals goals IM.empty
+                (fn (unifs, goals) =>
+                    if List.all (fn a => Cc.check (db, a)) goals then
+                        doPols pols (map (simplify unifs) es @ acc) fail
+                    else
+                        doPols pols acc fail)
+                (fn () => doPols pols acc fail)
+    in
+        doPols (!sendable) []
+               (fn () => let
+                       val (_, hs) = !hyps
+                   in
+                       ErrorMsg.errorAt loc "The information flow policy may be violated here.";
+                       Print.preface ("Hypotheses", Print.p_list p_atom hs)
+                   end)
+    end       
+
+fun checkPaths () =
+    let
+        val hs = !hyps
+    in
+        app (fn r =>
+                case !r of
+                    NONE => ()
+                  | SOME (hs, e) =>
+                    (r := NONE;
+                     setHyps hs;
+                     buildable e)) (!path);
+        setHyps hs
+    end
+
+fun allowSend v = sendable := v :: !sendable
+
+fun send (e, loc) = ((*Print.preface ("Send", p_exp e);*)
+                     checkPaths ();
+                     if isKnown e then
+                         ()
+                     else
+                         buildable (e, loc))
+
+fun doable pols (loc : ErrorMsg.span) =
+    let
+        val pols = !pols
+    in
+        if List.exists (fn goals =>
+                           checkGoals goals IM.empty
+                           (fn (_, goals) => List.all (fn a => Cc.check (db, a)) goals)
+                           (fn () => false)) pols then
+            ()
+        else
+            let
+                val (_, hs) = !hyps
+            in
+                ErrorMsg.errorAt loc "The database update policy may be violated here.";
+                Print.preface ("Hypotheses", Print.p_list p_atom hs)
+            end
+    end
+
+val insertable = ref ([] : atom list list)
+fun allowInsert v = insertable := v :: !insertable
+val insert = doable insertable
+
+val updatable = ref ([] : atom list list)
+fun allowUpdate v = updatable := v :: !updatable
+val update = doable updatable
+
+val deletable = ref ([] : atom list list)
+fun allowDelete v = deletable := v :: !deletable
+val delete = doable deletable
+
+fun havocReln r =
+    let
+        val n = !hnames
+        val (_, hs) = !hyps
+    in
+        hnames := n + 1;
+        hyps := (n, List.filter (fn AReln (r', _) => r' <> r | _ => true) hs)
+    end
+
+end
+
+
 fun removeDups (ls : (string * string) list) =
     case ls of
         [] => []
@@ -1443,63 +1364,42 @@ fun removeDups (ls : (string * string) list) =
                 x :: ls
         end
 
-datatype queryMode =
-         SomeCol
-       | AllCols of exp
-
 fun expIn rv env rvOf =
     let
-        fun expIn (e, rvN) =
+        fun expIn e =
             let
-                fun default () =
-                    let
-                        val (rvN, e') = rv rvN
-                    in
-                        (inl e', rvN)
-                    end
+                fun default () = inl (rv ())
             in
                 case e of
-                    SqConst p => (inl (Const p), rvN)
-                  | Field (v, f) => (inl (Proj (rvOf v, f)), rvN)
+                    SqConst p => inl (Const p)
+                  | Field (v, f) => inl (Proj (rvOf v, f))
                   | Binop (bo, e1, e2) =>
                     let
-                        val (e1, rvN) = expIn (e1, rvN)
-                        val (e2, rvN) = expIn (e2, rvN)
+                        val e1 = expIn e1
+                        val e2 = expIn e2
                     in
-                        (inr (case (bo, e1, e2) of
-                                  (Exps f, inl e1, inl e2) => f (e1, e2)
-                                | (Props f, inr p1, inr p2) => f (p1, p2)
-                                | _ => Unknown), rvN)
+                        inr (case (bo, e1, e2) of
+                                 (Exps f, inl e1, inl e2) => f (e1, e2)
+                               | (Props f, inr p1, inr p2) => f (p1, p2)
+                               | _ => Unknown)
                     end
                   | SqKnown e =>
-                    (case expIn (e, rvN) of
-                         (inl e, rvN) => (inr (Reln (Known, [e])), rvN)
-                       | _ => (inr Unknown, rvN))
+                    (case expIn e of
+                         inl e => inr (Reln (Known, [e]))
+                       | _ => inr Unknown)
                   | Inj e =>
                     let
                         fun deinj e =
                             case #1 e of
-                                ERel n => (List.nth (env, n), rvN)
-                              | EField (e, f) =>
-                                let
-                                    val (e, rvN) = deinj e
-                                in
-                                    (Proj (e, f), rvN)
-                                end
-                              | _ =>
-                                let
-                                    val (rvN, e) = rv rvN
-                                in
-                                    (e, rvN)
-                                end
-
-                        val (e, rvN) = deinj e
+                                ERel n => List.nth (env, n)
+                              | EField (e, f) => Proj (deinj e, f)
+                              | _ => rv ()
                     in
-                        (inl e, rvN)
+                        inl (deinj e)
                     end
                   | SqFunc (f, e) =>
-                    (case expIn (e, rvN) of
-                         (inl e, rvN) => (inl (Func (Other f, [e])), rvN)
+                    (case expIn e of
+                         inl e => inl (Func (Other f, [e]))
                        | _ => default ())
                      
                   | Count => default ()
@@ -1508,31 +1408,66 @@ fun expIn rv env rvOf =
         expIn
     end
 
-fun queryProp env rvN rv oe e =
+fun decomp {Save = save, Restore = restore, Add = add} =
     let
-        fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
-                                 ^ ErrorMsg.spanToString (#2 e) ^ "\n");
-                          (rvN, Unknown, [], []))
+        fun go p k =
+            case p of
+                True => k ()
+              | False => ()
+              | Unknown => ()
+              | And (p1, p2) => go p1 (fn () => go p2 k)
+              | Or (p1, p2) =>
+                let
+                    val saved = save ()
+                in
+                    go p1 k;
+                    restore saved;
+                    go p2 k
+                end
+              | Reln x => (add (AReln x); k ())
+              | Cond x => (add (ACond x); k ())
+    in
+        go
+    end
+
+datatype queryMode =
+         SomeCol of exp list -> unit
+       | AllCols of exp -> unit
+
+type 'a doQuery = {
+     Env : exp list,
+     NextVar : unit -> exp,
+     Add : atom -> unit,
+     Save : unit -> 'a,
+     Restore : 'a -> unit,
+     UsedExp : exp -> unit,
+     Cont : queryMode
+}
+
+fun doQuery (arg : 'a doQuery) e =
+    let
+        fun default () = print ("Warning: Information flow checker can't parse SQL query at "
+                                ^ ErrorMsg.spanToString (#2 e) ^ "\n")
     in
         case parse query e of
             NONE => default ()
           | SOME q =>
             let
-                fun doQuery (q, rvN) =
+                fun doQuery q =
                     case q of
                         Query1 r =>
                         let
-                            val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
-                                                                   let
-                                                                       val (rvN, e) = rv rvN
-                                                                   in
-                                                                       ((v, e), rvN)
-                                                                   end) rvN (#From r)
+                            val rvs = map (fn (_, v) => (v, #NextVar arg ())) (#From r)
 
                             fun rvOf v =
                                 case List.find (fn (v', _) => v' = v) rvs of
                                     NONE => raise Fail "Iflow.queryProp: Bad table variable"
                                   | SOME (_, e) => e
+
+                            val expIn = expIn (#NextVar arg) (#Env arg) rvOf
+
+                            val saved = #Save arg ()
+                            fun addFrom () = app (fn (t, v) => #Add arg (AReln (Sql t, [rvOf v]))) (#From r)
 
                             fun usedFields e =
                                 case e of
@@ -1544,695 +1479,276 @@ fun queryProp env rvN rv oe e =
                                   | SqFunc (_, e) => usedFields e
                                   | Count => []
 
-                            val p =
-                                foldl (fn ((t, v), p) => And (p, Reln (Sql t, [rvOf v]))) True (#From r)
+                            fun doUsed () = case #Where r of
+                                                NONE => ()
+                                              | SOME e =>
+                                                #UsedExp arg (Recd (ListUtil.mapi
+                                                                        (fn (n, (v, f)) => (Int.toString n,
+                                                                                            Proj (rvOf v, f)))
+                                                                        (usedFields e)))
 
-                            val expIn = expIn rv env rvOf
-
-                            val (p, rvN) = case #Where r of
-                                               NONE => (p, rvN)
-                                             | SOME e =>
-                                               case expIn (e, rvN) of
-                                                   (inr p', rvN) => (And (p, p'), rvN)
-                                                 | _ => (p, rvN)
-
-                            fun normal () =
-                                case oe of
-                                    SomeCol =>
+                            fun normal' () =
+                                case #Cont arg of
+                                    SomeCol k =>
                                     let
-                                        val (sis, rvN) =
-                                            ListUtil.foldlMap
-                                                (fn (si, rvN) =>
-                                                    case si of
-                                                        SqField (v, f) => (Proj (rvOf v, f), rvN)
-                                                      | SqExp (e, f) =>
-                                                        case expIn (e, rvN) of
-                                                            (inr _, _) =>
-                                                            let
-                                                                val (rvN, e) = rv rvN
-                                                            in
-                                                                (e, rvN)
-                                                            end
-                                                          | (inl e, rvN) => (e, rvN)) rvN (#Select r)
+                                        val sis = map (fn si =>
+                                                          case si of
+                                                              SqField (v, f) => Proj (rvOf v, f)
+                                                            | SqExp (e, f) =>
+                                                              case expIn e of
+                                                                  inr _ => #NextVar arg ()
+                                                                | inl e => e) (#Select r)
                                     in
-                                        (rvN, p, True, sis)
+                                        k sis
                                     end
-                                  | AllCols oe =>
+                                  | AllCols k =>
                                     let
-                                        val (ts, es, rvN) =
-                                            foldl (fn (si, (ts, es, rvN)) =>
+                                        val (ts, es) =
+                                            foldl (fn (si, (ts, es)) =>
                                                       case si of
                                                           SqField (v, f) =>
                                                           let
                                                               val fs = getOpt (SM.find (ts, v), SM.empty)
                                                           in
-                                                              (SM.insert (ts, v, SM.insert (fs, f, Proj (rvOf v, f))), es, rvN)
+                                                              (SM.insert (ts, v, SM.insert (fs, f, Proj (rvOf v, f))), es)
                                                           end
                                                         | SqExp (e, f) =>
                                                           let
-                                                              val (e, rvN) =
-                                                                  case expIn (e, rvN) of
-                                                                      (inr _, rvN) =>
-                                                                      let
-                                                                          val (rvN, e) = rv rvN
-                                                                      in
-                                                                          (e, rvN)
-                                                                      end
-                                                                    | (inl e, rvN) => (e, rvN)
+                                                              val e =
+                                                                  case expIn e of
+                                                                      inr _ => #NextVar arg ()
+                                                                    | inl e => e
                                                           in
-                                                              (ts, SM.insert (es, f, e), rvN)
+                                                              (ts, SM.insert (es, f, e))
                                                           end)
-                                                  (SM.empty, SM.empty, rvN) (#Select r)
-
-                                        val p' = Reln (Eq, [oe, Recd (map (fn (t, fs) => (t, Recd (SM.listItemsi fs)))
-                                                                          (SM.listItemsi ts)
-                                                                      @ SM.listItemsi es)])
+                                                  (SM.empty, SM.empty) (#Select r)
                                     in
-                                        (rvN, And (p, p'), True, [])
+                                        k (Recd (map (fn (t, fs) => (t, Recd (SM.listItemsi fs)))
+                                                     (SM.listItemsi ts)
+                                                 @ SM.listItemsi es))
                                     end
 
-                            val (rvN, p, wp, outs) =
-                                case #Select r of
-                                    [SqExp (Binop (Exps bo, Count, SqConst (Prim.Int 0)), f)] =>
-                                    (case bo (Const (Prim.Int 1), Const (Prim.Int 2)) of
-                                         Reln (Gt, [Const (Prim.Int 1), Const (Prim.Int 2)]) =>
-                                         (case oe of
-                                              SomeCol =>
-                                              let
-                                                  val (rvN, oe) = rv rvN
-                                              in
-                                                  (rvN,
-                                                   Or (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.False", [])]),
-                                                       And (Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
-                                                            p)),
-                                                   Reln (Eq, [oe, Func (DtCon0 "Basis.bool.True", [])]),
-                                                   [oe])
-                                              end
-                                            | AllCols oe =>
-                                              let
-                                                  fun oeEq e = Reln (Eq, [oe, Recd [(f, e)]])
-                                              in
-                                                  (rvN,
-                                                   Or (oeEq (Func (DtCon0 "Basis.bool.False", [])),
-                                                       And (oeEq (Func (DtCon0 "Basis.bool.True", [])),
-                                                            p)),
-                                                   oeEq (Func (DtCon0 "Basis.bool.True", [])),
-                                                   [])
-                                              end)
-                                       | _ => normal ())
-                                  | _ => normal ()
+                            fun doWhere final =
+                                (addFrom ();
+                                 case #Where r of
+                                     NONE => (doUsed (); final ())
+                                   | SOME e =>
+                                     case expIn e of
+                                         inl _ => (doUsed (); final ())
+                                       | inr p =>
+                                         let
+                                             val saved = #Save arg ()
+                                         in
+                                             decomp {Save = #Save arg, Restore = #Restore arg, Add = #Add arg}
+                                                    p (fn () => (doUsed (); final ()) handle Cc.Contradiction => ());
+                                             #Restore arg saved
+                                         end)
+                                handle Cc.Contradiction => ()
+
+                            fun normal () = doWhere normal'
                         in
-                            (rvN, p, map (fn x => (wp, x))
-                                     (case #Where r of
-                                          NONE => []
-                                        | SOME e => map (fn (v, f) => Proj (rvOf v, f)) (usedFields e)), outs)
+                            (case #Select r of
+                                 [SqExp (Binop (Exps bo, Count, SqConst (Prim.Int 0)), f)] =>
+                                 (case bo (Const (Prim.Int 1), Const (Prim.Int 2)) of
+                                      Reln (Gt, [Const (Prim.Int 1), Const (Prim.Int 2)]) =>
+                                      (case #Cont arg of
+                                           SomeCol _ => ()
+                                         | AllCols k =>
+                                           let
+                                               fun answer e = k (Recd [(f, e)])
+
+                                               val () = answer (Func (DtCon0 "Basis.bool.False", []))
+                                               val saved = #Save arg ()
+                                           in
+                                               doWhere (fn () => answer (Func (DtCon0 "Basis.bool.True", [])));
+                                               #Restore arg saved
+                                           end)
+                                    | _ => normal ())
+                               | _ => normal ())
+                            before #Restore arg saved
                         end
                       | Union (q1, q2) =>
                         let
-                            val (rvN, p1, used1, outs1) = doQuery (q1, rvN)
-                            val (rvN, p2, used2, outs2) = doQuery (q2, rvN)
+                            val saved = #Save arg ()
                         in
-                            case (outs1, outs2) of
-                                ([], []) => (rvN, Or (p1, p2),
-                                             map (fn (p, e) => (And (p1, p), e)) used1
-                                             @ map (fn (p, e) => (And (p2, p), e)) used2, [])
-                              | _ => default ()
+                            doQuery q1;
+                            #Restore arg saved;
+                            doQuery q2;
+                            #Restore arg saved
                         end
             in
-                doQuery (q, rvN)
+                doQuery q
             end
-    end
-
-fun insertProp rvN rv e =
-    let
-        fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
-                                 ^ ErrorMsg.spanToString (#2 e) ^ "\n");
-                          Unknown)
-    in
-        case parse query e of
-            SOME (Query1 r) =>
-            let
-                val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
-                                                       let
-                                                           val (rvN, e) = rv rvN
-                                                       in
-                                                           ((v, e), rvN)
-                                                       end) rvN (#From r)
-
-                fun rvOf v =
-                    case List.find (fn (v', _) => v' = v) rvs of
-                        NONE => raise Fail "Iflow.insertProp: Bad table variable"
-                      | SOME (_, e) => e
-
-                val p =
-                    foldl (fn ((t, v), p) =>
-                              let
-                                  val t =
-                                      case v of
-                                          "New" => t ^ "$New"
-                                        | _ => t
-                              in
-                                  And (p, Reln (Sql t, [rvOf v]))
-                              end) True (#From r)
-
-                val expIn = expIn rv [] rvOf
-            in
-                case #Where r of
-                    NONE => p
-                  | SOME e =>
-                    case expIn (e, rvN) of
-                        (inr p', _) => And (p, p')
-                      | _ => p
-            end
-          | _ => default ()
-    end
-
-fun deleteProp rvN rv e =
-    let
-        fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
-                                 ^ ErrorMsg.spanToString (#2 e) ^ "\n");
-                          Unknown)
-    in
-        case parse query e of
-            SOME (Query1 r) =>
-            let
-                val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
-                                                       let
-                                                           val (rvN, e) = rv rvN
-                                                       in
-                                                           ((v, e), rvN)
-                                                       end) rvN (#From r)
-
-                fun rvOf v =
-                    case List.find (fn (v', _) => v' = v) rvs of
-                        NONE => raise Fail "Iflow.deleteProp: Bad table variable"
-                      | SOME (_, e) => e
-
-                val p =
-                    foldl (fn ((t, v), p) => And (p, Reln (Sql t, [rvOf v]))) True (#From r)
-
-                val expIn = expIn rv [] rvOf
-            in
-                And (Reln (Sql "$Old", [rvOf "Old"]),
-                     case #Where r of
-                         NONE => p
-                       | SOME e =>
-                         case expIn (e, rvN) of
-                             (inr p', _) => And (p, p')
-                           | _ => p)
-            end
-          | _ => default ()
-    end
-
-fun updateProp rvN rv e =
-    let
-        fun default () = (print ("Warning: Information flow checker can't parse SQL query at "
-                                 ^ ErrorMsg.spanToString (#2 e) ^ "\n");
-                          Unknown)
-    in
-        case parse query e of
-            SOME (Query1 r) =>
-            let
-                val (rvs, rvN) = ListUtil.foldlMap (fn ((_, v), rvN) =>
-                                                       let
-                                                           val (rvN, e) = rv rvN
-                                                       in
-                                                           ((v, e), rvN)
-                                                       end) rvN (#From r)
-
-                fun rvOf v =
-                    case List.find (fn (v', _) => v' = v) rvs of
-                        NONE => raise Fail "Iflow.insertProp: Bad table variable"
-                      | SOME (_, e) => e
-
-                val p =
-                    foldl (fn ((t, v), p) =>
-                              let
-                                  val t =
-                                      case v of
-                                          "New" => t ^ "$New"
-                                        | _ => t
-                              in
-                                  And (p, Reln (Sql t, [rvOf v]))
-                              end) True (#From r)
-
-                val expIn = expIn rv [] rvOf
-            in
-                And (Reln (Sql "$Old", [rvOf "Old"]),
-                     case #Where r of
-                         NONE => p
-                       | SOME e =>
-                         case expIn (e, rvN) of
-                             (inr p', _) => And (p, p')
-                           | _ => p)
-            end
-          | _ => default ()
     end
 
 fun evalPat env e (pt, _) =
     case pt of
-        PWild => (env, True)
-      | PVar _ => (e :: env, True)
-      | PPrim _ => (env, True)
-      | PCon (_, pc, NONE) => (env, Reln (PCon0 (patCon pc), [e]))
+        PWild => env
+      | PVar _ => e :: env
+      | PPrim _ => env
+      | PCon (_, pc, NONE) => (St.assert [AReln (PCon0 (patCon pc), [e])]; env)
       | PCon (_, pc, SOME pt) =>
         let
-            val (env, p) = evalPat env (Func (UnCon (patCon pc), [e])) pt
+            val env = evalPat env (Func (UnCon (patCon pc), [e])) pt
         in
-            (env, And (p, Reln (PCon1 (patCon pc), [e])))
+            St.assert [AReln (PCon1 (patCon pc), [e])];
+            env
         end
       | PRecord xpts =>
-        foldl (fn ((x, pt, _), (env, p)) =>
-                  let
-                      val (env, p') = evalPat env (Proj (e, x)) pt
-                  in
-                      (env, And (p', p))
-                  end) (env, True) xpts
-      | PNone _ => (env, Reln (PCon0 "None", [e]))
+        foldl (fn ((x, pt, _), env) => evalPat env (Proj (e, x)) pt) env xpts
+      | PNone _ => (St.assert [AReln (PCon0 "None", [e])]; env)
       | PSome (_, pt) =>
         let
-            val (env, p) = evalPat env (Func (UnCon "Some", [e])) pt
+            val env = evalPat env (Func (UnCon "Some", [e])) pt
         in
-            (env, And (p, Reln (PCon1 "Some", [e])))
+            St.assert [AReln (PCon1 "Some", [e])];
+            env
         end
 
-fun peq (p1, p2) =
-    case (p1, p2) of
-        (True, True) => true
-      | (False, False) => true
-      | (Unknown, Unknown) => true
-      | (And (x1, y1), And (x2, y2)) => peq (x1, x2) andalso peq (y1, y2)
-      | (Or (x1, y1), Or (x2, y2)) => peq (x1, x2) andalso peq (y1, y2)
-      | (Reln (r1, es1), Reln (r2, es2)) => r1 = r2 andalso ListPair.allEq eeq (es1, es2)
-      | (Cond (e1, p1), Cond (e2, p2)) => eeq (e1, e2) andalso peq (p1, p2)
-      | _ => false
-
-fun removeRedundant p1 =
+fun evalExp env (e as (_, loc)) k =
     let
-        fun rr p2 =
-            if peq (p1, p2) then
-                True
-            else
-                case p2 of
-                    And (x, y) => And (rr x, rr y)
-                  | Or (x, y) => Or (rr x, rr y)
-                  | _ => p2
-    in
-        rr
-    end
+        (*val () = Print.preface ("evalExp", MonoPrint.p_exp MonoEnv.empty e)*)
 
-datatype cflow = Case | Where
-datatype flow = Data | Control of cflow
-type check = ErrorMsg.span * exp * prop
-type dml = ErrorMsg.span * prop
-
-structure St :> sig
-    type t
-    val create : {Var : int,
-                  Ambient : prop} -> t
-
-    val curVar : t -> int
-    val nextVar : t -> t * int
-
-    val ambient : t -> prop
-    val setAmbient : t * prop -> t
-
-    val paths : t -> (check * cflow) list
-    val addPath : t * (check * cflow) -> t
-    val addPaths : t * (check * cflow) list -> t
-    val clearPaths : t -> t
-    val setPaths : t * (check * cflow) list -> t
-
-    val sent : t -> (check * flow) list
-    val addSent : t * (check * flow) -> t
-    val setSent : t * (check * flow) list -> t
-
-    val inserted : t -> dml list
-    val addInsert : t * dml -> t
-
-    val deleted : t -> dml list
-    val addDelete : t * dml -> t
-
-    val updated : t -> dml list
-    val addUpdate : t * dml -> t
-end = struct
-
-type t = {Var : int,
-          Ambient : prop,
-          Path : (check * cflow) list,
-          Sent : (check * flow) list,
-          Insert : dml list,
-          Delete : dml list,
-          Update : dml list}
-
-fun create {Var = v, Ambient = p} = {Var = v,
-                                     Ambient = p,
-                                     Path = [],
-                                     Sent = [],
-                                     Insert = [],
-                                     Delete = [],
-                                     Update = []}
-
-fun curVar (t : t) = #Var t
-fun nextVar (t : t) = ({Var = #Var t + 1,
-                        Ambient = #Ambient t,
-                        Path = #Path t,
-                        Sent = #Sent t,
-                        Insert = #Insert t,
-                        Delete = #Delete t,
-                        Update = #Update t}, #Var t)
-
-fun ambient (t : t) = #Ambient t
-fun setAmbient (t : t, p) = {Var = #Var t,
-                             Ambient = p,
-                             Path = #Path t,
-                             Sent = #Sent t,
-                             Insert = #Insert t,
-                             Delete = #Delete t,
-                             Update = #Update t}
-
-fun paths (t : t) = #Path t
-fun addPath (t : t, c) = {Var = #Var t,
-                          Ambient = #Ambient t,
-                          Path = c :: #Path t,
-                          Sent = #Sent t,
-                          Insert = #Insert t,
-                          Delete = #Delete t,
-                          Update = #Update t}
-fun addPaths (t : t, cs) = {Var = #Var t,
-                            Ambient = #Ambient t,
-                            Path = cs @ #Path t,
-                            Sent = #Sent t,
-                            Insert = #Insert t,
-                            Delete = #Delete t,
-                            Update = #Update t}
-fun clearPaths (t : t) = {Var = #Var t,
-                          Ambient = #Ambient t,
-                          Path = [],
-                          Sent = #Sent t,
-                          Insert = #Insert t,
-                          Delete = #Delete t,
-                          Update = #Update t}
-fun setPaths (t : t, cs) = {Var = #Var t,
-                            Ambient = #Ambient t,
-                            Path = cs,
-                            Sent = #Sent t,
-                            Insert = #Insert t,
-                            Delete = #Delete t,
-                            Update = #Update t}
-
-fun sent (t : t) = #Sent t
-fun addSent (t : t, c) = {Var = #Var t,
-                          Ambient = #Ambient t,
-                          Path = #Path t,
-                          Sent = c :: #Sent t,
-                          Insert = #Insert t,
-                          Delete = #Delete t,
-                          Update = #Update t}
-fun setSent (t : t, cs) = {Var = #Var t,
-                           Ambient = #Ambient t,
-                           Path = #Path t,
-                           Sent = cs,
-                           Insert = #Insert t,
-                           Delete = #Delete t,
-                           Update = #Update t}
-
-fun inserted (t : t) = #Insert t
-fun addInsert (t : t, c) = {Var = #Var t,
-                            Ambient = #Ambient t,
-                            Path = #Path t,
-                            Sent = #Sent t,
-                            Insert = c :: #Insert t,
-                            Delete = #Delete t,
-                            Update = #Update t}
-
-fun deleted (t : t) = #Delete t
-fun addDelete (t : t, c) = {Var = #Var t,
-                            Ambient = #Ambient t,
-                            Path = #Path t,
-                            Sent = #Sent t,
-                            Insert = #Insert t,
-                            Delete = c :: #Delete t,
-                            Update = #Update t}
-
-fun updated (t : t) = #Update t
-fun addUpdate (t : t, c) = {Var = #Var t,
-                            Ambient = #Ambient t,
-                            Path = #Path t,
-                            Sent = #Sent t,
-                            Insert = #Insert t,
-                            Delete = #Delete t,
-                            Update = c :: #Update t}
-
-end
-
-fun havocReln r =
-    let
-        fun hr p =
-            case p of
-                True => p
-              | False => p
-              | Unknown => p
-              | And (p1, p2) => And (hr p1, hr p2)
-              | Or (p1, p2) => Or (hr p1, hr p2)
-              | Reln (r', _) => if r' = r then True else p
-              | Cond (e, p) => Cond (e, hr p)
-    in
-        hr
-    end
-
-fun evalExp env (e as (_, loc), st) =
-    let
-        fun default () =
-            let
-                val (st, nv) = St.nextVar st
-            in
-                (*Print.prefaces "default" [("e", MonoPrint.p_exp MonoEnv.empty e),
-                                          ("nv", p_exp (Var nv))];*)
-                (Var nv, st)
-            end
-
-        fun addSent (p, e, st) =
-            let
-                val st = if isKnown e then
-                             st
-                         else
-                             St.addSent (st, ((loc, e, p), Data))
-
-                val st = foldl (fn ((c, fl), st) => St.addSent (st, (c, Control fl))) st (St.paths st)
-            in
-                St.clearPaths st
-            end
+        fun default () = k (Var (St.nextVar ()))
 
         fun doFfi (m, s, es) =
             if m = "Basis" andalso SS.member (writers, s) then
                 let
-                    val (es, st) = ListUtil.foldlMap (evalExp env) st es
+                    fun doArgs es =
+                        case es of
+                            [] => k (Recd [])
+                          | e :: es =>
+                            evalExp env e (fn e => (St.send (e, loc); doArgs es))
                 in
-                    (Recd [], foldl (fn (e, st) => addSent (St.ambient st, e, st)) st es)
+                    doArgs es
                 end
             else if Settings.isEffectful (m, s) andalso not (Settings.isBenignEffectful (m, s)) then
                 default ()
             else
                 let
-                    val (es, st) = ListUtil.foldlMap (evalExp env) st es
+                    fun doArgs (es, acc) =
+                        case es of
+                            [] => k (Func (Other (m ^ "." ^ s), rev acc))
+                          | e :: es =>
+                            evalExp env e (fn e => doArgs (es, e :: acc))
                 in
-                    (Func (Other (m ^ "." ^ s), es), st)
+                    doArgs (es, [])
                 end            
     in
         case #1 e of
-            EPrim p => (Const p, st)
-          | ERel n => (List.nth (env, n), st)
+            EPrim p => k (Const p)
+          | ERel n => k (List.nth (env, n))
           | ENamed _ => default ()
-          | ECon (_, pc, NONE) => (Func (DtCon0 (patCon pc), []), st)
-          | ECon (_, pc, SOME e) =>
-            let
-                val (e, st) = evalExp env (e, st)
-            in
-                (Func (DtCon1 (patCon pc), [e]), st)
-            end
-          | ENone _ => (Func (DtCon0 "None", []), st)
-          | ESome (_, e) =>
-            let
-                val (e, st) = evalExp env (e, st)
-            in
-                (Func (DtCon1 "Some", [e]), st)
-            end
+          | ECon (_, pc, NONE) => k (Func (DtCon0 (patCon pc), []))
+          | ECon (_, pc, SOME e) => evalExp env e (fn e => k (Func (DtCon1 (patCon pc), [e])))
+          | ENone _ => k (Func (DtCon0 "None", []))
+          | ESome (_, e) => evalExp env e (fn e => k (Func (DtCon1 "Some", [e])))
           | EFfi _ => default ()
 
           | EFfiApp x => doFfi x
           | EApp ((EFfi (m, s), _), e) => doFfi (m, s, [e])
 
-          | EApp (e1, e2) =>
-            let
-                val (e1, st) = evalExp env (e1, st)
-            in
-                case e1 of
-                    Finish => (Finish, st)
-                  | _ => default ()
-            end
+          | EApp (e1, e2) => evalExp env e1 (fn _ => evalExp env e2 (fn _ => default ()))
 
           | EAbs _ => default ()
-          | EUnop (s, e1) =>
-            let
-                val (e1, st) = evalExp env (e1, st)
-            in
-                (Func (Other s, [e1]), st)
-            end
-          | EBinop (s, e1, e2) =>
-            let
-                val (e1, st) = evalExp env (e1, st)
-                val (e2, st) = evalExp env (e2, st)
-            in
-                (Func (Other s, [e1, e2]), st)
-            end
+          | EUnop (s, e1) => evalExp env e1 (fn e1 => k (Func (Other s, [e1])))
+          | EBinop (s, e1, e2) => evalExp env e1 (fn e1 => evalExp env e2 (fn e2 => k (Func (Other s, [e1, e2]))))
           | ERecord xets =>
             let
-                val (xes, st) = ListUtil.foldlMap (fn ((x, e, _), st) =>
-                                                      let
-                                                          val (e, st) = evalExp env (e, st)
-                                                      in
-                                                          ((x, e), st)
-                                                      end) st xets
+                fun doFields (xes, acc) =
+                    case xes of
+                        [] => k (Recd (rev acc))
+                      | (x, e, _) :: xes =>
+                        evalExp env e (fn e => doFields (xes, (x, e) :: acc))
             in
-                (Recd xes, st)
+                doFields (xets, [])
             end
-          | EField (e, s) =>
-            let
-                val (e, st) = evalExp env (e, st)
-            in
-                (Proj (e, s), st)
-            end
+          | EField (e, s) => evalExp env e (fn e => k (Proj (e, s)))
           | ECase (e, pes, {result = res, ...}) =>
-            let
-                val (e, st) = evalExp env (e, st)
-                val (st, r) = St.nextVar st
-                val orig = St.ambient st
-                val origPaths = St.paths st
-
-                val st = St.addPath (st, ((loc, e, orig), Case))
-
-                (*val () = Print.prefaces "Case" [("loc", Print.PD.string (ErrorMsg.spanToString loc)),
-                                                ("e", Print.p_list (MonoPrint.p_exp MonoEnv.empty o #2) pes),
-                                                ("orig", p_prop orig)]*)
-
-                val (st, ambients, paths) =
-                    foldl (fn ((pt, pe), (st, ambients, paths)) =>
+            evalExp env e (fn e =>
                               let
-                                  val (env, pp) = evalPat env e pt
-                                  val (pe, st') = evalExp env (pe, St.setAmbient (st, And (orig, pp)))
-                                                  
-                                  val this = And (removeRedundant orig (St.ambient st'),
-                                                  Reln (Eq, [Var r, pe]))
+                                  val () = St.addPath (e, loc)
                               in
-                                  (St.setPaths (st', origPaths),
-                                   Or (ambients, this),
-                                   St.paths st' @ paths)
-                              end) (st, False, []) pes
-
-                val st = case #1 res of
-                             TRecord [] => St.setPaths (st, origPaths)
-                           | _ => St.setPaths (st, paths)
-            in
-                (Var r, St.setAmbient (st, And (orig, ambients)))
-            end
+                                  app (fn (p, pe) =>
+                                          let
+                                              val saved = St.stash ()
+                                                          
+                                              val env = evalPat env e p
+                                          in
+                                              evalExp env pe k;
+                                              St.reinstate saved
+                                          end) pes
+                              end handle Cc.Contradiction => ())
           | EStrcat (e1, e2) =>
-            let
-                val (e1, st) = evalExp env (e1, st)
-                val (e2, st) = evalExp env (e2, st)
-            in
-                (Func (Other "cat", [e1, e2]), st)
-            end
-          | EError _ => (Finish, st)
+            evalExp env e1 (fn e1 =>
+                evalExp env e2 (fn e2 =>
+                                   k (Func (Other "cat", [e1, e2]))))
+          | EError (e, _) => evalExp env e (fn e => St.send (e, loc))
           | EReturnBlob {blob = b, mimeType = m, ...} =>
-            let
-                val (b, st) = evalExp env (b, st)
-                val (m, st) = evalExp env (m, st)
-            in
-                (Finish, addSent (St.ambient st, b, addSent (St.ambient st, m, st)))
-            end
+            evalExp env b (fn b =>
+                              (St.send (b, loc);
+                               evalExp env m
+                               (fn m => St.send (m, loc))))
           | ERedirect (e, _) =>
-            let
-                val (e, st) = evalExp env (e, st)
-            in
-                (Finish, addSent (St.ambient st, e, st))
-            end
+            evalExp env e (fn e => St.send (e, loc))
           | EWrite e =>
-            let
-                val (e, st) = evalExp env (e, st)
-            in
-                (Recd [], addSent (St.ambient st, e, st))
-            end
+            evalExp env e (fn e => (St.send (e, loc);
+                                    k (Recd [])))
           | ESeq (e1, e2) =>
-            let
-                val (_, st) = evalExp env (e1, st)
-            in
-                evalExp env (e2, st)
-            end
+            evalExp env e1 (fn _ => evalExp env e2 k)
           | ELet (_, _, e1, e2) =>
-            let
-                val (e1, st) = evalExp env (e1, st)
-            in
-                evalExp (e1 :: env) (e2, st)
-            end
+            evalExp env e1 (fn e1 => evalExp (e1 :: env) e2 k)
           | EClosure (n, es) =>
             let
-                val (es, st) = ListUtil.foldlMap (evalExp env) st es
+                fun doArgs (es, acc) =
+                    case es of
+                        [] => k (Func (Other ("Cl" ^ Int.toString n), rev acc))
+                      | e :: es =>
+                        evalExp env e (fn e => doArgs (es, e :: acc))
             in
-                (Func (Other ("Cl" ^ Int.toString n), es), st)
+                doArgs (es, [])
             end
 
           | EQuery {query = q, body = b, initial = i, state = state, ...} =>
-            let
-                val (_, st) = evalExp env (q, st)
-                val (i, st) = evalExp env (i, st)
+            evalExp env q (fn _ =>
+                              evalExp env i (fn i =>
+                                                let
+                                                    val saved = St.stash ()
 
-                val (st', r) = St.nextVar st
-                val (st', acc) = St.nextVar st'
-
-                val (b, st') = evalExp (Var acc :: Var r :: env) (b, st')
-                val amb = removeRedundant (St.ambient st) (St.ambient st')
-
-                val (st', qp, used, _) =
-                    queryProp env
-                              st' (fn st' =>
-                                      let
-                                          val (st', rv) = St.nextVar st'
-                                      in
-                                          (st', Var rv)
-                                      end)
-                              (AllCols (Var r)) q
-
-                val (st, res) =
-                    case #1 state of
-                        TRecord [] =>
-                        (st, Func (DtCon0 "unit", []))
-                      | _ =>
-                        if varInP acc (St.ambient st') then
-                            let
-                                val (st, r) = St.nextVar st
-                            in
-                                (st, Var r)
-                            end
-                        else
-                            let
-                                val (st', out) = St.nextVar st'
-                                                 
-                                val p = And (St.ambient st,
-                                             Or (Reln (Eq, [Var out, i]),
-                                                 And (Reln (Eq, [Var out, b]),
-                                                      And (qp, amb))))
-                            in
-                                (St.setAmbient (st', p), Var out)
-                            end
-
-                val sent = map (fn ((loc, e, p), fl) => ((loc, e, And (qp, p)), fl)) (St.sent st')
-
-                val p' = And (qp, St.ambient st')
-                val paths = map (fn (p'', e) => ((loc, e, And (p', p'')), Where)) used
-            in
-                (res, St.addPaths (St.setSent (st, sent), paths))
-            end
+                                                    val r = Var (St.nextVar ())
+                                                    val acc = Var (St.nextVar ())
+                                                in
+                                                    if MonoUtil.Exp.existsB {typ = fn _ => false,
+                                                                             exp = fn (n, e) =>
+                                                                                      case e of
+                                                                                          ERel n' => n' = n
+                                                                                        | _ => false,
+                                                                             bind = fn (n, b) =>
+                                                                                       case b of
+                                                                                           MonoUtil.Exp.RelE _ => n + 1
+                                                                                         | _ => n}
+                                                                            0 b then
+                                                        doQuery {Env = env,
+                                                                 NextVar = Var o St.nextVar,
+                                                                 Add = fn a => St.assert [a],
+                                                                 Save = St.stash,
+                                                                 Restore = St.reinstate,
+                                                                 UsedExp = fn e => St.send (e, loc),
+                                                                 Cont = AllCols (fn _ => (St.reinstate saved;
+                                                                                          evalExp
+                                                                                              (acc :: r :: env)
+                                                                                              b (fn _ => default ())))} q
+                                                    else
+                                                        doQuery {Env = env,
+                                                                 NextVar = Var o St.nextVar,
+                                                                 Add = fn a => St.assert [a],
+                                                                 Save = St.stash,
+                                                                 Restore = St.reinstate,
+                                                                 UsedExp = fn e => St.send (e, loc),
+                                                                 Cont = AllCols (fn x =>
+                                                                                    (St.assert [AReln (Eq, [r, x])];
+                                                                                     evalExp (acc :: r :: env) b k))} q
+                                                end))
           | EDml e =>
             (case parse dml e of
                  NONE => (print ("Warning: Information flow checker can't parse DML command at "
@@ -2242,86 +1758,66 @@ fun evalExp env (e as (_, loc), st) =
                  case d of
                      Insert (tab, es) =>
                      let
-                         val (st, new) = St.nextVar st
+                         val new = St.nextVar ()
 
-                         fun rv st =
-                             let
-                                 val (st, n) = St.nextVar st
-                             in
-                                 (st, Var n)
-                             end
+                         val expIn = expIn (Var o St.nextVar) env
+                                           (fn _ => raise Fail "Iflow.evalExp: Bad field expression in INSERT [1]")
 
-                         val expIn = expIn rv env (fn _ => raise Fail "Iflow.evalExp: Bad field expression in INSERT")
+                         val es = map (fn (x, e) =>
+                                          case expIn e of
+                                              inl e => (x, e)
+                                            | inr _ => raise Fail "Iflow.evalExp: Bad field expression in INSERT [2]")
+                                  es
 
-                         val (es, st) = ListUtil.foldlMap
-                                            (fn ((x, e), st) =>
-                                                let
-                                                    val (e, st) = case expIn (e, st) of
-                                                                      (inl e, st) => (e, st)
-                                                                    | (inr _, _) => raise Fail
-                                                                                              ("Iflow.evalExp: Selecting "
-                                                                                               ^ "boolean expression")
-                                                in
-                                                    ((x, e), st)
-                                                end)
-                                            st es
+                         val saved = St.stash ()
                      in
-                         (Recd [], St.addInsert (st, (loc, And (St.ambient st,
-                                                                Reln (Sql (tab ^ "$New"), [Recd es])))))
+                         St.assert [AReln (Sql (tab ^ "$New"), [Recd es])];
+                         St.insert loc;
+                         St.reinstate saved;
+                         k (Recd [])
                      end
                    | Delete (tab, e) =>
                      let
-                         val (st, old) = St.nextVar st
+                         val old = St.nextVar ()
+                                   
+                         val expIn = expIn (Var o St.nextVar) env
+                                           (fn "T" => Var old
+                                             | _ => raise Fail "Iflow.evalExp: Bad field expression in DELETE")
 
-                         fun rv st =
-                             let
-                                 val (st, n) = St.nextVar st
-                             in
-                                 (st, Var n)
-                             end
-
-                         val expIn = expIn rv env (fn "T" => Var old
-                                                    | _ => raise Fail "Iflow.evalExp: Bad field expression in DELETE")
-
-                         val (p, st) = case expIn (e, st) of
-                                           (inl e, _) => raise Fail "Iflow.evalExp: DELETE with non-boolean" 
-                                         | (inr p, st) => (p, st)
-
-                         val p = And (p,
-                                      And (Reln (Sql "$Old", [Var old]),
-                                           Reln (Sql tab, [Var old])))
-
-                         val st = St.setAmbient (st, havocReln (Sql tab) (St.ambient st))
+                         val p = case expIn e of
+                                     inl e => raise Fail "Iflow.evalExp: DELETE with non-boolean" 
+                                   | inr p => p
+                                                          
+                         val saved = St.stash ()
                      in
-                         (Recd [], St.addDelete (st, (loc, And (St.ambient st, p))))
+                         St.assert [AReln (Sql "$Old", [Var old]),
+                                    AReln (Sql tab, [Var old])];
+                         decomp {Save = St.stash,
+                                 Restore = St.reinstate,
+                                 Add = fn a => St.assert [a]} p
+                                (fn () => (St.delete loc;
+                                           St.reinstate saved;
+                                           St.havocReln (Sql tab);
+                                           k (Recd []))
+                                    handle Cc.Contradiction => ())
                      end
                    | Update (tab, fs, e) =>
                      let
-                         val (st, new) = St.nextVar st
-                         val (st, old) = St.nextVar st
+                         val new = St.nextVar ()
+                         val old = St.nextVar ()
 
-                         fun rv st =
-                             let
-                                 val (st, n) = St.nextVar st
-                             in
-                                 (st, Var n)
-                             end
+                         val expIn = expIn (Var o St.nextVar) env
+                                           (fn "T" => Var old
+                                             | _ => raise Fail "Iflow.evalExp: Bad field expression in UPDATE")
 
-                         val expIn = expIn rv env (fn "T" => Var old
-                                                    | _ => raise Fail "Iflow.evalExp: Bad field expression in UPDATE")
-
-                         val (fs, st) = ListUtil.foldlMap
-                                            (fn ((x, e), st) =>
-                                                let
-                                                    val (e, st) = case expIn (e, st) of
-                                                                      (inl e, st) => (e, st)
-                                                                    | (inr _, _) => raise Fail
-                                                                                              ("Iflow.evalExp: Selecting "
-                                                                                               ^ "boolean expression")
-                                                in
-                                                    ((x, e), st)
-                                                end)
-                                            st fs
+                         val fs = map
+                                      (fn (x, e) =>
+                                          (x, case expIn e of
+                                                  inl e => e
+                                                | inr _ => raise Fail
+                                                                     ("Iflow.evalExp: Selecting "
+                                                                      ^ "boolean expression")))
+                                      fs
 
                          val fs' = case SM.find (!tabs, tab) of
                                        NONE => raise Fail "Iflow.evalExp: Updating unknown table"
@@ -2333,34 +1829,40 @@ fun evalExp env (e as (_, loc), st) =
                                             else
                                                 (f, Proj (Var old, f)) :: fs) fs fs'
 
-                         val (p, st) = case expIn (e, st) of
-                                           (inl e, _) => raise Fail "Iflow.evalExp: UPDATE with non-boolean" 
-                                         | (inr p, st) => (p, st)
-
-                         val p = And (p,
-                                      And (Reln (Sql (tab ^ "$New"), [Recd fs]),
-                                           And (Reln (Sql "$Old", [Var old]),
-                                                Reln (Sql tab, [Var old]))))
-
-                         val st = St.setAmbient (st, havocReln (Sql tab) (St.ambient st))
+                         val p = case expIn e of
+                                           inl e => raise Fail "Iflow.evalExp: UPDATE with non-boolean" 
+                                         | inr p => p
+                         val saved = St.stash ()
                      in
-                         (Recd [], St.addUpdate (st, (loc, And (St.ambient st, p))))
+                         St.assert [AReln (Sql (tab ^ "$New"), [Recd fs]),
+                                    AReln (Sql "$Old", [Var old]),
+                                    AReln (Sql tab, [Var old])];
+                         decomp {Save = St.stash,
+                                 Restore = St.reinstate,
+                                 Add = fn a => St.assert [a]} p
+                                (fn () => (St.update loc;
+                                           St.reinstate saved;
+                                           St.havocReln (Sql tab);
+                                           k (Recd []))
+                                    handle Cc.Contradiction => ())
                      end)
                      
           | ENextval (EPrim (Prim.String seq), _) =>
             let
-                val (st, nv) = St.nextVar st
+                val nv = St.nextVar ()
             in
-                (Var nv, St.setAmbient (st, And (St.ambient st, Reln (Sql (String.extract (seq, 3, NONE)), [Var nv]))))
+                St.assert [AReln (Sql (String.extract (seq, 3, NONE)), [Var nv])];
+                k (Var nv)
             end
           | ENextval _ => default ()
           | ESetval _ => default ()
 
           | EUnurlify ((EFfiApp ("Basis", "get_cookie", _), _), _, _) =>
             let
-                val (st, nv) = St.nextVar st
+                val nv = St.nextVar ()
             in
-                (Var nv, St.setAmbient (st, And (St.ambient st, Reln (Known, [Var nv]))))
+                St.assert [AReln (Known, [Var nv])];
+                k (Var nv)
             end
 
           | EUnurlify _ => default ()
@@ -2376,6 +1878,8 @@ fun evalExp env (e as (_, loc), st) =
 
 fun check file =
     let
+        val () = St.reset ()
+
         val file = MonoReduce.reduce file
         val file = MonoOpt.optimize file
         val file = Fuse.fuse file
@@ -2388,7 +1892,7 @@ fun check file =
                                   DExport (_, _, n, _, _, _) => IS.add (exptd, n)
                                 | _ => exptd) IS.empty file
 
-        fun decl ((d, _), (vals, inserts, deletes, updates, client, insert, delete, update)) =
+        fun decl (d, _) =
             case d of
                 DTable (tab, fs, pk, _) =>
                 let
@@ -2401,11 +1905,10 @@ fun check file =
                           | _ => []
                 in
                     if size tab >= 3 then
-                        (tabs := SM.insert (!tabs, String.extract (tab, 3, NONE),
-                                            (map #1 fs,
-                                             map (map (fn s => str (Char.toUpper (String.sub (s, 3)))
-                                                               ^ String.extract (s, 4, NONE))) ks));
-                         (vals, inserts, deletes, updates, client, insert, delete, update))
+                        tabs := SM.insert (!tabs, String.extract (tab, 3, NONE),
+                                           (map #1 fs,
+                                            map (map (fn s => str (Char.toUpper (String.sub (s, 3)))
+                                                              ^ String.extract (s, 4, NONE))) ks))
                     else
                         raise Fail "Table name does not begin with uw_"
                 end
@@ -2413,186 +1916,73 @@ fun check file =
                 let
                     val isExptd = IS.member (exptd, n)
 
-                    fun deAbs (e, env, nv, p) =
+                    val saved = St.stash ()
+
+                    fun deAbs (e, env, ps) =
                         case #1 e of
-                            EAbs (_, _, _, e) => deAbs (e, Var nv :: env, nv + 1,
-                                                        if isExptd then
-                                                            And (p, Reln (Known, [Var nv]))
-                                                        else
-                                                            p)
-                          | _ => (e, env, nv, p)
+                            EAbs (_, _, _, e) =>
+                            let
+                                val nv = Var (St.nextVar ())
+                            in
+                                deAbs (e, nv :: env,
+                                       if isExptd then
+                                           AReln (Known, [nv]) :: ps
+                                       else
+                                           ps)
+                            end
+                          | _ => (e, env, ps)
 
-                    val (e, env, nv, p) = deAbs (e, [], 1, True)
-
-                    val (_, st) = evalExp env (e, St.create {Var = nv,
-                                                             Ambient = p})
+                    val (e, env, ps) = deAbs (e, [], [])
                 in
-                    (St.sent st @ vals, St.inserted st @ inserts, St.deleted st @ deletes, St.updated st @ updates,
-                     client, insert, delete, update)
+                    St.assert ps;
+                    (evalExp env e (fn _ => ()) handle Cc.Contradiction => ());
+                    St.reinstate saved
                 end
 
               | DPolicy pol =>
                 let
-                    fun rv rvN = (rvN + 1, Lvar rvN)
+                    val rvN = ref 0
+                    fun rv () =
+                        let
+                            val n = !rvN
+                        in
+                            rvN := n + 1;
+                            Lvar n
+                        end
+
+                    val atoms = ref ([] : atom list)
+                    fun doQ k = doQuery {Env = [],
+                                         NextVar = rv,
+                                         Add = fn a => atoms := a :: !atoms,
+                                         Save = fn () => !atoms,
+                                         Restore = fn ls => atoms := ls,
+                                         UsedExp = fn _ => (),
+                                         Cont = SomeCol (fn es => k (!atoms, es))}
                 in
                     case pol of
                         PolClient e =>
-                        let
-                            val (_, p, _, outs) = queryProp [] 0 rv SomeCol e
-                        in
-                            (vals, inserts, deletes, updates, (p, outs) :: client, insert, delete, update)
-                        end
+                        doQ (fn (ats, es) => St.allowSend (ats, es)) e
                       | PolInsert e =>
-                        let
-                            val p = insertProp 0 rv e
-                        in
-                            (vals, inserts, deletes, updates, client, p :: insert, delete, update)
-                        end
+                        doQ (fn (ats, _) => St.allowInsert ats) e
                       | PolDelete e =>
-                        let
-                            val p = deleteProp 0 rv e
-                        in
-                            (vals, inserts, deletes, updates, client, insert, p :: delete, update)
-                        end
+                        doQ (fn (ats, _) => St.allowDelete ats) e
                       | PolUpdate e =>
-                        let
-                            val p = updateProp 0 rv e
-                        in
-                            (vals, inserts, deletes, updates, client, insert, delete, p :: update)
-                        end
+                        doQ (fn (ats, _) => St.allowUpdate ats) e
                       | PolSequence e =>
                         (case #1 e of
                              EPrim (Prim.String seq) =>
                              let
-                                 val p = Reln (Sql (String.extract (seq, 3, NONE)), [Lvar 0])
+                                 val p = AReln (Sql (String.extract (seq, 3, NONE)), [Lvar 0])
                                  val outs = [Lvar 0]
                              in
-                                 (vals, inserts, deletes, updates, (p, outs) :: client, insert, delete, update)
+                                 St.allowSend ([p], outs)
                              end
-                           | _ => (vals, inserts, deletes, updates, client, insert, delete, update))
+                           | _ => ())
                 end
                                         
-              | _ => (vals, inserts, deletes, updates, client, insert, delete, update)
-
-        val () = reset ()
-
-        val (vals, inserts, deletes, updates, client, insert, delete, update) =
-            foldl decl ([], [], [], [], [], [], [], []) file
-
-
-        val decompH = decomp true (fn (e1, e2) => e1 andalso e2 ())
-        val decompG = decomp false (fn (e1, e2) => e1 orelse e2 ())
-
-        fun doDml (cmds, pols) =
-            app (fn (loc, p) =>
-                    if decompH p
-                               (fn hyps =>
-                                   let
-                                       val cc = ccOf hyps
-                                   in
-                                       List.exists (fn p' =>
-                                                       if decompG p'
-                                                                  (fn goals => imply (cc, hyps, goals, NONE)) then
-                                                           ((*reset ();
-                                                             Print.prefaces "Match" [("hyp", p_prop p),
-                                                                                     ("goal", p_prop p')];*)
-                                                            true)
-                                                       else
-                                                           false)
-                                                   pols
-                                   end handle Cc.Contradiction => true) then
-                        ()
-                    else
-                        (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
-                         Print.preface ("The state satisifies this predicate:", p_prop p))) cmds
+              | _ => ()
     in
-        app (fn ((loc, e, p), fl) =>
-                let
-                    fun doOne e =
-                        let
-                            val p = And (p, Reln (Eq, [Var 0, e]))
-                        in
-                            if decompH p
-                                       (fn hyps =>
-                                           let
-                                               val cc = ccOf hyps
-
-                                               fun relevant () =
-                                                   let
-                                                       val avail = foldl (fn (AReln (Sql tab, _), avail) =>
-                                                                             SS.add (avail, tab)
-                                                                           | (_, avail) => avail) SS.empty hyps
-
-                                                       val ls = List.filter
-                                                                    (fn (g1, _) =>
-                                                                        decompG g1
-                                                                                (List.all (fn AReln (Sql tab, _) =>
-                                                                                     SS.member (avail, tab)
-                                                                                            | _ => true))) client
-                                                   in
-                                                       (*print ("Max: " ^ Int.toString (length ls) ^ "\n");*)
-                                                       ls
-                                                   end
-
-                                               fun tryCombos (maxLv, pols, g, outs) =
-                                                   case pols of
-                                                       [] =>
-                                                       decompG g
-                                                               (fn goals => imply (cc, hyps, goals, SOME outs))
-                                                     | (g1, outs1) :: pols =>
-                                                       let
-                                                           val g1 = bumpLvarsP (maxLv + 1) g1
-                                                           val outs1 = map (bumpLvars (maxLv + 1)) outs1
-                                                           fun skip () = tryCombos (maxLv, pols, g, outs)
-                                                       in
-                                                           skip ()
-                                                           orelse tryCombos (Int.max (maxLv,
-                                                                                      maxLvarP g1),
-                                                                             pols,
-                                                                             And (g1, g),
-                                                                             outs1 @ outs)
-                                                       end
-                                           in
-                                               (fl <> Control Where
-                                                andalso imply (cc, hyps, [AReln (Known, [Var 0])], SOME [Var 0]))
-                                               orelse List.exists (fn (p', outs) =>
-                                                                      decompG p'
-                                                                              (fn goals => imply (cc, hyps, goals,
-                                                                                                  SOME outs)))
-                                                                  client
-                                               orelse tryCombos (0, relevant (), True, [])
-                                               orelse (reset ();
-                                                       Print.preface ("Untenable hypotheses"
-                                                                      ^ (case fl of
-                                                                             Control Where => " (WHERE clause)"
-                                                                           | Control Case => " (case discriminee)"
-                                                                           | Data => " (returned data value)"),
-                                                                      Print.p_list p_atom hyps);
-                                                       (*Print.preface ("DB", Cc.p_database cc);*)
-                                                       false)
-                                           end handle Cc.Contradiction => true) then
-                                ()
-                            else
-                                ErrorMsg.errorAt loc "The information flow policy may be violated here."
-                        end
-
-                    fun doAll e =
-                        case e of
-                            Const _ => ()
-                          | Var _ => doOne e
-                          | Lvar _ => raise Fail "Iflow.doAll: Lvar"
-                          | Func (UnCon _, [_]) => doOne e
-                          | Func (_, es) => app doAll es
-                          | Recd xes => app (doAll o #2) xes
-                          | Proj _ => doOne e
-                          | Finish => ()
-                in
-                    doAll e
-                end) vals;
-
-        doDml (inserts, insert);
-        doDml (deletes, delete);
-        doDml (updates, update)
+        app decl file
     end
 
 val check = fn file =>
