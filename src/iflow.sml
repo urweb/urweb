@@ -2023,6 +2023,22 @@ fun evalExp env (e as (_, loc), st) =
             in
                 St.clearPaths st
             end
+
+        fun doFfi (m, s, es) =
+            if m = "Basis" andalso SS.member (writers, s) then
+                let
+                    val (es, st) = ListUtil.foldlMap (evalExp env) st es
+                in
+                    (Recd [], foldl (fn (e, st) => addSent (St.ambient st, e, st)) st es)
+                end
+            else if Settings.isEffectful (m, s) andalso not (Settings.isBenignEffectful (m, s)) then
+                default ()
+            else
+                let
+                    val (es, st) = ListUtil.foldlMap (evalExp env) st es
+                in
+                    (Func (Other (m ^ "." ^ s), es), st)
+                end            
     in
         case #1 e of
             EPrim p => (Const p, st)
@@ -2044,21 +2060,8 @@ fun evalExp env (e as (_, loc), st) =
             end
           | EFfi _ => default ()
 
-          | EFfiApp (m, s, es) =>
-            if m = "Basis" andalso SS.member (writers, s) then
-                let
-                    val (es, st) = ListUtil.foldlMap (evalExp env) st es
-                in
-                    (Recd [], foldl (fn (e, st) => addSent (St.ambient st, e, st)) st es)
-                end
-            else if Settings.isEffectful (m, s) andalso not (Settings.isBenignEffectful (m, s)) then
-                default ()
-            else
-                let
-                    val (es, st) = ListUtil.foldlMap (evalExp env) st es
-                in
-                    (Func (Other (m ^ "." ^ s), es), st)
-                end
+          | EFfiApp x => doFfi x
+          | EApp ((EFfi (m, s), _), e) => doFfi (m, s, [e])
 
           | EApp (e1, e2) =>
             let
@@ -2560,7 +2563,7 @@ fun check file =
                                                                            | Control Case => " (case discriminee)"
                                                                            | Data => " (returned data value)"),
                                                                       Print.p_list p_atom hyps);
-                                                       Print.preface ("DB", Cc.p_database cc);
+                                                       (*Print.preface ("DB", Cc.p_database cc);*)
                                                        false)
                                            end handle Cc.Contradiction => true) then
                                 ()
