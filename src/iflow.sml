@@ -1984,6 +1984,21 @@ fun addUpdate (t : t, c) = {Var = #Var t,
 
 end
 
+fun havocReln r =
+    let
+        fun hr p =
+            case p of
+                True => p
+              | False => p
+              | Unknown => p
+              | And (p1, p2) => And (hr p1, hr p2)
+              | Or (p1, p2) => Or (hr p1, hr p2)
+              | Reln (r', _) => if r' = r then True else p
+              | Cond (e, p) => Cond (e, hr p)
+    in
+        hr
+    end
+
 fun evalExp env (e as (_, loc), st) =
     let
         fun default () =
@@ -2259,6 +2274,8 @@ fun evalExp env (e as (_, loc), st) =
                          val p = And (p,
                                       And (Reln (Sql "$Old", [Var old]),
                                            Reln (Sql tab, [Var old])))
+
+                         val st = St.setAmbient (st, havocReln (Sql tab) (St.ambient st))
                      in
                          (Recd [], St.addDelete (st, (loc, And (St.ambient st, p))))
                      end
@@ -2308,6 +2325,8 @@ fun evalExp env (e as (_, loc), st) =
                                       And (Reln (Sql (tab ^ "$New"), [Recd fs]),
                                            And (Reln (Sql "$Old", [Var old]),
                                                 Reln (Sql tab, [Var old]))))
+
+                         val st = St.setAmbient (st, havocReln (Sql tab) (St.ambient st))
                      in
                          (Recd [], St.addUpdate (st, (loc, And (St.ambient st, p))))
                      end)
