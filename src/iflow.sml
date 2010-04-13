@@ -959,84 +959,86 @@ fun decomp fals or =
 
 val tabs = ref (SM.empty : (string list * string list list) SM.map)
 
-fun imply (hyps, goals, outs) =
+fun ccOf hyps =
+    let
+        val cc = Cc.database ()
+        val () = app (fn a => Cc.assert (cc, a)) hyps
+
+        (* Take advantage of table key information *)
+        fun findKeys hyps =
+            case hyps of
+                [] => ()
+              | AReln (Sql tab, [r1]) :: hyps =>
+                (case SM.find (!tabs, tab) of
+                     NONE => findKeys hyps
+                   | SOME (_, []) => findKeys hyps
+                   | SOME (_, ks) =>
+                     let
+                         fun finder hyps =
+                             case hyps of
+                                 [] => ()
+                               | AReln (Sql tab', [r2]) :: hyps =>
+                                 (if tab' = tab andalso
+                                     List.exists (List.all (fn f =>
+                                                               let
+                                                                   val r =
+                                                                       Cc.check (cc,
+                                                                                 AReln (Eq, [Proj (r1, f),
+                                                                                             Proj (r2, f)]))
+                                                               in
+                                                                   (*Print.prefaces "Fs"
+                                                                                    [("tab",
+                                                                                      Print.PD.string tab),
+                                                                                     ("r1",
+                                                                                      p_exp (Proj (r1, f))),
+                                                                                     ("r2",
+                                                                                      p_exp (Proj (r2, f))),
+                                                                                     ("r",
+                                                                                      Print.PD.string
+                                                                                          (Bool.toString r))];*)
+                                                                   r
+                                                               end)) ks then
+                                      ((*Print.prefaces "Key match" [("tab", Print.PD.string tab),
+                                                                     ("r1", p_exp r1),
+                                                                     ("r2", p_exp r2),
+                                                                     ("rp1", Cc.p_repOf cc r1),
+                                                                     ("rp2", Cc.p_repOf cc r2)];*)
+                                       Cc.assert (cc, AReln (Eq, [r1, r2])))
+                                  else
+                                      ();
+                                  finder hyps)
+                               | _ :: hyps => finder hyps
+                     in
+                         finder hyps;
+                         findKeys hyps
+                     end)
+              | _ :: hyps => findKeys hyps
+    in
+        findKeys hyps;
+        cc
+    end
+
+fun imply (cc, hyps, goals, outs) =
     let
         fun gls goals onFail acc =
             case goals of
                 [] =>
-                (let
-                     val cc = Cc.database ()
-                     val () = app (fn a => Cc.assert (cc, a)) hyps
-
-                     (* Take advantage of table key information *)
-                     fun findKeys hyps =
-                         case hyps of
-                             [] => ()
-                           | AReln (Sql tab, [r1]) :: hyps =>
-                             (case SM.find (!tabs, tab) of
-                                  NONE => findKeys hyps
-                                | SOME (_, []) => findKeys hyps
-                                | SOME (_, ks) =>
-                                  let
-                                      fun finder hyps =
-                                          case hyps of
-                                              [] => ()
-                                            | AReln (Sql tab', [r2]) :: hyps =>
-                                              (if tab' = tab andalso
-                                                  List.exists (List.all (fn f =>
-                                                                            let
-                                                                                val r =
-                                                                                    Cc.check (cc,
-                                                                                              AReln (Eq, [Proj (r1, f),
-                                                                                                          Proj (r2, f)]))
-                                                                            in
-                                                                                (*Print.prefaces "Fs"
-                                                                                               [("tab",
-                                                                                                 Print.PD.string tab),
-                                                                                                ("r1",
-                                                                                                 p_exp (Proj (r1, f))),
-                                                                                                ("r2",
-                                                                                                 p_exp (Proj (r2, f))),
-                                                                                                ("r",
-                                                                                                 Print.PD.string
-                                                                                                     (Bool.toString r))];*)
-                                                                                 r
-                                                                            end)) ks then
-                                                   ((*Print.prefaces "Key match" [("tab", Print.PD.string tab),
-                                                                                ("r1", p_exp r1),
-                                                                                ("r2", p_exp r2),
-                                                                                ("rp1", Cc.p_repOf cc r1),
-                                                                                ("rp2", Cc.p_repOf cc r2)];*)
-                                                    Cc.assert (cc, AReln (Eq, [r1, r2])))
-                                               else
-                                                   ();
-                                               finder hyps)
-                                            | _ :: hyps => finder hyps
-                                  in
-                                      finder hyps;
-                                      findKeys hyps
-                                  end)
-                                | _ :: hyps => findKeys hyps
-                 in
-                     findKeys hyps;
-
-                     (*Print.preface ("db", Cc.p_database cc);*)
-                     (List.all (fn a =>
-                                   if Cc.check (cc, a) then
-                                       true
-                                   else
-                                       ((*Print.prefaces "Can't prove"
-                                                       [("a", p_atom a),
-                                                        ("hyps", Print.p_list p_atom hyps),
-                                                        ("db", Cc.p_database cc)];*)
-                                        false)) acc
-                      andalso ((*Print.preface ("Finding", Cc.p_database cc);*) true)
-                      andalso (case outs of
-                                   NONE => true
-                                 | SOME outs => Cc.builtFrom (cc, {Derived = Var 0,
-                                                                   Base = outs})))
-                     handle Cc.Contradiction => false
-                 end handle Cc.Undetermined => false)
+                ((List.all (fn a =>
+                               if Cc.check (cc, a) then
+                                   true
+                               else
+                                   ((*Print.prefaces "Can't prove"
+                                                     [("a", p_atom a),
+                                                      ("hyps", Print.p_list p_atom hyps),
+                                                      ("db", Cc.p_database cc)];*)
+                                    false)) acc
+                  andalso ((*Print.preface ("Finding", Cc.p_database cc);*) true)
+                  andalso (case outs of
+                               NONE => true
+                             | SOME outs => Cc.builtFrom (cc, {Derived = Var 0,
+                                                               Base = outs})))
+                 handle Cc.Contradiction => false
+                      | Cc.Undetermined => false)
                 orelse onFail ()
               | (g as AReln (Sql gf, [ge])) :: goals =>
                 let
@@ -1073,7 +1075,7 @@ fun imply (hyps, goals, outs) =
         (*Print.prefaces "Big go" [("hyps", Print.p_list p_atom hyps),
                                  ("goals", Print.p_list p_atom goals)];*)
         gls goals (fn () => false) []
-    end handle Cc.Contradiction => true
+    end
 
 fun patCon pc =
     case pc of
@@ -2471,16 +2473,20 @@ fun check file =
             app (fn (loc, p) =>
                     if decompH p
                                (fn hyps =>
-                                   List.exists (fn p' =>
-                                                   if decompG p'
-                                                              (fn goals => imply (hyps, goals, NONE)) then
-                                                       ((*reset ();
-                                                        Print.prefaces "Match" [("hyp", p_prop p),
-                                                                                ("goal", p_prop p')];*)
-                                                        true)
-                                                   else
-                                                       false)
-                                               pols) then
+                                   let
+                                       val cc = ccOf hyps
+                                   in
+                                       List.exists (fn p' =>
+                                                       if decompG p'
+                                                                  (fn goals => imply (cc, hyps, goals, NONE)) then
+                                                           ((*reset ();
+                                                             Print.prefaces "Match" [("hyp", p_prop p),
+                                                                                     ("goal", p_prop p')];*)
+                                                            true)
+                                                       else
+                                                           false)
+                                                   pols
+                                   end handle Cc.Contradiction => true) then
                         ()
                     else
                         (ErrorMsg.errorAt loc "The information flow policy may be violated here.";
@@ -2495,6 +2501,8 @@ fun check file =
                             if decompH p
                                        (fn hyps =>
                                            let
+                                               val cc = ccOf hyps
+
                                                val avail = foldl (fn (AReln (Sql tab, _), avail) => SS.add (avail, tab)
                                                                    | (_, avail) => avail) SS.empty hyps
 
@@ -2502,7 +2510,7 @@ fun check file =
                                                    case pols of
                                                        [] =>
                                                        decompG g
-                                                               (fn goals => imply (hyps, goals, SOME outs))
+                                                               (fn goals => imply (cc, hyps, goals, SOME outs))
                                                      | (g1, outs1) :: pols =>
                                                        let
                                                            val g1 = bumpLvarsP (maxLv + 1) g1
@@ -2524,10 +2532,11 @@ fun check file =
                                                        end
                                            in
                                                (fl <> Control Where
-                                                andalso imply (hyps, [AReln (Known, [Var 0])], SOME [Var 0]))
+                                                andalso imply (cc, hyps, [AReln (Known, [Var 0])], SOME [Var 0]))
                                                orelse List.exists (fn (p', outs) =>
                                                                       decompG p'
-                                                                              (fn goals => imply (hyps, goals, SOME outs)))
+                                                                              (fn goals => imply (cc, hyps, goals,
+                                                                                                  SOME outs)))
                                                                   client
                                                orelse tryCombos (0, client, True, [])
                                                orelse (reset ();
@@ -2538,7 +2547,7 @@ fun check file =
                                                                            | Data => " (returned data value)"),
                                                                       Print.p_list p_atom hyps);
                                                        false)
-                                           end) then
+                                           end handle Cc.Contradiction => true) then
                                 ()
                             else
                                 ErrorMsg.errorAt loc "The information flow policy may be violated here."
@@ -2577,4 +2586,3 @@ val check = fn file =>
                end
 
 end
-
