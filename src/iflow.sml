@@ -243,7 +243,7 @@ structure Cc :> sig
 
     val p_database : database Print.printer
 
-    val builtFrom : database * {Base : exp list, Derived : exp} -> bool
+    val builtFrom : database * {UseKnown : bool, Base : exp list, Derived : exp} -> bool
 
     val p_repOf : database -> exp Print.printer
 end = struct
@@ -710,7 +710,7 @@ fun check (db, a) =
             end
           | _ => false
 
-fun builtFrom (db, {Base = bs, Derived = d}) =
+fun builtFrom (db, {UseKnown = uk, Base = bs, Derived = d}) =
     let
         val bs = map (fn b => representative (db, b)) bs
 
@@ -718,7 +718,8 @@ fun builtFrom (db, {Base = bs, Derived = d}) =
             let
                 val d = repOf d
             in
-                List.exists (fn b => repOf b = d) bs
+                (uk andalso !(#Known (unNode d)))
+                orelse List.exists (fn b => repOf b = d) bs
                 orelse case #Variety (unNode d) of
                            Dt0 _ => true
                          | Dt1 (_, d) => loop d
@@ -726,8 +727,13 @@ fun builtFrom (db, {Base = bs, Derived = d}) =
                          | Recrd (xes, _) => List.all loop (SM.listItems (!xes))
                          | Nothing => false
             end
+
+        fun decomp e =
+            case e of
+                Func (Other _, es) => List.all decomp es
+              | _ => loop (representative (db, e))
     in
-        loop (representative (db, d))
+        decomp d
     end
 
 end
@@ -1162,7 +1168,7 @@ structure St :> sig
     val addPath : check -> unit
 
     val allowSend : atom list * exp list -> unit
-    val send : check -> unit
+    val send : bool -> check -> unit
 
     val allowInsert : atom list -> unit
     val insert : ErrorMsg.span -> unit
@@ -1174,6 +1180,8 @@ structure St :> sig
     val update : ErrorMsg.span -> unit
 
     val havocReln : reln -> unit
+
+    val debug : unit -> unit
 end = struct
 
 val hnames = ref 1
@@ -1184,11 +1192,6 @@ val db = Cc.database ()
 val path = ref ([] : (hyps * check) option ref list)
 val hyps = ref (0, [] : atom list)
 val nvar = ref 0
-
-fun reset () = (Cc.clear db;
-                path := [];
-                hyps := (0, []);
-                nvar := 0)
 
 fun setHyps (h as (n', hs)) =
     let
@@ -1231,60 +1234,115 @@ fun addPath c = path := ref (SOME (!hyps, c)) :: !path
 
 val sendable = ref ([] : (atom list * exp list) list)
 
-fun checkGoals goals unifs succ fail =
-    case goals of
-        [] => succ (unifs, [])
-      | AReln (Sql tab, [Lvar lv]) :: goals =>
-        let
-            val saved = stash ()
-            val (_, hyps) = !hyps
-
-            fun tryAll unifs hyps =
-                case hyps of
-                    [] => fail ()
-                  | AReln (Sql tab', [e]) :: hyps =>
-                    if tab' = tab then
-                        checkGoals goals (IM.insert (unifs, lv, e)) succ
-                                   (fn () => tryAll unifs hyps)
-                    else
-                        tryAll unifs hyps
-                  | _ :: hyps => tryAll unifs hyps
-        in
-            tryAll unifs hyps
-        end
-      | AReln (r, es) :: goals => checkGoals goals unifs
-                                             (fn (unifs, ls) => succ (unifs, AReln (r, map (simplify unifs) es) :: ls))
-                                             fail
-      | ACond _ :: _ => fail ()
-
-fun buildable (e, loc) =
+fun checkGoals goals k =
     let
-        fun doPols pols acc fail =
+        fun checkGoals goals unifs =
+            case goals of
+                [] => k unifs
+              | AReln (Sql tab, [Lvar lv]) :: goals =>
+                let
+                    val saved = stash ()
+                    val (_, hyps) = !hyps
+
+                    fun tryAll unifs hyps =
+                        case hyps of
+                            [] => false
+                          | AReln (Sql tab', [e]) :: hyps =>
+                            (tab' = tab andalso
+                             checkGoals goals (IM.insert (unifs, lv, e)))
+                            orelse tryAll unifs hyps
+                          | _ :: hyps => tryAll unifs hyps
+                in
+                    tryAll unifs hyps
+                end
+              | AReln (r, es) :: goals =>
+                Cc.check (db, AReln (r, map (simplify unifs) es))
+                andalso checkGoals goals unifs
+              | ACond _ :: _ => false
+    in
+        checkGoals goals IM.empty
+    end
+
+fun useKeys () =
+    let
+        fun findKeys hyps =
+            case hyps of
+                [] => ()
+              | AReln (Sql tab, [r1]) :: hyps =>
+                (case SM.find (!tabs, tab) of
+                     NONE => findKeys hyps
+                   | SOME (_, []) => findKeys hyps
+                   | SOME (_, ks) =>
+                     let
+                         fun finder hyps =
+                             case hyps of
+                                 [] => ()
+                               | AReln (Sql tab', [r2]) :: hyps =>
+                                 (if tab' = tab andalso
+                                     List.exists (List.all (fn f =>
+                                                               let
+                                                                   val r =
+                                                                       Cc.check (db,
+                                                                                 AReln (Eq, [Proj (r1, f),
+                                                                                             Proj (r2, f)]))
+                                                               in
+                                                                   (*Print.prefaces "Fs"
+                                                                                    [("tab",
+                                                                                      Print.PD.string tab),
+                                                                                     ("r1",
+                                                                                      p_exp (Proj (r1, f))),
+                                                                                     ("r2",
+                                                                                      p_exp (Proj (r2, f))),
+                                                                                     ("r",
+                                                                                      Print.PD.string
+                                                                                          (Bool.toString r))];*)
+                                                                   r
+                                                               end)) ks then
+                                      ((*Print.prefaces "Key match" [("tab", Print.PD.string tab),
+                                                                     ("r1", p_exp r1),
+                                                                     ("r2", p_exp r2),
+                                                                     ("rp1", Cc.p_repOf cc r1),
+                                                                     ("rp2", Cc.p_repOf cc r2)];*)
+                                       Cc.assert (db, AReln (Eq, [r1, r2])))
+                                  else
+                                      ();
+                                  finder hyps)
+                               | _ :: hyps => finder hyps
+                     in
+                         finder hyps;
+                         findKeys hyps
+                     end)
+              | _ :: hyps => findKeys hyps
+
+        val (_, hs) = !hyps
+    in
+        (*print "findKeys\n";*)
+        findKeys hs
+    end
+
+fun buildable uk (e, loc) =
+    let
+        fun doPols pols acc =
             case pols of
                 [] => ((*Print.prefaces "buildable" [("Base", Print.p_list p_exp acc),
                                                    ("Derived", p_exp e),
                                                    ("Hyps", Print.p_list p_atom (#2 (!hyps)))];*)
-                       if Cc.builtFrom (db, {Base = acc, Derived = e}) then
-                           ()
-                       else
-                           fail ())
+                       Cc.builtFrom (db, {UseKnown = uk, Base = acc, Derived = e}))
               | (goals, es) :: pols =>
-                checkGoals goals IM.empty
-                (fn (unifs, goals) =>
-                    if List.all (fn a => Cc.check (db, a)) goals then
-                        doPols pols (map (simplify unifs) es @ acc) fail
-                    else
-                        doPols pols acc fail)
-                (fn () => doPols pols acc fail)
+                checkGoals goals (fn unifs => doPols pols (map (simplify unifs) es @ acc))
+                orelse doPols pols acc
     in
-        doPols (!sendable) []
-               (fn () => let
-                       val (_, hs) = !hyps
-                   in
-                       ErrorMsg.errorAt loc "The information flow policy may be violated here.";
-                       Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs),
-                                                   ("User learns", p_exp e)]
-                   end)
+        useKeys ();
+        if doPols (!sendable) [] then
+            ()
+        else
+            let
+                val (_, hs) = !hyps
+            in
+                ErrorMsg.errorAt loc "The information flow policy may be violated here.";
+                Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs),
+                                            ("User learns", p_exp e)]
+            end
     end       
 
 fun checkPaths () =
@@ -1297,27 +1355,34 @@ fun checkPaths () =
                   | SOME (hs, e) =>
                     (r := NONE;
                      setHyps hs;
-                     buildable e)) (!path);
+                     buildable true e)) (!path);
         setHyps hs
     end
 
-fun allowSend v = sendable := v :: !sendable
+fun allowSend v = ((*Print.prefaces "Allow" [("goals", Print.p_list p_atom (#1 v)),
+                                          ("exps", Print.p_list p_exp (#2 v))];*)
+                   sendable := v :: !sendable)
 
-fun send (e, loc) = ((*Print.preface ("Send", p_exp e);*)
-                     checkPaths ();
-                     if isKnown e then
-                         ()
-                     else
-                         buildable (e, loc))
+fun send uk (e, loc) = ((*Print.preface ("Send", p_exp e);*)
+                        checkPaths ();
+                        if isKnown e then
+                            ()
+                        else
+                            buildable uk (e, loc))
 
 fun doable pols (loc : ErrorMsg.span) =
     let
         val pols = !pols
     in
         if List.exists (fn goals =>
-                           checkGoals goals IM.empty
-                           (fn (_, goals) => List.all (fn a => Cc.check (db, a)) goals)
-                           (fn () => false)) pols then
+                           if checkGoals goals (fn _ => true) then
+                               ((*Print.prefaces "Match" [("goals", Print.p_list p_atom goals),
+                                                        ("hyps", Print.p_list p_atom (#2 (!hyps)))];*)
+                                true)
+                           else
+                               ((*Print.prefaces "No match" [("goals", Print.p_list p_atom goals),
+                                                           ("hyps", Print.p_list p_atom (#2 (!hyps)))];*)
+                                false)) pols then
             ()
         else
             let
@@ -1340,6 +1405,15 @@ val deletable = ref ([] : atom list list)
 fun allowDelete v = deletable := v :: !deletable
 val delete = doable deletable
 
+fun reset () = (Cc.clear db;
+                path := [];
+                hyps := (0, []);
+                nvar := 0;
+                sendable := [];
+                insertable := [];
+                updatable := [];
+                deletable := [])
+
 fun havocReln r =
     let
         val n = !hnames
@@ -1347,6 +1421,13 @@ fun havocReln r =
     in
         hnames := n + 1;
         hyps := (n, List.filter (fn AReln (r', _) => r' <> r | _ => true) hs)
+    end
+
+fun debug () =
+    let
+        val (_, hs) = !hyps
+    in
+        Print.preface ("Hyps", Print.p_list p_atom hs)
     end
 
 end
@@ -1413,7 +1494,7 @@ fun decomp {Save = save, Restore = restore, Add = add} =
     let
         fun go p k =
             case p of
-                True => k ()
+                True => (k () handle Cc.Contradiction => ())
               | False => ()
               | Unknown => ()
               | And (p1, p2) => go p1 (fn () => go p2 k)
@@ -1432,7 +1513,7 @@ fun decomp {Save = save, Restore = restore, Add = add} =
     end
 
 datatype queryMode =
-         SomeCol of exp list -> unit
+         SomeCol of {New : (string * exp) option, Old : (string * exp) option, Outs : exp list} -> unit
        | AllCols of exp -> unit
 
 type 'a doQuery = {
@@ -1458,7 +1539,19 @@ fun doQuery (arg : 'a doQuery) e =
                     case q of
                         Query1 r =>
                         let
-                            val rvs = map (fn (_, v) => (v, #NextVar arg ())) (#From r)
+                            val new = ref NONE
+                            val old = ref NONE
+
+                            val rvs = map (fn (tab, v) =>
+                                              let
+                                                  val nv = #NextVar arg ()
+                                              in
+                                                  case v of
+                                                      "New" => new := SOME (tab, nv)
+                                                    | "Old" => old := SOME (tab, nv)
+                                                    | _ => ();
+                                                  (v, nv)
+                                              end) (#From r)
 
                             fun rvOf v =
                                 case List.find (fn (v', _) => v' = v) rvs of
@@ -1500,7 +1593,7 @@ fun doQuery (arg : 'a doQuery) e =
                                                                   inr _ => #NextVar arg ()
                                                                 | inl e => e) (#Select r)
                                     in
-                                        k sis
+                                        k {New = !new, Old = !old, Outs = sis}
                                     end
                                   | AllCols k =>
                                     let
@@ -1558,9 +1651,12 @@ fun doQuery (arg : 'a doQuery) e =
                                            let
                                                fun answer e = k (Recd [(f, e)])
 
-                                               val () = answer (Func (DtCon0 "Basis.bool.False", []))
                                                val saved = #Save arg ()
+                                               val () = (answer (Func (DtCon0 "Basis.bool.False", [])))
+                                                        handle Cc.Contradiction => ()
                                            in
+                                               #Restore arg saved;
+                                               (*print "True time!\n";*)
                                                doWhere (fn () => answer (Func (DtCon0 "Basis.bool.True", [])));
                                                #Restore arg saved
                                            end)
@@ -1608,6 +1704,7 @@ fun evalPat env e (pt, _) =
 
 fun evalExp env (e as (_, loc)) k =
     let
+        (*val () = St.debug ()*)
         (*val () = Print.preface ("evalExp", MonoPrint.p_exp MonoEnv.empty e)*)
 
         fun default () = k (Var (St.nextVar ()))
@@ -1619,7 +1716,7 @@ fun evalExp env (e as (_, loc)) k =
                         case es of
                             [] => k (Recd [])
                           | e :: es =>
-                            evalExp env e (fn e => (St.send (e, loc); doArgs es))
+                            evalExp env e (fn e => (St.send true (e, loc); doArgs es))
                 in
                     doArgs es
                 end
@@ -1673,27 +1770,30 @@ fun evalExp env (e as (_, loc)) k =
                                   app (fn (p, pe) =>
                                           let
                                               val saved = St.stash ()
-                                                          
-                                              val env = evalPat env e p
                                           in
-                                              evalExp env pe k;
-                                              St.reinstate saved
+                                              let
+                                                  val env = evalPat env e p
+                                              in
+                                                  evalExp env pe k;
+                                                  St.reinstate saved
+                                              end
+                                              handle Cc.Contradiction => St.reinstate saved
                                           end) pes
-                              end handle Cc.Contradiction => ())
+                              end)
           | EStrcat (e1, e2) =>
             evalExp env e1 (fn e1 =>
                 evalExp env e2 (fn e2 =>
                                    k (Func (Other "cat", [e1, e2]))))
-          | EError (e, _) => evalExp env e (fn e => St.send (e, loc))
+          | EError (e, _) => evalExp env e (fn e => St.send true (e, loc))
           | EReturnBlob {blob = b, mimeType = m, ...} =>
             evalExp env b (fn b =>
-                              (St.send (b, loc);
+                              (St.send true (b, loc);
                                evalExp env m
-                               (fn m => St.send (m, loc))))
+                               (fn m => St.send true (m, loc))))
           | ERedirect (e, _) =>
-            evalExp env e (fn e => St.send (e, loc))
+            evalExp env e (fn e => St.send true (e, loc))
           | EWrite e =>
-            evalExp env e (fn e => (St.send (e, loc);
+            evalExp env e (fn e => (St.send true (e, loc);
                                     k (Recd [])))
           | ESeq (e1, e2) =>
             evalExp env e1 (fn _ => evalExp env e2 k)
@@ -1711,45 +1811,47 @@ fun evalExp env (e as (_, loc)) k =
             end
 
           | EQuery {query = q, body = b, initial = i, state = state, ...} =>
-            evalExp env q (fn _ =>
-                              evalExp env i (fn i =>
-                                                let
-                                                    val saved = St.stash ()
+            evalExp env i (fn i =>
+                              let
+                                  val saved = St.stash ()
 
-                                                    val r = Var (St.nextVar ())
-                                                    val acc = Var (St.nextVar ())
-                                                in
-                                                    if MonoUtil.Exp.existsB {typ = fn _ => false,
-                                                                             exp = fn (n, e) =>
-                                                                                      case e of
-                                                                                          ERel n' => n' = n
-                                                                                        | _ => false,
-                                                                             bind = fn (n, b) =>
-                                                                                       case b of
-                                                                                           MonoUtil.Exp.RelE _ => n + 1
-                                                                                         | _ => n}
-                                                                            0 b then
-                                                        doQuery {Env = env,
-                                                                 NextVar = Var o St.nextVar,
-                                                                 Add = fn a => St.assert [a],
-                                                                 Save = St.stash,
-                                                                 Restore = St.reinstate,
-                                                                 UsedExp = fn e => St.send (e, loc),
-                                                                 Cont = AllCols (fn _ => (St.reinstate saved;
-                                                                                          evalExp
-                                                                                              (acc :: r :: env)
-                                                                                              b (fn _ => default ())))} q
-                                                    else
-                                                        doQuery {Env = env,
-                                                                 NextVar = Var o St.nextVar,
-                                                                 Add = fn a => St.assert [a],
-                                                                 Save = St.stash,
-                                                                 Restore = St.reinstate,
-                                                                 UsedExp = fn e => St.send (e, loc),
-                                                                 Cont = AllCols (fn x =>
-                                                                                    (St.assert [AReln (Eq, [r, x])];
-                                                                                     evalExp (acc :: r :: env) b k))} q
-                                                end))
+                                  val () = (k i)
+                                      handle Cc.Contradiction => ()
+                                  val () = St.reinstate saved
+
+                                  val r = Var (St.nextVar ())
+                                  val acc = Var (St.nextVar ())
+                              in
+                                  if MonoUtil.Exp.existsB {typ = fn _ => false,
+                                                           exp = fn (n, e) =>
+                                                                    case e of
+                                                                        ERel n' => n' = n
+                                                                      | _ => false,
+                                                           bind = fn (n, b) =>
+                                                                     case b of
+                                                                         MonoUtil.Exp.RelE _ => n + 1
+                                                                       | _ => n}
+                                                          0 b then
+                                      doQuery {Env = env,
+                                               NextVar = Var o St.nextVar,
+                                               Add = fn a => St.assert [a],
+                                               Save = St.stash,
+                                               Restore = St.reinstate,
+                                               UsedExp = fn e => St.send false (e, loc),
+                                               Cont = AllCols (fn _ => evalExp
+                                                                           (acc :: r :: env)
+                                                                           b (fn _ => default ()))} q
+                                  else
+                                      doQuery {Env = env,
+                                               NextVar = Var o St.nextVar,
+                                               Add = fn a => St.assert [a],
+                                               Save = St.stash,
+                                               Restore = St.reinstate,
+                                               UsedExp = fn e => St.send false (e, loc),
+                                               Cont = AllCols (fn x =>
+                                                                  (St.assert [AReln (Eq, [r, x])];
+                                                                   evalExp (acc :: r :: env) b k))} q
+                              end)
           | EDml e =>
             (case parse dml e of
                  NONE => (print ("Warning: Information flow checker can't parse DML command at "
@@ -1791,8 +1893,7 @@ fun evalExp env (e as (_, loc)) k =
                                                           
                          val saved = St.stash ()
                      in
-                         St.assert [AReln (Sql "$Old", [Var old]),
-                                    AReln (Sql tab, [Var old])];
+                         St.assert [AReln (Sql (tab ^ "$Old"), [Var old])];
                          decomp {Save = St.stash,
                                  Restore = St.reinstate,
                                  Add = fn a => St.assert [a]} p
@@ -1836,8 +1937,7 @@ fun evalExp env (e as (_, loc)) k =
                          val saved = St.stash ()
                      in
                          St.assert [AReln (Sql (tab ^ "$New"), [Recd fs]),
-                                    AReln (Sql "$Old", [Var old]),
-                                    AReln (Sql tab, [Var old])];
+                                    AReln (Sql (tab ^ "$Old"), [Var old])];
                          decomp {Save = St.stash,
                                  Restore = St.reinstate,
                                  Add = fn a => St.assert [a]} p
@@ -1858,12 +1958,12 @@ fun evalExp env (e as (_, loc)) k =
           | ENextval _ => default ()
           | ESetval _ => default ()
 
-          | EUnurlify ((EFfiApp ("Basis", "get_cookie", _), _), _, _) =>
+          | EUnurlify ((EFfiApp ("Basis", "get_cookie", [(EPrim (Prim.String cname), _)]), _), _, _) =>
             let
-                val nv = St.nextVar ()
+                val e = Var (St.nextVar ())
             in
-                St.assert [AReln (Known, [Var nv])];
-                k (Var nv)
+                St.assert [AReln (Known, [e])];
+                k e
             end
 
           | EUnurlify _ => default ()
@@ -1913,8 +2013,10 @@ fun check file =
                     else
                         raise Fail "Table name does not begin with uw_"
                 end
-              | DVal (_, n, _, e, _) =>
+              | DVal (x, n, _, e, _) =>
                 let
+                    (*val () = print ("\n=== " ^ x ^ " ===\n\n");*)
+
                     val isExptd = IS.member (exptd, n)
 
                     val saved = St.stash ()
@@ -1958,17 +2060,28 @@ fun check file =
                                          Save = fn () => !atoms,
                                          Restore = fn ls => atoms := ls,
                                          UsedExp = fn _ => (),
-                                         Cont = SomeCol (fn es => k (!atoms, es))}
+                                         Cont = SomeCol (fn r => k (rev (!atoms), r))}
+
+                    fun untab tab = List.filter (fn AReln (Sql tab', _) => tab' <> tab
+                                                  | _ => true)
                 in
                     case pol of
                         PolClient e =>
-                        doQ (fn (ats, es) => St.allowSend (ats, es)) e
+                        doQ (fn (ats, {Outs = es, ...}) => St.allowSend (ats, es)) e
                       | PolInsert e =>
-                        doQ (fn (ats, _) => St.allowInsert ats) e
+                        doQ (fn (ats, {New = SOME (tab, new), ...}) =>
+                                St.allowInsert (AReln (Sql (tab ^ "$New"), [new]) :: untab tab ats)
+                              | _ => raise Fail "Iflow: No New in mayInsert policy") e
                       | PolDelete e =>
-                        doQ (fn (ats, _) => St.allowDelete ats) e
+                        doQ (fn (ats, {Old = SOME (tab, old), ...}) =>
+                                St.allowDelete (AReln (Sql (tab ^ "$Old"), [old]) :: untab tab ats)
+                              | _ => raise Fail "Iflow: No Old in mayDelete policy") e
                       | PolUpdate e =>
-                        doQ (fn (ats, _) => St.allowUpdate ats) e
+                        doQ (fn (ats, {New = SOME (tab, new), Old = SOME (_, old), ...}) =>
+                                St.allowUpdate (AReln (Sql (tab ^ "$Old"), [old])
+                                                :: AReln (Sql (tab ^ "$New"), [new])
+                                                :: untab tab ats)
+                              | _ => raise Fail "Iflow: No New or Old in mayUpdate policy") e
                       | PolSequence e =>
                         (case #1 e of
                              EPrim (Prim.String seq) =>
