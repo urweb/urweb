@@ -952,6 +952,7 @@ datatype Rel =
 datatype sqexp =
          SqConst of Prim.t
        | Field of string * string
+       | Computed of string
        | Binop of Rel * sqexp * sqexp
        | SqKnown of sqexp
        | Inj of Mono.exp
@@ -1034,6 +1035,7 @@ fun sqexp chs =
     log "sqexp"
     (altL [wrap prim SqConst,
            wrap field Field,
+           wrap uw_ident Computed,
            wrap known SqKnown,
            wrap func SqFunc,
            wrap (const "COUNT(*)") (fn () => Count),
@@ -1068,9 +1070,9 @@ datatype sitem =
          SqField of string * string
        | SqExp of sqexp * string
 
-val sitem = alt (wrap field SqField)
-            (wrap (follow sqexp (follow (const " AS ") uw_ident))
-             (fn (e, ((), s)) => SqExp (e, s)))
+val sitem = alt (wrap (follow sqexp (follow (const " AS ") uw_ident))
+                      (fn (e, ((), s)) => SqExp (e, s)))
+                (wrap field SqField)
 
 val select = log "select"
              (wrap (follow (const "SELECT ") (list sitem))
@@ -1100,13 +1102,22 @@ datatype query =
          Query1 of query1
        | Union of query * query
 
+val orderby = log "orderby"
+              (wrap (follow (ws (const "ORDER BY "))
+                     (list sqexp))
+               ignore)
+
 fun query chs = log "query"
-                (alt (wrap (follow (const "((")
-                                   (follow query
-                                           (follow (const ") UNION (")
-                                                   (follow query (const "))")))))
-                           (fn ((), (q1, ((), (q2, ())))) => Union (q1, q2)))
-                     (wrap query1 Query1))
+                (wrap
+                     (follow
+                          (alt (wrap (follow (const "((")
+                                             (follow query
+                                                     (follow (const ") UNION (")
+                                                             (follow query (const "))")))))
+                                     (fn ((), (q1, ((), (q2, ())))) => Union (q1, q2)))
+                               (wrap query1 Query1))
+                          (opt orderby))
+                     #1)
                 chs
 
 datatype dml =
@@ -1455,6 +1466,7 @@ fun expIn rv env rvOf =
                 case e of
                     SqConst p => inl (Const p)
                   | Field (v, f) => inl (Proj (rvOf v, f))
+                  | Computed _ => default ()
                   | Binop (bo, e1, e2) =>
                     let
                         val e1 = expIn e1
@@ -1567,6 +1579,7 @@ fun doQuery (arg : 'a doQuery) e =
                                 case e of
                                     SqConst _ => []
                                   | Field (v, f) => [(v, f)]
+                                  | Computed _ => []
                                   | Binop (_, e1, e2) => removeDups (usedFields e1 @ usedFields e2)
                                   | SqKnown _ => []
                                   | Inj _ => []
