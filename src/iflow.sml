@@ -1457,6 +1457,15 @@ fun removeDups (ls : (string * string) list) =
                 x :: ls
         end
 
+fun deinj env e =
+    case #1 e of
+        ERel n => SOME (List.nth (env, n))
+      | EField (e, f) =>
+        (case deinj env e of
+             NONE => NONE
+           | SOME e => SOME (Proj (e, f)))
+      | _ => NONE
+
 fun expIn rv env rvOf =
     let
         fun expIn e =
@@ -1482,15 +1491,9 @@ fun expIn rv env rvOf =
                          inl e => inr (Reln (Known, [e]))
                        | _ => inr Unknown)
                   | Inj e =>
-                    let
-                        fun deinj e =
-                            case #1 e of
-                                ERel n => List.nth (env, n)
-                              | EField (e, f) => Proj (deinj e, f)
-                              | _ => rv ()
-                    in
-                        inl (deinj e)
-                    end
+                    inl (case deinj env e of
+                             NONE => rv ()
+                           | SOME e => e)
                   | SqFunc (f, e) =>
                     (case expIn e of
                          inl e => inl (Func (Other f, [e]))
@@ -1534,14 +1537,13 @@ type 'a doQuery = {
      Add : atom -> unit,
      Save : unit -> 'a,
      Restore : 'a -> unit,
-     UsedExp : exp -> unit,
+     UsedExp : bool * exp -> unit,
      Cont : queryMode
 }
 
-fun doQuery (arg : 'a doQuery) e =
+fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
     let
-        fun default () = print ("Warning: Information flow checker can't parse SQL query at "
-                                ^ ErrorMsg.spanToString (#2 e) ^ "\n")
+        fun default () = ErrorMsg.errorAt loc "Information flow checker can't parse SQL query"
     in
         case parse query e of
             NONE => default ()
@@ -1578,21 +1580,22 @@ fun doQuery (arg : 'a doQuery) e =
                             fun usedFields e =
                                 case e of
                                     SqConst _ => []
-                                  | Field (v, f) => [(v, f)]
+                                  | Field (v, f) => [(false, Proj (rvOf v, f))]
                                   | Computed _ => []
-                                  | Binop (_, e1, e2) => removeDups (usedFields e1 @ usedFields e2)
+                                  | Binop (_, e1, e2) => usedFields e1 @ usedFields e2
                                   | SqKnown _ => []
-                                  | Inj _ => []
+                                  | Inj e =>
+                                    (case deinj (#Env arg) e of
+                                         NONE => (ErrorMsg.errorAt loc "Expression injected into SQL is too complicated";
+                                                  [])
+                                       | SOME e => [(true, e)])
                                   | SqFunc (_, e) => usedFields e
                                   | Count => []
 
                             fun doUsed () = case #Where r of
                                                 NONE => ()
                                               | SOME e =>
-                                                #UsedExp arg (Recd (ListUtil.mapi
-                                                                        (fn (n, (v, f)) => (Int.toString n,
-                                                                                            Proj (rvOf v, f)))
-                                                                        (usedFields e)))
+                                                app (#UsedExp arg) (usedFields e)
 
                             fun normal' () =
                                 case #Cont arg of
@@ -1850,7 +1853,7 @@ fun evalExp env (e as (_, loc)) k =
                                                Add = fn a => St.assert [a],
                                                Save = St.stash,
                                                Restore = St.reinstate,
-                                               UsedExp = fn e => St.send false (e, loc),
+                                               UsedExp = fn (b, e) => St.send b (e, loc),
                                                Cont = AllCols (fn _ => evalExp
                                                                            (acc :: r :: env)
                                                                            b (fn _ => default ()))} q
@@ -1860,7 +1863,7 @@ fun evalExp env (e as (_, loc)) k =
                                                Add = fn a => St.assert [a],
                                                Save = St.stash,
                                                Restore = St.reinstate,
-                                               UsedExp = fn e => St.send false (e, loc),
+                                               UsedExp = fn (b, e) => St.send b (e, loc),
                                                Cont = AllCols (fn x =>
                                                                   (St.assert [AReln (Eq, [r, x])];
                                                                    evalExp (acc :: r :: env) b k))} q
