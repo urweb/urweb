@@ -818,5 +818,6 @@ val mayUpdate : fs ::: {Type} -> tables ::: {{Type}} -> [[Old, New] ~ tables]
                 => sql_query [] ([Old = fs, New = fs] ++ tables) []
                 -> sql_policy
 
+val also : sql_policy -> sql_policy -> sql_policy
 
 val debug : string -> transaction unit

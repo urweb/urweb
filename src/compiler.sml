@@ -75,7 +75,7 @@ type ('src, 'dst) transform = {
 }
 
 val debug = ref false
-val doIflow = ref true
+val doIflow = ref false
 
 fun transform (ph : ('src, 'dst) phase) name = {
     func = fn input => let

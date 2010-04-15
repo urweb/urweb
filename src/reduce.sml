@@ -668,14 +668,23 @@ fun reduce file =
                                       exp = fn (_, n) => n + 1} 0
 
         fun mayInline (polyC, n, t, e) =
-            case IM.find (uses, n) of
-                NONE => false
-              | SOME count => count <= 1
-                              orelse (case #1 e of
-                                          ERecord _ => true
-                                        | _ => false)
-                              orelse isPoly polyC t
-                              orelse size e <= Settings.getCoreInline ()
+            let
+                fun isPolicy t =
+                    case #1 t of
+                        CFfi ("Basis", "sql_policy") => true
+                      | TFun (_, t) => isPolicy t
+                      | _ => false
+            in
+                case IM.find (uses, n) of
+                    NONE => false
+                  | SOME count => count <= 1
+                                  orelse (case #1 e of
+                                              ERecord _ => true
+                                            | _ => false)
+                                  orelse isPolicy t
+                                  orelse isPoly polyC t
+                                  orelse size e <= Settings.getCoreInline ()
+            end
 
         fun doDecl (d as (_, loc), st as (polyC, namedC, namedE)) =
             case #1 d of

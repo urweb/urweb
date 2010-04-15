@@ -3742,25 +3742,39 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             end
           | L.DPolicy e =>
             let
-                val (e, make) =
+                fun policies (e, fm) =
                     case #1 e of
-                        L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sendClient"), _), _), _), _), _), e) =>
-                        (e, L'.PolClient)
-                      | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayInsert"), _), _), _), _), _), e) =>
-                        (e, L'.PolInsert)
-                      | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayDelete"), _), _), _), _), _), e) =>
-                        (e, L'.PolDelete)
-                      | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayUpdate"), _), _), _), _), _), e) =>
-                        (e, L'.PolUpdate)
-                      | L.EFfiApp ("Basis", "sendOwnIds", [e]) =>
-                        (e, L'.PolSequence)
-                      | _ => (poly (); (e, L'.PolClient))
+                        L.EFfiApp ("Basis", "also", [e1, e2]) =>
+                        let
+                            val (ps1, fm) = policies (e1, fm)
+                            val (ps2, fm) = policies (e2, fm)
+                        in
+                            (ps1 @ ps2, fm)
+                        end
+                      | _ =>
+                        let
+                            val (e, make) =
+                                case #1 e of
+                                    L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sendClient"), _), _), _), _), _), e) =>
+                                    (e, L'.PolClient)
+                                  | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayInsert"), _), _), _), _), _), e) =>
+                                    (e, L'.PolInsert)
+                                  | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayDelete"), _), _), _), _), _), e) =>
+                                    (e, L'.PolDelete)
+                                  | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayUpdate"), _), _), _), _), _), e) =>
+                                    (e, L'.PolUpdate)
+                                  | L.EFfiApp ("Basis", "sendOwnIds", [e]) =>
+                                    (e, L'.PolSequence)
+                                  | _ => (poly (); (e, L'.PolClient))
 
-                val (e, fm) = monoExp (env, St.empty, fm) e
+                            val (e, fm) = monoExp (env, St.empty, fm) e
+                        in
+                            ([(L'.DPolicy (make e), loc)], fm)
+                        end
+
+                val (ps, fm) = policies (e, fm)
             in
-                SOME (env,
-                      fm,
-                      [(L'.DPolicy (make e), loc)])
+                SOME (env, fm, ps)
             end
     end
 
