@@ -1837,36 +1837,34 @@ fun evalExp env (e as (_, loc)) k =
 
                                   val r = Var (St.nextVar ())
                                   val acc = Var (St.nextVar ())
+
+                                  val touched = MonoUtil.Exp.fold {typ = fn (_, touched) => touched,
+                                                                   exp = fn (e, touched) =>
+                                                                            case e of
+                                                                                EDml e =>
+                                                                                (case parse dml e of
+                                                                                     NONE => touched
+                                                                                   | SOME c =>
+                                                                                     case c of
+                                                                                         Insert _ => touched
+                                                                                       | Delete (tab, _) =>
+                                                                                         SS.add (touched, tab)
+                                                                                       | Update (tab, _, _) =>
+                                                                                         SS.add (touched, tab))
+                                                                              | _ => touched}
+                                                                  SS.empty b
                               in
-                                  if MonoUtil.Exp.existsB {typ = fn _ => false,
-                                                           exp = fn (n, e) =>
-                                                                    case e of
-                                                                        ERel n' => n' = n
-                                                                      | _ => false,
-                                                           bind = fn (n, b) =>
-                                                                     case b of
-                                                                         MonoUtil.Exp.RelE _ => n + 1
-                                                                       | _ => n}
-                                                          0 b then
-                                      doQuery {Env = env,
-                                               NextVar = Var o St.nextVar,
-                                               Add = fn a => St.assert [a],
-                                               Save = St.stash,
-                                               Restore = St.reinstate,
-                                               UsedExp = fn (b, e) => St.send b (e, loc),
-                                               Cont = AllCols (fn _ => evalExp
-                                                                           (acc :: r :: env)
-                                                                           b (fn _ => default ()))} q
-                                  else
-                                      doQuery {Env = env,
-                                               NextVar = Var o St.nextVar,
-                                               Add = fn a => St.assert [a],
-                                               Save = St.stash,
-                                               Restore = St.reinstate,
-                                               UsedExp = fn (b, e) => St.send b (e, loc),
-                                               Cont = AllCols (fn x =>
-                                                                  (St.assert [AReln (Eq, [r, x])];
-                                                                   evalExp (acc :: r :: env) b k))} q
+                                  SS.app (St.havocReln o Sql) touched;
+
+                                  doQuery {Env = env,
+                                           NextVar = Var o St.nextVar,
+                                           Add = fn a => St.assert [a],
+                                           Save = St.stash,
+                                           Restore = St.reinstate,
+                                           UsedExp = fn (b, e) => St.send b (e, loc),
+                                           Cont = AllCols (fn x =>
+                                                              (St.assert [AReln (Eq, [r, x])];
+                                                               evalExp (acc :: r :: env) b k))} q
                               end)
           | EDml e =>
             (case parse dml e of
