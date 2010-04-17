@@ -166,7 +166,7 @@ To compile project \texttt{P.urp}, simply run
 \begin{verbatim}
 urweb P
 \end{verbatim}
-The output executable is a standalone web server.  Run it with the command-line argument \texttt{-h} to see which options it takes.  If the project file lists a database, the web server will attempt to connect to that database on startup.
+The output executable is a standalone web server.  Run it with the command-line argument \texttt{-h} to see which options it takes.  If the project file lists a database, the web server will attempt to connect to that database on startup.  See Section \ref{structure} for an explanation of the URI mapping convention, which determines how each page of your application may be accessed via URLs.
 
 To time how long the different compiler phases run, without generating an executable, run
 \begin{verbatim}
@@ -2032,7 +2032,7 @@ $$\begin{array}{rrcll}
 \end{array}$$
 
 
-\section{The Structure of Web Applications}
+\section{\label{structure}The Structure of Web Applications}
 
 A web application is built from a series of modules, with one module, the last one appearing in the \texttt{.urp} file, designated as the main module.  The signature of the main module determines the URL entry points to the application.  Such an entry point should have type $\mt{t1} \to \ldots \to \mt{tn} \to \mt{transaction} \; \mt{page}$, for any integer $n \geq 0$, where $\mt{page}$ is a type synonym for top-level HTML pages, defined in $\mt{Basis}$.  If such a function is at the top level of main module $M$, with $n = 0$, it will be accessible at URI \texttt{/M/f}, and so on for more deeply-nested functions, as described in Section \ref{tag} below.  Arguments to an entry-point function are deserialized from the part of the URI following \texttt{f}.
 
