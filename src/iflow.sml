@@ -233,7 +233,6 @@ structure Cc :> sig
     type database
 
     exception Contradiction
-    exception Undetermined
 
     val database : unit -> database
     val clear : database -> unit
@@ -738,55 +737,56 @@ fun assert (db, a) =
                           | SOME n1 => #Ge (unNode (repOf r1)) := SOME (Int64.max (n1, n2))
                 end
               | _ => ()
-    end
+    end handle Undetermined => ()
 
 fun check (db, a) =
-    case a of
-        ACond _ => false
-      | AReln x =>
-        case x of
-            (Known, [e]) =>
-            let
-                fun isKnown r =
-                    let
-                        val r = repOf r
-                    in
-                        !(#Known (unNode r))
-                        orelse case #Variety (unNode r) of
-                                   Dt1 (_, r) => isKnown r
-                                 | Recrd (xes, true) => List.all isKnown (SM.listItems (!xes))
-                                 | _ => false
-                    end
+    (case a of
+         ACond _ => false
+       | AReln x =>
+         case x of
+             (Known, [e]) =>
+             let
+                 fun isKnown r =
+                     let
+                         val r = repOf r
+                     in
+                         !(#Known (unNode r))
+                         orelse case #Variety (unNode r) of
+                                    Dt1 (_, r) => isKnown r
+                                  | Recrd (xes, true) => List.all isKnown (SM.listItems (!xes))
+                                  | _ => false
+                     end
 
-                val r = representative (db, e)
-            in
-                isKnown r
-            end
-          | (PCon0 f, [e]) =>
-            (case #Variety (unNode (representative (db, e))) of
-                 Dt0 f' => f' = f
-               | _ => false)
-          | (PCon1 f, [e]) =>
-            (case #Variety (unNode (representative (db, e))) of
-                 Dt1 (f', _) => f' = f
-               | _ => false)
-          | (Eq, [e1, e2]) =>
-            let
-                val r1 = representative (db, e1)
-                val r2 = representative (db, e2)
-            in
-                repOf r1 = repOf r2
-            end
-          | (Ge, [e1, e2]) =>
-            let
-                val r1 = representative (db, e1)
-                val r2 = representative (db, e2)
-            in
-                case (!(#Ge (unNode (repOf r1))), #Variety (unNode (repOf r2))) of
-                    (SOME n1, Prim (Prim.Int n2)) => Int64.>= (n1, n2)
-                  | _ => false
-            end
-          | _ => false
+                 val r = representative (db, e)
+             in
+                 isKnown r
+             end
+           | (PCon0 f, [e]) =>
+             (case #Variety (unNode (representative (db, e))) of
+                  Dt0 f' => f' = f
+                | _ => false)
+           | (PCon1 f, [e]) =>
+             (case #Variety (unNode (representative (db, e))) of
+                  Dt1 (f', _) => f' = f
+                | _ => false)
+           | (Eq, [e1, e2]) =>
+             let
+                 val r1 = representative (db, e1)
+                 val r2 = representative (db, e2)
+             in
+                 repOf r1 = repOf r2
+             end
+           | (Ge, [e1, e2]) =>
+             let
+                 val r1 = representative (db, e1)
+                 val r2 = representative (db, e2)
+             in
+                 case (!(#Ge (unNode (repOf r1))), #Variety (unNode (repOf r2))) of
+                     (SOME n1, Prim (Prim.Int n2)) => Int64.>= (n1, n2)
+                   | _ => false
+             end
+           | _ => false)
+    handle Undetermined => false
 
 fun builtFrom (db, {UseKnown = uk, Base = bs, Derived = d}) =
     let
@@ -812,7 +812,7 @@ fun builtFrom (db, {UseKnown = uk, Base = bs, Derived = d}) =
               | _ => loop (representative (db, e))
     in
         decomp d
-    end
+    end handle Undetermined => false
 
 end
 
@@ -1256,7 +1256,7 @@ fun useKeys () =
 
         fun findKeys (hyps, acc) =
             case hyps of
-                [] => acc
+                [] => rev acc
               | (a as AReln (Sql tab, [r1])) :: hyps =>
                 (case SM.find (!tabs, tab) of
                      NONE => findKeys (hyps, a :: acc)
@@ -1265,7 +1265,7 @@ fun useKeys () =
                      let
                          fun finder (hyps, acc) =
                              case hyps of
-                                 [] => acc
+                                 [] => rev acc
                                | (a as AReln (Sql tab', [r2])) :: hyps =>
                                  if tab' = tab andalso
                                     List.exists (List.all (fn f =>
@@ -1411,8 +1411,8 @@ fun buildable uk (e, loc) =
             in
                 ErrorMsg.errorAt loc "The information flow policy may be violated here.";
                 Print.prefaces "Situation" [("User learns", p_exp e),
-                                            ("Hypotheses", Print.p_list p_atom hs),
-                                            ("E-graph", Cc.p_database db)]
+                                            ("Hypotheses", Print.p_list p_atom hs)(*,
+                                            ("E-graph", Cc.p_database db)*)]
             end
     end
 
@@ -1463,8 +1463,8 @@ fun doable pols (loc : ErrorMsg.span) =
                 val (_, hs, _) = !hyps
             in
                 ErrorMsg.errorAt loc "The database update policy may be violated here.";
-                Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs)(*,
-                                            ("E-graph", Cc.p_database db)*)]
+                Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs),
+                                            ("E-graph", Cc.p_database db)]
             end
     end
 
@@ -2177,25 +2177,28 @@ fun check file =
                                          UsedExp = fn _ => (),
                                          Cont = SomeCol (fn r => k (rev (!atoms), r))}
 
-                    fun untab tab = List.filter (fn AReln (Sql tab', _) => tab' <> tab
-                                                  | _ => true)
+                    fun untab (tab, nams) = List.filter (fn AReln (Sql tab', [Lvar lv]) =>
+                                                            tab' <> tab
+                                                            orelse List.all (fn Lvar lv' => lv' <> lv
+                                                                              | _ => false) nams
+                                                          | _ => true)
                 in
                     case pol of
                         PolClient e =>
                         doQ (fn (ats, {Outs = es, ...}) => St.allowSend (ats, es)) e
                       | PolInsert e =>
                         doQ (fn (ats, {New = SOME (tab, new), ...}) =>
-                                St.allowInsert (AReln (Sql (tab ^ "$New"), [new]) :: untab tab ats)
+                                St.allowInsert (AReln (Sql (tab ^ "$New"), [new]) :: untab (tab, [new]) ats)
                               | _ => raise Fail "Iflow: No New in mayInsert policy") e
                       | PolDelete e =>
                         doQ (fn (ats, {Old = SOME (tab, old), ...}) =>
-                                St.allowDelete (AReln (Sql (tab ^ "$Old"), [old]) :: untab tab ats)
+                                St.allowDelete (AReln (Sql (tab ^ "$Old"), [old]) :: untab (tab, [old]) ats)
                               | _ => raise Fail "Iflow: No Old in mayDelete policy") e
                       | PolUpdate e =>
                         doQ (fn (ats, {New = SOME (tab, new), Old = SOME (_, old), ...}) =>
                                 St.allowUpdate (AReln (Sql (tab ^ "$Old"), [old])
                                                 :: AReln (Sql (tab ^ "$New"), [new])
-                                                :: untab tab ats)
+                                                :: untab (tab, [new, old]) ats)
                               | _ => raise Fail "Iflow: No New or Old in mayUpdate policy") e
                       | PolSequence e =>
                         (case #1 e of
