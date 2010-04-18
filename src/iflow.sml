@@ -798,12 +798,12 @@ fun builtFrom (db, {UseKnown = uk, Base = bs, Derived = d}) =
             in
                 (uk andalso !(#Known (unNode d)))
                 orelse List.exists (fn b => repOf b = d) bs
-                orelse case #Variety (unNode d) of
-                           Dt0 _ => true
-                         | Dt1 (_, d) => loop d
-                         | Prim _ => true
-                         | Recrd (xes, _) => List.all loop (SM.listItems (!xes))
-                         | Nothing => false
+                orelse (case #Variety (unNode d) of
+                            Dt0 _ => true
+                          | Dt1 (_, d) => loop d
+                          | Prim _ => true
+                          | Recrd (xes, _) => List.all loop (SM.listItems (!xes))
+                          | Nothing => false)
             end
 
         fun decomp e =
@@ -1296,7 +1296,7 @@ fun useKeys () =
 
                          val hyps = finder (hyps, [])
                      in
-                         findKeys (hyps, acc)
+                         findKeys (hyps, a :: acc)
                      end)
               | a :: hyps => findKeys (hyps, a :: acc)
 
@@ -1313,7 +1313,7 @@ fun useKeys () =
 
         val (_, hs, _) = !hyps
     in
-        (*print "findKeys\n";*)
+        (*print "useKeys\n";*)
         loop hs
     end
 
@@ -1411,10 +1411,10 @@ fun buildable uk (e, loc) =
             in
                 ErrorMsg.errorAt loc "The information flow policy may be violated here.";
                 Print.prefaces "Situation" [("User learns", p_exp e),
-                                            ("Hypotheses", Print.p_list p_atom hs)(*,
-                                            ("E-graph", Cc.p_database db)*)]
+                                            ("Hypotheses", Print.p_list p_atom hs),
+                                            ("E-graph", Cc.p_database db)]
             end
-    end       
+    end
 
 fun checkPaths () =
     let
@@ -1454,8 +1454,8 @@ fun doable pols (loc : ErrorMsg.span) =
                                                         ("hyps", Print.p_list p_atom (#2 (!hyps)))];*)
                                 true)
                            else
-                               ((*Print.prefaces "No match" [("goals", Print.p_list p_atom goals),
-                                                           ("hyps", Print.p_list p_atom (#2 (!hyps)))];*)
+                               ((*Print.prefaces "No match" [("goals", Print.p_list p_atom goals)(*,
+                                                           ("hyps", Print.p_list p_atom (#2 (!hyps)))*)];*)
                                 false)) pols then
             ()
         else
@@ -2005,7 +2005,8 @@ fun evalExp env (e as (_, loc)) k =
                                                           
                          val saved = St.stash ()
                      in
-                         St.assert [AReln (Sql (tab ^ "$Old"), [Var old])];
+                         St.assert [AReln (Sql (tab ^ "$Old"), [Var old]),
+                                    AReln (Sql (tab), [Var old])];
                          decomp {Save = St.stash,
                                  Restore = St.reinstate,
                                  Add = fn a => St.assert [a]} p
@@ -2049,7 +2050,8 @@ fun evalExp env (e as (_, loc)) k =
                          val saved = St.stash ()
                      in
                          St.assert [AReln (Sql (tab ^ "$New"), [Recd fs]),
-                                    AReln (Sql (tab ^ "$Old"), [Var old])];
+                                    AReln (Sql (tab ^ "$Old"), [Var old]),
+                                    AReln (Sql tab, [Var old])];
                          decomp {Save = St.stash,
                                  Restore = St.reinstate,
                                  Add = fn a => St.assert [a]} p
