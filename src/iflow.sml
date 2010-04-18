@@ -300,8 +300,8 @@ fun p_rep n =
     case !(#Rep (unNode n)) of
         SOME n => p_rep n
       | NONE =>
-        box [string (Int.toString 0(*Unsafe.cast n*) ^ ":"),
-             space,
+        box [(*string (Int.toString (Unsafe.cast n) ^ ":"),
+             space,*)
              case #Variety (unNode n) of
                  Nothing => string "?"
                | Dt0 s => string ("Dt0(" ^ s ^ ")")
@@ -537,139 +537,143 @@ fun representative (db : database, e) =
 fun p_repOf db e = p_rep (representative (db, e))
 
 fun assert (db, a) =
-    case a of
-        ACond _ => ()
-      | AReln x =>
-        case x of
-            (Known, [e]) =>
-            ((*Print.prefaces "Before" [("e", p_exp e),
-                                      ("db", p_database db)];*)
-             markKnown (representative (db, e))(*;
-             Print.prefaces "After" [("e", p_exp e),
-                                     ("db", p_database db)]*))
-          | (PCon0 f, [e]) =>
+    let
+        fun markEq (r1, r2) =
             let
-                val r = representative (db, e)
+                val r1 = repOf r1
+                val r2 = repOf r2
             in
-                case #Variety (unNode r) of
-                    Dt0 f' => if f = f' then
-                                  ()
-                              else
-                                  raise Contradiction
-                  | Nothing =>
-                    let
-                        val r' = ref (Node {Rep = ref NONE,
-                                            Cons = ref SM.empty,
-                                            Variety = Dt0 f,
-                                            Known = ref false})
-                    in
-                        #Rep (unNode r) := SOME r'
-                    end
-                  | _ => raise Contradiction
+                if r1 = r2 then
+                    ()
+                else case (#Variety (unNode r1), #Variety (unNode r2)) of
+                         (Prim p1, Prim p2) => if Prim.equal (p1, p2) then
+                                                   ()
+                                               else
+                                                   raise Contradiction
+                       | (Dt0 f1, Dt0 f2) => if f1 = f2 then
+                                                 ()
+                                             else
+                                                 raise Contradiction
+                       | (Dt1 (f1, r1), Dt1 (f2, r2)) => if f1 = f2 then
+                                                             markEq (r1, r2)
+                                                         else
+                                                             raise Contradiction
+                       | (Recrd (xes1, _), Recrd (xes2, _)) =>
+                         let
+                             fun unif (xes1, xes2) =
+                                 SM.appi (fn (x, r1) =>
+                                             case SM.find (!xes2, x) of
+                                                 NONE => xes2 := SM.insert (!xes2, x, r1)
+                                               | SOME r2 => markEq (r1, r2)) (!xes1)
+                         in
+                             unif (xes1, xes2);
+                             unif (xes2, xes1)
+                         end
+                       | (Nothing, _) => mergeNodes (r1, r2)
+                       | (_, Nothing) => mergeNodes (r2, r1)
+                       | _ => raise Contradiction
             end
-          | (PCon1 f, [e]) =>
-            let
-                val r = representative (db, e)
-            in
-                case #Variety (unNode r) of
-                    Dt1 (f', e') => if f = f' then
-                                        ()
-                                    else
-                                        raise Contradiction
-                  | Nothing =>
-                    let
-                        val r'' = ref (Node {Rep = ref NONE,
-                                             Cons = ref SM.empty,
-                                             Variety = Nothing,
-                                             Known = ref (!(#Known (unNode r)))})
 
-                        val r' = ref (Node {Rep = ref NONE,
-                                            Cons = ref SM.empty,
-                                            Variety = Dt1 (f, r''),
-                                            Known = #Known (unNode r)})
-                    in
-                        #Rep (unNode r) := SOME r'
-                    end
-                  | _ => raise Contradiction
-            end
-          | (Eq, [e1, e2]) =>
+        and mergeNodes (r1, r2) =
+            (#Rep (unNode r1) := SOME r2;
+             if !(#Known (unNode r1)) then
+                 markKnown r2
+             else
+                 ();
+             if !(#Known (unNode r2)) then
+                 markKnown r1
+             else
+                 ();
+             #Cons (unNode r2) := SM.unionWith #1 (!(#Cons (unNode r2)), !(#Cons (unNode r1)));
+
+             compactFuncs ())
+
+        and compactFuncs () =
             let
-                fun markEq (r1, r2) =
-                    let
-                        val r1 = repOf r1
-                        val r2 = repOf r2
-                    in
-                        if r1 = r2 then
-                            ()
-                        else case (#Variety (unNode r1), #Variety (unNode r2)) of
-                                 (Prim p1, Prim p2) => if Prim.equal (p1, p2) then
-                                                           ()
+                fun loop funcs =
+                    case funcs of
+                        [] => []
+                      | (fr as ((f, rs), r)) :: rest =>
+                        let
+                            val rest = List.filter (fn ((f' : string, rs'), r') =>
+                                                       if f' = f
+                                                          andalso ListPair.allEq (fn (r1, r2) =>
+                                                                                     repOf r1 = repOf r2)
+                                                                                 (rs, rs') then
+                                                           (markEq (r, r');
+                                                            false)
                                                        else
-                                                           raise Contradiction
-                               | (Dt0 f1, Dt0 f2) => if f1 = f2 then
-                                                         ()
-                                                     else
-                                                         raise Contradiction
-                               | (Dt1 (f1, r1), Dt1 (f2, r2)) => if f1 = f2 then
-                                                                     markEq (r1, r2)
-                                                                 else
-                                                                     raise Contradiction
-                               | (Recrd (xes1, _), Recrd (xes2, _)) =>
-                                 let
-                                     fun unif (xes1, xes2) =
-                                         SM.appi (fn (x, r1) =>
-                                                     case SM.find (!xes2, x) of
-                                                         NONE => xes2 := SM.insert (!xes2, x, r1)
-                                                       | SOME r2 => markEq (r1, r2)) (!xes1)
-                                 in
-                                     unif (xes1, xes2);
-                                     unif (xes2, xes1)
-                                 end
-                               | (Nothing, _) => mergeNodes (r1, r2)
-                               | (_, Nothing) => mergeNodes (r2, r1)
-                               | _ => raise Contradiction
-                    end
-
-                and mergeNodes (r1, r2) =
-                    (#Rep (unNode r1) := SOME r2;
-                     if !(#Known (unNode r1)) then
-                         markKnown r2
-                     else
-                         ();
-                     if !(#Known (unNode r2)) then
-                         markKnown r1
-                     else
-                         ();
-                     #Cons (unNode r2) := SM.unionWith #1 (!(#Cons (unNode r2)), !(#Cons (unNode r1)));
-
-                     compactFuncs ())
-
-                and compactFuncs () =
-                    let
-                        fun loop funcs =
-                            case funcs of
-                                [] => []
-                              | (fr as ((f, rs), r)) :: rest =>
-                                let
-                                    val rest = List.filter (fn ((f' : string, rs'), r') =>
-                                                               if f' = f
-                                                                  andalso ListPair.allEq (fn (r1, r2) =>
-                                                                                             repOf r1 = repOf r2)
-                                                                                         (rs, rs') then
-                                                                   (markEq (r, r');
-                                                                    false)
-                                                               else
-                                                                   true) rest
-                                in
-                                    fr :: loop rest
-                                end
-                    in
-                        #Funcs db := loop (!(#Funcs db))
-                    end
+                                                           true) rest
+                        in
+                            fr :: loop rest
+                        end
             in
-                markEq (representative (db, e1), representative (db, e2))
+                #Funcs db := loop (!(#Funcs db))
             end
-          | _ => ()
+    in
+        case a of
+            ACond _ => ()
+          | AReln x =>
+            case x of
+                (Known, [e]) =>
+                ((*Print.prefaces "Before" [("e", p_exp e),
+                                            ("db", p_database db)];*)
+                 markKnown (representative (db, e))(*;
+                                                        Print.prefaces "After" [("e", p_exp e),
+                                                                                ("db", p_database db)]*))
+              | (PCon0 f, [e]) =>
+                let
+                    val r = representative (db, e)
+                in
+                    case #Variety (unNode r) of
+                        Dt0 f' => if f = f' then
+                                      ()
+                                  else
+                                      raise Contradiction
+                      | Nothing =>
+                        (case SM.find (!(#Con0s db), f) of
+                             SOME r' => markEq (r, r')
+                           | NONE =>
+                             let
+                                 val r' = ref (Node {Rep = ref NONE,
+                                                     Cons = ref SM.empty,
+                                                     Variety = Dt0 f,
+                                                     Known = ref false})
+                             in
+                                 #Rep (unNode r) := SOME r';
+                                 #Con0s db := SM.insert (!(#Con0s db), f, r')
+                             end)
+                      | _ => raise Contradiction
+                end
+              | (PCon1 f, [e]) =>
+                let
+                    val r = representative (db, e)
+                in
+                    case #Variety (unNode r) of
+                        Dt1 (f', e') => if f = f' then
+                                            ()
+                                        else
+                                            raise Contradiction
+                      | Nothing =>
+                        let
+                            val r'' = ref (Node {Rep = ref NONE,
+                                                 Cons = ref SM.empty,
+                                                 Variety = Nothing,
+                                                 Known = ref (!(#Known (unNode r)))})
+
+                            val r' = ref (Node {Rep = ref NONE,
+                                                Cons = ref SM.empty,
+                                                Variety = Dt1 (f, r''),
+                                                Known = #Known (unNode r)})
+                        in
+                            #Rep (unNode r) := SOME r'
+                        end
+                      | _ => raise Contradiction
+                end
+              | (Eq, [e1, e2]) =>
+                markEq (representative (db, e1), representative (db, e2))
+              | _ => ()
+    end
 
 fun check (db, a) =
     case a of
@@ -951,6 +955,8 @@ datatype Rel =
 
 datatype sqexp =
          SqConst of Prim.t
+       | SqTrue
+       | SqFalse
        | Field of string * string
        | Computed of string
        | Binop of Rel * sqexp * sqexp
@@ -1021,6 +1027,12 @@ fun sqlify chs =
             SOME (e, chs)
         else
             NONE
+      | Exp (ECase (e, [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE), _),
+                         (EPrim (Prim.String "TRUE"), _)),
+                        ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE), _),
+                         (EPrim (Prim.String "FALSE"), _))], _), _) :: chs =>
+        SOME (e, chs)
+                          
       | _ => NONE
 
 fun constK s = wrap (const s) (fn () => s)
@@ -1034,6 +1046,8 @@ val funcName = altL [constK "COUNT",
 fun sqexp chs =
     log "sqexp"
     (altL [wrap prim SqConst,
+           wrap (const "TRUE") (fn () => SqTrue),
+           wrap (const "FALSE") (fn () => SqFalse),
            wrap field Field,
            wrap uw_ident Computed,
            wrap known SqKnown,
@@ -1104,8 +1118,9 @@ datatype query =
 
 val orderby = log "orderby"
               (wrap (follow (ws (const "ORDER BY "))
-                     (list sqexp))
-               ignore)
+                            (follow (list sqexp)
+                                    (opt (ws (const "DESC")))))
+                    ignore)
 
 fun query chs = log "query"
                 (wrap
@@ -1266,7 +1281,7 @@ fun checkGoals goals k =
                 in
                     tryAll unifs hyps
                 end
-              | AReln (r, es) :: goals =>
+              | (g as AReln (r, es)) :: goals =>
                 Cc.check (db, AReln (r, map (simplify unifs) es))
                 andalso checkGoals goals unifs
               | ACond _ :: _ => false
@@ -1352,7 +1367,8 @@ fun buildable uk (e, loc) =
             in
                 ErrorMsg.errorAt loc "The information flow policy may be violated here.";
                 Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs),
-                                            ("User learns", p_exp e)]
+                                            ("User learns", p_exp e),
+                                            ("E-graph", Cc.p_database db)]
             end
     end       
 
@@ -1371,7 +1387,7 @@ fun checkPaths () =
     end
 
 fun allowSend v = ((*Print.prefaces "Allow" [("goals", Print.p_list p_atom (#1 v)),
-                                          ("exps", Print.p_list p_exp (#2 v))];*)
+                                           ("exps", Print.p_list p_exp (#2 v))];*)
                    sendable := v :: !sendable)
 
 fun send uk (e, loc) = ((*Print.preface ("Send", p_exp e);*)
@@ -1474,6 +1490,8 @@ fun expIn rv env rvOf =
             in
                 case e of
                     SqConst p => inl (Const p)
+                  | SqTrue => inl (Func (DtCon0 "Basis.bool.True", []))
+                  | SqFalse => inl (Func (DtCon0 "Basis.bool.False", []))
                   | Field (v, f) => inl (Proj (rvOf v, f))
                   | Computed _ => default ()
                   | Binop (bo, e1, e2) =>
@@ -1483,7 +1501,15 @@ fun expIn rv env rvOf =
                     in
                         inr (case (bo, e1, e2) of
                                  (Exps f, inl e1, inl e2) => f (e1, e2)
-                               | (Props f, inr p1, inr p2) => f (p1, p2)
+                               | (Props f, v1, v2) =>
+                                 let
+                                     fun pin v =
+                                         case v of
+                                             inl e => Reln (Eq, [e, Func (DtCon0 "Basis.bool.True", [])])
+                                           | inr p => p
+                                 in
+                                     f (pin v1, pin v2)
+                                 end
                                | _ => Unknown)
                     end
                   | SqKnown e =>
@@ -1580,6 +1606,8 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                             fun usedFields e =
                                 case e of
                                     SqConst _ => []
+                                  | SqTrue => []
+                                  | SqFalse => []
                                   | Field (v, f) => [(false, Proj (rvOf v, f))]
                                   | Computed _ => []
                                   | Binop (_, e1, e2) => usedFields e1 @ usedFields e2
@@ -1643,16 +1671,17 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                  case #Where r of
                                      NONE => (doUsed (); final ())
                                    | SOME e =>
-                                     case expIn e of
-                                         inl _ => (doUsed (); final ())
-                                       | inr p =>
-                                         let
-                                             val saved = #Save arg ()
-                                         in
-                                             decomp {Save = #Save arg, Restore = #Restore arg, Add = #Add arg}
-                                                    p (fn () => (doUsed (); final ()) handle Cc.Contradiction => ());
-                                             #Restore arg saved
-                                         end)
+                                     let
+                                         val p = case expIn e of
+                                                     inl e => Reln (Eq, [e, Func (DtCon0 "Basis.bool.True", [])])
+                                                   | inr p => p
+
+                                         val saved = #Save arg ()
+                                     in
+                                         decomp {Save = #Save arg, Restore = #Restore arg, Add = #Add arg}
+                                                p (fn () => (doUsed (); final ()) handle Cc.Contradiction => ());
+                                         #Restore arg saved
+                                     end)
                                 handle Cc.Contradiction => ()
 
                             fun normal () = doWhere normal'
