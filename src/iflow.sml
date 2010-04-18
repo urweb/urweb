@@ -272,7 +272,8 @@ datatype node = Node of {Id : int,
                          Rep : node ref option ref,
                          Cons : node ref SM.map ref,
                          Variety : variety,
-                         Known : bool ref}
+                         Known : bool ref,
+                         Ge : Int64.int option ref}
 
      and variety =
          Dt0 of string
@@ -334,7 +335,14 @@ fun p_rep n =
                                               box [space,
                                                    string "(complete)"]
                                           else
-                                              box []]]
+                                              box []],
+             if !(#Known (unNode n)) then
+                 string " (known)"
+             else
+                 box [],
+             case !(#Ge (unNode n)) of
+                 NONE => box []
+               | SOME n => string (" (>= " ^ Int64.toString n ^ ")")]
 
 fun p_database (db : database) =
     box [string "Vars:",
@@ -343,12 +351,7 @@ fun p_database (db : database) =
                                                space,
                                                string "=",
                                                space,
-                                               p_rep n,
-                                               if !(#Known (unNode n)) then
-                                                   box [space,
-                                                        string "(known)"]
-                                               else
-                                                   box []]) (IM.listItemsi (!(#Vars db)))]
+                                               p_rep n]) (IM.listItemsi (!(#Vars db)))]
 
 fun repOf (n : representative) : representative =
     case !(#Rep (unNode n)) of
@@ -389,7 +392,10 @@ fun representative (db : database, e) =
                                                        Rep = ref NONE,
                                                        Cons = ref SM.empty,
                                                        Variety = Prim p,
-                                                       Known = ref true})
+                                                       Known = ref true,
+                                                       Ge = ref (case p of
+                                                                     Prim.Int n => SOME n
+                                                                   | _ => NONE)})
                                 in
                                     #Consts db := CM.insert (!(#Consts db), p, r);
                                     r
@@ -402,7 +408,8 @@ fun representative (db : database, e) =
                                                      Rep = ref NONE,
                                                      Cons = ref SM.empty,
                                                      Variety = Nothing,
-                                                     Known = ref false})
+                                                     Known = ref false,
+                                                     Ge = ref NONE})
                               in
                                   #Vars db := IM.insert (!(#Vars db), n, r);
                                   r
@@ -416,7 +423,8 @@ fun representative (db : database, e) =
                                                                    Rep = ref NONE,
                                                                    Cons = ref SM.empty,
                                                                    Variety = Dt0 f,
-                                                                   Known = ref true})
+                                                                   Known = ref true,
+                                                                   Ge = ref NONE})
                                             in
                                                 #Con0s db := SM.insert (!(#Con0s db), f, r);
                                                 r
@@ -434,7 +442,8 @@ fun representative (db : database, e) =
                                                 Rep = ref NONE,
                                                 Cons = ref SM.empty,
                                                 Variety = Dt1 (f, r),
-                                                Known = ref (!(#Known (unNode r)))})
+                                                Known = ref (!(#Known (unNode r))),
+                                                Ge = ref NONE})
                         in
                             #Cons (unNode r) := SM.insert (!(#Cons (unNode r)), f, r');
                             r'
@@ -457,13 +466,15 @@ fun representative (db : database, e) =
                                                 Rep = ref NONE,
                                                 Cons = cons,
                                                 Variety = Nothing,
-                                                Known = ref (!(#Known (unNode r)))})
+                                                Known = ref (!(#Known (unNode r))),
+                                                Ge = ref NONE})
 
                             val r'' = ref (Node {Id = nodeId (),
                                                  Rep = ref NONE,
                                                  Cons = #Cons (unNode r),
                                                  Variety = Dt1 (f, r'),
-                                                 Known = #Known (unNode r)})
+                                                 Known = #Known (unNode r),
+                                                 Ge = ref NONE})
                         in
                             cons := SM.insert (!cons, f, r'');
                             #Rep (unNode r) := SOME r'';
@@ -483,7 +494,8 @@ fun representative (db : database, e) =
                                                Rep = ref NONE,
                                                Cons = ref SM.empty,
                                                Variety = Nothing,
-                                               Known = ref false})
+                                               Known = ref false,
+                                               Ge = ref NONE})
                         in
                             #Funcs db := ((f, rs), r) :: (!(#Funcs db));
                             r
@@ -511,7 +523,8 @@ fun representative (db : database, e) =
                                                 Rep = ref NONE,
                                                 Cons = ref SM.empty,
                                                 Variety = Recrd (ref xes, true),
-                                                Known = ref false})
+                                                Known = ref false,
+                                                Ge = ref NONE})
                         in
                             #Records db := (xes, r') :: (!(#Records db));
                             r'
@@ -530,7 +543,8 @@ fun representative (db : database, e) =
                                                      Rep = ref NONE,
                                                      Cons = ref SM.empty,
                                                      Variety = Nothing,
-                                                     Known = ref (!(#Known (unNode r)))})
+                                                     Known = ref (!(#Known (unNode r))),
+                                                     Ge = ref NONE})
                               in
                                  xes := SM.insert (!xes, f, r);
                                  r
@@ -541,13 +555,15 @@ fun representative (db : database, e) =
                                                 Rep = ref NONE,
                                                 Cons = ref SM.empty,
                                                 Variety = Nothing,
-                                                Known = ref (!(#Known (unNode r)))})
+                                                Known = ref (!(#Known (unNode r))),
+                                                Ge = ref NONE})
                                      
                             val r'' = ref (Node {Id = nodeId (),
                                                  Rep = ref NONE,
                                                  Cons = #Cons (unNode r),
                                                  Variety = Recrd (ref (SM.insert (SM.empty, f, r')), false),
-                                                 Known = #Known (unNode r)})
+                                                 Known = #Known (unNode r),
+                                                 Ge = ref NONE})
                         in
                             #Rep (unNode r) := SOME r'';
                             r'
@@ -610,6 +626,13 @@ fun assert (db, a) =
                  ();
              #Cons (unNode r2) := SM.unionWith #1 (!(#Cons (unNode r2)), !(#Cons (unNode r1)));
 
+             case !(#Ge (unNode r1)) of
+                 NONE => ()
+               | SOME n1 =>
+                 case !(#Ge (unNode r2)) of
+                     NONE => #Ge (unNode r2) := SOME n1
+                   | SOME n2 => #Ge (unNode r2) := SOME (Int64.max (n1, n2));
+
              compactFuncs ())
 
         and compactFuncs () =
@@ -663,7 +686,8 @@ fun assert (db, a) =
                                                      Rep = ref NONE,
                                                      Cons = ref SM.empty,
                                                      Variety = Dt0 f,
-                                                     Known = ref false})
+                                                     Known = ref false,
+                                                     Ge = ref NONE})
                              in
                                  #Rep (unNode r) := SOME r';
                                  #Con0s db := SM.insert (!(#Con0s db), f, r')
@@ -685,13 +709,15 @@ fun assert (db, a) =
                                                  Rep = ref NONE,
                                                  Cons = ref SM.empty,
                                                  Variety = Nothing,
-                                                 Known = ref (!(#Known (unNode r)))})
+                                                 Known = ref (!(#Known (unNode r))),
+                                                 Ge = ref NONE})
 
                             val r' = ref (Node {Id = nodeId (),
                                                 Rep = ref NONE,
                                                 Cons = ref SM.empty,
                                                 Variety = Dt1 (f, r''),
-                                                Known = #Known (unNode r)})
+                                                Known = #Known (unNode r),
+                                                Ge = ref NONE})
                         in
                             #Rep (unNode r) := SOME r'
                         end
@@ -699,6 +725,18 @@ fun assert (db, a) =
                 end
               | (Eq, [e1, e2]) =>
                 markEq (representative (db, e1), representative (db, e2))
+              | (Ge, [e1, e2]) =>
+                let
+                    val r1 = representative (db, e1)
+                    val r2 = representative (db, e2)
+                in
+                    case !(#Ge (unNode (repOf r2))) of
+                        NONE => ()
+                      | SOME n2 =>
+                        case !(#Ge (unNode (repOf r1))) of
+                            NONE => #Ge (unNode (repOf r1)) := SOME n2
+                          | SOME n1 => #Ge (unNode (repOf r1)) := SOME (Int64.max (n1, n2))
+                end
               | _ => ()
     end
 
@@ -738,6 +776,15 @@ fun check (db, a) =
                 val r2 = representative (db, e2)
             in
                 repOf r1 = repOf r2
+            end
+          | (Ge, [e1, e2]) =>
+            let
+                val r1 = representative (db, e1)
+                val r2 = representative (db, e2)
+            in
+                case (!(#Ge (unNode (repOf r1))), #Variety (unNode (repOf r2))) of
+                    (SOME n1, Prim (Prim.Int n2)) => Int64.>= (n1, n2)
+                  | _ => false
             end
           | _ => false
 
@@ -931,7 +978,7 @@ datatype sqexp =
        | SqKnown of sqexp
        | Inj of Mono.exp
        | SqFunc of string * sqexp
-       | Count
+       | Unmodeled
 
 fun cmp s r = wrap (const s) (fn () => Exps (fn (e1, e2) => Reln (r, [e1, e2])))
 
@@ -1011,6 +1058,9 @@ val funcName = altL [constK "COUNT",
                      constK "SUM",
                      constK "AVG"]
 
+val unmodeled = altL [const "COUNT(*)",
+                      const "CURRENT_TIMESTAMP"]
+
 fun sqexp chs =
     log "sqexp"
     (altL [wrap prim SqConst,
@@ -1020,7 +1070,7 @@ fun sqexp chs =
            wrap uw_ident Computed,
            wrap known SqKnown,
            wrap func SqFunc,
-           wrap (const "COUNT(*)") (fn () => Count),
+           wrap unmodeled (fn () => Unmodeled),
            wrap sqlify Inj,
            wrap (follow (const "COALESCE(") (follow sqexp (follow (const ",")
                                                                   (follow (keep (fn ch => ch <> #")")) (const ")")))))
@@ -1174,6 +1224,7 @@ structure St :> sig
     val update : ErrorMsg.span -> unit
 
     val havocReln : reln -> unit
+    val havocCookie : string -> unit
 
     val debug : unit -> unit
 end = struct
@@ -1329,7 +1380,11 @@ fun checkGoals goals k =
                 end
               | (g as AReln (r, es)) :: goals =>
                 (complete ();
-                 Cc.check (db, AReln (r, map (simplify unifs) es))
+                 (if Cc.check (db, AReln (r, map (simplify unifs) es)) then
+                      true
+                  else
+                      ((*Print.preface ("Fail", p_atom (AReln (r, map (simplify unifs) es)));*)
+                       false))
                  andalso checkGoals goals unifs)
               | ACond _ :: _ => false
     in
@@ -1355,8 +1410,8 @@ fun buildable uk (e, loc) =
                 val (_, hs, _) = !hyps
             in
                 ErrorMsg.errorAt loc "The information flow policy may be violated here.";
-                Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs),
-                                            ("User learns", p_exp e)(*,
+                Print.prefaces "Situation" [("User learns", p_exp e),
+                                            ("Hypotheses", Print.p_list p_atom hs)(*,
                                             ("E-graph", Cc.p_database db)*)]
             end
     end       
@@ -1408,7 +1463,8 @@ fun doable pols (loc : ErrorMsg.span) =
                 val (_, hs, _) = !hyps
             in
                 ErrorMsg.errorAt loc "The database update policy may be violated here.";
-                Print.preface ("Hypotheses", Print.p_list p_atom hs)
+                Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs)(*,
+                                            ("E-graph", Cc.p_database db)*)]
             end
     end
 
@@ -1440,6 +1496,16 @@ fun havocReln r =
     in
         hnames := n + 1;
         hyps := (n, List.filter (fn AReln (r', _) => r' <> r | _ => true) hs, ref false)
+    end
+
+fun havocCookie cname =
+    let
+        val cname = "cookie/" ^ cname
+        val n = !hnames
+        val (_, hs, _) = !hyps
+    in
+        hnames := n + 1;
+        hyps := (n, List.filter (fn AReln (Eq, [_, Func (Other f, [])]) => f <> cname | _ => true) hs, ref false)
     end
 
 fun debug () =
@@ -1517,7 +1583,7 @@ fun expIn rv env rvOf =
                          inl e => inl (Func (Other f, [e]))
                        | _ => default ())
                      
-                  | Count => default ()
+                  | Unmodeled => default ()
             end
     in
         expIn
@@ -1610,7 +1676,7 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                                   [])
                                        | SOME e => [(true, e)])
                                   | SqFunc (_, e) => usedFields e
-                                  | Count => []
+                                  | Unmodeled => []
 
                             fun doUsed () = case #Where r of
                                                 NONE => ()
@@ -1751,7 +1817,18 @@ fun evalExp env (e as (_, loc)) k =
                 let
                     fun doArgs es =
                         case es of
-                            [] => k (Recd [])
+                            [] =>
+                            (if s = "set_cookie" then
+                                 case es of
+                                     [_, cname, _, _, _] =>
+                                     (case #1 cname of
+                                          EPrim (Prim.String cname) =>
+                                          St.havocCookie cname
+                                        | _ => ())
+                                   | _ => ()
+                             else
+                                 ();
+                             k (Recd []))
                           | e :: es =>
                             evalExp env e (fn e => (St.send true (e, loc); doArgs es))
                 in
@@ -1996,8 +2073,9 @@ fun evalExp env (e as (_, loc)) k =
           | EUnurlify ((EFfiApp ("Basis", "get_cookie", [(EPrim (Prim.String cname), _)]), _), _, _) =>
             let
                 val e = Var (St.nextVar ())
+                val e' = Func (Other ("cookie/" ^ cname), [])
             in
-                St.assert [AReln (Known, [e])];
+                St.assert [AReln (Known, [e]), AReln (Eq, [e, e'])];
                 k e
             end
 
