@@ -1878,22 +1878,24 @@ fun evalExp env (e as (_, loc)) k =
           | EField (e, s) => evalExp env e (fn e => k (Proj (e, s)))
           | ECase (e, pes, {result = res, ...}) =>
             evalExp env e (fn e =>
-                              let
-                                  val () = St.addPath (e, loc)
-                              in
-                                  app (fn (p, pe) =>
-                                          let
-                                              val saved = St.stash ()
-                                          in
-                                              let
-                                                  val env = evalPat env e p
-                                              in
-                                                  evalExp env pe k;
-                                                  St.reinstate saved
-                                              end
-                                              handle Cc.Contradiction => St.reinstate saved
-                                          end) pes
-                              end)
+                              if List.all (fn (_, (EWrite (EPrim _, _), _)) => true
+                                            | _ => false) pes then
+                                  (St.send true (e, loc);
+                                   k (Recd []))
+                              else
+                                  (St.addPath (e, loc);
+                                   app (fn (p, pe) =>
+                                           let
+                                               val saved = St.stash ()
+                                           in
+                                               let
+                                                   val env = evalPat env e p
+                                               in
+                                                   evalExp env pe k;
+                                                   St.reinstate saved
+                                               end
+                                               handle Cc.Contradiction => St.reinstate saved
+                                           end) pes))
           | EStrcat (e1, e2) =>
             evalExp env e1 (fn e1 =>
                 evalExp env e2 (fn e2 =>
