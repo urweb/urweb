@@ -1205,6 +1205,10 @@ structure St :> sig
     val stash : unit -> stashed
     val reinstate : stashed -> unit
 
+    type stashedPath
+    val stashPath : unit -> stashedPath
+    val reinstatePath : stashedPath -> unit
+
     val nextVar : unit -> int
 
     val assert : atom list -> unit
@@ -1334,6 +1338,10 @@ fun reinstate (nv, p, h) =
     (nvar := nv;
      path := p;
      setHyps h)
+
+type stashedPath = ((int * atom list) * check) option ref list
+fun stashPath () = !path
+fun reinstatePath p = path := p
 
 fun nextVar () =
     let
@@ -1912,7 +1920,11 @@ fun evalExp env (e as (_, loc)) k =
             evalExp env e (fn e => (St.send true (e, loc);
                                     k (Recd [])))
           | ESeq (e1, e2) =>
-            evalExp env e1 (fn _ => evalExp env e2 k)
+            let
+                val path = St.stashPath ()
+            in
+                evalExp env e1 (fn _ => (St.reinstatePath path; evalExp env e2 k))
+            end
           | ELet (_, _, e1, e2) =>
             evalExp env e1 (fn e1 => evalExp (e1 :: env) e2 k)
           | EClosure (n, es) =>
@@ -1929,32 +1941,42 @@ fun evalExp env (e as (_, loc)) k =
           | EQuery {query = q, body = b, initial = i, state = state, ...} =>
             evalExp env i (fn i =>
                               let
-                                  val saved = St.stash ()
-
-                                  val () = (k i)
-                                      handle Cc.Contradiction => ()
-                                  val () = St.reinstate saved
-
                                   val r = Var (St.nextVar ())
                                   val acc = Var (St.nextVar ())
 
-                                  val touched = MonoUtil.Exp.fold {typ = fn (_, touched) => touched,
-                                                                   exp = fn (e, touched) =>
+                                  val (ts, cs) = MonoUtil.Exp.fold {typ = fn (_, st) => st,
+                                                                   exp = fn (e, st as (cs, ts)) =>
                                                                             case e of
                                                                                 EDml e =>
                                                                                 (case parse dml e of
-                                                                                     NONE => touched
+                                                                                     NONE => st
                                                                                    | SOME c =>
                                                                                      case c of
-                                                                                         Insert _ => touched
+                                                                                         Insert _ => st
                                                                                        | Delete (tab, _) =>
-                                                                                         SS.add (touched, tab)
+                                                                                         (cs, SS.add (ts, tab))
                                                                                        | Update (tab, _, _) =>
-                                                                                         SS.add (touched, tab))
-                                                                              | _ => touched}
-                                                                  SS.empty b
+                                                                                         (cs, SS.add (ts, tab)))
+                                                                              | EFfiApp ("Basis", "set_cookie",
+                                                                                         [_, (EPrim (Prim.String cname), _),
+                                                                                          _, _, _]) =>
+                                                                                (SS.add (cs, cname), ts)
+                                                                              | _ => st}
+                                                                  (SS.empty, SS.empty) b
                               in
-                                  SS.app (St.havocReln o Sql) touched;
+                                  case (#1 state, SS.isEmpty ts, SS.isEmpty cs) of
+                                          (TRecord [], true, true) => ()
+                                        | _ =>
+                                          let
+                                              val saved = St.stash ()
+                                          in
+                                              (k i)
+                                              handle Cc.Contradiction => ();
+                                              St.reinstate saved
+                                          end;
+
+                                  SS.app (St.havocReln o Sql) ts;
+                                  SS.app St.havocCookie cs;
 
                                   doQuery {Env = env,
                                            NextVar = Var o St.nextVar,
@@ -2110,7 +2132,7 @@ fun check file =
                                   DExport (_, _, n, _, _, _) => IS.add (exptd, n)
                                 | _ => exptd) IS.empty file
 
-        fun decl (d, _) =
+        fun decl (d, loc) =
             case d of
                 DTable (tab, fs, pk, _) =>
                 let
@@ -2158,6 +2180,8 @@ fun check file =
                     (evalExp env e (fn _ => ()) handle Cc.Contradiction => ());
                     St.reinstate saved
                 end
+
+              | DValRec _ => ErrorMsg.errorAt loc "Iflow can't check recursive functions."
 
               | DPolicy pol =>
                 let
