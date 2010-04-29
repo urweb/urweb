@@ -821,3 +821,5 @@ val mayUpdate : fs ::: {Type} -> tables ::: {{Type}} -> [[Old, New] ~ tables]
 val also : sql_policy -> sql_policy -> sql_policy
 
 val debug : string -> transaction unit
+
+val rand : transaction int

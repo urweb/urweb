@@ -115,7 +115,8 @@ val benignBase = basis ["get_cookie",
                         "onDisconnect",
                         "onServerError",
                         "kc",
-                        "debug"]
+                        "debug",
+                        "rand"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)

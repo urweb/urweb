@@ -280,4 +280,6 @@ uw_Basis_unit uw_Basis_debug(uw_context, uw_Basis_string);
 
 void uw_set_client_data(uw_context, void *);
 
+uw_Basis_int uw_Basis_rand(uw_context);
+
 #endif

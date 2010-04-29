@@ -3404,3 +3404,8 @@ uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
 
   return uw_unit_v;
 }
+
+uw_Basis_int uw_Basis_rand(uw_context ctx) {
+  uw_Basis_int n = abs(rand());
+  return n;
+}

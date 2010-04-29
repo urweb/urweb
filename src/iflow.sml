@@ -972,6 +972,7 @@ datatype sqexp =
          SqConst of Prim.t
        | SqTrue
        | SqFalse
+       | SqNot of sqexp
        | Field of string * string
        | Computed of string
        | Binop of Rel * sqexp * sqexp
@@ -1075,6 +1076,8 @@ fun sqexp chs =
            wrap (follow (const "COALESCE(") (follow sqexp (follow (const ",")
                                                                   (follow (keep (fn ch => ch <> #")")) (const ")")))))
                 (fn ((), (e, _)) => e),
+           wrap (follow (const "(NOT ") (follow sqexp (const ")")))
+                (fn ((), (e, _)) => SqNot e),
            wrap (follow (ws (const "("))
                         (follow (wrap
                                      (follow sqexp
@@ -1471,8 +1474,8 @@ fun doable pols (loc : ErrorMsg.span) =
                 val (_, hs, _) = !hyps
             in
                 ErrorMsg.errorAt loc "The database update policy may be violated here.";
-                Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs),
-                                            ("E-graph", Cc.p_database db)]
+                Print.prefaces "Situation" [("Hypotheses", Print.p_list p_atom hs)(*,
+                                            ("E-graph", Cc.p_database db)*)]
             end
     end
 
@@ -1558,6 +1561,10 @@ fun expIn rv env rvOf =
                     SqConst p => inl (Const p)
                   | SqTrue => inl (Func (DtCon0 "Basis.bool.True", []))
                   | SqFalse => inl (Func (DtCon0 "Basis.bool.False", []))
+                  | SqNot e =>
+                    inr (case expIn e of
+                             inl e => Reln (Eq, [e, Func (DtCon0 "Basis.bool.False", [])])
+                           | inr _ => Unknown)
                   | Field (v, f) => inl (Proj (rvOf v, f))
                   | Computed _ => default ()
                   | Binop (bo, e1, e2) =>
@@ -1674,6 +1681,7 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                     SqConst _ => []
                                   | SqTrue => []
                                   | SqFalse => []
+                                  | SqNot e => usedFields e
                                   | Field (v, f) => [(false, Proj (rvOf v, f))]
                                   | Computed _ => []
                                   | Binop (_, e1, e2) => usedFields e1 @ usedFields e2
@@ -1865,6 +1873,13 @@ fun evalExp env (e as (_, loc)) k =
           | ESome (_, e) => evalExp env e (fn e => k (Func (DtCon1 "Some", [e])))
           | EFfi _ => default ()
 
+          | EFfiApp ("Basis", "rand", []) =>
+            let
+                val e = Var (St.nextVar ())
+            in
+                St.assert [AReln (Known, [e])];
+                k e
+            end
           | EFfiApp x => doFfi x
           | EApp ((EFfi (m, s), _), e) => doFfi (m, s, [e])
 
