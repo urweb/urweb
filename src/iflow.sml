@@ -493,7 +493,7 @@ fun representative (db : database, e) =
                                                Rep = ref NONE,
                                                Cons = ref SM.empty,
                                                Variety = Nothing,
-                                               Known = ref false,
+                                               Known = ref (f = "allow"),
                                                Ge = ref NONE})
                         in
                             #Funcs db := ((f, rs), r) :: (!(#Funcs db));
@@ -1608,7 +1608,7 @@ fun expIn rv env rvOf =
                          inl e => inl (Func (Other f, [e]))
                        | _ => default ())
                      
-                  | Unmodeled => default ()
+                  | Unmodeled => inl (Func (Other "allow", [rv ()]))
             end
     in
         expIn
