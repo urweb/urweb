@@ -1233,6 +1233,8 @@ structure St :> sig
     val havocReln : reln -> unit
     val havocCookie : string -> unit
 
+    val check : atom -> bool
+
     val debug : unit -> unit
 end = struct
 
@@ -1519,6 +1521,8 @@ fun havocCookie cname =
         hyps := (n, List.filter (fn AReln (Eq, [_, Func (Other f, [])]) => f <> cname | _ => true) hs, ref false)
     end
 
+fun check a = Cc.check (db, a)
+
 fun debug () =
     let
         val (_, hs, _) = !hyps
@@ -1549,6 +1553,12 @@ fun deinj env e =
         (case deinj env e of
              NONE => NONE
            | SOME e => SOME (Proj (e, f)))
+      | EApp ((EFfi mf, _), e) =>
+        if Settings.isEffectful mf orelse Settings.isBenignEffectful mf then
+            NONE
+        else (case deinj env e of
+                  NONE => NONE
+                | SOME e => SOME (Func (Other (#1 mf ^ "." ^ #2 mf), [e])))
       | _ => NONE
 
 fun expIn rv env rvOf =
@@ -1821,6 +1831,10 @@ fun evalPat env e (pt, _) =
             env
         end
 
+datatype arg_mode = Fixed | Decreasing | Arbitrary
+type rfun = {args : arg_mode list, tables : SS.set, cookies : SS.set, body : Mono.exp}
+val rfuns = ref (IM.empty : rfun IM.map)
+
 fun evalExp env (e as (_, loc)) k =
     let
         (*val () = St.debug ()*)
@@ -1883,7 +1897,62 @@ fun evalExp env (e as (_, loc)) k =
           | EFfiApp x => doFfi x
           | EApp ((EFfi (m, s), _), e) => doFfi (m, s, [e])
 
-          | EApp (e1, e2) => evalExp env e1 (fn _ => evalExp env e2 (fn _ => default ()))
+          | EApp (e1 as (EError _, _), _) => evalExp env e1 k
+
+          | EApp (e1, e2) =>
+            let
+                fun adefault () = (ErrorMsg.errorAt loc "Excessively fancy function call";
+                                   Print.preface ("Call", MonoPrint.p_exp MonoEnv.empty e);
+                                   default ())
+
+                fun doArgs (e, args) =
+                    case #1 e of
+                        EApp (e1, e2) => doArgs (e1, e2 :: args)
+                      | ENamed n =>
+                        (case IM.find (!rfuns, n) of
+                             NONE => adefault ()
+                           | SOME rf =>
+                             if length (#args rf) <> length args then
+                                 adefault ()
+                             else
+                                 let
+                                     val () = (SS.app (St.havocReln o Sql) (#tables rf);
+                                               SS.app St.havocCookie (#cookies rf))
+                                     val saved = St.stash ()
+
+                                     fun doArgs (args, modes, env') =
+                                         case (args, modes) of
+                                             ([], []) => (evalExp env' (#body rf) (fn _ => ());
+                                                          St.reinstate saved;
+                                                          default ())
+                                                         
+                                           | (arg :: args, mode :: modes) =>
+                                             evalExp env arg (fn arg =>
+                                                                 let
+                                                                     val v = case mode of
+                                                                                 Arbitrary => Var (St.nextVar ())
+                                                                               | Fixed => arg
+                                                                               | Decreasing =>
+                                                                                 let
+                                                                                     val v = Var (St.nextVar ())
+                                                                                 in
+                                                                                     if St.check (AReln (Known, [arg])) then
+                                                                                         St.assert [(AReln (Known, [v]))]
+                                                                                     else
+                                                                                         ();
+                                                                                     v
+                                                                                 end
+                                                                 in
+                                                                     doArgs (args, modes, v :: env')
+                                                                 end)
+                                           | _ => raise Fail "Iflow.doArgs: Impossible"
+                                 in
+                                     doArgs (args, #args rf, [])
+                                 end)
+                          | _ => adefault ()
+            in
+                doArgs (e, [])
+            end
 
           | EAbs _ => default ()
           | EUnop (s, e1) => evalExp env e1 (fn e1 => k (Func (Other s, [e1])))
@@ -2028,6 +2097,7 @@ fun evalExp env (e as (_, loc)) k =
                          St.assert [AReln (Sql (tab ^ "$New"), [Recd es])];
                          St.insert loc;
                          St.reinstate saved;
+                         St.assert [AReln (Sql tab, [Recd es])];
                          k (Recd [])
                      end
                    | Delete (tab, e) =>
@@ -2131,9 +2201,12 @@ fun evalExp env (e as (_, loc)) k =
           | ESpawn _ => default ()
     end
 
+datatype var_source = Input of int | SubInput of int | Unknown
+
 fun check file =
     let
-        val () = St.reset ()
+        val () = (St.reset ();
+                  rfuns := IM.empty)
 
         val file = MonoReduce.reduce file
         val file = MonoOpt.optimize file
@@ -2196,7 +2269,159 @@ fun check file =
                     St.reinstate saved
                 end
 
-              | DValRec _ => ErrorMsg.errorAt loc "Iflow can't check recursive functions."
+              | DValRec [(x, n, _, e, _)] =>
+                let
+                    val tables = ref SS.empty
+                    val cookies = ref SS.empty
+
+                    fun deAbs (e, env, modes) =
+                        case #1 e of
+                            EAbs (_, _, _, e) => deAbs (e, Input (length env) :: env, ref Fixed :: modes)
+                          | _ => (e, env, rev modes)
+
+                    val (e, env, modes) = deAbs (e, [], [])
+
+                    fun doExp env (e as (_, loc)) =
+                        case #1 e of
+                            EPrim _ => e
+                          | ERel _ => e
+                          | ENamed _ => e
+                          | ECon (_, _, NONE) => e
+                          | ECon (dk, pc, SOME e) => (ECon (dk, pc, SOME (doExp env e)), loc)
+                          | ENone _ => e
+                          | ESome (t, e) => (ESome (t, doExp env e), loc)
+                          | EFfi _ => e
+                          | EFfiApp (m, f, es) =>
+                            (case (m, f, es) of
+                                 ("Basis", "set_cookie", [_, (EPrim (Prim.String cname), _), _, _, _]) =>
+                                 cookies := SS.add (!cookies, cname)
+                               | _ => ();
+                             (EFfiApp (m, f, map (doExp env) es), loc))
+
+                          | EApp (e1, e2) =>
+                            let
+                                fun default () = (EApp (doExp env e1, doExp env e2), loc)
+
+                                fun explore (e, args) =
+                                    case #1 e of
+                                        EApp (e1, e2) => explore (e1, e2 :: args)
+                                      | ENamed n' =>
+                                        if n' = n then
+                                            let
+                                                fun doArgs (pos, args, modes) =
+                                                    case (args, modes) of
+                                                        ((e1, _) :: args, m1 :: modes) =>
+                                                        (case e1 of
+                                                             ERel n =>
+                                                             (case List.nth (env, n) of
+                                                                  Input pos' =>
+                                                                  if pos' = pos then
+                                                                      ()
+                                                                  else
+                                                                      m1 := Arbitrary
+                                                                | SubInput pos' =>
+                                                                  if pos' = pos then
+                                                                      if !m1 = Arbitrary then
+                                                                          ()
+                                                                      else
+                                                                          m1 := Decreasing
+                                                                  else
+                                                                      m1 := Arbitrary
+                                                                | Unknown => m1 := Arbitrary)
+                                                           | _ => m1 := Arbitrary;
+                                                         doArgs (pos + 1, args, modes))
+                                                      | (_ :: _, []) => ()
+                                                      | ([], ms) => app (fn m => m := Arbitrary) ms
+                                            in
+                                                doArgs (0, args, modes);
+                                                (EFfi ("Basis", "?"), loc)
+                                            end
+                                        else
+                                            default ()
+                                      | _ => default ()
+                            in
+                                explore (e, [])
+                            end
+                          | EAbs (x, t1, t2, e) => (EAbs (x, t1, t2, doExp (Unknown :: env) e), loc)
+                          | EUnop (uo, e1) => (EUnop (uo, doExp env e1), loc)
+                          | EBinop (bo, e1, e2) => (EBinop (bo, doExp env e1, doExp env e2), loc)
+                          | ERecord xets => (ERecord (map (fn (x, e, t) => (x, doExp env e, t)) xets), loc)
+                          | EField (e1, f) => (EField (doExp env e1, f), loc)
+                          | ECase (e, pes, ts) =>
+                            let
+                                val source =
+                                    case #1 e of
+                                        ERel n =>
+                                        (case List.nth (env, n) of
+                                             Input n => SOME n
+                                           | SubInput n => SOME n
+                                           | Unknown => NONE)
+                                      | _ => NONE
+
+                                fun doV v =
+                                    let
+                                        fun doPat (p, env) =
+                                            case #1 p of
+                                                PWild => env
+                                              | PVar _ => v :: env
+                                              | PPrim _ => env
+                                              | PCon (_, _, NONE) => env
+                                              | PCon (_, _, SOME p) => doPat (p, env)
+                                              | PRecord xpts => foldl (fn ((_, p, _), env) => doPat (p, env)) env xpts
+                                              | PNone _ => env
+                                              | PSome (_, p) => doPat (p, env)
+                                    in
+                                        (ECase (e, map (fn (p, e) => (p, doExp (doPat (p, env)) e)) pes, ts), loc)
+                                    end
+                            in
+                                case source of
+                                    NONE => doV Unknown
+                                  | SOME inp => doV (SubInput inp)
+                            end
+                          | EStrcat (e1, e2) => (EStrcat (doExp env e1, doExp env e2), loc)
+                          | EError (e1, t) => (EError (doExp env e1, t), loc)
+                          | EReturnBlob {blob = b, mimeType = m, t} =>
+                            (EReturnBlob {blob = doExp env b, mimeType = doExp env m, t = t}, loc)
+                          | ERedirect (e1, t) => (ERedirect (doExp env e1, t), loc)
+                          | EWrite e1 => (EWrite (doExp env e1), loc)
+                          | ESeq (e1, e2) => (ESeq (doExp env e1, doExp env e2), loc)
+                          | ELet (x, t, e1, e2) => (ELet (x, t, doExp env e1, doExp (Unknown :: env) e2), loc)
+                          | EClosure (n, es) => (EClosure (n, map (doExp env) es), loc)
+                          | EQuery {exps, tables, state, query, body, initial} =>
+                            (EQuery {exps = exps, tables = tables, state = state,
+                                     query = doExp env query,
+                                     body = doExp (Unknown :: Unknown :: env) body,
+                                     initial = doExp env initial}, loc)
+                          | EDml e1 =>
+                            (case parse dml e1 of
+                                 NONE => ()
+                               | SOME c =>
+                                 case c of
+                                     Insert _ => ()
+                                   | Delete (tab, _) =>
+                                     tables := SS.add (!tables, tab)
+                                   | Update (tab, _, _) =>
+                                     tables := SS.add (!tables, tab);
+                             (EDml (doExp env e1), loc))
+                          | ENextval e1 => (ENextval (doExp env e1), loc)
+                          | ESetval (e1, e2) => (ESetval (doExp env e1, doExp env e2), loc)
+                          | EUnurlify (e1, t, b) => (EUnurlify (doExp env e1, t, b), loc)
+                          | EJavaScript (m, e) => (EJavaScript (m, doExp env e), loc)
+                          | ESignalReturn _ => e
+                          | ESignalBind _ => e
+                          | ESignalSource _ => e
+                          | EServerCall _ => e
+                          | ERecv _ => e
+                          | ESleep _ => e
+                          | ESpawn _ => e
+
+                    val e = doExp env e
+                in
+                    rfuns := IM.insert (!rfuns, n, {tables = !tables, cookies = !cookies,
+                                                    args = map (fn r => !r) modes, body = e})
+                end
+
+              | DValRec _ => ErrorMsg.errorAt loc "Iflow can't check mutually-recursive functions yet."
 
               | DPolicy pol =>
                 let
