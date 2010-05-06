@@ -1,4 +1,11 @@
 ========
+20100506
+========
+
+- New experimental checker for information flow and access control policies
+  (See demo at http://www.impredicative.com/ur/scdv/)
+
+========
 20100401
 ========
 
