@@ -242,7 +242,7 @@ structure Cc :> sig
 
     val p_database : database Print.printer
 
-    val builtFrom : database * {UseKnown : bool, Base : exp list, Derived : exp} -> bool
+    val builtFrom : database * {Base : exp list, Derived : exp} -> bool
 
     val p_repOf : database -> exp Print.printer
 end = struct
@@ -704,9 +704,11 @@ fun assert (db, a) =
                                             raise Contradiction
                       | Nothing =>
                         let
+                            val cons = ref SM.empty
+
                             val r'' = ref (Node {Id = nodeId (),
                                                  Rep = ref NONE,
-                                                 Cons = ref SM.empty,
+                                                 Cons = cons,
                                                  Variety = Nothing,
                                                  Known = ref (!(#Known (unNode r))),
                                                  Ge = ref NONE})
@@ -718,6 +720,7 @@ fun assert (db, a) =
                                                 Known = #Known (unNode r),
                                                 Ge = ref NONE})
                         in
+                            cons := SM.insert (!cons, f, r');
                             #Rep (unNode r) := SOME r'
                         end
                       | _ => raise Contradiction
@@ -788,7 +791,7 @@ fun check (db, a) =
            | _ => false)
     handle Undetermined => false
 
-fun builtFrom (db, {UseKnown = uk, Base = bs, Derived = d}) =
+fun builtFrom (db, {Base = bs, Derived = d}) =
     let
         val bs = map (fn b => representative (db, b)) bs
 
@@ -796,7 +799,7 @@ fun builtFrom (db, {UseKnown = uk, Base = bs, Derived = d}) =
             let
                 val d = repOf d
             in
-                (uk andalso !(#Known (unNode d)))
+                !(#Known (unNode d))
                 orelse List.exists (fn b => repOf b = d) bs
                 orelse (case #Variety (unNode d) of
                             Dt0 _ => true
@@ -804,6 +807,8 @@ fun builtFrom (db, {UseKnown = uk, Base = bs, Derived = d}) =
                           | Prim _ => true
                           | Recrd (xes, _) => List.all loop (SM.listItems (!xes))
                           | Nothing => false)
+                orelse List.exists (fn r => List.exists (fn b => repOf b = repOf r) bs)
+                                   (SM.listItems (!(#Cons (unNode d))))
             end
 
         fun decomp e =
@@ -980,6 +985,7 @@ datatype sqexp =
        | Inj of Mono.exp
        | SqFunc of string * sqexp
        | Unmodeled
+       | Null
 
 fun cmp s r = wrap (const s) (fn () => Exps (fn (e1, e2) => Reln (r, [e1, e2])))
 
@@ -1067,6 +1073,7 @@ fun sqexp chs =
     (altL [wrap prim SqConst,
            wrap (const "TRUE") (fn () => SqTrue),
            wrap (const "FALSE") (fn () => SqFalse),
+           wrap (const "NULL") (fn () => Null),
            wrap field Field,
            wrap uw_ident Computed,
            wrap known SqKnown,
@@ -1219,7 +1226,7 @@ structure St :> sig
     val addPath : check -> unit
 
     val allowSend : atom list * exp list -> unit
-    val send : bool -> check -> unit
+    val send : check -> unit
 
     val allowInsert : atom list -> unit
     val insert : ErrorMsg.span -> unit
@@ -1404,14 +1411,20 @@ fun checkGoals goals k =
         checkGoals goals IM.empty
     end
 
-fun buildable uk (e, loc) =
+fun buildable (e, loc) =
     let
         fun doPols pols acc =
             case pols of
-                [] => ((*Print.prefaces "buildable" [("Base", Print.p_list p_exp acc),
-                                                   ("Derived", p_exp e),
-                                                   ("Hyps", Print.p_list p_atom (#2 (!hyps)))];*)
-                       Cc.builtFrom (db, {UseKnown = uk, Base = acc, Derived = e}))
+                [] =>
+                let
+                    val b = Cc.builtFrom (db, {Base = acc, Derived = e})
+                in
+                    (*Print.prefaces "buildable" [("Base", Print.p_list p_exp acc),
+                                                ("Derived", p_exp e),
+                                                ("Hyps", Print.p_list p_atom (#2 (!hyps))),
+                                                ("Good", Print.PD.string (Bool.toString b))];*)
+                    b
+                end
               | (goals, es) :: pols =>
                 checkGoals goals (fn unifs => doPols pols (map (simplify unifs) es @ acc))
                 orelse doPols pols acc
@@ -1424,8 +1437,8 @@ fun buildable uk (e, loc) =
             in
                 ErrorMsg.errorAt loc "The information flow policy may be violated here.";
                 Print.prefaces "Situation" [("User learns", p_exp e),
-                                            ("Hypotheses", Print.p_list p_atom hs)(*,
-                                            ("E-graph", Cc.p_database db)*)]
+                                            ("Hypotheses", Print.p_list p_atom hs),
+                                            ("E-graph", Cc.p_database db)]
             end
     end
 
@@ -1440,7 +1453,7 @@ fun checkPaths () =
                   | SOME (hs, e) =>
                     (r := NONE;
                      setHyps hs;
-                     buildable true e)) (!path);
+                     buildable e)) (!path);
         setHyps hs
     end
 
@@ -1448,13 +1461,13 @@ fun allowSend v = ((*Print.prefaces "Allow" [("goals", Print.p_list p_atom (#1 v
                                            ("exps", Print.p_list p_exp (#2 v))];*)
                    sendable := v :: !sendable)
 
-fun send uk (e, loc) = ((*Print.preface ("Send", p_exp e);*)
-                        complete ();
-                        checkPaths ();
-                        if isKnown e then
-                            ()
-                        else
-                            buildable uk (e, loc))
+fun send (e, loc) = ((*Print.preface ("Send[" ^ Bool.toString uk ^ "]", p_exp e);*)
+                     complete ();
+                     checkPaths ();
+                     if isKnown e then
+                         ()
+                     else
+                         buildable (e, loc))
 
 fun doable pols (loc : ErrorMsg.span) =
     let
@@ -1571,6 +1584,7 @@ fun expIn rv env rvOf =
                     SqConst p => inl (Const p)
                   | SqTrue => inl (Func (DtCon0 "Basis.bool.True", []))
                   | SqFalse => inl (Func (DtCon0 "Basis.bool.False", []))
+                  | Null => inl (Func (DtCon0 "None", []))
                   | SqNot e =>
                     inr (case expIn e of
                              inl e => Reln (Eq, [e, Func (DtCon0 "Basis.bool.False", [])])
@@ -1646,7 +1660,6 @@ type 'a doQuery = {
      Add : atom -> unit,
      Save : unit -> 'a,
      Restore : 'a -> unit,
-     UsedExp : bool * exp -> unit,
      Cont : queryMode
 }
 
@@ -1691,6 +1704,7 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                     SqConst _ => []
                                   | SqTrue => []
                                   | SqFalse => []
+                                  | Null => []
                                   | SqNot e => usedFields e
                                   | Field (v, f) => [(false, Proj (rvOf v, f))]
                                   | Computed _ => []
@@ -1703,11 +1717,6 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                        | SOME e => [(true, e)])
                                   | SqFunc (_, e) => usedFields e
                                   | Unmodeled => []
-
-                            fun doUsed () = case #Where r of
-                                                NONE => ()
-                                              | SOME e =>
-                                                app (#UsedExp arg) (usedFields e)
 
                             fun normal' () =
                                 case #Cont arg of
@@ -1753,7 +1762,7 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                             fun doWhere final =
                                 (addFrom ();
                                  case #Where r of
-                                     NONE => (doUsed (); final ())
+                                     NONE => final ()
                                    | SOME e =>
                                      let
                                          val p = case expIn e of
@@ -1763,7 +1772,7 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                          val saved = #Save arg ()
                                      in
                                          decomp {Save = #Save arg, Restore = #Restore arg, Add = #Add arg}
-                                                p (fn () => (doUsed (); final ()) handle Cc.Contradiction => ());
+                                                p (fn () => final () handle Cc.Contradiction => ());
                                          #Restore arg saved
                                      end)
                                 handle Cc.Contradiction => ()
@@ -1860,7 +1869,7 @@ fun evalExp env (e as (_, loc)) k =
                                  ();
                              k (Recd []))
                           | e :: es =>
-                            evalExp env e (fn e => (St.send true (e, loc); doArgs es))
+                            evalExp env e (fn e => (St.send (e, loc); doArgs es))
                 in
                     doArgs es
                 end
@@ -1972,7 +1981,7 @@ fun evalExp env (e as (_, loc)) k =
             evalExp env e (fn e =>
                               if List.all (fn (_, (EWrite (EPrim _, _), _)) => true
                                             | _ => false) pes then
-                                  (St.send true (e, loc);
+                                  (St.send (e, loc);
                                    k (Recd []))
                               else
                                   (St.addPath (e, loc);
@@ -1992,16 +2001,16 @@ fun evalExp env (e as (_, loc)) k =
             evalExp env e1 (fn e1 =>
                 evalExp env e2 (fn e2 =>
                                    k (Func (Other "cat", [e1, e2]))))
-          | EError (e, _) => evalExp env e (fn e => St.send true (e, loc))
+          | EError (e, _) => evalExp env e (fn e => St.send (e, loc))
           | EReturnBlob {blob = b, mimeType = m, ...} =>
             evalExp env b (fn b =>
-                              (St.send true (b, loc);
+                              (St.send (b, loc);
                                evalExp env m
-                               (fn m => St.send true (m, loc))))
+                               (fn m => St.send (m, loc))))
           | ERedirect (e, _) =>
-            evalExp env e (fn e => St.send true (e, loc))
+            evalExp env e (fn e => St.send (e, loc))
           | EWrite e =>
-            evalExp env e (fn e => (St.send true (e, loc);
+            evalExp env e (fn e => (St.send (e, loc);
                                     k (Recd [])))
           | ESeq (e1, e2) =>
             let
@@ -2067,7 +2076,6 @@ fun evalExp env (e as (_, loc)) k =
                                            Add = fn a => St.assert [a],
                                            Save = St.stash,
                                            Restore = St.reinstate,
-                                           UsedExp = fn (b, e) => St.send b (e, loc),
                                            Cont = AllCols (fn x =>
                                                               (St.assert [AReln (Eq, [r, x])];
                                                                evalExp (acc :: r :: env) b k))} q
@@ -2440,7 +2448,6 @@ fun check file =
                                          Add = fn a => atoms := a :: !atoms,
                                          Save = fn () => !atoms,
                                          Restore = fn ls => atoms := ls,
-                                         UsedExp = fn _ => (),
                                          Cont = SomeCol (fn r => k (rev (!atoms), r))}
 
                     fun untab (tab, nams) = List.filter (fn AReln (Sql tab', [Lvar lv]) =>
