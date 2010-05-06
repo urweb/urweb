@@ -75,6 +75,7 @@ type ('src, 'dst) transform = {
 }
 
 val debug = ref false
+val doIflow = ref false
 
 fun transform (ph : ('src, 'dst) phase) name = {
     func = fn input => let
@@ -1071,12 +1072,19 @@ val toMono_shake = transform mono_shake "mono_shake1" o toMono_reduce
 
 val toMono_opt2 = transform mono_opt "mono_opt2" o toMono_shake
 
+val iflow = {
+    func = (fn file => (if !doIflow then Iflow.check file else (); file)),
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toIflow = transform iflow "iflow" o toMono_opt2
+
 val jscomp = {
     func = JsComp.process,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toJscomp = transform jscomp "jscomp" o toMono_opt2
+val toJscomp = transform jscomp "jscomp" o toIflow
 
 val toMono_opt3 = transform mono_opt "mono_opt3" o toJscomp
 

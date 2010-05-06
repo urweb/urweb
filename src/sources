@@ -169,14 +169,17 @@ untangle.sml
 mono_shake.sig
 mono_shake.sml
 
+fuse.sig
+fuse.sml
+
+iflow.sig
+iflow.sml
+
 jscomp.sig
 jscomp.sml
 
 pathcheck.sig
 pathcheck.sml
-
-fuse.sig
-fuse.sml
 
 cjr.sml
 

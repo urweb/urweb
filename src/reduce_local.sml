@@ -252,6 +252,7 @@ fun reduce file =
               | DCookie _ => d
               | DStyle _ => d
               | DTask (e1, e2) => (DTask (exp [] e1, exp [] e2), loc)
+              | DPolicy e1 => (DPolicy (exp [] e1), loc)
     in
         map doDecl file
     end

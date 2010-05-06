@@ -534,6 +534,28 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                         S.map2 (mfe ctx e2,
                              fn e2' =>
                                 (DTask (e1', e2'), loc)))
+              | DPolicy pol =>
+                S.map2 (mfpol ctx pol,
+                     fn p' =>
+                        (DPolicy p', loc))
+
+        and mfpol ctx pol =
+            case pol of
+                PolClient e =>
+                S.map2 (mfe ctx e,
+                        PolClient)
+              | PolInsert e =>
+                S.map2 (mfe ctx e,
+                        PolInsert)
+              | PolDelete e =>
+                S.map2 (mfe ctx e,
+                        PolDelete)
+              | PolUpdate e =>
+                S.map2 (mfe ctx e,
+                        PolUpdate)
+              | PolSequence e =>
+                S.map2 (mfe ctx e,
+                        PolSequence)
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mft t,
@@ -621,6 +643,7 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DCookie _ => ctx
                                       | DStyle _ => ctx
                                       | DTask _ => ctx
+                                      | DPolicy _ => ctx
                             in
                                 S.map2 (mff ctx' ds',
                                      fn ds' =>
@@ -674,7 +697,8 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DJavaScript _ => count
                           | DCookie _ => count
                           | DStyle _ => count
-                          | DTask _ => count) 0
+                          | DTask _ => count
+                          | DPolicy _ => count) 0
 
 end
 

@@ -423,6 +423,7 @@ fun unnest file =
                   | DCookie _ => default ()
                   | DStyle _ => default ()
                   | DTask _ => explore ()
+                  | DPolicy _ => explore ()
             end
 
         and doStr (all as (str, loc), st) =

@@ -344,6 +344,7 @@ fun declBinds env (d, loc) =
             pushENamed env x n t
         end
       | DTask _ => env
+      | DPolicy _ => env
 
 fun sgiBinds env (sgi, loc) =
     case sgi of

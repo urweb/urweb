@@ -83,7 +83,21 @@ val effectfulBase = basis ["dml",
                            "set_cookie",
                            "clear_cookie",
                            "new_channel",
-                           "send"]
+                           "send",
+                           "htmlifyInt_w",
+                           "htmlifyFloat_w",
+                           "htmlifyString_w",
+                           "htmlifyBool_w",
+                           "htmlifyTime_w",
+                           "attrifyInt_w",
+                           "attrifyFloat_w",
+                           "attrifyString_w",
+                           "attrifyChar_w",
+                           "urlifyInt_w",
+                           "urlifyFloat_w",
+                           "urlifyString_w",
+                           "urlifyBool_w",
+                           "urlifyChannel_w"]
 
 val effectful = ref effectfulBase
 fun setEffectful ls = effectful := S.addList (effectfulBase, ls)
@@ -101,7 +115,8 @@ val benignBase = basis ["get_cookie",
                         "onDisconnect",
                         "onServerError",
                         "kc",
-                        "debug"]
+                        "debug",
+                        "rand"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)

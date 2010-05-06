@@ -498,6 +498,7 @@ val sql_ufunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_ufunc dom ran -> sql_exp tables agg exps dom
                 -> sql_exp tables agg exps ran
 val sql_octet_length : sql_ufunc blob int
+val sql_known : t ::: Type -> sql_ufunc t bool
 
 
 val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
@@ -795,4 +796,30 @@ type task_kind
 val initialize : task_kind
 
 
+(** Information flow security *)
+
+type sql_policy
+
+val sendClient : tables ::: {{Type}} -> exps ::: {Type}
+                 -> [tables ~ exps] => sql_query [] tables exps
+                 -> sql_policy
+
+val sendOwnIds : sql_sequence -> sql_policy
+
+val mayInsert : fs ::: {Type} -> tables ::: {{Type}} -> [[New] ~ tables]
+                => sql_query [] ([New = fs] ++ tables) []
+                -> sql_policy
+
+val mayDelete : fs ::: {Type} -> tables ::: {{Type}} -> [[Old] ~ tables]
+                => sql_query [] ([Old = fs] ++ tables) []
+                -> sql_policy
+
+val mayUpdate : fs ::: {Type} -> tables ::: {{Type}} -> [[Old, New] ~ tables]
+                => sql_query [] ([Old = fs, New = fs] ++ tables) []
+                -> sql_policy
+
+val also : sql_policy -> sql_policy -> sql_policy
+
 val debug : string -> transaction unit
+
+val rand : transaction int

@@ -77,7 +77,7 @@ fun impure (e, _) =
       | EDml _ => true
       | ENextval _ => true
       | ESetval _ => true
-      | EUnurlify _ => true
+      | EUnurlify _ => false
       | EAbs _ => false
 
       | EPrim _ => false
@@ -193,6 +193,12 @@ fun match (env, p : pat, e : exp) =
         else
             No
 
+      | (PPrim (Prim.String s), EStrcat (_, (EPrim (Prim.String s'), _))) =>
+        if String.isSuffix s' s then
+            Maybe
+        else
+            No
+
       | (PPrim p, EPrim p') =>
         if Prim.equal (p, p') then
             Yes env
@@ -251,8 +257,11 @@ datatype event =
          WritePage
        | ReadDb
        | WriteDb
+       | ReadCookie
+       | WriteCookie
        | UseRel
        | Unsure
+       | Abort
 
 fun p_event e =
     let
@@ -262,8 +271,11 @@ fun p_event e =
             WritePage => string "WritePage"
           | ReadDb => string "ReadDb"
           | WriteDb => string "WriteDb"
+          | ReadCookie => string "ReadCookie"
+          | WriteCookie => string "WriteCookie"
           | UseRel => string "UseRel"
           | Unsure => string "Unsure"
+          | Abort => string "Abort"
     end
 
 val p_events = Print.p_list p_event
@@ -371,6 +383,8 @@ fun reduce file =
                       | ENone _ => []
                       | ESome (_, e) => summarize d e
                       | EFfi _ => []
+                      | EFfiApp ("Basis", "get_cookie", [e]) =>
+                        summarize d e @ [ReadCookie]
                       | EFfiApp (m, x, es) =>
                         if Settings.isEffectful (m, x) orelse Settings.isBenignEffectful (m, x) then
                             List.concat (map (summarize d) es) @ [Unsure]
@@ -417,23 +431,26 @@ fun reduce file =
                       | ERecord xets => List.concat (map (summarize d o #2) xets)
                       | EField (e, _) => summarize d e
 
-                      | ECase (e, pes, _) => summarize d e @ [Unsure]
-                        (*let
+                      | ECase (e, pes, _) =>
+                        let
                             val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
                         in
                             case lss of
                                 [] => raise Fail "Empty pattern match"
                               | ls :: lss =>
-                                if List.all (fn ls' => ls' = ls) lss then
-                                    summarize d e @ ls
-                                else
-                                    [Unsure]
-                        end*)
+                                summarize d e
+                                @ (if List.all (fn ls' => ls' = ls) lss then
+                                       ls
+                                   else if length (List.filter (not o List.null) (ls :: lss)) <= 1 then
+                                       valOf (List.find (not o List.null) (ls :: lss))
+                                   else
+                                       [Unsure])
+                        end
                       | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
 
-                      | EError (e, _) => summarize d e @ [Unsure]
-                      | EReturnBlob {blob = e1, mimeType = e2, ...} => summarize d e1 @ summarize d e2 @ [Unsure]
-                      | ERedirect (e, _) => summarize d e @ [Unsure]
+                      | EError (e, _) => summarize d e @ [Abort]
+                      | EReturnBlob {blob = e1, mimeType = e2, ...} => summarize d e1 @ summarize d e2 @ [Abort]
+                      | ERedirect (e, _) => summarize d e @ [Abort]
 
                       | EWrite e => summarize d e @ [WritePage]
                                     
@@ -517,6 +534,8 @@ fun reduce file =
                                 val writesPage = does WritePage
                                 val readsDb = does ReadDb
                                 val writesDb = does WriteDb
+                                val readsCookie = does ReadCookie
+                                val writesCookie = does ReadCookie
 
                                 fun verifyUnused eff =
                                     case eff of
@@ -533,6 +552,10 @@ fun reduce file =
                                           | WritePage => not writesPage andalso verifyCompatible effs
                                           | ReadDb => not writesDb andalso verifyCompatible effs
                                           | WriteDb => not writesDb andalso not readsDb andalso verifyCompatible effs
+                                          | ReadCookie => not writesCookie andalso verifyCompatible effs
+                                          | WriteCookie => not writesCookie andalso not readsCookie
+                                                           andalso verifyCompatible effs
+                                          | Abort => true
                             in
                                 (*Print.prefaces "verifyCompatible"
                                                  [("e'", MonoPrint.p_exp env e'),

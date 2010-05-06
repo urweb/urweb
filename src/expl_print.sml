@@ -720,6 +720,9 @@ fun p_decl env (dAll as (d, _) : decl) =
                                string "=",
                                space,
                                p_exp env e2]
+      | DPolicy e1 => box [string "policy",
+                           space,
+                           p_exp env e1]
 
 and p_str env (str, _) =
     case str of

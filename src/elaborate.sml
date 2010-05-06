@@ -2237,14 +2237,21 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
       | L.SgiTable (x, c, pe, ce) =>
         let
             val cstK = (L'.KRecord (L'.KRecord (L'.KUnit, loc), loc), loc)
-            val x' = x ^ "_hidden_constraints"
-            val (env', hidden_n) = E.pushCNamed env x' cstK NONE
-            val hidden = (L'.CNamed hidden_n, loc)
 
             val (c', ck, gs') = elabCon (env, denv) c
             val pkey = cunif (loc, cstK)
             val visible = cunif (loc, cstK)
-            val uniques = (L'.CConcat (visible, hidden), loc)
+            val (env', ds, uniques) =
+                case (#1 pe, #1 ce) of
+                    (L.EVar (["Basis"], "no_primary_key", _), L.EVar (["Basis"], "no_constraint", _)) =>
+                    let
+                        val x' = x ^ "_hidden_constraints"
+                        val (env', hidden_n) = E.pushCNamed env x' cstK NONE
+                        val hidden = (L'.CNamed hidden_n, loc)
+                    in
+                        (env', [(L'.SgiConAbs (x', hidden_n, cstK), loc)], (L'.CConcat (visible, hidden), loc))
+                    end
+                  | _ => (env, [], visible)
 
             val ct = tableOf ()
             val ct = (L'.CApp (ct, c'), loc)
@@ -2272,8 +2279,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
             checkCon env' pe' pet pst;
             checkCon env' ce' cet cst;
 
-            ([(L'.SgiConAbs (x', hidden_n, cstK), loc),
-              (L'.SgiVal (x, n, ct), loc)], (env', denv, gs''' @ gs'' @ gs' @ gs))
+            (ds @ [(L'.SgiVal (x, n, ct), loc)], (env', denv, gs''' @ gs'' @ gs' @ gs))
         end
 
       | L.SgiStr (x, sgn) =>
@@ -2595,6 +2601,7 @@ and sgiOfDecl (d, loc) =
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
       | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
       | L'.DTask _ => []
+      | L'.DPolicy _ => []
 
 and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
@@ -3728,6 +3735,15 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     checkCon env e1' t1 t1';
                     checkCon env e2' t2 t2';
                     ([(L'.DTask (e1', e2'), loc)], (env, denv, gs2 @ gs1 @ gs))
+                end
+              | L.DPolicy e1 =>
+                let
+                    val (e1', t1, gs1) = elabExp (env, denv) e1
+
+                    val t1' = (L'.CModProj (!basis_r, [], "sql_policy"), loc)
+                in
+                    checkCon env e1' t1 t1';
+                    ([(L'.DPolicy e1', loc)], (env, denv, gs1 @ gs))
                 end
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
