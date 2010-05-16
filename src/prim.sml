@@ -74,14 +74,12 @@ fun pad (n, ch, s) =
     else
         str ch ^ pad (n-1, ch, s)
 
-val gccify = String.toCString
-
 fun p_t_GCC t =
     case t of
         Int n => string (int2s n)
       | Float n => string (float2s n)
-      | String s => box [string "\"", string (gccify s), string "\""]
-      | Char ch => box [string "'", string (gccify (str ch)), string "'"]
+      | String s => box [string "\"", string (String.toCString s), string "\""]
+      | Char ch => box [string "'", string (Char.toCString ch), string "'"]
 
 fun equal x =
     case x of

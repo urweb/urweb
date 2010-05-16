@@ -79,7 +79,7 @@ fun p_typ' par env (t, loc) =
       | TDatatype (Enum, n, _) =>
         (box [string "enum",
               space,
-              string ("__uwe_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n)]
+              string ("__uwe_" ^ ident (#1 (E.lookupDatatype env n)) ^ "_" ^ Int.toString n)]
          handle CjrEnv.UnboundNamed _ => string ("__uwd_UNBOUND__" ^ Int.toString n))
       | TDatatype (Option, n, xncs) =>
         (case ListUtil.search #3 (!xncs) of
@@ -93,7 +93,7 @@ fun p_typ' par env (t, loc) =
       | TDatatype (Default, n, _) =>
         (box [string "struct",
               space,
-              string ("__uwd_" ^ #1 (E.lookupDatatype env n) ^ "_" ^ Int.toString n ^ "*")]
+              string ("__uwd_" ^ ident (#1 (E.lookupDatatype env n)) ^ "_" ^ Int.toString n ^ "*")]
          handle CjrEnv.UnboundNamed _ => string ("__uwd_UNBOUND__" ^ Int.toString n))
       | TFfi (m, x) => box [string "uw_", p_ident m, string "_", p_ident x]
       | TOption t =>
