@@ -1173,9 +1173,9 @@ fun process file =
                | EJavaScript (m, e') =>
                  (foundJavaScript := true;
                   jsExp m outer (e', st)
-                  handle CantEmbed t => ((*ErrorMsg.errorAt loc "Unable to embed type in JavaScript";*)
-                                         Print.preface ("Can't embed type in JavaScript",
-                                                        MonoPrint.p_typ MonoEnv.empty t);
+                  handle CantEmbed t => ((*ErrorMsg.errorAt loc "Unable to embed type in JavaScript";
+                                         Print.preface ("Type",
+                                                        MonoPrint.p_typ MonoEnv.empty t);*)
                                          (e, st)))
 
                | ESignalReturn e =>

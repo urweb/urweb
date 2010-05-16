@@ -66,10 +66,10 @@ val nada = ([], [])
 val block = ([Block], [OBlock, Width, Height])
 val inline = ([], [NonReplacedInline])
 val list = ([Block, List], [OBlock, Width, Height])
-val replaced = ([], [ ReplacedInline, Width, Height])
+val replaced = ([], [ReplacedInline, Width, Height])
 val table = ([Block, Table], [OBlock, OTable, Width, Height])
-val tr = ([Block], [OBlock, Tr, Width])
-val td = ([Block, Td], [OBlock, OTd, Height])
+val tr = ([Block], [OBlock, Tr, Height])
+val td = ([Block, Td], [OBlock, OTd, Width])
 
 val tags = [("span", inline),
             ("div", block),
