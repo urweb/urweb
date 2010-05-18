@@ -1,4 +1,11 @@
 ========
+Next
+========
+
+- Changed URL escaping convention, to avoid confusing proxies.
+  The new convention is like the normal one, but with '.' instead of '%'.
+
+========
 20100506
 ========
 

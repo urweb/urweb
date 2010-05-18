@@ -1687,7 +1687,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
     else if (isalnum(c))
       *p++ = c;
     else {
-      sprintf(p, "%%%02X", c);
+      sprintf(p, ".%02X", c);
       p += 3;
     }
   }
@@ -1764,7 +1764,7 @@ uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
     else if (isalnum(c))
       uw_writec_unsafe(ctx, c);
     else {
-      sprintf(ctx->page.front, "%%%02X", c);
+      sprintf(ctx->page.front, ".%02X", c);
       ctx->page.front += 3;
     }
   }
@@ -1822,7 +1822,7 @@ static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char
   if (!fromClient) {
     if (*s2 == '_')
       ++s2;
-    else if (s2[0] == '%' && s2[1] == '5' && (s2[2] == 'f' || s2[2] == 'F'))
+    else if ((s2[0] == '%' || s2[0] == '.') && s2[1] == '5' && (s2[2] == 'f' || s2[2] == 'F'))
       s2 += 3;
   }
 
@@ -1843,6 +1843,18 @@ static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char
       *s1 = n;
       s2 += 2;
       break;
+    case '.':
+      if (!fromClient) {
+        if (s2[1] == 0)
+          uw_error(ctx, FATAL, "Missing first character of escaped URL byte");
+        if (s2[2] == 0)
+          uw_error(ctx, FATAL, "Missing second character of escaped URL byte");
+        if (sscanf(s2+1, "%02X", &n) != 1)
+          uw_error(ctx, FATAL, "Invalid escaped URL byte starting at: %s", s2);
+        *s1 = n;
+        s2 += 2;
+        break;
+      }
     default:
       *s1 = c;
     }

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -86,7 +86,7 @@ fun urlifyString s =
                              | ch => if Char.isAlphaNum ch then
                                          str ch
                                      else
-                                         "%" ^ hexIt ch) s
+                                         "." ^ hexIt ch) s
 
 
 fun sqlifyInt n = #p_cast (Settings.currentDbms ()) (attrifyInt n, Settings.Int)
