@@ -565,7 +565,8 @@ fun process file =
                                                 val (e, st) = jsExp mode [] (e, st)
                                                 val e = deStrcat 0 e
                                                 
-                                                val sc = "urfuncs[" ^ Int.toString n ^ "] = " ^ e ^ ";\n"
+                                                val sc = "urfuncs[" ^ Int.toString n ^ "] = {c:\"t\",f:function(){return "
+                                                         ^ e ^ "}};\n"
                                             in
                                                 (*Print.prefaces "jsify'" [("old", MonoPrint.p_exp MonoEnv.empty old),
                                                                          ("new", MonoPrint.p_exp MonoEnv.empty new)];*)
