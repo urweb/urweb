@@ -4,6 +4,9 @@ Next
 
 - Changed URL escaping convention, to avoid confusing proxies.
   The new convention is like the normal one, but with '.' instead of '%'.
+- Changed JavaScript compilation of recursive functions to use thunks.
+  This change avoids most costs of functions not referenced on particular
+  pages, reducing loading time dramatically.
 
 ========
 20100506
