@@ -68,6 +68,7 @@ install-exec-local:
 	mkdir -p $(LIB_JS)
 	cp lib/js/*.js $(LIB_JS)/
 	mkdir -p $(INCLUDE)
+	cp config.h $(INCLUDE)/
 	cp include/*.h $(INCLUDE)/
 	mkdir -p $(SITELISP)
 	cp src/elisp/*.el $(SITELISP)/

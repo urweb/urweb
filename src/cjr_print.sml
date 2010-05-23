@@ -2780,14 +2780,25 @@ fun p_file env (ds, ps) =
                  newline]
 
         val initializers = List.mapPartial (fn (DTask (Initialize, e), _) => SOME e | _ => NONE) ds
+
+        val now = Time.now ()
+        val nowD = Date.fromTimeUniv now
+        val rfcFmt = "%a, %d %b %Y %H:%M:%S"
     in
-        box [string "#include <stdio.h>",
+        box [string "#include \"",
+             string (OS.Path.joinDirFile {dir = Config.includ,
+                                          file = "config.h"}),
+             string "\"",
+             newline,
+             string "#include <stdio.h>",
              newline,
              string "#include <stdlib.h>",
              newline,
              string "#include <string.h>",
              newline,
              string "#include <math.h>",
+             newline,
+             string "#include <time.h>",
              newline,
              if hasDb then
                  box [string ("#include <" ^ #header (Settings.currentDbms ()) ^ ">"),
@@ -2875,7 +2886,22 @@ fun p_file env (ds, ps) =
                                           file = "app.js"}),
              string "\")) {",
              newline,
-             box [string "uw_write_header(ctx, \"Content-type: text/javascript\\r\\n\");",
+             box [string "uw_Basis_string ims = uw_Basis_requestHeader(ctx, \"If-modified-since\");",
+                  newline,
+                  string ("if (ims && !strcmp(ims, \"" ^ Date.fmt rfcFmt nowD ^ "\")) {"),
+                  newline,
+                  box [string "uw_clear_headers(ctx);",
+                       newline,
+                       string "uw_write_header(ctx, \"HTTP/1.1 304 Not Modified\\r\\n\");",
+                       newline,
+                       string "return;",
+                       newline],
+                  string "}",
+                  newline,
+                  newline,
+                  string "uw_write_header(ctx, \"Content-type: text/javascript\\r\\n\");",
+                  newline,
+                  string ("uw_write_header(ctx, \"Last-modified: " ^ Date.fmt rfcFmt nowD ^ "\\r\\n\");"),
                   newline,
                   string "uw_write(ctx, jslib);",
                   newline,

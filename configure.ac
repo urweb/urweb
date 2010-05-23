@@ -4,6 +4,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign no-define])
 AC_PROG_CC()
 AC_PROG_LIBTOOL()
 AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_HEADERS([config.h])
 
 AC_CHECK_LIB(mhash, mhash_get_block_size, [], [echo "You must install libmhash."; exit 1])
 AC_CHECK_HEADER([mhash.h], [], [echo "You must install libmhash dev files."; exit 1])
