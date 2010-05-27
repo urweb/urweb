@@ -184,6 +184,26 @@ fun patType loc (p : pat) =
         PAnnot (_, t) => t
       | _ => (CWild (KType, loc), loc)
 
+fun tnamesOf (e, _) =
+    case e of
+        EApp (e1, e2) => tnamesOf e1 @ tnamesOf e2
+      | ECApp (e, c as (CName _, _)) =>
+        let
+            fun isFt (e, _) =
+                case e of
+                    EVar (["Basis"], "sql_from_table", _) => true
+                  | EVar ([], "sql_from_table", _) => true
+                  | ECApp (e, _) => isFt e
+                  | EApp (e, _) => isFt e
+                  | EDisjointApp e => isFt e
+                  | _ => false
+        in
+            (if isFt e then [c] else []) @ tnamesOf e
+        end
+      | ECApp (e, _) => tnamesOf e
+      | EDisjointApp e => tnamesOf e
+      | _ => []
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -1540,7 +1560,7 @@ tables : fitem                          (fitem)
                                          end)
 
 fitem  : table'                         ([#1 table'], #2 table')
-       | LBRACE LBRACE eexp RBRACE RBRACE ([], eexp)
+       | LBRACE LBRACE eexp RBRACE RBRACE (tnamesOf eexp, eexp)
        | fitem JOIN fitem ON sqlexp     (let
                                              val loc = s (fitem1left, sqlexpright)
                                                        

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -84,6 +84,12 @@ fun shake file =
                         val (usedE, usedC) = usedVars (usedE, usedC) ce
                     in
                         (usedE, usedC)
+                    end
+                  | ((DView (_, _, _, e, c), _), (usedE, usedC)) =>
+                    let
+                        val usedC = usedVarsC usedC c
+                    in
+                        usedVars (usedE, usedC) e
                     end
                   | ((DTask (e1, e2), _), st) =>
                     if !sliceDb then

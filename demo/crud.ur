@@ -167,7 +167,7 @@ functor Make(M : sig
               
               <form><submit action={delete} value="I was born sure!"/></form>
             </body></xml>
-        end    
+        end
 
     and main () =
         ls <- list ();
