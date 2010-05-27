@@ -1900,7 +1900,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                       {disc = s,
                                                        result = s}), loc),
                                            (L'.ECase (gf "Where",
-                                                      [((L'.PPrim (Prim.String "TRUE"), loc),
+                                                      [((L'.PPrim (Prim.String (#trueString (Settings.currentDbms ()))),
+                                                         loc),
                                                         sc ""),
                                                        ((L'.PWild, loc),
                                                         strcat [sc " WHERE ", gf "Where"])],
@@ -2114,13 +2115,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                            ((L'.PRecord [("2", (L'.PPrim (Prim.String ""), loc), s)], loc),
                                                             (L'.ERel 2, loc)),
                                                            ((L'.PWild, loc),
-                                                            strcat [(L'.EPrim (Prim.String "("), loc),
-                                                                    (L'.ERel 2, loc),
-                                                                    (L'.EPrim (Prim.String " JOIN "), loc),
-                                                                    (L'.ERel 1, loc),
-                                                                    (L'.EPrim (Prim.String " ON "), loc),
-                                                                    (L'.ERel 0, loc),
-                                                                    (L'.EPrim (Prim.String ")"), loc)])],
+                                                            strcat ((if #nestedRelops
+                                                                                      (Settings.currentDbms ()) then
+                                                                                   [(L'.EPrim (Prim.String "("), loc)]
+                                                                               else
+                                                                                   [])
+                                                                    @ [(L'.ERel 2, loc),
+                                                                       (L'.EPrim (Prim.String " JOIN "), loc),
+                                                                       (L'.ERel 1, loc),
+                                                                       (L'.EPrim (Prim.String " ON "), loc),
+                                                                       (L'.ERel 0, loc)]
+                                                                    @ (if #nestedRelops
+                                                                              (Settings.currentDbms ()) then
+                                                                           [(L'.EPrim (Prim.String ")"), loc)]
+                                                                       else
+                                                                           [])))],
                                                           {disc = (L'.TRecord [("1", s), ("2", s)], loc),
                                                            result = s}), loc)), loc)), loc)), loc),
                  fm)
@@ -2144,13 +2153,22 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PWild, loc),
-                                                                      strcat [(L'.EPrim (Prim.String "("), loc),
-                                                                              (L'.ERel 2, loc),
-                                                                              (L'.EPrim (Prim.String " LEFT JOIN "), loc),
-                                                                              (L'.ERel 1, loc),
-                                                                              (L'.EPrim (Prim.String " ON "), loc),
-                                                                              (L'.ERel 0, loc),
-                                                                              (L'.EPrim (Prim.String ")"), loc)])],
+                                                                      strcat ((if #nestedRelops
+                                                                                      (Settings.currentDbms ()) then
+                                                                                   [(L'.EPrim (Prim.String "("), loc)]
+                                                                               else
+                                                                                   [])
+                                                                              @ [(L'.ERel 2, loc),
+                                                                                 (L'.EPrim (Prim.String " LEFT JOIN "),
+                                                                                  loc),
+                                                                                 (L'.ERel 1, loc),
+                                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                                 (L'.ERel 0, loc)]
+                                                                              @ (if #nestedRelops
+                                                                                        (Settings.currentDbms ()) then
+                                                                                     [(L'.EPrim (Prim.String ")"), loc)]
+                                                                                 else
+                                                                                     [])))],
                                                                     {disc = (L'.TRecord [("1", s), ("2", s)], loc),
                                                                      result = s}), loc)), loc)), loc)), loc)), loc),
                  fm)
@@ -2174,13 +2192,22 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PWild, loc),
-                                                                      strcat [(L'.EPrim (Prim.String "("), loc),
-                                                                              (L'.ERel 2, loc),
-                                                                              (L'.EPrim (Prim.String " RIGHT JOIN "), loc),
-                                                                              (L'.ERel 1, loc),
-                                                                              (L'.EPrim (Prim.String " ON "), loc),
-                                                                              (L'.ERel 0, loc),
-                                                                              (L'.EPrim (Prim.String ")"), loc)])],
+                                                                      strcat ((if #nestedRelops
+                                                                                      (Settings.currentDbms ()) then
+                                                                                   [(L'.EPrim (Prim.String "("), loc)]
+                                                                               else
+                                                                                   [])
+                                                                              @ [(L'.ERel 2, loc),
+                                                                                 (L'.EPrim (Prim.String " RIGHT JOIN "),
+                                                                                  loc),
+                                                                                 (L'.ERel 1, loc),
+                                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                                 (L'.ERel 0, loc)]
+                                                                              @ (if #nestedRelops
+                                                                                        (Settings.currentDbms ()) then
+                                                                                     [(L'.EPrim (Prim.String ")"), loc)]
+                                                                                 else
+                                                                                     [])))],
                                                                     {disc = (L'.TRecord [("1", s), ("2", s)], loc),
                                                                      result = s}), loc)), loc)), loc)), loc)), loc),
                  fm)
@@ -2204,13 +2231,22 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PWild, loc),
-                                                                      strcat [(L'.EPrim (Prim.String "("), loc),
-                                                                              (L'.ERel 2, loc),
-                                                                              (L'.EPrim (Prim.String " FULL JOIN "), loc),
-                                                                              (L'.ERel 1, loc),
-                                                                              (L'.EPrim (Prim.String " ON "), loc),
-                                                                              (L'.ERel 0, loc),
-                                                                              (L'.EPrim (Prim.String ")"), loc)])],
+                                                                      strcat ((if #nestedRelops
+                                                                                      (Settings.currentDbms ()) then
+                                                                                   [(L'.EPrim (Prim.String "("), loc)]
+                                                                               else
+                                                                                   [])
+                                                                              @ [(L'.ERel 2, loc),
+                                                                                 (L'.EPrim (Prim.String " FULL JOIN "),
+                                                                                  loc),
+                                                                                 (L'.ERel 1, loc),
+                                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                                 (L'.ERel 0, loc)]
+                                                                              @ (if #nestedRelops
+                                                                                        (Settings.currentDbms ()) then
+                                                                                     [(L'.EPrim (Prim.String ")"), loc)]
+                                                                                 else
+                                                                                     [])))],
                                                                     {disc = (L'.TRecord [("1", s), ("2", s)], loc),
                                                                      result = s}), loc)), loc)), loc)), loc)), loc),
                  fm)

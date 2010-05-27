@@ -169,4 +169,6 @@ signature COMPILER = sig
     val addPath : string * string -> unit
     val addModuleRoot : string * string -> unit
 
+    val moduleOf : string -> string
+
 end

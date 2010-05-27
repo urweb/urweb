@@ -1254,4 +1254,23 @@ fun compiler job =
     else
         OS.Process.exit OS.Process.failure
 
+fun moduleOf fname =
+    let
+        val mrs = !moduleRoots
+        val fname = OS.Path.mkCanonical fname
+    in
+        case List.find (fn (root, _) => String.isPrefix (root ^ "/") fname) mrs of
+            NONE => capitalize (OS.Path.base (OS.Path.file fname))
+          | SOME (root, name) =>
+            let
+                val fname = OS.Path.base fname
+                val fname = String.extract (fname, size root + 1, NONE)
+                val fs = String.fields (fn ch => ch = #"/") fname
+                val fs = List.filter (CharVector.exists (fn ch => not (Char.isDigit ch))) fs
+                val fs = map capitalize fs
+            in
+                String.concatWith "." (name :: fs)
+            end
+    end
+
 end
