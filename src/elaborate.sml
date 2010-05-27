@@ -1654,6 +1654,81 @@ fun findHead e e' =
         findHead e
     end
 
+datatype needed = Needed of {Cons : (L'.kind * L'.con option) SM.map,
+                             Constraints : (E.env * (L'.con * L'.con) * ErrorMsg.span) list,
+                             Vals : SS.set,
+                             Mods : needed SM.map}
+
+fun ncons (Needed r) = #Cons r
+fun nconstraints (Needed r) = #Constraints r
+fun nvals (Needed r) = #Vals r
+fun nmods (Needed r) = #Mods r
+
+val nempty = Needed {Cons = SM.empty,
+                     Constraints = nil,
+                     Vals = SS.empty,
+                     Mods = SM.empty}
+
+fun naddCon (r : needed, k, v) =
+    let
+        val Needed r = r
+    in
+        Needed {Cons = SM.insert (#Cons r, k, v),
+                Constraints = #Constraints r,
+                Vals = #Vals r,
+                Mods = #Mods r}
+    end
+
+fun naddConstraint (r : needed, v) =
+    let
+        val Needed r = r
+    in
+        Needed {Cons = #Cons r,
+                Constraints = v :: #Constraints r,
+                Vals = #Vals r,
+                Mods = #Mods r}
+    end
+
+fun naddVal (r : needed, k) =
+    let
+        val Needed r = r
+    in
+        Needed {Cons = #Cons r,
+                Constraints = #Constraints r,
+                Vals = SS.add (#Vals r, k),
+                Mods = #Mods r}
+    end
+
+fun naddMod (r : needed, k, v) =
+    let
+        val Needed r = r
+    in
+        Needed {Cons = #Cons r,
+                Constraints = #Constraints r,
+                Vals = #Vals r,
+                Mods = SM.insert (#Mods r, k, v)}
+    end
+
+fun ndelCon (r : needed, k) =
+    let
+        val Needed r = r
+    in
+        Needed {Cons = #1 (SM.remove (#Cons r, k)) handle NotFound => #Cons r,
+                Constraints = #Constraints r,
+                Vals = #Vals r,
+                Mods = #Mods r}
+    end
+
+fun ndelVal (r : needed, k) =
+    let
+        val Needed r = r
+    in
+        Needed {Cons = #Cons r,
+                Constraints = #Constraints r,
+                Vals = SS.delete (#Vals r, k) handle NotFound => #Vals r,
+                Mods = #Mods r}
+    end
+
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
         (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)]*)
@@ -3182,96 +3257,106 @@ and wildifyStr env (str, sgn) =
 
                        | _ => NONE
 
-                 val (neededC, constraints, neededV, _) =
-                     foldl (fn ((sgi, loc), (neededC, constraints, neededV, env')) =>
-                               let
-                                   val (needed, constraints, neededV) =
-                                       case sgi of
-                                           L'.SgiCon (x, _, k, c) => (SM.insert (neededC, x, (k, SOME c)),
-                                                                      constraints, neededV)
-                                         | L'.SgiConAbs (x, _, k) => (SM.insert (neededC, x, (k, NONE)), constraints, neededV)
-                                         | L'.SgiConstraint cs => (neededC, (env', cs, loc) :: constraints, neededV)
+                 fun buildNeeded env sgis =
+                     #1 (foldl (fn ((sgi, loc), (nd, env')) =>
+                                   (case sgi of
+                                        L'.SgiCon (x, _, k, c) => naddCon (nd, x, (k, SOME c))
+                                      | L'.SgiConAbs (x, _, k) => naddCon (nd, x, (k, NONE))
+                                      | L'.SgiConstraint cs => naddConstraint (nd, (env', cs, loc))
+                                      | L'.SgiVal (x, _, t) =>
+                                        let
+                                            val t = normClassConstraint env' t
+                                        in
+                                            case #1 t of
+                                                L'.CApp (f, _) =>
+                                                if isClassOrFolder env' f then
+                                                    naddVal (nd, x)
+                                                else
+                                                    nd
+                                              | _ => nd
+                                        end
+                                      | L'.SgiStr (x, _, s) =>
+                                        (case #1 (hnormSgn env s) of
+                                             L'.SgnConst sgis' => naddMod (nd, x, buildNeeded env sgis')
+                                           | _ => nd)
+                                      | _ => nd,
+                                    E.sgiBinds env' (sgi, loc)))
+                               (nempty, env) sgis)
 
-                                         | L'.SgiVal (x, _, t) =>
-                                           let
-                                               fun default () = (neededC, constraints, neededV)
+                 val nd = buildNeeded env sgis
 
-                                               val t = normClassConstraint env' t
-                                           in
-                                               case #1 t of
-                                                   L'.CApp (f, _) =>
-                                                   if isClassOrFolder env' f then
-                                                       (neededC, constraints, SS.add (neededV, x))
-                                                   else
-                                                       default ()
-                                                 | _ => default ()
-                                           end
-
-                                         | _ => (neededC, constraints, neededV)
-                               in
-                                   (needed, constraints, neededV, E.sgiBinds env' (sgi, loc))
-                               end)
-                           (SM.empty, [], SS.empty, env) sgis
-                                                              
-                 val (neededC, neededV) =
-                     foldl (fn ((d, _), needed as (neededC, neededV)) =>
+                 fun removeUsed (nd, ds) =
+                     foldl (fn ((d, _), nd) =>
                                case d of
-                                   L.DCon (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
-                                                        handle NotFound =>
-                                                               needed)
-                                 | L.DClass (x, _, _) => ((#1 (SM.remove (neededC, x)), neededV)
-                                                          handle NotFound => needed)
-                                 | L.DVal (x, _, _) => ((neededC, SS.delete (neededV, x))
-                                                        handle NotFound => needed)
-                                 | L.DOpen _ => (SM.empty, SS.empty)
-                                 | _ => needed)
-                           (neededC, neededV) ds
+                                   L.DCon (x, _, _) => ndelCon (nd, x)
+                                 | L.DClass (x, _, _) => ndelCon (nd, x)
+                                 | L.DVal (x, _, _) => ndelVal (nd, x)
+                                 | L.DOpen _ => nempty
+                                 | L.DStr (x, _, (L.StrConst ds', _)) =>
+                                   (case SM.find (nmods nd, x) of
+                                        NONE => nd
+                                      | SOME nd' => naddMod (nd, x, removeUsed (nd', ds')))
+                                 | _ => nd)
+                           nd ds
 
-                 val ds' = List.mapPartial (fn (env', (c1, c2), loc) =>
-                                               case (decompileCon env' c1, decompileCon env' c2) of
-                                                   (SOME c1, SOME c2) =>
-                                                   SOME (L.DConstraint (c1, c2), loc)
-                                                 | _ => NONE) constraints
+                 val nd = removeUsed (nd, ds)
 
-                 val ds' =
-                     case SS.listItems neededV of
-                         [] => ds'
-                       | xs =>
-                         let
-                             val ewild = (L.EWild, #2 str)
-                             val ds'' = map (fn x => (L.DVal (x, NONE, ewild), #2 str)) xs
-                         in
-                             ds'' @ ds'
-                         end
+                 fun extend (nd, ds) =
+                     let
+                         val ds' = List.mapPartial (fn (env', (c1, c2), loc) =>
+                                                       case (decompileCon env' c1, decompileCon env' c2) of
+                                                           (SOME c1, SOME c2) =>
+                                                           SOME (L.DConstraint (c1, c2), loc)
+                                                         | _ => NONE) (nconstraints nd)
 
-                 val ds' =
-                     case SM.listItemsi neededC of
-                         [] => ds'
-                       | xs =>
-                         let
-                             val ds'' = map (fn (x, (k, co)) =>
-                                                let
-                                                    val k =
-                                                        case decompileKind k of
-                                                            NONE => (L.KWild, #2 str)
-                                                          | SOME k => k
+                         val ds' =
+                             case SS.listItems (nvals nd) of
+                                 [] => ds'
+                               | xs =>
+                                 let
+                                     val ewild = (L.EWild, #2 str)
+                                     val ds'' = map (fn x => (L.DVal (x, NONE, ewild), #2 str)) xs
+                                 in
+                                     ds'' @ ds'
+                                 end
 
-                                                    val cwild = (L.CWild k, #2 str)
-                                                    val c =
-                                                        case co of
-                                                            NONE => cwild
-                                                          | SOME c =>
-                                                            case decompileCon env c of
-                                                                NONE => cwild
-                                                              | SOME c' => c'
-                                                in
-                                                    (L.DCon (x, NONE, c), #2 str)
-                                                end) xs
-                         in
-                             ds'' @ ds'
-                         end
+                         val ds' =
+                             case SM.listItemsi (ncons nd) of
+                                 [] => ds'
+                               | xs =>
+                                 let
+                                     val ds'' = map (fn (x, (k, co)) =>
+                                                        let
+                                                            val k =
+                                                                case decompileKind k of
+                                                                    NONE => (L.KWild, #2 str)
+                                                                  | SOME k => k
+
+                                                            val cwild = (L.CWild k, #2 str)
+                                                            val c =
+                                                                case co of
+                                                                    NONE => cwild
+                                                                  | SOME c =>
+                                                                    case decompileCon env c of
+                                                                        NONE => cwild
+                                                                      | SOME c' => c'
+                                                        in
+                                                            (L.DCon (x, NONE, c), #2 str)
+                                                        end) xs
+                                 in
+                                     ds'' @ ds'
+                                 end
+
+                         val ds = map (fn d as (L.DStr (x, s, (L.StrConst ds', loc')), loc) =>
+                                          (case SM.find (nmods nd, x) of
+                                               NONE => d
+                                             | SOME nd' => (L.DStr (x, s, (L.StrConst (extend (nd', ds')), loc')), loc))
+                                        | d => d) ds
+                     in
+                         ds @ ds'
+                     end
              in
-                 (L.StrConst (ds @ ds'), #2 str)
+                 (L.StrConst (extend (nd, ds)), #2 str)
              end
            | _ => str)
       | _ => str

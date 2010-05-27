@@ -869,9 +869,13 @@ val parse = {
                                       let
                                           val m = (Source.StrVar name, loc)
                                           val final = String.extract (final, size root + 1, NONE)
+                                          val fields = String.fields (fn ch => ch = #"/") final
+                                          val fields = List.filter (fn s => size s = 0
+                                                                            orelse not (Char.isDigit (String.sub (s, 0))))
+                                                                   fields
                                       in
                                           foldl (fn (x, m) => (Source.StrProj (m, capitalize x), loc))
-                                                m (String.fields (fn ch => ch = #"/") final)
+                                                m fields
                                       end
 
                       val ds = dsFfi @ ds
