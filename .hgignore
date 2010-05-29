@@ -54,5 +54,4 @@ syntax: regexp
 ^src/coq/Makefile$
 ^libtool$
 ^config.h$
-^config.h.in$
 ^stamp-h1$
