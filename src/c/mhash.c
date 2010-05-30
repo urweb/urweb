@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <mhash.h>
 #include <fcntl.h>
 
