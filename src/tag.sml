@@ -160,8 +160,7 @@ fun exp env (e, s) =
                        tag), loc),
                       xml), s)
                  end
-               | _ => (ErrorMsg.errorAt loc "Attribute record is too complex";
-                       (e, s)))
+               | _ => (e, s))
 
           | EFfiApp ("Basis", "url", [(ERel 0, _)]) => (e, s)
 
