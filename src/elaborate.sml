@@ -1655,7 +1655,7 @@ fun findHead e e' =
         findHead e
     end
 
-datatype needed = Needed of {Cons : (string option * L'.kind * L'.con option) SM.map,
+datatype needed = Needed of {Cons : (L'.kind * L'.con option) SM.map,
                              Constraints : (E.env * (L'.con * L'.con) * ErrorMsg.span) list,
                              Vals : SS.set,
                              Mods : (E.env * needed) SM.map}
@@ -3274,10 +3274,10 @@ and wildifyStr env (str, sgn) =
                        | _ => NONE
 
                  fun buildNeeded env sgis =
-                     #1 (foldl (fn ((sgi, loc), (nd, env', lastCon)) =>
+                     #1 (foldl (fn ((sgi, loc), (nd, env')) =>
                                    (case sgi of
-                                        L'.SgiCon (x, _, k, c) => naddCon (nd, x, (lastCon, k, SOME c))
-                                      | L'.SgiConAbs (x, _, k) => naddCon (nd, x, (lastCon, k, NONE))
+                                        L'.SgiCon (x, _, k, c) => naddCon (nd, x, (k, SOME c))
+                                      | L'.SgiConAbs (x, _, k) => naddCon (nd, x, (k, NONE))
                                       | L'.SgiConstraint cs => naddConstraint (nd, (env', cs, loc))
                                       | L'.SgiVal (x, _, t) =>
                                         let
@@ -3296,11 +3296,8 @@ and wildifyStr env (str, sgn) =
                                              L'.SgnConst sgis' => naddMod (nd, x, (env', buildNeeded env' sgis'))
                                            | _ => nd)
                                       | _ => nd,
-                                    E.sgiBinds env' (sgi, loc),
-                                    case cname sgi of
-                                        NONE => lastCon
-                                      | v => v))
-                               (nempty, env, NONE) sgis)
+                                    E.sgiBinds env' (sgi, loc)))
+                               (nempty, env) sgis)
 
                  val nd = buildNeeded env sgis
 
@@ -3339,20 +3336,17 @@ and wildifyStr env (str, sgn) =
                                      ds'' @ ds'
                                  end
 
-                         val ds = ds @ ds'
-
-                         val ds =
+                         val ds' =
                              case SM.listItemsi (ncons nd) of
-                                 [] => ds
+                                 [] => ds'
                                | xs =>
-                                 let
-                                     fun findPlace ((x, (lastCon, k, co)), ds') =
+                                 map (fn (x, (k, co)) =>
                                          let
                                              val k =
                                                  case decompileKind k of
                                                      NONE => (L.KWild, #2 str)
                                                    | SOME k => k
-
+                                                               
                                              val cwild = (L.CWild k, #2 str)
                                              val c =
                                                  case co of
@@ -3361,28 +3355,11 @@ and wildifyStr env (str, sgn) =
                                                      case decompileCon env c of
                                                          NONE => cwild
                                                        | SOME c' => c'
-
-                                             val d = (L.DCon (x, NONE, c), #2 str)
                                          in
-                                             case lastCon of
-                                                 NONE => d :: ds'
-                                               | _ =>
-                                                 let
-                                                     fun seek (ds'', passed) =
-                                                         case ds'' of
-                                                             [] => d :: ds'
-                                                           | d1 :: ds'' =>
-                                                             if dname d1 = lastCon then
-                                                                 List.revAppend (passed, d1 :: d :: ds'')
-                                                             else
-                                                                 seek (ds'', d1 :: passed)
-                                                 in
-                                                     seek (ds', [])
-                                                 end
-                                         end
-                                 in
-                                     foldl findPlace ds xs
-                                 end
+                                             (L.DCon (x, NONE, c), #2 str)
+                                         end) xs @ ds'
+
+                         val ds = ds @ ds'
                      in
                          map (fn d as (L.DStr (x, s, (L.StrConst ds', loc')), loc) =>
                                  (case SM.find (nmods nd, x) of
@@ -4039,7 +4016,12 @@ and elabStr (env, denv) (str, loc) =
             val str2 =
                 case sgn1 of
                     (L'.SgnFun (_, _, dom, _), _) =>
-                    wildifyStr env (str2, dom)
+                    let
+                        val s = wildifyStr env (str2, dom)
+                    in
+                        (*Print.preface ("Wild", SourcePrint.p_str s);*)
+                        s
+                    end
                   | _ => str2
             val (str2', sgn2, gs2) = elabStr (env, denv) str2
          in
