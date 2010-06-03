@@ -1,5 +1,5 @@
 ========
-Next
+20100603
 ========
 
 - Changed URL escaping convention, to avoid confusing proxies.
@@ -7,6 +7,8 @@ Next
 - Changed JavaScript compilation of recursive functions to use thunks.
   This change avoids most costs of functions not referenced on particular
   pages, reducing loading time dramatically.
+- Support HTTP caching of application-specific JavaScript code
+- Bug fixes
 
 ========
 20100506
