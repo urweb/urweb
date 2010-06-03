@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -204,12 +204,19 @@ fun exp ((ks, ts), e as old, st : state) =
                                   | PRecord xpcs =>
                                     foldl (fn ((_, p, _), ts) => doVars (p, ts))
                                           ts xpcs
+
+                            fun bindOne subs = ((0, (ERel 0, #2 ed))
+                                                :: map (fn (n, e) => (n + 1, E.liftExpInExp 0 e)) subs)
+
+                            fun bindMany (n, subs) =
+                                case n of
+                                    0 => subs
+                                  | _ => bindMany (n - 1, bindOne subs)
                         in
                             ([(EDVal (p, t, e), #2 ed)],
                              (doVars (p, ts),
                               maxName, ds,
-                              ((0, (ERel 0, #2 ed))
-                               :: map (fn (n, e) => (n + 1, E.liftExpInExp 0 e)) subs),
+                              bindMany (E.patBindsN p, subs),
                               by))
                         end
                       | EDValRec vis =>
@@ -310,6 +317,7 @@ fun exp ((ks, ts), e as old, st : state) =
                                                                          let
                                                                              (*val () = print (Int.toString ex ^ "\n")*)
                                                                              val (name, t') = List.nth (ts, ex)
+                                                                             val t' = squishCon cfv t'
                                                                          in
                                                                              ((EAbs (name,
                                                                                      t',
@@ -354,6 +362,8 @@ fun exp ((ks, ts), e as old, st : state) =
             (*Print.prefaces "Before" [("e", ElabPrint.p_exp ElabEnv.empty e),
                                      ("se", ElabPrint.p_exp ElabEnv.empty (doSubst' (e, subs))),
                                      ("e'", ElabPrint.p_exp ElabEnv.empty e')];*)
+            (*Print.prefaces "Let" [("Before", ElabPrint.p_exp ElabEnv.empty (old, ErrorMsg.dummySpan)),
+                                  ("After", ElabPrint.p_exp ElabEnv.empty (ELet (eds, e', t), ErrorMsg.dummySpan))];*)
             (ELet (eds, e', t),
              {maxName = maxName,
               decls = ds})

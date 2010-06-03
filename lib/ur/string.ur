@@ -11,7 +11,15 @@ val suffix = Basis.strsuffix
 val index = Basis.strindex
 val atFirst = Basis.strchr
 
-fun mindex {Haystack = s, Needle = chs} = Basis.strcspn s chs
+fun mindex {Haystack = s, Needle = chs} =
+    let
+        val n = Basis.strcspn s chs
+    in
+        if n >= length s then
+            None
+        else
+            Some n
+    end
 
 fun substring s {Start = start, Len = len} = Basis.substring s start len
 

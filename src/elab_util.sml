@@ -429,8 +429,10 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                                                     | PRecord xps => foldl (fn ((_, p, _), ctx) =>
                                                                                                pb (p, ctx)) ctx xps
                                                           in
-                                                              S.map2 (mfe (pb (p, ctx)) e,
-                                                                   fn e' => (p, e'))
+                                                              S.bind2 (mfp ctx p,
+                                                                       fn p' =>
+                                                                          S.map2 (mfe (pb (p', ctx)) e,
+                                                                               fn e' => (p', e')))
                                                           end) pes,
                                     fn pes' =>
                                        S.bind2 (mfc ctx disc,
@@ -481,6 +483,32 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                            S.map2 (mfk ctx k,
                                    fn k' =>
                                       (EKApp (e', k'), loc)))
+
+        and mfp ctx (pAll as (p, loc)) =
+            case p of
+                PWild => S.return2 pAll
+              | PVar (x, t) =>
+                S.map2 (mfc ctx t,
+                        fn t' =>
+                           (PVar (x, t'), loc))
+              | PPrim _ => S.return2 pAll
+              | PCon (dk, pc, args, po) =>
+                S.bind2 (ListUtil.mapfold (mfc ctx) args,
+                      fn args' =>
+                         S.map2 ((case po of
+                                      NONE => S.return2 NONE
+                                    | SOME p => S.map2 (mfp ctx p, SOME)),
+                              fn po' =>
+                                 (PCon (dk, pc, args', po'), loc)))
+              | PRecord xps =>
+                S.map2 (ListUtil.mapfold (fn (x, p, c) =>
+                                              S.bind2 (mfp ctx p,
+                                                       fn p' =>
+                                                          S.map2 (mfc ctx c,
+                                                                  fn c' =>
+                                                                     (x, p', c')))) xps,
+                         fn xps' =>
+                            (PRecord xps', loc))
 
         and mfed ctx (dAll as (d, loc)) =
             case d of

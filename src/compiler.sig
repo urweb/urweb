@@ -129,10 +129,14 @@ signature COMPILER = sig
     val toTag : (string, Core.file) transform
     val toReduce : (string, Core.file) transform
     val toShakey : (string, Core.file) transform
-    val toUnpoly : (string, Core.file) transform 
-    val toSpecialize : (string, Core.file) transform 
+    val toUnpoly : (string, Core.file) transform
+    val toSpecialize : (string, Core.file) transform
     val toShake4 : (string, Core.file) transform
-    val toEspecialize2 : (string, Core.file) transform 
+    val toEspecialize2 : (string, Core.file) transform
+    val toShake4' : (string, Core.file) transform
+    val toUnpoly2 : (string, Core.file) transform
+    val toShake4'' : (string, Core.file) transform
+    val toEspecialize3 : (string, Core.file) transform
     val toReduce2 : (string, Core.file) transform
     val toShake5 : (string, Core.file) transform
     val toMarshalcheck : (string, Core.file) transform

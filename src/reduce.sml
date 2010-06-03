@@ -65,6 +65,18 @@ val dangling =
                                         CoreUtil.Exp.RelE _ => n + 1
                                       | _ => n}
 
+val cdangling =
+    CoreUtil.Exp.existsB {kind = fn _ => false,
+                          con = fn (n, c) =>
+                                   case c of
+                                       CRel n' => n' >= n
+                                     | _ => false,
+                          exp = fn _ => false,
+                          bind = fn (n, b) =>
+                                    case b of
+                                        CoreUtil.Exp.RelC _ => n + 1
+                                      | _ => n}
+
 datatype env_item =
          UnknownK
        | KnownK of kind
@@ -84,6 +96,15 @@ val edepth = foldl (fn (UnknownE, n) => n + 1
 val edepth' = foldl (fn (UnknownE, n) => n + 1
                       | (KnownE _, n) => n + 1
                       | (Lift (_, _, n'), n) => n + n'
+                      | (_, n) => n) 0
+
+val cdepth = foldl (fn (UnknownC, n) => n + 1
+                     | (KnownC _, n) => n + 1
+                     | (_, n) => n) 0
+
+val cdepth' = foldl (fn (UnknownC, n) => n + 1
+                      | (KnownC _, n) => n + 1
+                      | (Lift (_, n', _), n) => n + n'
                       | (_, n) => n) 0
 
 type env = env_item list
@@ -342,6 +363,11 @@ fun kindConAndExp (namedC, namedE) =
                              (Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),
                                                     ("env", Print.PD.string (e2s env))];
                               raise Fail "!")
+                         else
+                             ()*)
+                (*val () = if cdangling (cdepth env) all then
+                             Print.prefaces "Bad exp" [("e", CorePrint.p_exp CoreEnv.empty all),
+                                                       ("env", Print.PD.string (e2s env))]
                          else
                              ()*)
 
@@ -631,6 +657,12 @@ fun kindConAndExp (namedC, namedE) =
                           | EServerCall (n, es, t) => (EServerCall (n, map (exp env) es, con env t), loc)
             in
                 (*if dangling (edepth' (deKnown env)) r then
+                    (Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),
+                                           ("r", CorePrint.p_exp CoreEnv.empty r)];
+                     raise Fail "!!")
+                else
+                    ();*)
+                (*if cdangling (cdepth' (deKnown env)) r then
                     (Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),
                                            ("r", CorePrint.p_exp CoreEnv.empty r)];
                      raise Fail "!!")

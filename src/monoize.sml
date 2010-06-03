@@ -2737,7 +2737,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                      (L.ECApp (
                       (L.ECApp (
                        (L.EFfi ("Basis", "tag"),
-                        _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                        _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
                class), _),
               attrs), _),
              tag), _),
@@ -2768,7 +2768,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (attrs, fm) = monoExp (env, st, fm) attrs
                 val attrs = case #1 attrs of
                                 L'.ERecord xes => xes
-                              | _ => raise Fail "Non-record attributes!"
+                              | _ => map (fn ((L.CName x, _), t) => (x, (L'.EField (attrs, x), loc), monoType env t)
+                                           | (c, t) => (E.errorAt loc "Non-constant field name for HTML tag attribute";
+                                                        Print.eprefaces' [("Name", CorePrint.p_con env c)];
+                                                        ("", (L'.EField (attrs, ""), loc), monoType env t))) attrsGiven
 
                 val attrs =
                     if List.exists (fn ("Link", _, _) => true

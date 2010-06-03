@@ -252,12 +252,19 @@ fun p_pat' par env (p, _) =
                                                   p_pat' true env p])
       | PRecord xps =>
         box [string "{",
-             p_list_sep (box [string ",", space]) (fn (x, p, _) =>
+             p_list_sep (box [string ",", space]) (fn (x, p, t) =>
                                                       box [string x,
                                                            space,
                                                            string "=",
                                                            space,
-                                                           p_pat env p]) xps,
+                                                           p_pat env p,
+                                                           if !debug then
+                                                               box [space,
+                                                                    string ":",
+                                                                    space,
+                                                                    p_con env t]
+                                                           else
+                                                               box []]) xps,
              string "}"]
 
 and p_pat x = p_pat' false x

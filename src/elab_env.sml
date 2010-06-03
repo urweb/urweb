@@ -1512,6 +1512,15 @@ fun patBinds env (p, loc) =
       | PCon (_, _, _, SOME p) => patBinds env p
       | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
 
+fun patBindsN (p, _) =
+    case p of
+        PWild => 0
+      | PVar _ => 1
+      | PPrim _ => 0
+      | PCon (_, _, _, NONE) => 0
+      | PCon (_, _, _, SOME p) => patBindsN p
+      | PRecord xps => foldl (fn ((_, p, _), n) => patBindsN p + n) 0 xps
+
 fun edeclBinds env (d, loc) =
     case d of
         EDVal (p, _, _) => patBinds env p

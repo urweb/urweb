@@ -118,6 +118,7 @@ signature ELAB_ENV = sig
     val chaseMpath : env -> (int * string list) -> Elab.str * Elab.sgn
 
     val patBinds : env -> Elab.pat -> env
+    val patBindsN : Elab.pat -> int
 
     exception Bad of Elab.con * Elab.con
 

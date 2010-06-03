@@ -79,7 +79,7 @@ val strsub : string -> int -> char
 val strsuffix : string -> int -> string
 val strchr : string -> char -> option string
 val strindex : string -> char -> option int
-val strcspn : string -> string -> option int
+val strcspn : string -> string -> int
 val substring : string -> int -> int -> string
 val str1 : char -> string
 

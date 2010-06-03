@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -278,7 +278,7 @@ fun specialize' (funcs, specialized) file =
                     NONE => default ()
                   | SOME (f, xs) =>
                     case IM.find (#funcs st, f) of
-                        NONE => default ()
+                        NONE => ((*print ("No find: " ^ Int.toString f ^ "\n");*) default ())
                       | SOME {name, args, body, typ, tag} =>
                         let
                             val (xs, st) = ListUtil.foldlMap (fn (e, st) => exp (env, e, st)) st xs
@@ -415,6 +415,8 @@ fun specialize' (funcs, specialized) file =
                                                                              (body', typ') fvs
                                                 val mns = !mayNotSpec
                                                 (*val () = mayNotSpec := SS.add (mns, name)*)
+                                                (*val () = print ("NEW: " ^ name ^ "__" ^ Int.toString f' ^ "\n");*)
+                                                val body' = ReduceLocal.reduceExp body'
                                                 (*val () = Print.preface ("PRE", CorePrint.p_exp CoreEnv.empty body')*)
                                                 val (body', st) = exp (env, body', st)
                                                 val () = mayNotSpec := mns
@@ -424,7 +426,6 @@ fun specialize' (funcs, specialized) file =
                                                                   e' fvs
                                                 val e' = foldl (fn (arg, e) => (EApp (e, arg), loc))
                                                                e' xs
-                                                (*val () = print ("NEW: " ^ name ^ "__" ^ Int.toString f' ^ "\n");*)
                                                 (*val () = Print.prefaces "Brand new"
                                                                         [("e'", CorePrint.p_exp CoreEnv.empty e'),
                                                                          ("e", CorePrint.p_exp CoreEnv.empty e),
