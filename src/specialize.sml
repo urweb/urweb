@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,58 +73,63 @@ val isOpen = U.Con.exists {kind = fn _ => false,
                                       | _ => false}
 
 fun considerSpecialization (st : state, n, args, dt : datatyp) =
-    case CM.find (#specializations dt, args) of
-        SOME dt' => (#name dt', #constructors dt', st)
-      | NONE =>
-        let
-            (*val () = Print.prefaces "Args" [("args", Print.p_list (CorePrint.p_con CoreEnv.empty) args)]*)
+    let
+        val args = map ReduceLocal.reduceCon args
+    in
+        case CM.find (#specializations dt, args) of
+            SOME dt' => (#name dt', #constructors dt', st)
+          | NONE =>
+            let
+                (*val () = Print.prefaces "Args" [("n", Print.PD.string (Int.toString n)),
+                                                ("args", Print.p_list (CorePrint.p_con CoreEnv.empty) args)]*)
 
-            val n' = #count st
+                val n' = #count st
 
-            val nxs = length args - 1
-            fun sub t = ListUtil.foldli (fn (i, arg, t) =>
-                                            subConInCon (nxs - i, arg) t) t args
+                val nxs = length args - 1
+                fun sub t = ListUtil.foldli (fn (i, arg, t) =>
+                                                subConInCon (nxs - i, arg) t) t args
 
-            val (cons, (count, cmap)) =
-                ListUtil.foldlMap (fn ((x, n, to), (count, cmap)) =>
-                                      let
-                                          val to = Option.map sub to
-                                      in
-                                          ((x, count, to),
-                                           (count + 1,
-                                            IM.insert (cmap, n, count)))
-                                      end) (n' + 1, IM.empty) (#constructors dt)
+                val (cons, (count, cmap)) =
+                    ListUtil.foldlMap (fn ((x, n, to), (count, cmap)) =>
+                                          let
+                                              val to = Option.map sub to
+                                          in
+                                              ((x, count, to),
+                                               (count + 1,
+                                                IM.insert (cmap, n, count)))
+                                          end) (n' + 1, IM.empty) (#constructors dt)
 
-            val st = {count = count,
-                      datatypes = IM.insert (#datatypes st, n,
-                                             {name = #name dt,
-                                              params = #params dt,
-                                              constructors = #constructors dt,
-                                              specializations = CM.insert (#specializations dt,
-                                                                           args,
-                                                                           {name = n',
-                                                                            constructors = cmap})}),
-                      constructors = #constructors st,
-                      decls = #decls st}
+                val st = {count = count,
+                          datatypes = IM.insert (#datatypes st, n,
+                                                 {name = #name dt,
+                                                  params = #params dt,
+                                                  constructors = #constructors dt,
+                                                  specializations = CM.insert (#specializations dt,
+                                                                               args,
+                                                                               {name = n',
+                                                                                constructors = cmap})}),
+                          constructors = #constructors st,
+                          decls = #decls st}
 
-            val (cons, st) = ListUtil.foldlMap (fn ((x, n, NONE), st) => ((x, n, NONE), st)
-                                                 | ((x, n, SOME t), st) =>
-                                                   let
-                                                       val (t, st) = specCon st t
-                                                   in
-                                                       ((x, n, SOME t), st)
-                                                   end) st cons
+                val (cons, st) = ListUtil.foldlMap (fn ((x, n, NONE), st) => ((x, n, NONE), st)
+                                                     | ((x, n, SOME t), st) =>
+                                                       let
+                                                           val (t, st) = specCon st t
+                                                       in
+                                                           ((x, n, SOME t), st)
+                                                       end) st cons
 
-            val dt = (#name dt ^ "_s",
-                      n',
-                      [],
-                      cons)
-        in
-            (n', cmap, {count = #count st,
-                        datatypes = #datatypes st,
-                        constructors = #constructors st,
-                        decls = dt :: #decls st})
-        end
+                val dt = (#name dt ^ "_s",
+                          n',
+                          [],
+                          cons)
+            in
+                (n', cmap, {count = #count st,
+                            datatypes = #datatypes st,
+                            constructors = #constructors st,
+                            decls = dt :: #decls st})
+            end
+    end
 
 and con (c, st : state) =
     let

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,5 +31,6 @@ signature REDUCE_LOCAL = sig
 
     val reduce : Core.file -> Core.file
     val reduceExp : Core.exp -> Core.exp
+    val reduceCon : Core.con -> Core.con
     
 end

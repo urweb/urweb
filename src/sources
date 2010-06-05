@@ -113,14 +113,14 @@ reduce.sml
 shake.sig
 shake.sml
 
+reduce_local.sig
+reduce_local.sml
+
 unpoly.sig
 unpoly.sml
 
 specialize.sig
 specialize.sml
-
-reduce_local.sig
-reduce_local.sml
 
 core_untangle.sig
 core_untangle.sml

@@ -383,5 +383,6 @@ fun reduce file =
     end
 
 val reduceExp = exp []
+val reduceCon = con []
 
 end

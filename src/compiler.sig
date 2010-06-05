@@ -134,6 +134,7 @@ signature COMPILER = sig
     val toShake4 : (string, Core.file) transform
     val toEspecialize2 : (string, Core.file) transform
     val toShake4' : (string, Core.file) transform
+    val toSpecialize2 : (string, Core.file) transform
     val toUnpoly2 : (string, Core.file) transform
     val toShake4'' : (string, Core.file) transform
     val toEspecialize3 : (string, Core.file) transform
