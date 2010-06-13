@@ -588,6 +588,7 @@ val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type}
 con xhtml = xml [Html]
 con page = xhtml [] []
 con xbody = xml [Body] [] []
+con xtable = xml [Body, Table] [] []
 con xtr = xml [Body, Tr] [] []
 con xform = xml [Body, Form] [] []
 

@@ -3281,15 +3281,29 @@ and wildifyStr env (str, sgn) =
                                       | L'.SgiConstraint cs => naddConstraint (nd, (env', cs, loc))
                                       | L'.SgiVal (x, _, t) =>
                                         let
-                                            val t = normClassConstraint env' t
+                                            fun should t =
+                                                let
+                                                    val t = normClassConstraint env' t
+                                                in
+                                                    case #1 t of
+                                                        L'.CApp (f, _) => isClassOrFolder env' f
+                                                      | L'.TRecord t =>
+                                                        (case hnormCon env' t of
+                                                             (L'.CApp (f, _), _) =>
+                                                             (case hnormCon env' f of
+                                                                  (L'.CApp (f, cl), loc) =>
+                                                                  (case hnormCon env' f of
+                                                                       (L'.CMap _, _) => isClassOrFolder env' cl
+                                                                     | _ => false)
+                                                                | _ => false)
+                                                           | _ => false)
+                                                      | _ => false
+                                                end
                                          in
-                                            case #1 t of
-                                                L'.CApp (f, _) =>
-                                                if isClassOrFolder env' f then
-                                                    naddVal (nd, x)
-                                                else
-                                                    nd
-                                              | _ => nd
+                                            if should t then
+                                                naddVal (nd, x)
+                                            else
+                                                nd
                                         end
                                       | L'.SgiStr (x, _, s) =>
                                         (case #1 (hnormSgn env' s) of
