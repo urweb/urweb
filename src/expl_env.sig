@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -65,5 +65,7 @@ signature EXPL_ENV = sig
 
     val declBinds : env -> Expl.decl -> env
     val sgiBinds : env -> Expl.sgn_item -> env
+
+    val patBinds : env -> Expl.pat -> env
 
 end

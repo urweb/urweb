@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -422,7 +422,7 @@ fun p_exp' par env (e, loc) =
                                                         space,
                                                         string "=>",
                                                         space,
-                                                        p_exp env e]) pes])
+                                                        p_exp (E.patBinds env p) e]) pes])
 
       | ELet (x, t, e1, e2) => box [string "let",
                                     space,

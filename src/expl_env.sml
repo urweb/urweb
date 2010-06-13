@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -399,5 +399,14 @@ fun sgiBinds env (sgi, loc) =
       | SgiVal (x, n, t) => pushENamed env x n t
       | SgiSgn (x, n, sgn) => pushSgnNamed env x n sgn
       | SgiStr (x, n, sgn) => pushStrNamed env x n sgn
+
+fun patBinds env (p, loc) =
+    case p of
+        PWild => env
+      | PVar (x, t) => pushERel env x t
+      | PPrim _ => env
+      | PCon (_, _, _, NONE) => env
+      | PCon (_, _, _, SOME p) => patBinds env p
+      | PRecord xps => foldl (fn ((_, p, _), env) => patBinds env p) env xps
 
 end

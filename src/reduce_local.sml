@@ -286,12 +286,12 @@ fun exp env (all as (e, loc)) =
       | EKAbs (x, e) => (EKAbs (x, exp env e), loc)
 
       | ERecord xcs => (ERecord (map (fn (x, e, t) => (con env x, exp env e, con env t)) xcs), loc)
-      | EField (e, c, others) =>
+      | EField (e, c, {field = f, rest = r}) =>
         let
             val e = exp env e
             val c = con env c
 
-            fun default () = (EField (e, c, others), loc)
+            fun default () = (EField (e, c, {field = con env f, rest = con env r}), loc)
         in
             case (#1 e, #1 c) of
                 (ERecord xcs, CName x) =>
