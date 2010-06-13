@@ -22,6 +22,8 @@ val mp : a ::: Type -> b ::: Type -> (a -> b) -> t a -> t b
 
 val mapPartial : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> t b
 
+val mapi : a ::: Type -> b ::: Type -> (int -> a -> b) -> t a -> t b
+
 val mapX : a ::: Type -> ctx ::: {Unit} -> (a -> xml ctx [] []) -> t a -> xml ctx [] []
 
 val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type

@@ -101,6 +101,16 @@ fun mp [a] [b] f =
         mp' []
     end
 
+fun mapi [a] [b] f =
+    let
+        fun mp' n acc ls =
+            case ls of
+                [] => rev acc
+              | x :: ls => mp' (n + 1) (f n x :: acc) ls
+    in
+        mp' 0 []
+    end
+
 fun mapPartial [a] [b] f =
     let
         fun mp' acc ls =
