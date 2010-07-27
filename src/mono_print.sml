@@ -429,6 +429,11 @@ fun p_policy env pol =
       | PolSequence e => box [string "sendOwnIds",
                               space,
                               p_exp env e]
+      | PolEqualKnown {table = tab, field = nm} => box [string "equalKnown[",
+                                                        string nm,
+                                                        string "]",
+                                                        space,
+                                                        p_exp env tab]
 
 fun p_decl env (dAll as (d, _) : decl) =
     case d of

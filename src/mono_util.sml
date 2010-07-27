@@ -556,6 +556,9 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
               | PolSequence e =>
                 S.map2 (mfe ctx e,
                         PolSequence)
+              | PolEqualKnown {table = tab, field = nm} =>
+                S.map2 (mfe ctx tab,
+                        fn tab => PolEqualKnown {table = tab, field = nm})
 
         and mfvi ctx (x, n, t, e, s) =
             S.bind2 (mft t,

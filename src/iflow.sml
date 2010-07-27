@@ -1228,6 +1228,9 @@ structure St :> sig
     val allowSend : atom list * exp list -> unit
     val send : check -> unit
 
+    val allowEqualKnown : { table : string, field : string } -> unit
+    val mayTest : prop -> bool
+
     val allowInsert : atom list -> unit
     val insert : ErrorMsg.span -> unit
 
@@ -1506,11 +1509,40 @@ val deletable = ref ([] : atom list list)
 fun allowDelete v = deletable := v :: !deletable
 val delete = doable deletable
 
+val testable = ref ([] : { table : string, field : string } list)
+fun allowEqualKnown v = testable := v :: !testable
+fun mayTest p =
+    case p of
+        Reln (Eq, [e1, e2]) =>
+        let
+            val (_, hs, _) = !hyps
+
+            fun tableInHyps (tab, x) = List.exists (fn AReln (Sql tab', [Var x']) => tab' = tab andalso x' = x
+                                                     | _ => false) hs
+
+            fun allowed (tab, v) =
+                case tab of
+                    Proj (Var tab, fd) =>
+                    List.exists (fn {table = tab', field = fd'} =>
+                                    fd' = fd
+                                    andalso tableInHyps (tab', tab)) (!testable)
+                    andalso Cc.check (db, AReln (Known, [v]))
+                  | _ => false
+        in
+            if allowed (e1, e2) orelse allowed (e2, e1) then
+                (Cc.assert (db, AReln (Eq, [e1, e2]));
+                 true)
+            else
+                false
+        end
+      | _ => false
+
 fun reset () = (Cc.clear db;
                 path := [];
                 hyps := (0, [], ref false);
                 nvar := 0;
                 sendable := [];
+                testable := [];
                 insertable := [];
                 updatable := [];
                 deletable := [])
@@ -1660,7 +1692,8 @@ type 'a doQuery = {
      Add : atom -> unit,
      Save : unit -> 'a,
      Restore : 'a -> unit,
-     Cont : queryMode
+     Cont : queryMode,
+     Send : exp -> unit
 }
 
 fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
@@ -1699,24 +1732,24 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                             val saved = #Save arg ()
                             fun addFrom () = app (fn (t, v) => #Add arg (AReln (Sql t, [rvOf v]))) (#From r)
 
-                            fun usedFields e =
+                            fun leavesE e =
                                 case e of
-                                    SqConst _ => []
-                                  | SqTrue => []
-                                  | SqFalse => []
-                                  | Null => []
-                                  | SqNot e => usedFields e
-                                  | Field (v, f) => [(false, Proj (rvOf v, f))]
-                                  | Computed _ => []
-                                  | Binop (_, e1, e2) => usedFields e1 @ usedFields e2
-                                  | SqKnown _ => []
-                                  | Inj e =>
-                                    (case deinj (#Env arg) e of
-                                         NONE => (ErrorMsg.errorAt loc "Expression injected into SQL is too complicated";
-                                                  [])
-                                       | SOME e => [(true, e)])
-                                  | SqFunc (_, e) => usedFields e
-                                  | Unmodeled => []
+                                    Const _ => []
+                                  | Var _ => []
+                                  | Lvar _ => []
+                                  | Func (_, es) => List.concat (map leavesE es)
+                                  | Recd xes => List.concat (map (leavesE o #2) xes)
+                                  | Proj _ => [e]
+
+                            fun leavesP p =
+                                case p of
+                                    True => []
+                                  | False => []
+                                  | Unknown => []
+                                  | And (p1, p2) => leavesP p1 @ leavesP p2
+                                  | Or (p1, p2) => leavesP p1 @ leavesP p2
+                                  | Reln (_, es) => List.concat (map leavesE es)
+                                  | Cond (e, p) => e :: leavesP p
 
                             fun normal' () =
                                 case #Cont arg of
@@ -1769,8 +1802,17 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                                      inl e => Reln (Eq, [e, Func (DtCon0 "Basis.bool.True", [])])
                                                    | inr p => p
 
+                                         fun getConjuncts p =
+                                             case p of
+                                                 And (p1, p2) => getConjuncts p1 @ getConjuncts p2
+                                               | _ => [p]
+
                                          val saved = #Save arg ()
+
+                                         val conjs = getConjuncts p
+                                         val conjs = List.filter (not o St.mayTest) conjs
                                      in
+                                         app (fn p => app (#Send arg) (leavesP p)) conjs;
                                          decomp {Save = #Save arg, Restore = #Restore arg, Add = #Add arg}
                                                 p (fn () => final () handle Cc.Contradiction => ());
                                          #Restore arg saved
@@ -2076,6 +2118,7 @@ fun evalExp env (e as (_, loc)) k =
                                            Add = fn a => St.assert [a],
                                            Save = St.stash,
                                            Restore = St.reinstate,
+                                           Send = fn e => St.send (e, loc),
                                            Cont = AllCols (fn x =>
                                                               (St.assert [AReln (Eq, [r, x])];
                                                                evalExp (acc :: r :: env) b k))} q
@@ -2448,6 +2491,7 @@ fun check file =
                                          Add = fn a => atoms := a :: !atoms,
                                          Save = fn () => !atoms,
                                          Restore = fn ls => atoms := ls,
+                                         Send = fn _ => (),
                                          Cont = SomeCol (fn r => k (rev (!atoms), r))}
 
                     fun untab (tab, nams) = List.filter (fn AReln (Sql tab', [Lvar lv]) =>
@@ -2483,6 +2527,11 @@ fun check file =
                                  St.allowSend ([p], outs)
                              end
                            | _ => ())
+                      | PolEqualKnown {table = tab, field = nm} =>
+                        (case #1 tab of
+                             EPrim (Prim.String tab) => St.allowEqualKnown {table = String.extract (tab, 3, NONE),
+                                                                            field = nm}
+                           | _ => ErrorMsg.errorAt loc "Table for 'equalKnown' policy isn't fully resolved.")
                 end
                                         
               | _ => ()

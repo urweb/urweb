@@ -3804,6 +3804,15 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                                     (e, L'.PolUpdate)
                                   | L.EFfiApp ("Basis", "sendOwnIds", [e]) =>
                                     (e, L'.PolSequence)
+                                  | L.EApp ((L.ECApp
+                                             ((L.ECApp
+                                                   ((L.ECApp
+                                                         ((L.ECApp
+                                                               ((L.EFfi ("Basis", "equalKnown"), _), nm), _), _), _),
+                                                    _), _), _), _), tab) =>
+                                    (case #1 nm of
+                                         L.CName nm => (tab, fn tab => L'.PolEqualKnown {table = tab, field = nm})
+                                       | _ => (poly (); (e, L'.PolClient)))
                                   | _ => (poly (); (e, L'.PolClient))
 
                             val (e, fm) = monoExp (env, St.empty, fm) e
