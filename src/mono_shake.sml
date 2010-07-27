@@ -67,7 +67,6 @@ fun shake file =
                                    | PolDelete e1 => e1
                                    | PolUpdate e1 => e1
                                    | PolSequence e1 => e1
-                                   | PolEqual {table = e1, ...} => e1
                     in
                         usedVars st e1
                     end
