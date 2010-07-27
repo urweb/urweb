@@ -819,6 +819,8 @@ val mayUpdate : fs ::: {Type} -> tables ::: {{Type}} -> [[Old, New] ~ tables]
                 => sql_query [] ([Old = fs, New = fs] ++ tables) []
                 -> sql_policy
 
+val equalAny   : nm :: Name -> t ::: Type -> fs ::: {Type} -> ks ::: {{Unit}}
+                 -> [[nm] ~ fs] => sql_table ([nm = t] ++ fs) ks -> sql_policy
 val equalKnown : nm :: Name -> t ::: Type -> fs ::: {Type} -> ks ::: {{Unit}}
                  -> [[nm] ~ fs] => sql_table ([nm = t] ++ fs) ks -> sql_policy
 

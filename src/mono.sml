@@ -129,7 +129,7 @@ datatype policy =
        | PolDelete of exp
        | PolUpdate of exp
        | PolSequence of exp
-       | PolEqualKnown of {table : exp, field : string}
+       | PolEqual of {table : exp, field : string, known : bool}
 
 datatype decl' =
          DDatatype of (string * int * (string * int * typ option) list) list

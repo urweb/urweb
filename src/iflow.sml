@@ -1228,7 +1228,7 @@ structure St :> sig
     val allowSend : atom list * exp list -> unit
     val send : check -> unit
 
-    val allowEqualKnown : { table : string, field : string } -> unit
+    val allowEqual : { table : string, field : string, known : bool } -> unit
     val mayTest : prop -> bool
 
     val allowInsert : atom list -> unit
@@ -1509,8 +1509,8 @@ val deletable = ref ([] : atom list list)
 fun allowDelete v = deletable := v :: !deletable
 val delete = doable deletable
 
-val testable = ref ([] : { table : string, field : string } list)
-fun allowEqualKnown v = testable := v :: !testable
+val testable = ref ([] : { table : string, field : string, known : bool } list)
+fun allowEqual v = testable := v :: !testable
 fun mayTest p =
     case p of
         Reln (Eq, [e1, e2]) =>
@@ -1523,14 +1523,14 @@ fun mayTest p =
             fun allowed (tab, v) =
                 case tab of
                     Proj (Var tab, fd) =>
-                    List.exists (fn {table = tab', field = fd'} =>
+                    List.exists (fn {table = tab', field = fd', known} =>
                                     fd' = fd
-                                    andalso tableInHyps (tab', tab)) (!testable)
-                    andalso Cc.check (db, AReln (Known, [v]))
+                                    andalso tableInHyps (tab', tab)
+                                    andalso (not known orelse Cc.check (db, AReln (Known, [v])))) (!testable)
                   | _ => false
         in
             if allowed (e1, e2) orelse allowed (e2, e1) then
-                (Cc.assert (db, AReln (Eq, [e1, e2]));
+                (assert [AReln (Eq, [e1, e2])];
                  true)
             else
                 false
@@ -2527,10 +2527,11 @@ fun check file =
                                  St.allowSend ([p], outs)
                              end
                            | _ => ())
-                      | PolEqualKnown {table = tab, field = nm} =>
+                      | PolEqual {table = tab, field = nm, known} =>
                         (case #1 tab of
-                             EPrim (Prim.String tab) => St.allowEqualKnown {table = String.extract (tab, 3, NONE),
-                                                                            field = nm}
+                             EPrim (Prim.String tab) => St.allowEqual {table = String.extract (tab, 3, NONE),
+                                                                       field = nm,
+                                                                       known = known}
                            | _ => ErrorMsg.errorAt loc "Table for 'equalKnown' policy isn't fully resolved.")
                 end
                                         

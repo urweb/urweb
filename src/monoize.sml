@@ -3811,7 +3811,16 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                                                                ((L.EFfi ("Basis", "equalKnown"), _), nm), _), _), _),
                                                     _), _), _), _), tab) =>
                                     (case #1 nm of
-                                         L.CName nm => (tab, fn tab => L'.PolEqualKnown {table = tab, field = nm})
+                                         L.CName nm => (tab, fn tab => L'.PolEqual {table = tab, field = nm, known = true})
+                                       | _ => (poly (); (e, L'.PolClient)))
+                                  | L.EApp ((L.ECApp
+                                             ((L.ECApp
+                                                   ((L.ECApp
+                                                         ((L.ECApp
+                                                               ((L.EFfi ("Basis", "equalAny"), _), nm), _), _), _),
+                                                    _), _), _), _), tab) =>
+                                    (case #1 nm of
+                                         L.CName nm => (tab, fn tab => L'.PolEqual {table = tab, field = nm, known = false})
                                        | _ => (poly (); (e, L'.PolClient)))
                                   | _ => (poly (); (e, L'.PolClient))
 
