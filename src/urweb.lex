@@ -34,6 +34,8 @@ type svalue = Tokens.svalue
 type ('a,'b) token = ('a,'b) Tokens.token
 type lexresult = (svalue,pos) Tokens.token
 
+val commentOut = ref (fn () => ())
+
 local
   val commentLevel = ref 0
   val commentPos = ref 0
@@ -47,7 +49,10 @@ in
     
   fun exitComment () =
       (ignore (commentLevel := !commentLevel - 1);
-       !commentLevel = 0)
+       if !commentLevel = 0 then
+           !commentOut ()
+       else
+           ())
 
   fun eof () = 
     let 
@@ -167,17 +172,14 @@ cid = [A-Z][A-Za-z0-9_]*;
 ws = [\ \t\012];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
-notags = [^<{\n]+;
+notags = [^<{\n(]+;
 oint = [0-9][0-9][0-9];
 xint = x[0-9a-fA-F][0-9a-fA-F];
 
 %%
 
-<INITIAL> \n          => (newline yypos;
-                          continue ());
-<COMMENT> \n          => (newline yypos;
-                          continue ());
-<XMLTAG> \n           => (newline yypos;
+<INITIAL,COMMENT,XMLTAG>
+      \n              => (newline yypos;
                           continue ());
 <XML> \n              => (newline yypos;
                           Tokens.NOTAGS (yytext, yypos, yypos + size yytext));
@@ -185,14 +187,24 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> {ws}+       => (lex ());
 
 <INITIAL> "(*"        => (YYBEGIN COMMENT;
+                          commentOut := (fn () => YYBEGIN INITIAL);
                           enterComment (pos yypos);
                           continue ());
-<INITIAL> "*)"        => (ErrorMsg.errorAt' (pos yypos, pos yypos) "Unbalanced comments";
+<XML> "(*"            => (YYBEGIN COMMENT;
+                          commentOut := (fn () => YYBEGIN XML);
+                          enterComment (pos yypos);
+                          continue ());
+<XMLTAG> "(*"         => (YYBEGIN COMMENT;
+                          commentOut := (fn () => YYBEGIN XMLTAG);
+                          enterComment (pos yypos);
+                          continue ());
+<INITIAL,XML,XMLTAG>
+             "*)"     => (ErrorMsg.errorAt' (pos yypos, pos yypos) "Unbalanced comments";
 			  continue ());
 
 <COMMENT> "(*"        => (enterComment (pos yypos);
                           continue ());
-<COMMENT> "*)"        => (if exitComment () then YYBEGIN INITIAL else ();
+<COMMENT> "*)"        => (exitComment ();
 			  continue ());
 
 <STRING,CHAR> "\\\""  => (str := #"\"" :: !str; continue());
