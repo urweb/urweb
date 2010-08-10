@@ -2128,7 +2128,7 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DPreparedStatements _ => box []
 
       | DJavaScript s => box [string "static char jslib[] = \"",
-                              string (String.toString s),
+                              string (String.toCString s),
                               string "\";"]
       | DCookie s => box [string "/*",
                           space,
@@ -2585,7 +2585,7 @@ fun p_file env (ds, ps) =
                             prefix ^ s
             in
                 box [string "if (!strncmp(request, \"",
-                     string (String.toString s),
+                     string (String.toCString s),
                      string "\", ",
                      string (Int.toString (size s)),
                      string ") && (request[",
@@ -2761,10 +2761,10 @@ fun p_file env (ds, ps) =
                           box [string "if (!str",
                                case #kind rule of
                                    Settings.Exact => box [string "cmp(s, \"",
-                                                          string (String.toString (#pattern rule)),
+                                                          string (String.toCString (#pattern rule)),
                                                           string "\"))"]
                                  | Settings.Prefix => box [string "ncmp(s, \"",
-                                                           string (String.toString (#pattern rule)),
+                                                           string (String.toCString (#pattern rule)),
                                                            string "\", ",
                                                            string (Int.toString (size (#pattern rule))),
                                                            string "))"],

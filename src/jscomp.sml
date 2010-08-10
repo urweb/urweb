@@ -435,7 +435,7 @@ fun process file =
                                       | #"\r" => "\\r"
                                       | #"\t" => "\\t"
                                       | ch =>
-                                        if Char.isPrint ch then
+                                        if Char.isPrint ch orelse ord ch >= 128 then
                                             String.str ch
                                         else
                                             "\\" ^ padWith (#"0",

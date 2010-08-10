@@ -230,7 +230,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                                                                    newline]
                                                       in
                                                           box [string "if (sqlite3_prepare_v2(conn->conn, \"",
-                                                               string (String.toString s),
+                                                               string (String.toCString s),
                                                                string "\", -1, &conn->p",
                                                                string (Int.toString i),
                                                                string ", NULL) != SQLITE_OK) {",
@@ -242,7 +242,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                                                                     string "msg[1023] = 0;",
                                                                     newline,
                                                                     uhoh false ("Error preparing statement: "
-                                                                                ^ String.toString s ^ "<br />%s") ["msg"]],
+                                                                                ^ String.toCString s ^ "<br />%s") ["msg"]],
                                                                string "}",
                                                                newline]
                                                       end)
@@ -651,9 +651,9 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                   newline],
 
          string "if (sqlite3_prepare_v2(conn->conn, \"",
-         string (String.toString query),
+         string (String.toCString query),
          string "\", -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: ",
-         string (String.toString query),
+         string (String.toCString query),
          string "<br />%s\", sqlite3_errmsg(conn->conn));",
          newline,
          if nested then
@@ -677,7 +677,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
          newline,
 
          queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
-                                                                            string (String.toString query),
+                                                                            string (String.toCString query),
                                                                             string "\""]},
 
          string "uw_pop_cleanup(ctx);",
@@ -739,9 +739,9 @@ fun dmlPrepared {loc, id, dml, inputs} =
          string "if (stmt == NULL) {",
          newline,
          box [string "if (sqlite3_prepare_v2(conn->conn, \"",
-              string (String.toString dml),
+              string (String.toCString dml),
               string "\", -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: ",
-              string (String.toString dml),
+              string (String.toCString dml),
               string "<br />%s\", sqlite3_errmsg(conn->conn));",
               newline,
               string "conn->p",
@@ -760,7 +760,7 @@ fun dmlPrepared {loc, id, dml, inputs} =
          newline,
 
          dmlCommon {loc = loc, dml = box [string "\"",
-                                          string (String.toString dml),
+                                          string (String.toCString dml),
                                           string "\""]},
 
          string "uw_pop_cleanup(ctx);",
@@ -800,14 +800,9 @@ fun nextvalPrepared _ = raise Fail "SQLite.nextvalPrepared called"
 fun setval _ = raise Fail "SQLite.setval called"
 
 fun sqlifyString s = "'" ^ String.translate (fn #"'" => "''"
-                                              | ch =>
-                                                if Char.isPrint ch then
-                                                    str ch
-                                                else
-                                                    (ErrorMsg.error
-                                                         "Non-printing character found in SQL string literal";
-                                                     ""))
-                                            (String.toString s) ^ "'"
+                                              | #"\000" => ""
+                                              | ch => str ch)
+                                            s ^ "'"
 
 fun p_cast (s, _) = s
 
