@@ -1336,7 +1336,7 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   *s2++ = '"';
 
   for (; *s; s++) {
-    char c = *s;
+    unsigned char c = *s;
 
     switch (c) {
     case '"':
@@ -1352,7 +1352,7 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
       s2 += 2;
       break;
     default:
-      if (isprint((int)c))
+      if (isprint((int)c) || c >= 128)
         *s2++ = c;
       else {
         sprintf(s2, "\\%3o", c);
@@ -1366,7 +1366,8 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   return r;
 }
 
-uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c) {
+uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
+  unsigned char c = c1;
   char *r, *s2;
 
   uw_check_heap(ctx, 6);
@@ -1388,10 +1389,10 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c) {
     s2 += 2;
     break;
   default:
-    if (isprint((int)c))
+    if (isprint((int)c) || c >= 128)
       *s2++ = c;
     else {
-      sprintf(s2, "\\%3o", c);
+      sprintf(s2, "\\%3o", (unsigned char)c);
       s2 += 4;
     }
   }
@@ -1410,7 +1411,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
   *s2++ = '"';
 
   for (; *s; s++) {
-    char c = *s;
+    unsigned char c = *s;
 
     switch (c) {
     case '\'':
@@ -1422,7 +1423,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
       s2 += 2;
       break;
     default:
-      if (isprint((int)c))
+      if (isprint((int)c) || c >= 128)
         *s2++ = c;
       else {
         sprintf(s2, "\\%3o", c);
