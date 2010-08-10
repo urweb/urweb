@@ -173,6 +173,7 @@ ws = [\ \t\012];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
 notags = [^<{\n(]+;
+xcom = ([^-]|(-[^-]))+;
 oint = [0-9][0-9][0-9];
 xint = x[0-9a-fA-F][0-9a-fA-F];
 
@@ -206,6 +207,8 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
                           continue ());
 <COMMENT> "*)"        => (exitComment ();
 			  continue ());
+
+<XML> "<!--" {xcom} "-->" => (continue ());
 
 <STRING,CHAR> "\\\""  => (str := #"\"" :: !str; continue());
 <STRING,CHAR> "\\'"   => (str := #"'" :: !str; continue());
