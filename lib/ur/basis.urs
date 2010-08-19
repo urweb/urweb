@@ -14,6 +14,13 @@ datatype option t = None | Some of t
 datatype list t = Nil | Cons of t * list t
 
 
+(** Polymorphic variants *)
+
+con variant :: {Type} -> Type
+val make : nm :: Name -> t ::: Type -> ts ::: {Type} -> [[nm] ~ ts] => t -> variant ([nm = t] ++ ts)
+val match : ts ::: {Type} -> t ::: Type -> variant ts -> $(map (fn t' => t' -> t) ts) -> t
+
+
 (** Basic type classes *)
 
 class eq
