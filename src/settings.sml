@@ -72,7 +72,8 @@ val clientToServerBase = basis ["int",
                                 "unit",
                                 "option",
                                 "list",
-                                "bool"]
+                                "bool",
+                                "variant"]
 val clientToServer = ref clientToServerBase
 fun setClientToServer ls = clientToServer := S.addList (clientToServerBase, ls)
 fun mayClientToServer x = S.member (!clientToServer, x)

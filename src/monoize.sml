@@ -53,6 +53,7 @@ structure RM = BinaryMapFn(struct
 val nextPvar = ref 0
 val pvars = ref (RM.empty : (int * (string * int * L'.typ) list) RM.map)
 val pvarDefs = ref ([] : L'.decl list)
+val pvarOldDefs = ref ([] : (int * (string * int * L.con option) list) list)
 
 fun choosePvar () =
     let
@@ -62,17 +63,20 @@ fun choosePvar () =
         n
     end
 
-fun pvar (r, loc) =
-    case RM.find (!pvars, r) of
+fun pvar (r, r', loc) =
+    case RM.find (!pvars, r') of
         NONE =>
         let
             val n = choosePvar ()
-            val fs = map (fn (x, t) => (x, choosePvar (), t)) r
-            val fs' = foldl (fn ((x, n, _), fs') => SM.insert (fs', x, n)) SM.empty fs
+            val fs = map (fn (x, t) => (x, choosePvar (), t)) r'
+            val (r, fs') = ListPair.foldr (fn ((_, t), (x, n, _), (r, fs')) =>
+                                              ((x, n, SOME t) :: r,
+                                               SM.insert (fs', x, n))) ([], SM.empty) (r, fs)
         in
-            pvars := RM.insert (!pvars, r, (n, fs));
+            pvars := RM.insert (!pvars, r', (n, fs));
             pvarDefs := (L'.DDatatype [("$poly" ^ Int.toString n, n, map (fn (x, n, t) => (x, n, SOME t)) fs)], loc) 
                         :: !pvarDefs;
+            pvarOldDefs := (n, r) :: !pvarOldDefs;
             (n, fs)
         end
       | SOME v => v
@@ -158,9 +162,9 @@ fun monoType env =
 
                   | L.CApp ((L.CFfi ("Basis", "variant"), _), (L.CRecord ((L.KType, _), xts), _)) =>
                     let
-                        val xts = map (fn (x, t) => (monoName env x, mt env dtmap t)) xts
-                        val xts = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xts
-                        val (n, cs) = pvar (xts, loc)
+                        val xts' = map (fn (x, t) => (monoName env x, mt env dtmap t)) xts
+                        val xts' = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xts'
+                        val (n, cs) = pvar (xts, xts', loc)
                         val cs = map (fn (x, n, t) => (x, n, SOME t)) cs
                     in
                         (L'.TDatatype (n, ref (ElabUtil.classifyDatatype cs, cs)), loc)
@@ -816,21 +820,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.ECApp (
             (L.ECApp (
-             (L.ECApp ((L.EFfi ("Basis", "make"), _), (L.CName nm, _)), _),
+             (L.ECApp ((L.EFfi ("Basis", "make"), _), nmC as (L.CName nm, _)), _),
              t), _),
             (L.CRecord (_, xts), _)) =>
             let
-                val t = monoType env t
-                val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
-                val xts = (nm, t) :: xts
-                val xts = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xts
-                val (n, cs) = pvar (xts, loc)
+                val t' = monoType env t
+                val xts' = map (fn (x, t) => (monoName env x, monoType env t)) xts
+                val xts' = (nm, t') :: xts'
+                val xts' = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xts'
+                val (n, cs) = pvar ((nmC, t) :: xts, xts', loc)
                 val cs' = map (fn (x, n, t) => (x, n, SOME t)) cs
                 val cl = ElabUtil.classifyDatatype cs'
             in
                 case List.find (fn (nm', _, _) => nm' = nm) cs of
                     NONE => raise Fail "Monoize: Polymorphic variant tag mismatch for 'make'"
-                  | SOME (_, n', _) => ((L'.EAbs ("x", t, (L'.TDatatype (n, ref (cl, cs')), loc),
+                  | SOME (_, n', _) => ((L'.EAbs ("x", t', (L'.TDatatype (n, ref (cl, cs')), loc),
                                                   (L'.ECon (cl, L'.PConVar n', SOME (L'.ERel 0, loc)), loc)), loc),
                                         fm)
             end
@@ -840,12 +844,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             t) =>
             let
                 val t = monoType env t
-                val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
-                val xts = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xts
-                val (n, cs) = pvar (xts, loc)
+                val xts' = map (fn (x, t) => (monoName env x, monoType env t)) xts
+                val xts' = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xts'
+                val (n, cs) = pvar (xts, xts', loc)
                 val cs' = map (fn (x, n, t) => (x, n, SOME t)) cs
                 val cl = ElabUtil.classifyDatatype cs'
-                val fs = (L'.TRecord (map (fn (x, t') => (x, (L'.TFun (t', t), loc))) xts), loc)
+                val fs = (L'.TRecord (map (fn (x, t') => (x, (L'.TFun (t', t), loc))) xts'), loc)
                 val dt = (L'.TDatatype (n, ref (cl, cs')), loc)
             in
                 ((L'.EAbs ("v",
@@ -4099,16 +4103,23 @@ fun monoize env file =
                                             end
                                           | _ =>
                                             (pvarDefs := [];
+                                             pvarOldDefs := [];
                                              case monoDecl (env, fm) d of
                                                  NONE => (env, fm, ds)
                                                | SOME (env, fm, ds') =>
-                                                 (env,
+                                                 (foldr (fn ((n, cs), env) =>
+                                                            Env.declBinds env (L.DDatatype [("$poly" ^ Int.toString n,
+                                                                                             n,
+                                                                                             [],
+                                                                                             cs)], loc))
+                                                        env (!pvarOldDefs),
                                                   Fm.enter fm,
                                                   ds' @ Fm.decls fm @ !pvarDefs @ ds)))
                                     (env, Fm.empty mname, []) file
     in
         pvars := RM.empty;
         pvarDefs := [];
+        pvarOldDefs := [];
         rev ds
     end
 
