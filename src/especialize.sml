@@ -127,6 +127,18 @@ structure SS = BinarySetFn(struct
 
 val mayNotSpec = ref SS.empty
 
+val functionInside = U.Con.exists {kind = fn _ => false,
+                                   con = fn TFun _ => true
+                                          | CFfi ("Basis", "transaction") => true
+                                          | CFfi ("Basis", "eq") => true
+                                          | CFfi ("Basis", "num") => true
+                                          | CFfi ("Basis", "ord") => true
+                                          | CFfi ("Basis", "show") => true
+                                          | CFfi ("Basis", "read") => true
+                                          | CFfi ("Basis", "sql_injectable_prim") => true
+                                          | CFfi ("Basis", "sql_injectable") => true
+                                          | _ => false}
+
 fun specialize' (funcs, specialized) file =
     let
         fun bind (env, b) =
@@ -286,17 +298,6 @@ fun specialize' (funcs, specialized) file =
                             (*val () = Print.prefaces "Consider" [("e", CorePrint.p_exp CoreEnv.empty
                                                                                       (e, ErrorMsg.dummySpan))]*)
 
-                            val functionInside = U.Con.exists {kind = fn _ => false,
-                                                               con = fn TFun _ => true
-                                                                      | CFfi ("Basis", "transaction") => true
-                                                                      | CFfi ("Basis", "eq") => true
-                                                                      | CFfi ("Basis", "num") => true
-                                                                      | CFfi ("Basis", "ord") => true
-                                                                      | CFfi ("Basis", "show") => true
-                                                                      | CFfi ("Basis", "read") => true
-                                                                      | CFfi ("Basis", "sql_injectable_prim") => true
-                                                                      | CFfi ("Basis", "sql_injectable") => true
-                                                                      | _ => false}
                             val loc = ErrorMsg.dummySpan
 
                             fun findSplit av (xs, typ, fxs, fvs, fin) =

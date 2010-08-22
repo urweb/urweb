@@ -107,26 +107,26 @@ core_print.sml
 corify.sig
 corify.sml
 
-reduce.sig
-reduce.sml
-
-shake.sig
-shake.sml
-
 reduce_local.sig
 reduce_local.sml
 
-unpoly.sig
-unpoly.sml
-
-specialize.sig
-specialize.sml
+shake.sig
+shake.sml
 
 core_untangle.sig
 core_untangle.sml
 
 especialize.sig
 especialize.sml
+
+reduce.sig
+reduce.sml
+
+unpoly.sig
+unpoly.sml
+
+specialize.sig
+specialize.sml
 
 rpcify.sig
 rpcify.sml

@@ -29,4 +29,6 @@ signature ESPECIALIZE = sig
 
     val specialize : Core.file -> Core.file
 
+    val functionInside : Core.con -> bool
+
 end

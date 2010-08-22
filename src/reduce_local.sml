@@ -136,7 +136,7 @@ fun con env (all as (c, loc)) =
          let
              fun find (n', env, nudge, liftC) =
                  case env of
-                     [] => raise Fail "Reduce.con: CRel"
+                     [] => raise Fail "ReduceLocal.con: CRel"
                    | Unknown :: rest => find (n', rest, nudge, liftC)
                    | Known _ :: rest => find (n', rest, nudge, liftC)
                    | Lift (liftC', _) :: rest => find (n', rest, nudge + liftC',
