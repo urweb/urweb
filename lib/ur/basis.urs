@@ -158,6 +158,7 @@ val clearCookie : t ::: Type -> http_cookie t -> transaction unit
 (** JavaScript-y gadgets *)
 
 val alert : string -> transaction unit
+val confirm : string -> transaction bool
 val spawn : transaction unit -> transaction unit
 val sleep : int -> transaction unit
 
