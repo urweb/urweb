@@ -652,8 +652,8 @@ con resizeEvents = [Onresize = transaction unit]
 con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents
 con tableEvents = focusEvents ++ mouseEvents ++ keyEvents
 
-con boxAttrs = [Id = string] ++ boxEvents
-con tableAttrs = [Id = string] ++ tableEvents
+con boxAttrs = [Id = string, Title = string] ++ boxEvents
+con tableAttrs = [Id = string, Title = string] ++ tableEvents
 
 val span : bodyTag boxAttrs
 val div : bodyTag boxAttrs
