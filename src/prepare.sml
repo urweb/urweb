@@ -246,11 +246,11 @@ fun prepExp (e as (_, loc), st) =
                           initial = initial, prepared = SOME {id = id, query = s, nested = true}}, loc), st)
         end
 
-      | EDml {dml, ...} =>
+      | EDml {dml, mode, ...} =>
         (case prepString (dml, st) of
              NONE => (e, st)
            | SOME (id, s, st) =>
-             ((EDml {dml = dml, prepared = SOME {id = id, dml = s}}, loc), st))
+             ((EDml {dml = dml, prepared = SOME {id = id, dml = s}, mode = mode}, loc), st))
 
       | ENextval {seq, ...} =>
         if #supportsNextval (Settings.currentDbms ()) then

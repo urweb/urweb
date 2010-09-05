@@ -56,6 +56,8 @@ datatype pat' =
 
 withtype pat = pat' located
 
+datatype failure_mode = datatype Settings.failure_mode
+
 datatype exp' =
          EPrim of Prim.t
        | ERel of int
@@ -92,7 +94,8 @@ datatype exp' =
                      initial : exp,
                      prepared : {id : int, query : string, nested : bool} option }
        | EDml of { dml : exp,
-                   prepared : {id : int, dml : string} option }
+                   prepared : {id : int, dml : string} option,
+                   mode : failure_mode }
        | ENextval of { seq : exp,
                        prepared : {id : int, query : string} option }
        | ESetval of { seq : exp, count : exp }

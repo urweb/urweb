@@ -708,7 +708,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested = _} =
                                                                             string (String.toCString query),
                                                                             string "\""]}]
 
-fun dmlCommon {loc, dml} =
+fun dmlCommon {loc, dml, mode} =
     box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
          newline,
          newline,
@@ -723,13 +723,15 @@ fun dmlCommon {loc, dml} =
                    newline],
               string "}",
               newline,
-              string "PQclear(res);",
-              newline,
-              string "uw_error(ctx, FATAL, \"",
-              string (ErrorMsg.spanToString loc),
-              string ": DML failed:\\n%s\\n%s\", ",
-              dml,
-              string ", PQerrorMessage(conn));",
+              case mode of
+                  Settings.Error => box [string "PQclear(res);",
+                                         newline,
+                                         string "uw_error(ctx, FATAL, \"",
+                                         string (ErrorMsg.spanToString loc),
+                                         string ": DML failed:\\n%s\\n%s\", ",
+                                         dml,
+                                         string ", PQerrorMessage(conn));"]
+                | Settings.None => string "uw_errmsg = PQerrorMessage(conn);",
               newline],
          string "}",
          newline,
@@ -738,15 +740,15 @@ fun dmlCommon {loc, dml} =
          string "PQclear(res);",
          newline]
 
-fun dml loc =
+fun dml (loc, mode) =
     box [string "PGconn *conn = uw_get_db(ctx);",
          newline,
          string "PGresult *res = PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);",
          newline,
          newline,
-         dmlCommon {loc = loc, dml = string "dml"}]
+         dmlCommon {loc = loc, dml = string "dml", mode = mode}]
 
-fun dmlPrepared {loc, id, dml, inputs} =
+fun dmlPrepared {loc, id, dml, inputs, mode} =
     box [string "PGconn *conn = uw_get_db(ctx);",
          newline,
          string "const int paramFormats[] = { ",
@@ -787,7 +789,7 @@ fun dmlPrepared {loc, id, dml, inputs} =
          newline,
          dmlCommon {loc = loc, dml = box [string "\"",
                                           string (String.toCString dml),
-                                          string "\""]}]
+                                          string "\""], mode = mode}]
 
 fun nextvalCommon {loc, query} =
     box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating nextval result.\");",

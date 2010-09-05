@@ -332,10 +332,10 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                                                                        initial = initial'},
                                                                                loc)))))))
 
-              | EDml e =>
+              | EDml (e, fm) =>
                 S.map2 (mfe ctx e,
                      fn e' =>
-                        (EDml e', loc))
+                        (EDml (e', fm), loc))
               | ENextval e =>
                 S.map2 (mfe ctx e,
                      fn e' =>

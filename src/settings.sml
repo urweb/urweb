@@ -363,6 +363,8 @@ fun isBlob Blob = true
 fun isNotNull (Nullable _) = false
   | isNotNull _ = true
 
+datatype failure_mode = Error | None
+
 type dbms = {
      name : string,
      header : string,
@@ -384,9 +386,9 @@ type dbms = {
                                -> Print.PD.pp_desc,
                       nested : bool}
                      -> Print.PD.pp_desc,
-     dml : ErrorMsg.span -> Print.PD.pp_desc,
+     dml : ErrorMsg.span * failure_mode -> Print.PD.pp_desc,
      dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
-                    inputs : sql_type list} -> Print.PD.pp_desc,
+                    inputs : sql_type list, mode : failure_mode} -> Print.PD.pp_desc,
      nextval : {loc : ErrorMsg.span, seqName : string option, seqE : Print.PD.pp_desc} -> Print.PD.pp_desc,
      nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc,
      setval : {loc : ErrorMsg.span, seqE : Print.PD.pp_desc, count : Print.PD.pp_desc} -> Print.PD.pp_desc,

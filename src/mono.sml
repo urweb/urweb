@@ -66,6 +66,8 @@ datatype javascript_mode =
 datatype effect = datatype Export.effect
 datatype export_kind = datatype Export.export_kind
 
+datatype failure_mode = datatype Settings.failure_mode
+
 datatype exp' =
          EPrim of Prim.t
        | ERel of int
@@ -104,7 +106,7 @@ datatype exp' =
                      query : exp,
                      body : exp,
                      initial : exp }
-       | EDml of exp
+       | EDml of exp * failure_mode
        | ENextval of exp
        | ESetval of exp * exp
 

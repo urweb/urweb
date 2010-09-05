@@ -1194,16 +1194,19 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
          else
              box []]
 
-fun dmlCommon {loc, dml} =
-    box [string "if (mysql_stmt_execute(stmt)) uw_error(ctx, FATAL, \"",
-         string (ErrorMsg.spanToString loc),
-         string ": Error executing DML: %s\\n%s\", ",
-         dml,
-         string ", mysql_error(conn->conn));",
+fun dmlCommon {loc, dml, mode} =
+    box [string "if (mysql_stmt_execute(stmt)) ",
+         case mode of
+             Settings.Error => box [string "uw_error(ctx, FATAL, \"",
+                                    string (ErrorMsg.spanToString loc),
+                                    string ": Error executing DML: %s\\n%s\", ",
+                                    dml,
+                                    string ", mysql_error(conn->conn));"]
+           | Settings.None => string "uw_errmsg = mysql_error(conn->conn);",
          newline,
          newline]
 
-fun dml loc =
+fun dml (loc, mode) =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
          string "MYSQL_STMT *stmt = mysql_stmt_init(conn->conn);",
@@ -1220,12 +1223,12 @@ fun dml loc =
          newline,
          newline,
 
-         dmlCommon {loc = loc, dml = string "dml"},
+         dmlCommon {loc = loc, dml = string "dml", mode = mode},
 
          string "uw_pop_cleanup(ctx);",
          newline]
 
-fun dmlPrepared {loc, id, dml, inputs} =
+fun dmlPrepared {loc, id, dml, inputs, mode} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
          string "MYSQL_BIND in[",
@@ -1471,7 +1474,7 @@ fun dmlPrepared {loc, id, dml, inputs} =
 
          dmlCommon {loc = loc, dml = box [string "\"",
                                           string (String.toCString dml),
-                                          string "\""]}]
+                                          string "\""], mode = mode}]
 
 fun nextval {loc, seqE, seqName} =
     box [string "uw_conn *conn = uw_get_db(ctx);",

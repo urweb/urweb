@@ -1748,7 +1748,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EDml e, loc),
+                ((L'.EDml (e, L'.Error), loc),
+                 fm)
+            end
+
+          | L.EFfiApp ("Basis", "tryDml", [e]) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                ((L'.EDml (e, L'.None), loc),
                  fm)
             end
 
@@ -4014,13 +4022,13 @@ fun monoize env file =
                             val e =
                                 foldl (fn ((x, v), e) =>
                                           (L'.ESeq (
-                                           (L'.EDml (L'.EStrcat (
-                                                     (L'.EPrim (Prim.String ("UPDATE uw_"
-                                                                             ^ tab
-                                                                             ^ " SET uw_"
-                                                                             ^ x
-                                                                             ^ " = NULL WHERE ")), loc),
-                                                     cond (x, v)), loc), loc),
+                                           (L'.EDml ((L'.EStrcat (
+                                                      (L'.EPrim (Prim.String ("UPDATE uw_"
+                                                                              ^ tab
+                                                                              ^ " SET uw_"
+                                                                              ^ x
+                                                                              ^ " = NULL WHERE ")), loc),
+                                                      cond (x, v)), loc), L'.Error), loc),
                                            e), loc))
                                       e nullable
 
@@ -4039,7 +4047,7 @@ fun monoize env file =
                                                                                         ^ tab
                                                                                         ^ " WHERE ")), loc),
                                                                 cond eb), loc)
-                                                   ebs), loc),
+                                                   ebs, L'.Error), loc),
                                      e), loc)
                         in
                             e
@@ -4067,15 +4075,15 @@ fun monoize env file =
                                     [] => e
                                   | (x, _) :: ebs =>
                                     (L'.ESeq (
-                                     (L'.EDml (L'.EPrim (Prim.String
-                                                             (foldl (fn ((x, _), s) =>
-                                                                        s ^ ", uw_" ^ x ^ " = NULL")
-                                                                    ("UPDATE uw_"
-                                                                     ^ tab
-                                                                     ^ " SET uw_"
-                                                                     ^ x
-                                                                     ^ " = NULL")
-                                                                    ebs)), loc), loc),
+                                     (L'.EDml ((L'.EPrim (Prim.String
+                                                              (foldl (fn ((x, _), s) =>
+                                                                         s ^ ", uw_" ^ x ^ " = NULL")
+                                                                     ("UPDATE uw_"
+                                                                      ^ tab
+                                                                      ^ " SET uw_"
+                                                                      ^ x
+                                                                      ^ " = NULL")
+                                                                     ebs)), loc), L'.Error), loc),
                                      e), loc)
 
                             val e =
@@ -4083,8 +4091,8 @@ fun monoize env file =
                                     [] => e
                                   | eb :: ebs =>
                                     (L'.ESeq (
-                                     (L'.EDml (L'.EPrim (Prim.String ("DELETE FROM uw_"
-                                                                      ^ tab)), loc), loc),
+                                     (L'.EDml ((L'.EPrim (Prim.String ("DELETE FROM uw_"
+                                                                       ^ tab)), loc), L'.Error), loc),
                                      e), loc)
                         in
                             e

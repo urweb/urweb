@@ -535,6 +535,8 @@ val query : tables ::: {{Type}} -> exps ::: {Type}
 
 type dml
 val dml : dml -> transaction unit
+val tryDml : dml -> transaction (option string)
+(* Returns an error message on failure. *)
 
 val insert : fields ::: {Type} -> uniques ::: {{Unit}}
              -> sql_table fields uniques

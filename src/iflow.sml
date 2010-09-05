@@ -2040,7 +2040,7 @@ fun evalExp env (e as (_, loc)) k =
                                   val (ts, cs) = MonoUtil.Exp.fold {typ = fn (_, st) => st,
                                                                    exp = fn (e, st as (cs, ts)) =>
                                                                             case e of
-                                                                                EDml e =>
+                                                                                EDml (e, _) =>
                                                                                 (case parse dml e of
                                                                                      NONE => st
                                                                                    | SOME c =>
@@ -2080,7 +2080,7 @@ fun evalExp env (e as (_, loc)) k =
                                                               (St.assert [AReln (Eq, [r, x])];
                                                                evalExp (acc :: r :: env) b k))} q
                               end)
-          | EDml e =>
+          | EDml (e, _) =>
             (case parse dml e of
                  NONE => (print ("Warning: Information flow checker can't parse DML command at "
                                  ^ ErrorMsg.spanToString loc ^ "\n");
@@ -2400,7 +2400,7 @@ fun check file =
                                      query = doExp env query,
                                      body = doExp (Unknown :: Unknown :: env) body,
                                      initial = doExp env initial}, loc)
-                          | EDml e1 =>
+                          | EDml (e1, mode) =>
                             (case parse dml e1 of
                                  NONE => ()
                                | SOME c =>
@@ -2410,7 +2410,7 @@ fun check file =
                                      tables := SS.add (!tables, tab)
                                    | Update (tab, _, _) =>
                                      tables := SS.add (!tables, tab);
-                             (EDml (doExp env e1), loc))
+                             (EDml (doExp env e1, mode), loc))
                           | ENextval e1 => (ENextval (doExp env e1), loc)
                           | ESetval (e1, e2) => (ESetval (doExp env e1, doExp env e2), loc)
                           | EUnurlify (e1, t, b) => (EUnurlify (doExp env e1, t, b), loc)

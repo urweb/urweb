@@ -1147,11 +1147,11 @@ fun process file =
                      ((EQuery {exps = exps, tables = tables, state = state,
                                query = query, body = body, initial = initial}, loc), st)
                  end
-               | EDml e =>
+               | EDml (e, mode) =>
                  let
                      val (e, st) = exp outer (e, st)
                  in
-                     ((EDml e, loc), st)
+                     ((EDml (e, mode), loc), st)
                  end
                | ENextval e =>
                  let

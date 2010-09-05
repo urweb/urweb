@@ -1791,8 +1791,11 @@ fun p_exp' par env (e, loc) =
                      box []]
         end
 
-      | EDml {dml, prepared} =>
-        box [string "(uw_begin_region(ctx), ({",
+      | EDml {dml, prepared, mode} =>
+        box [case mode of
+                 Settings.Error => box []
+               | Settings.None => string "({const char *uw_errmsg = NULL;",
+             string "(uw_begin_region(ctx), ({",
              newline,
              case prepared of
                  NONE => box [string "char *dml = ",
@@ -1800,7 +1803,7 @@ fun p_exp' par env (e, loc) =
                               string ";",
                               newline,
                               newline,
-                              #dml (Settings.currentDbms ()) loc]
+                              #dml (Settings.currentDbms ()) (loc, mode)]
                | SOME {id, dml = dml'} =>
                  let
                      val inputs = getPargs dml
@@ -1823,16 +1826,23 @@ fun p_exp' par env (e, loc) =
                           #dmlPrepared (Settings.currentDbms ()) {loc = loc,
                                                                   id = id,
                                                                   dml = dml',
-                                                                  inputs = map #2 inputs}]
+                                                                  inputs = map #2 inputs,
+                                                                  mode = mode}]
                  end,
              newline,
              newline,
-
              string "uw_end_region(ctx);",
              newline,
-             string "uw_unit_v;",
+
+             case mode of
+                 Settings.Error => string "uw_unit_v;"
+               | Settings.None => string "uw_errmsg ? uw_strdup(ctx, uw_errmsg) : NULL;",
+
              newline,
-             string "}))"]
+             string "}))",
+             case mode of
+                 Settings.Error => box []
+               | Settings.None => string ";})"]
 
       | ENextval {seq, prepared} =>
         box [string "({",

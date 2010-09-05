@@ -138,9 +138,10 @@ fun annotateExp globals =
                                       | SOME {id, query, ...} => SOME {id = id, query = query,
                                                                        nested = IS.member (expUses globals body, id)}},
                  loc)
-              | EDml {dml, prepared} =>
+              | EDml {dml, prepared, mode} =>
                 (EDml {dml = ae dml,
-                       prepared = prepared}, loc)
+                       prepared = prepared,
+                       mode = mode}, loc)
 
               | ENextval {seq, prepared} =>
                 (ENextval {seq = ae seq,

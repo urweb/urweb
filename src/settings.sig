@@ -124,6 +124,8 @@ signature SETTINGS = sig
     val isBlob : sql_type -> bool
     val isNotNull : sql_type -> bool
 
+    datatype failure_mode = Error | None
+
     type dbms = {
          name : string,
          (* Call it this on the command line *)
@@ -149,9 +151,9 @@ signature SETTINGS = sig
                                    -> Print.PD.pp_desc,
                           nested : bool}
                          -> Print.PD.pp_desc,
-         dml : ErrorMsg.span -> Print.PD.pp_desc,
+         dml : ErrorMsg.span * failure_mode -> Print.PD.pp_desc,
          dmlPrepared : {loc : ErrorMsg.span, id : int, dml : string,
-                        inputs : sql_type list} -> Print.PD.pp_desc,
+                        inputs : sql_type list, mode : failure_mode} -> Print.PD.pp_desc,
          nextval : {loc : ErrorMsg.span, seqE : Print.PD.pp_desc, seqName : string option} -> Print.PD.pp_desc,
          nextvalPrepared : {loc : ErrorMsg.span, id : int, query : string} -> Print.PD.pp_desc,
          setval : {loc : ErrorMsg.span, seqE : Print.PD.pp_desc, count : Print.PD.pp_desc} -> Print.PD.pp_desc,

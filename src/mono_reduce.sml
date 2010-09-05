@@ -465,7 +465,7 @@ fun reduce file =
                                      [ReadDb],
                                      summarize (d + 2) body]
 
-                      | EDml e => summarize d e @ [WriteDb]
+                      | EDml (e, _) => summarize d e @ [WriteDb]
                       | ENextval e => summarize d e @ [WriteDb]
                       | ESetval (e1, e2) => summarize d e1 @ summarize d e2 @ [WriteDb]
                       | EUnurlify (e, _, _) => summarize d e

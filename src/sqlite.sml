@@ -688,7 +688,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
              box [string "uw_pop_cleanup(ctx);",
                   newline]]
 
-fun dmlCommon {loc, dml} =
+fun dmlCommon {loc, dml, mode} =
     box [string "int r;",
          newline,
 
@@ -701,14 +701,17 @@ fun dmlCommon {loc, dml} =
          newline,
          newline,
 
-         string "if (r != SQLITE_DONE) uw_error(ctx, FATAL, \"",
-         string (ErrorMsg.spanToString loc),
-         string ": DML step failed: %s<br />%s\", ",
-         dml,
-         string ", sqlite3_errmsg(conn->conn));",
+         string "if (r != SQLITE_DONE) ",
+         case mode of
+             Settings.Error => box [string "uw_error(ctx, FATAL, \"",
+                                    string (ErrorMsg.spanToString loc),
+                                    string ": DML step failed: %s<br />%s\", ",
+                                    dml,
+                                    string ", sqlite3_errmsg(conn->conn));"]
+           | Settings.None => string "uw_errmsg = sqlite3_errmsg(conn->conn);",
          newline]
 
-fun dml loc =
+fun dml (loc, mode) =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
          string "sqlite3_stmt *stmt;",
@@ -721,12 +724,12 @@ fun dml loc =
          newline,
          newline,
 
-         dmlCommon {loc = loc, dml = string "dml"},
+         dmlCommon {loc = loc, dml = string "dml", mode = mode},
 
          string "uw_pop_cleanup(ctx);",
          newline]
 
-fun dmlPrepared {loc, id, dml, inputs} =
+fun dmlPrepared {loc, id, dml, inputs, mode = mode} =
     box [string "uw_conn *conn = uw_get_db(ctx);",
          newline,
          p_pre_inputs inputs,
@@ -761,7 +764,7 @@ fun dmlPrepared {loc, id, dml, inputs} =
 
          dmlCommon {loc = loc, dml = box [string "\"",
                                           string (String.toCString dml),
-                                          string "\""]},
+                                          string "\""], mode = mode},
 
          string "uw_pop_cleanup(ctx);",
          newline,
