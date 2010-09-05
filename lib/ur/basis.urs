@@ -563,6 +563,9 @@ val setval : sql_sequence -> int -> transaction unit
 (** XML *)
 
 type css_class
+val classes : css_class -> css_class -> css_class
+(* The equivalent of writing one class after the other, separated by a space, in
+ * an HTML 'class' attribute *)
 
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 
