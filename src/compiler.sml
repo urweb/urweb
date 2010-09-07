@@ -288,391 +288,433 @@ val pathmap = ref (M.insert (M.empty, "", Config.libUr))
 
 fun addPath (k, v) = pathmap := M.insert (!pathmap, k, v)
 
+fun capitalize "" = ""
+  | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
+fun institutionalizeJob (job : job) =
+    (Settings.setUrlPrefix (#prefix job);
+     Settings.setTimeout (#timeout job);
+     Settings.setHeaders (#headers job);
+     Settings.setScripts (#scripts job);
+     Settings.setClientToServer (#clientToServer job);
+     Settings.setEffectful (#effectful job);
+     Settings.setBenignEffectful (#benignEffectful job);
+     Settings.setClientOnly (#clientOnly job);
+     Settings.setServerOnly (#serverOnly job);
+     Settings.setJsFuncs (#jsFuncs job);
+     Settings.setRewriteRules (#rewrites job);
+     Settings.setUrlRules (#filterUrl job);
+     Settings.setMimeRules (#filterMime job);
+     Option.app Settings.setProtocol (#protocol job);
+     Option.app Settings.setDbms (#dbms job);
+     Settings.setSafeGets (#safeGets job);
+     Settings.setOnError (#onError job))
+
 fun parseUrp' accLibs fname =
-    let
-        val pathmap = ref (!pathmap)
-        val bigLibs = ref []
+    if not (Posix.FileSys.access (fname ^ ".urp", []) orelse Posix.FileSys.access (fname ^ "/lib.urp", []))
+       andalso Posix.FileSys.access (fname ^ ".ur", []) then
+        let
+            val job = {prefix = "/",
+                       database = NONE,
+                       sources = [fname],
+                       exe = fname ^ ".exe",
+                       sql = NONE,
+                       debug = false,
+                       profile = false,
+                       timeout = 60,
+                       ffi = [],
+                       link = [],
+                       headers = [],
+                       scripts = [],
+                       clientToServer = [],
+                       effectful = [],
+                       benignEffectful = [],
+                       clientOnly = [],
+                       serverOnly = [],
+                       jsFuncs = [],
+                       rewrites = [{pkind = Settings.Any,
+                                    kind = Settings.Prefix,
+                                    from = capitalize (OS.Path.file fname) ^ "/", to = ""}],
+                       filterUrl = [],
+                       filterMime = [],
+                       protocol = NONE,
+                       dbms = NONE,
+                       sigFile = NONE,
+                       safeGets = [],
+                       onError = NONE}
+        in
+            institutionalizeJob job;
+            {Job = job, Libs = []}
+        end
+    else
+        let
+            val pathmap = ref (!pathmap)
+            val bigLibs = ref []
 
-        fun pu filename =
-            let
-                val dir = OS.Path.dir filename
-                fun opener () = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
+            fun pu filename =
+                let
+                    val dir = OS.Path.dir filename
+                    fun opener () = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
 
-                val inf = opener ()
+                    val inf = opener ()
 
-                fun hasSpaceLine () =
-                    case TextIO.inputLine inf of
-                        NONE => false
-                      | SOME s => s = "debug\n" orelse s = "profile\n"
-                                  orelse CharVector.exists (fn ch => ch = #" " orelse ch = #"\t") s orelse hasSpaceLine ()
+                    fun hasSpaceLine () =
+                        case TextIO.inputLine inf of
+                            NONE => false
+                          | SOME s => s = "debug\n" orelse s = "profile\n"
+                                      orelse CharVector.exists (fn ch => ch = #" " orelse ch = #"\t") s orelse hasSpaceLine ()
 
-                val hasBlankLine = hasSpaceLine ()
+                    val hasBlankLine = hasSpaceLine ()
 
-                val inf = (TextIO.closeIn inf; opener ())
+                    val inf = (TextIO.closeIn inf; opener ())
 
-                fun pathify fname =
-                    if size fname > 0 andalso String.sub (fname, 0) = #"$" then
-                        let
-                            val fname' = Substring.extract (fname, 1, NONE)
-                            val (befor, after) = Substring.splitl (fn ch => ch <> #"/") fname'
-                        in
-                            if Substring.isEmpty after then
-                                fname
-                            else
-                                case M.find (!pathmap, Substring.string befor) of
-                                    NONE => fname
-                                  | SOME rep => rep ^ Substring.string after
-                        end
-                    else
-                        fname
-
-                fun relify fname =
-                    let
-                        val fname = pathify fname
-                    in
-                        OS.Path.concat (dir, fname)
-                        handle OS.Path.Path => fname
-                    end
-
-                fun libify path =
-                    (if Posix.FileSys.access (path ^ ".urp", []) then
-                         path
-                     else
-                         path ^ "/lib")
-                    handle SysErr => path
-
-                fun libify' path =
-                    (if Posix.FileSys.access (relify path ^ ".urp", []) then
-                         path
-                     else
-                         path ^ "/lib")
-                    handle SysErr => path
-
-                val absDir = OS.Path.mkAbsolute {path = dir, relativeTo = OS.FileSys.getDir ()}
-
-                fun relifyA fname =
-                    OS.Path.mkAbsolute {path = pathify fname, relativeTo = absDir}
-
-                fun readSources acc =
-                    case TextIO.inputLine inf of
-                        NONE => rev acc
-                      | SOME line =>
-                        let
-                            val acc = if CharVector.all Char.isSpace line then
-                                          acc
-                                      else
-                                          let
-                                              val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
-                                                                                      (String.explode line))
-                                              val fname = relifyA fname
-                                          in
-                                              fname :: acc
-                                          end
-                        in
-                            readSources acc
-                        end
-
-                val prefix = ref NONE
-                val database = ref (Settings.getDbstring ())
-                val exe = ref (Settings.getExe ())
-                val sql = ref (Settings.getSql ())
-                val debug = ref (Settings.getDebug ())
-                val profile = ref false
-                val timeout = ref NONE
-                val ffi = ref []
-                val link = ref []
-                val headers = ref []
-                val scripts = ref []
-                val clientToServer = ref []
-                val effectful = ref []
-                val benignEffectful = ref []
-                val clientOnly = ref []
-                val serverOnly = ref []
-                val jsFuncs = ref []
-                val rewrites = ref []
-                val url = ref []
-                val mime = ref []
-                val libs = ref []
-                val protocol = ref NONE
-                val dbms = ref NONE
-                val sigFile = ref (Settings.getSigFile ())
-                val safeGets = ref []
-                val onError = ref NONE
-
-                fun finish sources =
-                    let
-                        val job = {
-                            prefix = Option.getOpt (!prefix, "/"),
-                            database = !database,
-                            exe = Option.getOpt (!exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
-                                                                            ext = SOME "exe"}),
-                            sql = !sql,
-                            debug = !debug,
-                            profile = !profile,
-                            timeout = Option.getOpt (!timeout, 60),
-                            ffi = rev (!ffi),
-                            link = rev (!link),
-                            headers = rev (!headers),
-                            scripts = rev (!scripts),
-                            clientToServer = rev (!clientToServer),
-                            effectful = rev (!effectful),
-                            benignEffectful = rev (!benignEffectful),
-                            clientOnly = rev (!clientOnly),
-                            serverOnly = rev (!serverOnly),
-                            jsFuncs = rev (!jsFuncs),
-                            rewrites = rev (!rewrites),
-                            filterUrl = rev (!url),
-                            filterMime = rev (!mime),
-                            sources = sources,
-                            protocol = !protocol,
-                            dbms = !dbms,
-                            sigFile = !sigFile,
-                            safeGets = rev (!safeGets),
-                            onError = !onError
-                        }
-
-                        fun mergeO f (old, new) =
-                            case (old, new) of
-                                (NONE, _) => new
-                              | (_, NONE) => old
-                              | (SOME v1, SOME v2) => SOME (f (v1, v2))
-
-                        fun same desc = mergeO (fn (x : string, y) =>
-                                                   (if x = y then
-                                                        ()
-                                                    else
-                                                        ErrorMsg.error ("Multiple "
-                                                                        ^ desc ^ " values that don't agree");
-                                                    x))
-
-                        fun merge (old : job, new : job) = {
-                            prefix = #prefix old,
-                            database = mergeO (fn (old, _) => old) (#database old, #database new),
-                            exe = #exe old,
-                            sql = #sql old,
-                            debug = #debug old orelse #debug new,
-                            profile = #profile old orelse #profile new,
-                            timeout = #timeout old,
-                            ffi = #ffi old @ #ffi new,
-                            link = #link old @ #link new,
-                            headers = #headers old @ #headers new,
-                            scripts = #scripts old @ #scripts new,
-                            clientToServer = #clientToServer old @ #clientToServer new,
-                            effectful = #effectful old @ #effectful new,
-                            benignEffectful = #benignEffectful old @ #benignEffectful new,
-                            clientOnly = #clientOnly old @ #clientOnly new,
-                            serverOnly = #serverOnly old @ #serverOnly new,
-                            jsFuncs = #jsFuncs old @ #jsFuncs new,
-                            rewrites = #rewrites old @ #rewrites new,
-                            filterUrl = #filterUrl old @ #filterUrl new,
-                            filterMime = #filterMime old @ #filterMime new,
-                            sources = #sources new
-                                      @ List.filter (fn s => List.all (fn s' => s' <> s) (#sources new))
-                                                    (#sources old),
-                            protocol = mergeO #2 (#protocol old, #protocol new),
-                            dbms = mergeO #2 (#dbms old, #dbms new),
-                            sigFile = mergeO #2 (#sigFile old, #sigFile new),
-                            safeGets = #safeGets old @ #safeGets new,
-                            onError = mergeO #2 (#onError old, #onError new)
-                        }
-                    in
-                        if accLibs then
-                            foldr (fn (job', job) => merge (job, job')) job (!libs)
+                    fun pathify fname =
+                        if size fname > 0 andalso String.sub (fname, 0) = #"$" then
+                            let
+                                val fname' = Substring.extract (fname, 1, NONE)
+                                val (befor, after) = Substring.splitl (fn ch => ch <> #"/") fname'
+                            in
+                                if Substring.isEmpty after then
+                                    fname
+                                else
+                                    case M.find (!pathmap, Substring.string befor) of
+                                        NONE => fname
+                                      | SOME rep => rep ^ Substring.string after
+                            end
                         else
-                            job
-                    end
+                            fname
 
-                fun parsePkind s =
-                    case s of
-                        "all" => Settings.Any
-                      | "url" => Settings.Url
-                      | "table" => Settings.Table
-                      | "sequence" => Settings.Sequence
-                      | "view" => Settings.View
-                      | "relation" => Settings.Relation
-                      | "cookie" => Settings.Cookie
-                      | "style" => Settings.Style
-                      | _ => (ErrorMsg.error "Bad path kind spec";
-                              Settings.Any)
-
-                fun parseFrom s =
-                    if size s > 1 andalso String.sub (s, size s - 2) = #"/" andalso String.sub (s, size s - 1) = #"*" then
-                        (Settings.Prefix, String.substring (s, 0, size s - 1))
-                    else
-                        (Settings.Exact, s)
-
-                fun parseFkind s =
-                    case s of
-                        "url" => url
-                      | "mime" => mime
-                      | _ => (ErrorMsg.error "Bad filter kind";
-                              url)
-
-                fun parsePattern s =
-                    if size s > 0 andalso String.sub (s, size s - 1) = #"*" then
-                        (Settings.Prefix, String.substring (s, 0, size s - 1))
-                    else
-                        (Settings.Exact, s)
-
-                fun read () =
-                    case TextIO.inputLine inf of
-                        NONE => finish []
-                      | SOME "\n" => finish (readSources [])
-                      | SOME line =>
+                    fun relify fname =
                         let
-                            val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
-                            val cmd = Substring.string (trim cmd)
-                            val arg = Substring.string (trim arg)
-
-                            fun ffiS () =
-                                case String.fields (fn ch => ch = #".") arg of
-                                    [m, x] => (m, x)
-                                  | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func");
-                                          ("", ""))
-
-                            fun ffiM () =
-                                case String.fields (fn ch => ch = #"=") arg of
-                                    [f, s] =>
-                                    (case String.fields (fn ch => ch = #".") f of
-                                         [m, x] => ((m, x), s)
-                                       | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
-                                               (("", ""), "")))
-                                  | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
-                                          (("", ""), ""))
+                            val fname = pathify fname
                         in
-                            case cmd of
-                                "prefix" =>
-                                (case !prefix of
-                                     NONE => ()
-                                   | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
-                                 prefix := SOME arg)
-                              | "database" =>
-                                (case !database of
-                                     NONE => database := SOME arg
-                                   | SOME _ => ())
-                              | "dbms" =>
-                                (case !dbms of
-                                     NONE => dbms := SOME arg
-                                   | SOME _ => ())
-                              | "sigfile" =>
-                                (case !sigFile of
-                                     NONE => sigFile := SOME arg
-                                   | SOME _ => ())
-                              | "exe" =>
-                                (case !exe of
-                                     NONE => exe := SOME (relify arg)
-                                   | SOME _ => ())
-                              | "sql" =>
-                                (case !sql of
-                                     NONE => sql := SOME (relify arg)
-                                   | SOME _ => ())
-                              | "debug" => debug := true
-                              | "profile" => profile := true
-                              | "timeout" =>
-                                (case !timeout of
-                                     NONE => ()
-                                   | SOME _ => ErrorMsg.error "Duplicate 'timeout' directive";
-                                 timeout := SOME (valOf (Int.fromString arg)))
-                              | "ffi" => ffi := relify arg :: !ffi
-                              | "link" => let
-                                    val arg = if size arg >= 1
-                                                 andalso String.sub (arg, 0) = #"-" then
-                                                  arg
-                                              else
-                                                  relifyA arg
-                                in
-                                    link := arg :: !link
-                                end
-                              | "include" => headers := relifyA arg :: !headers
-                              | "script" => scripts := arg :: !scripts
-                              | "clientToServer" => clientToServer := ffiS () :: !clientToServer
-                              | "safeGet" => safeGets := arg :: !safeGets
-                              | "effectful" => effectful := ffiS () :: !effectful
-                              | "benignEffectful" => benignEffectful := ffiS () :: !benignEffectful
-                              | "clientOnly" => clientOnly := ffiS () :: !clientOnly
-                              | "serverOnly" => serverOnly := ffiS () :: !serverOnly
-                              | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
-                              | "rewrite" =>
-                                let
-                                    fun doit (pkind, from, to) =
-                                        let
-                                            val pkind = parsePkind pkind
-                                            val (kind, from) = parseFrom from
-                                        in
-                                            rewrites := {pkind = pkind, kind = kind, from = from, to = to} :: !rewrites
-                                        end
-                                in
-                                    case String.tokens Char.isSpace arg of
-                                        [pkind, from, to] => doit (pkind, from, to)
-                                      | [pkind, from] => doit (pkind, from, "")
-                                      | _ => ErrorMsg.error "Bad 'rewrite' syntax"
-                                end
-                              | "allow" =>
-                                (case String.tokens Char.isSpace arg of
-                                     [fkind, pattern] =>
-                                     let
-                                         val fkind = parseFkind fkind
-                                         val (kind, pattern) = parsePattern pattern
-                                     in
-                                         fkind := {action = Settings.Allow, kind = kind, pattern = pattern} :: !fkind
-                                     end
-                                   | _ => ErrorMsg.error "Bad 'allow' syntax")
-                              | "deny" =>
-                                (case String.tokens Char.isSpace arg of
-                                     [fkind, pattern] =>
-                                     let
-                                         val fkind = parseFkind fkind
-                                         val (kind, pattern) = parsePattern pattern
-                                     in
-                                         fkind := {action = Settings.Deny, kind = kind, pattern = pattern} :: !fkind
-                                     end
-                                   | _ => ErrorMsg.error "Bad 'deny' syntax")
-                              | "library" => if accLibs then
-                                                 libs := pu (libify (relify arg)) :: !libs
-                                             else
-                                                 bigLibs := libify' arg :: !bigLibs
-                              | "path" =>
-                                (case String.fields (fn ch => ch = #"=") arg of
-                                     [n, v] => pathmap := M.insert (!pathmap, n, v)
-                                   | _ => ErrorMsg.error "path argument not of the form name=value'")
-                              | "onError" =>
-                                (case String.fields (fn ch => ch = #".") arg of
-                                     m1 :: (fs as _ :: _) =>
-                                     onError := SOME (m1, List.take (fs, length fs - 1), List.last fs)
-                                   | _ => ErrorMsg.error "invalid 'onError' argument")
-
-                              | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
-                            read ()
+                            OS.Path.concat (dir, fname)
+                            handle OS.Path.Path => fname
                         end
 
-                val job = if hasBlankLine then
-                              read ()
-                          else
-                              finish (readSources [])
-            in
-                TextIO.closeIn inf;
-                Settings.setUrlPrefix (#prefix job);
-                Settings.setTimeout (#timeout job);
-                Settings.setHeaders (#headers job);
-                Settings.setScripts (#scripts job);
-                Settings.setClientToServer (#clientToServer job);
-                Settings.setEffectful (#effectful job);
-                Settings.setBenignEffectful (#benignEffectful job);
-                Settings.setClientOnly (#clientOnly job);
-                Settings.setServerOnly (#serverOnly job);
-                Settings.setJsFuncs (#jsFuncs job);
-                Settings.setRewriteRules (#rewrites job);
-                Settings.setUrlRules (#filterUrl job);
-                Settings.setMimeRules (#filterMime job);
-                Option.app Settings.setProtocol (#protocol job);
-                Option.app Settings.setDbms (#dbms job);
-                Settings.setSafeGets (#safeGets job);
-                Settings.setOnError (#onError job);
-                job
-            end
-    in
-        {Job = pu fname, Libs = !bigLibs}
-    end
+                    fun libify path =
+                        (if Posix.FileSys.access (path ^ ".urp", []) then
+                             path
+                         else
+                             path ^ "/lib")
+                        handle SysErr => path
+
+                    fun libify' path =
+                        (if Posix.FileSys.access (relify path ^ ".urp", []) then
+                             path
+                         else
+                             path ^ "/lib")
+                        handle SysErr => path
+
+                    val absDir = OS.Path.mkAbsolute {path = dir, relativeTo = OS.FileSys.getDir ()}
+
+                    fun relifyA fname =
+                        OS.Path.mkAbsolute {path = pathify fname, relativeTo = absDir}
+
+                    fun readSources acc =
+                        case TextIO.inputLine inf of
+                            NONE => rev acc
+                          | SOME line =>
+                            let
+                                val acc = if CharVector.all Char.isSpace line then
+                                              acc
+                                          else
+                                              let
+                                                  val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
+                                                                                          (String.explode line))
+                                                  val fname = relifyA fname
+                                              in
+                                                  fname :: acc
+                                              end
+                            in
+                                readSources acc
+                            end
+
+                    val prefix = ref NONE
+                    val database = ref (Settings.getDbstring ())
+                    val exe = ref (Settings.getExe ())
+                    val sql = ref (Settings.getSql ())
+                    val debug = ref (Settings.getDebug ())
+                    val profile = ref false
+                    val timeout = ref NONE
+                    val ffi = ref []
+                    val link = ref []
+                    val headers = ref []
+                    val scripts = ref []
+                    val clientToServer = ref []
+                    val effectful = ref []
+                    val benignEffectful = ref []
+                    val clientOnly = ref []
+                    val serverOnly = ref []
+                    val jsFuncs = ref []
+                    val rewrites = ref []
+                    val url = ref []
+                    val mime = ref []
+                    val libs = ref []
+                    val protocol = ref NONE
+                    val dbms = ref NONE
+                    val sigFile = ref (Settings.getSigFile ())
+                    val safeGets = ref []
+                    val onError = ref NONE
+
+                    fun finish sources =
+                        let
+                            val job = {
+                                prefix = Option.getOpt (!prefix, "/"),
+                                database = !database,
+                                exe = Option.getOpt (!exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
+                                                                                ext = SOME "exe"}),
+                                sql = !sql,
+                                debug = !debug,
+                                profile = !profile,
+                                timeout = Option.getOpt (!timeout, 60),
+                                ffi = rev (!ffi),
+                                link = rev (!link),
+                                headers = rev (!headers),
+                                scripts = rev (!scripts),
+                                clientToServer = rev (!clientToServer),
+                                effectful = rev (!effectful),
+                                benignEffectful = rev (!benignEffectful),
+                                clientOnly = rev (!clientOnly),
+                                serverOnly = rev (!serverOnly),
+                                jsFuncs = rev (!jsFuncs),
+                                rewrites = rev (!rewrites),
+                                filterUrl = rev (!url),
+                                filterMime = rev (!mime),
+                                sources = sources,
+                                protocol = !protocol,
+                                dbms = !dbms,
+                                sigFile = !sigFile,
+                                safeGets = rev (!safeGets),
+                                onError = !onError
+                            }
+
+                            fun mergeO f (old, new) =
+                                case (old, new) of
+                                    (NONE, _) => new
+                                  | (_, NONE) => old
+                                  | (SOME v1, SOME v2) => SOME (f (v1, v2))
+
+                            fun same desc = mergeO (fn (x : string, y) =>
+                                                       (if x = y then
+                                                            ()
+                                                        else
+                                                            ErrorMsg.error ("Multiple "
+                                                                            ^ desc ^ " values that don't agree");
+                                                        x))
+
+                            fun merge (old : job, new : job) = {
+                                prefix = #prefix old,
+                                database = mergeO (fn (old, _) => old) (#database old, #database new),
+                                exe = #exe old,
+                                sql = #sql old,
+                                debug = #debug old orelse #debug new,
+                                profile = #profile old orelse #profile new,
+                                timeout = #timeout old,
+                                ffi = #ffi old @ #ffi new,
+                                link = #link old @ #link new,
+                                headers = #headers old @ #headers new,
+                                scripts = #scripts old @ #scripts new,
+                                clientToServer = #clientToServer old @ #clientToServer new,
+                                effectful = #effectful old @ #effectful new,
+                                benignEffectful = #benignEffectful old @ #benignEffectful new,
+                                clientOnly = #clientOnly old @ #clientOnly new,
+                                serverOnly = #serverOnly old @ #serverOnly new,
+                                jsFuncs = #jsFuncs old @ #jsFuncs new,
+                                rewrites = #rewrites old @ #rewrites new,
+                                filterUrl = #filterUrl old @ #filterUrl new,
+                                filterMime = #filterMime old @ #filterMime new,
+                                sources = #sources new
+                                          @ List.filter (fn s => List.all (fn s' => s' <> s) (#sources new))
+                                                        (#sources old),
+                                protocol = mergeO #2 (#protocol old, #protocol new),
+                                dbms = mergeO #2 (#dbms old, #dbms new),
+                                sigFile = mergeO #2 (#sigFile old, #sigFile new),
+                                safeGets = #safeGets old @ #safeGets new,
+                                onError = mergeO #2 (#onError old, #onError new)
+                            }
+                        in
+                            if accLibs then
+                                foldr (fn (job', job) => merge (job, job')) job (!libs)
+                            else
+                                job
+                        end
+
+                    fun parsePkind s =
+                        case s of
+                            "all" => Settings.Any
+                          | "url" => Settings.Url
+                          | "table" => Settings.Table
+                          | "sequence" => Settings.Sequence
+                          | "view" => Settings.View
+                          | "relation" => Settings.Relation
+                          | "cookie" => Settings.Cookie
+                          | "style" => Settings.Style
+                          | _ => (ErrorMsg.error "Bad path kind spec";
+                                  Settings.Any)
+
+                    fun parseFrom s =
+                        if size s > 1 andalso String.sub (s, size s - 2) = #"/" andalso String.sub (s, size s - 1) = #"*" then
+                            (Settings.Prefix, String.substring (s, 0, size s - 1))
+                        else
+                            (Settings.Exact, s)
+
+                    fun parseFkind s =
+                        case s of
+                            "url" => url
+                          | "mime" => mime
+                          | _ => (ErrorMsg.error "Bad filter kind";
+                                  url)
+
+                    fun parsePattern s =
+                        if size s > 0 andalso String.sub (s, size s - 1) = #"*" then
+                            (Settings.Prefix, String.substring (s, 0, size s - 1))
+                        else
+                            (Settings.Exact, s)
+
+                    fun read () =
+                        case TextIO.inputLine inf of
+                            NONE => finish []
+                          | SOME "\n" => finish (readSources [])
+                          | SOME line =>
+                            let
+                                val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
+                                val cmd = Substring.string (trim cmd)
+                                val arg = Substring.string (trim arg)
+
+                                fun ffiS () =
+                                    case String.fields (fn ch => ch = #".") arg of
+                                        [m, x] => (m, x)
+                                      | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func");
+                                              ("", ""))
+
+                                fun ffiM () =
+                                    case String.fields (fn ch => ch = #"=") arg of
+                                        [f, s] =>
+                                        (case String.fields (fn ch => ch = #".") f of
+                                             [m, x] => ((m, x), s)
+                                           | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
+                                                   (("", ""), "")))
+                                      | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
+                                              (("", ""), ""))
+                            in
+                                case cmd of
+                                    "prefix" =>
+                                    (case !prefix of
+                                         NONE => ()
+                                       | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
+                                     prefix := SOME arg)
+                                  | "database" =>
+                                    (case !database of
+                                         NONE => database := SOME arg
+                                       | SOME _ => ())
+                                  | "dbms" =>
+                                    (case !dbms of
+                                         NONE => dbms := SOME arg
+                                       | SOME _ => ())
+                                  | "sigfile" =>
+                                    (case !sigFile of
+                                         NONE => sigFile := SOME arg
+                                       | SOME _ => ())
+                                  | "exe" =>
+                                    (case !exe of
+                                         NONE => exe := SOME (relify arg)
+                                       | SOME _ => ())
+                                  | "sql" =>
+                                    (case !sql of
+                                         NONE => sql := SOME (relify arg)
+                                       | SOME _ => ())
+                                  | "debug" => debug := true
+                                  | "profile" => profile := true
+                                  | "timeout" =>
+                                    (case !timeout of
+                                         NONE => ()
+                                       | SOME _ => ErrorMsg.error "Duplicate 'timeout' directive";
+                                     timeout := SOME (valOf (Int.fromString arg)))
+                                  | "ffi" => ffi := relify arg :: !ffi
+                                  | "link" => let
+                                        val arg = if size arg >= 1
+                                                     andalso String.sub (arg, 0) = #"-" then
+                                                      arg
+                                                  else
+                                                      relifyA arg
+                                    in
+                                        link := arg :: !link
+                                    end
+                                  | "include" => headers := relifyA arg :: !headers
+                                  | "script" => scripts := arg :: !scripts
+                                  | "clientToServer" => clientToServer := ffiS () :: !clientToServer
+                                  | "safeGet" => safeGets := arg :: !safeGets
+                                  | "effectful" => effectful := ffiS () :: !effectful
+                                  | "benignEffectful" => benignEffectful := ffiS () :: !benignEffectful
+                                  | "clientOnly" => clientOnly := ffiS () :: !clientOnly
+                                  | "serverOnly" => serverOnly := ffiS () :: !serverOnly
+                                  | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
+                                  | "rewrite" =>
+                                    let
+                                        fun doit (pkind, from, to) =
+                                            let
+                                                val pkind = parsePkind pkind
+                                                val (kind, from) = parseFrom from
+                                            in
+                                                rewrites := {pkind = pkind, kind = kind, from = from, to = to} :: !rewrites
+                                            end
+                                    in
+                                        case String.tokens Char.isSpace arg of
+                                            [pkind, from, to] => doit (pkind, from, to)
+                                          | [pkind, from] => doit (pkind, from, "")
+                                          | _ => ErrorMsg.error "Bad 'rewrite' syntax"
+                                    end
+                                  | "allow" =>
+                                    (case String.tokens Char.isSpace arg of
+                                         [fkind, pattern] =>
+                                         let
+                                             val fkind = parseFkind fkind
+                                             val (kind, pattern) = parsePattern pattern
+                                         in
+                                             fkind := {action = Settings.Allow, kind = kind, pattern = pattern} :: !fkind
+                                         end
+                                       | _ => ErrorMsg.error "Bad 'allow' syntax")
+                                  | "deny" =>
+                                    (case String.tokens Char.isSpace arg of
+                                         [fkind, pattern] =>
+                                         let
+                                             val fkind = parseFkind fkind
+                                             val (kind, pattern) = parsePattern pattern
+                                         in
+                                             fkind := {action = Settings.Deny, kind = kind, pattern = pattern} :: !fkind
+                                         end
+                                       | _ => ErrorMsg.error "Bad 'deny' syntax")
+                                  | "library" => if accLibs then
+                                                     libs := pu (libify (relify arg)) :: !libs
+                                                 else
+                                                     bigLibs := libify' arg :: !bigLibs
+                                  | "path" =>
+                                    (case String.fields (fn ch => ch = #"=") arg of
+                                         [n, v] => pathmap := M.insert (!pathmap, n, v)
+                                       | _ => ErrorMsg.error "path argument not of the form name=value'")
+                                  | "onError" =>
+                                    (case String.fields (fn ch => ch = #".") arg of
+                                         m1 :: (fs as _ :: _) =>
+                                         onError := SOME (m1, List.take (fs, length fs - 1), List.last fs)
+                                       | _ => ErrorMsg.error "invalid 'onError' argument")
+
+                                  | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
+                                read ()
+                            end
+
+                    val job = if hasBlankLine then
+                                  read ()
+                              else
+                                  finish (readSources [])
+                in
+                    TextIO.closeIn inf;
+                    institutionalizeJob job;
+                    job
+                end
+        in
+            {Job = pu fname, Libs = !bigLibs}
+        end
 
 fun p_job' {Job = j, Libs = _ : string list} = p_job j
 
@@ -702,9 +744,6 @@ fun op o (tr2 : ('b, 'c) transform, tr1 : ('a, 'b) transform) = {
                     | SOME v => #time tr2 (v, pmap)
               end
 }
-
-fun capitalize "" = ""
-  | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
 structure SM = BinaryMapFn(struct
                            type ord_key = string
