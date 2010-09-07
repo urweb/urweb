@@ -1794,10 +1794,7 @@ fun p_exp' par env (e, loc) =
         end
 
       | EDml {dml, prepared, mode} =>
-        box [case mode of
-                 Settings.Error => box []
-               | Settings.None => string "({const char *uw_errmsg = NULL;",
-             string "(uw_begin_region(ctx), ({",
+        box [string "(uw_begin_region(ctx), ({",
              newline,
              case prepared of
                  NONE => box [string "char *dml = ",
@@ -1838,13 +1835,10 @@ fun p_exp' par env (e, loc) =
 
              case mode of
                  Settings.Error => string "uw_unit_v;"
-               | Settings.None => string "uw_errmsg ? uw_strdup(ctx, uw_errmsg) : NULL;",
+               | Settings.None => string "uw_dup_and_clear_error_message(ctx);",
 
              newline,
-             string "}))",
-             case mode of
-                 Settings.Error => box []
-               | Settings.None => string ";})"]
+             string "}))"]
 
       | ENextval {seq, prepared} =>
         box [string "({",

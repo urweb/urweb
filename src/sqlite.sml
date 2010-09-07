@@ -1,4 +1,4 @@
-(* Copyright (c) 2009, Adam Chlipala
+(* Copyright (c) 2009-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -708,7 +708,7 @@ fun dmlCommon {loc, dml, mode} =
                                     string ": DML step failed: %s<br />%s\", ",
                                     dml,
                                     string ", sqlite3_errmsg(conn->conn));"]
-           | Settings.None => string "uw_errmsg = sqlite3_errmsg(conn->conn);",
+           | Settings.None => string "uw_set_error_message(ctx, sqlite3_errmsg(conn->conn));",
          newline]
 
 fun dml (loc, mode) =

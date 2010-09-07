@@ -44,6 +44,7 @@ int uw_rollback(uw_context);
 __attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *fmt, ...);
 char *uw_error_message(uw_context);
 void uw_set_error_message(uw_context, const char *fmt, ...);
+uw_Basis_string uw_dup_and_clear_error_message(uw_context);
 int uw_has_error(uw_context);
 void uw_push_cleanup(uw_context, void (*func)(void *), void *arg);
 void uw_pop_cleanup(uw_context);

@@ -2175,6 +2175,15 @@ uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {
   return s;
 }
 
+uw_Basis_string uw_dup_and_clear_error_message(uw_context ctx) {
+  if (ctx->error_message[0]) {
+    char *s = uw_strdup(ctx, ctx->error_message);
+    ctx->error_message[0] = 0;
+    return s;
+  } else
+    return NULL;
+}
+
 uw_Basis_string uw_maybe_strdup(uw_context ctx, uw_Basis_string s1) {
   if (s1)
     return uw_strdup(ctx, s1);

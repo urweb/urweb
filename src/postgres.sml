@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -731,19 +731,95 @@ fun dmlCommon {loc, dml, mode} =
                                          string ": DML failed:\\n%s\\n%s\", ",
                                          dml,
                                          string ", PQerrorMessage(conn));"]
-                | Settings.None => string "uw_errmsg = PQerrorMessage(conn);",
+                | Settings.None => box [string "uw_set_error_message(ctx, PQerrorMessage(conn));",
+                                        newline,
+                                        newline,
+
+                                        string "res = PQexec(conn, \"ROLLBACK TO s\");",
+                                        newline,
+                                        string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                                        newline,
+                                        newline,
+
+                                        string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
+                                        newline,
+                                        box [string "PQclear(res);",
+                                             newline,
+                                             string "uw_error(ctx, FATAL, \"",
+                                             string (ErrorMsg.spanToString loc),
+                                             string ": ROLLBACK TO failed:\\n%s\\n%s\", ",
+                                             dml,
+                                             string ", PQerrorMessage(conn));",
+                                             newline,
+                                             string "}"],
+                                        newline,
+
+                                        string "PQclear(res);",
+                                        newline],
               newline],
          string "}",
-         newline,
-         newline,
 
-         string "PQclear(res);",
-         newline]
+         case mode of
+             Error => box [newline,
+                           newline,
+                           string "PQclear(res);",
+                           newline]
+           | None => box[string " else {",
+                         newline,
+                         box [string "PQclear(res);",
+                              newline,
+                              string "res = PQexec(conn, \"RELEASE s\");",
+                              newline,
+                              string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                              newline,
+                              newline,
+
+                              string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
+                              newline,
+                              box [string "PQclear(res);",
+                                   newline,
+                                   string "uw_error(ctx, FATAL, \"",
+                                   string (ErrorMsg.spanToString loc),
+                                   string ": RELEASE failed:\\n%s\\n%s\", ",
+                                   dml,
+                                   string ", PQerrorMessage(conn));",
+                                   newline],
+                              string "}",
+                              newline,
+                              string "PQclear(res);",
+                              newline],
+                         string "}",
+                         newline]]
+
+fun makeSavepoint mode =
+    case mode of
+        Error => box []
+      | None => box [string "res = PQexec(conn, \"SAVEPOINT s\");",
+                     newline,
+                     string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                     newline,
+                     newline,
+                     string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
+                     box [newline,
+                          string "PQclear(res);",
+                          newline,
+                          string "uw_error(ctx, FATAL, \"Error creating SAVEPOINT\");",
+                          newline],
+                     string "}",
+                     newline,
+                     string "PQclear(res);",
+                     newline,
+                     newline]
 
 fun dml (loc, mode) =
     box [string "PGconn *conn = uw_get_db(ctx);",
          newline,
-         string "PGresult *res = PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);",
+         string "PGresult *res;",
+         newline,
+
+         makeSavepoint mode,
+
+         string "res = PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);",
          newline,
          newline,
          dmlCommon {loc = loc, dml = string "dml", mode = mode}]
@@ -772,7 +848,13 @@ fun dmlPrepared {loc, id, dml, inputs, mode} =
          string " };",
          newline,
          newline,
-         string "PGresult *res = ",
+         string "PGresult *res;",
+         newline,
+         newline,
+
+         makeSavepoint mode,
+
+         string "res = ",
          if #persistent (Settings.currentProtocol ()) then
              box [string "PQexecPrepared(conn, \"uw",
                   string (Int.toString id),
