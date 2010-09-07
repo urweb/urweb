@@ -288,6 +288,7 @@ fun summarize file =
                   | DStyle (_, n, s) => (IM.insert (globals, n, (SOME s, [])), classes)
                   | DTask _ => st
                   | DPolicy _ => st
+                  | DOnError _ => st
             end
 
         val (globals, classes) = foldl decl (IM.empty, IM.empty) file

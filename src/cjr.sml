@@ -124,6 +124,7 @@ datatype decl' =
        | DStyle of string
 
        | DTask of task * exp
+       | DOnError of int
 
 withtype decl = decl' located
 

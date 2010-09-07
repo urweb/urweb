@@ -2679,6 +2679,7 @@ and sgiOfDecl (d, loc) =
       | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
       | L'.DTask _ => []
       | L'.DPolicy _ => []
+      | L'.DOnError _ => []
 
 and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
@@ -3857,6 +3858,32 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     checkCon env e1' t1 t1';
                     ([(L'.DPolicy e1', loc)], (env, denv, gs1 @ gs))
                 end
+
+              | L.DOnError (m1, ms, s) =>
+                (case E.lookupStr env m1 of
+                     NONE => (expError env (UnboundStrInExp (loc, m1));
+                              ([], (env, denv, [])))
+                   | SOME (n, sgn) =>
+                     let
+                         val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                                    case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                                        NONE => (conError env (UnboundStrInCon (loc, m));
+                                                                 (strerror, sgnerror))
+                                                      | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
+                                                ((L'.StrVar n, loc), sgn) ms
+
+                         val t = case E.projectVal env {sgn = sgn, str = str, field = s} of
+                                     NONE => (expError env (UnboundExp (loc, s));
+                                              cerror)
+                                   | SOME t => t
+
+                         val page = (L'.CModProj (!basis_r, [], "page"), loc)
+                         val xpage = (L'.CApp ((L'.CModProj (!basis_r, [], "transaction"), loc), page), loc)
+                         val func = (L'.TFun ((L'.CModProj (!basis_r, [], "xbody"), loc), xpage), loc)
+                     in
+                         unifyCons env loc t func;
+                         ([(L'.DOnError (n, ms, s), loc)], (env, denv, gs))
+                     end)
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
     in

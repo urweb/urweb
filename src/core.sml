@@ -136,6 +136,7 @@ datatype decl' =
        | DStyle of string * int * string
        | DTask of exp * exp
        | DPolicy of exp
+       | DOnError of int
 
 withtype decl = decl' located
 

@@ -54,7 +54,8 @@ signature COMPILER = sig
          protocol : string option,
          dbms : string option,
          sigFile : string option,
-         safeGets : string list
+         safeGets : string list,
+         onError : (string * string list * string) option
     }
     val compile : string -> bool
     val compiler : string -> unit

@@ -434,6 +434,7 @@ fun unnest file =
                   | DStyle _ => default ()
                   | DTask _ => explore ()
                   | DPolicy _ => explore ()
+                  | DOnError _ => default ()
             end
 
         and doStr (all as (str, loc), st) =

@@ -169,6 +169,7 @@ datatype decl' =
        | DStyle of string
        | DTask of exp * exp
        | DPolicy of exp
+       | DOnError of string * string list * string
 
      and str' =
          StrConst of decl list

@@ -803,6 +803,7 @@ fun reduce file =
                       namedC,
                       namedE))
                 end
+              | DOnError _ => (d, st)
 
         val (file, _) = ListUtil.foldlMap doDecl (IS.empty, IM.empty, IM.empty) file
     in

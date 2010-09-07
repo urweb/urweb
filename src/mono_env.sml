@@ -131,6 +131,7 @@ fun declBinds env (d, loc) =
       | DStyle _ => env
       | DTask _ => env
       | DPolicy _ => env
+      | DOnError _ => env
 
 fun patBinds env (p, loc) =
     case p of

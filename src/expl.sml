@@ -149,6 +149,7 @@ datatype decl' =
        | DStyle of int * string * int
        | DTask of exp * exp
        | DPolicy of exp
+       | DOnError of int * string list * string
 
      and str' =
          StrConst of decl list

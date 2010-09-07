@@ -206,4 +206,6 @@ signature SETTINGS = sig
     val setSafeGets : string list -> unit
     val isSafeGet : string -> bool
 
+    val setOnError : (string * string list * string) option -> unit
+    val getOnError : unit -> (string * string list * string) option
 end

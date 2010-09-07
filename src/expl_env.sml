@@ -345,6 +345,7 @@ fun declBinds env (d, loc) =
         end
       | DTask _ => env
       | DPolicy _ => env
+      | DOnError _ => env
 
 fun sgiBinds env (sgi, loc) =
     case sgi of

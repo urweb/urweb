@@ -58,7 +58,8 @@ type job = {
      protocol : string option,
      dbms : string option,
      sigFile : string option,
-     safeGets : string list
+     safeGets : string list,
+     onError : (string * string list * string) option
 }
 
 type ('src, 'dst) phase = {
@@ -396,6 +397,7 @@ fun parseUrp' accLibs fname =
                 val dbms = ref NONE
                 val sigFile = ref (Settings.getSigFile ())
                 val safeGets = ref []
+                val onError = ref NONE
 
                 fun finish sources =
                     let
@@ -425,7 +427,8 @@ fun parseUrp' accLibs fname =
                             protocol = !protocol,
                             dbms = !dbms,
                             sigFile = !sigFile,
-                            safeGets = rev (!safeGets)
+                            safeGets = rev (!safeGets),
+                            onError = !onError
                         }
 
                         fun mergeO f (old, new) =
@@ -469,7 +472,8 @@ fun parseUrp' accLibs fname =
                             protocol = mergeO #2 (#protocol old, #protocol new),
                             dbms = mergeO #2 (#dbms old, #dbms new),
                             sigFile = mergeO #2 (#sigFile old, #sigFile new),
-                            safeGets = #safeGets old @ #safeGets new
+                            safeGets = #safeGets old @ #safeGets new,
+                            onError = mergeO #2 (#onError old, #onError new)
                         }
                     in
                         if accLibs then
@@ -631,6 +635,12 @@ fun parseUrp' accLibs fname =
                                 (case String.fields (fn ch => ch = #"=") arg of
                                      [n, v] => pathmap := M.insert (!pathmap, n, v)
                                    | _ => ErrorMsg.error "path argument not of the form name=value'")
+                              | "onError" =>
+                                (case String.fields (fn ch => ch = #".") arg of
+                                     m1 :: (fs as _ :: _) =>
+                                     onError := SOME (m1, List.take (fs, length fs - 1), List.last fs)
+                                   | _ => ErrorMsg.error "invalid 'onError' argument")
+
                               | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                             read ()
                         end
@@ -657,6 +667,7 @@ fun parseUrp' accLibs fname =
                 Option.app Settings.setProtocol (#protocol job);
                 Option.app Settings.setDbms (#dbms job);
                 Settings.setSafeGets (#safeGets job);
+                Settings.setOnError (#onError job);
                 job
             end
     in
@@ -709,7 +720,7 @@ structure SS = BinarySetFn(struct
                            end)
 
 val parse = {
-    func = fn {database, sources = fnames, ffi, ...} : job =>
+    func = fn {database, sources = fnames, ffi, onError, ...} : job =>
               let
                   val mrs = !moduleRoots
 
@@ -884,6 +895,10 @@ val parse = {
                       val ds = case database of
                                    NONE => ds
                                  | SOME s => (Source.DDatabase s, loc) :: ds
+
+                      val ds = case onError of
+                                   NONE => ds
+                                 | SOME v => ds @ [(Source.DOnError v, loc)]
                   in
                       ds
                   end handle Empty => ds

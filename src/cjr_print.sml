@@ -113,9 +113,11 @@ and p_typ env = p_typ' false env
 fun p_rel env n = string ("__uwr_" ^ ident (#1 (E.lookupERel env n)) ^ "_" ^ Int.toString (E.countERels env - n - 1))
     handle CjrEnv.UnboundRel _ => string ("__uwr_UNBOUND_" ^ Int.toString (E.countERels env - n - 1))
 
-fun p_enamed env n =
-    string ("__uwn_" ^ ident (#1 (E.lookupENamed env n)) ^ "_" ^ Int.toString n)
-    handle CjrEnv.UnboundNamed _ => string ("__uwn_UNBOUND_" ^ Int.toString n)
+fun p_enamed' env n =
+    "__uwn_" ^ ident (#1 (E.lookupENamed env n)) ^ "_" ^ Int.toString n
+    handle CjrEnv.UnboundNamed _ => "__uwn_UNBOUND_" ^ Int.toString n
+
+fun p_enamed env n = string (p_enamed' env n)
 
 fun p_con_named env n =
     string ("__uwc_" ^ ident (#1 (E.lookupConstructor env n)) ^ "_" ^ Int.toString n)
@@ -2156,6 +2158,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                          string "*/"]
 
       | DTask _ => box []
+      | DOnError _ => box []
 
 datatype 'a search =
          Found of 'a
@@ -2791,6 +2794,8 @@ fun p_file env (ds, ps) =
 
         val initializers = List.mapPartial (fn (DTask (Initialize, e), _) => SOME e | _ => NONE) ds
 
+        val onError = ListUtil.search (fn (DOnError n, _) => SOME n | _ => NONE) ds
+
         val now = Time.now ()
         val nowD = Date.fromTimeUniv now
         val rfcFmt = "%a, %d %b %Y %H:%M:%S"
@@ -2957,6 +2962,18 @@ fun p_file env (ds, ps) =
                       string "static void uw_initializer(uw_context ctx) { };",
                       newline],
 
+             case onError of
+                 NONE => box []
+               | SOME n => box [string "static void uw_onError(uw_context ctx, char *msg) {",
+                                newline,
+                                box [string "uw_write(ctx, ",
+                                     p_enamed env n,
+                                     string "(ctx, msg, uw_unit_v));",
+                                     newline],
+                                string "}",
+                                newline,
+                                newline],
+
              string "uw_app uw_application = {",
              p_list_sep (box [string ",", newline]) string
                         [Int.toString (SM.foldl Int.max 0 fnums + 1),
@@ -2965,7 +2982,8 @@ fun p_file env (ds, ps) =
                          "uw_client_init", "uw_initializer", "uw_expunger",
                          "uw_db_init", "uw_db_begin", "uw_db_commit", "uw_db_rollback", "uw_db_close",
                          "uw_handle",
-                         "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime"],
+                         "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime",
+                         case onError of NONE => "NULL" | SOME _ => "uw_onError"],
              string "};",
              newline]
     end

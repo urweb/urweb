@@ -73,6 +73,10 @@ typedef struct {
   uw_Basis_string (*cookie_sig)(uw_context);
   int (*check_url)(const char *);
   int (*check_mime)(const char *);
+
+  void (*on_error)(uw_context, char *);
 } uw_app;
+
+#define ERROR_BUF_LEN 1024
 
 #endif

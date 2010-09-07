@@ -36,6 +36,7 @@ failure_kind uw_begin_init(uw_context);
 void uw_set_on_success(char *);
 void uw_set_headers(uw_context, char *(*get_header)(void *, const char *), void *get_header_data);
 failure_kind uw_begin(uw_context, char *path);
+failure_kind uw_begin_onError(uw_context, char *msg);
 void uw_login(uw_context);
 void uw_commit(uw_context);
 int uw_rollback(uw_context);

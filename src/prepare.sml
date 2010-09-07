@@ -331,6 +331,7 @@ fun prepDecl (d as (_, loc), st) =
         in
             ((DTask (tk, e), loc), st)
         end
+      | DOnError _ => (d, st)
 
 fun prepare (ds, ps) =
     let

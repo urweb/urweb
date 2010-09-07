@@ -486,4 +486,8 @@ val safeGet = ref SS.empty
 fun setSafeGets ls = safeGet := SS.addList (SS.empty, ls)
 fun isSafeGet x = SS.member (!safeGet, x)
 
+val onError = ref (NONE : (string * string list * string) option)
+fun setOnError x = onError := x
+fun getOnError () = !onError
+
 end

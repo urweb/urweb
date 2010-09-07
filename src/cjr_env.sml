@@ -172,5 +172,6 @@ fun declBinds env (d, loc) =
       | DCookie _ => env
       | DStyle _ => env
       | DTask _ => env
+      | DOnError _ => env
 
 end

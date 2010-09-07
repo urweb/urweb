@@ -527,7 +527,7 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DPolicy p => box [string "policy",
                           space,
                           p_policy env p]
-
+      | DOnError _ => string "ONERROR"
                           
 fun p_file env file =
     let

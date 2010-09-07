@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -197,6 +197,7 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DStyle (nt, x, n) => SOME (L'.DStyle (nt, x, n), loc)
       | L.DTask (e1, e2) => SOME (L'.DTask (explifyExp e1, explifyExp e2), loc)
       | L.DPolicy e1 => SOME (L'.DPolicy (explifyExp e1), loc)
+      | L.DOnError v => SOME (L'.DOnError v, loc)
 
 and explifyStr (str, loc) =
     case str of

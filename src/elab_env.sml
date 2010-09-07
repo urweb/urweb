@@ -1633,5 +1633,6 @@ fun declBinds env (d, loc) =
         end
       | DTask _ => env
       | DPolicy _ => env
+      | DOnError _ => env
 
 end

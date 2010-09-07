@@ -70,6 +70,7 @@ fun shake file =
                     in
                         usedVars st e1
                     end
+                  | ((DOnError n, _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
                   | (_, st) => st) (IS.empty, IS.empty) file
 
         val (cdef, edef) = foldl (fn ((DDatatype dts, _), (cdef, edef)) =>
@@ -87,7 +88,8 @@ fun shake file =
                                    | ((DCookie _, _), acc) => acc
                                    | ((DStyle _, _), acc) => acc
                                    | ((DTask _, _), acc) => acc
-                                   | ((DPolicy _, _), acc) => acc)
+                                   | ((DPolicy _, _), acc) => acc
+                                   | ((DOnError _, _), acc) => acc)
                                  (IM.empty, IM.empty) file
 
         fun typ (c, s) =
@@ -155,7 +157,8 @@ fun shake file =
                       | (DCookie _, _) => true
                       | (DStyle _, _) => true
                       | (DTask _, _) => true
-                      | (DPolicy _, _) => true) file
+                      | (DPolicy _, _) => true
+                      | (DOnError _, _) => true) file
     end
 
 end

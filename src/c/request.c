@@ -131,6 +131,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   char *inputs;
   const char *prefix = uw_get_url_prefix(ctx);
   char *s;
+  int had_error = 0;
+  char errmsg[ERROR_BUF_LEN];
 
   for (s = path; *s; ++s) {
     if (s[0] == '%' && s[1] == '2' && s[2] == '7') {
@@ -336,32 +338,42 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   log_debug(logger_data, "Serving URI %s....\n", path);
 
   while (1) {
-    size_t path_len = strlen(path);
+    if (!had_error) {
+      size_t path_len = strlen(path);
 
-    on_success(ctx);
+      on_success(ctx);
 
-    if (path_len + 1 > rc->path_copy_size) {
-      rc->path_copy_size = path_len + 1;
-      rc->path_copy = realloc(rc->path_copy, rc->path_copy_size);
-    }
-    strcpy(rc->path_copy, path);
-    fk = uw_begin(ctx, rc->path_copy);
+      if (path_len + 1 > rc->path_copy_size) {
+        rc->path_copy_size = path_len + 1;
+        rc->path_copy = realloc(rc->path_copy, rc->path_copy_size);
+      }
+      strcpy(rc->path_copy, path);
+      fk = uw_begin(ctx, rc->path_copy);
+    } else
+      fk = uw_begin_onError(ctx, errmsg);
+
     if (fk == SUCCESS || fk == RETURN_INDIRECTLY) {
       uw_commit(ctx);
-      if (uw_has_error(ctx)) {
+      if (uw_has_error(ctx) && !had_error) {
         log_error(logger_data, "Fatal error: %s\n", uw_error_message(ctx));
 
         uw_reset_keep_error_message(ctx);
         on_failure(ctx);
-        uw_write_header(ctx, "Content-type: text/html\r\n");
-        uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
-        uw_write(ctx, "Fatal error: ");
-        uw_write(ctx, uw_error_message(ctx));
-        uw_write(ctx, "\n</body></html>");
+
+        if (uw_get_app(ctx)->on_error) {
+          had_error = 1;
+          strcpy(errmsg, uw_error_message(ctx));
+        } else {
+          uw_write_header(ctx, "Content-type: text/html\r\n");
+          uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
+          uw_write(ctx, "Fatal error: ");
+          uw_write(ctx, uw_error_message(ctx));
+          uw_write(ctx, "\n</body></html>");
         
-        return FAILED;
+          return FAILED;
+        }
       } else
-        return SERVED;
+        return had_error ? FAILED : SERVED;
     } else if (fk == BOUNDED_RETRY) {
       if (retries_left) {
         log_debug(logger_data, "Error triggers bounded retry: %s\n", uw_error_message(ctx));
@@ -372,14 +384,19 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
         try_rollback(ctx, logger_data, log_error);
 
-        uw_reset_keep_error_message(ctx);
-        on_failure(ctx);
-        uw_write_header(ctx, "Content-type: text/plain\r\n");
-        uw_write(ctx, "Fatal error (out of retries): ");
-        uw_write(ctx, uw_error_message(ctx));
-        uw_write(ctx, "\n");
-
-        return FAILED;
+        if (!had_error && uw_get_app(ctx)->on_error) {
+          had_error = 1;
+          strcpy(errmsg, uw_error_message(ctx));
+        } else {
+          uw_reset_keep_error_message(ctx);
+          on_failure(ctx);
+          uw_write_header(ctx, "Content-type: text/plain\r\n");
+          uw_write(ctx, "Fatal error (out of retries): ");
+          uw_write(ctx, uw_error_message(ctx));
+          uw_write(ctx, "\n");
+          
+          return FAILED;
+        }
       }
     } else if (fk == UNLIMITED_RETRY)
       log_debug(logger_data, "Error triggers unlimited retry: %s\n", uw_error_message(ctx));
@@ -388,26 +405,36 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
       try_rollback(ctx, logger_data, log_error);
 
-      uw_reset_keep_error_message(ctx);
-      on_failure(ctx);
-      uw_write_header(ctx, "Content-type: text/html\r\n");
-      uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
-      uw_write(ctx, "Fatal error: ");
-      uw_write(ctx, uw_error_message(ctx));
-      uw_write(ctx, "\n</body></html>");
+      if (uw_get_app(ctx)->on_error && !had_error) {
+        had_error = 1;
+        strcpy(errmsg, uw_error_message(ctx));
+      } else {
+        uw_reset_keep_error_message(ctx);
+        on_failure(ctx);
+        uw_write_header(ctx, "Content-type: text/html\r\n");
+        uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
+        uw_write(ctx, "Fatal error: ");
+        uw_write(ctx, uw_error_message(ctx));
+        uw_write(ctx, "\n</body></html>");
 
-      return FAILED;
+        return FAILED;
+      }
     } else {
       log_error(logger_data, "Unknown uw_handle return code!\n");
 
       try_rollback(ctx, logger_data, log_error);
 
-      uw_reset_keep_request(ctx);
-      on_failure(ctx);
-      uw_write_header(ctx, "Content-type: text/plain\r\n");
-      uw_write(ctx, "Unknown uw_handle return code!\n");
+      if (uw_get_app(ctx)->on_error && !had_error) {
+        had_error = 1;
+        strcpy(errmsg, "Unknown uw_handle return code");
+      } else {
+        uw_reset_keep_request(ctx);
+        on_failure(ctx);
+        uw_write_header(ctx, "Content-type: text/plain\r\n");
+        uw_write(ctx, "Unknown uw_handle return code!\n");
 
-      return FAILED;
+        return FAILED;
+      }
     }
 
     if (try_rollback(ctx, logger_data, log_error))

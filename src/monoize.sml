@@ -3962,6 +3962,9 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             in
                 SOME (env, fm, ps)
             end
+          | L.DOnError n => SOME (env,
+                                  fm,
+                                  [(L'.DOnError n, loc)])
     end
 
 datatype expungable = Client | Channel

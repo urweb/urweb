@@ -151,6 +151,7 @@ datatype decl' =
        | DTask of exp * exp
 
        | DPolicy of policy
+       | DOnError of int
 
 withtype decl = decl' located
 

@@ -353,8 +353,6 @@ int uw_time = 0;
 
 // Single-request state
 
-#define ERROR_BUF_LEN 1024
-
 typedef struct regions {
   struct regions *next;
 } regions;
@@ -712,6 +710,22 @@ failure_kind uw_begin(uw_context ctx, char *path) {
   }
 
   return r;
+}
+
+failure_kind uw_begin_onError(uw_context ctx, char *msg) {
+  int r = setjmp(ctx->jmp_buf);
+
+  if (ctx->app->on_error) {
+    if (r == 0) {
+      if (ctx->app->db_begin(ctx))
+        uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+
+      ctx->app->on_error(ctx, msg);
+    }
+
+    return r;
+  } else
+    uw_error(ctx, FATAL, "Tried to run nonexistent onError handler");
 }
 
 uw_Basis_client uw_Basis_self(uw_context ctx) {

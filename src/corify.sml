@@ -1083,6 +1083,17 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
       | L.DPolicy e1 =>
         ([(L'.DPolicy (corifyExp st e1), loc)], st)
 
+      | L.DOnError (m, ms, x) =>
+        let
+            val st = St.lookupStrById st m
+            val st = foldl St.lookupStrByName st ms
+        in
+            case St.lookupValByName st x of
+                St.ENormal n => ([(L'.DOnError n, loc)], st)
+              | _ => (ErrorMsg.errorAt loc "Wrong type of identifier for 'onError'";
+                      ([], st))
+        end
+
 and corifyStr mods ((str, _), st) =
     case str of
         L.StrConst ds =>
@@ -1141,7 +1152,8 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DCookie (_, _, n', _) => Int.max (n, n')
                              | L.DStyle (_, _, n') => Int.max (n, n')
                              | L.DTask _ => n
-                             | L.DPolicy _ => n)
+                             | L.DPolicy _ => n
+                             | L.DOnError _ => n)
                        0 ds
 
 and maxNameStr (str, _) =
