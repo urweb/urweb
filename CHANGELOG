@@ -3,7 +3,12 @@ Next
 ========
 
 - Polymorphic variants (see Basis.variant)
+- New 'onError' directive for .urp files
 - (* *) and <!-- --> comments in XML
+- Basis.classes, Basis.confirm, and Basis.tryDml
+- Invocations like 'urweb foo' will compile foo.ur as a single-file project,
+  even if no foo.urp exists
+- Bug fixes and optimization improvements
 
 ========
 20100603
