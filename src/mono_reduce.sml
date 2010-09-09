@@ -436,7 +436,7 @@ fun reduce file =
                             val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
                         in
                             case lss of
-                                [] => raise Fail "Empty pattern match"
+                                [] => summarize d e
                               | ls :: lss =>
                                 summarize d e
                                 @ (if List.all (fn ls' => ls' = ls) lss then

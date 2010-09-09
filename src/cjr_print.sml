@@ -2011,8 +2011,11 @@ fun p_decl env (dAll as (d, _) : decl) =
                      space,
                      string "{",
                      space,
-                     p_list_sep (box [string ",", space]) (fn (x, n, _) =>
-                                                              string ("__uwc_" ^ ident x ^ "_" ^ Int.toString n)) xncs,
+                     case xncs of
+                         [] => string ("__uwec_" ^ ident x ^ "_" ^ Int.toString n)
+                       | _ =>
+                         p_list_sep (box [string ",", space]) (fn (x, n, _) =>
+                                                                  string ("__uwc_" ^ ident x ^ "_" ^ Int.toString n)) xncs,
                      space,
                      string "};"]
               | p_one (Option, _, _, _) = box []
