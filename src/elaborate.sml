@@ -1998,6 +1998,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                             
                 val gs3 = D.prove env denv (first, rest, loc)
             in
+                checkKind env c' ck kname;
                 ((L'.ECut (e', c', {field = ft, rest = rest}), loc), (L'.TRecord rest, loc),
                  gs1 @ enD gs2 @ enD gs3)
             end
@@ -2013,6 +2014,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                             
                 val gs3 = D.prove env denv (c', rest, loc)
             in
+                checkKind env c' ck (L'.KRecord ktype, loc);
                 ((L'.ECutMulti (e', c', {rest = rest}), loc), (L'.TRecord rest, loc),
                  gs1 @ enD gs2 @ enD gs3)
             end
