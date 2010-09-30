@@ -5,7 +5,7 @@
 <blockquote><pre>./configure
 make
 sudo make install
-urweb -demo /Demo demo</pre></blockquote></p>
+urweb -noEmacs -demo /Demo demo</pre></blockquote></p>
 
 <p>The <tt>-demo /Demo</tt> flag says that we want to build a demo application that expects its URIs to begin with <tt>/Demo</tt>.  The final argument <tt>demo</tt> gives the path to a directory housing demo files.  One of the files in that directory is <tt>prose</tt>, a file describing the different demo pieces with HTML.  Some lines of <tt>prose</tt> have the form <tt><i>foo</i>.urp</tt>, naming particular project files (with the extension <tt>.urp</tt>) in that directory.</p>
 

@@ -88,6 +88,9 @@ fun doArgs args =
       | "-moduleOf" :: fname :: _ =>
         (print (Compiler.moduleOf fname ^ "\n");
          OS.Process.exit OS.Process.success)
+      | "-noEmacs" :: rest =>
+        (Demo.noEmacs := true;
+         doArgs rest)
       | arg :: rest =>
         (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
              raise Fail ("Unknown flag " ^ arg)

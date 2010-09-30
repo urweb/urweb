@@ -27,6 +27,8 @@
 
 structure Demo :> DEMO = struct
 
+val noEmacs = ref false
+
 fun make' {prefix, dirname, guided} =
     let
         val prose = OS.Path.joinDirFile {dir = dirname,
@@ -333,6 +335,8 @@ fun make' {prefix, dirname, guided} =
                                              else
                                                  ()
                                          end)
+
+                            val highlight = fn () => if !noEmacs then () else highlight ()
                         in
                             if OS.Path.base file = "demo" then
                                 ()
