@@ -655,6 +655,24 @@
 
  val delayedExhaustives = ref ([] : (E.env * L'.con * L'.pat list * ErrorMsg.span) list)
 
+ exception CantSquish
+
+ fun squish by =
+     U.Con.mapB {kind = fn _ => fn k => k,
+                 con = fn bound => fn c =>
+                                      case c of
+                                          L'.CRel xn =>
+                                          if xn < bound then
+                                              c
+                                          else if bound <= xn andalso xn < bound + by then
+                                              raise CantSquish
+                                          else
+                                              L'.CRel (xn - by)
+                                        | L'.CUnif _ => raise CantSquish
+                                        | _ => c,
+                 bind = fn (bound, U.Con.RelC _) => bound + 1
+                         | (bound, _) => bound} 0
+
  fun unifyRecordCons env (loc, c1, c2) =
      let
          fun rkindof c =
@@ -1056,6 +1074,19 @@
              else
                  r := SOME c1All
 
+           | (L'.CUnif (nl, _, _, _, r), _) =>
+             if occursCon r c2All then
+                 err COccursCheckFailed
+             else
+                 (r := SOME (squish nl c2All)
+                  handle CantSquish => err CIncompatible)
+           | (_, L'.CUnif (nl, _, _, _, r)) =>
+             if occursCon r c1All then
+                 err COccursCheckFailed
+             else
+                 (r := SOME (squish nl c1All)
+                  handle CantSquish => err CIncompatible)
+
            | (L'.CUnit, L'.CUnit) => ()
 
            | (L'.TFun (d1, r1), L'.TFun (d2, r2)) =>
@@ -1290,7 +1321,8 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
                     val k = (L'.KType, loc)
                     val unifs = map (fn _ => cunif (loc, k)) xs
                     val nxs = length unifs - 1
-                    val t = ListUtil.foldli (fn (i, u, t) => subConInCon env (nxs - i, u) t) t unifs
+                    val t = ListUtil.foldli (fn (i, u, t) => subConInCon env (nxs - i,
+                                                                              E.mliftConInCon (nxs - i) u) t) t unifs
                     val dn = foldl (fn (u, dn) => (L'.CApp (dn, u), loc)) dn unifs
                 in
                     ignore (checkPatCon env p' pt t);

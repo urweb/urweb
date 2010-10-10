@@ -119,7 +119,8 @@ fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] 
                    end}/>
 </xml>
 
-fun renderFlat [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter =
+fun renderFlat [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] [])
+    : option int -> list (t * position) -> xml (ctx ++ body) [] [] =
     let
         fun renderFlat' len ls =
             case len of
@@ -233,13 +234,13 @@ fun render [ctx] [ctx ~ body] [t] f (r : {Filter : t -> signal bool,
                                  None => elems
                                | Some pos => skip pos elems
                      in
-                         return (renderFlat f r.Filter len elems)
+                         return (renderFlat f len elems)
                      end}/>
 </xml>
 
 fun delete pos = pos
 
-fun elements' [t] (dl'' : dlist'' t) =
+fun elements' [t] (dl'' : dlist'' t) : signal (list t) =
     case dl'' of
         Nil => return []
       | Cons (x, dl'') =>
@@ -247,13 +248,13 @@ fun elements' [t] (dl'' : dlist'' t) =
         tl <- elements' dl'';
         return (x :: tl)
 
-fun elements [t] (dl : dlist t) =
+fun elements [t] (dl : dlist t) : signal (list t) =
     dl' <- signal dl;
     case dl' of
         Empty => return []
       | Nonempty {Head = hd, ...} => elements' hd
 
-fun size' [t] (dl'' : dlist'' t) =
+fun size' [t] (dl'' : dlist'' t) : signal int =
     case dl'' of
         Nil => return 0
       | Cons (x, dl'') =>
@@ -261,13 +262,13 @@ fun size' [t] (dl'' : dlist'' t) =
         n <- size' dl'';
         return (n + 1)
 
-fun size [t] (dl : dlist t) =
+fun size [t] (dl : dlist t) : signal int =
     dl' <- signal dl;
     case dl' of
         Empty => return 0
       | Nonempty {Head = hd, ...} => size' hd
 
-fun numPassing' [t] (f : t -> signal bool) (dl'' : dlist'' t) =
+fun numPassing' [t] (f : t -> signal bool) (dl'' : dlist'' t) : signal int =
     case dl'' of
         Nil => return 0
       | Cons (x, dl'') =>
@@ -276,7 +277,7 @@ fun numPassing' [t] (f : t -> signal bool) (dl'' : dlist'' t) =
         n <- numPassing' f dl'';
         return (if b then n + 1 else n)
 
-fun numPassing [t] (f : t -> signal bool) (dl : dlist t) =
+fun numPassing [t] (f : t -> signal bool) (dl : dlist t) : signal int =
     dl' <- signal dl;
     case dl' of
         Empty => return 0

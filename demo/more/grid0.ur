@@ -13,8 +13,8 @@ open Make(struct
                          A = {New = return 0,
                               Inj = _}}
 
-              val cols = {Id = Direct.readOnly [#Id] ! "Id" Direct.int,
-                          A = Direct.editable [#A] ! "A" Direct.int}
+              val cols = {Id = Direct.readOnly [#Id] "Id" Direct.int,
+                          A = Direct.editable [#A] "A" Direct.int}
 
               val aggregates = {}
 

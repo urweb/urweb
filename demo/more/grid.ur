@@ -49,16 +49,18 @@ functor Make(M : sig
     fun make (row : M.row) [input] [filter] (m : colMeta' M.row input filter) : transaction input = m.Project row
 
     fun makeAll cols row = @@Monad.exec [transaction] _ [map snd3 M.cols]
-                               (@map2 [fst3] [colMeta M.row] [fn p => transaction (snd3 p)]
-                                 (fn [p] data meta => make row(meta.Handlers data))
-                                 M.folder cols M.cols)
-                               (@@Folder.mp [_] [_] M.folder)
+                             (@map2 [fst3] [colMeta M.row] [fn p => transaction (snd3 p)]
+                               (fn [p] data meta => make row (meta.Handlers data))
+                               M.folder cols M.cols)
+                             (@@Folder.mp [_] [_] M.folder)
+
+    type listT = {Row : source M.row,
+                  Cols : source ($(map snd3 M.cols)),
+                  Updating : source bool,
+                  Selected : source bool}
 
     type grid = {Cols : $(map fst3 M.cols),
-                 Rows : Dlist.dlist {Row : source M.row,
-                                     Cols : source ($(map snd3 M.cols)),
-                                     Updating : source bool,
-                                     Selected : source bool},
+                 Rows : Dlist.dlist listT,
                  Selection : source bool,
                  Filters : $(map thd3 M.cols),
                  Sort : source (option (M.row -> M.row -> bool)),
@@ -250,11 +252,12 @@ functor Make(M : sig
                                                     return (f r1 r2)) f)}
                       grid.Rows}
 
-            <dyn signal={rows <- Dlist.foldl (fn row => @Monad.mapR2 _ [aggregateMeta M.row] [id] [id]
-                                                         (fn [nm :: Name] [t :: Type] meta acc =>
-                                                             Monad.mp (fn v => meta.Step v acc)
-                                                                      (signal row.Row))
-                                                         M.aggFolder M.aggregates)
+            <dyn signal={rows <- Dlist.foldl (fn row : listT =>
+                                                 @Monad.mapR2 _ [aggregateMeta M.row] [id] [id]
+                                                  (fn [nm :: Name] [t :: Type] meta acc =>
+                                                      Monad.mp (fn v => meta.Step v acc)
+                                                               (signal row.Row))
+                                                  M.aggFolder M.aggregates)
                                  (@mp [aggregateMeta M.row] [id]
                                   (fn [t] meta => meta.Initial)
                                   M.aggFolder M.aggregates) grid.Rows;

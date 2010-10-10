@@ -1,13 +1,14 @@
 con link = fn col_parent :: (Type * Type) => col_parent.1 -> transaction (option col_parent.2)
-fun noParent [t ::: Type] (_ : t) = return None
+fun noParent [t ::: Type] (_ : t) : transaction (option unit) = return None
 
 con meta = fn (col :: Type, parent :: Type) => {
 	      Link : link (col, parent),
 	      Inj : sql_injectable col
 	      }
 
-fun local [t :: Type] (inj : sql_injectable t) = {Link = noParent,
-                                                  Inj = inj}
+fun local [t :: Type] (inj : sql_injectable t) : meta (t, unit) =
+    {Link = noParent,
+     Inj = inj}
 
 functor Table(M : sig
                   con cols :: {(Type * Type)}
@@ -31,19 +32,19 @@ functor Table(M : sig
     val id = {Link = fn id => resultOut (SELECT * FROM t WHERE t.Id = {[id]}),
               Inj = inj}
 
-    fun ensql [avail] (r : row') : $(map (sql_exp avail [] []) fs') =
+    fun ensql [avail ::_] (r : row') : $(map (sql_exp avail [] []) fs') =
         @map2 [meta] [fst] [fn ts :: (Type * Type) => sql_exp avail [] [] ts.1]
          (fn [ts] meta v => @sql_inject meta.Inj v)
          M.folder M.cols r
 
     fun create (r : row') =
         id <- nextval s;
-        dml (insert t ({Id = sql_inject id} ++ ensql r));
+        dml (insert t ({Id = sql_inject id} ++ ensql [[]] r));
         return ({Id = id} ++ r)
 
     fun delete r = dml (DELETE FROM t WHERE t.Id = {[r.Id]})
 
-    fun save r = dml (update [fs'] (ensql (r -- #Id)) t (WHERE T.Id = {[r.Id]}))
+    fun save r = dml (update [fs'] (ensql [[T = [Id = int] ++ map fst M.cols]] (r -- #Id)) t (WHERE T.Id = {[r.Id]}))
 
     fun lookup id =
         ro <- oneOrNoRows (SELECT * FROM t WHERE t.Id = {[id]});

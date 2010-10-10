@@ -38,7 +38,7 @@ structure Direct = struct
              NonNull of metaBase (actual, input, filter) * metaBase (option actual, input, filter)
            | Nullable of metaBase (actual, input, filter)
 
-    con meta = fn global_actual_input_filter :: (Type * Type * Type * Type) =>
+    con meta = fn global_actual_input_filter =>
                   {Initialize : transaction global_actual_input_filter.1,
                    Handlers : global_actual_input_filter.1
                               -> metaBoth global_actual_input_filter.2 global_actual_input_filter.3
@@ -48,25 +48,26 @@ structure Direct = struct
     fun editable [ts] [rest] [nm :: Name] [[nm] ~ rest] name (m : meta ts) : colMeta ([nm = ts.2] ++ rest)
                                                                                      (editableState ts) =
        let
-           fun doMr mr = {Header = name,
-                          Project = fn r => mr.Initialize r.nm,
-                          Update = fn r s =>
-                                      vo <- current (mr.Parse s);
-                                      return (case vo of
-                                                  None => r
-                                                | Some v => r -- nm ++ {nm = v}),
-                          Display = mr.Display,
-                          Edit = mr.Edit,
-                          Validate = fn s => vo <- mr.Parse s; return (Option.isSome vo),
-                          CreateFilter = mr.CreateFilter,
-                          DisplayFilter = mr.DisplayFilter,
-                          Filter = fn i r => mr.Filter i r.nm,
-                          Sort = Some (fn r1 r2 => mr.Sort r1.nm r2.nm)} 
+           fun doMr (mr : metaBase (ts.2, ts.3, ts.4)) : colMeta' ([nm = ts.2] ++ rest) ts.3 ts.4 =
+               {Header = name,
+                Project = fn r => mr.Initialize r.nm,
+                Update = fn r s =>
+                            vo <- current (mr.Parse s);
+                            return (case vo of
+                                        None => r
+                                      | Some v => r -- nm ++ {nm = v}),
+                Display = mr.Display,
+                Edit = mr.Edit,
+                Validate = fn s => vo <- mr.Parse s; return (Option.isSome vo),
+                CreateFilter = mr.CreateFilter,
+                DisplayFilter = mr.DisplayFilter,
+                Filter = fn i r => mr.Filter i r.nm,
+                Sort = Some (fn r1 r2 => mr.Sort r1.nm r2.nm)} 
        in
            {Initialize = m.Initialize,
             Handlers = fn data => case m.Handlers data of
-                                  NonNull (mr, _) => doMr mr
-                                | Nullable mr => doMr mr}
+                                      NonNull (mr, _) => doMr mr
+                                    | Nullable mr => doMr mr}
        end
         
     con readOnlyState (ts :: (Type * Type * Type * Type)) = (ts.1, ts.3, ts.4)
