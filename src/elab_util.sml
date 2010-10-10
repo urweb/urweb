@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -118,6 +118,8 @@ fun exists f k =
 
 end
 
+val mliftConInCon = ref (fn n : int => fn c : con => (raise Fail "You didn't set ElabUtil.mliftConInCon!") : con)
+
 structure Con = struct
 
 datatype binder =
@@ -215,7 +217,7 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                            (CProj (c', n), loc))
 
               | CError => S.return2 cAll
-              | CUnif (_, _, _, ref (SOME c)) => mfc' ctx c
+              | CUnif (nl, _, _, _, ref (SOME c)) => mfc' ctx (!mliftConInCon nl c)
               | CUnif _ => S.return2 cAll
                         
               | CKAbs (x, c) =>

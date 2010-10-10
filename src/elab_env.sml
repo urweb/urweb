@@ -43,8 +43,6 @@ exception UnboundNamed of int
 
 (* AST utility functions *)
 
-exception SynUnif
-
 val liftKindInKind =
     U.Kind.mapB {kind = fn bound => fn k =>
                                        case k of
@@ -78,12 +76,31 @@ val liftConInCon =
                                              c
                                          else
                                              CRel (xn + 1)
-                                       (*| CUnif _ => raise SynUnif*)
+                                       | CUnif (nl, loc, k, s, r) => CUnif (nl+1, loc, k, s, r)
                                        | _ => c,
                 bind = fn (bound, U.Con.RelC _) => bound + 1
                         | (bound, _) => bound}
 
 val lift = liftConInCon 0
+
+fun mliftConInCon by c =
+    if by = 0 then
+        c
+    else
+        U.Con.mapB {kind = fn _ => fn k => k,
+                    con = fn bound => fn c =>
+                                         case c of
+                                             CRel xn =>
+                                             if xn < bound then
+                                                 c
+                                             else
+                                                 CRel (xn + by)
+                                           | CUnif (nl, loc, k, s, r) => CUnif (nl+by, loc, k, s, r)
+                                           | _ => c,
+                    bind = fn (bound, U.Con.RelC _) => bound + 1
+                            | (bound, _) => bound} 0 c
+
+val () = U.mliftConInCon := mliftConInCon
 
 val liftKindInExp =
     U.Exp.mapB {kind = fn bound => fn k =>
@@ -108,6 +125,7 @@ val liftConInExp =
                                              c
                                          else
                                              CRel (xn + 1)
+                                       | CUnif (nl, loc, k, s, r) => CUnif (nl+1, loc, k, s, r)
                                        | _ => c,
                 exp = fn _ => fn e => e,
                 bind = fn (bound, U.Exp.RelC _) => bound + 1
@@ -466,7 +484,7 @@ fun class_name_in (c, _) =
     case c of
         CNamed n => SOME (ClNamed n)
       | CModProj x => SOME (ClProj x)
-      | CUnif (_, _, _, ref (SOME c)) => class_name_in c
+      | CUnif (_, _, _, _, ref (SOME c)) => class_name_in c
       | _ => NONE
 
 fun isClass (env : env) c =
@@ -480,7 +498,7 @@ fun isClass (env : env) c =
 fun class_head_in c =
     case #1 c of
         CApp (f, _) => class_head_in f
-      | CUnif (_, _, _, ref (SOME c)) => class_head_in c
+      | CUnif (_, _, _, _, ref (SOME c)) => class_head_in c
       | _ => class_name_in c
 
 exception Unify
@@ -502,8 +520,8 @@ fun unifyKinds (k1, k2) =
 
 fun eqCons (c1, c2) =
     case (#1 c1, #1 c2) of
-        (CUnif (_, _, _, ref (SOME c1)), _) => eqCons (c1, c2)
-      | (_, CUnif (_, _, _, ref (SOME c2))) => eqCons (c1, c2)
+        (CUnif (nl, _, _, _, ref (SOME c1)), _) => eqCons (mliftConInCon nl c1, c2)
+      | (_, CUnif (nl, _, _, _, ref (SOME c2))) => eqCons (c1, mliftConInCon nl c2)
 
       | (CRel n1, CRel n2) => if n1 = n2 then () else raise Unify
 
@@ -545,8 +563,8 @@ fun unifyCons rs =
     let
         fun unify d (c1, c2) =
             case (#1 c1, #1 c2) of
-                (CUnif (_, _, _, ref (SOME c1)), _) => unify d (c1, c2)
-              | (_, CUnif (_, _, _, ref (SOME c2))) => unify d (c1, c2)
+                (CUnif (nl, _, _, _, ref (SOME c1)), _) => unify d (mliftConInCon nl c1, c2)
+              | (_, CUnif (nl, _, _, _, ref (SOME c2))) => unify d (c1, mliftConInCon nl c2)
 
               | (CUnif _, _) => ()
 
@@ -633,7 +651,7 @@ fun unifySubst (rs : con list) =
 exception Bad of con * con
 
 val hasUnif = U.Con.exists {kind = fn _ => false,
-                            con = fn CUnif (_, _, _, ref NONE) => true
+                            con = fn CUnif (_, _, _, _, ref NONE) => true
                                    | _ => false}
 
 fun startsWithUnif c =
@@ -670,7 +688,7 @@ fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
                                                 val rk = ref NONE
                                                 val k = (KUnif (loc, "k", rk), loc)
                                                 val r = ref NONE
-                                                val rc = (CUnif (loc, k, "x", r), loc)
+                                                val rc = (CUnif (0, loc, k, "x", r), loc)
                                             in
                                                 ((CApp (f, rc), loc),
                                               fn () => (if consEq (rc, x) then

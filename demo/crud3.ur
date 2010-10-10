@@ -20,7 +20,7 @@ open Crud.Make(struct
                                            <textbox{#B}/>
                                          </subform>
                                        </xml>),
-                                       Parse = (fn p => p.A ^ p.B),
+                                       Parse = (fn p : {A : string, B : string} => p.A ^ p.B),
                                        Inject = _
                                       }
                               }

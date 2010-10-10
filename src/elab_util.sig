@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,8 @@
 signature ELAB_UTIL = sig
 
 val classifyDatatype : (string * int * 'a option) list -> Elab.datatype_kind
+
+val mliftConInCon : (int -> Elab.con -> Elab.con) ref
 
 structure Kind : sig
     val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,

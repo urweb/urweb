@@ -97,10 +97,12 @@ fun liftConInCon by =
                                              c
                                          else
                                              CRel (xn + by)
-                                       (*| CUnif _ => raise SynUnif*)
+                                       | CUnif (nl, loc, k, s, r) => CUnif (nl+by, loc, k, s, r)
                                        | _ => c,
                 bind = fn (bound, U.Con.RelC _) => bound + 1
                         | (bound, _) => bound}
+
+exception SubUnif
 
 fun subConInCon' rep =
     U.Con.mapB {kind = fn _ => fn k => k,
@@ -111,7 +113,8 @@ fun subConInCon' rep =
                                                  EQUAL => #1 (liftConInCon by 0 rep)
                                                | GREATER => CRel (xn' - 1)
                                                | LESS => c)
-                                          (*| CUnif _ => raise SynUnif*)
+                                          | CUnif (0, _, _, _, _) => raise SubUnif
+                                          | CUnif (n, loc, k, s, r) => CUnif (n-1, loc, k, s, r)
                                           | _ => c,
                 bind = fn ((by, xn), U.Con.RelC _) => (by+1, xn+1)
                         | (ctx, _) => ctx}
@@ -153,7 +156,7 @@ fun reset () = (identity := 0;
 
 fun hnormCon env (cAll as (c, loc)) =
     case c of
-        CUnif (_, _, _, ref (SOME c)) => hnormCon env c
+        CUnif (nl, _, _, _, ref (SOME c)) => hnormCon env (E.mliftConInCon nl c)
 
       | CNamed xn =>
         (case E.lookupCNamed env xn of
@@ -276,7 +279,7 @@ fun hnormCon env (cAll as (c, loc)) =
                                           let
                                               val r = ref NONE
                                           in
-                                              (r, (CUnif (loc, (KType, loc), "_", r), loc))
+                                              (r, (CUnif (0, loc, (KType, loc), "_", r), loc))
                                           end
                                           
                                       val (vR, v) = cunif ()
@@ -284,7 +287,7 @@ fun hnormCon env (cAll as (c, loc)) =
                                       val c = (CApp (f, v), loc)
                                   in
                                       case unconstraint c of
-                                          (CUnif (_, _, _, vR'), _) =>
+                                          (CUnif (_, _, _, _, vR'), _) =>
                                           if vR' = vR then
                                               (inc identity;
                                                hnormCon env c2)

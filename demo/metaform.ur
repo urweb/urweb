@@ -15,11 +15,10 @@ functor Make (M : sig
     fun main () = return <xml><body>
       <form>
         {@foldUR [string] [fn cols => xml form [] (mapU string cols)]
-          (fn [nm :: Name] [rest ::_] [[nm] ~ rest] name
-                           (acc : xml form [] (mapU string rest)) => <xml>
-                             <li> {[name]}: <textbox{nm}/></li>
-                             {useMore acc}
-                           </xml>)
+          (fn [nm :: Name] [rest ::_] [[nm] ~ rest] name acc => <xml>
+            <li> {[name]}: <textbox{nm}/></li>
+            {useMore acc}
+          </xml>)
           <xml/>
           M.fl M.names}
         <submit action={handler}/>

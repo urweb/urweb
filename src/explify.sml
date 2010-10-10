@@ -76,7 +76,7 @@ fun explifyCon (c, loc) =
       | L.CProj (c, n) => (L'.CProj (explifyCon c, n), loc)
 
       | L.CError => raise Fail ("explifyCon: CError at " ^ EM.spanToString loc)
-      | L.CUnif (_, _, _, ref (SOME c)) => explifyCon c
+      | L.CUnif (nl, _, _, _, ref (SOME c)) => explifyCon (ElabEnv.mliftConInCon nl c)
       | L.CUnif _ => raise Fail ("explifyCon: CUnif at " ^ EM.spanToString loc)
 
       | L.CKAbs (x, c) => (L'.CKAbs (x, explifyCon c), loc)

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,6 +56,8 @@ signature ELAB_ERR = sig
            | CExplicitness of Elab.con * Elab.con
            | CKindof of Elab.kind * Elab.con * string
            | CRecordFailure of Elab.con * Elab.con * (Elab.con * Elab.con * Elab.con) option
+           | TooLifty of ErrorMsg.span * ErrorMsg.span
+           | TooUnify of Elab.con * Elab.con
 
     val cunifyError : ElabEnv.env -> cunify_error -> unit
 

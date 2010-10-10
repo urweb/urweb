@@ -1,7 +1,7 @@
 table t : { A : int }
 view v = SELECT t.A AS A FROM t WHERE t.A > 7
 
-fun list [u] (_ : fieldsOf u [A = int]) (title : string) (x : u) =
+fun list [u] (_ : fieldsOf u [A = int]) (title : string) (x : u) : transaction xbody =
     xml <- queryX (SELECT * FROM x)
            (fn r : {X : {A : int}} => <xml><li>{[r.X.A]}</li></xml>);
     return <xml>

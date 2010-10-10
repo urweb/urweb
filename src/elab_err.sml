@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -112,7 +112,6 @@ fun conError env err =
          eprefaces' [("Constructor", p_con env c),
                      ("Kind", p_kind env k)])
 
-
 datatype cunify_error =
          CKind of kind * kind * kunify_error
        | COccursCheckFailed of con * con
@@ -120,6 +119,8 @@ datatype cunify_error =
        | CExplicitness of con * con
        | CKindof of kind * con * string
        | CRecordFailure of con * con * (con * con * con) option
+       | TooLifty of ErrorMsg.span * ErrorMsg.span
+       | TooUnify of con * con
 
 fun cunifyError env err =
     case err of
@@ -154,6 +155,13 @@ fun cunifyError env err =
                            [("Field", p_con env nm),
                             ("Value 1", p_con env t1),
                             ("Value 2", p_con env t2)]))
+      | TooLifty (loc1, loc2) =>
+        (ErrorMsg.errorAt loc1 "Can't unify two unification variables that both have suspended liftings";
+         eprefaces' [("Other location", Print.PD.string (ErrorMsg.spanToString loc2))])
+      | TooUnify (c1, c2) =>
+        (ErrorMsg.errorAt (#2 c1) "Substitution in constructor is blocked by a too-deep unification variable";
+         eprefaces' [("Replacement", p_con env c1),
+                     ("Body", p_con env c2)])
 
 datatype exp_error =
        UnboundExp of ErrorMsg.span * string

@@ -78,7 +78,7 @@ datatype con' =
        | CProj of con * int
 
        | CError
-       | CUnif of ErrorMsg.span * kind * string * con option ref
+       | CUnif of int * ErrorMsg.span * kind * string * con option ref
 
 withtype con = con' located
 

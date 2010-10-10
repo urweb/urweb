@@ -27,6 +27,8 @@
 
 signature ELAB_OPS = sig
 
+    exception SubUnif
+
     val liftKindInKind : int -> Elab.kind -> Elab.kind
     val subKindInKind : int * Elab.kind -> Elab.kind -> Elab.kind
 

@@ -202,10 +202,13 @@ fun p_con' par env (c, _) =
                              string (Int.toString n)]
 
       | CError => string "<ERROR>"
-      | CUnif (_, _, _, ref (SOME c)) => p_con' par env c
-      | CUnif (_, k, s, _) => box [string ("<UNIF:" ^ s ^ "::"),
-                                   p_kind env k,
-                                   string ">"]
+      | CUnif (nl, _, _, _, ref (SOME c)) => p_con' par env (E.mliftConInCon nl c)
+      | CUnif (nl, _, k, s, _) => box [string ("<UNIF:" ^ s ^ "::"),
+                                       p_kind env k,
+                                       case nl of
+                                           0 => box []
+                                         | _ => string ("+" ^ Int.toString nl),
+                                       string ">"]
 
       | CKAbs (x, c) => box [string x,
                              space,
