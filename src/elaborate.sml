@@ -1059,7 +1059,7 @@
                   r1 := SOME c2All)
              else if nl2 = 0 then
                  (unifyKinds env k1 k2;
-                  r2 := SOME c2All)
+                  r2 := SOME c1All)
              else
                  err (fn _ => TooLifty (loc1, loc2))
 
