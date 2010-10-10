@@ -94,6 +94,9 @@
            | (L'.KUnif (_, _, ref (SOME k1All)), _) => unifyKinds' env k1All k2All
            | (_, L'.KUnif (_, _, ref (SOME k2All))) => unifyKinds' env k1All k2All
 
+           | (L'.KTupleUnif (_, _, ref (SOME k)), _) => unifyKinds' env k k2All
+           | (_, L'.KTupleUnif (_, _, ref (SOME k))) => unifyKinds' env k1All k
+
            | (L'.KUnif (_, _, r1), L'.KUnif (_, _, r2)) =>
              if r1 = r2 then
                  ()
@@ -110,6 +113,32 @@
                  err KOccursCheckFailed
              else
                  r := SOME k1All
+
+           | (L'.KTupleUnif (_, nks, r), L'.KTuple ks) =>
+             ((app (fn (n, k) => unifyKinds' env k (List.nth (ks, n-1))) nks;
+               r := SOME k2All)
+              handle Subscript => err KIncompatible)
+           | (L'.KTuple ks, L'.KTupleUnif (_, nks, r)) =>
+             ((app (fn (n, k) => unifyKinds' env (List.nth (ks, n-1)) k) nks;
+               r := SOME k1All)
+              handle Subscript => err KIncompatible)
+           | (L'.KTupleUnif (loc, nks1, r1), L'.KTupleUnif (_, nks2, r2)) =>
+             let
+                 val nks = foldl (fn (p as (n, k1), nks) =>
+                                     case ListUtil.search (fn (n', k2) =>
+                                                              if n' = n then
+                                                                  SOME k2
+                                                              else
+                                                                  NONE) nks2 of
+                                         NONE => p :: nks
+                                       | SOME k2 => (unifyKinds' env k1 k2;
+                                                     nks)) nks2 nks1
+
+                 val k = (L'.KTupleUnif (loc, nks, ref NONE), loc)
+             in
+                 r1 := SOME k;
+                 r2 := SOME k
+             end
 
            | _ => err KIncompatible
      end
@@ -441,16 +470,15 @@
        | L.CProj (c, n) =>
          let
              val (c', k, gs) = elabCon (env, denv) c
+
+             val k' = kunif loc
          in
-             case hnormKind k of
-                 (L'.KTuple ks, _) =>
-                 if n <= 0 orelse n > length ks then
-                     (conError env (ProjBounds (c', n));
-                      (cerror, kerror, []))
-                 else
-                     ((L'.CProj (c', n), loc), List.nth (ks, n - 1), gs)
-               | k => (conError env (ProjMismatch (c', k));
-                       (cerror, kerror, []))
+             if n <= 0 then
+                 (conError env (ProjBounds (c', n));
+                  (cerror, kerror, []))
+             else
+                 (checkKind env c' k (L'.KTupleUnif (loc, [(n, k')], ref NONE), loc);
+                  ((L'.CProj (c', n), loc), k', gs))
          end
 
        | L.CWild k =>
@@ -463,6 +491,7 @@
  fun kunifsRemain k =
      case k of
          L'.KUnif (_, _, ref NONE) => true
+       | L'.KTupleUnif (_, _, ref NONE) => true
        | _ => false
  fun cunifsRemain c =
      case c of
@@ -3229,6 +3258,8 @@ and wildifyStr env (str, sgn) =
                        | L'.KError => NONE
                        | L'.KUnif (_, _, ref (SOME k)) => decompileKind k
                        | L'.KUnif _ => NONE
+                       | L'.KTupleUnif (_, _, ref (SOME k)) => decompileKind k
+                       | L'.KTupleUnif _ => NONE
 
                        | L'.KRel _ => NONE
                        | L'.KFun _ => NONE

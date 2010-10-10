@@ -495,6 +495,8 @@ A tuple type $(\tau_1, \ldots, \tau_n)$ expands to a record type $\{1 = \tau_1, 
 
 In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid X$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.
 
+In some contexts, the parser isn't happy with token sequences like $x :: \_$, to indicate a constructor variable of wildcard kind.  In such cases, write the second two tokens as $::\hspace{-.05in}\_$, with no intervening spaces.
+
 For any signature item or declaration that defines some entity to be equal to $A$ with classification annotation $B$ (e.g., $\mt{val} \; x : B = A$), $B$ and the preceding colon (or similar punctuation) may be omitted, in which case it is filled in as a wildcard.
 
 A signature item or declaration $\mt{type} \; x$ or $\mt{type} \; x = \tau$ is elaborated into $\mt{con} \; x :: \mt{Type}$ or $\mt{con} \; x :: \mt{Type} = \tau$, respectively.

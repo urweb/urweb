@@ -78,6 +78,16 @@ fun mapfoldB {kind, bind} =
               | KUnif (_, _, ref (SOME k)) => mfk' ctx k
               | KUnif _ => S.return2 kAll
 
+              | KTupleUnif (_, _, ref (SOME k)) => mfk' ctx k
+              | KTupleUnif (loc, nks, r) =>
+                S.map2 (ListUtil.mapfold (fn (n, k) =>
+                                             S.map2 (mfk ctx k,
+                                                  fn k' =>
+                                                     (n, k'))) nks,
+                     fn nks' =>
+                        (KTupleUnif (loc, nks', r), loc))
+
+
               | KRel _ => S.return2 kAll
               | KFun (x, k) =>
                 S.map2 (mfk (bind (ctx, x)) k,
@@ -207,7 +217,7 @@ fun mapfoldB {kind = fk, con = fc, bind} =
               | CError => S.return2 cAll
               | CUnif (_, _, _, ref (SOME c)) => mfc' ctx c
               | CUnif _ => S.return2 cAll
-
+                        
               | CKAbs (x, c) =>
                 S.map2 (mfc (bind (ctx, RelK x)) c,
                         fn c' =>

@@ -6,7 +6,7 @@ con colMeta = fn (db :: Type, state :: Type) =>
                   NewState : transaction state,
                   Widget : state -> xbody,
                   ReadState : state -> transaction db}
-con colsMeta = fn cols :: {(Type * Type)} => $(map colMeta cols)
+con colsMeta = fn cols => $(map colMeta cols)
 
 fun default [t] (sh : show t) (rd : read t) (inj : sql_injectable t)
             name : colMeta (t, source string) =
@@ -46,10 +46,8 @@ functor Make(M : sig
     fun add r =
         dml (insert t
                     (@foldR2 [fst] [colMeta]
-                      [fn cols => $(map (fn t :: (Type * Type) =>
-                                            sql_exp [] [] [] t.1) cols)]
-                      (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                                       [[nm] ~ rest] input col acc =>
+                      [fn cols => $(map (fn t => sql_exp [] [] [] t.1) cols)]
+                      (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] input col acc =>
                           acc ++ {nm = @sql_inject col.Inject input})
                       {} M.fl (r -- #Id) M.cols
                       ++ {Id = (SQL {[r.Id]})}))
@@ -73,8 +71,7 @@ functor Make(M : sig
                     <tr>
                       <td>{[r.Id]}</td>
                       {@mapX2 [colMeta] [fst] [_]
-                        (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                         [[nm] ~ rest] m v =>
+                        (fn [nm :: Name] [p ::_] [rest ::_] [[nm] ~ rest] m v =>
                             <xml><td>{m.Show v}</td></xml>)
                         M.fl M.cols (r -- #Id)}
                       {if withDel then
@@ -89,8 +86,7 @@ functor Make(M : sig
               <tr>
                 <th>Id</th>
                 {@mapX [colMeta] [_]
-                  (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                   [[nm] ~ rest] m =>
+                  (fn [nm :: Name] [p ::_] [rest ::_] [[nm] ~ rest] m =>
                       <xml><th>{[m.Nam]}</th></xml>)
                   M.fl M.cols}
               </tr>
@@ -104,7 +100,7 @@ functor Make(M : sig
 
         id <- source "";
         inps <- @foldR [colMeta] [fn r => transaction ($(map snd r))]
-                 (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}] [[nm] ~ rest] m acc =>
+                 (fn [nm :: Name] [p ::_] [rest ::_] [[nm] ~ rest] m acc =>
                      s <- m.NewState;
                      r <- acc;
                      return ({nm = s} ++ r))
@@ -115,8 +111,7 @@ functor Make(M : sig
             fun add () =
                 id <- get id;
                 vs <- @foldR2 [colMeta] [snd] [fn r => transaction ($(map fst r))]
-                       (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                        [[nm] ~ rest] m s acc =>
+                       (fn [nm :: Name] [p ::_] [rest ::_] [[nm] ~ rest] m s acc =>
                            v <- m.ReadState s;
                            r <- acc;
                            return ({nm = v} ++ r))
@@ -145,8 +140,7 @@ functor Make(M : sig
               <table>
                 <tr> <th>Id:</th> <td><ctextbox source={id}/></td> </tr>
                 {@mapX2 [colMeta] [snd] [_]
-                  (fn [nm :: Name] [p :: (Type * Type)] [rest :: {(Type * Type)}]
-                                   [[nm] ~ rest] m s =>
+                  (fn [nm :: Name] [p ::_] [rest ::_] [[nm] ~ rest] m s =>
                       <xml><tr> <th>{[m.Nam]}:</th> <td>{m.Widget s}</td> </tr></xml>)
                   M.fl M.cols inps}
                 <tr> <th/> <td><button value="Batch it" onclick={add ()}/></td> </tr>

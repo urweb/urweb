@@ -56,6 +56,16 @@ fun p_kind' par env (k, _) =
       | KError => string "<ERROR>"
       | KUnif (_, _, ref (SOME k)) => p_kind' par env k
       | KUnif (_, s, _) => string ("<UNIF:" ^ s ^ ">")
+      | KTupleUnif (_, _, ref (SOME k)) => p_kind' par env k
+      | KTupleUnif (_, nks, _) => box [string "(",
+                                       p_list_sep (box [space, string "*", space])
+                                                  (fn (n, k) => box [string (Int.toString n ^ ":"),
+                                                                     space,
+                                                                     p_kind env k]) nks,
+                                       space,
+                                       string "*",
+                                       space,
+                                       string "...)"]
 
       | KRel n => ((if !debug then
                          string (E.lookupKRel env n ^ "_" ^ Int.toString n)

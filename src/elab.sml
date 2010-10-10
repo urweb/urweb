@@ -39,6 +39,7 @@ datatype kind' =
 
        | KError
        | KUnif of ErrorMsg.span * string * kind option ref
+       | KTupleUnif of ErrorMsg.span * (int * kind) list * kind option ref
 
        | KRel of int
        | KFun of string * kind

@@ -212,7 +212,7 @@ fun tnamesOf (e, _) =
  | STRING of string | INT of Int64.int | FLOAT of Real64.real | CHAR of char
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
- | EQ | COMMA | COLON | DCOLON | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
+ | EQ | COMMA | COLON | DCOLON | DCOLONWILD | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
  | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD | AT
  | CON | LTYPE | VAL | REC | AND | FUN | MAP | UNIT | KUNIT | CLASS
  | DATATYPE | OF
@@ -510,6 +510,7 @@ dtypes : dtype                          ([dtype])
 
 kopt   :                                (NONE)
        | DCOLON kind                    (SOME kind)
+       | DCOLONWILD                     (SOME (KWild, s (DCOLONWILDleft, DCOLONWILDright)))
 
 dargs  :                                ([])
        | SYMBOL dargs                   (SYMBOL :: dargs)
@@ -853,6 +854,22 @@ carg   : SYMBOL DCOLON kind             (fn (c, k) =>
                                                 ((CAbs ("_", SOME kind, c), loc),
                                                  (KArrow (kind, k), loc))
                                             end)
+       | SYMBOL DCOLONWILD              (fn (c, k) =>
+                                            let
+                                                val loc = s (SYMBOLleft, DCOLONWILDright)
+                                                val kind = (KWild, loc)
+                                            in
+                                                ((CAbs (SYMBOL, NONE, c), loc),
+                                                 (KArrow (kind, k), loc))
+                                            end)
+       | UNDER DCOLONWILD               (fn (c, k) =>
+                                            let
+                                                val loc = s (UNDERleft, DCOLONWILDright)
+                                                val kind = (KWild, loc)
+                                            in
+                                                ((CAbs ("_", NONE, c), loc),
+                                                 (KArrow (kind, k), loc))
+                                            end)
        | cargp                          (cargp)
 
 cargp  : SYMBOL                         (fn (c, k) =>
@@ -1078,6 +1095,14 @@ earga  : LBRACK SYMBOL RBRACK            (fn (e, t) =>
                                              in
                                                  ((ECAbs (Implicit, SYMBOL, kind, e), loc),
                                                   (TCFun (Implicit, SYMBOL, kind, t), loc))
+                                             end)
+       | LBRACK SYMBOL DCOLONWILD RBRACK (fn (e, t) =>
+                                             let
+                                                 val loc = s (LBRACKleft, RBRACKright)
+                                                 val kind = (KWild, loc)
+                                             in
+                                                 ((ECAbs (Explicit, SYMBOL, kind, e), loc),
+                                                  (TCFun (Explicit, SYMBOL, kind, t), loc))
                                              end)
        | LBRACK SYMBOL kcolon kind RBRACK(fn (e, t) =>
                                              let

@@ -372,6 +372,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> ">="        => (Tokens.GE (pos yypos, pos yypos + size yytext));
 <INITIAL> ","         => (Tokens.COMMA (pos yypos, pos yypos + size yytext));
 <INITIAL> ":::"       => (Tokens.TCOLON (pos yypos, pos yypos + size yytext));
+<INITIAL> "::_"       => (Tokens.DCOLONWILD (pos yypos, pos yypos + size yytext));
 <INITIAL> "::"        => (Tokens.DCOLON (pos yypos, pos yypos + size yytext));
 <INITIAL> ":"         => (Tokens.COLON (pos yypos, pos yypos + size yytext));
 <INITIAL> "..."       => (Tokens.DOTDOTDOT (pos yypos, pos yypos + size yytext));

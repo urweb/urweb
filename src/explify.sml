@@ -44,6 +44,8 @@ fun explifyKind (k, loc) =
       | L.KError => raise Fail ("explifyKind: KError at " ^ EM.spanToString loc)
       | L.KUnif (_, _, ref (SOME k)) => explifyKind k
       | L.KUnif _ => raise Fail ("explifyKind: KUnif at " ^ EM.spanToString loc)
+      | L.KTupleUnif (loc, _, ref (SOME k)) => explifyKind k
+      | L.KTupleUnif _ => raise Fail ("explifyKind: KTupleUnif at " ^ EM.spanToString loc)
 
       | L.KRel n => (L'.KRel n, loc)
       | L.KFun (x, k) => (L'.KFun (x, explifyKind k), loc)

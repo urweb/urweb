@@ -5,7 +5,7 @@ con colMeta = fn (db :: Type, widget :: Type) =>
                   WidgetPopulated : nm :: Name -> db -> xml form [] [nm = widget],
                   Parse : widget -> db,
                   Inject : sql_injectable db}
-con colsMeta = fn cols :: {(Type * Type)} => $(map colMeta cols)
+con colsMeta = fn cols => $(map colMeta cols)
 
 fun default [t] (sh : show t) (rd : read t) (inj : sql_injectable t)
             name : colMeta (t, string) =
@@ -51,10 +51,9 @@ functor Make(M : sig
                          <tr>
                            <td>{[fs.T.Id]}</td>
                            {@mapX2 [fst] [colMeta] [tr]
-                             (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                                              [[nm] ~ rest] v col => <xml>
-                                                <td>{col.Show v}</td>
-                                              </xml>)
+                             (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] v col => <xml>
+                               <td>{col.Show v}</td>
+                             </xml>)
                              M.fl (fs.T -- #Id) M.cols}
                            <td>
                              <a link={upd fs.T.Id}>[Update]</a>
@@ -67,10 +66,9 @@ functor Make(M : sig
             <tr>
               <th>ID</th>
               {@mapX [colMeta] [tr]
-                (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                                 [[nm] ~ rest] col => <xml>
-                                   <th>{cdata col.Nam}</th>
-                                 </xml>)
+                (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] col => <xml>
+                  <th>{cdata col.Nam}</th>
+                </xml>)
                 M.fl M.cols}
             </tr>
             {rows}
@@ -79,12 +77,11 @@ functor Make(M : sig
           <br/><hr/><br/>
 
           <form>
-            {@foldR [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map snd cols)]
-              (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                               [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (map snd rest)) => <xml>
-                                 <li> {cdata col.Nam}: {col.Widget [nm]}</li>
-                                 {useMore acc}
-                               </xml>)
+            {@foldR [colMeta] [fn cols => xml form [] (map snd cols)]
+              (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (map snd rest)) => <xml>
+                <li> {cdata col.Nam}: {col.Widget [nm]}</li>
+                {useMore acc}
+              </xml>)
               <xml/>
               M.fl M.cols}
             
@@ -96,10 +93,8 @@ functor Make(M : sig
         id <- nextval seq;
         dml (insert tab
                     (@foldR2 [snd] [colMeta]
-                      [fn cols => $(map (fn t :: (Type * Type) =>
-                                            sql_exp [] [] [] t.1) cols)]
-                      (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                                       [[nm] ~ rest] =>
+                      [fn cols => $(map (fn t => sql_exp [] [] [] t.1) cols)]
+                      (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] =>
                        fn input col acc => acc ++ {nm = @sql_inject col.Inject (col.Parse input)})
                       {} M.fl inputs M.cols
                      ++ {Id = (SQL {[id]})}));
@@ -115,12 +110,8 @@ functor Make(M : sig
             fun save (inputs : $(map snd M.cols)) =
                 dml (update [map fst M.cols]
                             (@foldR2 [snd] [colMeta]
-                              [fn cols => $(map (fn t :: (Type * Type) =>
-                                                    sql_exp [T = [Id = int]
-                                                                     ++ map fst M.cols]
-                                                            [] [] t.1) cols)]
-                              (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                                               [[nm] ~ rest] =>
+                              [fn cols => $(map (fn t => sql_exp [T = [Id = int] ++ map fst M.cols] [] [] t.1) cols)]
+                              (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] =>
                                fn input col acc => acc ++ {nm =
                                                            @sql_inject col.Inject (col.Parse input)})
                               {} M.fl inputs M.cols)
@@ -136,9 +127,8 @@ functor Make(M : sig
             case fso : (Basis.option {Tab : $(map fst M.cols)}) of
                 None => return <xml><body>Not found!</body></xml>
               | Some fs => return <xml><body><form>
-                {@foldR2 [fst] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map snd cols)]
-                  (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                                   [[nm] ~ rest] (v : t.1) (col : colMeta t)
+                {@foldR2 [fst] [colMeta] [fn cols => xml form [] (map snd cols)]
+                  (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] (v : t.1) (col : colMeta t)
                                    (acc : xml form [] (map snd rest)) =>
                       <xml>
                         <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
