@@ -1079,13 +1079,13 @@
                  err COccursCheckFailed
              else
                  (r := SOME (squish nl c2All)
-                  handle CantSquish => err CIncompatible)
+                  handle CantSquish => err (fn _ => TooDeep))
            | (_, L'.CUnif (nl, _, _, _, r)) =>
              if occursCon r c1All then
                  err COccursCheckFailed
              else
                  (r := SOME (squish nl c1All)
-                  handle CantSquish => err CIncompatible)
+                  handle CantSquish => err (fn _ => TooDeep))
 
            | (L'.CUnit, L'.CUnit) => ()
 

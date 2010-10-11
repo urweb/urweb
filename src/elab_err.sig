@@ -58,6 +58,7 @@ signature ELAB_ERR = sig
            | CRecordFailure of Elab.con * Elab.con * (Elab.con * Elab.con * Elab.con) option
            | TooLifty of ErrorMsg.span * ErrorMsg.span
            | TooUnify of Elab.con * Elab.con
+           | TooDeep
 
     val cunifyError : ElabEnv.env -> cunify_error -> unit
 

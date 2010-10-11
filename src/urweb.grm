@@ -212,7 +212,7 @@ fun tnamesOf (e, _) =
  | STRING of string | INT of Int64.int | FLOAT of Real64.real | CHAR of char
  | SYMBOL of string | CSYMBOL of string
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
- | EQ | COMMA | COLON | DCOLON | DCOLONWILD | TCOLON | DOT | HASH | UNDER | UNDERUNDER | BAR
+ | EQ | COMMA | COLON | DCOLON | DCOLONWILD | TCOLON | TCOLONWILD | DOT | HASH | UNDER | UNDERUNDER | BAR
  | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD | AT
  | CON | LTYPE | VAL | REC | AND | FUN | MAP | UNIT | KUNIT | CLASS
  | DATATYPE | OF
@@ -394,7 +394,7 @@ fun tnamesOf (e, _) =
 %left ANDALSO
 %left ORELSE
 %nonassoc COLON
-%nonassoc DCOLON TCOLON
+%nonassoc DCOLON TCOLON DCOLONWILD TCOLONWILD
 %left UNION INTERSECT EXCEPT
 %right COMMA
 %right JOIN INNER CROSS OUTER LEFT RIGHT FULL
@@ -1110,6 +1110,14 @@ earga  : LBRACK SYMBOL RBRACK            (fn (e, t) =>
                                              in
                                                  ((ECAbs (kcolon, SYMBOL, kind, e), loc),
                                                   (TCFun (kcolon, SYMBOL, kind, t), loc))
+                                             end)
+       | LBRACK SYMBOL TCOLONWILD RBRACK (fn (e, t) =>
+                                             let
+                                                 val loc = s (LBRACKleft, RBRACKright)
+                                                 val kind = (KWild, loc)
+                                             in
+                                                 ((ECAbs (Implicit, SYMBOL, kind, e), loc),
+                                                  (TCFun (Implicit, SYMBOL, kind, t), loc))
                                              end)
        | LBRACK cexp TWIDDLE cexp RBRACK(fn (e, t) =>
                                             let

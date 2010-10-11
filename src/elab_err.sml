@@ -121,6 +121,7 @@ datatype cunify_error =
        | CRecordFailure of con * con * (con * con * con) option
        | TooLifty of ErrorMsg.span * ErrorMsg.span
        | TooUnify of con * con
+       | TooDeep
 
 fun cunifyError env err =
     case err of
@@ -162,6 +163,7 @@ fun cunifyError env err =
         (ErrorMsg.errorAt (#2 c1) "Substitution in constructor is blocked by a too-deep unification variable";
          eprefaces' [("Replacement", p_con env c1),
                      ("Body", p_con env c2)])
+      | TooDeep => ErrorMsg.error "Can't reverse-engineer unification variable lifting"
 
 datatype exp_error =
        UnboundExp of ErrorMsg.span * string
