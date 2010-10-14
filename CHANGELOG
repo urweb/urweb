@@ -6,8 +6,10 @@ Next
 - New 'onError' directive for .urp files
 - (* *) and <!-- --> comments in XML
 - Basis.classes, Basis.confirm, and Basis.tryDml
+- New notations ::_ and :::_, for constructor parameters of unknown kind
 - Invocations like 'urweb foo' will compile foo.ur as a single-file project,
   even if no foo.urp exists
+- '-limit' command-line flag and 'limit' .urp directive
 - Bug fixes and optimization improvements
 
 ========
