@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2009, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -208,4 +208,7 @@ signature SETTINGS = sig
 
     val setOnError : (string * string list * string) option -> unit
     val getOnError : unit -> (string * string list * string) option
+
+    val addLimit : string * int -> unit
+    val limits : unit -> (string * int) list
 end

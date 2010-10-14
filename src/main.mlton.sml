@@ -91,6 +91,15 @@ fun doArgs args =
       | "-noEmacs" :: rest =>
         (Demo.noEmacs := true;
          doArgs rest)
+      | "-limit" :: class :: num :: rest =>
+        (case Int.fromString num of
+             NONE => raise Fail ("Invalid limit number '" ^ num ^ "'")
+           | SOME n =>
+             if n < 0 then
+                 raise Fail ("Invalid limit number '" ^ num ^ "'")
+             else
+                 Settings.addLimit (class, n);
+         doArgs rest)
       | arg :: rest =>
         (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
              raise Fail ("Unknown flag " ^ arg)

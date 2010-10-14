@@ -698,6 +698,17 @@ fun parseUrp' accLibs fname =
                                          m1 :: (fs as _ :: _) =>
                                          onError := SOME (m1, List.take (fs, length fs - 1), List.last fs)
                                        | _ => ErrorMsg.error "invalid 'onError' argument")
+                                  | "limit" =>
+                                    (case String.fields Char.isSpace arg of
+                                         [class, num] =>
+                                         (case Int.fromString num of
+                                              NONE => ErrorMsg.error ("invalid limit number '" ^ num ^ "'")
+                                            | SOME n =>
+                                              if n < 0 then
+                                                  ErrorMsg.error ("invalid limit number '" ^ num ^ "'")
+                                              else
+                                                  Settings.addLimit (class, n))
+                                       | _ => ErrorMsg.error "invalid 'limit' arguments")
 
                                   | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                 read ()

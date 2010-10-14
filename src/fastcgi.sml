@@ -45,6 +45,8 @@ val () = addProtocol {name = "fastcgi",
                                                                string sf,
                                                                string "\";",
                                                                newline],
+                                           string "uw_setup_limits();",
+                                           newline,
                                            string "}",
                                            newline]}
 

@@ -36,7 +36,6 @@ val () = addProtocol {name = "cgi",
                       linkDynamic = "-lurweb_cgi",
                       persistent = false,
                       code = fn () => box [string "void uw_global_custom() {",
-                                           newline,
                                            case getSigFile () of
                                                NONE => box []
                                              | SOME sf => box [string "extern char *uw_sig_file;",
@@ -45,6 +44,8 @@ val () = addProtocol {name = "cgi",
                                                                string sf,
                                                                string "\";",
                                                                newline],
+                                           string "uw_setup_limits();",
+                                           newline,
                                            string "}",
                                            newline]}
 

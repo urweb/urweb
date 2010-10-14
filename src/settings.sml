@@ -490,4 +490,16 @@ val onError = ref (NONE : (string * string list * string) option)
 fun setOnError x = onError := x
 fun getOnError () = !onError
 
+val limits = ["messages", "clients", "headers", "page", "heap", "script",
+              "inputs", "subinputs", "cleanup", "deltas", "transactionals",
+              "globals", "database"]
+
+val limitsList = ref ([] : (string * int) list)
+fun addLimit (v as (name, _)) =
+    if List.exists (fn name' => name' = name) limits then
+        limitsList := v :: !limitsList
+    else
+        raise Fail ("Unknown limit category '" ^ name ^ "'")
+fun limits () = !limitsList
+
 end

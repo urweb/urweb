@@ -2828,6 +2828,26 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
+             box [string "static void uw_setup_limits() {",
+                  newline,
+                  box [p_list_sep (box []) (fn (class, num) =>
+                                               let
+                                                   val num = case class of
+                                                                 "page" => Int.max (2048, num)
+                                                               | _ => num
+                                               in
+                                                   box [string ("uw_" ^ class ^ "_max"),
+                                                        space,
+                                                        string "=",
+                                                        space,
+                                                        string (Int.toString num),
+                                                        string ";",
+                                                        newline]
+                                               end) (Settings.limits ())],
+                  string "}",
+                  newline,
+                  newline],
+
              #code (Settings.currentProtocol ()) (),
 
              if hasDb then
@@ -2837,17 +2857,17 @@ fun p_file env (ds, ps) =
                                                   views = !views,
                                                   sequences = !sequences}
              else
-                 box [string "void uw_client_init(void) { };",
+                 box [string "static void uw_client_init(void) { };",
                       newline,
-                      string "void uw_db_init(uw_context ctx) { };",
+                      string "static void uw_db_init(uw_context ctx) { };",
                       newline,
-                      string "int uw_db_begin(uw_context ctx) { return 0; };",
+                      string "static int uw_db_begin(uw_context ctx) { return 0; };",
                       newline,
-                      string "void uw_db_close(uw_context ctx) { };",
+                      string "static void uw_db_close(uw_context ctx) { };",
                       newline,
-                      string "int uw_db_commit(uw_context ctx) { return 0; };",
+                      string "static int uw_db_commit(uw_context ctx) { return 0; };",
                       newline,
-                      string "int uw_db_rollback(uw_context ctx) { return 0; };"],
+                      string "static int uw_db_rollback(uw_context ctx) { return 0; };"],
              newline,
              newline,
 

@@ -45,6 +45,8 @@ val () = addProtocol {name = "http",
                                                                string sf,
                                                                string "\";",
                                                                newline],
+                                           string "uw_setup_limits();",
+                                           newline,
                                            string "}",
                                            newline]}
 
