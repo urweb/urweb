@@ -348,7 +348,7 @@ void uw_app_init(uw_app *app) {
   app->client_init();
 }
 
-int uw_time = 0;
+int uw_time = 0, uw_time_max = 0;
 
 
 // Single-request state

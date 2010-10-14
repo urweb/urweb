@@ -70,12 +70,30 @@ uw_context uw_request_new_context(uw_app *app, void *logger_data, uw_logger log_
   return ctx;
 }
 
+static void *ticker(void *data) {
+  while (1) {
+    usleep(100000);
+    ++uw_time;
+  }
+
+  return NULL;
+}
+
 void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
   uw_context ctx;
   failure_kind fk;
 
   uw_global_init();
   uw_app_init(app);
+
+  {
+    pthread_t thread;
+    
+    if (uw_time_max && pthread_create(&thread, NULL, ticker, NULL)) {
+      fprintf(stderr, "Error creating ticker thread\n");
+      exit(1);
+    }
+  }
 
   ctx = uw_request_new_context(app, logger_data, log_error, log_debug);
 
@@ -348,15 +366,18 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         rc->path_copy = realloc(rc->path_copy, rc->path_copy_size);
       }
       strcpy(rc->path_copy, path);
+
+      uw_set_deadline(ctx, uw_time + uw_time_max);
       fk = uw_begin(ctx, rc->path_copy);
-    } else
+    } else {
+      uw_set_deadline(ctx, uw_time + uw_time_max);
       fk = uw_begin_onError(ctx, errmsg);
+    }
 
     if (fk == SUCCESS || fk == RETURN_INDIRECTLY) {
       uw_commit(ctx);
       if (uw_has_error(ctx) && !had_error) {
         log_error(logger_data, "Fatal error: %s\n", uw_error_message(ctx));
-
         uw_reset_keep_error_message(ctx);
         on_failure(ctx);
 

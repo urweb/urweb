@@ -284,4 +284,6 @@ void uw_set_client_data(uw_context, void *);
 
 uw_Basis_int uw_Basis_rand(uw_context);
 
+extern int uw_time_max;
+
 #endif
