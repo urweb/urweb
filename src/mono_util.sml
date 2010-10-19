@@ -80,7 +80,7 @@ and compareFields ((x1, t1), (x2, t2)) =
     join (String.compare (x1, x2),
           fn () => compare (t1, t2))
 
-and sortFields xts = ListMergeSort.sort (fn (x, y) => compareFields (x, y) = GREATER) xts
+and sortFields xts = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xts
 
 fun mapfold fc =
     let

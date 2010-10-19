@@ -35,8 +35,9 @@ structure U = CoreUtil
 type skey = exp
 
 structure K = struct
-type ord_key = exp list
-val compare = Order.joinL U.Exp.compare
+type ord_key = con list * exp list
+fun compare ((cs1, es1), (cs2, es2)) = Order.join (Order.joinL U.Con.compare (cs1, cs2),
+                                                   fn () => Order.joinL U.Exp.compare (es1, es2))
 end
 
 structure KM = BinaryMapFn(K)
@@ -323,6 +324,7 @@ fun specialize' (funcs, specialized) file =
 
                             val (fxs, xs, fvs, fin) = findSplit true (xs, typ, [], IS.empty, false)
 
+                            val vts = map (fn n => #2 (List.nth (env, n))) (IS.listItems fvs)
                             val fxs' = map (squish (IS.listItems fvs)) fxs
                         in
                             (*Print.preface ("fxs'", Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs');*)
@@ -337,7 +339,7 @@ fun specialize' (funcs, specialized) file =
                                                        Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
                                  default ())
                             else
-                                case (KM.find (args, fxs'),
+                                case (KM.find (args, (vts, fxs')),
                                       SS.member (!mayNotSpec, name) (*orelse IS.member (#specialized st, f)*)) of
                                     (SOME f', _) =>
                                     let
@@ -384,7 +386,7 @@ fun specialize' (funcs, specialized) file =
                                           | SOME (body', typ') =>
                                             let
                                                 val f' = #maxName st
-                                                val args = KM.insert (args, fxs', f')
+                                                val args = KM.insert (args, (vts, fxs'), f')
                                                 val funcs = IM.insert (#funcs st, f, {name = name,
                                                                                       args = args,
                                                                                       body = body,

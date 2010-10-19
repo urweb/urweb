@@ -658,7 +658,7 @@ fun kindConAndExp (namedC, namedE) =
                                 if ESpecialize.functionInside t then
                                     exp (KnownE e1 :: env) e2
                                 else
-                                    (ELet (x, con env t, exp env e1, exp (UnknownE :: env) e2), loc)
+                                    (ELet (x, t, exp env e1, exp (UnknownE :: env) e2), loc)
                             end
 
                           | EServerCall (n, es, t) => (EServerCall (n, map (exp env) es, con env t), loc)

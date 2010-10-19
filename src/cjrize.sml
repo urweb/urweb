@@ -112,7 +112,7 @@ fun cifyTyp x =
                 end
               | L.TRecord xts =>
                 let
-                    val xts = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) xts
+                    val xts = MonoUtil.Typ.sortFields xts
                     val old_xts = xts
                     val (xts, sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
                                                           let
