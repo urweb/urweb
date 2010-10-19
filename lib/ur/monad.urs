@@ -61,6 +61,11 @@ val foldMapR : K --> m ::: (Type -> Type) -> monad m
                -> tr []
                -> r ::: {K} -> folder r -> $(map tf r) -> m ($(map tf' r) * tr r)
 
+val appR : K --> m ::: (Type -> Type) -> monad m
+           -> tf :: (K -> Type)
+           -> (nm :: Name -> t :: K -> tf t -> m unit)
+           -> r ::: {K} -> folder r -> $(map tf r) -> m unit
+
 val appR2 : K --> m ::: (Type -> Type) -> monad m
              -> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
              -> (nm :: Name -> t :: K -> tf1 t -> tf2 t -> m unit)

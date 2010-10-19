@@ -93,6 +93,16 @@ fun foldMapR [K] [m] (_ : monad m) [tf :: K -> Type] [tf' :: K -> Type] [tr :: {
      (fn _ => return ({}, i))
      fl
 
+fun appR [K] [m] (_ : monad m) [tf :: K -> Type]
+           (f : nm :: Name -> t :: K -> tf t -> m unit)
+           [r ::: {K}] (fl : folder r) =
+    @Top.fold [fn r :: {K} => $(map tf r) -> m unit]
+     (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] acc r =>
+         acc (r -- nm);
+         f [nm] [t] r.nm)
+     (fn _ => return ())
+     fl
+
 fun appR2 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type]
            (f : nm :: Name -> t :: K -> tf1 t -> tf2 t -> m unit)
            [r ::: {K}] (fl : folder r) =
