@@ -112,3 +112,13 @@ fun appR2 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type]
          f [nm] [t] r1.nm r2.nm)
      (fn _ _ => return ())
      fl
+
+fun appR3 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type]
+           (f : nm :: Name -> t :: K -> tf1 t -> tf2 t -> tf3 t -> m unit)
+           [r ::: {K}] (fl : folder r) =
+    @Top.fold [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> m unit]
+     (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] acc r1 r2 r3 =>
+         acc (r1 -- nm) (r2 -- nm) (r3 -- nm);
+         f [nm] [t] r1.nm r2.nm r3.nm)
+     (fn _ _ _ => return ())
+     fl

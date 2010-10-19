@@ -70,3 +70,8 @@ val appR2 : K --> m ::: (Type -> Type) -> monad m
              -> tf1 :: (K -> Type) -> tf2 :: (K -> Type)
              -> (nm :: Name -> t :: K -> tf1 t -> tf2 t -> m unit)
              -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> m unit
+
+val appR3 : K --> m ::: (Type -> Type) -> monad m
+             -> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type)
+             -> (nm :: Name -> t :: K -> tf1 t -> tf2 t -> tf3 t -> m unit)
+             -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> m unit
