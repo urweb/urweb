@@ -583,6 +583,25 @@
        | L'.CProj (c, n) =>
          (case hnormKind (kindof env c) of
               (L'.KTuple ks, _) => List.nth (ks, n - 1)
+            | (L'.KUnif (_, _, r), _) =>
+              let
+                  val ku = kunif loc
+                  val k = (L'.KTupleUnif (loc, [(n, ku)], ref NONE), loc)
+              in
+                  r := SOME k;
+                  k
+              end
+            | (L'.KTupleUnif (_, nks, r), _) =>
+              (case ListUtil.search (fn (n', k) => if n' = n then SOME k else NONE) nks of
+                   SOME k => k
+                 | NONE =>
+                   let
+                       val ku = kunif loc
+                       val k = (L'.KTupleUnif (loc, ((n, ku) :: nks), ref NONE), loc)
+                   in
+                       r := SOME k;
+                       k
+                   end)
             | k => raise CUnify' (CKindof (k, c, "tuple")))
 
        | L'.CError => kerror
