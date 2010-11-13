@@ -623,8 +623,8 @@
        | L'.TRecord _ => false
        | L'.TDisjoint _ => false
 
-       | L'.CRel xn => #1 (#2 (E.lookupCRel env xn)) = L'.KUnit
-       | L'.CNamed xn => #1 (#2 (E.lookupCNamed env xn)) = L'.KUnit
+       | L'.CRel xn => #1 (hnormKind (#2 (E.lookupCRel env xn))) = L'.KUnit
+       | L'.CNamed xn => #1 (hnormKind (#2 (E.lookupCNamed env xn))) = L'.KUnit
        | L'.CModProj (n, ms, x) => false
          (*let
              val (_, sgn) = E.lookupStrNamed env n
@@ -661,7 +661,7 @@
             | k => raise CUnify' (CKindof (k, c, "tuple")))*)
 
        | L'.CError => false
-       | L'.CUnif (_, _, k, _, _) => #1 k = L'.KUnit
+       | L'.CUnif (_, _, k, _, _) => #1 (hnormKind k) = L'.KUnit
 
        | L'.CKAbs _ => false
        | L'.CKApp _ => false
