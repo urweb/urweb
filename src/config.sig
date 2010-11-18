@@ -9,4 +9,5 @@ signature CONFIG = sig
     val libJs : string
 
     val gccArgs : string
+    val libMhash : string
 end

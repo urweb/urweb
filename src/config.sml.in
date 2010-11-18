@@ -13,5 +13,6 @@ val libJs = OS.Path.joinDirFile {dir = lib,
                                  file = "js"}
 
 val gccArgs = "@GCCARGS@"
+val libMhash = "@MHASH_LIB_DIR@"
 
 end
