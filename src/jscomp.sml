@@ -311,7 +311,7 @@ fun process file =
               | TFfi ("Basis", "char") => ("uu(t[i++])", st)
               | TFfi ("Basis", "int") => ("parseInt(t[i++])", st)
               | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
-              | TFfi ("Basis", "channel") => ("(t[i++].length > 0 ? parseInt(t[i]) : null)", st)
+              | TFfi ("Basis", "channel") => ("(t[i++].length > 0 ? parseInt(t[i-1]) : null)", st)
 
               | TFfi ("Basis", "bool") => ("t[i++] == \"1\"", st)
 
