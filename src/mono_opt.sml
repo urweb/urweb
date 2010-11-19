@@ -135,6 +135,8 @@ fun exp e =
         in
             EPrim (Prim.String (String.implode (rev chs)))
         end
+
+      | EFfiApp ("Basis", "strcat", [e1, e2]) => exp (EStrcat (e1, e2))
                                        
       | EStrcat ((EPrim (Prim.String s1), loc), (EPrim (Prim.String s2), _)) =>
         let
