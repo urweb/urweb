@@ -228,6 +228,11 @@ fun queryL [tables] [exps] [tables ~ exps] (q : sql_query [] tables exps) =
     (fn r ls => return (r :: ls))
     []
 
+fun queryL1 [t ::: Name] [fs ::: {Type}] (q : sql_query [] [t = fs] []) =
+    query q
+    (fn r ls => return (r.t :: ls))
+    []
+
 fun queryI [tables ::: {{Type}}] [exps ::: {Type}]
            [tables ~ exps] (q : sql_query [] tables exps)
            (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)

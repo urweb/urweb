@@ -280,6 +280,34 @@ fun mapQueryPartialM [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
                 [];
     return (rev ls)
 
+fun sort [a] (gt : a -> a -> bool) (ls : t a) : t a =
+    let
+        fun split ls acc1 acc2 =
+            case ls of
+                [] => (rev acc1, rev acc2)
+              | x :: [] => (rev (x :: acc1), rev acc2)
+              | x1 :: x2 :: ls' => split ls' (x1 :: acc1) (x2 :: acc2)
+
+        fun merge ls1 ls2 acc =
+            case (ls1, ls2) of
+                ([], _) => revAppend acc ls2
+              | (_, []) => revAppend acc ls1
+              | (x1 :: ls1', x2 :: ls2') => if gt x1 x2 then merge ls1 ls2' (x2 :: acc) else merge ls1' ls2 (x1 :: acc)
+
+        fun sort' ls =
+            case ls of
+                [] => ls
+              | _ :: [] => ls
+              | _ =>
+                let
+                    val (ls1, ls2) = split ls [] []
+                in
+                    merge (sort' ls1) (sort' ls2) []
+                end
+    in
+        sort' ls
+    end
+
 fun assoc [a] [b] (_ : eq a) (x : a) =
     let
         fun assoc' (ls : list (a * b)) =

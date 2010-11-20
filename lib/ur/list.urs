@@ -69,6 +69,8 @@ val mapQueryPartialM : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
     -> ($(exps ++ map (fn fields :: {Type} => $fields) tables) -> transaction (option t))
     -> transaction (list t)
 
+val sort : a ::: Type -> (a -> a -> bool) (* > predicate *) -> t a -> t a
+
 (** Association lists *)
 
 val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
