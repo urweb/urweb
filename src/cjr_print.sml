@@ -2924,7 +2924,7 @@ fun p_file env (ds, ps) =
                   newline,
                   box [string "uw_clear_headers(ctx);",
                        newline,
-                       string "uw_write_header(ctx, \"HTTP/1.1 304 Not Modified\\r\\n\");",
+                       string "uw_write_header(ctx, uw_supports_direct_status ? \"HTTP/1.1 304 Not Modified\\r\\n\" : \"Status: 304 Not Modified\\r\\n\");",
                        newline,
                        string "return;",
                        newline],

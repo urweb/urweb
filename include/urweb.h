@@ -286,4 +286,6 @@ uw_Basis_int uw_Basis_rand(uw_context);
 
 extern int uw_time_max;
 
+extern int uw_supports_direct_status;
+
 #endif

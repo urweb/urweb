@@ -211,7 +211,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     if (id && pass) {
       unsigned idn = atoi(id);
       uw_client_connect(idn, atoi(pass), sock, send, close, logger_data, log_error);
-      log_error(logger_data, "Processed request for messages by client %u\n\n", idn);
+      log_debug(logger_data, "Processed request for messages by client %u\n\n", idn);
       return KEEP_OPEN;
     }
     else {
