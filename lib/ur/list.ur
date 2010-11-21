@@ -308,6 +308,20 @@ fun sort [a] (gt : a -> a -> bool) (ls : t a) : t a =
         sort' ls
     end
 
+val nth [a] =
+    let
+        fun nth (ls : list a) (n : int) : option a =
+            case ls of
+                [] => None
+              | x :: ls' =>
+                if n <= 0 then
+                    Some x
+                else
+                    nth ls' (n-1)
+    in
+        nth
+    end
+
 fun assoc [a] [b] (_ : eq a) (x : a) =
     let
         fun assoc' (ls : list (a * b)) =
