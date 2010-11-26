@@ -278,8 +278,8 @@ fun process file =
 
         fun unurlifyExp loc (t : typ, st) =
             case #1 t of
-                TRecord [] => ("null", st)
-              | TFfi ("Basis", "unit") => ("null", st)
+                TRecord [] => ("(i++,null)", st)
+              | TFfi ("Basis", "unit") => ("(i++,null)", st)
               | TRecord [(x, t)] =>
                 let
                     val (e, st) = unurlifyExp loc (t, st)
@@ -1285,9 +1285,22 @@ fun process file =
               | SOME line => lines (line :: acc)
         val lines = lines []
 
+        val urlRules = foldr (fn (r, s) =>
+                                 "cons({allow:"
+                                 ^ (if #action r = Settings.Allow then "true" else "false")
+                                 ^ ",prefix:"
+                                 ^ (if #kind r = Settings.Prefix then "true" else "false")
+                                 ^ ",pattern:\""
+                                 ^ #pattern r
+                                 ^ "\"},"
+                                 ^ s
+                                 ^ ")") "null" (Settings.getUrlRules ())
+
+        val urlRules = "urlRules = " ^ urlRules ^ ";\n\n"
+
         val script =
             if !foundJavaScript then
-                lines ^ String.concat (rev (#script st))
+                lines ^ urlRules ^ String.concat (rev (#script st))
             else
                 ""
     in
