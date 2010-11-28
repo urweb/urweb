@@ -525,6 +525,10 @@ fun getPargs (e, _) =
 
       | _ => raise Fail "CjrPrint: getPargs"
 
+val notLeakies = SS.fromList ["int", "float", "char", "time", "bool", "unit", "client", "channel",
+                              "xhtml", "page", "xbody", "css_class"]
+val notLeakies' = SS.fromList ["blob"]
+
 fun notLeaky env allowHeapAllocated =
     let
         fun nl ok (t, _) =
@@ -548,9 +552,9 @@ fun notLeaky env allowHeapAllocated =
                                                     NONE => true
                                                   | SOME t => nl ok' t) cons
                  end)
-              | TFfi ("Basis", "string") => false
-              | TFfi ("Basis", "blob") => allowHeapAllocated
-              | TFfi _ => true
+              | TFfi ("Basis", t) => SS.member (notLeakies, t)
+                                     orelse (allowHeapAllocated andalso SS.member (notLeakies', t))
+              | TFfi _ => false
               | TOption t => allowHeapAllocated andalso nl ok t
               | TList (t, _) => allowHeapAllocated andalso nl ok t
     in
