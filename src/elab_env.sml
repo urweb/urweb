@@ -559,10 +559,10 @@ fun eqCons (c1, c2) =
 
       | _ => raise Unify
 
-fun unifyCons rs =
+fun unifyCons (hnorm : con -> con) rs =
     let
         fun unify d (c1, c2) =
-            case (#1 c1, #1 c2) of
+            case (#1 (hnorm c1), #1 (hnorm c2)) of
                 (CUnif (nl, _, _, _, ref (SOME c1)), _) => unify d (mliftConInCon nl c1, c2)
               | (_, CUnif (nl, _, _, _, ref (SOME c2))) => unify d (c1, mliftConInCon nl c2)
 
@@ -623,11 +623,11 @@ fun unifyCons rs =
         unify
     end
 
-fun tryUnify nRs (c1, c2) =
+fun tryUnify hnorm nRs (c1, c2) =
     let
         val rs = List.tabulate (nRs, fn _ => ref NONE)
     in
-        (unifyCons rs 0 (c1, c2);
+        (unifyCons hnorm rs 0 (c1, c2);
          SOME (map (fn r => case !r of
                                 NONE => raise Unify
                               | SOME c => c) rs))
@@ -712,7 +712,7 @@ fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
                                 case rules of
                                     [] => NONE
                                   | (nRs, cs, c', e) :: rules' =>
-                                    case tryUnify nRs (c, c') of
+                                    case tryUnify hnorm nRs (c, c') of
                                         NONE => tryRules rules'
                                       | SOME rs =>
                                         let
@@ -739,7 +739,7 @@ fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
                                 case ces of
                                     [] => rules ()
                                   | (c', e) :: ces' =>
-                                    case tryUnify 0 (c, c') of
+                                    case tryUnify hnorm 0 (c, c') of
                                         NONE => tryGrounds ces'
                                       | SOME _ => SOME e
                         in
