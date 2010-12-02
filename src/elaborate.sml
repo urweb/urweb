@@ -495,7 +495,10 @@
        | _ => false
  fun cunifsRemain c =
      case c of
-         L'.CUnif (_, loc, _, _, ref NONE) => SOME loc
+         L'.CUnif (_, loc, k, _, r as ref NONE) =>
+         (case #1 (hnormKind k) of
+              L'.KUnit => (r := SOME (L'.CUnit, loc); NONE)
+            | _ => SOME loc)
        | _ => NONE
 
  val kunifsInDecl = U.Decl.exists {kind = kunifsRemain,
