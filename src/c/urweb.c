@@ -390,7 +390,8 @@ typedef struct input {
 
 typedef struct {
   void *data;
-  uw_callback commit, rollback, free;
+  uw_callback commit, rollback;
+  uw_callback_with_retry free;
 } transactional;
 
 typedef struct {
@@ -2902,7 +2903,7 @@ uw_unit uw_Basis_send(uw_context ctx, uw_Basis_channel chn, uw_Basis_string msg)
   return uw_unit_v;
 }
 
-int uw_rollback(uw_context ctx) {
+int uw_rollback(uw_context ctx, int will_retry) {
   int i;
   cleanup *cl;
 
@@ -2920,7 +2921,7 @@ int uw_rollback(uw_context ctx) {
 
   for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].free)
-      ctx->transactionals[i].free(ctx->transactionals[i].data);
+      ctx->transactionals[i].free(ctx->transactionals[i].data, will_retry);
 
   return ctx->app ? ctx->app->db_rollback(ctx) : 0;
 }
@@ -2929,7 +2930,7 @@ void uw_commit(uw_context ctx) {
   int i;
 
   if (uw_has_error(ctx)) {
-    uw_rollback(ctx);
+    uw_rollback(ctx, 0);
     return;
   }
 
@@ -2938,7 +2939,7 @@ void uw_commit(uw_context ctx) {
       if (ctx->transactionals[i].commit) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
         if (uw_has_error(ctx)) {
-          uw_rollback(ctx);
+          uw_rollback(ctx, 0);
           return;
         }
       }
@@ -2948,7 +2949,7 @@ void uw_commit(uw_context ctx) {
       if (ctx->transactionals[i].commit) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
         if (uw_has_error(ctx)) {
-          uw_rollback(ctx);
+          uw_rollback(ctx, 0);
           return;
         }
       }
@@ -2972,7 +2973,7 @@ void uw_commit(uw_context ctx) {
 
   for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].free)
-      ctx->transactionals[i].free(ctx->transactionals[i].data);
+      ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
 
   // Splice script data into appropriate part of page
   if (ctx->returning_indirectly || ctx->script_header[0] == 0) {
@@ -3012,7 +3013,7 @@ void uw_commit(uw_context ctx) {
 size_t uw_transactionals_max = SIZE_MAX;
 
 void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
-                               uw_callback free) {
+                               uw_callback_with_retry free) {
   if (ctx->used_transactionals >= ctx->n_transactionals) {
     if (ctx->used_transactionals+1 > uw_transactionals_max)
       uw_error(ctx, FATAL, "Exceeded limit on number of transactionals");

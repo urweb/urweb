@@ -51,6 +51,7 @@ typedef struct input *uw_input;
 #define TIMES_MAX 100
 
 typedef void (*uw_callback)(void *);
+typedef void (*uw_callback_with_retry)(void *, int will_retry);
 typedef void (*uw_logger)(void*, const char *fmt, ...);
 
 typedef struct {

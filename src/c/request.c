@@ -19,8 +19,8 @@
 
 void *memmem(const void *b1, size_t len1, const void *b2, size_t len2);
 
-static int try_rollback(uw_context ctx, void *logger_data, uw_logger log_error) {
-  int r = uw_rollback(ctx);
+static int try_rollback(uw_context ctx, int will_retry, void *logger_data, uw_logger log_error) {
+  int r = uw_rollback(ctx, will_retry);
 
   if (r) {
     log_error(logger_data, "Error running SQL ROLLBACK\n");
@@ -102,13 +102,13 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
 
   for (fk = uw_initialize(ctx); fk == UNLIMITED_RETRY; fk = uw_initialize(ctx)) {
     log_debug(logger_data, "Unlimited retry during init: %s\n", uw_error_message(ctx));
-    uw_rollback(ctx);
+    uw_rollback(ctx, 1);
     uw_reset(ctx);
   }
 
   if (fk != SUCCESS) {
     log_error(logger_data, "Failed to initialize database!  %s\n", uw_error_message(ctx));
-    uw_rollback(ctx);
+    uw_rollback(ctx, 0);
     exit(1);
   }
 
@@ -403,7 +403,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       else {
         log_error(logger_data, "Fatal error (out of retries): %s\n", uw_error_message(ctx));
 
-        try_rollback(ctx, logger_data, log_error);
+        try_rollback(ctx, 0, logger_data, log_error);
 
         if (!had_error && uw_get_app(ctx)->on_error) {
           had_error = 1;
@@ -424,7 +424,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     else if (fk == FATAL) {
       log_error(logger_data, "Fatal error: %s\n", uw_error_message(ctx));
 
-      try_rollback(ctx, logger_data, log_error);
+      try_rollback(ctx, 0, logger_data, log_error);
 
       if (uw_get_app(ctx)->on_error && !had_error) {
         had_error = 1;
@@ -443,7 +443,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     } else {
       log_error(logger_data, "Unknown uw_handle return code!\n");
 
-      try_rollback(ctx, logger_data, log_error);
+      try_rollback(ctx, 0, logger_data, log_error);
 
       if (uw_get_app(ctx)->on_error && !had_error) {
         had_error = 1;
@@ -458,7 +458,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       }
     }
 
-    if (try_rollback(ctx, logger_data, log_error))
+    if (try_rollback(ctx, 1, logger_data, log_error))
       return FAILED;
 
     uw_reset_keep_request(ctx);

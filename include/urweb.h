@@ -39,7 +39,7 @@ failure_kind uw_begin(uw_context, char *path);
 failure_kind uw_begin_onError(uw_context, char *msg);
 void uw_login(uw_context);
 void uw_commit(uw_context);
-int uw_rollback(uw_context);
+int uw_rollback(uw_context, int will_retry);
 
 __attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *fmt, ...);
 char *uw_error_message(uw_context);
@@ -228,7 +228,7 @@ uw_Basis_time uw_Basis_now(uw_context);
 uw_Basis_time uw_Basis_minusSeconds(uw_context, uw_Basis_time, uw_Basis_int);
 extern const uw_Basis_time uw_Basis_minTime;
 
-void uw_register_transactional(uw_context, void *data, uw_callback commit, uw_callback rollback, uw_callback free);
+void uw_register_transactional(uw_context, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);
 
 void uw_check_heap(uw_context, size_t extra);
 char *uw_heap_front(uw_context);
