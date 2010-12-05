@@ -29,8 +29,11 @@ static void enqueue(int fd) {
 
 static int dequeue() {
   int ret = front->fd;
+  node n = front->next;
+  free(front);
 
-  front = front->next;
+  front = n;
+
   if (!front)
     back = NULL;
 

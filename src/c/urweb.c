@@ -552,10 +552,12 @@ void uw_free(uw_context ctx) {
 
   for (i = 0; i < ctx->n_deltas; ++i)
     buf_free(&ctx->deltas[i].msgs);
+  free(ctx->deltas);
 
   for (i = 0; i < ctx->n_globals; ++i)
     if (ctx->globals[i].free)
       ctx->globals[i].free(ctx->globals[i].data);
+  free(ctx->globals);
 
   free(ctx);
 }
