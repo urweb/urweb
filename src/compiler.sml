@@ -310,6 +310,14 @@ fun institutionalizeJob (job : job) =
      Settings.setSafeGets (#safeGets job);
      Settings.setOnError (#onError job))
 
+fun inputCommentableLine inf =
+    Option.map (fn s =>
+                   let
+                       val s = #1 (Substring.splitl (fn ch => ch <> #"#") (Substring.full s))
+                   in
+                       Substring.string (#1 (Substring.splitr (not o Char.isSpace) s))
+                   end) (TextIO.inputLine inf)
+
 fun parseUrp' accLibs fname =
     if not (Posix.FileSys.access (fname ^ ".urp", []) orelse Posix.FileSys.access (fname ^ "/lib.urp", []))
        andalso Posix.FileSys.access (fname ^ ".ur", []) then
@@ -359,9 +367,9 @@ fun parseUrp' accLibs fname =
                     val inf = opener ()
 
                     fun hasSpaceLine () =
-                        case TextIO.inputLine inf of
+                        case inputCommentableLine inf of
                             NONE => false
-                          | SOME s => s = "debug\n" orelse s = "profile\n"
+                          | SOME s => s = "debug" orelse s = "profile"
                                       orelse CharVector.exists (fn ch => ch = #" " orelse ch = #"\t") s orelse hasSpaceLine ()
 
                     val hasBlankLine = hasSpaceLine ()
@@ -412,7 +420,7 @@ fun parseUrp' accLibs fname =
                         OS.Path.mkAbsolute {path = pathify fname, relativeTo = absDir}
 
                     fun readSources acc =
-                        case TextIO.inputLine inf of
+                        case inputCommentableLine inf of
                             NONE => rev acc
                           | SOME line =>
                             let
@@ -573,9 +581,9 @@ fun parseUrp' accLibs fname =
                             (Settings.Exact, s)
 
                     fun read () =
-                        case TextIO.inputLine inf of
+                        case inputCommentableLine inf of
                             NONE => finish []
-                          | SOME "\n" => finish (readSources [])
+                          | SOME "" => finish (readSources [])
                           | SOME line =>
                             let
                                 val (cmd, arg) = Substring.splitl (fn x => not (Char.isSpace x)) (Substring.full line)
