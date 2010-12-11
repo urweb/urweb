@@ -2124,18 +2124,22 @@ void uw_error(uw_context, failure_kind, const char *fmt, ...);
   \end{verbatim}
   Abort the current request processing, giving a \texttt{printf}-style format string and arguments for generating an error message.  The \texttt{failure\_kind} argument can be \texttt{FATAL}, to abort the whole execution; \texttt{BOUNDED\_RETRY}, to try processing the request again from the beginning, but failing if this happens too many times; or \texttt{UNLIMITED\_RETRY}, to repeat processing, with no cap on how many times this can recur.
 
+  All pointers to the context-local heap (see description below of \texttt{uw\_malloc()}) become invalid at the start and end of any execution of a main entry point function of an application.  For example, if the request handler is restarted because of a \texttt{uw\_error()} call with \texttt{BOUNDED\_RETRY} or for any other reason, it is unsafe to access any local heap pointers that may have been stashed somewhere beforehand.
+
   \item \begin{verbatim}
 void uw_push_cleanup(uw_context, void (*func)(void *), void *arg);
 void uw_pop_cleanup(uw_context);
   \end{verbatim}
-  Manipulate a stack of actions that should be taken if any kind of error condition arises.  Calling the ``pop'' function both removes an action from the stack and executes it.
+  Manipulate a stack of actions that should be taken if any kind of error condition arises.  Calling the ``pop'' function both removes an action from the stack and executes it.  It is a bug to let a page request handler finish successfully with unpopped cleanup actions.
+
+  Pending cleanup actions aren't intended to have any complex relationship amongst themselves, so, upon request handler abort, pending actions are executed in first-in-first-out order.
 
   \item \begin{verbatim}
 void *uw_malloc(uw_context, size_t);
   \end{verbatim}
-  A version of \texttt{malloc()} that allocates memory inside a context's heap, which is managed with region allocation.  Thus, there is no \texttt{uw\_free()}, but you need to be careful not to keep ad-hoc C pointers to this area of memory.
+  A version of \texttt{malloc()} that allocates memory inside a context's heap, which is managed with region allocation.  Thus, there is no \texttt{uw\_free()}, but you need to be careful not to keep ad-hoc C pointers to this area of memory.  In general, \texttt{uw\_malloc()}ed memory should only be used in ways compatible with the computation model of pure Ur.  This means it is fine to allocate and return a value that could just as well have been built with core Ur code.  In contrast, it is almost never safe to store \texttt{uw\_malloc()}ed pointers in global variables, including when the storage happens implicitly by registering a callback that would take the pointer as an argument.
 
-  For performance and correctness reasons, it is usually preferable to use \texttt{uw\_malloc()} instead of \texttt{malloc()}.  The former manipulates a local heap that can be kept allocated across page requests, while the latter uses global data structures that may face contention during concurrent execution.
+  For performance and correctness reasons, it is usually preferable to use \texttt{uw\_malloc()} instead of \texttt{malloc()}.  The former manipulates a local heap that can be kept allocated across page requests, while the latter uses global data structures that may face contention during concurrent execution.  However, we emphasize again that \texttt{uw\_malloc()} should never be used to implement some logic that couldn't be implemented trivially by a constant-valued expression in Ur.
 
   \item \begin{verbatim}
 typedef void (*uw_callback)(void *);
@@ -2147,11 +2151,15 @@ void uw_register_transactional(uw_context, void *data, uw_callback commit,
 
   Any of the callbacks may be \texttt{NULL}.  To accommodate some stubbornly non-transactional real-world actions like sending an e-mail message, Ur/Web treats \texttt{NULL} \texttt{rollback} callbacks specially.  When a transaction commits, all \texttt{commit} actions that have non-\texttt{NULL} rollback actions are tried before any \texttt{commit} actions that have \texttt{NULL} rollback actions.  Thus, if a single execution uses only one non-transactional action, and if that action never fails partway through its execution while still causing an observable side effect, then Ur/Web can maintain the transactional abstraction.
 
+  When a request handler ends with multiple pending transactional actions, their handlers are run in a first-in-last-out stack-like order, wherever the order would otherwise be ambiguous.
+
+  It is not safe for any of these handlers to access a context-local heap through a pointer returned previously by \texttt{uw\_malloc()}, nor should any new calls to that function be made.  Think of the context-local heap as meant for use by the Ur/Web code itself, while transactional handlers execute after the Ur/Web code has finished.
+
   \item \begin{verbatim}
 void *uw_get_global(uw_context, char *name);
 void uw_set_global(uw_context, char *name, void *data, uw_callback free);
   \end{verbatim}
-  Different FFI-based extensions may want to associate their own pieces of data with contexts.  The global interface provides a way of doing that, where each extension must come up with its own unique key.  The \texttt{free} argument to \texttt{uw\_set\_global()} explains how to deallocate the saved data.
+  Different FFI-based extensions may want to associate their own pieces of data with contexts.  The global interface provides a way of doing that, where each extension must come up with its own unique key.  The \texttt{free} argument to \texttt{uw\_set\_global()} explains how to deallocate the saved data.  It is never safe to store \texttt{uw\_malloc()}ed pointers in global variable slots.
 
 \end{itemize}
 
