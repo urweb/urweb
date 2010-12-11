@@ -55,7 +55,8 @@ signature COMPILER = sig
          dbms : string option,
          sigFile : string option,
          safeGets : string list,
-         onError : (string * string list * string) option
+         onError : (string * string list * string) option,
+         minHeap : int
     }
     val compile : string -> bool
     val compiler : string -> unit

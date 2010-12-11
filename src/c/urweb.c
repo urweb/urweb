@@ -348,7 +348,7 @@ void uw_app_init(uw_app *app) {
   app->client_init();
 }
 
-int uw_time = 0, uw_time_max = 0;
+int uw_time = 0, uw_time_max = 0, uw_min_heap = 0;
 
 
 // Single-request state
@@ -461,7 +461,7 @@ uw_context uw_init() {
   buf_init(uw_headers_max, &ctx->outHeaders, 0);
   buf_init(uw_page_max, &ctx->page, 0);
   ctx->returning_indirectly = 0;
-  buf_init(uw_heap_max, &ctx->heap, 0);
+  buf_init(uw_heap_max, &ctx->heap, uw_min_heap);
   buf_init(uw_script_max, &ctx->script, 1);
   ctx->script.start[0] = 0;
 

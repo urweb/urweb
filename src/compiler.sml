@@ -59,7 +59,8 @@ type job = {
      dbms : string option,
      sigFile : string option,
      safeGets : string list,
-     onError : (string * string list * string) option
+     onError : (string * string list * string) option,
+     minHeap : int
 }
 
 type ('src, 'dst) phase = {
@@ -308,14 +309,19 @@ fun institutionalizeJob (job : job) =
      Option.app Settings.setProtocol (#protocol job);
      Option.app Settings.setDbms (#dbms job);
      Settings.setSafeGets (#safeGets job);
-     Settings.setOnError (#onError job))
+     Settings.setOnError (#onError job);
+     Settings.setMinHeap (#minHeap job))
 
 fun inputCommentableLine inf =
     Option.map (fn s =>
                    let
                        val s = #1 (Substring.splitl (fn ch => ch <> #"#") (Substring.full s))
+                       val s = #1 (Substring.splitr (not o Char.isSpace) s)
                    in
-                       Substring.string (#1 (Substring.splitr (not o Char.isSpace) s))
+                       Substring.string (if Substring.size s > 0 andalso Char.isSpace (Substring.sub (s, Substring.size s - 1)) then
+                                             Substring.trimr 1 s
+                                         else
+                                             s)
                    end) (TextIO.inputLine inf)
 
 fun parseUrp' accLibs fname =
@@ -349,7 +355,8 @@ fun parseUrp' accLibs fname =
                        dbms = NONE,
                        sigFile = NONE,
                        safeGets = [],
-                       onError = NONE}
+                       onError = NONE,
+                       minHeap = 0}
         in
             institutionalizeJob job;
             {Job = job, Libs = []}
@@ -464,6 +471,7 @@ fun parseUrp' accLibs fname =
                     val sigFile = ref (Settings.getSigFile ())
                     val safeGets = ref []
                     val onError = ref NONE
+                    val minHeap = ref 0
 
                     fun finish sources =
                         let
@@ -494,7 +502,8 @@ fun parseUrp' accLibs fname =
                                 dbms = !dbms,
                                 sigFile = !sigFile,
                                 safeGets = rev (!safeGets),
-                                onError = !onError
+                                onError = !onError,
+                                minHeap = !minHeap
                             }
 
                             fun mergeO f (old, new) =
@@ -539,7 +548,8 @@ fun parseUrp' accLibs fname =
                                 dbms = mergeO #2 (#dbms old, #dbms new),
                                 sigFile = mergeO #2 (#sigFile old, #sigFile new),
                                 safeGets = #safeGets old @ #safeGets new,
-                                onError = mergeO #2 (#onError old, #onError new)
+                                onError = mergeO #2 (#onError old, #onError new),
+                                minHeap = Int.max (#minHeap old, #minHeap new)
                             }
                         in
                             if accLibs then
@@ -717,6 +727,10 @@ fun parseUrp' accLibs fname =
                                               else
                                                   Settings.addLimit (class, n))
                                        | _ => ErrorMsg.error "invalid 'limit' arguments")
+                                  | "minHeap" =>
+                                    (case Int.fromString arg of
+                                         NONE => ErrorMsg.error ("invalid min heap '" ^ arg ^ "'")
+                                       | SOME n => minHeap := n)
 
                                   | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                 read ()

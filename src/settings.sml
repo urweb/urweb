@@ -509,4 +509,8 @@ fun addLimit (v as (name, _)) =
         raise Fail ("Unknown limit category '" ^ name ^ "'")
 fun limits () = !limitsList
 
+val minHeap = ref 0
+fun setMinHeap n = if n >= 0 then minHeap := n else raise Fail "Trying to set negative minHeap"
+fun getMinHeap () = !minHeap
+
 end

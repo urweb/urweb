@@ -211,4 +211,7 @@ signature SETTINGS = sig
 
     val addLimit : string * int -> unit
     val limits : unit -> (string * int) list
+
+    val setMinHeap : int -> unit
+    val getMinHeap : unit -> int
 end

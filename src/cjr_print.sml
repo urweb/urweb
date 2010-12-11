@@ -2834,6 +2834,16 @@ fun p_file env (ds, ps) =
 
              box [string "static void uw_setup_limits() {",
                   newline,
+                  case Settings.getMinHeap () of
+                      0 => box []
+                    | n => box [string "uw_min_heap",
+                                space,
+                                string "=",
+                                space,
+                                string (Int.toString n),
+                                string ";",
+                                newline,
+                                newline],
                   box [p_list_sep (box []) (fn (class, num) =>
                                                let
                                                    val num = case class of
