@@ -617,11 +617,7 @@ fun parseUrp' accLibs fname =
                                               (("", ""), ""))
                             in
                                 case cmd of
-                                    "prefix" =>
-                                    (case !prefix of
-                                         NONE => ()
-                                       | SOME _ => ErrorMsg.error "Duplicate 'prefix' directive";
-                                     prefix := SOME arg)
+                                    "prefix" => prefix := SOME arg
                                   | "database" =>
                                     (case !database of
                                          NONE => database := SOME arg
