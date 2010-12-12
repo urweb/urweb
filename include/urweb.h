@@ -20,7 +20,7 @@ void uw_client_connect(unsigned id, int pass, int sock,
 void uw_prune_clients(uw_context);
 failure_kind uw_initialize(uw_context);
 
-uw_context uw_init(void);
+uw_context uw_init(void *logger_data, uw_logger log_debug);
 void uw_close(uw_context);
 int uw_set_app(uw_context, uw_app*);
 uw_app *uw_get_app(uw_context);

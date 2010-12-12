@@ -442,6 +442,9 @@ struct uw_context {
 
   void *client_data;
 
+  void *logger_data;
+  uw_logger log_debug;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -450,7 +453,7 @@ size_t uw_page_max = SIZE_MAX;
 size_t uw_heap_max = SIZE_MAX;
 size_t uw_script_max = SIZE_MAX;
 
-uw_context uw_init() {
+uw_context uw_init(void *logger_data, uw_logger log_debug) {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->app = NULL;
@@ -500,6 +503,9 @@ uw_context uw_init() {
   ctx->deadline = INT_MAX;
 
   ctx->client_data = uw_init_client_data();
+
+  ctx->logger_data = logger_data;
+  ctx->log_debug = log_debug;
 
   return ctx;
 }
@@ -3441,8 +3447,10 @@ void uw_check_deadline(uw_context ctx) {
 size_t uw_database_max = SIZE_MAX;
 
 uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
-  fprintf(stderr, "%s\n", s);
-
+  if (ctx->log_debug)
+    ctx->log_debug(ctx->logger_data, "%s\n", s);
+  else
+    fprintf(stderr, "%s\n", s);
   return uw_unit_v;
 }
 

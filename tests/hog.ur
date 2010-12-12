@@ -4,4 +4,6 @@ fun more n =
     else
         more (n-1) ^ more (n-1)
 
-fun main n = return <xml>{[more n]}</xml>
+fun main n =
+    debug "Let's give this a try....";
+    return <xml>{[more n]}</xml>

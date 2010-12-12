@@ -35,7 +35,7 @@ static int try_rollback(uw_context ctx, int will_retry, void *logger_data, uw_lo
 }
 
 uw_context uw_request_new_context(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
-  uw_context ctx = uw_init();
+  uw_context ctx = uw_init(logger_data, log_debug);
   int retries_left = MAX_RETRIES;
   uw_set_app(ctx, app);
 
