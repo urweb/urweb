@@ -46,6 +46,9 @@ fun doArgs args =
       | "-protocol" :: name :: rest =>
         (Settings.setProtocol name;
          doArgs rest)
+      | "-prefix" :: prefix :: rest =>
+        (Settings.setUrlPrefix prefix;
+         doArgs rest)
       | "-db" :: s :: rest =>
         (Settings.setDbstring (SOME s);
          doArgs rest)
