@@ -368,6 +368,8 @@ fun parseUrp' accLibs fname =
 
             fun pu filename =
                 let
+                    val filename = OS.Path.mkAbsolute {path = filename, relativeTo = OS.FileSys.getDir ()}
+
                     val dir = OS.Path.dir filename
                     fun opener () = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
 
@@ -705,7 +707,8 @@ fun parseUrp' accLibs fname =
                                                      bigLibs := libify' arg :: !bigLibs
                                   | "path" =>
                                     (case String.fields (fn ch => ch = #"=") arg of
-                                         [n, v] => pathmap := M.insert (!pathmap, n, v)
+                                         [n, v] => ((pathmap := M.insert (!pathmap, n, OS.Path.mkAbsolute {path = v, relativeTo = dir}))
+                                                     handle OS.Path.Path => ErrorMsg.error "Invalid 'path' directory argument")
                                        | _ => ErrorMsg.error "path argument not of the form name=value'")
                                   | "onError" =>
                                     (case String.fields (fn ch => ch = #".") arg of
