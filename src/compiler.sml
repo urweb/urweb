@@ -391,12 +391,9 @@ fun parseUrp' accLibs fname =
                                 val fname' = Substring.extract (fname, 1, NONE)
                                 val (befor, after) = Substring.splitl (fn ch => ch <> #"/") fname'
                             in
-                                if Substring.isEmpty after then
-                                    fname
-                                else
-                                    case M.find (!pathmap, Substring.string befor) of
-                                        NONE => fname
-                                      | SOME rep => rep ^ Substring.string after
+                                case M.find (!pathmap, Substring.string befor) of
+                                    NONE => fname
+                                  | SOME rep => rep ^ Substring.string after
                             end
                         else
                             fname
