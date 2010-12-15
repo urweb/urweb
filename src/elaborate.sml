@@ -910,18 +910,39 @@
              in
                  raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2, findPointwise (#fields s1)))
              end
+
+         fun default () = if !mayDelay then
+                              delayedUnifs := (loc, env, k, s1, s2) :: !delayedUnifs
+                          else
+                              failure ()
      in
          (case (unifs1, fs1, others1, unifs2, fs2, others2) of
               (_, [], [], [], [], []) =>
               app (fn (_, r) => r := SOME empty) unifs1
             | ([], [], [], _, [], []) =>
               app (fn (_, r) => r := SOME empty) unifs2
-            | _ =>
-              if !mayDelay then
-                  delayedUnifs := (loc, env, k, s1, s2) :: !delayedUnifs
-              else
-                  failure ())
-         
+            | (_, _, _, [], [], [cr as (L'.CUnif (nl, _, _, _, r), _)]) =>
+              let
+                  val c = summaryToCon {fields = fs1, unifs = unifs1, others = others1}
+              in
+                  if occursCon r c then
+                      raise CUnify' (COccursCheckFailed (cr, c))
+                  else
+                      (r := SOME (squish nl c))
+                      handle CantSquish => default ()
+              end
+            | ([], [], [cr as (L'.CUnif (nl, _, _, _, r), _)], _, _, _) =>
+              let
+                  val c = summaryToCon {fields = fs2, unifs = unifs2, others = others2}
+              in
+                  if occursCon r c then
+                      raise CUnify' (COccursCheckFailed (cr, c))
+                  else
+                      (r := SOME (squish nl c))
+                      handle CantSquish => default ()
+              end
+            | _ => default ())
+          
          (*before eprefaces "Summaries'" [("#1", p_summary env (normalizeRecordSummary env s1)),
                                         ("#2", p_summary env (normalizeRecordSummary env s2))]*)
      end
@@ -1068,11 +1089,6 @@
              (L'.CError, _) => ()
            | (_, L'.CError) => ()
 
-           | (L'.CRecord _, _) => isRecord ()
-           | (_, L'.CRecord _) => isRecord ()
-           | (L'.CConcat _, _) => isRecord ()
-           | (_, L'.CConcat _) => isRecord ()
-
            | (L'.CUnif (nl1, loc1, k1, _, r1), L'.CUnif (nl2, loc2, k2, _, r2)) =>
              if r1 = r2 andalso nl1 = nl2 then
                  ()
@@ -1108,6 +1124,12 @@
              else
                  (r := SOME (squish nl c1All)
                   handle CantSquish => err (fn _ => TooDeep))
+
+           | (L'.CRecord _, _) => isRecord ()
+           | (_, L'.CRecord _) => isRecord ()
+           | (L'.CConcat _, _) => isRecord ()
+           | (_, L'.CConcat _) => isRecord ()
+
 
            | (L'.CUnit, L'.CUnit) => ()
 
@@ -4367,6 +4389,11 @@ fun elabFile basis topStr topSgn env file =
                                                     ("Con 2", p_con env c2),
                                                     ("Hnormed 1", p_con env c1'),
                                                     ("Hnormed 2", p_con env c2')];
+
+                                        app (fn (loc, env, k, s1, s2) =>
+                                                eprefaces' [("s1", p_summary env (normalizeRecordSummary env s1)),
+                                                            ("s2", p_summary env (normalizeRecordSummary env s2))])
+                                            (!delayedUnifs);
 
                                         if (isUnif c1' andalso maybeAttr c2')
                                            orelse (isUnif c2' andalso maybeAttr c1') then
