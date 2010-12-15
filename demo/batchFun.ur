@@ -85,7 +85,7 @@ functor Make(M : sig
             <xml><dyn signal={ls <- signal lss; return <xml><table>
               <tr>
                 <th>Id</th>
-                {@mapX [colMeta] [_]
+                {@mapX [colMeta] [[Body, Tr]]
                   (fn [nm :: Name] [p ::_] [rest ::_] [[nm] ~ rest] m =>
                       <xml><th>{[m.Nam]}</th></xml>)
                   M.fl M.cols}
