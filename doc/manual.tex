@@ -1863,7 +1863,7 @@ $$\begin{array}{l}
   \hspace{.1in} \Rightarrow \mt{xml} \; \mt{ctx} \; \mt{use_1} \; \mt{bind} \to \mt{xml} \; \mt{ctx} \; (\mt{use_1} \rc \mt{use_2}) \; \mt{bind}
 \end{array}$$
 
-We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.
+We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.  Also note that there is currently no way for the programmer to add his own tags.  It \emph{is} possible to add new tags directly to \texttt{basis.urs}, but this should only be done as a prelude to suggesting a patch to the main distribution.
 
 One last useful function is for aborting any page generation, returning some XML as an error message.  This function takes the place of some uses of a general exception mechanism.
 $$\begin{array}{l}
