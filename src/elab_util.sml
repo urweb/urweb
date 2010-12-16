@@ -771,8 +771,8 @@ datatype binder =
        | NamedC of string * int * Elab.kind * Elab.con option
        | RelE of string * Elab.con
        | NamedE of string * Elab.con
-       | Str of string * Elab.sgn
-       | Sgn of string * Elab.sgn
+       | Str of string * int * Elab.sgn
+       | Sgn of string * int * Elab.sgn
 
 fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = fst, decl = fd, bind} =
     let
@@ -808,8 +808,8 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                              Sgn.RelK x => RelK x
                            | Sgn.RelC x => RelC x
                            | Sgn.NamedC x => NamedC x
-                           | Sgn.Sgn (x, _, y) => Sgn (x, y)
-                           | Sgn.Str (x, _, y) => Str (x, y)
+                           | Sgn.Sgn x => Sgn x
+                           | Sgn.Str x => Str x
             in
                 bind (ctx, b')
             end
@@ -861,12 +861,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                    bind (ctx, NamedE (x, c))
                                                  | DValRec vis =>
                                                    foldl (fn ((x, _, c, _), ctx) => bind (ctx, NamedE (x, c))) ctx vis
-                                                 | DSgn (x, _, sgn) =>
-                                                   bind (ctx, Sgn (x, sgn))
-                                                 | DStr (x, _, sgn, _) =>
-                                                   bind (ctx, Str (x, sgn))
-                                                 | DFfiStr (x, _, sgn) =>
-                                                   bind (ctx, Str (x, sgn))
+                                                 | DSgn (x, n, sgn) =>
+                                                   bind (ctx, Sgn (x, n, sgn))
+                                                 | DStr (x, n, sgn, _) =>
+                                                   bind (ctx, Str (x, n, sgn))
+                                                 | DFfiStr (x, n, sgn) =>
+                                                   bind (ctx, Str (x, n, sgn))
                                                  | DConstraint _ => ctx
                                                  | DExport _ => ctx
                                                  | DTable (tn, x, n, c, _, pc, _, cc) =>
@@ -1143,6 +1143,29 @@ fun foldMapB {kind, con, exp, sgn_item, sgn, str, decl, bind} ctx st d =
                    bind = bind} ctx d st of
         S.Continue x => x
       | S.Return _ => raise Fail "ElabUtil.Decl.foldMapB: Impossible"
+
+fun map {kind, con, exp, sgn_item, sgn, str, decl} s =
+    case mapfold {kind = fn k => fn () => S.Continue (kind k, ()),
+                  con = fn c => fn () => S.Continue (con c, ()),
+                  exp = fn e => fn () => S.Continue (exp e, ()),
+                  sgn_item = fn si => fn () => S.Continue (sgn_item si, ()),
+                  sgn = fn s => fn () => S.Continue (sgn s, ()),
+                  str = fn si => fn () => S.Continue (str si, ()),
+                  decl = fn s => fn () => S.Continue (decl s, ())} s () of
+        S.Return () => raise Fail "Elab_util.Decl.map"
+      | S.Continue (s, ()) => s
+
+fun mapB {kind, con, exp, sgn_item, sgn, str, decl, bind} ctx s =
+    case mapfoldB {kind = fn ctx => fn k => fn () => S.Continue (kind ctx k, ()),
+                   con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
+                   exp = fn ctx => fn c => fn () => S.Continue (exp ctx c, ()),
+                   sgn_item = fn ctx => fn sgi => fn () => S.Continue (sgn_item ctx sgi, ()),
+                   sgn = fn ctx => fn s => fn () => S.Continue (sgn ctx s, ()),
+                   str = fn ctx => fn sgi => fn () => S.Continue (str ctx sgi, ()),
+                   decl = fn ctx => fn s => fn () => S.Continue (decl ctx s, ()),
+                   bind = bind} ctx s () of
+        S.Continue (s, ()) => s
+      | S.Return _ => raise Fail "ElabUtil.Decl.mapB: Impossible"
 
 end
 

@@ -72,6 +72,7 @@ val mapQueryPartialM : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
 val sort : a ::: Type -> (a -> a -> bool) (* > predicate *) -> t a -> t a
 
 val nth : a ::: Type -> list a -> int -> option a
+val replaceNth : a ::: Type -> list a -> int -> a -> list a
 
 (** Association lists *)
 

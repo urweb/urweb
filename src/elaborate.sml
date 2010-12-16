@@ -4262,31 +4262,17 @@ fun elabFile basis topStr topSgn env file =
 
         val (ds', env') = dopen env' {str = top_n, strs = [], sgn = topSgn}
 
-        val checks = ref ([] : (unit -> unit) list)
-
         fun elabDecl' (d, (env, gs)) =
             let
                 val () = resetKunif ()
                 val () = resetCunif ()
-                val (ds, (env, _, gs)) = elabDecl (d, (env, D.empty, gs))
+                val (ds, (env', _, gs)) = elabDecl (d, (env, D.empty, gs))
             in
-                checks :=
-                (fn () =>
-                    (if List.exists kunifsInDecl ds then
-                         declError env (KunifsRemain ds)
-                     else
-                         ();
-                     
-                     case ListUtil.search cunifsInDecl ds of
-                         NONE => ()
-                       | SOME loc =>
-                         declError env (CunifsRemain ds)))
-                :: !checks;
-
-                (ds, (env, gs))
+                                    (**)
+                (ds, (env', gs))
             end
 
-        val (file, (_, gs)) = ListUtil.foldlMapConcat elabDecl' (env', []) file
+        val (file, (env'', gs)) = ListUtil.foldlMapConcat elabDecl' (env', []) file
 
         fun oneSummaryRound () =
             if ErrorMsg.anyErrors () then
@@ -4390,10 +4376,10 @@ fun elabFile basis topStr topSgn env file =
                                                     ("Hnormed 1", p_con env c1'),
                                                     ("Hnormed 2", p_con env c2')];
 
-                                        app (fn (loc, env, k, s1, s2) =>
+                                        (*app (fn (loc, env, k, s1, s2) =>
                                                 eprefaces' [("s1", p_summary env (normalizeRecordSummary env s1)),
                                                             ("s2", p_summary env (normalizeRecordSummary env s2))])
-                                            (!delayedUnifs);
+                                            (!delayedUnifs);*)
 
                                         if (isUnif c1' andalso maybeAttr c2')
                                            orelse (isUnif c2' andalso maybeAttr c1') then
@@ -4422,10 +4408,16 @@ fun elabFile basis topStr topSgn env file =
                  (!delayedUnifs);
              delayedUnifs := []);
 
-        if ErrorMsg.anyErrors () then
-            ()
-        else
-            app (fn f => f ()) (!checks);
+        ignore (List.exists (fn d => if kunifsInDecl d then
+                                         (declError env'' (KunifsRemain [d]);
+                                          true)
+                                     else
+                                         false) file);
+        
+        ignore (List.exists (fn d => case cunifsInDecl d of
+                                         NONE => false
+                                       | SOME _ => (declError env'' (CunifsRemain [d]);
+                                                    true)) file);
 
         if ErrorMsg.anyErrors () then
             ()
@@ -4437,7 +4429,7 @@ fun elabFile basis topStr topSgn env file =
                 (!delayedExhaustives);
 
         (*preface ("file", p_file env' file);*)
-
+        
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
         :: ds
         @ (L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan)

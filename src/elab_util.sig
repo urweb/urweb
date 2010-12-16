@@ -157,8 +157,8 @@ structure Decl : sig
            | NamedC of string * int * Elab.kind * Elab.con option
            | RelE of string * Elab.con
            | NamedE of string * Elab.con
-           | Str of string * Elab.sgn
-           | Sgn of string * Elab.sgn
+           | Str of string * int * Elab.sgn
+           | Sgn of string * int * Elab.sgn
 
     val mapfoldB : {kind : ('context, Elab.kind', 'state, 'abort) Search.mapfolderB,
                     con : ('context, Elab.con', 'state, 'abort) Search.mapfolderB,
@@ -203,6 +203,25 @@ structure Decl : sig
                     decl : 'context * Elab.decl' * 'state -> Elab.decl' * 'state,
                     bind : 'context * binder -> 'context}
                    -> 'context -> 'state -> Elab.decl -> Elab.decl * 'state
+
+    val map : {kind : Elab.kind' -> Elab.kind',
+               con : Elab.con' -> Elab.con',
+               exp : Elab.exp' -> Elab.exp',
+               sgn_item : Elab.sgn_item' -> Elab.sgn_item',
+               sgn : Elab.sgn' -> Elab.sgn',
+               str : Elab.str' -> Elab.str',
+               decl : Elab.decl' -> Elab.decl'}
+              -> Elab.decl -> Elab.decl
+
+    val mapB : {kind : 'context -> Elab.kind' -> Elab.kind',
+                con : 'context -> Elab.con' -> Elab.con',
+                exp : 'context -> Elab.exp' -> Elab.exp',
+                sgn_item : 'context -> Elab.sgn_item' -> Elab.sgn_item',
+                sgn : 'context -> Elab.sgn' -> Elab.sgn',
+                str : 'context -> Elab.str' -> Elab.str',
+                decl : 'context -> Elab.decl' -> Elab.decl',
+                bind : 'context * binder -> 'context}
+               -> 'context -> Elab.decl -> Elab.decl
 end
 
 structure File : sig

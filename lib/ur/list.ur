@@ -322,6 +322,19 @@ val nth [a] =
         nth
     end
 
+fun replaceNth [a] (ls : list a) (n : int) (v : a) : list a =
+    let
+        fun repNth (ls : list a) (n : int) (acc : list a) =
+            case ls of
+                [] => rev acc
+              | x :: ls' => if n <= 0 then
+                                revAppend acc (v :: ls')
+                            else
+                                repNth ls' (n-1) (x :: acc)
+    in
+        repNth ls n []
+    end
+
 fun assoc [a] [b] (_ : eq a) (x : a) =
     let
         fun assoc' (ls : list (a * b)) =
