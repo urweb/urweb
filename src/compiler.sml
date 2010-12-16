@@ -794,7 +794,19 @@ val parse = {
 
                   val anyErrors = ref false
                   fun checkErrors () = anyErrors := (!anyErrors orelse ErrorMsg.anyErrors ())
-                  fun nameOf fname = capitalize (OS.Path.file fname)
+                  fun nameOf fname =
+                      let
+                          val fname = OS.Path.file fname
+                          val fst = if size fname = 0 then #"!" else String.sub (fname, 0)
+                      in
+                          if not (Char.isAlpha fst) then
+                              ErrorMsg.error ("Filename doesn't start with letter: " ^ fname)
+                          else if CharVector.exists (fn ch => not (Char.isAlphaNum ch) andalso ch <> #"_") fname then
+                              ErrorMsg.error ("Filename contains a character that isn't alphanumeric or underscore: " ^ fname)
+                          else
+                              ();
+                          capitalize fname
+                      end
 
                   fun parseFfi fname =
                       let
