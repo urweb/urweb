@@ -4408,16 +4408,22 @@ fun elabFile basis topStr topSgn env file =
                  (!delayedUnifs);
              delayedUnifs := []);
 
-        ignore (List.exists (fn d => if kunifsInDecl d then
-                                         (declError env'' (KunifsRemain [d]);
-                                          true)
-                                     else
-                                         false) file);
+        if ErrorMsg.anyErrors () then
+            ()
+        else
+            ignore (List.exists (fn d => if kunifsInDecl d then
+                                             (declError env'' (KunifsRemain [d]);
+                                              true)
+                                         else
+                                             false) file);
         
-        ignore (List.exists (fn d => case cunifsInDecl d of
-                                         NONE => false
-                                       | SOME _ => (declError env'' (CunifsRemain [d]);
-                                                    true)) file);
+        if ErrorMsg.anyErrors () then
+            ()
+        else
+            ignore (List.exists (fn d => case cunifsInDecl d of
+                                             NONE => false
+                                           | SOME _ => (declError env'' (CunifsRemain [d]);
+                                                        true)) file);
 
         if ErrorMsg.anyErrors () then
             ()
