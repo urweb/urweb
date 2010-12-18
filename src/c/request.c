@@ -79,9 +79,44 @@ static void *ticker(void *data) {
   return NULL;
 }
 
+typedef struct {
+  uw_app *app;
+  void *logger_data;
+  uw_logger log_error, log_debug;
+} loggers;
+
+typedef struct {
+  loggers *ls;
+  uw_periodic pdic;
+} periodic;
+
+static void *periodic_loop(void *data) {
+  periodic *p = (periodic *)data;
+  uw_context ctx = uw_request_new_context(p->ls->app, p->ls->logger_data, p->ls->log_error, p->ls->log_debug);
+
+  if (!ctx)
+    exit(1);
+
+  while (1) {
+    failure_kind r;
+    do {
+      r = uw_runCallback(ctx, p->pdic.callback);
+    } while (r == UNLIMITED_RETRY);
+
+    sleep(p->pdic.period);
+  };
+}
+
 void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
   uw_context ctx;
   failure_kind fk;
+  uw_periodic *ps;
+  loggers *ls = malloc(sizeof(loggers));
+
+  ls->app = app;
+  ls->logger_data = logger_data;
+  ls->log_error = log_error;
+  ls->log_debug = log_debug;
 
   uw_global_init();
   uw_app_init(app);
@@ -113,6 +148,18 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
   }
 
   uw_free(ctx);
+
+  for (ps = app->periodics; ps->callback; ++ps) {
+    pthread_t thread;
+    periodic *arg = malloc(sizeof(periodic));
+    arg->ls = ls;
+    arg->pdic = *ps;
+    
+    if (pthread_create(&thread, NULL, periodic_loop, arg)) {
+      fprintf(stderr, "Error creating periodic thread\n");
+      exit(1);
+    }
+  }  
 }
 
 
@@ -467,12 +514,6 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     uw_reset_keep_request(ctx);
   }
 }
-
-typedef struct {
-  uw_app *app;
-  void *logger_data;
-  uw_logger log_error, log_debug;
-} loggers;
 
 void *client_pruner(void *data) {
   loggers *ls = (loggers *)data;

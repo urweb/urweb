@@ -103,7 +103,7 @@ datatype exp' =
 
 withtype exp = exp' located
 
-datatype task = Initialize | ClientLeaves
+datatype task = Initialize | ClientLeaves | Periodic of Int64.int
 
 datatype decl' =
          DStruct of int * (string * typ) list

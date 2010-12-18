@@ -667,6 +667,7 @@ fun cifyDecl ((d, loc), sm) =
                  val tk = case #1 e1 of
                               L.EFfi ("Basis", "initialize") => L'.Initialize
                             | L.EFfi ("Basis", "clientLeaves") => L'.ClientLeaves
+                            | L.EFfiApp ("Basis", "periodic", [(L.EPrim (Prim.Int n), _)]) => L'.Periodic n
                             | _ => (ErrorMsg.errorAt loc "Task kind not fully determined";
                                     L'.Initialize)
                  val (e, sm) = cifyExp (e, sm)

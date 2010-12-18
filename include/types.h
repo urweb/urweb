@@ -59,6 +59,11 @@ typedef void (*uw_callback_with_retry)(void *, int will_retry);
 typedef void (*uw_logger)(void*, const char *fmt, ...);
 
 typedef struct {
+  void (*callback)(uw_context);
+  unsigned int period;
+} uw_periodic;
+
+typedef struct {
   int inputs_len, timeout;
   char *url_prefix;
 
@@ -80,6 +85,8 @@ typedef struct {
   int (*check_mime)(const char *);
 
   void (*on_error)(uw_context, char *);
+
+  uw_periodic *periodics; // 0-terminated array
 } uw_app;
 
 #define ERROR_BUF_LEN 1024

@@ -293,4 +293,6 @@ uw_Basis_int uw_Basis_rand(uw_context);
 
 extern int uw_time_max, uw_supports_direct_status, uw_min_heap;
 
+failure_kind uw_runCallback(uw_context, void (*callback)(uw_context));
+
 #endif

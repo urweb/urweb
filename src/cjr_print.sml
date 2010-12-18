@@ -2796,6 +2796,7 @@ fun p_file env (ds, ps) =
 
         val initializers = List.mapPartial (fn (DTask (Initialize, x1, x2, e), _) => SOME (x1, x2, e) | _ => NONE) ds
         val expungers = List.mapPartial (fn (DTask (ClientLeaves, x1, x2, e), _) => SOME (x1, x2, e) | _ => NONE) ds
+        val periodics = List.mapPartial (fn (DTask (Periodic n, x1, x2, e), _) => SOME (n, x1, x2, e) | _ => NONE) ds
 
         val onError = ListUtil.search (fn (DOnError n, _) => SOME n | _ => NONE) ds
 
@@ -2884,6 +2885,36 @@ fun p_file env (ds, ps) =
                       string "static int uw_db_commit(uw_context ctx) { return 0; };",
                       newline,
                       string "static int uw_db_rollback(uw_context ctx) { return 0; };"],
+             newline,
+             newline,
+
+             box (ListUtil.mapi (fn (i, (_, x1, x2, e)) =>
+                                    box [string "static void uw_periodic",
+                                         string (Int.toString i),
+                                         string "(uw_context ctx) {",
+                                         newline,
+                                         box [string "uw_unit __uwr_",
+                                              string x1,
+                                              string "_0 = uw_unit_v, __uwr_",
+                                              string x2,
+                                              string "_1 = uw_unit_v;",
+                                              newline,
+                                              p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e,
+                                              string ";",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline]) periodics),
+
+             string "static uw_periodic my_periodics[] = {",
+             box (ListUtil.mapi (fn (i, (n, _, _, _)) =>
+                                    box [string "{uw_periodic",
+                                         string (Int.toString i),
+                                         string ",",
+                                         space,
+                                         string (Int64.toString n),
+                                         string "},"]) periodics),
+             string "{NULL}};",
              newline,
              newline,
 
@@ -3043,7 +3074,7 @@ fun p_file env (ds, ps) =
                          "uw_db_init", "uw_db_begin", "uw_db_commit", "uw_db_rollback", "uw_db_close",
                          "uw_handle",
                          "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime",
-                         case onError of NONE => "NULL" | SOME _ => "uw_onError"],
+                         case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics"],
              string "};",
              newline]
     end

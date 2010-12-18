@@ -2100,15 +2100,17 @@ In many web applications, it's useful to run code at points other than requests 
 $$\begin{array}{l}
 \mt{con} \; \mt{task\_kind} :: \mt{Type} \to \mt{Type} \\
 \mt{val} \; \mt{initialize} : \mt{task\_kind} \; \mt{unit} \\
-\mt{val} \; \mt{clientLeaves} : \mt{task\_kind} \; \mt{client}
+\mt{val} \; \mt{clientLeaves} : \mt{task\_kind} \; \mt{client} \\
+\mt{val} \; \mt{periodic} : \mt{int} \to \mt{task\_kind} \; \mt{unit}
 \end{array}$$
 
 A task kind names a particular extension point of generated applications, where the type parameter of a task kind describes which extra input data is available at that extension point.  Add task code with the special declaration form $\mt{task} \; e_1 = e_2$, where $e_1$ is a task kind with data $\tau$, and $e_2$ is a function from $\tau$ to $\mt{transaction} \; \mt{unit}$.
 
 The currently supported task kinds are:
 \begin{itemize}
-\item $\mt{initialize}$: Code that is run in each freshly-allocated request context.
+\item $\mt{initialize}$: Code that is run when the application starts up.
 \item $\mt{clientLeaves}$: Code that is run for each client that the runtime system decides has surfed away.  When a request that generates a new client handle is aborted, that handle will still eventually be passed to $\mt{clientLeaves}$ task code, even though the corresponding browser was never informed of the client handle's existence.  In other words, in general, $\mt{clientLeaves}$ handlers will be called more times than there are actual clients.
+\item $\mt{periodic} \; n$: Code that is run when the application starts up and then every $n$ seconds thereafter.
 \end{itemize}
 
 

@@ -813,6 +813,7 @@ val show_xml : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> show (xml 
 con task_kind :: Type -> Type
 val initialize : task_kind unit
 val clientLeaves : task_kind client
+val periodic : int -> task_kind unit
 
 
 (** Information flow security *)
