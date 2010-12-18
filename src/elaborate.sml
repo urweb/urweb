@@ -3834,8 +3834,14 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                                                                       (L'.CModProj
                                                                                            (basis, [], "transaction"), loc),
                                                                                       t), loc)
+
+                                                                             fun normArgs t =
+                                                                                 case hnormCon env t of
+                                                                                     (L'.TFun (dom, ran), loc) =>
+                                                                                     (L'.TFun (hnormCon env dom, normArgs ran), loc)
+                                                                                   | t' => t'
                                                                          in
-                                                                             (L'.SgiVal (x, n, makeRes t), loc)
+                                                                             (L'.SgiVal (x, n, normArgs (makeRes t)), loc)
                                                                          end
                                                                        | _ => all)
                                                                   | _ => all)

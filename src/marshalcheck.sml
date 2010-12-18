@@ -1,4 +1,4 @@
-(* Copyright (c) 2009, Adam Chlipala
+(* Copyright (c) 2009-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -96,7 +96,10 @@ fun check file =
                                    let
                                        fun makeS (t, _) =
                                            case t of
-                                               TFun (dom, ran) => PS.union (sins cmap dom, makeS ran)
+                                               TFun (dom, ran) =>
+                                               (case #1 dom of
+                                                    CFfi ("Basis", "postBody") => makeS ran
+                                                  | _ => PS.union (sins cmap dom, makeS ran))
                                              | _ => PS.empty
                                        val s = makeS t
                                    in

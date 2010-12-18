@@ -192,6 +192,9 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       boundary[0] = '-';
       boundary[1] = '-';
       boundary_len = strlen(boundary);
+    } else if (clen_s && strcasecmp(clen_s, "application/x-www-form-urlencoded")) {
+      uw_Basis_postBody pb = {clen_s, body};
+      uw_postBody(ctx, pb);
     }
   } else if (strcmp(method, "GET")) {
     log_error(logger_data, "Not ready for non-GET/POST command: %s\n", method);
@@ -325,7 +328,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       }
     }
   }
-  else {
+  else if (!uw_hasPostBody(ctx)) {
     inputs = is_post ? body : query_string;
 
     if (inputs) {

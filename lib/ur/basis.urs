@@ -737,6 +737,10 @@ val returnBlob : t ::: Type -> blob -> mimeType -> transaction t
 val blobSize : blob -> int
 val textBlob : string -> blob
 
+type postBody
+val postType : postBody -> string
+val postData : postBody -> string
+
 con radio = [Body, Radio]
 val radio : formTag string radio [Id = string]
 val radioOption : unit -> tag ([Value = string, Checked = bool] ++ boxAttrs) radio [] [] []

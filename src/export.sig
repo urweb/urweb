@@ -36,6 +36,7 @@ datatype export_kind =
          Link
        | Action of effect
        | Rpc of effect
+       | Extern of effect
 
 val p_effect : effect Print.printer
 val p_export_kind : export_kind Print.printer

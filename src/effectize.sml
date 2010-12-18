@@ -168,6 +168,15 @@ fun effectize file =
                                 else
                                     ReadOnly), n, IM.inDomain (pushers, n)), #2 d),
                  evs)
+              | DExport (Extern _, n, _) =>
+                ((DExport (Extern (if IM.inDomain (writers, n) then
+                                       if IM.inDomain (readers, n) then
+                                           ReadCookieWrite
+                                       else
+                                           ReadWrite
+                                   else
+                                       ReadOnly), n, IM.inDomain (pushers, n)), #2 d),
+                 evs)
               | _ => (d, evs)
 
         val (file, _) = ListUtil.foldlMap doDecl (IM.empty, IM.empty, IM.empty) file

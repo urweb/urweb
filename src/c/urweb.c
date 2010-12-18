@@ -445,6 +445,9 @@ struct uw_context {
   void *logger_data;
   uw_logger log_debug;
 
+  int hasPostBody;
+  uw_Basis_postBody postBody;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -506,6 +509,8 @@ uw_context uw_init(void *logger_data, uw_logger log_debug) {
 
   ctx->logger_data = logger_data;
   ctx->log_debug = log_debug;
+
+  ctx->hasPostBody = 0;
 
   return ctx;
 }
@@ -583,6 +588,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->cur_container = NULL;
   ctx->used_transactionals = 0;
   ctx->script_header = "";
+  ctx->hasPostBody = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -3200,6 +3206,14 @@ uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
   return f.data;
 }
 
+uw_Basis_string uw_Basis_postType(uw_context ctx, uw_Basis_postBody pb) {
+  return pb.type;
+}
+
+uw_Basis_string uw_Basis_postData(uw_context ctx, uw_Basis_postBody pb) {
+  return pb.data;
+}
+
 __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, uw_Basis_string mimeType) {
   cleanup *cl;
   int len;
@@ -3457,4 +3471,24 @@ uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
 uw_Basis_int uw_Basis_rand(uw_context ctx) {
   uw_Basis_int n = abs(rand());
   return n;
+}
+
+void uw_noPostBody(uw_context ctx) {
+  ctx->hasPostBody = 0;
+}
+
+void uw_postBody(uw_context ctx, uw_Basis_postBody pb) {
+  ctx->hasPostBody = 1;
+  ctx->postBody = pb;
+}
+
+int uw_hasPostBody(uw_context ctx) {
+  return ctx->hasPostBody;
+}
+
+uw_Basis_postBody uw_getPostBody(uw_context ctx) {
+  if (ctx->hasPostBody)
+    return ctx->postBody;
+  else
+    uw_error(ctx, FATAL, "Asked for POST body when none exists");
 }

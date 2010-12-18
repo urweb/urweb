@@ -40,6 +40,10 @@ typedef struct uw_Basis_file {
   uw_Basis_blob data;
 } uw_Basis_file;
 
+typedef struct uw_Basis_postBody {
+  uw_Basis_string type, data;
+} uw_Basis_postBody;
+
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY, RETURN_INDIRECTLY } failure_kind;
 
 typedef enum { SERVED, KEEP_OPEN, FAILED } request_result;

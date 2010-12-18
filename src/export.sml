@@ -39,6 +39,7 @@ datatype export_kind =
          Link
        | Action of effect
        | Rpc of effect
+       | Extern of effect
 
 fun p_effect ef =
     case ef of
@@ -51,5 +52,6 @@ fun p_export_kind ck =
         Link => string "link"
       | Action ef => box [string "action(", p_effect ef, string ")"]
       | Rpc ef => box [string "rpc(", p_effect ef, string ")"]
+      | Extern ef => box [string "extern(", p_effect ef, string ")"]
 
 end

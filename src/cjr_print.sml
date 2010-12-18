@@ -2246,22 +2246,21 @@ fun p_file env (ds, ps) =
 
         val fields = foldl (fn ((ek, _, _, ts, _, _, _), fields) =>
                                case ek of
-                                   Link => fields
-                                 | Rpc _ => fields
-                                 | Action eff =>
-                                   case List.nth (ts, length ts - 2) of
-                                       (TRecord i, loc) =>
-                                       let
-                                           val xts = E.lookupStruct env i
-                                           val extra = case eff of
-                                                           ReadCookieWrite => [sigName xts]
-                                                       | _ => []
-                                       in
-                                           case flatFields extra (TRecord i, loc) of
-                                               NONE => raise Fail "CjrPrint: flatFields impossible"
-                                             | SOME fields' => List.revAppend (fields', fields)
-                                       end
-                                     | _ => raise Fail "CjrPrint: Last argument of action isn't record")
+                                   Action eff =>
+                                   (case List.nth (ts, length ts - 2) of
+                                        (TRecord i, loc) =>
+                                        let
+                                            val xts = E.lookupStruct env i
+                                            val extra = case eff of
+                                                            ReadCookieWrite => [sigName xts]
+                                                          | _ => []
+                                        in
+                                            case flatFields extra (TRecord i, loc) of
+                                                NONE => raise Fail "CjrPrint: flatFields impossible"
+                                              | SOME fields' => List.revAppend (fields', fields)
+                                        end
+                                      | _ => raise Fail "CjrPrint: Last argument of action isn't record")
+                                 | _ => fields)
                            [] ps
 
         val fields = foldl (fn (xts, fields) =>
@@ -2544,49 +2543,49 @@ fun p_file env (ds, ps) =
             let
                 val (ts, defInputs, inputsVar, fields) =
                     case ek of
-                        Core.Link => (List.take (ts, length ts - 1), string "", string "", NONE)
-                      | Core.Rpc _ => (List.take (ts, length ts - 1), string "", string "", NONE)
-                      | Core.Action _ =>
-                        case List.nth (ts, length ts - 2) of
-                            (TRecord i, _) =>
-                            let
-                                val xts = E.lookupStruct env i
-                            in
-                                (List.take (ts, length ts - 2),
-                                 box [box (map (fn (x, t) => box [p_typ env t,
-                                                                  space,
-                                                                  string "uw_input_",
-                                                                  p_ident x,
-                                                                  string ";",
-                                                                  newline]) xts),
-                                      newline,
-                                      box (map getInput xts),
-                                      string "struct __uws_",
-                                      string (Int.toString i),
-                                      space,
-                                      string "uw_inputs",
-                                      space,
-                                      string "= {",
-                                      newline,
-                                      box (map (fn (x, _) => box [string "uw_input_",
-                                                                  p_ident x,
-                                                                  string ",",
-                                                                  newline]) xts),
-                                      string "};",
-                                      newline],
-                                 box [string ",",
-                                      space,
-                                      string "uw_inputs"],
-                                 SOME xts)
-                            end
+                        Core.Action _ =>
+                        (case List.nth (ts, length ts - 2) of
+                             (TRecord i, _) =>
+                             let
+                                 val xts = E.lookupStruct env i
+                             in
+                                 (List.take (ts, length ts - 2),
+                                  box [box (map (fn (x, t) => box [p_typ env t,
+                                                                   space,
+                                                                   string "uw_input_",
+                                                                   p_ident x,
+                                                                   string ";",
+                                                                   newline]) xts),
+                                       newline,
+                                       box (map getInput xts),
+                                       string "struct __uws_",
+                                       string (Int.toString i),
+                                       space,
+                                       string "uw_inputs",
+                                       space,
+                                       string "= {",
+                                       newline,
+                                       box (map (fn (x, _) => box [string "uw_input_",
+                                                                   p_ident x,
+                                                                   string ",",
+                                                                   newline]) xts),
+                                       string "};",
+                                       newline],
+                                  box [string ",",
+                                       space,
+                                       string "uw_inputs"],
+                                  SOME xts)
+                             end
 
-                          | _ => raise Fail "CjrPrint: Last argument to an action isn't a record"
+                           | _ => raise Fail "CjrPrint: Last argument to an action isn't a record")
+                      | _ => (List.take (ts, length ts - 1), string "", string "", NONE)
 
                 fun couldWrite ek =
                     case ek of
                         Link => false
                       | Action ef => ef = ReadCookieWrite
                       | Rpc ef => ef = ReadCookieWrite
+                      | Extern ef => ef = ReadCookieWrite
 
                 val s =
                     case Settings.getUrlPrefix () of
@@ -2693,7 +2692,9 @@ fun p_file env (ds, ps) =
                                                                 space,
                                                                 string "=",
                                                                 space,
-                                                                unurlify false env t,
+                                                                case #1 t of
+                                                                    TFfi ("Basis", "postBody") => string "uw_getPostBody(ctx)"
+                                                                  | _ => unurlify false env t,
                                                                 string ";",
                                                                 newline]) ts),
                           defInputs,

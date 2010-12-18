@@ -1011,11 +1011,19 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                                                                          t, tf, e), loc),
                                                                                 (L.TFun (t, tf), loc)))
                                                            ((L.EApp (ef, ea), loc), ranT) args
+
+                                             val expKind = if List.exists (fn t =>
+                                                                              case corifyCon st t of
+                                                                                  (L'.CFfi ("Basis", "postBody"), _) => true
+                                                                                | _ => false) args then
+                                                               L'.Extern L'.ReadCookieWrite
+                                                           else
+                                                               L'.Link
                                          in
                                              ((L.DVal ("wrap_" ^ s, 0, tf, e), loc) :: wds,
                                               (fn st =>
                                                   case #1 (corifyExp st (L.EModProj (en, [], "wrap_" ^ s), loc)) of
-                                                      L'.ENamed n => (L'.DExport (L'.Link, n, false), loc)
+                                                      L'.ENamed n => (L'.DExport (expKind, n, false), loc)
                                                     | _ => raise Fail "Corify: Value to export didn't corify properly")
                                               :: eds)
                                          end
