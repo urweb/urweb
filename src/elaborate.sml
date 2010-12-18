@@ -3962,9 +3962,14 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     val (e1', t1, gs1) = elabExp (env, denv) e1
                     val (e2', t2, gs2) = elabExp (env, denv) e2
 
+                    val targ = cunif (loc, (L'.KType, loc))
+
                     val t1' = (L'.CModProj (!basis_r, [], "task_kind"), loc)
+                    val t1' = (L'.CApp (t1', targ), loc)
+
                     val t2' = (L'.CApp ((L'.CModProj (!basis_r, [], "transaction"), loc),
                                         (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc)), loc)
+                    val t2' = (L'.TFun (targ, t2'), loc)
                 in
                     checkCon env e1' t1 t1';
                     checkCon env e2' t2 t2';

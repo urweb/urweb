@@ -810,8 +810,9 @@ val show_xml : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> show (xml 
 
 (** Tasks *)
 
-type task_kind
-val initialize : task_kind
+con task_kind :: Type -> Type
+val initialize : task_kind unit
+val clientLeaves : task_kind client
 
 
 (** Information flow security *)

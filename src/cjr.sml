@@ -103,7 +103,7 @@ datatype exp' =
 
 withtype exp = exp' located
 
-datatype task = Initialize
+datatype task = Initialize | ClientLeaves
 
 datatype decl' =
          DStruct of int * (string * typ) list
@@ -123,7 +123,7 @@ datatype decl' =
        | DCookie of string
        | DStyle of string
 
-       | DTask of task * exp
+       | DTask of task * string (* first arg name *) * string * exp
        | DOnError of int
 
 withtype decl = decl' located

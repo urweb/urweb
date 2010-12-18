@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -662,15 +662,16 @@ fun cifyDecl ((d, loc), sm) =
       | L.DStyle args => (SOME (L'.DStyle args, loc), NONE, sm)
       | L.DTask (e1, e2) =>
         (case #1 e2 of
-             L.EAbs (_, _, _, e) =>
+             L.EAbs (x1, _, _, (L.EAbs (x2, _, _, e), _)) =>
              let
                  val tk = case #1 e1 of
                               L.EFfi ("Basis", "initialize") => L'.Initialize
+                            | L.EFfi ("Basis", "clientLeaves") => L'.ClientLeaves
                             | _ => (ErrorMsg.errorAt loc "Task kind not fully determined";
                                     L'.Initialize)
                  val (e, sm) = cifyExp (e, sm)
              in
-                 (SOME (L'.DTask (tk, e), loc), NONE, sm)
+                 (SOME (L'.DTask (tk, x1, x2, e), loc), NONE, sm)
              end
            | _ => (ErrorMsg.errorAt loc "Initializer has not been fully determined";
                    (NONE, NONE, sm)))

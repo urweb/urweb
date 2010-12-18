@@ -2794,7 +2794,8 @@ fun p_file env (ds, ps) =
                  string "}",
                  newline]
 
-        val initializers = List.mapPartial (fn (DTask (Initialize, e), _) => SOME e | _ => NONE) ds
+        val initializers = List.mapPartial (fn (DTask (Initialize, x1, x2, e), _) => SOME (x1, x2, e) | _ => NONE) ds
+        val expungers = List.mapPartial (fn (DTask (ClientLeaves, x1, x2, e), _) => SOME (x1, x2, e) | _ => NONE) ds
 
         val onError = ListUtil.search (fn (DOnError n, _) => SOME n | _ => NONE) ds
 
@@ -2968,31 +2969,58 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
-             if hasDb then
-                 box [string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
-                      newline,
+             box [string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
+                  newline,
+
+                  p_list_sep (box []) (fn (x1, x2, e) => box [string "({",
+                                                              newline,
+                                                              string "uw_Basis_client __uwr_",
+                                                              string x1,
+                                                              string "_0 = cli;",
+                                                              newline,
+                                                              string "uw_unit __uwr_",
+                                                              string x2,
+                                                              string "_1 = uw_unit_v;",
+                                                              newline,
+                                                              p_exp (E.pushERel (E.pushERel env x1 (TFfi ("Basis", "client"), ErrorMsg.dummySpan))
+                                                                                x2 dummyt) e,
+                                                              string ";",
+                                                              newline,
+                                                              string "});",
+                                                              newline]) expungers,
+
+                  if hasDb then
                       box [p_enamed env (!expunge),
                            string "(ctx, cli);",
-                           newline],
-                      string "}",
-                      newline,
-                      newline,
+                           newline]
+                  else
+                      box [],
+                  string "}"],
 
-                      string "static void uw_initializer(uw_context ctx) {",
-                      newline,
-                      box [p_list_sep (box []) (fn e => box [p_exp env e,
-                                                             string ";",
-                                                             newline]) initializers,
-                           p_enamed env (!initialize),
+             newline,
+             string "static void uw_initializer(uw_context ctx) {",
+             newline,
+             box [p_list_sep (box []) (fn (x1, x2, e) => box [string "({",
+                                                              newline,
+                                                              string "uw_unit __uwr_",
+                                                              string x1,
+                                                              string "_0 = uw_unit_v, __uwr_",
+                                                              string x2,
+                                                              string "_1 = uw_unit_v;",
+                                                              newline,
+                                                              p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e,
+                                                              string ";",
+                                                              newline,
+                                                              string "});",
+                                                              newline]) initializers,
+                  if hasDb then
+                      box [p_enamed env (!initialize),
                            string "(ctx, uw_unit_v);",
-                           newline],
-                      string "}",
-                      newline]
-             else
-                 box [string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) { };",
-                      newline,
-                      string "static void uw_initializer(uw_context ctx) { };",
-                      newline],
+                           newline]
+                  else
+                      box []],
+             string "}",
+             newline,
 
              case onError of
                  NONE => box []
