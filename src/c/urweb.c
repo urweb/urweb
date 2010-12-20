@@ -2055,6 +2055,7 @@ uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
 
 #define TIME_FMT "%x %X"
 #define TIME_FMT_PG "%Y-%m-%d %T"
+#define TIME_FMT_PG "%Y-%m-%d %T"
 
 uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
@@ -2560,6 +2561,21 @@ uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
     return "<Invalid time>";
 }
 
+uw_Basis_string uw_Basis_timeToStringf(uw_context ctx, const char *fmt, uw_Basis_time t) {
+  size_t len;
+  char *r;
+  struct tm stm;
+
+  if (localtime_r(&t, &stm)) {
+    uw_check_heap(ctx, TIMES_MAX);
+    r = ctx->heap.front;
+    len = strftime(r, TIMES_MAX, fmt, &stm);
+    ctx->heap.front += len+1;
+    return r;
+  } else
+    return "<Invalid time>";
+}
+
 uw_Basis_int *uw_Basis_stringToInt(uw_context ctx, uw_Basis_string s) {
   char *endptr;
   uw_Basis_int n = strtoll(s, &endptr, 10);
@@ -2643,6 +2659,19 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
   }
 }
 
+uw_Basis_time *uw_Basis_stringToTimef(uw_context ctx, const char *fmt, uw_Basis_string s) {
+  char *end = strchr(s, 0);
+  struct tm stm;
+
+  if (strptime(s, fmt, &stm) == end) {
+    uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
+    *r = mktime(&stm);
+    return r;
+  }
+  else
+    return NULL;
+}
+
 uw_Basis_int uw_Basis_stringToInt_error(uw_context ctx, uw_Basis_string s) {
   char *endptr;
   uw_Basis_int n = strtoll(s, &endptr, 10);
@@ -2704,6 +2733,31 @@ uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {
     uw_error(ctx, FATAL, "Can't parse bool: %s", s);
 }
 
+uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
+  char *dot = strchr(s, '.'), *end = strchr(s, 0);
+  struct tm stm = {};
+
+  if (dot) {
+    *dot = 0;
+    if (strptime(s, TIME_FMT_PG, &stm)) {
+      *dot = '.';
+      return mktime(&stm);
+    }
+    else {
+      *dot = '.';
+      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+    }
+  }
+  else {
+    if (strptime(s, TIME_FMT_PG, &stm) == end) {
+      return mktime(&stm);
+    } else if (strptime(s, TIME_FMT, &stm) == end) {
+      return mktime(&stm);
+    } else
+      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+  }
+}
+
 uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
   char *dot = strchr(s, '.'), *end = strchr(s, 0);
   struct tm stm = {};
@@ -2729,29 +2783,14 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
   }
 }
 
-uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
-  char *dot = strchr(s, '.'), *end = strchr(s, 0);
+uw_Basis_time uw_Basis_stringToTimef_error(uw_context ctx, const char *fmt, uw_Basis_string s) {
+  char *end = strchr(s, 0);
   struct tm stm = {};
 
-  if (dot) {
-    *dot = 0;
-    if (strptime(s, TIME_FMT_PG, &stm)) {
-      *dot = '.';
-      return mktime(&stm);
-    }
-    else {
-      *dot = '.';
-      uw_error(ctx, FATAL, "Can't parse time: %s", s);
-    }
-  }
-  else {
-    if (strptime(s, TIME_FMT_PG, &stm) == end) {
-      return mktime(&stm);
-    } else if (strptime(s, TIME_FMT, &stm) == end) {
-      return mktime(&stm);
-    } else
-      uw_error(ctx, FATAL, "Can't parse time: %s", s);
-  }
+  if (strptime(s, fmt, &stm) == end)
+    return mktime(&stm);
+  else
+    uw_error(ctx, FATAL, "Can't parse time: %s", s);
 }
 
 uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, size_t len) {

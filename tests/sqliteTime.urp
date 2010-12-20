@@ -1,0 +1,5 @@
+dbms sqlite
+database /tmp/test
+sql sqliteTime.sql
+
+sqliteTime

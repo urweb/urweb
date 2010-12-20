@@ -402,6 +402,8 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline]
     end
 
+val fmt = "\"%Y-%m-%d %H:%M:%S\""
+
 fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
     let
         fun p_unsql t =
@@ -415,7 +417,11 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
                     box [string "uw_strdup(ctx, (uw_Basis_string)sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
               | Char => box [string "sqlite3_column_text(stmt, ", string (Int.toString i), string ")[0]"]
               | Bool => box [string "(uw_Basis_bool)sqlite3_column_int(stmt, ", string (Int.toString i), string ")"]
-              | Time => box [string "uw_Basis_stringToTime_error(ctx, (uw_Basis_string)sqlite3_column_text(stmt, ", string (Int.toString i), string "))"]
+              | Time => box [string "uw_Basis_stringToTimef_error(ctx, ",
+                             string fmt,
+                             string ", (uw_Basis_string)sqlite3_column_text(stmt, ",
+                             string (Int.toString i),
+                             string "))"]
               | Blob => box [string "({",
                              newline,
                              string "char *data = (char *)sqlite3_column_blob(stmt, ",
@@ -591,7 +597,9 @@ fun p_inputs loc =
                                                      string ")"]
                                       | Time => box [string "sqlite3_bind_text(stmt, ",
                                                      string (Int.toString (i + 1)),
-                                                     string ", uw_Basis_attrifyTime(ctx, ",
+                                                     string ", uw_Basis_timeToStringf(ctx, ",
+                                                     string fmt,
+                                                     string ", ",
                                                      arg,
                                                      string "), -1, SQLITE_TRANSIENT)"]
                                       | Blob => box [string "sqlite3_bind_blob(stmt, ",
