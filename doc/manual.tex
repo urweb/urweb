@@ -512,7 +512,7 @@ A record type may be written $\{(c = c,)^*\}$, which elaborates to $\$[(c = c,)^
 
 The notation $[c_1, \ldots, c_n]$ is shorthand for $[c_1 = (), \ldots, c_n = ()]$.
 
-A tuple type $(\tau_1, \ldots, \tau_n)$ expands to a record type $\{1 = \tau_1, \ldots, n = \tau_n\}$, with natural numbers as field names.  A tuple pattern $(p_1, \ldots, p_n)$ expands to a rigid record pattern $\{1 = p_1, \ldots, n = p_n\}$.  Positive natural numbers may be used in most places where field names would be allowed.
+A tuple type $\tau_1 \times \ldots \times \tau_n$ expands to a record type $\{1 : \tau_1, \ldots, n : \tau_n\}$, with natural numbers as field names.  A tuple expression $(e_1, \ldots, e_n)$ expands to a record expression $\{1 = e_1, \ldots, n = e_n\}$.  A tuple pattern $(p_1, \ldots, p_n)$ expands to a rigid record pattern $\{1 = p_1, \ldots, n = p_n\}$.  Positive natural numbers may be used in most places where field names would be allowed.
 
 In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid X$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.
 
