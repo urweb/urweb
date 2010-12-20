@@ -2055,7 +2055,6 @@ uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
 
 #define TIME_FMT "%x %X"
 #define TIME_FMT_PG "%Y-%m-%d %T"
-#define TIME_FMT_PG "%Y-%m-%d %T"
 
 uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
