@@ -464,7 +464,7 @@ val coreInline = ref 20
 fun setCoreInline n = coreInline := n
 fun getCoreInline () = !coreInline
 
-val monoInline = ref 20
+val monoInline = ref 100
 fun setMonoInline n = monoInline := n
 fun getMonoInline () = !monoInline
 

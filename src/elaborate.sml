@@ -309,6 +309,7 @@
          in
              checkKind env c1' k1 (L'.KRecord ku1, loc);
              checkKind env c2' k2 (L'.KRecord ku2, loc);
+             checkKind env c' k (L'.KType, loc);
 
              ((L'.TDisjoint (c1', c2', c'), loc), k, gs1 @ gs2 @ gs4)
          end
