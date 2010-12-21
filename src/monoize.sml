@@ -2637,24 +2637,32 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val default =
                     case #1 t of
                         L.CFfi ("Basis", s) =>
-                        (case s of
+                        SOME (case s of
                              "int" => "0"
                            | "float" => "0.0"
                            | "string" => "''"
                            | "time" => "0"
                            | _ => raise Fail "Illegal type of sql_aggregate [1]")
+                      | L.CApp ((L.CFfi ("Basis", "option"), _), _) => NONE
                       | _ => raise Fail "Illegal type of sql_aggregate [2]"
 
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
+
+                val main = strcat [(L'.ERel 1, loc),
+                                   sc "(",
+                                   (L'.ERel 0, loc),
+                                   sc ")"]
+
+                val main = case default of
+                               NONE => main
+                             | SOME default =>
+                               strcat [sc "COALESCE(",
+                                       main,
+                                       sc ("," ^ default ^ ")")]
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
-                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
-                                     strcat [sc "COALESCE(",
-                                             (L'.ERel 1, loc),
-                                             sc "(",
-                                             (L'.ERel 0, loc),
-                                             sc (")," ^ default ^ ")")]), loc)), loc),
+                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc), main), loc)), loc),
                  fm)
             end
 
@@ -2664,6 +2672,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_summable_int") => ((L'.ERecord [], loc), fm)
           | L.EFfi ("Basis", "sql_summable_float") => ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_summable_option"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                       (L'.ERecord [], loc)), loc),
+             fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_avg"), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EPrim (Prim.String "AVG"), loc)), loc),
@@ -2679,6 +2691,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfi ("Basis", "sql_maxable_int") => ((L'.ERecord [], loc), fm)
           | L.EFfi ("Basis", "sql_maxable_float") => ((L'.ERecord [], loc), fm)
           | L.EFfi ("Basis", "sql_maxable_string") => ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_maxable_option"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                       (L'.ERecord [], loc)), loc),
+             fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_max"), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EPrim (Prim.String "MAX"), loc)), loc),

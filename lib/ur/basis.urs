@@ -483,6 +483,7 @@ val sql_count_col : t ::: Type -> sql_aggregate (option t) int
 class sql_summable
 val sql_summable_int : sql_summable int
 val sql_summable_float : sql_summable float
+val sql_summable_option : t ::: Type -> sql_summable t -> sql_summable (option t)
 val sql_avg : t ::: Type -> sql_summable t -> sql_aggregate t t
 val sql_sum : t ::: Type -> sql_summable t -> sql_aggregate t t
 
@@ -491,6 +492,7 @@ val sql_maxable_int : sql_maxable int
 val sql_maxable_float : sql_maxable float
 val sql_maxable_string : sql_maxable string
 val sql_maxable_time : sql_maxable time
+val sql_maxable_option : t ::: Type -> sql_maxable t -> sql_maxable (option t)
 val sql_max : t ::: Type -> sql_maxable t -> sql_aggregate t t
 val sql_min : t ::: Type -> sql_maxable t -> sql_aggregate t t
 
