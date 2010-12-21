@@ -1838,6 +1838,11 @@ $$\begin{array}{l}
   \mt{val} \; \mt{cdata} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use} ::: \{\mt{Type}\} \to \mt{string} \to \mt{xml} \; \mt{ctx} \; \mt{use} \; []
 \end{array}$$
 
+There is also a function to insert the literal value of a character.  Since Ur/Web uses the UTF-8 text encoding, the $\mt{cdata}$ function is only sufficient to encode characters with ASCII codes below 128.  Higher codes have alternate meanings in UTF-8 than in usual ASCII, so this alternate function should be used with them.
+$$\begin{array}{l}
+  \mt{val} \; \mt{cdataChar} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use} ::: \{\mt{Type}\} \to \mt{char} \to \mt{xml} \; \mt{ctx} \; \mt{use} \; []
+\end{array}$$
+
 There is a function for producing an XML tree with a particular tag at its root.
 $$\begin{array}{l}
   \mt{val} \; \mt{tag} : \mt{attrsGiven} ::: \{\mt{Type}\} \to \mt{attrsAbsent} ::: \{\mt{Type}\} \to \mt{ctxOuter} ::: \{\mt{Unit}\} \to \mt{ctxInner} ::: \{\mt{Unit}\} \\

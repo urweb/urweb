@@ -1963,6 +1963,28 @@ uw_unit uw_Basis_htmlifyInt_w(uw_context ctx, uw_Basis_int n) {
   return uw_unit_v;
 }
 
+char *uw_Basis_htmlifySpecialChar(uw_context ctx, unsigned char ch) {
+  unsigned int n = ch;
+  int len;
+  char *r;
+
+  uw_check_heap(ctx, INTS_MAX+3);
+  r = ctx->heap.front;
+  sprintf(r, "&#%u;%n", n, &len);
+  ctx->heap.front += len+1;
+  return r;
+}
+
+uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, unsigned char ch) {
+  unsigned int n = ch;
+  int len;
+
+  uw_check(ctx, INTS_MAX+3);
+  sprintf(ctx->page.front, "&#%u;%n", n, &len);
+  ctx->page.front += len;
+  return uw_unit_v;
+}
+
 char *uw_Basis_htmlifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;
   char *r;

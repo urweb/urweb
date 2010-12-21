@@ -2849,6 +2849,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EFfiApp ("Basis", "htmlifyString", [se]), loc), fm)
             end
+          | L.ECApp (
+             (L.ECApp ((L.EFfi ("Basis", "cdataChar"), _), _), _),
+             _) =>
+            ((L'.EAbs ("ch", (L'.TFfi ("Basis", "char"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "htmlifySpecialChar", [(L'.ERel 0, loc)]), loc)), loc), fm)
 
           | L.EApp (
             (L.EApp (

@@ -89,12 +89,14 @@ char *uw_Basis_htmlifyFloat(uw_context, uw_Basis_float);
 char *uw_Basis_htmlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_htmlifyBool(uw_context, uw_Basis_bool);
 char *uw_Basis_htmlifyTime(uw_context, uw_Basis_time);
+char *uw_Basis_htmlifySpecialChar(uw_context, unsigned char);
 
 uw_unit uw_Basis_htmlifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_htmlifyFloat_w(uw_context, uw_Basis_float);
 uw_unit uw_Basis_htmlifyString_w(uw_context, uw_Basis_string);
 uw_unit uw_Basis_htmlifyBool_w(uw_context, uw_Basis_bool);
 uw_unit uw_Basis_htmlifyTime_w(uw_context, uw_Basis_time);
+uw_unit uw_Basis_htmlifySpecialChar_w(uw_context, unsigned char);
 
 char *uw_Basis_attrifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_attrifyFloat(uw_context, uw_Basis_float);

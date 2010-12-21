@@ -64,6 +64,8 @@ val htmlifyString = String.translate (fn #"<" => "&lt;"
                                        | #"&" => "&amp;"
                                        | ch => str ch)
 
+fun htmlifySpecialChar ch = "&#" ^ Int.toString (ord ch) ^ ";"
+
 fun hexIt ch =
     let
         val s = Int.fmt StringCvt.HEX (ord ch)
@@ -179,6 +181,11 @@ fun exp e =
                      e), _)) =>
         ESeq ((EWrite (EPrim (Prim.String (s1 ^ s2)), loc), loc),
               e)
+
+      | EFfiApp ("Basis", "htmlifySpecialChar", [(EPrim (Prim.Char ch), _)]) =>
+        EPrim (Prim.String (htmlifySpecialChar ch))
+      | EWrite (EFfiApp ("Basis", "htmlifySpecialChar", [e]), _) =>
+        EFfiApp ("Basis", "htmlifySpecialChar_w", [e])
 
       | EFfiApp ("Basis", "htmlifyString", [(EFfiApp ("Basis", "intToString", [(EPrim (Prim.Int n), _)]), _)]) =>
         EPrim (Prim.String (htmlifyInt n))

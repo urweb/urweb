@@ -575,6 +575,7 @@ con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 
 con xml :: {Unit} -> {Type} -> {Type} -> Type
 val cdata : ctx ::: {Unit} -> use ::: {Type} -> string -> xml ctx use []
+val cdataChar : ctx ::: {Unit} -> use ::: {Type} -> char -> xml ctx use []
 val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type}
           -> ctxOuter ::: {Unit} -> ctxInner ::: {Unit}
           -> useOuter ::: {Type} -> useInner ::: {Type}
