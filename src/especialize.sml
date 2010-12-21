@@ -324,13 +324,32 @@ fun specialize' (funcs, specialized) file =
 
                             val (fxs, xs, fvs, fin) = findSplit true (xs, typ, [], IS.empty, false)
 
+                            fun valueish (e, _) =
+                                case e of
+                                    EPrim _ => true
+                                  | ERel _ => true
+                                  | ENamed _ => true
+                                  | ECon (_, _, _, NONE) => true
+                                  | ECon (_, _, _, SOME e) => valueish e
+                                  | EFfi (_, _) => true
+                                  | EAbs _ => true
+                                  | ECAbs _ => true
+                                  | EKAbs _ => true
+                                  | ECApp (e, _) => valueish e
+                                  | EKApp (e, _) => valueish e
+                                  | ERecord xes => List.all (valueish o #2) xes
+                                  | _ => false
+
                             val vts = map (fn n => #2 (List.nth (env, n))) (IS.listItems fvs)
                             val fxs' = map (squish (IS.listItems fvs)) fxs
                         in
-                            (*Print.preface ("fxs'", Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs');*)
+                            (*Print.prefaces "Func" [("name", Print.PD.string name),
+                                                   ("e", CorePrint.p_exp CoreEnv.empty e),
+                                                   ("fxs'", Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
                             if not fin
                                orelse List.all (fn (ERel _, _) => true
                                                  | _ => false) fxs'
+                               orelse List.exists (not o valueish) fxs'
                                orelse (IS.numItems fvs >= length fxs
                                        andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs) then
                                 ((*Print.prefaces "No" [("name", Print.PD.string name),
