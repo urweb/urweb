@@ -2229,7 +2229,7 @@ Module system features are compiled away, through inlining of functor definition
 
 \subsection{Especialize}
 
-Functions are specialized to particular argument patterns.  This is an important trick for avoiding the need to maintain any closures at runtime.
+Functions are specialized to particular argument patterns.  This is an important trick for avoiding the need to maintain any closures at runtime.  Currently, specialization only happens for prefixes of a function's full list of parameters, so you may need to take care to put arguments of function types before other arguments.  The optimizer will not be effective enough if you use arguments that mix functions and values that must be calculated at run-time.  For instance, a tuple of a function and an integer counter would not lead to successful code generation; these should be split into separate arguments via currying.
 
 \subsection{Untangle}
 
