@@ -200,12 +200,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                 S.map2 (mfe ctx e,
                      fn e' =>
                         (EUnop (s, e'), loc))
-              | EBinop (s, e1, e2) =>
+              | EBinop (bi, s, e1, e2) =>
                 S.bind2 (mfe ctx e1,
                       fn e1' =>
                          S.map2 (mfe ctx e2,
                               fn e2' =>
-                                 (EBinop (s, e1', e2'), loc)))
+                                 (EBinop (bi, s, e1', e2'), loc)))
 
               | ERecord xes =>
                 S.map2 (ListUtil.mapfold (fn (x, e, t) =>

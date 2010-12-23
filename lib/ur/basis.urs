@@ -146,6 +146,11 @@ val minusSeconds : time -> int -> time
 val timef : string -> time -> string (* Uses strftime() format string *)
 
 
+(** * Encryption *)
+
+val crypt : string -> string -> string
+
+
 (** HTTP operations *)
 
 con http_cookie :: Type -> Type

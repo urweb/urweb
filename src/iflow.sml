@@ -1965,7 +1965,7 @@ fun evalExp env (e as (_, loc)) k =
 
           | EAbs _ => default ()
           | EUnop (s, e1) => evalExp env e1 (fn e1 => k (Func (Other s, [e1])))
-          | EBinop (s, e1, e2) => evalExp env e1 (fn e1 => evalExp env e2 (fn e2 => k (Func (Other s, [e1, e2]))))
+          | EBinop (_, s, e1, e2) => evalExp env e1 (fn e1 => evalExp env e2 (fn e2 => k (Func (Other s, [e1, e2]))))
           | ERecord xets =>
             let
                 fun doFields (xes, acc) =
@@ -2352,7 +2352,7 @@ fun check file =
                             end
                           | EAbs (x, t1, t2, e) => (EAbs (x, t1, t2, doExp (Unknown :: env) e), loc)
                           | EUnop (uo, e1) => (EUnop (uo, doExp env e1), loc)
-                          | EBinop (bo, e1, e2) => (EBinop (bo, doExp env e1, doExp env e2), loc)
+                          | EBinop (bi, bo, e1, e2) => (EBinop (bi, bo, doExp env e1, doExp env e2), loc)
                           | ERecord xets => (ERecord (map (fn (x, e, t) => (x, doExp env e, t)) xets), loc)
                           | EField (e1, f) => (EField (doExp env e1, f), loc)
                           | ECase (e, pes, ts) =>

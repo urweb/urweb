@@ -187,11 +187,11 @@ fun p_exp' par env (e, _) =
       | EUnop (s, e) => parenIf true (box [string s,
                                            space,
                                            p_exp' true env e])
-      | EBinop (s, e1, e2) => parenIf true (box [p_exp' true env e1,
-                                                 space,
-                                                 string s,
-                                                 space,
-                                                 p_exp' true env e2])
+      | EBinop (_, s, e1, e2) => parenIf true (box [p_exp' true env e1,
+                                                    space,
+                                                    string s,
+                                                    space,
+                                                    p_exp' true env e2])
 
       | ERecord xes => box [string "{",
                             p_list (fn (x, e, _) =>

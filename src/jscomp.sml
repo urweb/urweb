@@ -126,6 +126,7 @@ fun process file =
               | TFfi ("Basis", "int") => ((EFfiApp ("Basis", "htmlifyInt", [e]), loc), st)
               | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [e]), loc), st)
               | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "jsifyChannel", [e]), loc), st)
+              | TFfi ("Basis", "time") => ((EFfiApp ("Basis", "jsifyTime", [e]), loc), st)
 
               | TFfi ("Basis", "bool") => ((ECase (e,
                                                    [((PCon (Enum, PConFfi {mod = "Basis",
@@ -701,7 +702,7 @@ fun process file =
                                          str ",null)}"],
                                  st)
                             end
-                          | EBinop (s, e1, e2) =>
+                          | EBinop (bi, s, e1, e2) =>
                             let
                                 val name = case s of
                                                "==" => "eq"
@@ -709,8 +710,8 @@ fun process file =
                                              | "+" => "plus"
                                              | "-" => "minus"
                                              | "*" => "times"
-                                             | "/" => "div"
-                                             | "%" => "mod"
+                                             | "/" => (case bi of Int => "divInt" | NotInt => "div")
+                                             | "%" => (case bi of Int => "modInt" | NotInt => "mod")
                                              | "<" => "lt"
                                              | "<=" => "le"
                                              | "strcmp" => "strcmp"
@@ -1039,12 +1040,12 @@ fun process file =
                  in
                      ((EUnop (s, e), loc), st)
                  end
-               | EBinop (s, e1, e2) =>
+               | EBinop (bi, s, e1, e2) =>
                  let
                      val (e1, st) = exp outer (e1, st)
                      val (e2, st) = exp outer (e2, st)
                  in
-                     ((EBinop (s, e1, e2), loc), st)
+                     ((EBinop (bi, s, e1, e2), loc), st)
                  end
                  
                | ERecord xets =>

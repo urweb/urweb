@@ -300,7 +300,7 @@ fun cifyExp (eAll as (e, loc), sm) =
         in
             ((L'.EUnop (s, e1), loc), sm)
         end
-      | L.EBinop (s, e1, e2) =>
+      | L.EBinop (_, s, e1, e2) =>
         let
             val (e1, sm) = cifyExp (e1, sm)
             val (e2, sm) = cifyExp (e2, sm)

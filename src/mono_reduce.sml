@@ -92,7 +92,7 @@ fun impure (e, _) =
       | EApp _ => true
 
       | EUnop (_, e) => impure e
-      | EBinop (_, e1, e2) => impure e1 orelse impure e2
+      | EBinop (_, _, e1, e2) => impure e1 orelse impure e2
 
       | ERecord xes => List.exists (fn (_, e, _) => impure e) xes
       | EField (e, _) => impure e
@@ -365,11 +365,21 @@ fun reduce file =
         val size = U.Exp.fold {typ = fn (_, n) => n,
                                exp = fn (_, n) => n + 1} 0
 
-        fun mayInline (n, e) =
+        val functionInside' = U.Typ.exists (fn c => case c of
+                                                        TFun _ => true
+                                                      | _ => false)
+                              
+        fun functionInside t =
+            case #1 t of
+                TFun (t1, t2) => functionInside' t1 orelse functionInside t2
+              | _ => functionInside' t
+
+        fun mayInline (n, e, t) =
             case IM.find (uses, n) of
                 NONE => false
               | SOME count => count <= 1
                               orelse size e <= Settings.getMonoInline ()
+                              orelse functionInside t
 
         fun summarize d (e, _) =
             let
@@ -426,7 +436,7 @@ fun reduce file =
                       | EAbs _ => []
 
                       | EUnop (_, e) => summarize d e
-                      | EBinop (_, e1, e2) => summarize d e1 @ summarize d e2
+                      | EBinop (_, _, e1, e2) => summarize d e1 @ summarize d e2
 
                       | ERecord xets => List.concat (map (summarize d o #2) xets)
                       | EField (e, _) => summarize d e
@@ -701,7 +711,7 @@ fun reduce file =
                 let
                     val eo = case eo of
                                  NONE => NONE
-                               | SOME e => if mayInline (n, e) then
+                               | SOME e => if mayInline (n, e, t) then
                                                SOME e
                                            else
                                                NONE

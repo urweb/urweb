@@ -1232,7 +1232,9 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                              val e = (EApp (e, texp), loc)
                                          in
                                              if length fields <> length sqlexps then
-                                                 ErrorMsg.errorAt loc "Length mismatch in INSERT field specification"
+                                                 ErrorMsg.errorAt loc ("Length mismatch in INSERT field specification ("
+                                                                       ^ Int.toString (length fields)
+                                                                       ^ " vs. " ^ Int.toString (length sqlexps) ^ ")")
                                              else
                                                  ();
                                              (EApp (e, (ERecord (ListPair.zip (fields, sqlexps)), loc)), loc)

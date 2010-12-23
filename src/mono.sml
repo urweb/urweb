@@ -68,6 +68,8 @@ datatype export_kind = datatype Export.export_kind
 
 datatype failure_mode = datatype Settings.failure_mode
 
+datatype binop_intness = Int | NotInt
+
 datatype exp' =
          EPrim of Prim.t
        | ERel of int
@@ -81,7 +83,7 @@ datatype exp' =
        | EAbs of string * typ * typ * exp
 
        | EUnop of string * exp
-       | EBinop of string * exp * exp
+       | EBinop of binop_intness * string * exp * exp
 
        | ERecord of (string * exp * typ) list
        | EField of exp * string

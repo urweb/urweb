@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <crypt.h>
 
 #include <pthread.h>
 
@@ -2006,6 +2007,27 @@ uw_unit uw_Basis_htmlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   return uw_unit_v;
 }
 
+char *uw_Basis_jsifyTime(uw_context ctx, uw_Basis_time n) {
+  int len;
+  char *r;
+
+  uw_check_heap(ctx, INTS_MAX);
+  r = ctx->heap.front;
+  sprintf(r, "%lld%n", (uw_Basis_int)n, &len);
+  ctx->heap.front += len+1;
+  return r;
+}
+
+uw_unit uw_Basis_jsifyInt_w(uw_context ctx, uw_Basis_time n) {
+  int len;
+
+  uw_check(ctx, INTS_MAX);
+  sprintf(ctx->page.front, "%lld%n", (uw_Basis_int)n, &len);
+  ctx->page.front += len;
+  
+  return uw_unit_v;
+}
+
 char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
 
@@ -3567,4 +3589,16 @@ failure_kind uw_runCallback(uw_context ctx, void (*callback)(uw_context)) {
     uw_rollback(ctx, 0);
 
   return r;
+}
+
+uw_Basis_string uw_Basis_crypt(uw_context ctx, uw_Basis_string key, uw_Basis_string salt) {
+  struct crypt_data *data;
+
+  if ((data = uw_get_global(ctx, "crypt")) == NULL) {
+    data = malloc(sizeof(struct crypt_data));
+    data->initialized = 0;
+    uw_set_global(ctx, "crypt", data, free);
+  }
+
+  return uw_strdup(ctx, crypt_r(key, salt, data));
 }

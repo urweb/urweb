@@ -895,42 +895,42 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        (L'.TFun ((L'.TFfi ("Basis", "int"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                        (L'.EAbs ("y", (L'.TFfi ("Basis", "int"), loc),
                                  (L'.TFfi ("Basis", "bool"), loc),
-                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+                                 (L'.EBinop (L'.Int, "==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
           | L.EFfi ("Basis", "eq_float") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "float"), loc),
                        (L'.TFun ((L'.TFfi ("Basis", "float"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                        (L'.EAbs ("y", (L'.TFfi ("Basis", "float"), loc),
                                  (L'.TFfi ("Basis", "bool"), loc),
-                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+                                 (L'.EBinop (L'.NotInt, "==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
           | L.EFfi ("Basis", "eq_bool") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "bool"), loc),
                        (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                        (L'.EAbs ("y", (L'.TFfi ("Basis", "bool"), loc),
                                  (L'.TFfi ("Basis", "bool"), loc),
-                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+                                 (L'.EBinop (L'.NotInt, "==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
           | L.EFfi ("Basis", "eq_string") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc),
                        (L'.TFun ((L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                        (L'.EAbs ("y", (L'.TFfi ("Basis", "string"), loc),
                                  (L'.TFfi ("Basis", "bool"), loc),
-                                 (L'.EBinop ("!strcmp", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+                                 (L'.EBinop (L'.NotInt, "!strcmp", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
           | L.EFfi ("Basis", "eq_char") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "char"), loc),
                        (L'.TFun ((L'.TFfi ("Basis", "char"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                        (L'.EAbs ("y", (L'.TFfi ("Basis", "char"), loc),
                                  (L'.TFfi ("Basis", "bool"), loc),
-                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+                                 (L'.EBinop (L'.NotInt, "==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
           | L.EFfi ("Basis", "eq_time") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc),
                        (L'.TFun ((L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                        (L'.EAbs ("y", (L'.TFfi ("Basis", "time"), loc),
                                  (L'.TFfi ("Basis", "bool"), loc),
-                                 (L'.EBinop ("==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+                                 (L'.EBinop (L'.NotInt, "==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
              fm)
 
           | L.ECApp ((L.EFfi ("Basis", "mkEq"), _), t) =>
@@ -999,7 +999,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "int"), loc), (L'.TFfi ("Basis", "int"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "int"), loc),
                                         (L'.TFfi ("Basis", "int"), loc),
-                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+                                        (L'.EBinop (L'.Int, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 numEx ((L'.TFfi ("Basis", "int"), loc),
                        Prim.Int (Int64.fromInt 0),
@@ -1019,7 +1019,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "float"), loc), (L'.TFfi ("Basis", "float"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "float"), loc),
                                         (L'.TFfi ("Basis", "float"), loc),
-                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+                                        (L'.EBinop (L'.NotInt, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 numEx ((L'.TFfi ("Basis", "float"), loc),
                        Prim.Float 0.0,
@@ -1086,7 +1086,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "int"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "int"), loc),
                                         (L'.TFfi ("Basis", "bool"), loc),
-                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+                                        (L'.EBinop (L'.Int, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 ordEx ((L'.TFfi ("Basis", "int"), loc),
                        intBin "<",
@@ -1099,7 +1099,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "float"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "float"), loc),
                                         (L'.TFfi ("Basis", "bool"), loc),
-                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+                                        (L'.EBinop (L'.NotInt, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 ordEx ((L'.TFfi ("Basis", "float"), loc),
                        floatBin "<",
@@ -1112,7 +1112,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "bool"), loc),
                                         (L'.TFfi ("Basis", "bool"), loc),
-                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+                                        (L'.EBinop (L'.NotInt, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 ordEx ((L'.TFfi ("Basis", "bool"), loc),
                        boolBin "<",
@@ -1125,8 +1125,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "string"), loc),
                                         (L'.TFfi ("Basis", "bool"), loc),
-                                        (L'.EBinop (s,
-                                                    (L'.EBinop ("strcmp",
+                                        (L'.EBinop (L'.NotInt, s,
+                                                    (L'.EBinop (L'.NotInt, "strcmp",
                                                                 (L'.ERel 1, loc),
                                                                 (L'.ERel 0, loc)), loc),
                                                     (L'.EPrim (Prim.Int (Int64.fromInt 0)), loc)), loc)), loc)), loc)
@@ -1142,7 +1142,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "char"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "char"), loc),
                                         (L'.TFfi ("Basis", "bool"), loc),
-                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+                                        (L'.EBinop (L'.NotInt, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 ordEx ((L'.TFfi ("Basis", "char"), loc),
                        charBin "<",
@@ -1155,7 +1155,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "time"), loc),
                                         (L'.TFfi ("Basis", "bool"), loc),
-                                        (L'.EBinop (s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+                                        (L'.EBinop (L'.NotInt, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 ordEx ((L'.TFfi ("Basis", "time"), loc),
                        boolBin "<",

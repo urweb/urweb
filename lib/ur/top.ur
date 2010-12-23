@@ -89,7 +89,7 @@ fun read_option [t ::: Type] (_ : read t) =
                             None => None
                           | v => Some v)
 
-fun txt [t] [ctx ::: {Unit}] [use ::: {Type}] (_ : show t) (v : t) =
+fun txt [t] [ctx ::: {Unit}] [use ::: {Type}] (_ : show t) (v : t) : xml ctx use [] =
     cdata (show v)
 
 fun map0 [K] [tf :: K -> Type] (f : t :: K -> tf t) [r ::: {K}] (fl : folder r) =
@@ -343,3 +343,8 @@ fun eqNullable' [tables ::: {{Type}}] [agg ::: {{Type}}] [exps ::: {Type}]
     case e2 of
         None => (SQL {e1} IS NULL)
       | Some _ => sql_binary sql_eq e1 (sql_inject e2)
+
+fun mkRead' [t ::: Type] (f : string -> option t) (name : string) : read t =
+    mkRead (fn s => case f s of
+                        None => error <xml>Invalid {txt name}: {txt s}</xml>
+                      | Some v => v) f
