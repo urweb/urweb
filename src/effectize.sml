@@ -66,14 +66,15 @@ fun effectize file =
                                            con = fn _ => false,
                                            exp = exp evs}
 
-        fun exp writers readers e =
+        fun exp writers readers pushers e =
             case e of
-                EServerCall (n, _, _) => IM.inDomain (writers, n) andalso IM.inDomain (readers, n)
+                ENamed n => IM.inDomain (pushers, n)
+              | EServerCall (n, _, _) => IM.inDomain (writers, n) andalso IM.inDomain (readers, n)
               | _ => false
 
-        fun couldWriteWithRpc writers readers = U.Exp.exists {kind = fn _ => false,
-                                                              con = fn _ => false,
-                                                              exp = exp writers readers}
+        fun couldWriteWithRpc writers readers pushers = U.Exp.exists {kind = fn _ => false,
+                                                                      con = fn _ => false,
+                                                                      exp = exp writers readers pushers}
 
         fun exp evs e =
             case e of
@@ -97,7 +98,7 @@ fun effectize file =
                          IM.insert (readers, n, (#2 d, s))
                      else
                          readers,
-                     if couldWriteWithRpc writers readers e then
+                     if couldWriteWithRpc writers readers pushers e then
                          IM.insert (pushers, n, (#2 d, s))
                      else
                          pushers))
@@ -119,7 +120,7 @@ fun effectize file =
                                               (changed, readers)
 
                                       val (changed, pushers) =
-                                          if couldWriteWithRpc writers readers e
+                                          if couldWriteWithRpc writers readers pushers e
                                              andalso not (IM.inDomain (pushers, n)) then
                                               (true, IM.insert (pushers, n, (#2 d, s)))
                                           else
