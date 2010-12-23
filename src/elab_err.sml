@@ -118,7 +118,7 @@ datatype cunify_error =
        | CIncompatible of con * con
        | CExplicitness of con * con
        | CKindof of kind * con * string
-       | CRecordFailure of con * con * (con * con * con) option
+       | CRecordFailure of con * con * (con * con * con * cunify_error option) option
        | TooLifty of ErrorMsg.span * ErrorMsg.span
        | TooUnify of con * con
        | TooDeep
@@ -147,15 +147,18 @@ fun cunifyError env err =
                   [("Kind", p_kind env k),
                    ("Con", p_con env c)]
       | CRecordFailure (c1, c2, fo) =>
-        eprefaces "Can't unify record constructors"
-                  (("Summary 1", p_con env c1)
-                   :: ("Summary 2", p_con env c2)
-                   :: (case fo of
-                           NONE => []
-                         | SOME (nm, t1, t2) =>
-                           [("Field", p_con env nm),
-                            ("Value 1", p_con env t1),
-                            ("Value 2", p_con env t2)]))
+        (eprefaces "Can't unify record constructors"
+                   (("Summary 1", p_con env c1)
+                    :: ("Summary 2", p_con env c2)
+                    :: (case fo of
+                            NONE => []
+                          | SOME (nm, t1, t2, _) =>
+                            [("Field", p_con env nm),
+                             ("Value 1", p_con env t1),
+                             ("Value 2", p_con env t2)]));
+         case fo of
+             SOME (_, _, _, SOME err') => cunifyError env err'
+           | _ => ())
       | TooLifty (loc1, loc2) =>
         (ErrorMsg.errorAt loc1 "Can't unify two unification variables that both have suspended liftings";
          eprefaces' [("Other location", Print.PD.string (ErrorMsg.spanToString loc2))])

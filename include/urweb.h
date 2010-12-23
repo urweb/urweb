@@ -297,7 +297,7 @@ extern int uw_time_max, uw_supports_direct_status, uw_min_heap;
 
 failure_kind uw_runCallback(uw_context, void (*callback)(uw_context));
 
-uw_Basis_string uw_Basis_timeToStringf(uw_context, const char *fmt, uw_Basis_time);
+uw_Basis_string uw_Basis_timef(uw_context, const char *fmt, uw_Basis_time);
 uw_Basis_time uw_Basis_stringToTimef(uw_context, const char *fmt, uw_Basis_string);
 uw_Basis_time uw_Basis_stringToTimef_error(uw_context, const char *fmt, uw_Basis_string);
 

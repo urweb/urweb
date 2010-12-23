@@ -907,7 +907,7 @@
                              if consEq env loc (c1, c2) then
                                  findPointwise fs1
                              else
-                                 SOME (nm1, c1, c2)
+                                 SOME (nm1, c1, c2, (unifyCons env loc c1 c2; NONE) handle CUnify (_, _, err) => SOME err)
              in
                  raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2, findPointwise (#fields s1)))
              end

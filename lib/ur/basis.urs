@@ -143,6 +143,7 @@ val current : t ::: Type -> signal t -> transaction t
 val now : transaction time
 val minTime : time
 val minusSeconds : time -> int -> time
+val timef : string -> time -> string (* Uses strftime() format string *)
 
 
 (** HTTP operations *)

@@ -2582,7 +2582,7 @@ uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
     return "<Invalid time>";
 }
 
-uw_Basis_string uw_Basis_timeToStringf(uw_context ctx, const char *fmt, uw_Basis_time t) {
+uw_Basis_string uw_Basis_timef(uw_context ctx, const char *fmt, uw_Basis_time t) {
   size_t len;
   char *r;
   struct tm stm;

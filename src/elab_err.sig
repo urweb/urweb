@@ -55,7 +55,7 @@ signature ELAB_ERR = sig
            | CIncompatible of Elab.con * Elab.con
            | CExplicitness of Elab.con * Elab.con
            | CKindof of Elab.kind * Elab.con * string
-           | CRecordFailure of Elab.con * Elab.con * (Elab.con * Elab.con * Elab.con) option
+           | CRecordFailure of Elab.con * Elab.con * (Elab.con * Elab.con * Elab.con * cunify_error option) option
            | TooLifty of ErrorMsg.span * ErrorMsg.span
            | TooUnify of Elab.con * Elab.con
            | TooDeep

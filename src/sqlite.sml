@@ -597,7 +597,7 @@ fun p_inputs loc =
                                                      string ")"]
                                       | Time => box [string "sqlite3_bind_text(stmt, ",
                                                      string (Int.toString (i + 1)),
-                                                     string ", uw_Basis_timeToStringf(ctx, ",
+                                                     string ", uw_Basis_timef(ctx, ",
                                                      string fmt,
                                                      string ", ",
                                                      arg,
