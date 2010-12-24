@@ -172,7 +172,7 @@ cid = [A-Z][A-Za-z0-9_]*;
 ws = [\ \t\012];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
-notags = ([^<{\n(]|(\([^\*]))+;
+notags = ([^<{\n(]|(\([^\*<{\n]))+;
 xcom = ([^\-]|(-[^\-]))+;
 oint = [0-9][0-9][0-9];
 xint = x[0-9a-fA-F][0-9a-fA-F];
@@ -337,6 +337,8 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 			  Tokens.LBRACE (yypos, yypos + 1));
 
 <XML> {notags}        => (Tokens.NOTAGS (unescape (yypos, yypos + size yytext) yytext, yypos, yypos + size yytext));
+
+<XML> "("             => (Tokens.NOTAGS ("(", yypos, yypos + size yytext));
 
 <XML> .               => (ErrorMsg.errorAt' (yypos, yypos)
                           ("illegal XML character: \"" ^ yytext ^ "\"");
