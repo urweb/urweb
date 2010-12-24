@@ -2513,7 +2513,7 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
 
   if (localtime_r(&t, &stm)) {
     s = uw_malloc(ctx, TIMES_MAX);
-    len = strftime(s, TIMES_MAX, TIME_FMT, &stm);
+    len = strftime(s, TIMES_MAX, TIME_FMT_PG, &stm);
     r = uw_malloc(ctx, len + 14);
     sprintf(r, "'%s'::timestamp", s);
     return r;
@@ -2530,6 +2530,21 @@ char *uw_Basis_attrifyTime(uw_context ctx, uw_Basis_time t) {
     uw_check_heap(ctx, TIMES_MAX);
     r = ctx->heap.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
+    ctx->heap.front += len+1;
+    return r;
+  } else
+    return "<Invalid time>";
+}
+
+char *uw_Basis_ensqlTime(uw_context ctx, uw_Basis_time t) {
+  size_t len;
+  char *r;
+  struct tm stm;
+
+  if (localtime_r(&t, &stm)) {
+    uw_check_heap(ctx, TIMES_MAX);
+    r = ctx->heap.front;
+    len = strftime(r, TIMES_MAX, TIME_FMT_PG, &stm);
     ctx->heap.front += len+1;
     return r;
   } else
