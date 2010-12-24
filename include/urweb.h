@@ -305,4 +305,8 @@ uw_Basis_time uw_Basis_stringToTimef_error(uw_context, const char *fmt, uw_Basis
 
 uw_Basis_string uw_Basis_crypt(uw_context, uw_Basis_string key, uw_Basis_string salt);
 
+uw_Basis_bool uw_Basis_eq_time(uw_context, uw_Basis_time, uw_Basis_time);
+uw_Basis_bool uw_Basis_lt_time(uw_context, uw_Basis_time, uw_Basis_time);
+uw_Basis_bool uw_Basis_le_time(uw_context, uw_Basis_time, uw_Basis_time);
+
 #endif

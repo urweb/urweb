@@ -930,7 +930,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        (L'.TFun ((L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                        (L'.EAbs ("y", (L'.TFfi ("Basis", "time"), loc),
                                  (L'.TFfi ("Basis", "bool"), loc),
-                                 (L'.EBinop (L'.NotInt, "==", (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc),
+                                 (L'.EFfiApp ("Basis", "eq_time", [(L'.ERel 1, loc), (L'.ERel 0, loc)]), loc)), loc)), loc),
              fm)
 
           | L.ECApp ((L.EFfi ("Basis", "mkEq"), _), t) =>
@@ -1112,11 +1112,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "bool"), loc),
                                         (L'.TFfi ("Basis", "bool"), loc),
-                                        (L'.EBinop (L'.NotInt, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
+                                        (L'.EFfiApp ("Basis", s, [(L'.ERel 1, loc), (L'.ERel 0, loc)]), loc)), loc)), loc)
             in
                 ordEx ((L'.TFfi ("Basis", "bool"), loc),
-                       boolBin "<",
-                       boolBin "<=")
+                       boolBin "lt_time",
+                       boolBin "le_time")
             end
           | L.EFfi ("Basis", "ord_string") =>
             let
@@ -1158,8 +1158,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                         (L'.EBinop (L'.NotInt, s, (L'.ERel 1, loc), (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 ordEx ((L'.TFfi ("Basis", "time"), loc),
-                       boolBin "<",
-                       boolBin "<=")
+                       boolBin "lt_time",
+                       boolBin "le_time")
             end
           | L.ECApp ((L.EFfi ("Basis", "mkOrd"), _), t) =>
             let

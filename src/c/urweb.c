@@ -1774,7 +1774,7 @@ uw_unit uw_Basis_urlifyFloat_w(uw_context ctx, uw_Basis_float n) {
 }
 
 uw_Basis_string uw_Basis_urlifyTime(uw_context ctx, uw_Basis_time t) {
-  return uw_Basis_urlifyInt(ctx, t);
+  return uw_Basis_urlifyInt(ctx, t.seconds * 1000000 + t.microseconds);
 }
 
 uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
@@ -1845,7 +1845,9 @@ uw_Basis_float uw_Basis_unurlifyFloat(uw_context ctx, char **s) {
 }
 
 uw_Basis_time uw_Basis_unurlifyTime(uw_context ctx, char **s) {
-  return uw_Basis_unurlifyInt(ctx, s);
+  uw_Basis_int n = uw_Basis_unurlifyInt(ctx, s);
+  uw_Basis_time r = {n / 1000000, n % 1000000};
+  return r;
 }
 
 static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char *r, char *s) {
@@ -2007,18 +2009,18 @@ uw_unit uw_Basis_htmlifyFloat_w(uw_context ctx, uw_Basis_float n) {
   return uw_unit_v;
 }
 
-char *uw_Basis_jsifyTime(uw_context ctx, uw_Basis_time n) {
+char *uw_Basis_jsifyTime(uw_context ctx, uw_Basis_time t) {
   int len;
   char *r;
 
   uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap.front;
-  sprintf(r, "%lld%n", (uw_Basis_int)n, &len);
+  sprintf(r, "%lld%n", (uw_Basis_int)(t.seconds * 1000000 + t.microseconds), &len);
   ctx->heap.front += len+1;
   return r;
 }
 
-uw_unit uw_Basis_jsifyInt_w(uw_context ctx, uw_Basis_time n) {
+uw_unit uw_Basis_jsifyInt_w(uw_context ctx, uw_Basis_int n) {
   int len;
 
   uw_check(ctx, INTS_MAX);
@@ -2105,7 +2107,7 @@ uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
   char *r;
   struct tm stm;
 
-  if (localtime_r(&t, &stm)) {
+  if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
     r = ctx->heap.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
@@ -2120,7 +2122,7 @@ uw_unit uw_Basis_htmlifyTime_w(uw_context ctx, uw_Basis_time t) {
   char *r;
   struct tm stm;
 
-  if (localtime_r(&t, &stm)) {
+  if (localtime_r(&t.seconds, &stm)) {
     uw_check(ctx, TIMES_MAX);
     r = ctx->page.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
@@ -2511,7 +2513,7 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
   char *r, *s;
   struct tm stm;
 
-  if (localtime_r(&t, &stm)) {
+  if (localtime_r(&t.seconds, &stm)) {
     s = uw_malloc(ctx, TIMES_MAX);
     len = strftime(s, TIMES_MAX, TIME_FMT_PG, &stm);
     r = uw_malloc(ctx, len + 14);
@@ -2526,7 +2528,7 @@ char *uw_Basis_attrifyTime(uw_context ctx, uw_Basis_time t) {
   char *r;
   struct tm stm;
 
-  if (localtime_r(&t, &stm)) {
+  if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
     r = ctx->heap.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
@@ -2541,11 +2543,13 @@ char *uw_Basis_ensqlTime(uw_context ctx, uw_Basis_time t) {
   char *r;
   struct tm stm;
 
-  if (localtime_r(&t, &stm)) {
+  if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
     r = ctx->heap.front;
-    len = strftime(r, TIMES_MAX, TIME_FMT_PG, &stm);
-    ctx->heap.front += len+1;
+    len = strftime(r, TIMES_MAX-7, TIME_FMT_PG, &stm);
+    ctx->heap.front += len;
+    sprintf(ctx->heap.front, ".%06u", t.microseconds);
+    ctx->heap.front += 8;
     return r;
   } else
     return "<Invalid time>";
@@ -2609,7 +2613,7 @@ uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
   char *r;
   struct tm stm;
 
-  if (localtime_r(&t, &stm)) {
+  if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
     r = ctx->heap.front;
     len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
@@ -2624,7 +2628,7 @@ uw_Basis_string uw_Basis_timef(uw_context ctx, const char *fmt, uw_Basis_time t)
   char *r;
   struct tm stm;
 
-  if (localtime_r(&t, &stm)) {
+  if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
     r = ctx->heap.front;
     len = strftime(r, TIMES_MAX, fmt, &stm);
@@ -2693,7 +2697,8 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
     if (strptime(s, TIME_FMT_PG, &stm) == end) {
       *dot = '.';
       uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
-      *r = mktime(&stm);
+      r->seconds = mktime(&stm);
+      r->microseconds = 0;
       return r;
     }
     else {
@@ -2704,12 +2709,14 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
   else {
     if (strptime(s, TIME_FMT_PG, &stm) == end) {
       uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
-      *r = mktime(&stm);
+      r->seconds = mktime(&stm);
+      r->microseconds = 0;
       return r;
     }
     else if (strptime(s, TIME_FMT, &stm) == end) {
       uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
-      *r = mktime(&stm);
+      r->seconds = mktime(&stm);
+      r->microseconds = 0;
       return r;
     }
     else
@@ -2723,7 +2730,8 @@ uw_Basis_time *uw_Basis_stringToTimef(uw_context ctx, const char *fmt, uw_Basis_
 
   if (strptime(s, fmt, &stm) == end) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
-    *r = mktime(&stm);
+    r->seconds = mktime(&stm);
+    r->microseconds = 0;
     return r;
   }
   else
@@ -2799,7 +2807,8 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
     *dot = 0;
     if (strptime(s, TIME_FMT_PG, &stm)) {
       *dot = '.';
-      return mktime(&stm);
+      uw_Basis_time r = { mktime(&stm), atoi(dot+1) };
+      return r;
     }
     else {
       *dot = '.';
@@ -2808,9 +2817,11 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
   }
   else {
     if (strptime(s, TIME_FMT_PG, &stm) == end) {
-      return mktime(&stm);
+      uw_Basis_time r = { mktime(&stm) };
+      return r;
     } else if (strptime(s, TIME_FMT, &stm) == end) {
-      return mktime(&stm);
+      uw_Basis_time r = { mktime(&stm) };
+      return r;
     } else
       uw_error(ctx, FATAL, "Can't parse time: %s", s);
   }
@@ -2824,7 +2835,10 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
     *dot = 0;
     if (strptime(s, TIME_FMT_PG, &stm)) {
       *dot = '.';
-      return mktime(&stm);
+      {
+        uw_Basis_time r = { mktime(&stm) };
+        return r;
+      }
     }
     else {
       *dot = '.';
@@ -2832,11 +2846,13 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
     }
   }
   else {
-    if (strptime(s, TIME_FMT_PG, &stm) == end)
-      return mktime(&stm);
-    else if (strptime(s, TIME_FMT, &stm) == end)
-      return mktime(&stm);
-    else
+    if (strptime(s, TIME_FMT_PG, &stm) == end) {
+      uw_Basis_time r = { mktime(&stm) };
+      return r;
+    } else if (strptime(s, TIME_FMT, &stm) == end) {
+      uw_Basis_time r = { mktime(&stm) };
+      return r;
+    } else
       uw_error(ctx, FATAL, "Can't parse time: %s", s);
   }
 }
@@ -2845,9 +2861,10 @@ uw_Basis_time uw_Basis_stringToTimef_error(uw_context ctx, const char *fmt, uw_B
   char *end = strchr(s, 0);
   struct tm stm = {};
 
-  if (strptime(s, fmt, &stm) == end)
-    return mktime(&stm);
-  else
+  if (strptime(s, fmt, &stm) == end) {
+    uw_Basis_time r = { mktime(&stm) };
+    return r;
+  } else
     uw_error(ctx, FATAL, "Can't parse time: %s", s);
 }
 
@@ -2942,7 +2959,7 @@ uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_str
     char formatted[30];
     struct tm tm;
 
-    gmtime_r(expires, &tm);
+    gmtime_r(&expires->seconds, &tm);
 
     strftime(formatted, sizeof formatted, "%a, %d-%b-%Y %T GMT", &tm);
 
@@ -3430,14 +3447,16 @@ uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {
   return r;
 }
 
-const uw_Basis_time uw_Basis_minTime = 0;
+const uw_Basis_time uw_Basis_minTime = {};
 
 uw_Basis_time uw_Basis_now(uw_context ctx) {
-  return time(NULL);
+  uw_Basis_time r = { time(NULL) };
+  return r;
 }
 
 uw_Basis_time uw_Basis_minusSeconds(uw_context ctx, uw_Basis_time tm, uw_Basis_int n) {
-  return tm - n;
+  tm.seconds -= n;
+  return tm;
 }
 
 void *uw_get_global(uw_context ctx, char *name) {
@@ -3617,3 +3636,16 @@ uw_Basis_string uw_Basis_crypt(uw_context ctx, uw_Basis_string key, uw_Basis_str
 
   return uw_strdup(ctx, crypt_r(key, salt, data));
 }
+
+uw_Basis_bool uw_Basis_eq_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {
+  return !!(t1.seconds == t2.seconds && t1.microseconds == t2.microseconds);
+}
+
+uw_Basis_bool uw_Basis_lt_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {
+  return !!(t1.seconds < t2.seconds || t1.microseconds < t2.microseconds);
+}
+
+uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {
+  return !!(uw_Basis_eq_time(ctx, t1, t2) || uw_Basis_lt_time(ctx, t1, t2));
+}
+
