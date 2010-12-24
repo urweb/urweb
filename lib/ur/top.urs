@@ -152,6 +152,11 @@ val queryI : tables ::: {{Type}} -> exps ::: {Type}
                  -> transaction unit)
              -> transaction unit
 
+val queryI1 : nm ::: Name -> fs ::: {Type}
+              -> sql_query [] [nm = fs] []
+              -> ($fs -> transaction unit)
+              -> transaction unit
+
 val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
              -> [tables ~ exps] =>
              sql_query [] tables exps

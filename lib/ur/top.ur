@@ -241,6 +241,12 @@ fun queryI [tables ::: {{Type}}] [exps ::: {Type}]
           (fn fs _ => f fs)
           ()
 
+fun queryI1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [] [nm = fs] [])
+            (f : $fs -> transaction unit) =
+    query q
+          (fn fs _ => f fs.nm)
+          ()
+
 fun queryX [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
            [tables ~ exps] (q : sql_query [] tables exps)
            (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)

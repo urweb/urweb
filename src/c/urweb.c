@@ -3415,7 +3415,7 @@ uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {
   return r;
 }
 
-const uw_Basis_time minTime = 0;
+const uw_Basis_time uw_Basis_minTime = 0;
 
 uw_Basis_time uw_Basis_now(uw_context ctx) {
   return time(NULL);
