@@ -32,6 +32,8 @@ structure Print :> PRINT = struct
 structure SM = TextIOPP
 structure PD = PPDescFn(SM)
 
+val openOut = SM.openOut
+
 type 'a printer = 'a -> PD.pp_desc
 
 fun box ds = PD.hovBox (PD.PPS.Rel 1, ds)

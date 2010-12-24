@@ -59,4 +59,6 @@ signature PRINT = sig
     val fprefaces' : PD.PPS.stream -> (string * PD.pp_desc) list -> unit
     val prefaces' : (string * PD.pp_desc) list -> unit
     val eprefaces' : (string * PD.pp_desc) list -> unit
+
+    val openOut : {dst : TextIO.outstream, wid : int} -> PD.PPS.stream
 end

@@ -133,6 +133,21 @@ fun runPrint (tr : ('src, 'dst) transform) input =
           Print.print (#print tr v);
           print "\n"))
 
+fun runPrintToFile (tr : ('src, 'dst) transform) input fname =
+    (ErrorMsg.resetErrors ();
+     case #func tr input of
+         NONE => print "Failure\n"
+       | SOME v =>
+         let
+             val outf = TextIO.openOut fname
+             val str = Print.openOut {dst = outf, wid = 80}
+         in
+             print "Success\n";
+             Print.fprint str (#print tr v);
+             Print.PD.PPS.closeStream str;
+             TextIO.closeOut outf
+         end)
+
 fun time (tr : ('src, 'dst) transform) input =
     let
         val (_, pmap) = #time tr (input, [])
@@ -158,6 +173,18 @@ fun timePrint (tr : ('src, 'dst) transform) input =
              Print.print (#print tr v);
              print "\n")
     end
+
+fun runPrintCoreFuncs (tr : ('src, Core.file) transform) input =
+    (ErrorMsg.resetErrors ();
+     case #func tr input of
+         NONE => print "Failure\n"
+       | SOME file =>
+         (print "Success\n";
+          app (fn (d, _) =>
+                  case d of
+                      Core.DVal (x, _, t, _, _) => Print.preface(x, CorePrint.p_con CoreEnv.empty t)
+                    | Core.DValRec xts => app (fn (x, _, t, _, _) => Print.preface(x, CorePrint.p_con CoreEnv.empty t)) xts
+                    | _ => ()) file))
 
 val parseUrs =
     {func = fn filename => let
@@ -1060,12 +1087,15 @@ val shake = {
 
 val toShake1 = transform shake "shake1" o toCore_untangle
 
+val toEspecialize1' = transform especialize "especialize1'" o toShake1
+val toShake1' = transform shake "shake1'" o toEspecialize1'
+
 val rpcify = {
     func = Rpcify.frob,
     print = CorePrint.p_file CoreEnv.empty
 }
 
-val toRpcify = transform rpcify "rpcify" o toShake1
+val toRpcify = transform rpcify "rpcify" o toShake1'
 
 val toCore_untangle2 = transform core_untangle "core_untangle2" o toRpcify
 val toShake2 = transform shake "shake2" o toCore_untangle2
@@ -1264,7 +1294,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                       ^ " " ^ #compile proto
                       ^ " -c " ^ cname ^ " -o " ^ oname
 
-        val link = "gcc -Werror -O3 -lm -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ lib ^ " " ^ mhash ^ " " ^ oname
+        val link = "gcc -Werror -O3 -lm -lcrypt -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ lib ^ " " ^ mhash ^ " " ^ oname
                    ^ " -o " ^ ename
 
         val (compile, link) =

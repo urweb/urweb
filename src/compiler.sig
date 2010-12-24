@@ -72,8 +72,11 @@ signature COMPILER = sig
     val check : ('src, 'dst) transform -> 'src -> unit
     val run : ('src, 'dst) transform -> 'src -> 'dst option
     val runPrint : ('src, 'dst) transform -> 'src -> unit
+    val runPrintToFile : ('src, 'dst) transform -> 'src -> string -> unit
     val time : ('src, 'dst) transform -> 'src -> unit
     val timePrint : ('src, 'dst) transform -> 'src -> unit
+
+    val runPrintCoreFuncs : ('src, Core.file) transform -> 'src -> unit
 
     val parseUr : (string, Source.file) phase
     val parseUrs : (string, Source.sgn_item list) phase
@@ -122,6 +125,8 @@ signature COMPILER = sig
     val toCorify : (string, Core.file) transform
     val toCore_untangle : (string, Core.file) transform
     val toShake1 : (string, Core.file) transform
+    val toEspecialize1' : (string, Core.file) transform 
+    val toShake1' : (string, Core.file) transform
     val toRpcify : (string, Core.file) transform
     val toCore_untangle2 : (string, Core.file) transform
     val toShake2 : (string, Core.file) transform

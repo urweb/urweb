@@ -337,11 +337,23 @@ fun specialize' (funcs, specialized) file =
                                   | EKAbs _ => true
                                   | ECApp (e, _) => valueish e
                                   | EKApp (e, _) => valueish e
+                                  | EApp (e, (ERel _, _)) =>
+                                    let
+                                        fun valueishf (e, _) =
+                                            case e of
+                                                ENamed _ => true
+                                              | EApp (e, (ERel _, _)) => valueishf e
+                                              | _ => false
+                                    in
+                                        valueishf e
+                                    end
                                   | ERecord xes => List.all (valueish o #2) xes
                                   | _ => false
 
                             val vts = map (fn n => #2 (List.nth (env, n))) (IS.listItems fvs)
                             val fxs' = map (squish (IS.listItems fvs)) fxs
+
+                            val p_bool = Print.PD.string o Bool.toString
                         in
                             (*Print.prefaces "Func" [("name", Print.PD.string name),
                                                    ("e", CorePrint.p_exp CoreEnv.empty e),
@@ -355,7 +367,13 @@ fun specialize' (funcs, specialized) file =
                                 ((*Print.prefaces "No" [("name", Print.PD.string name),
                                                       ("f", Print.PD.string (Int.toString f)),
                                                       ("fxs'",
-                                                       Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
+                                                       Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs'),
+                                                      ("b1", p_bool (not fin)),
+                                                      ("b2", p_bool (List.all (fn (ERel _, _) => true
+                                                                                | _ => false) fxs')),
+                                                      ("b2", p_bool (List.exists (not o valueish) fxs')),
+                                                      ("b3", p_bool (IS.numItems fvs >= length fxs
+                                                                     andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs))];*)
                                  default ())
                             else
                                 case (KM.find (args, (vts, fxs')),
@@ -448,6 +466,7 @@ fun specialize' (funcs, specialized) file =
                                                                   e' fvs
                                                 val e' = foldl (fn (arg, e) => (EApp (e, arg), loc))
                                                                e' xs
+
                                                 (*val () = Print.prefaces "Brand new"
                                                                         [("e'", CorePrint.p_exp CoreEnv.empty e'),
                                                                          ("e", CorePrint.p_exp CoreEnv.empty e),
@@ -496,6 +515,12 @@ fun specialize' (funcs, specialized) file =
                         case #1 d of
                             DVal (x, n, t, e, s) =>
                             let
+                                (*val () = Print.preface ("Visiting", Print.box [Print.PD.string (x ^ "__" ^ Int.toString n),
+                                                                                                Print.space,
+                                                                                                Print.PD.string ":",
+                                                                                                Print.space,
+                                                                                                CorePrint.p_con CoreEnv.empty t])*)
+
                                 val (e, st) = exp ([], e, st)
                             in
                                 ((DVal (x, n, t, e, s), #2 d), st)
@@ -503,9 +528,13 @@ fun specialize' (funcs, specialized) file =
                           | DValRec vis =>
                             let
                                 (*val () = Print.preface ("Visiting", Print.p_list (fn vi =>
-                                                                                     Print.PD.string (#1 vi ^ "__"
-                                                                                                      ^ Int.toString
-                                                                                                            (#2 vi)))
+                                                                                     Print.box [Print.PD.string (#1 vi ^ "__"
+                                                                                                                 ^ Int.toString
+                                                                                                                       (#2 vi)),
+                                                                                                Print.space,
+                                                                                                Print.PD.string ":",
+                                                                                                Print.space,
+                                                                                                CorePrint.p_con CoreEnv.empty (#3 vi)])
                                                                                  vis)*)
 
                                 val (vis, st) = ListUtil.foldlMap (fn ((x, n, t, e, s), st) =>
