@@ -2516,8 +2516,13 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
   if (localtime_r(&t.seconds, &stm)) {
     s = uw_malloc(ctx, TIMES_MAX);
     len = strftime(s, TIMES_MAX, TIME_FMT_PG, &stm);
-    r = uw_malloc(ctx, len + 14);
-    sprintf(r, "'%s'::timestamp", s);
+    if (t.microseconds) {
+      r = uw_malloc(ctx, len + 21);
+      sprintf(r, "'%s.%06u'::timestamp", s, t.microseconds);
+    } else {
+      r = uw_malloc(ctx, len + 14);
+      sprintf(r, "'%s'::timestamp", s);
+    }
     return r;
   } else
     return "<Invalid time>";
