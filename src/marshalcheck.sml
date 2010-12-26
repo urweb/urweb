@@ -99,6 +99,7 @@ fun check file =
                                                TFun (dom, ran) =>
                                                (case #1 dom of
                                                     CFfi ("Basis", "postBody") => makeS ran
+                                                  | CApp ((CFfi ("Basis", "option"), _), (CFfi ("Basis", "queryString"), _)) => makeS ran
                                                   | _ => PS.union (sins cmap dom, makeS ran))
                                              | _ => PS.empty
                                        val s = makeS t

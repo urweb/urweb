@@ -35,6 +35,7 @@ signature SETTINGS = sig
     (* How do all application URLs begin? *)
     val setUrlPrefix : string -> unit
     val getUrlPrefix : unit -> string
+    val getUrlPrePrefix : unit -> string
 
     (* How many seconds should the server wait before assuming a Comet client has left? *)
     val setTimeout : int -> unit

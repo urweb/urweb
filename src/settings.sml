@@ -28,18 +28,38 @@
 structure Settings :> SETTINGS = struct
 
 val urlPrefix = ref "/"
+val urlPrePrefix = ref ""
 val timeout = ref 0
 val headers = ref ([] : string list)
 val scripts = ref ([] : string list)
 
 fun getUrlPrefix () = !urlPrefix
+fun getUrlPrePrefix () = !urlPrePrefix
 fun setUrlPrefix p =
-    urlPrefix := (if p = "" then
-                      "/"
-                  else if String.sub (p, size p - 1) <> #"/" then
-                      p ^ "/"
-                  else
-                      p)
+    let
+        val prefix = if p = "" then
+                         "/"
+                     else if String.sub (p, size p - 1) <> #"/" then
+                         p ^ "/"
+                     else
+                         p
+
+        val (prepre, prefix) =
+            if String.isPrefix "http://" prefix then
+                let
+                    val (befor, after) = Substring.splitl (fn ch => ch <> #"/") (Substring.extract (prefix, 7, NONE))
+                in
+                    if Substring.isEmpty after then
+                        ("", prefix)
+                    else
+                        ("http://" ^ Substring.string befor, Substring.string after)
+                end
+            else
+                ("", prefix)
+    in
+        urlPrePrefix := prepre;
+        urlPrefix := prefix
+    end
 
 fun getTimeout () = !timeout
 fun setTimeout n = timeout := n

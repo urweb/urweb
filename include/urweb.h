@@ -317,4 +317,7 @@ size_t uw_buffer_used(uw_buffer *);
 size_t uw_buffer_avail(uw_buffer *);
 int uw_buffer_append(uw_buffer *, const char *, size_t);
 
+void uw_setQueryString(uw_context, uw_Basis_string);
+uw_Basis_string uw_queryString(uw_context);
+
 #endif

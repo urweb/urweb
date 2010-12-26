@@ -164,19 +164,21 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
 
 
 typedef struct uw_rc {
-  size_t path_copy_size;
-  char *path_copy;
+  size_t path_copy_size, queryString_size;
+  char *path_copy, *queryString;
 } *uw_request_context;
 
 uw_request_context uw_new_request_context(void) {
   uw_request_context r = malloc(sizeof(struct uw_rc));
-  r->path_copy_size = 0;
+  r->path_copy_size = r->queryString_size = 0;
   r->path_copy = malloc(0);
+  r->queryString = malloc(0);
   return r;
 }
 
 void uw_free_request_context(uw_request_context r) {
   free(r->path_copy);
+  free(r->queryString);
   free(r);
 }
 
@@ -380,6 +382,14 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
     if (inputs) {
       char *name, *value;
+      int len = strlen(inputs);
+
+      if (len+1 > rc->queryString_size) {
+        rc->queryString_size = len+1;
+        rc->queryString = realloc(rc->queryString, len+1);
+      }
+      strcpy(rc->queryString, inputs);
+      uw_setQueryString(ctx, rc->queryString);
 
       while (*inputs) {
         name = inputs;

@@ -625,12 +625,16 @@ con subform = [Body, Subform]
 con tabl = [Body, Table]
 con tr = [Body, Tr]
 
+type queryString
+val show_queryString : show queryString
+
 type url
 val show_url : show url
 val bless : string -> url
 val checkUrl : string -> option url
 val currentUrl : transaction url
 val url : transaction page -> url
+val effectfulUrl : (option queryString -> transaction page) -> url
 val redirect : t ::: Type -> url -> transaction t
 
 val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ body] => unit

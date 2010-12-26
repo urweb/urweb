@@ -1189,6 +1189,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
             end
+          | L.EFfi ("Basis", "show_queryString") =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
+            end
           | L.EFfi ("Basis", "show_url") =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
@@ -3633,8 +3639,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfiApp ("Basis", "url", [e]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
+                val (e, fm) = urlifyExp env fm (e, dummyTyp)
             in
-                urlifyExp env fm (e, dummyTyp)
+                ((L'.EStrcat ((L'.EPrim (Prim.String (Settings.getUrlPrePrefix ())), loc), e), loc), fm)
             end
 
           | L.EApp (e1, e2) =>

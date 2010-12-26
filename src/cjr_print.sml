@@ -66,6 +66,7 @@ fun isUnboxable (t : typ) =
     case #1 t of
         TDatatype (Default, _, _) => true
       | TFfi ("Basis", "string") => true
+      | TFfi ("Basis", "queryString") => true
       | _ => false
 
 fun p_typ' par env (t, loc) =
@@ -2696,6 +2697,7 @@ fun p_file env (ds, ps) =
                                                                 space,
                                                                 case #1 t of
                                                                     TFfi ("Basis", "postBody") => string "uw_getPostBody(ctx)"
+                                                                  | TOption (TFfi ("Basis", "queryString"), _) => string "uw_queryString(ctx)"
                                                                   | _ => unurlify false env t,
                                                                 string ";",
                                                                 newline]) ts),

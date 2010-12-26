@@ -171,6 +171,15 @@ fun exp env (e, s) =
                 (EFfiApp ("Basis", "url", [e]), s)
             end
 
+          | EFfiApp ("Basis", "effectfulUrl", [(ERel 0, _)]) => (e, s)
+
+          | EFfiApp ("Basis", "effectfulUrl", [e]) =>
+            let
+                val (e, s) = tagIt (e, Extern ReadCookieWrite, "Url", s)
+            in
+                (EFfiApp ("Basis", "url", [e]), s)
+            end
+
           | EApp ((ENamed n, _), e') =>
             let
                 val (_, _, eo, _) = E.lookupENamed env n

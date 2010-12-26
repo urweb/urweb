@@ -1,4 +1,4 @@
-(* Copyright (c) 2009, Adam Chlipala
+(* Copyright (c) 2009-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -141,7 +141,7 @@ fun effectize file =
                 in
                     (d, loop (writers, readers, pushers))
                 end
-              | DExport (Link, n, _) =>
+              | DExport (Link, n, t) =>
                 (case IM.find (writers, n) of
                      NONE => ()
                    | SOME (loc, s) =>

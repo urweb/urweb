@@ -443,6 +443,7 @@ struct uw_context {
 
   int hasPostBody;
   uw_Basis_postBody postBody;
+  uw_Basis_string queryString;
 
   char error_message[ERROR_BUF_LEN];
 };
@@ -507,6 +508,8 @@ uw_context uw_init(void *logger_data, uw_logger log_debug) {
   ctx->log_debug = log_debug;
 
   ctx->hasPostBody = 0;
+
+  ctx->queryString = NULL;
 
   return ctx;
 }
@@ -585,6 +588,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->used_transactionals = 0;
   ctx->script_header = "";
   ctx->hasPostBody = 0;
+  ctx->queryString = NULL;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -3600,6 +3604,14 @@ void uw_postBody(uw_context ctx, uw_Basis_postBody pb) {
 
 int uw_hasPostBody(uw_context ctx) {
   return ctx->hasPostBody;
+}
+
+void uw_setQueryString(uw_context ctx, uw_Basis_string s) {
+  ctx->queryString = s;
+}
+
+uw_Basis_string uw_queryString(uw_context ctx) {
+  return ctx->queryString;
 }
 
 uw_Basis_postBody uw_getPostBody(uw_context ctx) {
