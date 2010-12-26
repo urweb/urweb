@@ -6,20 +6,7 @@ AC_PROG_LIBTOOL()
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 
-dnl Setting the search directory for mhash.
-AC_ARG_WITH(mhash-dir, AS_HELP_STRING([--with-mhash-dir=DIR], [mhash directory; default = /usr]), 
-                          with_mhash_dir="$withval", with_mhash_dir="/usr")
-
-dnl Check for libmhash
-LIBS_save="$LIBS"
-LIBS="-L${with_mhash_dir}/lib/ -lmhash"
-AC_CHECK_LIB(mhash, mhash_get_block_size, 
-                    [MHASH_LIB_DIR="${with_mhash_dir}/lib"], [echo "You must install libmhash."; exit 1])
-LIBS="${LIBS_save}"
-
-dnl Check for mhash.h
-AC_CHECK_HEADER(["${with_mhash_dir}/include/mhash.h"],
-        [CPPFLAGS="${CPPFLAGS} -I${with_mhash_dir}/include"], [echo "You must install libmhash dev files."; exit 1])
+AX_CHECK_OPENSSL([echo >/dev/null], [echo "You must install OpenSSL development files."; exit1])
 
 AC_CHECK_PROG(MLTON, mlton, yes, [])
 
@@ -67,7 +54,6 @@ AC_SUBST(LIB)
 AC_SUBST(INCLUDE)
 AC_SUBST(SITELISP)
 AC_SUBST(GCCARGS)
-AC_SUBST(MHASH_LIB_DIR)
 
 AC_CONFIG_FILES([
         Makefile
@@ -84,6 +70,5 @@ Ur/Web configuration:
   lib directory:       LIB            $LIB
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
-  mhash lib directory: MHASH_LIB_DIR  $MHASH_LIB_DIR
   Extra GCC args:      GCCARGS        $GCCARGS  
 EOF

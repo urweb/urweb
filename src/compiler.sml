@@ -1285,16 +1285,16 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
     let
         val proto = Settings.currentProtocol ()
 
-        val (lib, mhash) = if Settings.getStaticLinking () then
-                               (#linkStatic proto ^ " " ^ Config.lib ^ "/../liburweb.a", Config.libMhash ^ "/libmhash.a")
-                           else
-                               ("-L" ^ Config.lib ^ "/.. -lurweb " ^ #linkDynamic proto, "-L" ^ Config.libMhash ^ " -lmhash")
+        val lib = if Settings.getStaticLinking () then
+                      #linkStatic proto ^ " " ^ Config.lib ^ "/../liburweb.a"
+                  else
+                      "-L" ^ Config.lib ^ "/.. -lurweb " ^ #linkDynamic proto
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wimplicit -Werror -O3 -fno-inline -I " ^ Config.includ
                       ^ " " ^ #compile proto
                       ^ " -c " ^ cname ^ " -o " ^ oname
 
-        val link = "gcc -Werror -O3 -lm -lcrypt -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ lib ^ " " ^ mhash ^ " " ^ oname
+        val link = "gcc -Werror -O3 -lm -lcrypt -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ lib ^ " " ^ Config.openssl ^ " " ^ oname
                    ^ " -o " ^ ename
 
         val (compile, link) =

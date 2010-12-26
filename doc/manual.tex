@@ -56,9 +56,9 @@ make
 sudo make install
 \end{verbatim}
 
-Some other packages must be installed for the above to work.  At a minimum, you need a standard UNIX shell, with standard UNIX tools like sed and GCC in your execution path; MLton, the whole-program optimizing compiler for Standard ML; and the mhash C library.  As of this writing, in the ``testing'' version of Debian Linux, this command will install the more uncommon of these dependencies:
+Some other packages must be installed for the above to work.  At a minimum, you need a standard UNIX shell, with standard UNIX tools like sed and GCC in your execution path; MLton, the whole-program optimizing compiler for Standard ML; and the development files for the OpenSSL C library.  As of this writing, in the ``testing'' version of Debian Linux, this command will install the more uncommon of these dependencies:
 \begin{verbatim}
-apt-get install mlton libmhash-dev
+apt-get install mlton libssl-dev
 \end{verbatim}
 
 To build programs that access SQL databases, you also need one of these client libraries for supported backends.

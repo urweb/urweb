@@ -1,19 +1,20 @@
 #include "config.h"
 
-#include <mhash.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
 
-#define KEYSIZE 16
+#include <openssl/sha.h>
+
 #define PASSSIZE 4
 
-#define HASH_ALGORITHM MHASH_SHA256
-#define HASH_BLOCKSIZE 32
-#define KEYGEN_ALGORITHM KEYGEN_MCRYPT
-
-int uw_hash_blocksize = HASH_BLOCKSIZE;
+int uw_hash_blocksize = 32;
 
 static int password[PASSSIZE];
-static unsigned char private_key[KEYSIZE];
 
 char *uw_sig_file = NULL;
 
@@ -25,10 +26,6 @@ static void random_password() {
 }
 
 void uw_init_crypto() {
-  KEYGEN kg = {{HASH_ALGORITHM, HASH_ALGORITHM}};
-
-  assert(mhash_get_block_size(HASH_ALGORITHM) == HASH_BLOCKSIZE);
-
   if (uw_sig_file) {
     int fd;
 
@@ -63,22 +60,13 @@ void uw_init_crypto() {
     }
   } else
     random_password();
-
-  if (mhash_keygen_ext(KEYGEN_ALGORITHM, kg,
-                       private_key, sizeof(private_key),
-                       (unsigned char*)password, sizeof(password)) < 0) {
-    fprintf(stderr, "Key generation failed\n");
-    exit(1);
-  }
 }
 
-void uw_sign(const char *in, char *out) {
-  MHASH td;
+void uw_sign(const char *in, unsigned char *out) {
+  SHA256_CTX c;
 
-  td = mhash_hmac_init(HASH_ALGORITHM, private_key, sizeof(private_key),
-                       mhash_get_hash_pblock(HASH_ALGORITHM));
-  
-  mhash(td, in, strlen(in));
-  if (mhash_hmac_deinit(td, out) < 0)
-    fprintf(stderr, "Signing failed\n");
+  SHA256_Init(&c);
+  SHA256_Update(&c, password, sizeof password);
+  SHA256_Update(&c, in, strlen(in));
+  SHA256_Final(out, &c);
 }

@@ -743,7 +743,6 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
-MHASH_LIB_DIR
 GCCARGS
 SITELISP
 INCLUDE
@@ -752,6 +751,10 @@ BIN
 MLYACC
 MLLEX
 MLTON
+OPENSSL_LDFLAGS
+OPENSSL_LIBS
+OPENSSL_INCLUDES
+PKG_CONFIG
 OTOOL64
 OTOOL
 LIPO
@@ -867,7 +870,7 @@ with_pic
 enable_fast_install
 with_gnu_ld
 enable_libtool_lock
-with_mhash_dir
+with_openssl
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1512,7 +1515,7 @@ Optional Packages:
   --with-pic              try to use only PIC/non-PIC objects [default=use
                           both]
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
-  --with-mhash-dir=DIR    mhash directory; default = /usr
+  --with-openssl=DIR      root of the OpenSSL directory
 
 Some influential environment variables:
   CC          C compiler command
@@ -5329,13 +5332,13 @@ if test "${lt_cv_nm_interface+set}" = set; then :
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5332: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5335: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5335: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5338: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5338: output\"" >&5)
+  (eval echo "\"\$as_me:5341: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -6540,7 +6543,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6543 "configure"' > conftest.$ac_ext
+  echo '#line 6546 "configure"' > conftest.$ac_ext
   if { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_compile\""; } >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7802,11 +7805,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7805: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7808: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7809: \$? = $ac_status" >&5
+   echo "$as_me:7812: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8141,11 +8144,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8144: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8147: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8148: \$? = $ac_status" >&5
+   echo "$as_me:8151: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8246,11 +8249,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8249: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8252: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8253: \$? = $ac_status" >&5
+   echo "$as_me:8256: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -8301,11 +8304,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8304: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8307: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8308: \$? = $ac_status" >&5
+   echo "$as_me:8311: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10685,7 +10688,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10688 "configure"
+#line 10691 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10781,7 +10784,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10784 "configure"
+#line 10787 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11013,67 +11016,154 @@ ac_config_headers="$ac_config_headers config.h"
 
 
 
-# Check whether --with-mhash-dir was given.
-if test "${with_mhash_dir+set}" = set; then :
-  withval=$with_mhash_dir; with_mhash_dir="$withval"
+    found=false
+
+# Check whether --with-openssl was given.
+if test "${with_openssl+set}" = set; then :
+  withval=$with_openssl;
+            case "$withval" in
+            "" | y | ye | yes | n | no)
+            as_fn_error $? "Invalid --with-openssl value" "$LINENO" 5
+              ;;
+            *) ssldirs="$withval"
+              ;;
+            esac
+
 else
-  with_mhash_dir="/usr"
+
+            # if pkg-config is installed and openssl has installed a .pc file,
+            # then use that information and don't search ssldirs
+            # Extract the first word of "pkg-config", so it can be a program name with args.
+set dummy pkg-config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_path_PKG_CONFIG+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $PKG_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PKG_CONFIG="$PKG_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_PKG_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PKG_CONFIG=$ac_cv_path_PKG_CONFIG
+if test -n "$PKG_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PKG_CONFIG" >&5
+$as_echo "$PKG_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 
 
-LIBS_save="$LIBS"
-LIBS="-L${with_mhash_dir}/lib/ -lmhash"
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mhash_get_block_size in -lmhash" >&5
-$as_echo_n "checking for mhash_get_block_size in -lmhash... " >&6; }
-if test "${ac_cv_lib_mhash_mhash_get_block_size+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lmhash  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+            if test x"$PKG_CONFIG" != x""; then
+                OPENSSL_LDFLAGS=`$PKG_CONFIG openssl --libs-only-L 2>/dev/null`
+                if test $? = 0; then
+                    OPENSSL_LIBS=`$PKG_CONFIG openssl --libs-only-l 2>/dev/null`
+                    OPENSSL_INCLUDES=`$PKG_CONFIG openssl --cflags-only-I 2>/dev/null`
+                    found=true
+                fi
+            fi
 
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char mhash_get_block_size ();
+            # no such luck; use some default ssldirs
+            if ! $found; then
+                ssldirs="/usr/local/ssl /usr/lib/ssl /usr/ssl /usr/pkg /usr/local /usr"
+            fi
+
+
+fi
+
+
+
+    # note that we #include <openssl/foo.h>, so the OpenSSL headers have to be in
+    # an 'openssl' subdirectory
+
+    if ! $found; then
+        OPENSSL_INCLUDES=
+        for ssldir in $ssldirs; do
+            { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ssl.h in $ssldir" >&5
+$as_echo_n "checking for openssl/ssl.h in $ssldir... " >&6; }
+            if test -f "$ssldir/include/openssl/ssl.h"; then
+                OPENSSL_INCLUDES="-I$ssldir/include"
+                OPENSSL_LDFLAGS="-L$ssldir/lib"
+                OPENSSL_LIBS="-lssl -lcrypto"
+                found=true
+                { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+                break
+            else
+                { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+            fi
+        done
+
+        # if the file wasn't found, well, go ahead and try the link anyway -- maybe
+        # it will just work!
+    fi
+
+    # try the preprocessor and linker with our new flags,
+    # being careful not to pollute the global LIBS, LDFLAGS, and CPPFLAGS
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether compiling and linking against OpenSSL works" >&5
+$as_echo_n "checking whether compiling and linking against OpenSSL works... " >&6; }
+    echo "Trying link with OPENSSL_LDFLAGS=$OPENSSL_LDFLAGS;" \
+        "OPENSSL_LIBS=$OPENSSL_LIBS; OPENSSL_INCLUDES=$OPENSSL_INCLUDES" >&5
+
+    save_LIBS="$LIBS"
+    save_LDFLAGS="$LDFLAGS"
+    save_CPPFLAGS="$CPPFLAGS"
+    LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
+    LIBS="$OPENSSL_LIBS $LIBS"
+    CPPFLAGS="$OPENSSL_INCLUDES $CPPFLAGS"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <openssl/ssl.h>
 int
 main ()
 {
-return mhash_get_block_size ();
+SSL_new(NULL)
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_mhash_mhash_get_block_size=yes
+
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+            echo >/dev/null
+
 else
-  ac_cv_lib_mhash_mhash_get_block_size=no
+
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+            echo "You must install OpenSSL development files."; exit1
+
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_mhash_mhash_get_block_size" >&5
-$as_echo "$ac_cv_lib_mhash_mhash_get_block_size" >&6; }
-if test "x$ac_cv_lib_mhash_mhash_get_block_size" = x""yes; then :
-  MHASH_LIB_DIR="${with_mhash_dir}/lib"
-else
-  echo "You must install libmhash."; exit 1
-fi
+    CPPFLAGS="$save_CPPFLAGS"
+    LDFLAGS="$save_LDFLAGS"
+    LIBS="$save_LIBS"
 
-LIBS="${LIBS_save}"
 
-as_ac_Header=`$as_echo "ac_cv_header_"${with_mhash_dir}/include/mhash.h"" | $as_tr_sh`
-ac_fn_c_check_header_mongrel "$LINENO" ""${with_mhash_dir}/include/mhash.h"" "$as_ac_Header" "$ac_includes_default"
-if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
-  CPPFLAGS="${CPPFLAGS} -I${with_mhash_dir}/include"
-else
-  echo "You must install libmhash dev files."; exit 1
-fi
+
 
 
 
@@ -11225,7 +11315,6 @@ fi
 if test -z $SITELISP; then
     SITELISP=$prefix/share/emacs/site-lisp/urweb-mode
 fi
-
 
 
 
@@ -13582,6 +13671,5 @@ Ur/Web configuration:
   lib directory:       LIB            $LIB
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
-  mhash lib directory: MHASH_LIB_DIR  $MHASH_LIB_DIR
   Extra GCC args:      GCCARGS        $GCCARGS
 EOF
