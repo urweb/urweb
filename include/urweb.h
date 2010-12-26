@@ -236,7 +236,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context, uw_Basis_blob, uw_Basi
 __attribute__((noreturn)) void uw_redirect(uw_context, uw_Basis_string url);
 
 uw_Basis_time uw_Basis_now(uw_context);
-uw_Basis_time uw_Basis_minusSeconds(uw_context, uw_Basis_time, uw_Basis_int);
+uw_Basis_time uw_Basis_addSeconds(uw_context, uw_Basis_time, uw_Basis_int);
 extern const uw_Basis_time uw_Basis_minTime;
 
 void uw_register_transactional(uw_context, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);
@@ -308,5 +308,13 @@ uw_Basis_string uw_Basis_crypt(uw_context, uw_Basis_string key, uw_Basis_string 
 uw_Basis_bool uw_Basis_eq_time(uw_context, uw_Basis_time, uw_Basis_time);
 uw_Basis_bool uw_Basis_lt_time(uw_context, uw_Basis_time, uw_Basis_time);
 uw_Basis_bool uw_Basis_le_time(uw_context, uw_Basis_time, uw_Basis_time);
+
+void uw_buffer_init(size_t max, uw_buffer *, size_t initial);
+void uw_buffer_free(uw_buffer *);
+void uw_buffer_reset(uw_buffer *);
+int uw_buffer_check(uw_buffer *, size_t extra);
+size_t uw_buffer_used(uw_buffer *);
+size_t uw_buffer_avail(uw_buffer *);
+int uw_buffer_append(uw_buffer *, const char *, size_t);
 
 #endif

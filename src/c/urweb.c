@@ -55,26 +55,21 @@ int uw_really_write(int fd, const void *buf, size_t len) {
 
 // Buffers
 
-typedef struct {
-  size_t max;
-  char *start, *front, *back;
-} buf;
-
-static void buf_init(size_t max, buf *b, size_t s) {
+void uw_buffer_init(size_t max, uw_buffer *b, size_t s) {
   b->max = max;
   b->front = b->start = malloc(s);
   b->back = b->front + s;
 }
 
-static void buf_free(buf *b) {
+void uw_buffer_free(uw_buffer *b) {
   free(b->start);
 }
 
-static void buf_reset(buf *b) {
+void uw_buffer_reset(uw_buffer *b) {
   b->front = b->start;
 }
 
-static int buf_check(buf *b, size_t extra) {
+int uw_buffer_check(uw_buffer *b, size_t extra) {
   if (b->back - b->front < extra) {
     size_t desired = b->front - b->start + extra, next;
     char *new_heap;
@@ -102,21 +97,21 @@ static int buf_check(buf *b, size_t extra) {
 
 __attribute__((noreturn)) void uw_error(uw_context, failure_kind, const char *, ...);
 
-static void ctx_buf_check(uw_context ctx, const char *kind, buf *b, size_t extra) {
-  if (buf_check(b, extra))
+static void ctx_uw_buffer_check(uw_context ctx, const char *kind, uw_buffer *b, size_t extra) {
+  if (uw_buffer_check(b, extra))
     uw_error(ctx, FATAL, "Memory limit exceeded (%s)", kind);
 }
 
-static size_t buf_used(buf *b) {
+size_t uw_buffer_used(uw_buffer *b) {
   return b->front - b->start;
 }
 
-static size_t buf_avail(buf *b) {
+size_t uw_buffer_avail(uw_buffer *b) {
   return b->back - b->start;
 }
 
-static int buf_append(buf *b, const char *s, size_t len) {
-  if (buf_check(b, len+1))
+int uw_buffer_append(uw_buffer *b, const char *s, size_t len) {
+  if (uw_buffer_check(b, len+1))
     return 1;
 
   memcpy(b->front, s, len);
@@ -126,8 +121,8 @@ static int buf_append(buf *b, const char *s, size_t len) {
   return 0;
 }
 
-static void ctx_buf_append(uw_context ctx, const char *kind, buf *b, const char *s, size_t len) {
-  ctx_buf_check(ctx, kind, b, len+1);
+static void ctx_uw_buffer_append(uw_context ctx, const char *kind, uw_buffer *b, const char *s, size_t len) {
+  ctx_uw_buffer_check(ctx, kind, b, len+1);
 
   memcpy(b->front, s, len);
   b->front += len;
@@ -145,7 +140,7 @@ typedef struct client {
   int pass;
   struct client *next;
   pthread_mutex_t lock, pull_lock;
-  buf msgs;
+  uw_buffer msgs;
   int sock;
   int (*send)(int sockfd, const void *buf, ssize_t len);
   int (*close)(int fd);
@@ -188,7 +183,7 @@ static client *new_client() {
     c->id = n_clients-1;
     pthread_mutex_init(&c->lock, NULL);
     pthread_mutex_init(&c->pull_lock, NULL);
-    buf_init(uw_messages_max, &c->msgs, 0);
+    uw_buffer_init(uw_messages_max, &c->msgs, 0);
     clients[n_clients-1] = c;
   }
 
@@ -197,7 +192,7 @@ static client *new_client() {
   c->pass = rand();
   c->sock = -1;
   c->last_contact = time(NULL);
-  buf_reset(&c->msgs);
+  uw_buffer_reset(&c->msgs);
   c->n_channels = 0;
   c->refcount = 0;
   c->data = uw_init_client_data();
@@ -286,11 +281,11 @@ void uw_client_connect(unsigned id, int pass, int sock,
 
   c->last_contact = time(NULL);
 
-  if (buf_used(&c->msgs) > 0) {
+  if (uw_buffer_used(&c->msgs) > 0) {
     send(sock, on_success, strlen(on_success));
     send(sock, begin_msgs, sizeof(begin_msgs) - 1);
-    send(sock, c->msgs.start, buf_used(&c->msgs));
-    buf_reset(&c->msgs);
+    send(sock, c->msgs.start, uw_buffer_used(&c->msgs));
+    uw_buffer_reset(&c->msgs);
     close(sock);
   }
   else {
@@ -315,16 +310,16 @@ static uw_Basis_channel new_channel(client *c) {
   return ch;
 }
 
-static void client_send(client *c, buf *msg) {
+static void client_send(client *c, uw_buffer *msg) {
   pthread_mutex_lock(&c->lock);
 
   if (c->sock != -1) {
     c->send(c->sock, on_success, strlen(on_success));
     c->send(c->sock, begin_msgs, sizeof(begin_msgs) - 1);
-    c->send(c->sock, msg->start, buf_used(msg));
+    c->send(c->sock, msg->start, uw_buffer_used(msg));
     c->close(c->sock);
     c->sock = -1;
-  } else if (buf_append(&c->msgs, msg->start, buf_used(msg)))
+  } else if (uw_buffer_append(&c->msgs, msg->start, uw_buffer_used(msg)))
     fprintf(stderr, "Client message buffer size exceeded");
 
   pthread_mutex_unlock(&c->lock);
@@ -365,7 +360,7 @@ typedef struct {
 
 typedef struct {
   unsigned client;
-  buf msgs;
+  uw_buffer msgs;
 } delta;
 
 typedef enum {
@@ -407,7 +402,7 @@ struct uw_context {
   char *(*get_header)(void *, const char *);
   void *get_header_data;
 
-  buf outHeaders, page, heap, script;
+  uw_buffer outHeaders, page, heap, script;
   int returning_indirectly;
   input *inputs, *subinputs, *cur_container;
   size_t sz_inputs, n_subinputs, used_subinputs;
@@ -465,11 +460,11 @@ uw_context uw_init(void *logger_data, uw_logger log_debug) {
   ctx->get_header = NULL;
   ctx->get_header_data = NULL;
 
-  buf_init(uw_headers_max, &ctx->outHeaders, 0);
-  buf_init(uw_page_max, &ctx->page, 0);
+  uw_buffer_init(uw_headers_max, &ctx->outHeaders, 0);
+  uw_buffer_init(uw_page_max, &ctx->page, 0);
   ctx->returning_indirectly = 0;
-  buf_init(uw_heap_max, &ctx->heap, uw_min_heap);
-  buf_init(uw_script_max, &ctx->script, 1);
+  uw_buffer_init(uw_heap_max, &ctx->heap, uw_min_heap);
+  uw_buffer_init(uw_script_max, &ctx->script, 1);
   ctx->script.start[0] = 0;
 
   ctx->inputs = malloc(0);
@@ -552,10 +547,10 @@ void *uw_get_db(uw_context ctx) {
 void uw_free(uw_context ctx) {
   size_t i;
 
-  buf_free(&ctx->outHeaders);
-  buf_free(&ctx->script);
-  buf_free(&ctx->page);
-  buf_free(&ctx->heap);
+  uw_buffer_free(&ctx->outHeaders);
+  uw_buffer_free(&ctx->script);
+  uw_buffer_free(&ctx->page);
+  uw_buffer_free(&ctx->heap);
   free(ctx->inputs);
   free(ctx->subinputs);
   free(ctx->cleanup);
@@ -563,7 +558,7 @@ void uw_free(uw_context ctx) {
   uw_free_client_data(ctx->client_data);
 
   for (i = 0; i < ctx->n_deltas; ++i)
-    buf_free(&ctx->deltas[i].msgs);
+    uw_buffer_free(&ctx->deltas[i].msgs);
   free(ctx->deltas);
 
   for (i = 0; i < ctx->n_globals; ++i)
@@ -575,12 +570,12 @@ void uw_free(uw_context ctx) {
 }
 
 void uw_reset_keep_error_message(uw_context ctx) {
-  buf_reset(&ctx->outHeaders);
-  buf_reset(&ctx->script);
+  uw_buffer_reset(&ctx->outHeaders);
+  uw_buffer_reset(&ctx->script);
   ctx->script.start[0] = 0;
-  buf_reset(&ctx->page);
+  uw_buffer_reset(&ctx->page);
   ctx->returning_indirectly = 0;
-  buf_reset(&ctx->heap);
+  uw_buffer_reset(&ctx->heap);
   ctx->regions = NULL;
   ctx->cleanup_front = ctx->cleanup;
   ctx->source_count = 0;
@@ -1157,7 +1152,7 @@ void uw_set_needs_sig(uw_context ctx, int n) {
 }
 
 
-static void buf_check_ctx(uw_context ctx, const char *kind, buf *b, size_t extra, const char *desc) {
+static void uw_buffer_check_ctx(uw_context ctx, const char *kind, uw_buffer *b, size_t extra, const char *desc) {
   if (b->back - b->front < extra) {
     size_t desired = b->front - b->start + extra, next;
     char *new_heap;
@@ -1188,7 +1183,7 @@ static void buf_check_ctx(uw_context ctx, const char *kind, buf *b, size_t extra
 }
 
 void uw_check_heap(uw_context ctx, size_t extra) {
-  buf_check_ctx(ctx, "heap", &ctx->heap, extra, "heap chunk");
+  uw_buffer_check_ctx(ctx, "heap", &ctx->heap, extra, "heap chunk");
 }
 
 char *uw_heap_front(uw_context ctx) {
@@ -1231,10 +1226,10 @@ void uw_end_region(uw_context ctx) {
 }
 
 void uw_memstats(uw_context ctx) {
-  printf("Headers: %lu/%lu\n", (unsigned long)buf_used(&ctx->outHeaders), (unsigned long)buf_avail(&ctx->outHeaders));
-  printf("Script: %lu/%lu\n", (unsigned long)buf_used(&ctx->script), (unsigned long)buf_avail(&ctx->script));
-  printf("Page: %lu/%lu\n", (unsigned long)buf_used(&ctx->page), (unsigned long)buf_avail(&ctx->page));
-  printf("Heap: %lu/%lu\n", (unsigned long)buf_used(&ctx->heap), (unsigned long)buf_avail(&ctx->heap));
+  printf("Headers: %lu/%lu\n", (unsigned long)uw_buffer_used(&ctx->outHeaders), (unsigned long)uw_buffer_avail(&ctx->outHeaders));
+  printf("Script: %lu/%lu\n", (unsigned long)uw_buffer_used(&ctx->script), (unsigned long)uw_buffer_avail(&ctx->script));
+  printf("Page: %lu/%lu\n", (unsigned long)uw_buffer_used(&ctx->page), (unsigned long)uw_buffer_avail(&ctx->page));
+  printf("Heap: %lu/%lu\n", (unsigned long)uw_buffer_used(&ctx->heap), (unsigned long)uw_buffer_avail(&ctx->heap));
 }
 
 int uw_send(uw_context ctx, int sock) {
@@ -1280,7 +1275,7 @@ int uw_output(uw_context ctx, int (*output)(void *data, char *buf, size_t len), 
 }
 
 static void uw_check_headers(uw_context ctx, size_t extra) {
-  ctx_buf_check(ctx, "headers", &ctx->outHeaders, extra);
+  ctx_uw_buffer_check(ctx, "headers", &ctx->outHeaders, extra);
 }
 
 void uw_write_header(uw_context ctx, uw_Basis_string s) {
@@ -1292,11 +1287,11 @@ void uw_write_header(uw_context ctx, uw_Basis_string s) {
 }
 
 void uw_clear_headers(uw_context ctx) {
-  buf_reset(&ctx->outHeaders);
+  uw_buffer_reset(&ctx->outHeaders);
 }
 
 static void uw_check_script(uw_context ctx, size_t extra) {
-  ctx_buf_check(ctx, "script", &ctx->script, extra);
+  ctx_uw_buffer_check(ctx, "script", &ctx->script, extra);
 }
 
 void uw_write_script(uw_context ctx, uw_Basis_string s) {
@@ -1513,7 +1508,7 @@ uw_unit uw_Basis_set_client_source(uw_context ctx, uw_Basis_int n, uw_Basis_stri
 }
 
 static void uw_check(uw_context ctx, size_t extra) {
-  ctx_buf_check(ctx, "page", &ctx->page, extra);
+  ctx_uw_buffer_check(ctx, "page", &ctx->page, extra);
 }
 
 static void uw_writec_unsafe(uw_context ctx, char c) {
@@ -3003,12 +2998,12 @@ static delta *allocate_delta(uw_context ctx, unsigned client) {
       uw_error(ctx, FATAL, "Exceeded limit on number of deltas");
 
     ctx->deltas = realloc(ctx->deltas, sizeof(delta) * ++ctx->n_deltas);
-    buf_init(uw_messages_max, &ctx->deltas[ctx->n_deltas-1].msgs, 0);
+    uw_buffer_init(uw_messages_max, &ctx->deltas[ctx->n_deltas-1].msgs, 0);
   }
 
   d = &ctx->deltas[ctx->used_deltas++];
   d->client = client;
-  buf_reset(&d->msgs);
+  uw_buffer_reset(&d->msgs);
   return d;
 }
 
@@ -3029,9 +3024,9 @@ uw_unit uw_Basis_send(uw_context ctx, uw_Basis_channel chn, uw_Basis_string msg)
 
   sprintf(pre, "%u\n%n", chn.chn, &preLen);
 
-  ctx_buf_append(ctx, "messages", &d->msgs, pre, preLen);
-  ctx_buf_append(ctx, "messages", &d->msgs, msg, len);
-  ctx_buf_append(ctx, "messages", &d->msgs, "\n", 1);
+  ctx_uw_buffer_append(ctx, "messages", &d->msgs, pre, preLen);
+  ctx_uw_buffer_append(ctx, "messages", &d->msgs, msg, len);
+  ctx_uw_buffer_append(ctx, "messages", &d->msgs, "\n", 1);
 
   return uw_unit_v;
 }
@@ -3112,27 +3107,27 @@ void uw_commit(uw_context ctx) {
   if (ctx->returning_indirectly || ctx->script_header[0] == 0) {
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {
-      memmove(start, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 4);
+      memmove(start, start + 4, uw_buffer_used(&ctx->page) - (start - ctx->page.start) - 4);
       ctx->page.front -= 4;
     }
-  } else if (buf_used(&ctx->script) == 0) {
+  } else if (uw_buffer_used(&ctx->script) == 0) {
     size_t len = strlen(ctx->script_header);
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {
-      ctx_buf_check(ctx, "page", &ctx->page, buf_used(&ctx->page) - 4 + len);
+      ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->page) - 4 + len);
       start = strstr(ctx->page.start, "<sc>");
-      memmove(start + len, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 3);
+      memmove(start + len, start + 4, uw_buffer_used(&ctx->page) - (start - ctx->page.start) - 3);
       ctx->page.front += len - 4;
       memcpy(start, ctx->script_header, len);
     }
   } else {
-    size_t lenH = strlen(ctx->script_header), len = buf_used(&ctx->script);
+    size_t lenH = strlen(ctx->script_header), len = uw_buffer_used(&ctx->script);
     size_t lenP = lenH + 40 + len;
     char *start = strstr(ctx->page.start, "<sc>");
     if (start) {
-      ctx_buf_check(ctx, "page", &ctx->page, buf_used(&ctx->page) - 4 + lenP);
+      ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->page) - 4 + lenP);
       start = strstr(ctx->page.start, "<sc>");
-      memmove(start + lenP, start + 4, buf_used(&ctx->page) - (start - ctx->page.start) - 3);
+      memmove(start + lenP, start + 4, uw_buffer_used(&ctx->page) - (start - ctx->page.start) - 3);
       ctx->page.front += lenP - 4;
       memcpy(start, ctx->script_header, lenH);
       memcpy(start + lenH, "<script type=\"text/javascript\">", 31);
@@ -3338,19 +3333,19 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   int len;
 
   ctx->returning_indirectly = 1;
-  buf_reset(&ctx->outHeaders);
-  buf_reset(&ctx->page);
+  uw_buffer_reset(&ctx->outHeaders);
+  uw_buffer_reset(&ctx->page);
 
   uw_write_header(ctx, on_success);
   uw_write_header(ctx, "Content-Type: ");
   uw_write_header(ctx, mimeType);
   uw_write_header(ctx, "\r\nContent-Length: ");
-  ctx_buf_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
+  ctx_uw_buffer_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
   sprintf(ctx->outHeaders.front, "%lu%n", (unsigned long)b.size, &len);
   ctx->outHeaders.front += len;
   uw_write_header(ctx, "\r\n");
 
-  ctx_buf_append(ctx, "page", &ctx->page, b.data, b.size);
+  ctx_uw_buffer_append(ctx, "page", &ctx->page, b.data, b.size);
 
   for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
     cl->func(cl->arg);
@@ -3365,11 +3360,11 @@ __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) 
   char *s;
 
   ctx->returning_indirectly = 1;
-  buf_reset(&ctx->page);
-  ctx_buf_check(ctx, "page", &ctx->page, buf_used(&ctx->outHeaders)+1);
-  memcpy(ctx->page.start, ctx->outHeaders.start, buf_used(&ctx->outHeaders));
-  ctx->page.start[buf_used(&ctx->outHeaders)] = 0;
-  buf_reset(&ctx->outHeaders);
+  uw_buffer_reset(&ctx->page);
+  ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->outHeaders)+1);
+  memcpy(ctx->page.start, ctx->outHeaders.start, uw_buffer_used(&ctx->outHeaders));
+  ctx->page.start[uw_buffer_used(&ctx->outHeaders)] = 0;
+  uw_buffer_reset(&ctx->outHeaders);
 
   uw_write_header(ctx, on_redirect);
 
@@ -3459,8 +3454,8 @@ uw_Basis_time uw_Basis_now(uw_context ctx) {
   return r;
 }
 
-uw_Basis_time uw_Basis_minusSeconds(uw_context ctx, uw_Basis_time tm, uw_Basis_int n) {
-  tm.seconds -= n;
+uw_Basis_time uw_Basis_addSeconds(uw_context ctx, uw_Basis_time tm, uw_Basis_int n) {
+  tm.seconds += n;
   return tm;
 }
 

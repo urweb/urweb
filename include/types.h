@@ -94,4 +94,9 @@ typedef struct {
 
 #define ERROR_BUF_LEN 1024
 
+typedef struct {
+  size_t max;
+  char *start, *front, *back;
+} uw_buffer;
+
 #endif

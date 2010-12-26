@@ -6,7 +6,7 @@ AC_PROG_LIBTOOL()
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 
-AX_CHECK_OPENSSL([echo >/dev/null], [echo "You must install OpenSSL development files."; exit1])
+AX_CHECK_OPENSSL([echo >/dev/null], [echo "You must install OpenSSL development files."; exit 1])
 
 AC_CHECK_PROG(MLTON, mlton, yes, [])
 
