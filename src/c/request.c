@@ -170,9 +170,10 @@ typedef struct uw_rc {
 
 uw_request_context uw_new_request_context(void) {
   uw_request_context r = malloc(sizeof(struct uw_rc));
-  r->path_copy_size = r->queryString_size = 0;
+  r->path_copy_size = 0;
+  r->queryString_size = 1;
   r->path_copy = malloc(0);
-  r->queryString = malloc(0);
+  r->queryString = malloc(1);
   return r;
 }
 
@@ -200,6 +201,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   char *s;
   int had_error = 0;
   char errmsg[ERROR_BUF_LEN];
+
+  rc->queryString[0] = 0;
 
   for (s = path; *s; ++s) {
     if (s[0] == '%' && s[1] == '2' && s[2] == '7') {
@@ -389,7 +392,6 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         rc->queryString = realloc(rc->queryString, len+1);
       }
       strcpy(rc->queryString, inputs);
-      uw_setQueryString(ctx, rc->queryString);
 
       while (*inputs) {
         name = inputs;
@@ -416,6 +418,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   log_debug(logger_data, "Serving URI %s....\n", path);
 
   while (1) {
+    uw_setQueryString(ctx, rc->queryString);
+
     if (!had_error) {
       size_t path_len = strlen(path);
 
