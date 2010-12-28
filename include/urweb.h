@@ -320,4 +320,6 @@ int uw_buffer_append(uw_buffer *, const char *, size_t);
 void uw_setQueryString(uw_context, uw_Basis_string);
 uw_Basis_string uw_queryString(uw_context);
 
+uw_Basis_time *uw_Basis_readUtc(uw_context, uw_Basis_string);
+
 #endif

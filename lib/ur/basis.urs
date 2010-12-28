@@ -144,6 +144,7 @@ val now : transaction time
 val minTime : time
 val addSeconds : time -> int -> time
 val timef : string -> time -> string (* Uses strftime() format string *)
+val readUtc : string -> option time
 
 
 (** * Encryption *)

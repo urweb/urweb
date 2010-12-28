@@ -3661,3 +3661,14 @@ uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t
   return !!(uw_Basis_eq_time(ctx, t1, t2) || uw_Basis_lt_time(ctx, t1, t2));
 }
 
+uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
+  uw_Basis_time *r = uw_Basis_stringToTime(ctx, s);
+
+  if (r) {
+    struct tm tm;
+    localtime_r(&r->seconds, &tm);
+    r->seconds -= tm.tm_gmtoff;
+  }
+
+  return r;
+}
