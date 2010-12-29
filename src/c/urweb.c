@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <crypt.h>
+#include <time.h>
 
 #include <pthread.h>
 
@@ -2694,7 +2695,7 @@ uw_Basis_bool *uw_Basis_stringToBool(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
   char *dot = strchr(s, '.'), *end = strchr(s, 0);
-  struct tm stm;
+  struct tm stm = {};
 
   if (dot) {
     *dot = 0;
@@ -2730,7 +2731,7 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_time *uw_Basis_stringToTimef(uw_context ctx, const char *fmt, uw_Basis_string s) {
   char *end = strchr(s, 0);
-  struct tm stm;
+  struct tm stm = {};
 
   if (strptime(s, fmt, &stm) == end) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
@@ -3661,23 +3662,28 @@ uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t
   return !!(uw_Basis_eq_time(ctx, t1, t2) || uw_Basis_lt_time(ctx, t1, t2));
 }
 
+/*uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
+  uw_Basis_time *r = uw_Basis_stringToTime(ctx, s);
+
+  printf("timezone = %ld\n", timezone);
+
+  if (r)
+    r->seconds -= timezone;
+
+  return r;
+}*/
+
 uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
-  struct tm tm, tm2;
-  time_t t;
+  struct tm stm = {};
 
-  char *other = uw_Basis_strcat(ctx, s, " UTC");
-  if (strptime(other, TIME_FMT " %Z", &tm) || strptime(other, TIME_FMT_PG " %Z", &tm)) {
+  if (strptime(s, TIME_FMT_PG, &stm) || strptime(s, TIME_FMT, &stm)) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
-
+    stm.tm_hour -= timezone / (60 * 60);
+    r->seconds = mktime(&stm);
     r->microseconds = 0;
 
-    t = mktime(&tm);
-    localtime_r(&t, &tm2);
-
-    tm.tm_sec += tm2.tm_gmtoff;
-    r->seconds = mktime(&tm);
-    
     return r;
-  } else
+  }
+  else
     return NULL;
 }
