@@ -3662,13 +3662,22 @@ uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t
 }
 
 uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
-  uw_Basis_time *r = uw_Basis_stringToTime(ctx, s);
+  struct tm tm, tm2;
+  time_t t;
 
-  if (r) {
-    struct tm tm;
-    localtime_r(&r->seconds, &tm);
-    r->seconds -= tm.tm_gmtoff;
-  }
+  char *other = uw_Basis_strcat(ctx, s, " UTC");
+  if (strptime(other, TIME_FMT " %Z", &tm) || strptime(other, TIME_FMT_PG " %Z", &tm)) {
+    uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
 
-  return r;
+    r->microseconds = 0;
+
+    t = mktime(&tm);
+    localtime_r(&t, &tm2);
+
+    tm.tm_sec += tm2.tm_gmtoff;
+    r->seconds = mktime(&tm);
+    
+    return r;
+  } else
+    return NULL;
 }
