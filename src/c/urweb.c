@@ -3675,10 +3675,14 @@ uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t
 
 uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
   struct tm stm = {};
+  char *end = strchr(s, 0);
 
-  if (strptime(s, TIME_FMT_PG, &stm) || strptime(s, TIME_FMT, &stm)) {
+  if (strptime(s, TIME_FMT_PG, &stm) == end || strptime(s, TIME_FMT, &stm) == end) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
+
+    tzset();
     stm.tm_hour -= timezone / (60 * 60);
+
     r->seconds = mktime(&stm);
     r->microseconds = 0;
 
