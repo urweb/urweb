@@ -2015,7 +2015,7 @@ char *uw_Basis_jsifyTime(uw_context ctx, uw_Basis_time t) {
 
   uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap.front;
-  sprintf(r, "%lld%n", (uw_Basis_int)(t.seconds * 1000000 + t.microseconds), &len);
+  sprintf(r, "%lld%n", (uw_Basis_int)t.seconds * 1000000 + t.microseconds, &len);
   ctx->heap.front += len+1;
   return r;
 }
