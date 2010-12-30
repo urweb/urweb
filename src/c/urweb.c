@@ -1774,7 +1774,7 @@ uw_unit uw_Basis_urlifyFloat_w(uw_context ctx, uw_Basis_float n) {
 }
 
 uw_Basis_string uw_Basis_urlifyTime(uw_context ctx, uw_Basis_time t) {
-  return uw_Basis_urlifyInt(ctx, t.seconds * 1000000 + t.microseconds);
+  return uw_Basis_urlifyInt(ctx, (uw_Basis_int)t.seconds * 1000000 + t.microseconds);
 }
 
 uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
