@@ -2226,6 +2226,8 @@ The compiler reads a \texttt{.urp} file, figures out which \texttt{.urs} and \te
 
 This is where type inference takes place, translating programs into an explicit form with no more wildcards.  This phase is the most likely source of compiler error messages.
 
+Those crawling through the compiler source will also want to be aware of another compiler phase, Explify, that occurs immediately afterward.  This phase just translates from an AST language that includes unification variables to a very similar language that doesn't; all variables should have been determined by the end of Elaborate, anyway.  The new AST language also drops some features that are used only for static checking and that have no influence on runtime behavior, like disjointness constraints.
+
 \subsection{Unnest}
 
 Named local function definitions are moved to the top level, to avoid the need to generate closures.
