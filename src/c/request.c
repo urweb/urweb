@@ -11,8 +11,6 @@
 
 #include <pthread.h>
 
-#include <mhash.h>
-
 #include "urweb.h"
 
 #define MAX_RETRIES 5
