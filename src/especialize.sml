@@ -324,7 +324,7 @@ fun specialize' (funcs, specialized) file =
 
                             val (fxs, xs, fvs, fin) = findSplit true (xs, typ, [], IS.empty, false)
 
-                            fun valueish (e, _) =
+                            fun valueish (all as (e, _)) =
                                 case e of
                                     EPrim _ => true
                                   | ERel _ => true
@@ -337,15 +337,18 @@ fun specialize' (funcs, specialized) file =
                                   | EKAbs _ => true
                                   | ECApp (e, _) => valueish e
                                   | EKApp (e, _) => valueish e
-                                  | EApp (e, (ERel _, _)) =>
+                                  | EApp _ =>
                                     let
                                         fun valueishf (e, _) =
                                             case e of
                                                 ENamed _ => true
+                                              | EFfi _ => true
+                                              | ECApp (e, _) => valueishf e
                                               | EApp (e, (ERel _, _)) => valueishf e
+                                              | EApp (e, (ENamed _, _)) => valueishf e
                                               | _ => false
                                     in
-                                        valueishf e
+                                        valueishf all
                                     end
                                   | ERecord xes => List.all (valueish o #2) xes
                                   | _ => false
@@ -371,8 +374,8 @@ fun specialize' (funcs, specialized) file =
                                                       ("b1", p_bool (not fin)),
                                                       ("b2", p_bool (List.all (fn (ERel _, _) => true
                                                                                 | _ => false) fxs')),
-                                                      ("b2", p_bool (List.exists (not o valueish) fxs')),
-                                                      ("b3", p_bool (IS.numItems fvs >= length fxs
+                                                      ("b3", p_bool (List.exists (not o valueish) fxs')),
+                                                      ("b4", p_bool (IS.numItems fvs >= length fxs
                                                                      andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs))];*)
                                  default ())
                             else
