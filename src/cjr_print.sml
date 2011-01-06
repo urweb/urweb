@@ -2756,7 +2756,43 @@ fun p_file env (ds, ps) =
                            | DPreparedStatements ss => prepped := ss
                            | _ => ()) ds
 
-        val hasDb = !hasDb                                            
+        val hasDb = !hasDb
+
+        fun expDb (e, _) =
+            case e of
+                ECon (_, _, SOME e) => expDb e
+              | ESome (_, e) => expDb e
+              | EFfiApp (_, _, es) => List.exists expDb es
+              | EApp (e, es) => expDb e orelse List.exists expDb es
+              | EUnop (_, e) => expDb e
+              | EBinop (_, e1, e2) => expDb e1 orelse expDb e2
+              | ERecord (_, xes) => List.exists (expDb o #2) xes
+              | EField (e, _) => expDb e
+              | ECase (e, pes, _) => expDb e orelse List.exists (expDb o #2) pes
+              | EError (e, _) => expDb e
+              | EReturnBlob {blob = e1, mimeType = e2, ...} => expDb e1 orelse expDb e2
+              | ERedirect (e, _) => expDb e
+              | EWrite e => expDb e
+              | ESeq (e1, e2) => expDb e1 orelse expDb e2
+              | ELet (_, _, e1, e2) => expDb e1 orelse expDb e2
+              | EQuery _ => true
+              | EDml _ => true
+              | ENextval _ => true
+              | ESetval _ => true
+              | EUnurlify (e, _, _) => expDb e
+              | _ => false
+
+        fun declDb (d, _) =
+            case d of
+                DVal (_, _, _, e) => expDb e
+              | DFun (_, _, _, _, e) => expDb e
+              | DFunRec vis => List.exists (expDb o #5) vis
+              | _ => false
+
+        val () = if not hasDb andalso List.exists declDb ds then
+                     ErrorMsg.error "Application uses a database but has none configured with 'database' in .urp file."
+                 else
+                     ()
 
         val cookies = List.mapPartial (fn (DCookie s, _) => SOME s | _ => NONE) ds
 

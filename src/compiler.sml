@@ -1337,10 +1337,10 @@ fun compile job =
                     in
                         OS.FileSys.mkDir dir;
                         (cname, oname,
-                         fn () => (OS.FileSys.remove cname;
-                                   OS.FileSys.remove oname;
-                                   OS.FileSys.rmDir dir)
-                            handle OS.SysErr _ => OS.FileSys.rmDir dir)
+                      fn () => (OS.FileSys.remove cname;
+                                OS.FileSys.remove oname;
+                                OS.FileSys.rmDir dir)
+                         handle OS.SysErr _ => OS.FileSys.rmDir dir)
                     end
             val ename = #exe job
         in
@@ -1359,21 +1359,24 @@ fun compile job =
 		TextIO.output1 (outf, #"\n");
                 TextIO.closeOut outf;
 
-                case #sql job of
-                    NONE => ()
-                  | SOME sql =>
-                    let
-                        val outf = TextIO.openOut sql
-                        val s = TextIOPP.openOut {dst = outf, wid = 80}
-                    in
-                        Print.fprint s (CjrPrint.p_sql CjrEnv.empty file);
-                        TextIO.closeOut outf
-                    end;
+                if ErrorMsg.anyErrors () then
+                    false
+                else
+                    (case #sql job of
+                         NONE => ()
+                       | SOME sql =>
+                         let
+                             val outf = TextIO.openOut sql
+                             val s = TextIOPP.openOut {dst = outf, wid = 80}
+                         in
+                             Print.fprint s (CjrPrint.p_sql CjrEnv.empty file);
+                             TextIO.closeOut outf
+                         end;
 
-                compileC {cname = cname, oname = oname, ename = ename, libs = libs,
-                          profile = #profile job, debug = #debug job, link = #link job}
-                
-                before cleanup ()
+                     compileC {cname = cname, oname = oname, ename = ename, libs = libs,
+                               profile = #profile job, debug = #debug job, link = #link job}
+                     
+                     before cleanup ())
             end
             handle ex => (((cleanup ()) handle _ => ()); raise ex)
         end
