@@ -442,7 +442,7 @@ struct uw_context {
   void *logger_data;
   uw_logger log_debug;
 
-  int hasPostBody;
+  int isPost, hasPostBody;
   uw_Basis_postBody postBody;
   uw_Basis_string queryString;
 
@@ -508,7 +508,7 @@ uw_context uw_init(void *logger_data, uw_logger log_debug) {
   ctx->logger_data = logger_data;
   ctx->log_debug = log_debug;
 
-  ctx->hasPostBody = 0;
+  ctx->isPost = ctx->hasPostBody = 0;
 
   ctx->queryString = NULL;
 
@@ -588,7 +588,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->cur_container = NULL;
   ctx->used_transactionals = 0;
   ctx->script_header = "";
-  ctx->hasPostBody = 0;
+  ctx->isPost = ctx->hasPostBody = 0;
   ctx->queryString = NULL;
 }
 
@@ -3601,6 +3601,14 @@ void uw_postBody(uw_context ctx, uw_Basis_postBody pb) {
 
 int uw_hasPostBody(uw_context ctx) {
   return ctx->hasPostBody;
+}
+
+void uw_isPost(uw_context ctx) {
+  ctx->isPost = 1;
+}
+
+uw_Basis_bool uw_Basis_currentUrlHasPost(uw_context ctx) {
+  return ctx->isPost;
 }
 
 void uw_setQueryString(uw_context ctx, uw_Basis_string s) {

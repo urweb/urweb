@@ -230,6 +230,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     }
 
     is_post = 1;
+    uw_isPost(ctx);
 
     clen_s = uw_Basis_requestHeader(ctx, "Content-type");
     if (clen_s && !strncasecmp(clen_s, "multipart/form-data", 19)) {
