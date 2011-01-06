@@ -337,20 +337,9 @@ fun specialize' (funcs, specialized) file =
                                   | EKAbs _ => true
                                   | ECApp (e, _) => valueish e
                                   | EKApp (e, _) => valueish e
-                                  | EApp _ =>
-                                    let
-                                        fun valueishf (e, _) =
-                                            case e of
-                                                ENamed _ => true
-                                              | EFfi _ => true
-                                              | ECApp (e, _) => valueishf e
-                                              | EApp (e, (ERel _, _)) => valueishf e
-                                              | EApp (e, (ENamed _, _)) => valueishf e
-                                              | _ => false
-                                    in
-                                        valueishf all
-                                    end
+                                  | EApp (e1, e2) => valueish e1 andalso valueish e2
                                   | ERecord xes => List.all (valueish o #2) xes
+                                  | EField (e, _, _) => valueish e
                                   | _ => false
 
                             val vts = map (fn n => #2 (List.nth (env, n))) (IS.listItems fvs)
