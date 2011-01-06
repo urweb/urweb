@@ -1538,7 +1538,7 @@ $$\begin{array}{l}
 
 Queries are used by folding over their results inside transactions.
 $$\begin{array}{l}
-  \mt{val} \; \mt{query} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \lambda [\mt{tables} \sim \mt{exps}] \Rightarrow \mt{state} ::: \mt{Type} \to \mt{sql\_query} \; [] \; \mt{tables} \; \mt{exps} \\
+  \mt{val} \; \mt{query} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to [\mt{tables} \sim \mt{exps}] \Rightarrow \mt{state} ::: \mt{Type} \to \mt{sql\_query} \; [] \; \mt{tables} \; \mt{exps} \\
   \hspace{.1in} \to (\$(\mt{exps} \rc \mt{map} \; (\lambda \mt{fields} :: \{\mt{Type}\} \Rightarrow \$\mt{fields}) \; \mt{tables}) \\
   \hspace{.2in} \to \mt{state} \to \mt{transaction} \; \mt{state}) \\
   \hspace{.1in} \to \mt{state} \to \mt{transaction} \; \mt{state}
@@ -1798,7 +1798,7 @@ $$\begin{array}{l}
 
 An $\mt{UPDATE}$ command is formed from a choice of which table fields to leave alone and which to change, along with an expression to use to compute the new value of each changed field and a $\mt{WHERE}$ clause.
 $$\begin{array}{l}
-  \mt{val} \; \mt{update} : \mt{unchanged} ::: \{\mt{Type}\} \to \mt{changed} :: \{\mt{Type}\} \to \lambda [\mt{changed} \sim \mt{unchanged}] \\
+  \mt{val} \; \mt{update} : \mt{unchanged} ::: \{\mt{Type}\} \to \mt{changed} :: \{\mt{Type}\} \to [\mt{changed} \sim \mt{unchanged}] \\
   \hspace{.1in} \Rightarrow \$(\mt{map} \; (\mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; []) \; \mt{changed}) \\
   \hspace{.1in} \to \mt{sql\_table} \; (\mt{changed} \rc \mt{unchanged}) \to \mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{bool} \to \mt{dml}
 \end{array}$$
@@ -1847,7 +1847,7 @@ There is a function for producing an XML tree with a particular tag at its root.
 $$\begin{array}{l}
   \mt{val} \; \mt{tag} : \mt{attrsGiven} ::: \{\mt{Type}\} \to \mt{attrsAbsent} ::: \{\mt{Type}\} \to \mt{ctxOuter} ::: \{\mt{Unit}\} \to \mt{ctxInner} ::: \{\mt{Unit}\} \\
   \hspace{.1in} \to \mt{useOuter} ::: \{\mt{Type}\} \to \mt{useInner} ::: \{\mt{Type}\} \to \mt{bindOuter} ::: \{\mt{Type}\} \to \mt{bindInner} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \lambda [\mt{attrsGiven} \sim \mt{attrsAbsent}] \; [\mt{useOuter} \sim \mt{useInner}] \; [\mt{bindOuter} \sim \mt{bindInner}] \\
+  \hspace{.1in} \to [\mt{attrsGiven} \sim \mt{attrsAbsent}] \Rightarrow [\mt{useOuter} \sim \mt{useInner}] \Rightarrow [\mt{bindOuter} \sim \mt{bindInner}] \\
   \hspace{.1in} \Rightarrow \mt{option} \; \mt{css\_class} \\
   \hspace{.1in} \to \$\mt{attrsGiven} \\
   \hspace{.1in} \to \mt{tag} \; (\mt{attrsGiven} \rc \mt{attrsAbsent}) \; \mt{ctxOuter} \; \mt{ctxInner} \; \mt{useOuter} \; \mt{bindOuter} \\
@@ -1858,13 +1858,13 @@ Note that any tag may be assigned a CSS class.  This is the sole way of making u
 Two XML fragments may be concatenated.
 $$\begin{array}{l}
   \mt{val} \; \mt{join} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use_1} ::: \{\mt{Type}\} \to \mt{bind_1} ::: \{\mt{Type}\} \to \mt{bind_2} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \lambda [\mt{use_1} \sim \mt{bind_1}] \; [\mt{bind_1} \sim \mt{bind_2}] \\
+  \hspace{.1in} \to [\mt{use_1} \sim \mt{bind_1}] \Rightarrow [\mt{bind_1} \sim \mt{bind_2}] \\
   \hspace{.1in} \Rightarrow \mt{xml} \; \mt{ctx} \; \mt{use_1} \; \mt{bind_1} \to \mt{xml} \; \mt{ctx} \; (\mt{use_1} \rc \mt{bind_1}) \; \mt{bind_2} \to \mt{xml} \; \mt{ctx} \; \mt{use_1} \; (\mt{bind_1} \rc \mt{bind_2})
 \end{array}$$
 
 Finally, any XML fragment may be updated to ``claim'' to use more form fields than it does.
 $$\begin{array}{l}
-  \mt{val} \; \mt{useMore} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use_1} ::: \{\mt{Type}\} \to \mt{use_2} ::: \{\mt{Type}\} \to \mt{bind} ::: \{\mt{Type}\} \to \lambda [\mt{use_1} \sim \mt{use_2}] \\
+  \mt{val} \; \mt{useMore} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use_1} ::: \{\mt{Type}\} \to \mt{use_2} ::: \{\mt{Type}\} \to \mt{bind} ::: \{\mt{Type}\} \to [\mt{use_1} \sim \mt{use_2}] \\
   \hspace{.1in} \Rightarrow \mt{xml} \; \mt{ctx} \; \mt{use_1} \; \mt{bind} \to \mt{xml} \; \mt{ctx} \; (\mt{use_1} \rc \mt{use_2}) \; \mt{bind}
 \end{array}$$
 
