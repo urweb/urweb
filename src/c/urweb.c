@@ -927,12 +927,8 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
   } else {
     int n = ctx->app->input_num(name);
 
-    if (n < 0) {
-      if (!strcmp(name, "null"))
-        return 0;
-      uw_set_error(ctx, "Bad input name %s", name);
-      return -1;
-    }
+    if (n < 0)
+      return 0;
 
     if (n >= ctx->app->inputs_len) {
       uw_set_error(ctx, "For input name %s, index %d is out of range", name, n);

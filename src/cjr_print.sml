@@ -2588,7 +2588,7 @@ fun p_file env (ds, ps) =
                         Link => false
                       | Action ef => ef = ReadCookieWrite
                       | Rpc ef => ef = ReadCookieWrite
-                      | Extern ef => ef = ReadCookieWrite
+                      | Extern _ => false
 
                 val s =
                     case Settings.getUrlPrefix () of
