@@ -875,7 +875,17 @@ fun process file =
                           | ENextval _ => unsupported "Nextval"
                           | ESetval _ => unsupported "Nextval"
                           | EReturnBlob _ => unsupported "EReturnBlob"
-                          | ERedirect _ => unsupported "ERedirect"
+
+                          | ERedirect (e, _) =>
+                            let
+                                val (e, st) = jsE inner (e, st)
+                            in
+                                (strcat [str "{c:\"f\",f:\"redirect\",a:cons(",
+                                         e,
+                                         str ",null)}"],
+                                 st)
+                            end
+
                           | EUnurlify (_, _, true) => unsupported "EUnurlify"
 
                           | EUnurlify (e, t, false) =>
