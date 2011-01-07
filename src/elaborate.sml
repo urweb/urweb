@@ -2682,15 +2682,18 @@ and selfify env {str, strs, sgn} =
       | L'.SgnVar _ => sgn
 
       | L'.SgnConst sgis =>
-        (L'.SgnConst (ListUtil.mapConcat (fn (L'.SgiConAbs (x, n, k), loc) =>
-                              [(L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)]
-                            | (L'.SgiDatatype dts, loc) =>
-                              map (fn (x, n, xs, xncs) => (L'.SgiDatatypeImp (x, n, str, strs, x, xs, xncs), loc)) dts
-                            | (L'.SgiClassAbs (x, n, k), loc) =>
-                              [(L'.SgiClass (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)]
-                            | (L'.SgiStr (x, n, sgn), loc) =>
-                              [(L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)]
-                            | x => [x]) sgis), #2 sgn)
+        (L'.SgnConst (#1 (ListUtil.foldlMapConcat
+                              (fn (sgi, env) =>
+                                  (case sgi of (L'.SgiConAbs (x, n, k), loc) =>
+                                               [(L'.SgiCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)]
+                                             | (L'.SgiDatatype dts, loc) =>
+                                               map (fn (x, n, xs, xncs) => (L'.SgiDatatypeImp (x, n, str, strs, x, xs, xncs), loc)) dts
+                                             | (L'.SgiClassAbs (x, n, k), loc) =>
+                                               [(L'.SgiClass (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)]
+                                             | (L'.SgiStr (x, n, sgn), loc) =>
+                                               [(L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)]
+                                             | x => [x],
+                                   E.sgiBinds env sgi)) env sgis)), #2 sgn)
       | L'.SgnFun _ => sgn
       | L'.SgnWhere _ => sgn
       | L'.SgnProj (m, ms, x) =>
