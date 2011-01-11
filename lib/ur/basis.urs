@@ -81,6 +81,7 @@ val chr : int -> char
 (** String operations *)
 
 val strlen : string -> int
+val strlenGe : string -> int -> bool
 val strcat : string -> string -> string
 val strsub : string -> int -> char
 val strsuffix : string -> int -> string

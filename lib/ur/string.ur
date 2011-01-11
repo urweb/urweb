@@ -3,6 +3,7 @@ type t = Basis.string
 val str = Basis.str1
 
 val length = Basis.strlen
+val lengthGe = Basis.strlenGe
 val append = Basis.strcat
 
 val sub = Basis.strsub

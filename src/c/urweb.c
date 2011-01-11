@@ -2133,21 +2133,46 @@ uw_unit uw_Basis_htmlifyTime_w(uw_context ctx, uw_Basis_time t) {
 }
 
 uw_Basis_char uw_Basis_strsub(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
-  if (n >= 0 && n < strlen(s))
-    return s[n];
-  else
-    uw_error(ctx, FATAL, "Out-of-bounds strsub");
+  while (n >= 0) {
+    if (*s == 0)
+      uw_error(ctx, FATAL, "Out-of-bounds strsub");
+
+    if (n == 0)
+      return *s;
+
+    --n;
+    ++s;
+  }
+
+  uw_error(ctx, FATAL, "Negative strsub bound");
 }
 
 uw_Basis_string uw_Basis_strsuffix(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
-  if (n >= 0 && n < strlen(s))
-    return &s[n];
-  else
-    uw_error(ctx, FATAL, "Out-of-bounds strsuffix");
+  while (n >= 0) {
+    if (*s == 0 || n == 0)
+      return s;
+
+    --n;
+    ++s;
+  }
+
+  uw_error(ctx, FATAL, "Negative strsuffix bound");
 }
 
 uw_Basis_int uw_Basis_strlen(uw_context ctx, uw_Basis_string s) {
   return strlen(s);
+}
+
+uw_Basis_bool uw_Basis_strlenGe(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
+  while (n > 0) {
+    if (*s == 0)
+      return uw_Basis_False;
+
+    --n;
+    ++s;
+  }
+
+  return uw_Basis_True;
 }
 
 uw_Basis_string uw_Basis_strchr(uw_context ctx, uw_Basis_string s, uw_Basis_char ch) {

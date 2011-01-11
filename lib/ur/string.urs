@@ -3,6 +3,7 @@ type t = string
 val str : char -> t
 
 val length : t -> int
+val lengthGe : t -> int -> bool
 
 val append : t -> t -> t
 
