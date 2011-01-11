@@ -24,17 +24,31 @@ fun mindex {Haystack = s, Needle = chs} =
 
 fun substring s {Start = start, Len = len} = Basis.substring s start len
 
+fun seek s ch =
+    case index s ch of
+        None => None
+      | Some i => Some (suffix s (i + 1))
+fun mseek {Haystack = s, Needle = chs} =
+    case mindex {Haystack = s, Needle = chs} of
+        None => None
+      | Some i => Some (sub s i, suffix s (i + 1))
+
 fun split s ch =
     case index s ch of
         None => None
       | Some i => Some (substring s {Start = 0, Len = i},
-                        substring s {Start = i + 1, Len = length s - i - 1})
+                        suffix s (i + 1))
+fun split' s ch =
+    case index s ch of
+        None => None
+      | Some i => Some (substring s {Start = 0, Len = i},
+                        suffix s i)
 fun msplit {Haystack = s, Needle = chs} =
     case mindex {Haystack = s, Needle = chs} of
         None => None
       | Some i => Some (substring s {Start = 0, Len = i},
                         sub s i,
-                        substring s {Start = i + 1, Len = length s - i - 1})
+                        suffix s (i + 1))
 
 fun all f s =
     let

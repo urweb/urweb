@@ -138,6 +138,7 @@ val benignBase = basis ["get_cookie",
                         "onServerError",
                         "kc",
                         "debug",
+                        "naughtyDebug",
                         "rand"]
 
 val benign = ref benignBase

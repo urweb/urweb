@@ -1176,7 +1176,7 @@ static void uw_buffer_check_ctx(uw_context ctx, const char *kind, uw_buffer *b, 
 
     if (new_heap != b->start) {
       b->start = new_heap;
-      uw_error(ctx, UNLIMITED_RETRY, "Couldn't allocate new %s contiguously", desc);
+      uw_error(ctx, UNLIMITED_RETRY, "Couldn't allocate new %s contiguously; increasing size to %llu", desc, (unsigned long long)next);
     }
 
     b->start = new_heap;
@@ -3601,6 +3601,11 @@ void uw_check_deadline(uw_context ctx) {
 }
 
 size_t uw_database_max = SIZE_MAX;
+
+uw_Basis_int uw_Basis_naughtyDebug(uw_context ctx, uw_Basis_string s) {
+  fprintf(stderr, "%s\n", s);
+  return 0;
+}
 
 uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
   if (ctx->log_debug)

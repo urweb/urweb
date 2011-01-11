@@ -291,6 +291,7 @@ void uw_set_deadline(uw_context, int);
 void uw_check_deadline(uw_context);
 
 uw_Basis_unit uw_Basis_debug(uw_context, uw_Basis_string);
+uw_Basis_int uw_Basis_naughtyDebug(uw_context, uw_Basis_string);
 
 void uw_set_client_data(uw_context, void *);
 

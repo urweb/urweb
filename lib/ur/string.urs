@@ -17,7 +17,11 @@ val mindex : {Haystack : t, Needle : t} -> option int
 
 val substring : t -> {Start : int, Len : int} -> string
 
+val seek : t -> char -> option string
+val mseek : {Haystack : t, Needle : t} -> option (char * string)
+
 val split : t -> char -> option (string * string)
+val split' : t -> char -> option (string * string) (* The matched character is kept at the beginning of the suffix. *)
 val msplit : {Haystack : t, Needle : t} -> option (string * char * string)
 
 val all : (char -> bool) -> string -> bool
