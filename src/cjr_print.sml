@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1319,6 +1319,35 @@ fun sql_type_in env (tAll as (t, loc)) =
               Print.eprefaces' [("Type", p_typ env tAll)];
               Int)
 
+fun potentiallyFancy (e, _) =
+    case e of
+        EPrim _ => false
+      | ERel _ => false
+      | ENamed _ => false
+      | ECon (_, _, NONE) => false
+      | ECon (_, _, SOME e) => potentiallyFancy e
+      | ENone _ => false
+      | ESome (_, e) => potentiallyFancy e
+      | EFfi _ => false
+      | EFfiApp _ => true
+      | EApp _ => true
+      | EUnop (_, e) => potentiallyFancy e
+      | EBinop (_, e1, e2) => potentiallyFancy e1 orelse potentiallyFancy e2
+      | ERecord (_, xes) => List.exists (potentiallyFancy o #2) xes
+      | EField (e, _) => potentiallyFancy e
+      | ECase (e, pes, _) => potentiallyFancy e orelse List.exists (potentiallyFancy o #2) pes
+      | EError _ => false
+      | EReturnBlob _ => false
+      | ERedirect _ => false
+      | EWrite e => potentiallyFancy e
+      | ESeq (e1, e2) => potentiallyFancy e1 orelse potentiallyFancy e2
+      | ELet (_, _, e1, e2) => potentiallyFancy e1 orelse potentiallyFancy e2
+      | EQuery _ => true
+      | EDml {dml = e, ...} => potentiallyFancy e
+      | ENextval {seq = e, ...} => potentiallyFancy e
+      | ESetval {seq = e1, count = e2} => potentiallyFancy e1 orelse potentiallyFancy e2
+      | EUnurlify _ => true
+
 fun p_exp' par env (e, loc) =
     case e of
         EPrim p => Prim.p_t_GCC p
@@ -1634,30 +1663,64 @@ fun p_exp' par env (e, loc) =
                          p_exp env e,
                          string "), uw_unit_v)"]
 
-      | ESeq (e1, e2) => box [string "(",
-                              p_exp env e1,
-                              string ",",
-                              space,
-                              p_exp env e2,
-                              string ")"]
-      | ELet (x, t, e1, e2) => box [string "({",
-                                    newline,
-                                    p_typ env t,
-                                    space,
-                                    string "__uwr_",
-                                    p_ident x,
-                                    string "_",
-                                    string (Int.toString (E.countERels env)),
-                                    space,
-                                    string "=",
-                                    space,
-                                    p_exp env e1,
-                                    string ";",
-                                    newline,
-                                    p_exp (E.pushERel env x t) e2,
-                                    string ";",
-                                    newline,
-                                    string "})"]
+      | ESeq (e1, e2) =>
+        let
+            val useRegion = potentiallyFancy e1
+        in
+            box [string "(",
+                 if useRegion then
+                     box [string "uw_begin_region(ctx),",
+                          space]
+                 else
+                     box [],
+                 p_exp env e1,
+                 string ",",
+                 space,
+                 if useRegion then
+                     box [string "uw_end_region(ctx),",
+                          space]
+                 else
+                     box [],
+                 p_exp env e2,
+                 string ")"]
+        end
+      | ELet (x, t, e1, e2) =>
+        let
+            val useRegion = notLeaky env false t andalso potentiallyFancy e1
+        in
+            box [string "({",
+                 newline,
+                 p_typ env t,
+                 space,
+                 string "__uwr_",
+                 p_ident x,
+                 string "_",
+                 string (Int.toString (E.countERels env)),
+                 space,
+                 string "=",
+                 space,
+                 if useRegion then
+                     box [string "(uw_begin_region(ctx),",
+                          space]
+                 else
+                     box [],
+                 p_exp env e1,
+                 if useRegion then
+                     string ")"
+                 else
+                     box [],
+                 string ";",
+                 newline,
+                 if useRegion then
+                     box [string "uw_end_region(ctx);",
+                          newline]
+                 else
+                     box [],
+                 p_exp (E.pushERel env x t) e2,
+                 string ";",
+                 newline,
+                 string "})"]
+        end
 
       | EQuery {exps, tables, rnum, state, query, body, initial, prepared} =>
         let
