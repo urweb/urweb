@@ -10,6 +10,7 @@ val sub = Basis.strsub
 val suffix = Basis.strsuffix
 
 val index = Basis.strindex
+fun sindex r = Basis.strsindex r.Haystack r.Needle
 val atFirst = Basis.strchr
 
 fun mindex {Haystack = s, Needle = chs} =
@@ -49,6 +50,12 @@ fun msplit {Haystack = s, Needle = chs} =
       | Some i => Some (substring s {Start = 0, Len = i},
                         sub s i,
                         suffix s (i + 1))
+
+fun ssplit r =
+    case sindex r of
+        None => None
+      | Some i => Some (substring r.Haystack {Start = 0, Len = i},
+                        suffix r.Haystack (i + length r.Needle))
 
 fun all f s =
     let
