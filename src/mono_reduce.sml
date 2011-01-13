@@ -374,12 +374,13 @@ fun reduce file =
                 TFun (t1, t2) => functionInside' t1 orelse functionInside t2
               | _ => functionInside' t
 
-        fun mayInline (n, e, t) =
+        fun mayInline (n, e, t, s) =
             case IM.find (uses, n) of
                 NONE => false
               | SOME count => count <= 1
                               orelse size e <= Settings.getMonoInline ()
                               orelse functionInside t
+                              orelse Settings.checkAlwaysInline s
 
         fun summarize d (e, _) =
             let
@@ -711,7 +712,7 @@ fun reduce file =
                 let
                     val eo = case eo of
                                  NONE => NONE
-                               | SOME e => if mayInline (n, e, t) then
+                               | SOME e => if mayInline (n, e, t, s) then
                                                SOME e
                                            else
                                                NONE

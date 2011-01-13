@@ -754,6 +754,7 @@ fun parseUrp' accLibs fname =
                                     (case Int.fromString arg of
                                          NONE => ErrorMsg.error ("invalid min heap '" ^ arg ^ "'")
                                        | SOME n => minHeap := n)
+                                  | "alwaysInline" => Settings.addAlwaysInline arg
 
                                   | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                 read ()

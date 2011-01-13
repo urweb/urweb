@@ -539,4 +539,13 @@ val minHeap = ref 0
 fun setMinHeap n = if n >= 0 then minHeap := n else raise Fail "Trying to set negative minHeap"
 fun getMinHeap () = !minHeap
 
+structure SS = BinarySetFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
+val alwaysInline = ref SS.empty
+fun addAlwaysInline s = alwaysInline := SS.add (!alwaysInline, s)
+fun checkAlwaysInline s = SS.member (!alwaysInline, s)
+
 end

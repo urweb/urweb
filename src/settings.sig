@@ -215,4 +215,7 @@ signature SETTINGS = sig
 
     val setMinHeap : int -> unit
     val getMinHeap : unit -> int
+
+    val addAlwaysInline : string -> unit
+    val checkAlwaysInline : string -> bool
 end
