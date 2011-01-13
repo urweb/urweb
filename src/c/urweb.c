@@ -2101,7 +2101,8 @@ uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
 uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
   char *r;
-  struct tm stm;
+  struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
@@ -2116,7 +2117,8 @@ uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
 uw_unit uw_Basis_htmlifyTime_w(uw_context ctx, uw_Basis_time t) {
   size_t len;
   char *r;
-  struct tm stm;
+  struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (localtime_r(&t.seconds, &stm)) {
     uw_check(ctx, TIMES_MAX);
@@ -2543,7 +2545,8 @@ char *uw_Basis_sqlifyBoolN(uw_context ctx, uw_Basis_bool *b) {
 char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
   char *r, *s;
-  struct tm stm;
+  struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (localtime_r(&t.seconds, &stm)) {
     s = uw_malloc(ctx, TIMES_MAX);
@@ -2563,7 +2566,8 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
 char *uw_Basis_attrifyTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
   char *r;
-  struct tm stm;
+  struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
@@ -2578,7 +2582,8 @@ char *uw_Basis_attrifyTime(uw_context ctx, uw_Basis_time t) {
 char *uw_Basis_ensqlTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
   char *r;
-  struct tm stm;
+  struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
@@ -2648,7 +2653,8 @@ uw_Basis_string uw_Basis_boolToString(uw_context ctx, uw_Basis_bool b) {
 uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
   size_t len;
   char *r;
-  struct tm stm;
+  struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
@@ -2663,7 +2669,8 @@ uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
 uw_Basis_string uw_Basis_timef(uw_context ctx, const char *fmt, uw_Basis_time t) {
   size_t len;
   char *r;
-  struct tm stm;
+  struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (localtime_r(&t.seconds, &stm)) {
     uw_check_heap(ctx, TIMES_MAX);
@@ -2728,6 +2735,7 @@ uw_Basis_bool *uw_Basis_stringToBool(uw_context ctx, uw_Basis_string s) {
 uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
   char *dot = strchr(s, '.'), *end = strchr(s, 0);
   struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (dot) {
     *dot = 0;
@@ -2764,6 +2772,7 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
 uw_Basis_time *uw_Basis_stringToTimef(uw_context ctx, const char *fmt, uw_Basis_string s) {
   char *end = strchr(s, 0);
   struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (strptime(s, fmt, &stm) == end) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
@@ -2839,6 +2848,7 @@ uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {
 uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
   char *dot = strchr(s, '.'), *end = strchr(s, 0);
   struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (dot) {
     *dot = 0;
@@ -2867,6 +2877,7 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
 uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
   char *dot = strchr(s, '.'), *end = strchr(s, 0);
   struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (dot) {
     *dot = 0;
@@ -2897,6 +2908,7 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
 uw_Basis_time uw_Basis_stringToTimef_error(uw_context ctx, const char *fmt, uw_Basis_string s) {
   char *end = strchr(s, 0);
   struct tm stm = {};
+  stm.tm_isdst = -1;
 
   if (strptime(s, fmt, &stm) == end) {
     uw_Basis_time r = { mktime(&stm) };
@@ -2994,7 +3006,8 @@ uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_str
   uw_write_header(ctx, prefix);
   if (expires) {
     char formatted[30];
-    struct tm tm;
+    struct tm tm = {};
+    tm.tm_isdst = -1;
 
     gmtime_r(&expires->seconds, &tm);
 
@@ -3721,6 +3734,7 @@ uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t
 uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
   struct tm stm = {};
   char *end = strchr(s, 0);
+  stm.tm_isdst = -1;
 
   if (strptime(s, TIME_FMT_PG, &stm) == end || strptime(s, TIME_FMT, &stm) == end) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
