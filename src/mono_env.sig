@@ -50,5 +50,6 @@ signature MONO_ENV = sig
     val patBindsN : Mono.pat -> int
 
     val liftExpInExp : int -> Mono.exp -> Mono.exp
-                                                 
+    val subExpInExp : (int * Mono.exp) -> Mono.exp -> Mono.exp
+
 end

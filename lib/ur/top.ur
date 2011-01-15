@@ -215,40 +215,40 @@ fun mapX3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [ctx :: {
           <xml>{f [nm] [t] [rest] ! r1 r2 r3}{acc}</xml>)
       <xml/>
 
-fun query1 [t ::: Name] [fs ::: {Type}] [state ::: Type] (q : sql_query [] [t = fs] [])
+fun query1 [t ::: Name] [fs ::: {Type}] [state ::: Type] (q : sql_query [] [] [t = fs] [])
            (f : $fs -> state -> transaction state) (i : state) =
     query q (fn r => f r.t) i
 
-fun query1' [t ::: Name] [fs ::: {Type}] [state ::: Type] (q : sql_query [] [t = fs] [])
+fun query1' [t ::: Name] [fs ::: {Type}] [state ::: Type] (q : sql_query [] [] [t = fs] [])
             (f : $fs -> state -> state) (i : state) =
     query q (fn r s => return (f r.t s)) i
 
-fun queryL [tables] [exps] [tables ~ exps] (q : sql_query [] tables exps) =
+fun queryL [tables] [exps] [tables ~ exps] (q : sql_query [] [] tables exps) =
     query q
     (fn r ls => return (r :: ls))
     []
 
-fun queryL1 [t ::: Name] [fs ::: {Type}] (q : sql_query [] [t = fs] []) =
+fun queryL1 [t ::: Name] [fs ::: {Type}] (q : sql_query [] [] [t = fs] []) =
     query q
     (fn r ls => return (r.t :: ls))
     []
 
 fun queryI [tables ::: {{Type}}] [exps ::: {Type}]
-           [tables ~ exps] (q : sql_query [] tables exps)
+           [tables ~ exps] (q : sql_query [] [] tables exps)
            (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
                 -> transaction unit) =
     query q
           (fn fs _ => f fs)
           ()
 
-fun queryI1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [] [nm = fs] [])
+fun queryI1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [] [] [nm = fs] [])
             (f : $fs -> transaction unit) =
     query q
           (fn fs _ => f fs.nm)
           ()
 
 fun queryX [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
-           [tables ~ exps] (q : sql_query [] tables exps)
+           [tables ~ exps] (q : sql_query [] [] tables exps)
            (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
                 -> xml ctx inp []) =
     query q
@@ -256,14 +256,14 @@ fun queryX [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Ty
           <xml/>
 
 fun queryX1 [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
-            (q : sql_query [] [nm = fs] [])
+            (q : sql_query [] [] [nm = fs] [])
             (f : $fs -> xml ctx inp []) =
     query q
           (fn fs acc => return <xml>{acc}{f fs.nm}</xml>)
           <xml/>
 
 fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
-            [tables ~ exps] (q : sql_query [] tables exps)
+            [tables ~ exps] (q : sql_query [] [] tables exps)
             (f : $(exps ++ map (fn fields :: {Type} => $fields) tables)
                  -> transaction (xml ctx inp [])) =
     query q
@@ -273,7 +273,7 @@ fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {T
           <xml/>
 
 fun queryX1' [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
-             (q : sql_query [] [nm = fs] [])
+             (q : sql_query [] [] [nm = fs] [])
              (f : $fs -> transaction (xml ctx inp [])) =
     query q
           (fn fs acc =>
@@ -282,7 +282,7 @@ fun queryX1' [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
           <xml/>
 
 fun queryXE' [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
-             (q : sql_query [] [] exps)
+             (q : sql_query [] [] [] exps)
              (f : $exps -> transaction (xml ctx inp [])) =
     query q
           (fn fs acc =>
@@ -292,42 +292,42 @@ fun queryXE' [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
 
 fun hasRows [tables ::: {{Type}}] [exps ::: {Type}]
             [tables ~ exps]
-            (q : sql_query [] tables exps) =
+            (q : sql_query [] [] tables exps) =
     query q
           (fn _ _ => return True)
           False
 
 fun oneOrNoRows [tables ::: {{Type}}] [exps ::: {Type}]
                 [tables ~ exps]
-                (q : sql_query [] tables exps) =
+                (q : sql_query [] [] tables exps) =
     query q
           (fn fs _ => return (Some fs))
           None
 
-fun oneOrNoRows1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [] [nm = fs] []) =
+fun oneOrNoRows1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [] [] [nm = fs] []) =
     query q
           (fn fs _ => return (Some fs.nm))
           None
 
-fun oneOrNoRowsE1 [tabs ::: {Unit}] [nm ::: Name] [t ::: Type] [tabs ~ [nm]] (q : sql_query [] (mapU [] tabs) [nm = t]) =
+fun oneOrNoRowsE1 [tabs ::: {Unit}] [nm ::: Name] [t ::: Type] [tabs ~ [nm]] (q : sql_query [] [] (mapU [] tabs) [nm = t]) =
     query q
           (fn fs _ => return (Some fs.nm))
           None
 
 fun oneRow [tables ::: {{Type}}] [exps ::: {Type}]
-           [tables ~ exps] (q : sql_query [] tables exps) =
+           [tables ~ exps] (q : sql_query [] [] tables exps) =
     o <- oneOrNoRows q;
     return (case o of
                 None => error <xml>Query returned no rows</xml>
               | Some r => r)
 
-fun oneRow1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [] [nm = fs] []) =
+fun oneRow1 [nm ::: Name] [fs ::: {Type}] (q : sql_query [] [] [nm = fs] []) =
     o <- oneOrNoRows q;
     return (case o of
                 None => error <xml>Query returned no rows</xml>
               | Some r => r.nm)
 
-fun oneRowE1 [tabs ::: {Unit}] [nm ::: Name] [t ::: Type] [tabs ~ [nm]] (q : sql_query [] (mapU [] tabs) [nm = t]) =
+fun oneRowE1 [tabs ::: {Unit}] [nm ::: Name] [t ::: Type] [tabs ~ [nm]] (q : sql_query [] [] (mapU [] tabs) [nm = t]) =
     o <- oneOrNoRows q;
     return (case o of
                 None => error <xml>Query returned no rows</xml>

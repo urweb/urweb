@@ -85,6 +85,19 @@ val liftExpInExp =
                 bind = fn (bound, U.Exp.RelE _) => bound + 1
                         | (bound, _) => bound}
 
+val subExpInExp =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn (xn, rep) => fn e =>
+                                  case e of
+                                      ERel xn' =>
+                                      (case Int.compare (xn', xn) of
+                                           EQUAL => #1 rep
+                                         | GREATER=> ERel (xn' - 1)
+                                         | LESS => e)
+                                    | _ => e,
+                bind = fn ((xn, rep), U.Exp.RelE _) => (xn+1, liftExpInExp 0 rep)
+                        | (ctx, _) => ctx}
+
 fun pushERel (env : env) x t eo =
     {datatypes = #datatypes env,
      constructors = #constructors env,

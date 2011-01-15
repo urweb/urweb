@@ -291,8 +291,8 @@ val check : fs ::: {Type}
 
 (*** Queries *)
 
-con sql_query :: {{Type}} -> {{Type}} -> {Type} -> Type
-con sql_query1 :: {{Type}} -> {{Type}} -> {{Type}} -> {Type} -> Type
+con sql_query :: {{Type}} -> {{Type}} -> {{Type}} -> {Type} -> Type
+con sql_query1 :: {{Type}} -> {{Type}} -> {{Type}} -> {{Type}} -> {Type} -> Type
 
 con sql_subset :: {{Type}} -> {{Type}} -> Type
 val sql_subset : keep_drop :: {({Type} * {Type})}
@@ -314,7 +314,7 @@ val sql_from_table : free ::: {{Type}} -> t ::: Type -> fs ::: {Type}
                      -> fieldsOf t fs -> name :: Name
                      -> t -> sql_from_items free [name = fs]
 val sql_from_query : free ::: {{Type}} -> fs ::: {Type} -> name :: Name
-                     -> sql_query free [] fs
+                     -> sql_query free [] [] fs
                      -> sql_from_items free [name = fs]
 val sql_from_comma : free ::: {{Type}} -> tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
                      -> [tabs1 ~ tabs2]
@@ -353,6 +353,7 @@ val sql_full_join : free ::: {{Type}} -> tabs1 ::: {{(Type * Type)}} -> tabs2 ::
        -> sql_from_items free (map (map (fn p :: (Type * Type) => p.2)) (tabs1 ++ tabs2))
 
 val sql_query1 : free ::: {{Type}}
+                 -> afree ::: {{Type}}
                  -> tables ::: {{Type}}
                  -> grouped ::: {{Type}}
                  -> selectedFields ::: {{Type}}
@@ -360,33 +361,35 @@ val sql_query1 : free ::: {{Type}}
                  -> empties :: {Unit}
                  -> [free ~ tables]
                  => [free ~ grouped]
+                 => [afree ~ tables]
                  => [empties ~ selectedFields]
                  => {Distinct : bool,
                      From : sql_from_items free tables,
-                     Where : sql_exp (free ++ tables) [] [] bool,
+                     Where : sql_exp (free ++ tables) afree [] bool,
                      GroupBy : sql_subset tables grouped,
-                     Having : sql_exp (free ++ grouped) tables [] bool,
+                     Having : sql_exp (free ++ grouped) (afree ++ tables) [] bool,
                      SelectFields : sql_subset grouped (map (fn _ => []) empties ++ selectedFields),
-                     SelectExps : $(map (sql_exp (free ++ grouped) tables [])
+                     SelectExps : $(map (sql_exp (free ++ grouped) (afree ++ tables) [])
                                             selectedExps) }
-                 -> sql_query1 free tables selectedFields selectedExps
+                 -> sql_query1 free afree tables selectedFields selectedExps
 
 type sql_relop 
 val sql_union : sql_relop
 val sql_intersect : sql_relop
 val sql_except : sql_relop
 val sql_relop : free ::: {{Type}}
+                -> afree ::: {{Type}}
                 -> tables1 ::: {{Type}}
                 -> tables2 ::: {{Type}}
                 -> selectedFields ::: {{Type}}
                 -> selectedExps ::: {Type}
                 -> sql_relop
-                -> sql_query1 free tables1 selectedFields selectedExps
-                -> sql_query1 free tables2 selectedFields selectedExps
-                -> sql_query1 free [] selectedFields selectedExps
-val sql_forget_tables : free ::: {{Type}} -> tables ::: {{Type}} -> selectedFields ::: {{Type}} -> selectedExps ::: {Type}
-                        -> sql_query1 free tables selectedFields selectedExps
-                        -> sql_query1 free [] selectedFields selectedExps
+                -> sql_query1 free afree tables1 selectedFields selectedExps
+                -> sql_query1 free afree tables2 selectedFields selectedExps
+                -> sql_query1 free afree [] selectedFields selectedExps
+val sql_forget_tables : free ::: {{Type}} -> afree ::: {{Type}} -> tables ::: {{Type}} -> selectedFields ::: {{Type}} -> selectedExps ::: {Type}
+                        -> sql_query1 free afree tables selectedFields selectedExps
+                        -> sql_query1 free afree [] selectedFields selectedExps
 
 type sql_direction
 val sql_asc : sql_direction
@@ -408,15 +411,16 @@ val sql_no_offset : sql_offset
 val sql_offset : int -> sql_offset
 
 val sql_query : free ::: {{Type}}
+                -> afree ::: {{Type}}
                 -> tables ::: {{Type}}
                 -> selectedFields ::: {{Type}}
                 -> selectedExps ::: {Type}
                 -> [free ~ tables]
-                => {Rows : sql_query1 free tables selectedFields selectedExps,
+                => {Rows : sql_query1 free afree tables selectedFields selectedExps,
                     OrderBy : sql_order_by (free ++ tables) selectedExps,
                     Limit : sql_limit,
                     Offset : sql_offset}
-                -> sql_query free selectedFields selectedExps
+                -> sql_query free afree selectedFields selectedExps
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type}
                 -> fieldType ::: Type -> agg ::: {{Type}}
@@ -493,8 +497,8 @@ class sql_summable
 val sql_summable_int : sql_summable int
 val sql_summable_float : sql_summable float
 val sql_summable_option : t ::: Type -> sql_summable t -> sql_summable (option t)
-val sql_avg : t ::: Type -> sql_summable t -> sql_aggregate t t
-val sql_sum : t ::: Type -> sql_summable t -> sql_aggregate t t
+val sql_avg : t ::: Type -> nt ::: Type -> sql_summable t -> nullify t nt -> sql_aggregate t nt
+val sql_sum : t ::: Type -> nt ::: Type -> sql_summable t -> nullify t nt -> sql_aggregate t nt
 
 class sql_maxable
 val sql_maxable_int : sql_maxable int
@@ -502,8 +506,8 @@ val sql_maxable_float : sql_maxable float
 val sql_maxable_string : sql_maxable string
 val sql_maxable_time : sql_maxable time
 val sql_maxable_option : t ::: Type -> sql_maxable t -> sql_maxable (option t)
-val sql_max : t ::: Type -> sql_maxable t -> sql_aggregate t t
-val sql_min : t ::: Type -> sql_maxable t -> sql_aggregate t t
+val sql_max : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
+val sql_min : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 
 con sql_nfunc :: Type -> Type
 val sql_nfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
@@ -526,7 +530,7 @@ val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} ->
                    -> sql_exp tables agg exps (option t)
 
 val sql_subquery : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> nm ::: Name -> t ::: Type
-                   -> sql_query tables [] [nm = t]
+                   -> sql_query tables agg [] [nm = t]
                    -> sql_exp tables agg exps t
 
 (*** Executing queries *)
@@ -534,7 +538,7 @@ val sql_subquery : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} ->
 val query : tables ::: {{Type}} -> exps ::: {Type}
             -> [tables ~ exps] =>
                   state ::: Type
-                  -> sql_query [] tables exps
+                  -> sql_query [] [] tables exps
                   -> ($(exps ++ map (fn fields :: {Type} => $fields) tables)
                       -> state
                       -> transaction state)
@@ -838,21 +842,21 @@ val periodic : int -> task_kind unit
 type sql_policy
 
 val sendClient : tables ::: {{Type}} -> exps ::: {Type}
-                 -> [tables ~ exps] => sql_query [] tables exps
+                 -> [tables ~ exps] => sql_query [] [] tables exps
                  -> sql_policy
 
 val sendOwnIds : sql_sequence -> sql_policy
 
 val mayInsert : fs ::: {Type} -> tables ::: {{Type}} -> [[New] ~ tables]
-                => sql_query [] ([New = fs] ++ tables) []
+                => sql_query [] [] ([New = fs] ++ tables) []
                 -> sql_policy
 
 val mayDelete : fs ::: {Type} -> tables ::: {{Type}} -> [[Old] ~ tables]
-                => sql_query [] ([Old = fs] ++ tables) []
+                => sql_query [] [] ([Old = fs] ++ tables) []
                 -> sql_policy
 
 val mayUpdate : fs ::: {Type} -> tables ::: {{Type}} -> [[Old, New] ~ tables]
-                => sql_query [] ([Old = fs, New = fs] ++ tables) []
+                => sql_query [] [] ([Old = fs, New = fs] ++ tables) []
                 -> sql_policy
 
 val also : sql_policy -> sql_policy -> sql_policy

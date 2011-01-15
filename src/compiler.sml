@@ -1311,9 +1311,15 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                 (compile, link)
 
         val link = foldl (fn (s, link) => link ^ " " ^ s) link link'
+
+        fun system s =
+            (if debug then
+                 print (s ^ "\n")
+             else
+                 ();
+             OS.Process.isSuccess (OS.Process.system s))
     in
-        OS.Process.isSuccess (OS.Process.system compile)
-        andalso OS.Process.isSuccess (OS.Process.system link)
+        system compile andalso system link
     end
 
 fun compile job =

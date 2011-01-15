@@ -57,7 +57,6 @@ fun simpleImpure (tsyms, syms) =
                               | ERecv _ => true
                               | ESleep _ => true
                               | ENamed n => IS.member (syms, n)
-                              | EError _ => true
                               | ERel n =>
                                 let
                                     val (_, t, _) = E.lookupERel env n
@@ -398,7 +397,10 @@ fun reduce file =
                         summarize d e @ [ReadCookie]
                       | EFfiApp (m, x, es) =>
                         if Settings.isEffectful (m, x) orelse Settings.isBenignEffectful (m, x) then
-                            List.concat (map (summarize d) es) @ [Unsure]
+                            List.concat (map (summarize d) es) @ [if m = "Basis" andalso String.isSuffix "_w" x then
+                                                                      WritePage
+                                                                  else
+                                                                      Unsure]
                         else
                             List.concat (map (summarize d) es)
                       | EApp ((EFfi _, _), e) => summarize d e
@@ -429,6 +431,7 @@ fun reduce file =
                                   | EApp (f, x) =>
                                     unravel (#1 f, passed + 1, List.revAppend (summarize d x,
                                                                                ls))
+                                  | EError _ => [Abort]
                                   | _ => [Unsure]
                         in
                             unravel (e, 0, [])
@@ -445,17 +448,25 @@ fun reduce file =
                       | ECase (e, pes, _) =>
                         let
                             val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
+
+                            fun splitRel ls acc =
+                                case ls of
+                                    [] => (acc, false, ls)
+                                  | UseRel :: ls  => (acc, true, ls)
+                                  | v :: ls => splitRel ls (v :: acc)
+
+                            val (pre, used, post) = foldl (fn (ls, (pre, used, post)) =>
+                                                              let
+                                                                  val (pre', used', post') = splitRel ls []
+                                                              in
+                                                                  (pre' @ pre, used' orelse used, post' @ post)
+                                                              end)
+                                                    ([], false, []) lss
                         in
-                            case lss of
-                                [] => summarize d e
-                              | ls :: lss =>
-                                summarize d e
-                                @ (if List.all (fn ls' => ls' = ls) lss then
-                                       ls
-                                   else if length (List.filter (not o List.null) (ls :: lss)) <= 1 then
-                                       valOf (List.find (not o List.null) (ls :: lss))
-                                   else
-                                       [Unsure])
+                            summarize d e
+                            @ pre
+                            @ (if used then [UseRel] else [])
+                            @ post
                         end
                       | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
 
@@ -534,8 +545,8 @@ fun reduce file =
                                 val effs_e' = List.filter (fn x => x <> UseRel) effs_e'
                                 val effs_b = summarize 0 b
 
-                                (*val () = Print.prefaces "Try"
-                                                        [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),
+                                (*val () = Print.fprefaces outf "Try"
+                                                        [(*("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),*)
                                                          ("e'", MonoPrint.p_exp env e'),
                                                          ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
                                                          ("e'_eff", p_events effs_e'),
