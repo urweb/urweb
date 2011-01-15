@@ -3926,6 +3926,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
 
                     val ct = queryOf ()
                     val ct = (L'.CApp (ct, (L'.CRecord ((L'.KRecord (L'.KType, loc), loc), []), loc)), loc)
+                    val ct = (L'.CApp (ct, (L'.CRecord ((L'.KRecord (L'.KType, loc), loc), []), loc)), loc)
                     val ct = (L'.CApp (ct, ts), loc)
                     val ct = (L'.CApp (ct, fs), loc)
                 in
