@@ -3100,28 +3100,33 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                        | ("Onchange", e, _) =>
                                          SOME (strcat [str "addOnChange(d,exec(",
                                                        (L'.EJavaScript (L'.Script, e), loc),
-                                                       str "))"])
+                                                       str "));"])
                                        | (x, e, (L'.TFun ((L'.TRecord [], _), _), _)) =>
                                          SOME (strcat [str ("d." ^ lowercaseFirst x ^ "=exec("),
                                                        (L'.EJavaScript (L'.Script, e), loc),
                                                        str ");"])
                                        | (x, e, _) =>
-                                         let
-                                             val e = (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
-                                                               (L'.EApp ((L'.EApp (liftExpInExp 0 e,
-                                                                                   (L'.EFfiApp ("Basis", "kc", []), loc)),
-                                                                          loc), (L'.ERecord [], loc)), loc)), loc)
-                                         in
-                                             case x of
-                                                 "Onkeyup" =>
-                                                 SOME (strcat [str ("((function(c){addOnKeyUp(d,function(){window.uw_event=window.event;return c();});})(exec("),
-                                                               (L'.EJavaScript (L'.Script, e), loc),
-                                                               str ")));"])
-                                               | _ =>
-                                                 SOME (strcat [str ("((function(c){d." ^ lowercaseFirst x ^ "=function(){window.uw_event=window.event;return c();};})(exec("),
-                                                               (L'.EJavaScript (L'.Script, e), loc),
-                                                               str ")));"])
-                                         end)
+                                         if String.isPrefix "On" x then
+                                             let
+                                                 val e = (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                                                                   (L'.EApp ((L'.EApp (liftExpInExp 0 e,
+                                                                                       (L'.EFfiApp ("Basis", "kc", []), loc)),
+                                                                              loc), (L'.ERecord [], loc)), loc)), loc)
+                                             in
+                                                 case x of
+                                                     "Onkeyup" =>
+                                                     SOME (strcat [str ("((function(c){addOnKeyUp(d,function(){window.uw_event=window.event;return c();});})(exec("),
+                                                                   (L'.EJavaScript (L'.Script, e), loc),
+                                                                   str ")));"])
+                                                   | _ =>
+                                                     SOME (strcat [str ("((function(c){d." ^ lowercaseFirst x ^ "=function(){window.uw_event=window.event;return c();};})(exec("),
+                                                                   (L'.EJavaScript (L'.Script, e), loc),
+                                                                   str ")));"])
+                                             end
+                                         else
+                                             SOME (strcat [str ("d." ^ lowercaseFirst x ^ "=exec("),
+                                                           (L'.EJavaScript (L'.Script, e), loc),
+                                                           str ");"]))
                                      attrs
 
                         val t = (L'.TFfi ("Basis", "string"), loc)
