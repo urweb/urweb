@@ -589,6 +589,13 @@ cst    : UNIQUE tnames                  (let
                                                            end)
                                                        (EVar (["Basis"], "mat_nil", Infer), loc)
                                                        (#1 tnames :: #2 tnames, #1 tnames' :: #2 tnames')
+                                                 handle ListPair.UnequalLengths =>
+                                                        (ErrorMsg.errorAt loc ("Unequal foreign key list lengths ("
+                                                                               ^ Int.toString (1 + length (#2 tnames))
+                                                                               ^ " vs. "
+                                                                               ^ Int.toString (1 + length (#2 tnames'))
+                                                                               ^ ")");
+                                                         (EVar (["Basis"], "mat_nil", Infer), loc))
 
                                              fun findMode mode =
                                                  let
