@@ -74,6 +74,18 @@ install-exec-local:
 	cp src/elisp/*.el $(SITELISP)/
 	-ldconfig
 
+uninstall-local:
+	rm -f $(BIN)/urweb \
+		$(LIB_UR)/basis.urs $(LIB_UR)/char.urs $(LIB_UR)/listPair.urs $(LIB_UR)/list.urs \
+		$(LIB_UR)/monad.urs $(LIB_UR)/option.urs $(LIB_UR)/string.urs $(LIB_UR)/top.urs \
+		$(LIB_UR)/char.ur $(LIB_UR)/listPair.ur $(LIB_UR)/list.ur \
+		$(LIB_UR)/monad.ur $(LIB_UR)/option.ur $(LIB_UR)/string.ur $(LIB_UR)/top.ur \
+		$(LIB_JS)/urweb.js \
+		$(INCLUDE)/config.h $(INCLUDE)/queue.h $(INCLUDE)/request.h $(INCLUDE)/types.h \
+		$(INCLUDE)/urweb.h \
+		$(SITELISP)/urweb-compat.el $(SITELISP)/urweb-mode.el $(SITELISP)/urweb-move.el \
+		$(SITELISP)/urweb-defs.el $(SITELISP)/urweb-mode-startup.el $(SITELISP)/urweb-util.el
+
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz
 
