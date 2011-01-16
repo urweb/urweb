@@ -76,7 +76,7 @@ To begin an interactive session with the Ur compiler modules, run \texttt{make s
 To run an SQL-backed application with a backend besides SQLite, you will probably want to install one of these servers.
 
 \begin{verbatim}
-apt-get install postgresql-8.3 mysql-server-5.0
+apt-get install postgresql-8.4 mysql-server-5.1
 \end{verbatim}
 
 To use the Emacs mode, you must have a modern Emacs installed.  We assume that you already know how to do this, if you're in the business of looking for an Emacs mode.  The demo generation facility of the compiler will also call out to Emacs to syntax-highlight code, and that process depends on the \texttt{htmlize} module, which can be installed in Debian testing via:
@@ -135,6 +135,7 @@ For each entry \texttt{M} in the module list, the file \texttt{M.urs} is include
 Here is the complete list of directive forms.  ``FFI'' stands for ``foreign function interface,'' Ur's facility for interaction between Ur programs and C and JavaScript libraries.
 \begin{itemize}
 \item \texttt{[allow|deny] [url|mime] PATTERN} registers a rule governing which URLs or MIME types are allowed in this application.  The first such rule to match a URL or MIME type determines the verdict.  If \texttt{PATTERN} ends in \texttt{*}, it is interpreted as a prefix rule.  Otherwise, a string must match it exactly.
+\item \texttt{alwaysInline PATH} requests that every call to the referenced function be inlined.  Section \ref{structure} explains how functions are assigned path strings.
 \item \texttt{benignEffectful Module.ident} registers an FFI function or transaction as having side effects.  The optimizer avoids removing, moving, or duplicating calls to such functions.  Every effectful FFI function must be registered, or the optimizer may make invalid transformations.  This version of the \texttt{effectful} directive registers that this function has only session-local side effects.
 \item \texttt{clientOnly Module.ident} registers an FFI function or transaction that may only be run in client browsers.
 \item \texttt{clientToServer Module.ident} adds FFI type \texttt{Module.ident} to the list of types that are OK to marshal from clients to servers.  Values like XML trees and SQL queries are hard to marshal without introducing expensive validity checks, so it's easier to ensure that the server never trusts clients to send such values.  The file \texttt{include/urweb.h} shows examples of the C support functions that are required of any type that may be marshalled.  These include \texttt{attrify}, \texttt{urlify}, and \texttt{unurlify} functions.
@@ -1336,6 +1337,8 @@ The Ur compiler treats $\mt{folder}$ like a constructor class, using built-in ru
 
 \section{The Ur/Web Standard Library}
 
+Some operations are only allowed in server-side code or only in client-side code.  The type system does not enforce such restrictions, but the compiler enforces them in the process of whole-program compilation.  In the discussion below, we note when a set of operations has a location restriction.
+
 \subsection{Monads}
 
 The Ur Basis defines the monad constructor class from Haskell.
@@ -1366,10 +1369,8 @@ $$\begin{array}{l}
 
 \subsection{HTTP}
 
-There are transactions for reading an HTTP header by name and for getting and setting strongly-typed cookies.  Cookies may only be created by the $\mt{cookie}$ declaration form, ensuring that they be named consistently based on module structure.
+There are transactions for reading an HTTP header by name and for getting and setting strongly-typed cookies.  Cookies may only be created by the $\mt{cookie}$ declaration form, ensuring that they be named consistently based on module structure.  For now, cookie operations are server-side only.
 $$\begin{array}{l}
-  \mt{val} \; \mt{requestHeader} : \mt{string} \to \mt{transaction} \; (\mt{option} \; \mt{string}) \\
-  \\
   \mt{con} \; \mt{http\_cookie} :: \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{getCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{transaction} \; (\mt{option} \; \mt{t}) \\
   \mt{val} \; \mt{setCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \{\mt{Value} : \mt{t}, \mt{Expires} : \mt{option} \; \mt{time}, \mt{Secure} : \mt{bool}\} \to \mt{transaction} \; \mt{unit} \\
@@ -1384,7 +1385,7 @@ $$\begin{array}{l}
 \end{array}$$
 $\mt{bless}$ raises a runtime error if the string passed to it fails the URL policy.
 
-It is possible to grab the current page's URL or to build a URL for an arbitrary transaction that would also be an acceptable value of a \texttt{link} attribute of the \texttt{a} tag.
+It is possible to grab the current page's URL or to build a URL for an arbitrary transaction that would also be an acceptable value of a \texttt{link} attribute of the \texttt{a} tag.  These are server-side operations.
 $$\begin{array}{l}
   \mt{val} \; \mt{currentUrl} : \mt{transaction} \; \mt{url} \\
   \mt{val} \; \mt{url} : \mt{transaction} \; \mt{page} \to \mt{url}
@@ -1395,7 +1396,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{redirect} : \mt{t} ::: \mt{Type} \to \mt{url} \to \mt{transaction} \; \mt{t}
 \end{array}$$
 
-It's possible for pages to return files of arbitrary MIME types.  A file can be input from the user using this data type, along with the $\mt{upload}$ form tag.
+It's possible for pages to return files of arbitrary MIME types.  A file can be input from the user using this data type, along with the $\mt{upload}$ form tag.  These functions and those described in the following paragraph are server-side.
 $$\begin{array}{l}
   \mt{type} \; \mt{file} \\
   \mt{val} \; \mt{fileName} : \mt{file} \to \mt{option} \; \mt{string} \\
@@ -1412,6 +1413,8 @@ $$\begin{array}{l}
 \end{array}$$
 
 \subsection{SQL}
+
+Everything about SQL database access is restricted to server-side code.
 
 The fundamental unit of interest in the embedding of SQL is tables, described by a type family and creatable only via the $\mt{table}$ declaration form.
 $$\begin{array}{l}
@@ -1521,49 +1524,53 @@ Section \ref{tables} shows the expanded syntax of the $\mt{table}$ declaration a
 
 \subsubsection{Queries}
 
-A final query is constructed via the $\mt{sql\_query}$ function.  Constructor arguments respectively specify the free table variables (which will only be available in subqueries), table fields we select (as records mapping tables to the subsets of their fields that we choose) and the (always named) extra expressions that we select.
+A final query is constructed via the $\mt{sql\_query}$ function.  Constructor arguments respectively specify the unrestricted free table variables (which will only be available in subqueries), the free table variables that may only be mentioned within arguments to aggregate functions, table fields we select (as records mapping tables to the subsets of their fields that we choose), and the (always named) extra expressions that we select.
 $$\begin{array}{l}
-  \mt{con} \; \mt{sql\_query} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
+  \mt{con} \; \mt{sql\_query} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_query} : \mt{free} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{afree} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{tables} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
   \hspace{.1in} \to [\mt{free} \sim \mt{tables}] \\
-  \hspace{.1in} \Rightarrow \{\mt{Rows} : \mt{sql\_query1} \; \mt{free} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}, \\
+  \hspace{.1in} \Rightarrow \{\mt{Rows} : \mt{sql\_query1} \; \mt{free} \; \mt{afree} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}, \\
   \hspace{.2in} \mt{OrderBy} : \mt{sql\_order\_by} \; (\mt{free} \rc \mt{tables}) \; \mt{selectedExps}, \\
   \hspace{.2in} \mt{Limit} : \mt{sql\_limit}, \\
   \hspace{.2in} \mt{Offset} : \mt{sql\_offset}\} \\
-  \hspace{.1in} \to \mt{sql\_query} \; \mt{free} \; \mt{selectedFields} \; \mt{selectedExps}
+  \hspace{.1in} \to \mt{sql\_query} \; \mt{free} \; \mt{afree} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
 
 Queries are used by folding over their results inside transactions.
 $$\begin{array}{l}
-  \mt{val} \; \mt{query} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to [\mt{tables} \sim \mt{exps}] \Rightarrow \mt{state} ::: \mt{Type} \to \mt{sql\_query} \; [] \; \mt{tables} \; \mt{exps} \\
+  \mt{val} \; \mt{query} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to [\mt{tables} \sim \mt{exps}] \Rightarrow \mt{state} ::: \mt{Type} \to \mt{sql\_query} \; [] \; [] \; \mt{tables} \; \mt{exps} \\
   \hspace{.1in} \to (\$(\mt{exps} \rc \mt{map} \; (\lambda \mt{fields} :: \{\mt{Type}\} \Rightarrow \$\mt{fields}) \; \mt{tables}) \\
   \hspace{.2in} \to \mt{state} \to \mt{transaction} \; \mt{state}) \\
   \hspace{.1in} \to \mt{state} \to \mt{transaction} \; \mt{state}
 \end{array}$$
 
-Most of the complexity of the query encoding is in the type $\mt{sql\_query1}$, which includes simple queries and derived queries based on relational operators.  Constructor arguments respectively specify the free table veriables, the tables we select from, the subset of fields that we keep from each table for the result rows, and the extra expressions that we select.
+Most of the complexity of the query encoding is in the type $\mt{sql\_query1}$, which includes simple queries and derived queries based on relational operators.  Constructor arguments respectively specify the unrestricted free table veriables, the aggregate-only free table variables, the tables we select from, the subset of fields that we keep from each table for the result rows, and the extra expressions that we select.
 $$\begin{array}{l}
-  \mt{con} \; \mt{sql\_query1} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
+  \mt{con} \; \mt{sql\_query1} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
   \\
   \mt{type} \; \mt{sql\_relop} \\
   \mt{val} \; \mt{sql\_union} : \mt{sql\_relop} \\
   \mt{val} \; \mt{sql\_intersect} : \mt{sql\_relop} \\
   \mt{val} \; \mt{sql\_except} : \mt{sql\_relop} \\
-  \mt{val} \; \mt{sql\_relop} : \mt{tables1} ::: \{\{\mt{Type}\}\} \\
+  \mt{val} \; \mt{sql\_relop} : \mt{free} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{afree} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{tables1} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{tables2} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedExps} ::: \{\mt{Type}\} \\
   \hspace{.1in} \to \mt{sql\_relop} \\
-  \hspace{.1in} \to \mt{sql\_query1} \; \mt{tables1} \; \mt{selectedFields} \; \mt{selectedExps} \\
-  \hspace{.1in} \to \mt{sql\_query1} \; \mt{tables2} \; \mt{selectedFields} \; \mt{selectedExps} \\
-  \hspace{.1in} \to \mt{sql\_query1} \; \mt{selectedFields} \; \mt{selectedFields} \; \mt{selectedExps}
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{free} \; \mt{afree} \; \mt{tables1} \; \mt{selectedFields} \; \mt{selectedExps} \\
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{free} \; \mt{afree} \; \mt{tables2} \; \mt{selectedFields} \; \mt{selectedExps} \\
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{free} \; \mt{afree} \; \mt{selectedFields} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
 
 $$\begin{array}{l}
   \mt{val} \; \mt{sql\_query1} : \mt{free} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{afree} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{tables} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{grouped} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{selectedFields} ::: \{\{\mt{Type}\}\} \\
@@ -1571,15 +1578,16 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{empties} :: \{\mt{Unit}\} \\
   \hspace{.1in} \to [\mt{free} \sim \mt{tables}] \\
   \hspace{.1in} \Rightarrow [\mt{free} \sim \mt{grouped}] \\
+  \hspace{.1in} \Rightarrow [\mt{afree} \sim \mt{tables}] \\
   \hspace{.1in} \Rightarrow [\mt{empties} \sim \mt{selectedFields}] \\
   \hspace{.1in} \Rightarrow \{\mt{Distinct} : \mt{bool}, \\
   \hspace{.2in} \mt{From} : \mt{sql\_from\_items} \; \mt{free} \; \mt{tables}, \\
-  \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; (\mt{free} \rc \mt{tables}) \; [] \; [] \; \mt{bool}, \\
+  \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; (\mt{free} \rc \mt{tables}) \; \mt{afree} \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{GroupBy} : \mt{sql\_subset} \; \mt{tables} \; \mt{grouped}, \\
-  \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; \mt{tables} \; [] \; \mt{bool}, \\
+  \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; (\mt{afree} \rc \mt{tables}) \; [] \; \mt{bool}, \\
   \hspace{.2in} \mt{SelectFields} : \mt{sql\_subset} \; \mt{grouped} \; (\mt{map} \; (\lambda \_ \Rightarrow []) \; \mt{empties} \rc \mt{selectedFields}), \\
-  \hspace{.2in} \mt {SelectExps} : \$(\mt{map} \; (\mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; \mt{tables} \; []) \; \mt{selectedExps}) \} \\
-  \hspace{.1in} \to \mt{sql\_query1} \; \mt{free} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}
+  \hspace{.2in} \mt {SelectExps} : \$(\mt{map} \; (\mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; (\mt{afree} \rc \mt{tables}) \; []) \; \mt{selectedExps}) \} \\
+  \hspace{.1in} \to \mt{sql\_query1} \; \mt{free} \; \mt{afree} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
 
 To encode projection of subsets of fields in $\mt{SELECT}$ clauses, and to encode $\mt{GROUP} \; \mt{BY}$ clauses, we rely on a type family $\mt{sql\_subset}$, capturing what it means for one record of table fields to be a subset of another.  The main constructor $\mt{sql\_subset}$ ``proves subset facts'' by requiring a split of a record into kept and dropped parts.  The extra constructor $\mt{sql\_subset\_all}$ is a convenience for keeping all fields of a record.
@@ -1694,13 +1702,15 @@ $$\begin{array}{l}
 $$\begin{array}{l}
   \mt{val} \; \mt{sql\_count\_col} : \mt{t} ::: \mt{Type} \to \mt{sql\_aggregate} \; (\mt{option} \; \mt{t}) \; \mt{int}
 \end{array}$$
+
+Most aggregate functions are typed using a two-parameter constructor class $\mt{nullify}$ which maps $\mt{option}$ types to themselves and adds $\mt{option}$ to others.  That is, this constructor class represents the process of making an SQL type ``nullable.''
  
 $$\begin{array}{l}
   \mt{class} \; \mt{sql\_summable} \\
   \mt{val} \; \mt{sql\_summable\_int} : \mt{sql\_summable} \; \mt{int} \\
   \mt{val} \; \mt{sql\_summable\_float} : \mt{sql\_summable} \; \mt{float} \\
-  \mt{val} \; \mt{sql\_avg} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t} \\
-  \mt{val} \; \mt{sql\_sum} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t}
+  \mt{val} \; \mt{sql\_avg} : \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{nt} \\
+  \mt{val} \; \mt{sql\_sum} : \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{nt}
 \end{array}$$
 
 $$\begin{array}{l}
@@ -1709,15 +1719,15 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_maxable\_float} : \mt{sql\_maxable} \; \mt{float} \\
   \mt{val} \; \mt{sql\_maxable\_string} : \mt{sql\_maxable} \; \mt{string} \\
   \mt{val} \; \mt{sql\_maxable\_time} : \mt{sql\_maxable} \; \mt{time} \\
-  \mt{val} \; \mt{sql\_max} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t} \\
-  \mt{val} \; \mt{sql\_min} : \mt{t} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{t}
+  \mt{val} \; \mt{sql\_max} : \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{nt} \\
+  \mt{val} \; \mt{sql\_min} : \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{nt}
 \end{array}$$
 
 Any SQL query that returns single columns may be turned into a subquery expression.
 
 $$\begin{array}{l}
 \mt{val} \; \mt{sql\_subquery} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{nm} ::: \mt{Name} \to \mt{t} ::: \mt{Type} \\
-\hspace{.1in} \to \mt{sql\_query} \; \mt{tables} \; [] \; [\mt{nm} = \mt{t}] \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+\hspace{.1in} \to \mt{sql\_query} \; \mt{tables} \; \mt{agg} \; [\mt{nm} = \mt{t}] \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
 \end{array}$$
 
 \texttt{FROM} clauses are specified using a type family, whose arguments are the free table variables and the table variables bound by this clause.
@@ -1882,6 +1892,8 @@ Ur/Web supports running code on web browsers, via automatic compilation to JavaS
 
 \subsubsection{The Basics}
 
+All of the functions in this subsection are client-side only.
+
 Clients can open alert and confirm dialog boxes, in the usual annoying JavaScript way.
 $$\begin{array}{l}
   \mt{val} \; \mt{alert} : \mt{string} \to \mt{transaction} \; \mt{unit} \\
@@ -1918,7 +1930,9 @@ $$\begin{array}{l}
   \mt{val} \; \mt{get} : \mt{t} ::: \mt{Type} \to \mt{source} \; \mt{t} \to \mt{transaction} \; \mt{t}
 \end{array}$$
 
-Pure functions over sources are represented in a monad of \emph{signals}.
+Only source creation and setting are supported server-side, as a convenience to help in setting up a page, where you may wish to allocate many sources that will be referenced through the page.  All server-side storage of values inside sources uses string serializations of values, while client-side storage uses normal JavaScript values.
+
+Pure functions over arbitrary numbers of sources are represented in a monad of \emph{signals}, which may only be used in client-side code.
 
 $$\begin{array}{l}
   \mt{con} \; \mt{signal} :: \mt{Type} \to \mt{Type} \\

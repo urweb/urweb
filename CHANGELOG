@@ -1,4 +1,32 @@
 ========
+Next
+========
+
+- Changes to encoding of SQL aggregate functions: nullable types may be
+  aggregated, and non-COUNT aggregates return nullable results.
+- SQL subqueries may apply aggregate functions to columns bound in enclosing
+  queries.
+- Switch from libmhash to OpenSSL.
+- 'cdataChar', for injecting arbitrary character codes into XML
+- 'crypt', for access to the standard UNIX password encryption routine
+- 'readUtc', for parsing time strings in the UTC time zone
+- Built-in 'time' type now stores microseconds (which for now are only used in
+  connection with Postgres timestamps).
+- Client-side URL blessing and redirection
+- 'currentUrlHasPost' function
+- Transactional 'free' functions now passed an argument indicating whether the
+  runtime system expects to retry the transaction.
+- Change tasks to allow task kind-specific inputs
+- Add 'clientLeaves' and 'periodic' task kinds
+- Support for externally-callable pages, via the 'postBody' and 'queryString'
+  types and the 'effectfulUrl' function
+- 'minHeap' and 'alwaysInline' .urp options
+- '-prefix' command-line option
+- Comments in .urp files (lines starting with '#')
+- Miscellaneous additions to the standard library
+- Bug fixes and improvements to type inference and optimization
+
+========
 20101102
 ========
 
