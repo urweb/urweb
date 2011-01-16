@@ -2947,7 +2947,7 @@ uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, siz
   return b;
 }
 
-#define THE_PAST "expires=Mon, 01-01-1970 00:00:00 GMT"
+#define THE_PAST "expires=Sat, 01-Jan-2011 00:00:00 GMT"
 
 uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   int len = strlen(c);
