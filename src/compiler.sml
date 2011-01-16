@@ -1295,7 +1295,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                       ^ " " ^ #compile proto
                       ^ " -c " ^ cname ^ " -o " ^ oname
 
-        val link = "gcc -Werror -O3 -lm -lcrypt -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ lib ^ " " ^ Config.openssl ^ " " ^ oname
+        val link = "gcc -Werror -O3 -lm -pthread " ^ Config.gccArgs ^ " " ^ libs ^ " " ^ lib ^ " " ^ Config.openssl ^ " " ^ oname
                    ^ " -o " ^ ename
 
         val (compile, link) =

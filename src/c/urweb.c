@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <crypt.h>
+#include <openssl/des.h>
 #include <time.h>
 
 #include <pthread.h>
@@ -3697,15 +3697,8 @@ failure_kind uw_runCallback(uw_context ctx, void (*callback)(uw_context)) {
 }
 
 uw_Basis_string uw_Basis_crypt(uw_context ctx, uw_Basis_string key, uw_Basis_string salt) {
-  struct crypt_data *data;
-
-  if ((data = uw_get_global(ctx, "crypt")) == NULL) {
-    data = malloc(sizeof(struct crypt_data));
-    data->initialized = 0;
-    uw_set_global(ctx, "crypt", data, free);
-  }
-
-  return uw_strdup(ctx, crypt_r(key, salt, data));
+  char buf[14];
+  return uw_strdup(ctx, DES_fcrypt(key, salt, buf));
 }
 
 uw_Basis_bool uw_Basis_eq_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {
