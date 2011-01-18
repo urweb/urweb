@@ -1923,6 +1923,8 @@ $$\begin{array}{l}
 
 Most approaches to ``AJAX''-style coding involve imperative manipulation of the DOM tree representing an HTML document's structure.  Ur/Web follows the \emph{functional-reactive} approach instead.  Programs may allocate mutable \emph{sources} of arbitrary types, and an HTML page is effectively a pure function over the latest values of the sources.  The page is not mutated directly, but rather it changes automatically as the sources are mutated.
 
+More operationally, you can think of a source as a mutable cell with facilities for subscription to change notifications.  That level of detail is hidden behind a monadic facility to be described below.  First, there are three primitive operations for working with sources just as if they were ML \cd{ref} cells, corresponding to ML's \cd{ref}, \cd{:=}, and \cd{!} operations.
+
 $$\begin{array}{l}
   \mt{con} \; \mt{source} :: \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{source} : \mt{t} ::: \mt{Type} \to \mt{t} \to \mt{transaction} \; (\mt{source} \; \mt{t}) \\
@@ -1932,7 +1934,7 @@ $$\begin{array}{l}
 
 Only source creation and setting are supported server-side, as a convenience to help in setting up a page, where you may wish to allocate many sources that will be referenced through the page.  All server-side storage of values inside sources uses string serializations of values, while client-side storage uses normal JavaScript values.
 
-Pure functions over arbitrary numbers of sources are represented in a monad of \emph{signals}, which may only be used in client-side code.
+Pure functions over arbitrary numbers of sources are represented in a monad of \emph{signals}, which may only be used in client-side code.  This is presented to the programmer in the form of a monad $\mt{signal}$, each of whose values represents (conceptually) some pure function over all sources that may be allocated in the course of program execution.  A monad operation $\mt{signal}$ denotes the identity function over a particular source.  By using $\mt{signal}$ on a source, you implicitly subscribe to change notifications for that source.  That is, your signal will automatically be recomputed as that source changes.  The usual monad operators make it possible to build up complex signals that depend on multiple sources; automatic updating upon source-value changes still happens automatically.
 
 $$\begin{array}{l}
   \mt{con} \; \mt{signal} :: \mt{Type} \to \mt{Type} \\
