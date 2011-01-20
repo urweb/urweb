@@ -241,7 +241,6 @@ static client *find_client(unsigned id) {
 }
 
 static char *on_success = "HTTP/1.1 200 OK\r\n";
-static char *on_redirect = "HTTP/1.1 303 See Other\r\n";
 
 void uw_set_on_success(char *s) {
   on_success = s;
@@ -3404,7 +3403,7 @@ __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) 
   ctx->page.start[uw_buffer_used(&ctx->outHeaders)] = 0;
   uw_buffer_reset(&ctx->outHeaders);
 
-  uw_write_header(ctx, on_redirect);
+  uw_write_header(ctx, on_success);
 
   s = strchr(ctx->page.start, '\n');
   if (s) {
@@ -3742,7 +3741,7 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
       if (ctx->app->db_begin(ctx))
         uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
 
-      uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\r\n");
+      uw_write_header(ctx, "Status: 500 Internal Server Error\r\n");
       uw_write_header(ctx, "Content-type: text/html\r\n\r\n");
       uw_write(ctx, begin_xhtml);
       ctx->app->on_error(ctx, msg);

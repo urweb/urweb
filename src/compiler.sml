@@ -337,7 +337,8 @@ fun institutionalizeJob (job : job) =
      Option.app Settings.setDbms (#dbms job);
      Settings.setSafeGets (#safeGets job);
      Settings.setOnError (#onError job);
-     Settings.setMinHeap (#minHeap job))
+     Settings.setMinHeap (#minHeap job);
+     Settings.setSigFile (#sigFile job))
 
 fun inputCommentableLine inf =
     Option.map (fn s =>
