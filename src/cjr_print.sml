@@ -2991,6 +2991,20 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
+             string "static const char begin_xhtml[] = \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" ?>\\n<!DOCTYPE html PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional//EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">\\n<html xmlns=\\\"http://www.w3.org/1999/xhtml\\\" xml:lang=\\\"en\\\" lang=\\\"en\\\">\";",
+             newline,
+             newline,
+
+             p_list_sep newline (fn x => x) pds,
+             newline,
+             newline,
+             string "static int uw_input_num(const char *name) {",
+             newline,
+             makeSwitch (fnums, 0),
+             string "}",
+             newline,
+             newline,
+
              box (ListUtil.mapi (fn (i, (_, x1, x2, e)) =>
                                     box [string "static void uw_periodic",
                                          string (Int.toString i),
@@ -3018,20 +3032,6 @@ fun p_file env (ds, ps) =
                                          string (Int64.toString n),
                                          string "},"]) periodics),
              string "{NULL}};",
-             newline,
-             newline,
-
-             string "static const char begin_xhtml[] = \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" ?>\\n<!DOCTYPE html PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional//EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">\\n<html xmlns=\\\"http://www.w3.org/1999/xhtml\\\" xml:lang=\\\"en\\\" lang=\\\"en\\\">\";",
-             newline,
-             newline,
-
-             p_list_sep newline (fn x => x) pds,
-             newline,
-             newline,
-             string "static int uw_input_num(const char *name) {",
-             newline,
-             makeSwitch (fnums, 0),
-             string "}",
              newline,
              newline,
 

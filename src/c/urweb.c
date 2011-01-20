@@ -728,22 +728,6 @@ failure_kind uw_begin(uw_context ctx, char *path) {
   return r;
 }
 
-failure_kind uw_begin_onError(uw_context ctx, char *msg) {
-  int r = setjmp(ctx->jmp_buf);
-
-  if (ctx->app->on_error) {
-    if (r == 0) {
-      if (ctx->app->db_begin(ctx))
-        uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
-
-      ctx->app->on_error(ctx, msg);
-    }
-
-    return r;
-  } else
-    uw_error(ctx, FATAL, "Tried to run nonexistent onError handler");
-}
-
 uw_Basis_client uw_Basis_self(uw_context ctx) {
   if (ctx->client == NULL)
     uw_error(ctx, FATAL, "Call to Basis.self() from page that has only server-side code");
@@ -3746,4 +3730,26 @@ uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
   }
   else
     return NULL;
+}
+
+static const char begin_xhtml[] = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">";
+
+failure_kind uw_begin_onError(uw_context ctx, char *msg) {
+  int r = setjmp(ctx->jmp_buf);
+
+  if (ctx->app->on_error) {
+    if (r == 0) {
+      if (ctx->app->db_begin(ctx))
+        uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+
+      uw_write_header(ctx, "HTTP/1.1 500 Internal Server Error\r\n");
+      uw_write_header(ctx, "Content-type: text/html\r\n\r\n");
+      uw_write(ctx, begin_xhtml);
+      ctx->app->on_error(ctx, msg);
+      uw_write(ctx, "</html>");
+    }
+
+    return r;
+  } else
+    uw_error(ctx, FATAL, "Tried to run nonexistent onError handler");
 }

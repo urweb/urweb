@@ -4012,7 +4012,8 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                          val xpage = (L'.CApp ((L'.CModProj (!basis_r, [], "transaction"), loc), page), loc)
                          val func = (L'.TFun ((L'.CModProj (!basis_r, [], "xbody"), loc), xpage), loc)
                      in
-                         unifyCons env loc t func;
+                         (unifyCons env loc t func
+                          handle CUnify _ => ErrorMsg.error "onError handler has wrong type.");
                          ([(L'.DOnError (n, ms, s), loc)], (env, denv, gs))
                      end)
 
