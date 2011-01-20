@@ -276,7 +276,7 @@ fun queryXI [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {T
               | x :: ls => <xml>{f i x}{qxi ls (i+1)}</xml>
     in
         ls <- queryL q;
-        return (qxi ls 0)
+        return (qxi (rev ls) 0)
     end
 
 fun queryX1 [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
@@ -296,7 +296,7 @@ fun queryX1I [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
               | x :: ls => <xml>{f i x.nm}{qx1i ls (i+1)}</xml>
     in
         ls <- queryL q;
-        return (qx1i ls 0)
+        return (qx1i (rev ls) 0)
     end
 
 fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
