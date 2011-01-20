@@ -241,6 +241,7 @@ static client *find_client(unsigned id) {
 }
 
 static char *on_success = "HTTP/1.1 200 OK\r\n";
+static char *on_redirect = "HTTP/1.1 303 See Other\r\n";
 
 void uw_set_on_success(char *s) {
   on_success = s;
@@ -3403,12 +3404,15 @@ __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) 
   ctx->page.start[uw_buffer_used(&ctx->outHeaders)] = 0;
   uw_buffer_reset(&ctx->outHeaders);
 
-  uw_write_header(ctx, on_success);
-
-  s = strchr(ctx->page.start, '\n');
+  if (on_success[0])
+    uw_write_header(ctx, on_redirect);
+  else
+    uw_write_header(ctx, "Status: 303 See Other\r\n");
+  s = on_success[0] ? strchr(ctx->page.start, '\n') : ctx->page.start;
   if (s) {
     char *s2;
-    for (++s; (s2 = strchr(s, '\n')); s = s2+1) {
+    if (s[0] == '\n') ++s;
+    for (; (s2 = strchr(s, '\n')); s = s2+1) {
       *s2 = 0;
       if (!strncmp(s, "Set-Cookie: ", 12)) {
         uw_write_header(ctx, s);
@@ -3741,7 +3745,12 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
       if (ctx->app->db_begin(ctx))
         uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
 
-      uw_write_header(ctx, "Status: 500 Internal Server Error\r\n");
+      uw_buffer_reset(&ctx->outHeaders);
+      if (on_success[0])
+        uw_write_header(ctx, "HTTP/1.1 ");
+      else
+        uw_write_header(ctx, "Status: ");
+      uw_write_header(ctx, "500 Internal Server Error\r\n");
       uw_write_header(ctx, "Content-type: text/html\r\n\r\n");
       uw_write(ctx, begin_xhtml);
       ctx->app->on_error(ctx, msg);
