@@ -255,12 +255,49 @@ fun queryX [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Ty
           (fn fs acc => return <xml>{acc}{f fs}</xml>)
           <xml/>
 
+fun rev [a] (ls : list a) : list a =
+    let
+        fun rev' ls acc =
+            case ls of
+                [] => acc
+              | x :: ls => rev' ls (x :: acc)
+    in
+        rev' ls []
+    end
+
+fun queryXI [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
+            [tables ~ exps] (q : sql_query [] [] tables exps)
+            (f : int -> $(exps ++ map (fn fields :: {Type} => $fields) tables)
+                 -> xml ctx inp []) =
+    let
+        fun qxi ls i =
+            case ls of
+                [] => <xml/>
+              | x :: ls => <xml>{f i x}{qxi ls (i+1)}</xml>
+    in
+        ls <- queryL q;
+        return (qxi ls 0)
+    end
+
 fun queryX1 [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
             (q : sql_query [] [] [nm = fs] [])
             (f : $fs -> xml ctx inp []) =
     query q
           (fn fs acc => return <xml>{acc}{f fs.nm}</xml>)
           <xml/>
+
+fun queryX1I [nm ::: Name] [fs ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
+             (q : sql_query [] [] [nm = fs] [])
+             (f : int -> $fs -> xml ctx inp []) =
+    let
+        fun qx1i ls i =
+            case ls of
+                [] => <xml/>
+              | x :: ls => <xml>{f i x.nm}{qx1i ls (i+1)}</xml>
+    in
+        ls <- queryL q;
+        return (qx1i ls 0)
+    end
 
 fun queryX' [tables ::: {{Type}}] [exps ::: {Type}] [ctx ::: {Unit}] [inp ::: {Type}]
             [tables ~ exps] (q : sql_query [] [] tables exps)

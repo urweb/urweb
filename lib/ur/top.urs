@@ -164,10 +164,22 @@ val queryX : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp :::
                  -> xml ctx inp [])
              -> transaction (xml ctx inp [])
 
+val queryXI : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
+              -> [tables ~ exps] =>
+    sql_query [] [] tables exps
+    -> (int -> $(exps ++ map (fn fields :: {Type} => $fields) tables)
+        -> xml ctx inp [])
+    -> transaction (xml ctx inp [])
+
 val queryX1 : nm ::: Name -> fs ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
               -> sql_query [] [] [nm = fs] []
               -> ($fs -> xml ctx inp [])
               -> transaction (xml ctx inp [])
+
+val queryX1I : nm ::: Name -> fs ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
+               -> sql_query [] [] [nm = fs] []
+               -> (int -> $fs -> xml ctx inp [])
+               -> transaction (xml ctx inp [])
 
 val queryX' : tables ::: {{Type}} -> exps ::: {Type} -> ctx ::: {Unit} -> inp ::: {Type}
               -> [tables ~ exps] =>
