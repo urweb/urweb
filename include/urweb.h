@@ -123,6 +123,7 @@ uw_unit uw_Basis_urlifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_urlifyFloat_w(uw_context, uw_Basis_float);
 uw_unit uw_Basis_urlifyString_w(uw_context, uw_Basis_string);
 uw_unit uw_Basis_urlifyBool_w(uw_context, uw_Basis_bool);
+uw_unit uw_Basis_urlifyTime_w(uw_context, uw_Basis_time);
 uw_unit uw_Basis_urlifyChannel_w(uw_context, uw_Basis_channel);
 
 uw_Basis_unit uw_Basis_unurlifyUnit(uw_context ctx, char **s);

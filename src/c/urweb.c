@@ -1773,6 +1773,10 @@ uw_Basis_string uw_Basis_urlifyTime(uw_context ctx, uw_Basis_time t) {
   return uw_Basis_urlifyInt(ctx, (uw_Basis_int)t.seconds * 1000000 + t.microseconds);
 }
 
+uw_unit uw_Basis_urlifyTime_w(uw_context ctx, uw_Basis_time t) {
+  return uw_Basis_urlifyInt_w(ctx, (uw_Basis_int)t.seconds * 1000000 + t.microseconds);
+}
+
 uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
   if (s[0] == '\0') {
     uw_check(ctx, 1);
