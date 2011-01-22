@@ -2842,7 +2842,10 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
     *dot = 0;
     if (strptime(s, TIME_FMT_PG, &stm)) {
       *dot = '.';
-      uw_Basis_time r = { mktime(&stm), atoi(dot+1) };
+      char usec[] = "000000";
+      int len = strlen(dot+1);
+      memcpy(usec, dot+1, len < 6 ? len : 6);
+      uw_Basis_time r = { mktime(&stm), atoi(usec) };
       return r;
     }
     else {
