@@ -134,6 +134,8 @@ static int write_stdout(void *data, const char *buf, size_t len) {
   return 0;
 }
 
+#include <errno.h>
+
 static void write_stderr(FCGI_Output *o, const char *fmt, ...) {
   int len;
   va_list ap;
@@ -167,6 +169,24 @@ static void log_error(void *data, const char *fmt, ...) {
 }
 
 static void log_debug(void *data, const char *fmt, ...) {
+  FCGI_Output *o = (FCGI_Output *)data;
+  va_list ap;
+  va_start(ap, fmt);
+
+  if (o) {
+    strcpy((char *)o->r.contentData, "DEBUG: ");
+    int len = vsnprintf((char *)o->r.contentData + 7, 65535 - 7, fmt, ap);
+    if (len < 0)
+      fprintf(stderr, "vsnprintf() failed in log_debug().\n");
+    else if (fastcgi_send(o, FCGI_STDERR, len + 7)) {
+      len += 7;
+      if (len >= 65535) len = 65534;
+      o->r.contentData[len] = 0;
+      fputs((char *)o->r.contentData, stderr);
+      fflush(stderr);
+    }
+  } else
+    vfprintf(stderr, fmt, ap);
 }
 
 typedef struct {
