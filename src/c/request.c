@@ -414,8 +414,6 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     }
   }
 
-  log_debug(logger_data, "Serving URI %s....\n", path);
-
   while (1) {
     uw_setQueryString(ctx, rc->queryString);
 

@@ -192,6 +192,7 @@ static void *worker(void *data) {
 
         uw_set_headers(ctx, get_header, headers);
 
+        printf("Serving URI %s....\n", path);
         rr = uw_request(rc, ctx, method, path, query_string, body, back - body,
                         on_success, on_failure,
                         NULL, log_error, log_debug,
