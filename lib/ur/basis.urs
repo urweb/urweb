@@ -710,7 +710,8 @@ val img : bodyTag ([Src = url, Width = int, Height = int,
           
 val form : ctx ::: {Unit} -> bind ::: {Type}
            -> [[Body, Form, Table] ~ ctx] =>
-    xml ([Body, Form] ++ ctx) [] bind
+    option css_class
+    -> xml ([Body, Form] ++ ctx) [] bind
     -> xml ([Body] ++ ctx) [] []
        
 val subform : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}

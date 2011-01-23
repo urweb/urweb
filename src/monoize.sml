@@ -3390,10 +3390,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                    | _ => normal (tag, NONE, NONE))
             end
 
-          | L.EApp ((L.ECApp (
-                     (L.ECApp ((L.EFfi ("Basis", "form"), _), _), _),
-                     (L.CRecord (_, fields), _)), _),
-                    xml) =>
+          | L.EApp (
+            (L.EApp ((L.ECApp (
+                      (L.ECApp ((L.EFfi ("Basis", "form"), _), _), _),
+                      (L.CRecord (_, fields), _)), _),
+                     class), _),
+            xml) =>
             let
                 fun findSubmit (e, _) =
                     case e of
@@ -3518,6 +3520,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              else
                                  action
 
+                val stt = (L'.TFfi ("Basis", "string"), loc)
+                val (class, fm) = monoExp (env, st, fm) class
+                val action = (L'.EStrcat (action,
+                                          (L'.ECase (class,
+                                                     [((L'.PNone stt, loc),
+                                                       (L'.EPrim (Prim.String ""), loc)),
+                                                      ((L'.PSome (stt, (L'.PVar ("x", stt), loc)), loc),
+                                                       (L'.EStrcat ((L'.EPrim (Prim.String " class=\""), loc),
+                                                                    (L'.EStrcat ((L'.ERel 0, loc),
+                                                                                 (L'.EPrim (Prim.String "\""), loc)), loc)), loc))],
+                                                     {disc = (L'.TOption stt, loc),
+                                                      result = stt}), loc)), loc)
             in
                 ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form method=\"post\""), loc),
                                            (L'.EStrcat (action,
