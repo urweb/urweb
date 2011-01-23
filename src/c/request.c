@@ -200,6 +200,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   int had_error = 0;
   char errmsg[ERROR_BUF_LEN];
 
+  uw_reset(ctx);
   rc->queryString[0] = 0;
 
   for (s = path; *s; ++s) {
