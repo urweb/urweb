@@ -462,8 +462,10 @@ uw_context uw_init(void *logger_data, uw_logger log_debug) {
   ctx->get_header = NULL;
   ctx->get_header_data = NULL;
 
-  uw_buffer_init(uw_headers_max, &ctx->outHeaders, 0);
-  uw_buffer_init(uw_page_max, &ctx->page, 0);
+  uw_buffer_init(uw_headers_max, &ctx->outHeaders, 1);
+  ctx->outHeaders.start[0] = 0;
+  uw_buffer_init(uw_page_max, &ctx->page, 1);
+  ctx->page.start[0] = 0;
   ctx->returning_indirectly = 0;
   uw_buffer_init(uw_heap_max, &ctx->heap, uw_min_heap);
   uw_buffer_init(uw_script_max, &ctx->script, 1);
@@ -1498,10 +1500,11 @@ static void uw_check(uw_context ctx, size_t extra) {
 
 static void uw_writec_unsafe(uw_context ctx, char c) {
   *(ctx->page.front)++ = c;
+  *ctx->page.front = 0;
 }
 
 void uw_writec(uw_context ctx, char c) {
-  uw_check(ctx, 1);
+  uw_check(ctx, 2);
   uw_writec_unsafe(ctx, c);
 }
 
@@ -3143,6 +3146,9 @@ void uw_commit(uw_context ctx) {
   for (i = ctx->used_transactionals-1; i >= 0; --i)
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+
+  if (*ctx->page.front)
+    uw_writec(ctx, 0);
 
   // Splice script data into appropriate part of page
   if (ctx->returning_indirectly || ctx->script_header[0] == 0) {
