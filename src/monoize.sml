@@ -2558,7 +2558,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "sql_relop"), _),
+                (L.ECApp (
+                 (L.EFfi ("Basis", "sql_relop"), _),
+                 _), _),
                 _), _),
                _), _),
               _), _),
