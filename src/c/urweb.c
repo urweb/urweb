@@ -3684,15 +3684,12 @@ uw_Basis_postBody uw_getPostBody(uw_context ctx) {
 failure_kind uw_runCallback(uw_context ctx, void (*callback)(uw_context)) {
   int r = setjmp(ctx->jmp_buf);
 
-  if (ctx->app->db_begin(ctx))
-    uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
-
   if (r == 0) {
+    if (ctx->app->db_begin(ctx))
+      uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+
     callback(ctx);
-    uw_commit(ctx);
   }
-  else
-    uw_rollback(ctx, 0);
 
   return r;
 }

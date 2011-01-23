@@ -96,10 +96,26 @@ static void *periodic_loop(void *data) {
     exit(1);
 
   while (1) {
+    int retries_left = MAX_RETRIES;
+
     failure_kind r;
     do {
+      uw_reset(ctx);
       r = uw_runCallback(ctx, p->pdic.callback);
-    } while (r == UNLIMITED_RETRY);
+      if (r == BOUNDED_RETRY)
+        --retries_left;
+      else if (r == UNLIMITED_RETRY)
+        p->ls->log_debug(p->ls->logger_data, "Error triggers unlimited retry in periodic: %s\n", uw_error_message(ctx));
+      else if (r == BOUNDED_RETRY)
+        p->ls->log_debug(p->ls->logger_data, "Error triggers bounded retry in periodic: %s\n", uw_error_message(ctx));
+      else if (r == FATAL)
+        p->ls->log_error(p->ls->logger_data, "Fatal error: %s\n", uw_error_message(ctx));
+      if (r == FATAL || r == BOUNDED_RETRY || r == UNLIMITED_RETRY)
+        try_rollback(ctx, 0, p->ls->logger_data, p->ls->log_error);
+    } while (r == UNLIMITED_RETRY || (r == BOUNDED_RETRY && retries_left > 0));
+
+    if (r != FATAL && r != BOUNDED_RETRY)
+      uw_commit(ctx);
 
     sleep(p->pdic.period);
   };
