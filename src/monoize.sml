@@ -2796,7 +2796,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "sql_subquery"), _),
+                (L.ECApp (
+                 (L.EFfi ("Basis", "sql_subquery"), _),
+                 _), _),
                 _), _),
                _), _),
               _), _),
@@ -2806,10 +2808,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
             in
-                ((L'.EAbs ("x", s, s,
-                           strcat [sc "(",
-                                   (L'.ERel 0, loc),
-                                   sc ")"]), loc),
+                ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun (s, s), loc),
+                           (L'.EAbs ("x", s, s,
+                                     strcat [sc "(",
+                                             (L'.ERel 0, loc),
+                                             sc ")"]), loc)), loc),
                  fm)
             end
 

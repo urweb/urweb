@@ -529,9 +529,10 @@ val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} ->
                    -> sql_exp tables agg exps t
                    -> sql_exp tables agg exps (option t)
 
-val sql_subquery : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> nm ::: Name -> t ::: Type
+val sql_subquery : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> nm ::: Name -> t ::: Type -> nt ::: Type
+                   -> nullify t nt
                    -> sql_query tables agg [] [nm = t]
-                   -> sql_exp tables agg exps t
+                   -> sql_exp tables agg exps nt
 
 (*** Executing queries *)
 
