@@ -1186,6 +1186,18 @@ fun process file =
                      ((EUnurlify (e, t, b), loc), st)
                  end
 
+               | EJavaScript (m as Source t, e') =>
+                 (foundJavaScript := true;
+                  let
+                      val (x', st) = jsExp m (t :: outer) ((ERel 0, loc), st)
+                  in
+                      ((ELet ("x", t, e', x'), loc), st)
+                  end
+                  handle CantEmbed t => ((*ErrorMsg.errorAt loc "Unable to embed type in JavaScript";
+                                         Print.preface ("Type",
+                                                        MonoPrint.p_typ MonoEnv.empty t);*)
+                                         (e, st)))
+
                | EJavaScript (m, e') =>
                  (foundJavaScript := true;
                   jsExp m outer (e', st)

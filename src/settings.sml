@@ -139,7 +139,8 @@ val benignBase = basis ["get_cookie",
                         "kc",
                         "debug",
                         "naughtyDebug",
-                        "rand"]
+                        "rand",
+                        "now"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
