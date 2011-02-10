@@ -76,7 +76,7 @@ fun impure (e, _) =
       | EDml _ => true
       | ENextval _ => true
       | ESetval _ => true
-      | EUnurlify _ => false
+      | EUnurlify (e, _, _) => impure e
       | EAbs _ => false
 
       | EPrim _ => false
@@ -395,6 +395,10 @@ fun reduce file =
                       | EFfi _ => []
                       | EFfiApp ("Basis", "get_cookie", [e]) =>
                         summarize d e @ [ReadCookie]
+                      | EFfiApp ("Basis", "set_cookie", es) =>
+                        List.concat (map (summarize d) es) @ [WriteCookie]
+                      | EFfiApp ("Basis", "clear_cookie", es) =>
+                        List.concat (map (summarize d) es) @ [WriteCookie]
                       | EFfiApp (m, x, es) =>
                         if Settings.isEffectful (m, x) orelse Settings.isBenignEffectful (m, x) then
                             List.concat (map (summarize d) es) @ [if m = "Basis" andalso String.isSuffix "_w" x then
@@ -523,8 +527,8 @@ fun reduce file =
                                 val r = subExpInExp (0, e') b
                             in
                                 (*Print.prefaces "doSub" [("e'", MonoPrint.p_exp env e'),
-                                                          ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
-                                                          ("r", MonoPrint.p_exp env r)];*)
+                                                        ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
+                                                        ("r", MonoPrint.p_exp env r)];*)
                                 #1 (reduceExp env r)
                             end
 
