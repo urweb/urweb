@@ -51,6 +51,7 @@ datatype select =
 
 datatype group_item =
          GField of con * con
+       | GFields of con * con
 
 fun eqTnames ((c1, _), (c2, _)) =
     case (c1, c2) of
@@ -107,13 +108,14 @@ fun amend_group loc (gi, tabs) =
     let
         val (tx, c) = case gi of
                           GField (tx, fx) => (tx, (CRecord ([(fx, (CWild (KType, loc), loc))]), loc))
+                        | GFields (tx, fxs) => (tx, fxs)
 
         val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
                                                   if eqTnames (tx, tx') then
                                                       ((tx', (CConcat (c, c'), loc)), true)
                                                   else
                                                       ((tx', c'), found))
-                            false tabs
+                                              false tabs
     in
         if found then
             ()
@@ -1871,6 +1873,7 @@ wopt   :                                (sql_inject (EVar (["Basis"], "True", In
        | CWHERE sqlexp                  (sqlexp)
 
 groupi : tident DOT fident              (GField (tident, fident))
+       | tident DOT LBRACE LBRACE cexp RBRACE RBRACE (GFields (tident, cexp))
 
 groupis: groupi                         ([groupi])
        | groupi COMMA groupis           (groupi :: groupis)
