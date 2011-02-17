@@ -58,6 +58,12 @@ fun eqTnames ((c1, _), (c2, _)) =
       | (CName x1, CName x2) => x1 = x2
       | _ => false
 
+fun nameString (c, _) =
+    case c of
+        CName s => s
+      | CVar (_, x) => x
+      | _ => "?"
+
 fun amend_select loc (si, (count, tabs, exps)) =
     case si of
         Field (tx, fx) =>
@@ -74,7 +80,7 @@ fun amend_select loc (si, (count, tabs, exps)) =
             if found then
                 ()
             else
-                ErrorMsg.errorAt loc "Select of field from unbound table";
+                ErrorMsg.errorAt loc ("Select of field " ^ nameString fx ^ " from unbound table " ^ nameString tx);
             
             (count, tabs, exps)
         end
