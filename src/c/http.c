@@ -162,7 +162,8 @@ static void *worker(void *data) {
         headers = s + 2;
         method = s = buf;
 
-        if (!strsep(&s, " ")) {
+        strsep(&s, " ");
+        if (!s) {
           fprintf(stderr, "No first space in HTTP command\n");
           close(sock);
           goto done;
