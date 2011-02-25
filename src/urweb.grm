@@ -145,10 +145,11 @@ fun sql_unary (oper, sqlexp, loc) =
         (EApp (e, sqlexp), loc)
     end
 
-fun sql_relop (oper, sqlexp1, sqlexp2, loc) =
+fun sql_relop (oper, all, sqlexp1, sqlexp2, loc) =
     let
         val e = (EVar (["Basis"], "sql_relop", Infer), loc)
         val e = (EApp (e, (EVar (["Basis"], "sql_" ^ oper, Infer), loc)), loc)
+        val e = (EApp (e, (EVar (["Basis"], if all then "True" else "False", Infer), loc)), loc)
         val e = (EApp (e, sqlexp1), loc)
     in
         (EApp (e, sqlexp2), loc)
@@ -403,7 +404,7 @@ fun tnamesOf (e, _) =
 %left ORELSE
 %nonassoc COLON
 %nonassoc DCOLON TCOLON DCOLONWILD TCOLONWILD
-%left UNION INTERSECT EXCEPT
+%left UNION INTERSECT EXCEPT ALL
 %right COMMA
 %right JOIN INNER CROSS OUTER LEFT RIGHT FULL
 %right OR
@@ -1600,9 +1601,12 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                          in
                                              e
                                          end)
-       | query1 UNION query1            (sql_relop ("union", query11, query12, s (query11left, query12right)))
-       | query1 INTERSECT query1        (sql_relop ("intersect", query11, query12, s (query11left, query12right)))
-       | query1 EXCEPT query1           (sql_relop ("except", query11, query12, s (query11left, query12right)))
+       | query1 UNION query1            (sql_relop ("union", false, query11, query12, s (query11left, query12right)))
+       | query1 INTERSECT query1        (sql_relop ("intersect", false, query11, query12, s (query11left, query12right)))
+       | query1 EXCEPT query1           (sql_relop ("except", false, query11, query12, s (query11left, query12right)))
+       | query1 UNION ALL query1        (sql_relop ("union", true, query11, query12, s (query11left, query12right)))
+       | query1 INTERSECT ALL query1    (sql_relop ("intersect", true, query11, query12, s (query11left, query12right)))
+       | query1 EXCEPT ALL query1       (sql_relop ("except", true, query11, query12, s (query11left, query12right)))
        | LBRACE LBRACE LBRACE eexp RBRACE RBRACE RBRACE (eexp)
 
 tables : fitem                          (fitem)

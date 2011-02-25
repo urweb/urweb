@@ -384,6 +384,7 @@ val sql_relop : free ::: {{Type}}
                 -> selectedFields ::: {{Type}}
                 -> selectedExps ::: {Type}
                 -> sql_relop
+                -> bool (* ALL *)
                 -> sql_query1 free afree tables1 selectedFields selectedExps
                 -> sql_query1 free afree tables2 selectedFields selectedExps
                 -> sql_query1 free afree [] selectedFields selectedExps
@@ -448,8 +449,9 @@ val sql_is_null : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                   -> sql_exp tables agg exps bool
 
 class sql_arith
-val sql_int_arith : sql_arith int
-val sql_float_arith : sql_arith float
+val sql_arith_int : sql_arith int
+val sql_arith_float : sql_arith float
+val sql_arith_option : t ::: Type -> sql_arith t -> sql_arith (option t)
 
 con sql_unary :: Type -> Type -> Type
 val sql_not : sql_unary bool bool

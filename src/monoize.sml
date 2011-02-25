@@ -2571,25 +2571,47 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 (if #nestedRelops (Settings.currentDbms ()) then
-                     (L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
-                               (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
-                                         (L'.EAbs ("e2", s, s,
-                                                   strcat [sc "((",
-                                                           (L'.ERel 1, loc),
-                                                           sc ") ",
-                                                           (L'.ERel 2, loc),
-                                                           sc " (",
-                                                           (L'.ERel 0, loc),
-                                                           sc "))"]), loc)), loc)), loc)
+                     (L'.EAbs ("c", s, (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFun (s, (L'.TFun (s, s), loc)), loc)), loc),
+                               (L'.EAbs ("all", (L'.TFfi ("Basis", "bool"), loc), (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                                         (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                                   (L'.EAbs ("e2", s, s,
+                                                             strcat [sc "((",
+                                                                     (L'.ERel 1, loc),
+                                                                     sc ") ",
+                                                                     (L'.ERel 3, loc),
+                                                                     (L'.ECase ((L'.ERel 2, loc),
+                                                                                [((L'.PCon (L'.Enum, L'.PConFfi {mod = "Basis",
+                                                                                                                 datatyp = "bool",
+                                                                                                                 con = "True",
+                                                                                                                 arg = NONE}, NONE), loc),
+                                                                                  sc " ALL"),
+                                                                                 ((L'.PWild, loc),
+                                                                                  sc "")],
+                                                                                {disc = (L'.TFfi ("Basis", "bool"), loc),
+                                                                                 result = s}), loc),
+                                                                     sc " (",
+                                                                     (L'.ERel 0, loc),
+                                                                     sc "))"]), loc)), loc)), loc)), loc)
                  else
-                   (L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
-                               (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
-                                         (L'.EAbs ("e2", s, s,
-                                                   strcat [(L'.ERel 1, loc),
-                                                           sc " ",
-                                                           (L'.ERel 2, loc),
-                                                           sc " ",
-                                                           (L'.ERel 0, loc)]), loc)), loc)), loc),
+                     (L'.EAbs ("c", s, (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFun (s, (L'.TFun (s, s), loc)), loc)), loc),
+                               (L'.EAbs ("all", (L'.TFfi ("Basis", "bool"), loc), (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                                         (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
+                                                   (L'.EAbs ("e2", s, s,
+                                                             strcat [(L'.ERel 1, loc),
+                                                                     sc " ",
+                                                                     (L'.ERel 3, loc),
+                                                                     (L'.ECase ((L'.ERel 2, loc),
+                                                                                [((L'.PCon (L'.Enum, L'.PConFfi {mod = "Basis",
+                                                                                                                 datatyp = "bool",
+                                                                                                                 con = "True",
+                                                                                                                 arg = NONE}, NONE), loc),
+                                                                                  sc " ALL"),
+                                                                                 ((L'.PWild, loc),
+                                                                                  sc "")],
+                                                                                {disc = (L'.TFfi ("Basis", "bool"), loc),
+                                                                                 result = s}), loc),
+                                                                     sc " ",
+                                                                     (L'.ERel 0, loc)]), loc)), loc)), loc)), loc),
                  fm)
             end
           | L.ECApp (
@@ -2682,6 +2704,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_arith_int") => ((L'.ERecord [], loc), fm)
           | L.EFfi ("Basis", "sql_arith_float") => ((L'.ERecord [], loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "sql_arith_option"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
+                       (L'.ERecord [], loc)), loc),
+             fm)
 
           | L.EFfi ("Basis", "sql_maxable_int") => ((L'.ERecord [], loc), fm)
           | L.EFfi ("Basis", "sql_maxable_float") => ((L'.ERecord [], loc), fm)
