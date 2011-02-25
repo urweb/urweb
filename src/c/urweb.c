@@ -1368,7 +1368,7 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
       if (isprint((int)c) || c >= 128)
         *s2++ = c;
       else {
-        sprintf(s2, "\\%3o", c);
+        sprintf(s2, "\\%03o", c);
         s2 += 4;
       }
     }
@@ -1405,7 +1405,7 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
     if (isprint((int)c) || c >= 128)
       *s2++ = c;
     else {
-      sprintf(s2, "\\%3o", (unsigned char)c);
+      sprintf(s2, "\\%03o", (unsigned char)c);
       s2 += 4;
     }
   }
@@ -1439,7 +1439,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
       if (isprint((int)c) || c >= 128)
         *s2++ = c;
       else {
-        sprintf(s2, "\\%3o", c);
+        sprintf(s2, "\\%03o", c);
         s2 += 4;
       }
     }
