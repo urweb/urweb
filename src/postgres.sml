@@ -75,9 +75,13 @@ fun checkRel (table, checkNullable) (s, xts) =
                                                            String.concat ["(column_name = 'uw_",
                                                                           CharVector.map
                                                                               Char.toLower (ident x),
-                                                                          "' AND data_type = '",
-                                                                          p_sql_type_base t,
-                                                                          "'",
+                                                                          (case p_sql_type_base t of
+                                                                               "bigint" =>
+                                                                               "' AND data_type IN ('bigint', 'numeric')"
+                                                                             | t =>
+                                                                               String.concat ["' AND data_type = '",
+                                                                                              t,
+                                                                                              "'"]),
                                                                           if checkNullable then
                                                                               (" AND is_nullable = '"
                                                                                ^ (if isNotNull t then
