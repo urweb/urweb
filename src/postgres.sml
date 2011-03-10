@@ -669,29 +669,56 @@ fun p_ensql t e =
                            p_ensql t (box [string "(*", e, string ")"]),
                            string ")"]
 
-fun queryPrepared {loc, id, query, inputs, cols, doCols, nested = _} =
-    box [string "PGconn *conn = uw_get_db(ctx);",
-         newline,
-         string "const int paramFormats[] = { ",
+fun makeParams inputs =
+    box [string "static const int paramFormats[] = { ",
          p_list_sep (box [string ",", space])
                     (fn t => if isBlob t then string "1" else string "0") inputs,
          string " };",
          newline,
-         string "const int paramLengths[] = { ",
-         p_list_sepi (box [string ",", space])
-                     (fn i => fn Blob => string ("arg" ^ Int.toString (i + 1) ^ ".size")
-                               | Nullable Blob => string ("arg" ^ Int.toString (i + 1)
-                                                          ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
-                               | _ => string "0") inputs,
-         string " };",
+         if List.exists isBlob inputs then
+             box [string "const int *paramLengths = uw_malloc(ctx, ",
+                  string (Int.toString (length inputs)),
+                  string " * sizeof(int));",
+                  newline,
+                  p_list_sepi (box [])
+                              (fn i => fn t =>
+                                          box [string "paramLengths[",
+                                               string (Int.toString i),
+                                               string "] = ",
+                                               case t of
+                                                   Blob => string ("arg" ^ Int.toString (i + 1) ^ ".size")
+                                                 | Nullable Blob => string ("arg" ^ Int.toString (i + 1)
+                                                                            ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
+                                                 | _ => string "0",
+                                               string ";",
+                                               newline]) inputs,
+                  string " };",
+                  newline]
+         else
+             box [string "const int *paramLengths = paramFormats;",
+                  newline],
+
+         string "const char **paramValues = uw_malloc(ctx, ",
+         string (Int.toString (length inputs)),
+         string " * sizeof(char*));",
          newline,
-         string "const char *paramValues[] = { ",
-         p_list_sepi (box [string ",", space])
-                     (fn i => fn t => p_ensql t (box [string "arg",
-                                                      string (Int.toString (i + 1))]))
+         p_list_sepi (box [])
+                     (fn i => fn t => box [string "paramValues[",
+                                           string (Int.toString i),
+                                           string "] = ",
+                                           p_ensql t (box [string "arg",
+                                                           string (Int.toString (i + 1))]),
+                                           string ";",
+                                           newline])
                      inputs,
-         string " };",
+         newline]
+
+fun queryPrepared {loc, id, query, inputs, cols, doCols, nested = _} =
+    box [string "PGconn *conn = uw_get_db(ctx);",
          newline,
+
+         makeParams inputs,
+
          newline,
          string "PGresult *res = ",
          if #persistent (Settings.currentProtocol ()) then
@@ -831,26 +858,9 @@ fun dml (loc, mode) =
 fun dmlPrepared {loc, id, dml, inputs, mode} =
     box [string "PGconn *conn = uw_get_db(ctx);",
          newline,
-         string "const int paramFormats[] = { ",
-         p_list_sep (box [string ",", space])
-                    (fn t => if isBlob t then string "1" else string "0") inputs,
-         string " };",
-         newline,
-         string "const int paramLengths[] = { ",
-         p_list_sepi (box [string ",", space])
-                     (fn i => fn Blob => string ("arg" ^ Int.toString (i + 1) ^ ".size")
-                               | Nullable Blob => string ("arg" ^ Int.toString (i + 1)
-                                                          ^ "?arg" ^ Int.toString (i + 1) ^ "->size:0")
-                               | _ => string "0") inputs,
-         string " };",
-         newline,
-         string "const char *paramValues[] = { ",
-         p_list_sepi (box [string ",", space])
-                     (fn i => fn t => p_ensql t (box [string "arg",
-                                                      string (Int.toString (i + 1))]))
-                     inputs,
-         string " };",
-         newline,
+
+         makeParams inputs,
+
          newline,
          string "PGresult *res;",
          newline,

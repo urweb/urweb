@@ -73,6 +73,7 @@ fun p_typ' par env (t, loc) =
     case t of
         TFun (t1, t2) => (EM.errorAt loc "Function type remains";
                           string "<FUNCTION>")
+      | TRecord 0 => string "uw_unit"
       | TRecord i => box [string "struct",
                           space,
                           string "__uws_",
@@ -155,71 +156,36 @@ fun p_patCon env pc =
         PConVar n => p_con_named env n
       | PConFfi {mod = m, con, ...} => string ("uw_" ^ ident m ^ "_" ^ ident con)
 
-fun p_pat (env, exit, depth) (p, loc) =
+fun p_patMatch (env, disc) (p, loc) =
     case p of
-        PWild =>
-        (box [], env)
-      | PVar (x, t) =>
-        (box [string "__uwr_",
-              p_ident x,
-              string "_",
-              string (Int.toString (E.countERels env)),
-              space,
-              string "=",
-              space,
-              string "disc",
-              string (Int.toString depth),
-              string ";"],
-         E.pushERel env x t)
-      | PPrim (Prim.Int n) =>
-        (box [string "if",
-              space,
-              string "(disc",
-              string (Int.toString depth),
-              space,
-              string "!=",
-              space,
-              Prim.p_t_GCC (Prim.Int n),
-              string ")",
-              space,
-              exit],
-         env)
-      | PPrim (Prim.String s) =>
-        (box [string "if",
-              space,
-              string "(strcmp(disc",
-              string (Int.toString depth),
-              string ",",
-              space,
-              Prim.p_t_GCC (Prim.String s),
-              string "))",
-              space,
-              exit],
-         env)
-      | PPrim (Prim.Char ch) =>
-        (box [string "if",
-              space,
-              string "(disc",
-              string (Int.toString depth),
-              space,
-              string "!=",
-              space,
-              Prim.p_t_GCC (Prim.Char ch),
-              string ")",
-              space,
-              exit],
-         env)
+        PWild => string "1"
+      | PVar _ => string "1"
+      | PPrim (Prim.Int n) => box [string ("(" ^ disc),
+                                   space,
+                                   string "==",
+                                   space,
+                                   Prim.p_t_GCC (Prim.Int n),
+                                   string ")"]
+      | PPrim (Prim.String s) => box [string ("!strcmp(" ^ disc),
+                                      string ",",
+                                      space,
+                                      Prim.p_t_GCC (Prim.String s),
+                                      string ")"]
+      | PPrim (Prim.Char ch) => box [string ("(" ^ disc),
+                                     space,
+                                     string "==",
+                                     space,
+                                     Prim.p_t_GCC (Prim.Char ch),
+                                     string ")"]
       | PPrim _ => raise Fail "CjrPrint: Disallowed PPrim primitive"
 
       | PCon (dk, pc, po) =>
         let
-            val (p, env) =
+            val p =
                 case po of
-                    NONE => (box [], env)
+                    NONE => box []
                   | SOME p =>
                     let
-                        val (p, env) = p_pat (env, exit, depth + 1) p
-
                         val (x, to) = case pc of
                                           PConVar n =>
                                           let
@@ -233,169 +199,157 @@ fun p_pat (env, exit, depth) (p, loc) =
                         val t = case to of
                                     NONE => raise Fail "CjrPrint: Constructor mismatch"
                                   | SOME t => t
+
+                        val x = case pc of
+                                    PConVar n =>
+                                    let
+                                        val (x, _, _) = E.lookupConstructor env n
+                                    in
+                                        "uw_" ^ ident x
+                                    end
+                                  | PConFfi {mod = m, con, ...} =>
+                                    "uw_" ^ ident m ^ "_" ^ ident con
+
+                        val disc' = case dk of
+                                        Enum => raise Fail "CjrPrint: Looking at argument of no-argument constructor"
+                                      | Default => disc ^ "->data." ^ x
+                                      | Option =>
+                                        if isUnboxable t then
+                                            disc
+                                        else
+                                            "(*" ^ disc ^ ")"
+
+                        val p = p_patMatch (env, disc') p
                     in
-                        (box [string "{",
-                              newline,
-                              p_typ env t,
-                              space,
-                              string "disc",
-                              string (Int.toString (depth + 1)),
-                              space,
-                              string "=",
-                              space,
-                              case dk of
-                                  Enum => raise Fail "CjrPrint: Looking at argument of no-argument constructor"
-                                | Default => box [string "disc",
-                                                  string (Int.toString depth),
-                                                  string "->data.",
-                                                  string x]
-                                | Option =>
-                                  if isUnboxable t then
-                                      box [string "disc",
-                                           string (Int.toString depth)]
-                                  else
-                                      box [string "*disc",
-                                           string (Int.toString depth)],
-                              string ";",
-                              newline,
-                              p,
-                              newline,
-                              string "}"],
-                         env)
+                        box [space,
+                             string "&&",
+                             space,
+                             p]
                     end
         in
-            (box [string "if",
-                  space,
-                  string "(disc",
-                  string (Int.toString depth),
-                  case (dk, po) of
-                      (Enum, _) => box [space,
-                                        string "!=",
-                                        space,
-                                        p_patCon env pc]
-                    | (Default, _) => box [string "->tag",
-                                           space,
-                                           string "!=",
-                                           space,
-                                           p_patCon env pc]
-                    | (Option, NONE) => box [space,
-                                             string "!=",
-                                             space,
-                                             string "NULL"]
-                    | (Option, SOME _) => box [space,
-                                               string "==",
-                                               space,
-                                               string "NULL"],
-                  string ")",
-                  space,
-                  exit,
-                  newline,
-                  p],
-             env)
+            box [string disc,
+                 case (dk, po) of
+                     (Enum, _) => box [space,
+                                       string "==",
+                                       space,
+                                       p_patCon env pc]
+                   | (Default, _) => box [string "->tag",
+                                          space,
+                                          string "==",
+                                          space,
+                                          p_patCon env pc]
+                   | (Option, NONE) => box [space,
+                                            string "==",
+                                            space,
+                                            string "NULL"]
+                   | (Option, SOME _) => box [space,
+                                              string "!=",
+                                              space,
+                                              string "NULL"],
+                 p]
+        end
+
+      | PRecord xps =>
+        p_list_sep (box [space, string "&&", space]) (fn (x, p, _) => p_patMatch (env, disc ^ ".__uwf_" ^ ident x) p) xps
+
+      | PNone _ =>
+        box [string disc,
+             space,
+             string "==",
+             space,
+             string "NULL"]
+
+      | PSome (t, p) =>
+        let
+            val disc' = if isUnboxable t then
+                            disc
+                        else
+                            "(*" ^ disc ^ ")"
+
+            val p = p_patMatch (env, disc') p
+        in
+            box [string disc,
+                 space,
+                 string "!=",
+                 space,
+                 string "NULL",
+                 space,
+                 string "&&",
+                 space,
+                 p]
+        end
+
+fun p_patBind (env, disc) (p, loc) =
+    case p of
+        PWild =>
+        (box [], env)
+      | PVar (x, t) =>
+        (box [p_typ env t,
+              space,
+              string "__uwr_",
+              p_ident x,
+              string "_",
+              string (Int.toString (E.countERels env)),
+              space,
+              string "=",
+              space,
+              string disc,
+              string ";",
+              newline],
+         E.pushERel env x t)
+      | PPrim _ => (box [], env)
+
+      | PCon (_, _, NONE) => (box [], env)
+
+      | PCon (dk, pc, SOME p) =>
+        let
+            val (x, to) = case pc of
+                              PConVar n =>
+                              let
+                                  val (x, to, _) = E.lookupConstructor env n
+                              in
+                                  ("uw_" ^ ident x, to)
+                              end
+                            | PConFfi {mod = m, con, arg, ...} =>
+                              ("uw_" ^ ident m ^ "_" ^ ident con, arg)
+
+            val t = case to of
+                        NONE => raise Fail "CjrPrint: Constructor mismatch"
+                      | SOME t => t
+
+            val disc' = case dk of
+                            Enum => raise Fail "CjrPrint: Looking at argument of no-argument constructor"
+                          | Default => disc ^  "->data." ^ x
+                          | Option =>
+                            if isUnboxable t then
+                                disc
+                            else
+                                "(*" ^ disc ^ ")"
+        in
+            p_patBind (env, disc') p
         end
 
       | PRecord xps =>
         let
             val (xps, env) =
-                ListUtil.foldlMap (fn ((x, p, t), env) =>
-                                      let
-                                          val (p, env) = p_pat (env, exit, depth + 1) p
-
-                                          val p = box [string "{",
-                                                       newline,
-                                                       p_typ env t,
-                                                       space,
-                                                       string "disc",
-                                                       string (Int.toString (depth + 1)),
-                                                       space,
-                                                       string "=",
-                                                       space,
-                                                       string "disc",
-                                                       string (Int.toString depth),
-                                                       string ".__uwf_",
-                                                       p_ident x,
-                                                       string ";",
-                                                       newline,
-                                                       p,
-                                                       newline,
-                                                       string "}"]
-                                      in
-                                          (p, env)
-                                      end) env xps
+                ListUtil.foldlMap (fn ((x, p, t), env) => p_patBind (env, disc ^ ".__uwf_" ^ ident x) p)
+                                  env xps
         in
-            (p_list_sep newline (fn x => x) xps,
+            (p_list_sep (box []) (fn x => x) xps,
              env)
         end
 
-      | PNone t =>
-        (box [string "if",
-              space,
-              string "(disc",
-              string (Int.toString depth),
-              space,
-              string "!=",
-              space,
-              string "NULL)",
-              space,
-              exit,
-              newline],
-         env)
+      | PNone _ => (box [], env)
 
       | PSome (t, p) =>
         let
-            val (p, env) =
-                let
-                    val (p, env) = p_pat (env, exit, depth + 1) p
-                in
-                    (box [string "{",
-                          newline,
-                          p_typ env t,
-                          space,
-                          string "disc",
-                          string (Int.toString (depth + 1)),
-                          space,
-                          string "=",
-                          space,
-                          if isUnboxable t then
-                              box [string "disc",
-                                   string (Int.toString depth)]
-                          else
-                              box [string "*disc",
-                                   string (Int.toString depth)],
-                          string ";",
-                          newline,
-                          p,
-                          newline,
-                          string "}"],
-                     env)
-                end
+            val disc' = if isUnboxable t then
+                            disc
+                        else
+                            "(*" ^ disc ^ ")"
         in
-            (box [string "if",
-                  space,
-                  string "(disc",
-                  string (Int.toString depth),
-                  space,
-                  string "==",
-                  space,
-                  string "NULL)",
-                  space,
-                  exit,
-                  newline,
-                  p],
-             env)
+            p_patBind (env, disc') p
         end
-
-local
-    val count = ref 0
-in
-fun newGoto () =
-    let
-        val r = !count
-    in
-        count := r + 1;
-        string ("L" ^ Int.toString r)
-    end
-end
 
 fun patConInfo env pc =
     case pc of
@@ -1567,6 +1521,8 @@ fun p_exp' par env (e, loc) =
                               space,
                               p_exp' true env e2])
 
+      | ERecord (0, _) => string "0"
+
       | ERecord (i, xes) => box [string "({",
                                  space,
                                  string "struct",
@@ -1591,77 +1547,58 @@ fun p_exp' par env (e, loc) =
              p_ident x]
 
       | ECase (e, pes, {disc, result}) =>
-        let
-            val final = newGoto ()
-
-            val body = foldl (fn ((p, e), body) =>
-                               let
-                                   val exit = newGoto ()
-                                   val (pr, _) = p_pat_preamble env p
-                                   val (p, env) = p_pat (env,
-                                                         box [string "goto",
-                                                              space,
-                                                              exit,
-                                                              string ";"],
-                                                         0) p
-                               in
-                                   box [body,
-                                        box [string "{",
-                                             newline,
-                                             pr,
-                                             newline,
-                                             p,
-                                             newline,
-                                             string "result",
-                                             space,
-                                             string "=",
-                                             space,
-                                             p_exp env e,
-                                             string ";",
-                                             newline,
-                                             string "goto",
-                                             space,
-                                             final,
-                                             string ";",
-                                             newline,
-                                             string "}"],
-                                        newline,
-                                        exit,
-                                        string ":",
-                                        newline]
-                               end) (box []) pes
-        in
-            box [string "({",
-                 newline,
-                 p_typ env disc,
-                 space,
-                 string "disc0",
-                 space,
-                 string "=",
-                 space,
-                 p_exp env e,
-                 string ";",
-                 newline,
-                 p_typ env result,
-                 space,
-                 string "result;",
-                 newline,
-                 body,
-                 string "uw_error(ctx, FATAL, \"",
-                 string (ErrorMsg.spanToString loc),
-                 string ": pattern match failure\");",
-                 newline,
-                 final,
-                 string ":",
-                 space,
-                 string "result;",
-                 newline,
-                 string "})"]
-        end
+        box [string "({",
+             newline,
+             p_typ env disc,
+             space,
+             string "disc",
+             space,
+             string "=",
+             space,
+             p_exp env e,
+             string ";",
+             newline,
+             newline,
+             foldr (fn ((p, e), body) =>
+                       let
+                           val pm = p_patMatch (env, "disc") p
+                           val (pb, env) = p_patBind (env, "disc") p
+                       in
+                           box [pm,
+                                space,
+                                string "?",
+                                space,
+                                box [string "({",
+                                     pb,
+                                     p_exp env e,
+                                     string ";",
+                                     newline,
+                                     string "})"],
+                                newline,
+                                space,
+                                string ":",
+                                space,
+                                body]
+                       end) (box [string "({",
+                                  newline,
+                                  p_typ env result,
+                                  space,
+                                  string "tmp;",
+                                  newline,
+                                  string "uw_error(ctx, FATAL, \"",
+                                  string (ErrorMsg.spanToString loc),
+                                  string ": pattern match failure\");",
+                                  newline,
+                                  string "tmp;",
+                                  newline,
+                                  string "})"]) pes,
+             string ";",
+             newline,
+             string "})"]
 
       | EWrite e => box [string "(uw_write(ctx, ",
                          p_exp env e,
-                         string "), uw_unit_v)"]
+                         string "), 0)"]
 
       | ESeq (e1, e2) =>
         let
@@ -1904,7 +1841,7 @@ fun p_exp' par env (e, loc) =
              newline,
 
              case mode of
-                 Settings.Error => string "uw_unit_v;"
+                 Settings.Error => string "0;"
                | Settings.None => string "uw_dup_and_clear_error_message(ctx);",
 
              newline,
@@ -1942,7 +1879,7 @@ fun p_exp' par env (e, loc) =
              newline,
              newline,
 
-             string "uw_unit_v;",
+             string "0;",
              newline,
              string "})"]
 
@@ -2624,18 +2561,20 @@ fun p_file env (ds, ps) =
                                                                    newline]) xts),
                                        newline,
                                        box (map getInput xts),
-                                       string "struct __uws_",
-                                       string (Int.toString i),
-                                       space,
-                                       string "uw_inputs",
-                                       space,
-                                       string "= {",
-                                       newline,
-                                       box (map (fn (x, _) => box [string "uw_input_",
-                                                                   p_ident x,
-                                                                   string ",",
-                                                                   newline]) xts),
-                                       string "};",
+                                       case i of
+                                           0 => string "uw_unit uw_inputs;"
+                                         | _ => box [string "struct __uws_",
+                                                     string (Int.toString i),
+                                                     space,
+                                                     string "uw_inputs",
+                                                     space,
+                                                     string "= {",
+                                                     newline,
+                                                     box (map (fn (x, _) => box [string "uw_input_",
+                                                                                 p_ident x,
+                                                                                 string ",",
+                                                                                 newline]) xts),
+                                                     string "};"],
                                        newline],
                                   box [string ",",
                                        space,
@@ -2780,7 +2719,7 @@ fun p_file env (ds, ps) =
                                      (string "ctx"
                                       :: ListUtil.mapi (fn (i, _) => string ("arg" ^ Int.toString i)) ts),
                           inputsVar,
-                          string ", uw_unit_v);",
+                          string ", 0);",
                           newline,
                           box (case ek of
                                    Core.Rpc _ => [urlify env ran]
@@ -3012,9 +2951,9 @@ fun p_file env (ds, ps) =
                                          newline,
                                          box [string "uw_unit __uwr_",
                                               string x1,
-                                              string "_0 = uw_unit_v, __uwr_",
+                                              string "_0 = 0, __uwr_",
                                               string x2,
-                                              string "_1 = uw_unit_v;",
+                                              string "_1 = 0;",
                                               newline,
                                               p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e,
                                               string ";",
@@ -3114,7 +3053,7 @@ fun p_file env (ds, ps) =
                                                               newline,
                                                               string "uw_unit __uwr_",
                                                               string x2,
-                                                              string "_1 = uw_unit_v;",
+                                                              string "_1 = 0;",
                                                               newline,
                                                               p_exp (E.pushERel (E.pushERel env x1 (TFfi ("Basis", "client"), ErrorMsg.dummySpan))
                                                                                 x2 dummyt) e,
@@ -3138,9 +3077,9 @@ fun p_file env (ds, ps) =
                                                               newline,
                                                               string "uw_unit __uwr_",
                                                               string x1,
-                                                              string "_0 = uw_unit_v, __uwr_",
+                                                              string "_0 = 0, __uwr_",
                                                               string x2,
-                                                              string "_1 = uw_unit_v;",
+                                                              string "_1 = 0;",
                                                               newline,
                                                               p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e,
                                                               string ";",
@@ -3149,7 +3088,7 @@ fun p_file env (ds, ps) =
                                                               newline]) initializers,
                   if hasDb then
                       box [p_enamed env (!initialize),
-                           string "(ctx, uw_unit_v);",
+                           string "(ctx, 0);",
                            newline]
                   else
                       box []],
@@ -3162,7 +3101,7 @@ fun p_file env (ds, ps) =
                                 newline,
                                 box [string "uw_write(ctx, ",
                                      p_enamed env n,
-                                     string "(ctx, msg, uw_unit_v));",
+                                     string "(ctx, msg, 0));",
                                      newline],
                                 string "}",
                                 newline,

@@ -18,10 +18,7 @@ typedef struct {
   char *data;
 } uw_Basis_blob;
 
-struct __uws_0 {
-};
-
-typedef struct __uws_0 uw_unit;
+typedef int uw_unit;
 typedef uw_unit uw_Basis_unit;
 
 typedef enum uw_Basis_bool { uw_Basis_False, uw_Basis_True } uw_Basis_bool;

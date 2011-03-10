@@ -20,7 +20,7 @@
 
 #include "types.h"
 
-uw_unit uw_unit_v = {};
+uw_unit uw_unit_v = 0;
 
 
 // Socket extras
