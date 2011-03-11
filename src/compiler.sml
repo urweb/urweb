@@ -307,6 +307,8 @@ fun trim s =
         s
     end
 
+val trimS = Substring.string o trim o Substring.full
+
 structure M = BinaryMapFn(struct
                           type ord_key = string
                           val compare = String.compare
@@ -347,7 +349,10 @@ fun inputCommentableLine inf =
                        val s = #1 (Substring.splitr (not o Char.isSpace) s)
                    in
                        Substring.string (if Substring.size s > 0 andalso Char.isSpace (Substring.sub (s, Substring.size s - 1)) then
-                                             Substring.trimr 1 s
+                                             if Substring.size s > 1 andalso Char.isSpace (Substring.sub (s, Substring.size s - 2)) then
+                                                 Substring.trimr 2 s
+                                             else
+                                                 Substring.trimr 1 s
                                          else
                                              s)
                    end) (TextIO.inputLine inf)
@@ -636,10 +641,15 @@ fun parseUrp' accLibs fname =
                                 fun ffiM () =
                                     case String.fields (fn ch => ch = #"=") arg of
                                         [f, s] =>
-                                        (case String.fields (fn ch => ch = #".") f of
-                                             [m, x] => ((m, x), s)
-                                           | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
-                                                   (("", ""), "")))
+                                        let
+                                            val f = trimS f
+                                            val s = trimS s
+                                        in
+                                            case String.fields (fn ch => ch = #".") f of
+                                                [m, x] => ((m, x), s)
+                                              | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
+                                                      (("", ""), ""))
+                                        end
                                       | _ => (ErrorMsg.error (cmd ^ " argument not of the form Module.func=func'");
                                               (("", ""), ""))
                             in

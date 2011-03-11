@@ -87,26 +87,38 @@ fun effectize file =
                                                 con = fn _ => false,
                                                 exp = exp evs}
 
+        val dejs = U.Exp.map {kind = fn x => x,
+                              con = fn c => c,
+                              exp = fn ERecord xets => ERecord (List.filter (fn ((CName x, _), _ , _) => x = "Onload" orelse not (String.isPrefix "On" x)
+                                                                              | _ => true) xets)
+                                     | e => e}
+
         fun doDecl (d, evs as (writers, readers, pushers)) =
             case #1 d of
                 DVal (x, n, t, e, s) =>
-                (d, (if couldWrite writers e then
-                         IM.insert (writers, n, (#2 d, s))
-                     else
-                         writers,
-                     if couldReadCookie readers e then
-                         IM.insert (readers, n, (#2 d, s))
-                     else
-                         readers,
-                     if couldWriteWithRpc writers readers pushers e then
-                         IM.insert (pushers, n, (#2 d, s))
-                     else
-                         pushers))
+                let
+                    val e = dejs e
+                in
+                    (d, (if couldWrite writers e then
+                             IM.insert (writers, n, (#2 d, s))
+                         else
+                             writers,
+                         if couldReadCookie readers e then
+                             IM.insert (readers, n, (#2 d, s))
+                         else
+                             readers,
+                         if couldWriteWithRpc writers readers pushers e then
+                             IM.insert (pushers, n, (#2 d, s))
+                         else
+                             pushers))
+                end
               | DValRec vis =>
                 let
                     fun oneRound evs =
                         foldl (fn ((_, n, _, e, s), (changed, (writers, readers, pushers))) =>
                                   let
+                                      val e = dejs e
+
                                       val (changed, writers) =
                                           if couldWrite writers e andalso not (IM.inDomain (writers, n)) then
                                               (true, IM.insert (writers, n, (#2 d, s)))

@@ -74,6 +74,7 @@ signature SETTINGS = sig
     (* Which FFI functions may be run in JavaScript?  (JavaScript function names included) *)
     val setJsFuncs : (ffi * string) list -> unit
     val jsFunc : ffi -> string option
+    val allJsFuncs : unit -> (ffi * string) list
 
     datatype pattern_kind = Exact | Prefix
     datatype action = Allow | Deny

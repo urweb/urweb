@@ -646,7 +646,8 @@ fun process file =
                             let
                                 val name = case Settings.jsFunc (m, x) of
                                                NONE => (EM.errorAt loc ("Unsupported FFI function "
-                                                                        ^ x ^ " in JavaScript");
+                                                                        ^ m ^ "." ^ x ^ " in JavaScript");
+                                                        app (fn ((m', x'), _) => print (m' ^ "." ^ x' ^ "\n")) (Settings.allJsFuncs ());
                                                         "ERROR")
                                              | SOME s => s
 

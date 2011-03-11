@@ -245,6 +245,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)
+fun allJsFuncs () = M.listItemsi (!jsFuncs)
 
 datatype pattern_kind = Exact | Prefix
 datatype action = Allow | Deny
