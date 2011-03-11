@@ -31,10 +31,10 @@ con thd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.3
 
 con mapU = K ==> fn f :: K => map (fn _ :: Unit => f)
 
-con ex = fn tf :: (Type -> Type) =>
-            res ::: Type -> (choice :: Type -> tf choice -> res) -> res
+con ex :: K --> (K -> Type) -> Type
 
-val ex : tf :: (Type -> Type) -> choice :: Type -> tf choice -> ex tf
+val ex_intro : K --> tf :: (K -> Type) -> choice :: K -> tf choice -> ex tf
+val ex_elim : K --> tf ::: (K -> Type) -> ex tf -> res ::: Type -> (choice :: K -> tf choice -> res) -> res
 
 val compose : t1 ::: Type -> t2 ::: Type -> t3 ::: Type
               -> (t2 -> t3) -> (t1 -> t2) -> (t1 -> t3)
