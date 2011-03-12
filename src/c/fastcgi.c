@@ -221,7 +221,7 @@ static char *get_header(void *data, const char *h) {
 
   strcpy(hs->uppercased, "HTTP_");
   for (s = hs->uppercased+5; *h; ++h)
-    *s++ = *h == '-' ? '_' : toupper(*h);
+    *s++ = *h == '-' ? '_' : toupper((int)*h);
   *s = 0;
 
   if (!strcasecmp(saved_h, "Content-length")
