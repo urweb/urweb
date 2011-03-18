@@ -111,7 +111,8 @@ static void *periodic_loop(void *data) {
       else if (r == FATAL)
         p->ls->log_error(p->ls->logger_data, "Fatal error: %s\n", uw_error_message(ctx));
       if (r == FATAL || r == BOUNDED_RETRY || r == UNLIMITED_RETRY)
-        try_rollback(ctx, 0, p->ls->logger_data, p->ls->log_error);
+        if (try_rollback(ctx, 0, p->ls->logger_data, p->ls->log_error))
+          return NULL;
     } while (r == UNLIMITED_RETRY || (r == BOUNDED_RETRY && retries_left > 0));
 
     if (r != FATAL && r != BOUNDED_RETRY)
