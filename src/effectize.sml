@@ -97,13 +97,13 @@ fun effectize file =
             case #1 d of
                 DVal (x, n, t, e, s) =>
                 let
-                    val e = dejs e
+                    val e' = dejs e
                 in
-                    (d, (if couldWrite writers e then
+                    (d, (if couldWrite writers e' then
                              IM.insert (writers, n, (#2 d, s))
                          else
                              writers,
-                         if couldReadCookie readers e then
+                         if couldReadCookie readers e' then
                              IM.insert (readers, n, (#2 d, s))
                          else
                              readers,
@@ -117,16 +117,16 @@ fun effectize file =
                     fun oneRound evs =
                         foldl (fn ((_, n, _, e, s), (changed, (writers, readers, pushers))) =>
                                   let
-                                      val e = dejs e
+                                      val e' = dejs e
 
                                       val (changed, writers) =
-                                          if couldWrite writers e andalso not (IM.inDomain (writers, n)) then
+                                          if couldWrite writers e' andalso not (IM.inDomain (writers, n)) then
                                               (true, IM.insert (writers, n, (#2 d, s)))
                                           else
                                               (changed, writers)
 
                                       val (changed, readers) =
-                                          if couldReadCookie readers e andalso not (IM.inDomain (readers, n)) then
+                                          if couldReadCookie readers e' andalso not (IM.inDomain (readers, n)) then
                                               (true, IM.insert (readers, n, (#2 d, s)))
                                           else
                                               (changed, readers)
