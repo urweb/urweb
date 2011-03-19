@@ -3736,6 +3736,12 @@ uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
     r->seconds = mktime(&stm);
     r->microseconds = 0;
 
+    localtime_r(&r->seconds, &stm);
+    if (stm.tm_isdst == 1) {
+      ++stm.tm_hour;
+      r->seconds = mktime(&stm);
+    }
+
     return r;
   }
   else
