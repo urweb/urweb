@@ -85,6 +85,8 @@ To use the Emacs mode, you must have a modern Emacs installed.  We assume that y
 apt-get install emacs-goodies-el
 \end{verbatim}
 
+If you don't want to install the Emacs mode, run \texttt{./configure} with the argument \texttt{--without-emacs}.
+
 Even with the right packages installed, configuration and building might fail to work.  After you run \texttt{./configure}, you will see the values of some named environment variables printed.  You may need to adjust these values to get proper installation for your system.  To change a value, store your preferred alternative in the corresponding UNIX environment variable, before running \texttt{./configure}.  For instance, here is how to change the list of extra arguments that the Ur/Web compiler will pass to GCC on every invocation.
 
 \begin{verbatim}

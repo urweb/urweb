@@ -777,7 +777,11 @@ bin/urweb: src/compiler.mlb src/urweb.mlb src/*.sig src/*.sml \
 		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
 	$(MLTON) -output $@ src/compiler.mlb
 
-install-exec-local:
+install-exec-emacs:
+@USE_EMACS_TRUE@	mkdir -p $(DESTDIR)$(SITELISP)
+@USE_EMACS_TRUE@	cp src/elisp/*.el $(DESTDIR)$(SITELISP)/
+
+install-exec-local-main:
 	mkdir -p $(DESTDIR)$(BIN)
 	cp bin/urweb $(DESTDIR)$(BIN)/
 	mkdir -p $(DESTDIR)$(LIB_UR)
@@ -788,11 +792,15 @@ install-exec-local:
 	mkdir -p $(DESTDIR)$(INCLUDE)
 	cp config.h $(DESTDIR)$(INCLUDE)/
 	cp include/*.h $(DESTDIR)$(INCLUDE)/
-	mkdir -p $(DESTDIR)$(SITELISP)
-	cp src/elisp/*.el $(DESTDIR)$(SITELISP)/
+
+install-exec-local: install-exec-local-main install-exec-emacs
 	-ldconfig
 
-uninstall-local:
+uninstall-emacs:
+@USE_EMACS_TRUE@	rm -f $(DESTDIR)$(SITELISP)/urweb-compat.el $(DESTDIR)$(SITELISP)/urweb-mode.el $(DESTDIR)$(SITELISP)/urweb-move.el \
+@USE_EMACS_TRUE@		$(DESTDIR)$(SITELISP)/urweb-defs.el $(DESTDIR)$(SITELISP)/urweb-mode-startup.el $(DESTDIR)$(SITELISP)/urweb-util.el
+
+uninstall-local-main:
 	rm -f $(DESTDIR)$(BIN)/urweb \
 		$(DESTDIR)$(LIB_UR)/basis.urs $(DESTDIR)$(LIB_UR)/char.urs $(DESTDIR)$(LIB_UR)/listPair.urs $(DESTDIR)$(LIB_UR)/list.urs \
 		$(DESTDIR)$(LIB_UR)/monad.urs $(DESTDIR)$(LIB_UR)/option.urs $(DESTDIR)$(LIB_UR)/string.urs $(DESTDIR)$(LIB_UR)/top.urs \
@@ -800,9 +808,9 @@ uninstall-local:
 		$(DESTDIR)$(LIB_UR)/monad.ur $(DESTDIR)$(LIB_UR)/option.ur $(DESTDIR)$(LIB_UR)/string.ur $(DESTDIR)$(LIB_UR)/top.ur \
 		$(DESTDIR)$(LIB_JS)/urweb.js \
 		$(DESTDIR)$(INCLUDE)/config.h $(DESTDIR)$(INCLUDE)/queue.h $(DESTDIR)$(INCLUDE)/request.h $(DESTDIR)$(INCLUDE)/types.h \
-		$(DESTDIR)$(INCLUDE)/urweb.h \
-		$(DESTDIR)$(SITELISP)/urweb-compat.el $(DESTDIR)$(SITELISP)/urweb-mode.el $(DESTDIR)$(SITELISP)/urweb-move.el \
-		$(DESTDIR)$(SITELISP)/urweb-defs.el $(DESTDIR)$(SITELISP)/urweb-mode-startup.el $(DESTDIR)$(SITELISP)/urweb-util.el
+		$(DESTDIR)$(INCLUDE)/urweb.h
+
+uninstall-local: uninstall-local-main uninstall-emacs
 
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz

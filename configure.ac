@@ -49,6 +49,14 @@ if test [-z $SITELISP]; then
     SITELISP=$prefix/share/emacs/site-lisp/urweb-mode
 fi
 
+AC_ARG_WITH([emacs],
+            [AS_HELP_STRING([--without-emacs],
+              [disable installation of Emacs mode])],
+            [],
+            [with_emacs=yes])
+
+AM_CONDITIONAL(USE_EMACS, test "x$with_emacs" = xyes)
+
 AC_SUBST(BIN)
 AC_SUBST(LIB)
 AC_SUBST(INCLUDE)
