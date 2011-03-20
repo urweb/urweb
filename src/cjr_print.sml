@@ -249,6 +249,7 @@ fun p_patMatch (env, disc) (p, loc) =
                  p]
         end
 
+      | PRecord [] => string "1"
       | PRecord xps =>
         p_list_sep (box [space, string "&&", space]) (fn (x, p, _) => p_patMatch (env, disc ^ ".__uwf_" ^ ident x) p) xps
 

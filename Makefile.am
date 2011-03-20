@@ -60,31 +60,31 @@ bin/urweb: src/compiler.mlb src/urweb.mlb src/*.sig src/*.sml \
 	$(MLTON) -output $@ src/compiler.mlb
 
 install-exec-local:
-	mkdir -p $(BIN)
-	cp bin/urweb $(BIN)/
-	mkdir -p $(LIB_UR)
-	cp lib/ur/*.urs $(LIB_UR)/
-	cp lib/ur/*.ur $(LIB_UR)/
-	mkdir -p $(LIB_JS)
-	cp lib/js/*.js $(LIB_JS)/
-	mkdir -p $(INCLUDE)
-	cp config.h $(INCLUDE)/
-	cp include/*.h $(INCLUDE)/
-	mkdir -p $(SITELISP)
-	cp src/elisp/*.el $(SITELISP)/
+	mkdir -p $(DESTDIR)$(BIN)
+	cp bin/urweb $(DESTDIR)$(BIN)/
+	mkdir -p $(DESTDIR)$(LIB_UR)
+	cp lib/ur/*.urs $(DESTDIR)$(LIB_UR)/
+	cp lib/ur/*.ur $(DESTDIR)$(LIB_UR)/
+	mkdir -p $(DESTDIR)$(LIB_JS)
+	cp lib/js/*.js $(DESTDIR)$(LIB_JS)/
+	mkdir -p $(DESTDIR)$(INCLUDE)
+	cp config.h $(DESTDIR)$(INCLUDE)/
+	cp include/*.h $(DESTDIR)$(INCLUDE)/
+	mkdir -p $(DESTDIR)$(SITELISP)
+	cp src/elisp/*.el $(DESTDIR)$(SITELISP)/
 	-ldconfig
 
 uninstall-local:
-	rm -f $(BIN)/urweb \
-		$(LIB_UR)/basis.urs $(LIB_UR)/char.urs $(LIB_UR)/listPair.urs $(LIB_UR)/list.urs \
-		$(LIB_UR)/monad.urs $(LIB_UR)/option.urs $(LIB_UR)/string.urs $(LIB_UR)/top.urs \
-		$(LIB_UR)/char.ur $(LIB_UR)/listPair.ur $(LIB_UR)/list.ur \
-		$(LIB_UR)/monad.ur $(LIB_UR)/option.ur $(LIB_UR)/string.ur $(LIB_UR)/top.ur \
-		$(LIB_JS)/urweb.js \
-		$(INCLUDE)/config.h $(INCLUDE)/queue.h $(INCLUDE)/request.h $(INCLUDE)/types.h \
-		$(INCLUDE)/urweb.h \
-		$(SITELISP)/urweb-compat.el $(SITELISP)/urweb-mode.el $(SITELISP)/urweb-move.el \
-		$(SITELISP)/urweb-defs.el $(SITELISP)/urweb-mode-startup.el $(SITELISP)/urweb-util.el
+	rm -f $(DESTDIR)$(BIN)/urweb \
+		$(DESTDIR)$(LIB_UR)/basis.urs $(DESTDIR)$(LIB_UR)/char.urs $(DESTDIR)$(LIB_UR)/listPair.urs $(DESTDIR)$(LIB_UR)/list.urs \
+		$(DESTDIR)$(LIB_UR)/monad.urs $(DESTDIR)$(LIB_UR)/option.urs $(DESTDIR)$(LIB_UR)/string.urs $(DESTDIR)$(LIB_UR)/top.urs \
+		$(DESTDIR)$(LIB_UR)/char.ur $(DESTDIR)$(LIB_UR)/listPair.ur $(DESTDIR)$(LIB_UR)/list.ur \
+		$(DESTDIR)$(LIB_UR)/monad.ur $(DESTDIR)$(LIB_UR)/option.ur $(DESTDIR)$(LIB_UR)/string.ur $(DESTDIR)$(LIB_UR)/top.ur \
+		$(DESTDIR)$(LIB_JS)/urweb.js \
+		$(DESTDIR)$(INCLUDE)/config.h $(DESTDIR)$(INCLUDE)/queue.h $(DESTDIR)$(INCLUDE)/request.h $(DESTDIR)$(INCLUDE)/types.h \
+		$(DESTDIR)$(INCLUDE)/urweb.h \
+		$(DESTDIR)$(SITELISP)/urweb-compat.el $(DESTDIR)$(SITELISP)/urweb-mode.el $(DESTDIR)$(SITELISP)/urweb-move.el \
+		$(DESTDIR)$(SITELISP)/urweb-defs.el $(DESTDIR)$(SITELISP)/urweb-mode-startup.el $(DESTDIR)$(SITELISP)/urweb-util.el
 
 package:
 	hg archive -t tgz -X tests /tmp/urweb.tgz
