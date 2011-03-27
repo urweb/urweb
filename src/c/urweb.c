@@ -684,6 +684,8 @@ uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
   return ctx->get_header(ctx->get_header_data, h);
 }
 
+char *uw_Basis_htmlifyString(uw_context, const char *);
+
 void uw_login(uw_context ctx) {
   if (ctx->needs_push) {
     char *id_s, *pass_s;
@@ -695,7 +697,7 @@ void uw_login(uw_context ctx) {
       client *c = find_client(id);
 
       if (c == NULL)
-        uw_error(ctx, FATAL, "Unknown client ID in HTTP headers (%s, %s)", id_s, pass_s);
+        uw_error(ctx, FATAL, "Unknown client ID in HTTP headers (%s, %s)", uw_Basis_htmlifyString(ctx, id_s), uw_Basis_htmlifyString(ctx, pass_s));
       else {
         use_client(c);
         ctx->client = c;
@@ -832,12 +834,12 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
     input *inps;
 
     if (n < 0) {
-      uw_set_error(ctx, "Bad subform name %s", value);
+      uw_set_error(ctx, "Bad subform name %s", uw_Basis_htmlifyString(ctx, value));
       return -1;
     }
 
     if (n >= ctx->app->inputs_len) {
-      uw_set_error(ctx, "For subform name %s, index %d is out of range", value, n);
+      uw_set_error(ctx, "For subform name %s, index %d is out of range", uw_Basis_htmlifyString(ctx, value), n);
       return -1;
     }
 
@@ -876,12 +878,12 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
     int n = ctx->app->input_num(value);
 
     if (n < 0) {
-      uw_set_error(ctx, "Bad subforms name %s", value);
+      uw_set_error(ctx, "Bad subforms name %s", uw_Basis_htmlifyString(ctx, value));
       return -1;
     }
 
     if (n >= ctx->app->inputs_len) {
-      uw_set_error(ctx, "For subforms name %s, index %d is out of range", value, n);
+      uw_set_error(ctx, "For subforms name %s, index %d is out of range", uw_Basis_htmlifyString(ctx, value), n);
       return -1;
     }
 
@@ -918,7 +920,7 @@ int uw_set_input(uw_context ctx, const char *name, char *value) {
       return 0;
 
     if (n >= ctx->app->inputs_len) {
-      uw_set_error(ctx, "For input name %s, index %d is out of range", name, n);
+      uw_set_error(ctx, "For input name %s, index %d is out of range", uw_Basis_htmlifyString(ctx, name), n);
       return -1;
     }
 
@@ -981,12 +983,12 @@ int uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
   int n = ctx->app->input_num(name);
 
   if (n < 0) {
-    uw_set_error(ctx, "Bad file input name %s", name);
+    uw_set_error(ctx, "Bad file input name %s", uw_Basis_htmlifyString(ctx, name));
     return -1;
   }
 
   if (n >= ctx->app->inputs_len) {
-    uw_set_error(ctx, "For file input name %s, index %d is out of range", name, n);
+    uw_set_error(ctx, "For file input name %s, index %d is out of range", uw_Basis_htmlifyString(ctx, name), n);
     return -1;
   }
 
@@ -1862,7 +1864,7 @@ static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char
       if (s2[2] == 0)
         uw_error(ctx, FATAL, "Missing second character of escaped URL byte");
       if (sscanf(s2+1, "%02X", &n) != 1)
-        uw_error(ctx, FATAL, "Invalid escaped URL byte starting at: %s", s2);
+        uw_error(ctx, FATAL, "Invalid escaped URL byte starting at: %s", uw_Basis_htmlifyString(ctx, s2));
       *s1 = n;
       s2 += 2;
       break;
@@ -1873,7 +1875,7 @@ static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char
         if (s2[2] == 0)
           uw_error(ctx, FATAL, "Missing second character of escaped URL byte");
         if (sscanf(s2+1, "%02X", &n) != 1)
-          uw_error(ctx, FATAL, "Invalid escaped URL byte starting at: %s", s2);
+          uw_error(ctx, FATAL, "Invalid escaped URL byte starting at: %s", uw_Basis_htmlifyString(ctx, s2));
         *s1 = n;
         s2 += 2;
         break;
@@ -2018,7 +2020,7 @@ uw_unit uw_Basis_jsifyInt_w(uw_context ctx, uw_Basis_int n) {
   return uw_unit_v;
 }
 
-char *uw_Basis_htmlifyString(uw_context ctx, uw_Basis_string s) {
+char *uw_Basis_htmlifyString(uw_context ctx, const char *s) {
   char *r, *s2;
 
   uw_check_heap(ctx, strlen(s) * 5 + 1);
@@ -2783,7 +2785,7 @@ uw_Basis_int uw_Basis_stringToInt_error(uw_context ctx, uw_Basis_string s) {
   if (*s != '\0' && *endptr == '\0')
     return n;
   else
-    uw_error(ctx, FATAL, "Can't parse int: %s", s);
+    uw_error(ctx, FATAL, "Can't parse int: %s", uw_Basis_htmlifyString(ctx, s));
 }
 
 #include <errno.h>
@@ -2792,7 +2794,7 @@ uw_Basis_channel uw_Basis_stringToChannel_error(uw_context ctx, uw_Basis_string 
   unsigned long long n;
 
   if (sscanf(s, "%llu", &n) < 1)
-    uw_error(ctx, FATAL, "Can't parse channel: %s", s);
+    uw_error(ctx, FATAL, "Can't parse channel: %s", uw_Basis_htmlifyString(ctx, s));
   else {
     uw_Basis_channel ch = {n >> 32, n & ((1ull << 32) - 1)};
     return ch;
@@ -2806,7 +2808,7 @@ uw_Basis_client uw_Basis_stringToClient_error(uw_context ctx, uw_Basis_string s)
   if (*s != '\0' && *endptr == '\0')
     return n;
   else
-    uw_error(ctx, FATAL, "Can't parse client: %s", s);
+    uw_error(ctx, FATAL, "Can't parse client: %s", uw_Basis_htmlifyString(ctx, s));
 }
 
 uw_Basis_float uw_Basis_stringToFloat_error(uw_context ctx, uw_Basis_string s) {
@@ -2816,14 +2818,14 @@ uw_Basis_float uw_Basis_stringToFloat_error(uw_context ctx, uw_Basis_string s) {
   if (*s != '\0' && *endptr == '\0')
     return n;
   else
-    uw_error(ctx, FATAL, "Can't parse float: %s", s);
+    uw_error(ctx, FATAL, "Can't parse float: %s", uw_Basis_htmlifyString(ctx, s));
 }
 
 uw_Basis_char uw_Basis_stringToChar_error(uw_context ctx, uw_Basis_string s) {
   if (s[0] == 0)
     return 0;
   else if (s[1] != 0)
-    uw_error(ctx, FATAL, "Can't parse char: %s", s);
+    uw_error(ctx, FATAL, "Can't parse char: %s", uw_Basis_htmlifyString(ctx, s));
   else
     return s[0];
 }
@@ -2834,7 +2836,7 @@ uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {
   else if (!strcasecmp(s, "F") || !strcasecmp (s, "False"))
     return uw_Basis_False;
   else
-    uw_error(ctx, FATAL, "Can't parse bool: %s", s);
+    uw_error(ctx, FATAL, "Can't parse bool: %s", uw_Basis_htmlifyString(ctx, s));
 }
 
 uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
@@ -2854,7 +2856,7 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
     }
     else {
       *dot = '.';
-      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+      uw_error(ctx, FATAL, "Can't parse time: %s", uw_Basis_htmlifyString(ctx, s));
     }
   }
   else {
@@ -2865,7 +2867,7 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
       uw_Basis_time r = { mktime(&stm) };
       return r;
     } else
-      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+      uw_error(ctx, FATAL, "Can't parse time: %s", uw_Basis_htmlifyString(ctx, s));
   }
 }
 
@@ -2885,7 +2887,7 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
     }
     else {
       *dot = '.';
-      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+      uw_error(ctx, FATAL, "Can't parse time: %s", uw_Basis_htmlifyString(ctx, s));
     }
   }
   else {
@@ -2896,7 +2898,7 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
       uw_Basis_time r = { mktime(&stm) };
       return r;
     } else
-      uw_error(ctx, FATAL, "Can't parse time: %s", s);
+      uw_error(ctx, FATAL, "Can't parse time: %s", uw_Basis_htmlifyString(ctx, s));
   }
 }
 
@@ -2909,7 +2911,7 @@ uw_Basis_time uw_Basis_stringToTimef_error(uw_context ctx, const char *fmt, uw_B
     uw_Basis_time r = { mktime(&stm) };
     return r;
   } else
-    uw_error(ctx, FATAL, "Can't parse time: %s", s);
+    uw_error(ctx, FATAL, "Can't parse time: %s", uw_Basis_htmlifyString(ctx, s));
 }
 
 uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, size_t len) {
