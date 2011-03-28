@@ -635,6 +635,7 @@ fun reduce file =
                                         fun safe (e, _) =
                                             case e of
                                                 EAbs _ => true
+                                              | EError _ => true
                                               | _ => false
                                     in
                                         if List.all (safe o #2) pes then
@@ -642,6 +643,8 @@ fun reduce file =
                                                   (ECase (liftExpInExp 0 e',
                                                           map (fn (p, (EAbs (_, _, _, e), _)) =>
                                                                   (p, swapExpVarsPat (0, patBinds p) e)
+                                                                | (p, (EError (e, (TFun (_, t), _)), loc)) =>
+                                                                  (p, (EError (e, t), loc))
                                                                 | _ => raise Fail "MonoReduce ECase") pes,
                                                           {disc = disc, result = result}), loc))
                                         else
