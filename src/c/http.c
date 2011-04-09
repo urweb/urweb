@@ -63,7 +63,7 @@ static void log_debug(void *data, const char *fmt, ...) {
 
 static void *worker(void *data) {
   int me = *(int *)data;
-  uw_context ctx = uw_request_new_context(&uw_application, NULL, log_error, log_debug);
+  uw_context ctx = uw_request_new_context(me, &uw_application, NULL, log_error, log_debug);
   size_t buf_size = 2;
   char *buf = malloc(buf_size);
   uw_request_context rc = uw_new_request_context();

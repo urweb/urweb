@@ -32,8 +32,8 @@ static int try_rollback(uw_context ctx, int will_retry, void *logger_data, uw_lo
   return r;
 }
 
-uw_context uw_request_new_context(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
-  uw_context ctx = uw_init(logger_data, log_debug);
+uw_context uw_request_new_context(int id, uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
+  uw_context ctx = uw_init(id, logger_data, log_debug);
   int retries_left = MAX_RETRIES;
   uw_set_app(ctx, app);
 
@@ -84,13 +84,14 @@ typedef struct {
 } loggers;
 
 typedef struct {
+  int id;
   loggers *ls;
   uw_periodic pdic;
 } periodic;
 
 static void *periodic_loop(void *data) {
   periodic *p = (periodic *)data;
-  uw_context ctx = uw_request_new_context(p->ls->app, p->ls->logger_data, p->ls->log_error, p->ls->log_debug);
+  uw_context ctx = uw_request_new_context(p->id, p->ls->app, p->ls->logger_data, p->ls->log_error, p->ls->log_debug);
 
   if (!ctx)
     exit(1);
@@ -127,6 +128,7 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
   failure_kind fk;
   uw_periodic *ps;
   loggers *ls = malloc(sizeof(loggers));
+  int id;
 
   ls->app = app;
   ls->logger_data = logger_data;
@@ -145,7 +147,7 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
     }
   }
 
-  ctx = uw_request_new_context(app, logger_data, log_error, log_debug);
+  ctx = uw_request_new_context(0, app, logger_data, log_error, log_debug);
 
   if (!ctx)
     exit(1);
@@ -164,9 +166,11 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
 
   uw_free(ctx);
 
+  id = 1;
   for (ps = app->periodics; ps->callback; ++ps) {
     pthread_t thread;
     periodic *arg = malloc(sizeof(periodic));
+    arg->id = id++;
     arg->ls = ls;
     arg->pdic = *ps;
     
@@ -218,6 +222,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   char errmsg[ERROR_BUF_LEN];
 
   uw_reset(ctx);
+
   rc->queryString[0] = 0;
 
   for (s = path; *s; ++s) {
@@ -546,7 +551,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 
 void *client_pruner(void *data) {
   loggers *ls = (loggers *)data;
-  uw_context ctx = uw_request_new_context(ls->app, ls->logger_data, ls->log_error, ls->log_debug);
+  uw_context ctx = uw_request_new_context(0, ls->app, ls->logger_data, ls->log_error, ls->log_debug);
 
   if (!ctx)
     exit(1);

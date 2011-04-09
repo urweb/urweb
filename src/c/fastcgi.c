@@ -322,7 +322,7 @@ int fastcgi_send_normal(int sock, const void *buf, ssize_t len) {
 static void *worker(void *data) {
   FCGI_Input *in = fastcgi_input();
   FCGI_Output *out = fastcgi_output();
-  uw_context ctx = uw_request_new_context(&uw_application, out, log_error, log_debug);
+  uw_context ctx = uw_request_new_context(*(int *)data, &uw_application, out, log_error, log_debug);
   uw_request_context rc = uw_new_request_context();
   headers hs;
   size_t body_size = 0;

@@ -91,8 +91,7 @@ fun process file =
 
         fun quoteExp loc (t : typ) (e, st) =
             case #1 t of
-                TSource => (strcat loc [str loc "s",
-                                        (EFfiApp ("Basis", "htmlifyInt", [e]), loc)], st)
+                TSource => ((EFfiApp ("Basis", "htmlifySource", [e]), loc), st)
 
               | TRecord [] => (str loc "null", st)
               | TRecord [(x, t)] =>

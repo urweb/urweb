@@ -35,6 +35,11 @@ typedef struct {
   unsigned cli, chn;
 } uw_Basis_channel;
 
+typedef struct {
+  int context;
+  unsigned long long source;
+} uw_Basis_source;
+
 typedef struct uw_Basis_file {
   uw_Basis_string name, type;
   uw_Basis_blob data;

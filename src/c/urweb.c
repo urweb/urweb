@@ -399,6 +399,7 @@ typedef struct {
 
 struct uw_context {
   uw_app *app;
+  int id;
 
   char *(*get_header)(void *, const char *);
   void *get_header_data;
@@ -408,7 +409,7 @@ struct uw_context {
   input *inputs, *subinputs, *cur_container;
   size_t sz_inputs, n_subinputs, used_subinputs;
 
-  int source_count;
+  unsigned long long source_count;
 
   void *db;
 
@@ -454,10 +455,11 @@ size_t uw_page_max = SIZE_MAX;
 size_t uw_heap_max = SIZE_MAX;
 size_t uw_script_max = SIZE_MAX;
 
-uw_context uw_init(void *logger_data, uw_logger log_debug) {
+uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->app = NULL;
+  ctx->id = id;
 
   ctx->get_header = NULL;
   ctx->get_header_data = NULL;
@@ -584,7 +586,6 @@ void uw_reset_keep_error_message(uw_context ctx) {
   uw_buffer_reset(&ctx->heap);
   ctx->regions = NULL;
   ctx->cleanup_front = ctx->cleanup;
-  ctx->source_count = 0;
   ctx->used_deltas = 0;
   ctx->client = NULL;
   ctx->cur_container = NULL;
@@ -619,6 +620,10 @@ failure_kind uw_begin_init(uw_context ctx) {
 
 void uw_close(uw_context ctx) {
   ctx->app->db_close(ctx);
+}
+
+uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
+  return ctx->get_header(ctx->get_header_data, h);
 }
 
 void uw_set_headers(uw_context ctx, char *(*get_header)(void *, const char *), void *get_header_data) {
@@ -678,10 +683,6 @@ void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
   ctx->cleanup_front->func = func;
   ctx->cleanup_front->arg = arg;
   ++ctx->cleanup_front;
-}
-
-uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
-  return ctx->get_header(ctx->get_header_data, h);
 }
 
 char *uw_Basis_htmlifyString(uw_context, const char *);
@@ -1296,6 +1297,10 @@ const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
   return "<sc>";
 }
 
+const char *uw_get_real_script(uw_context ctx) {
+  return ctx->script.start;
+}
+
 uw_Basis_string uw_Basis_maybe_onload(uw_context ctx, uw_Basis_string s) {
   if (s[0] == 0)
     return "";
@@ -1345,7 +1350,7 @@ const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
 uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
 
-  uw_check_heap(ctx, strlen(s) * 4 + 2);
+  uw_check_heap(ctx, strlen(s) * 4 + 3);
 
   r = s2 = ctx->heap.front;
   *s2++ = '"';
@@ -1385,7 +1390,7 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
   unsigned char c = c1;
   char *r, *s2;
 
-  uw_check_heap(ctx, 6);
+  uw_check_heap(ctx, 7);
 
   r = s2 = ctx->heap.front;
   *s2++ = '"';
@@ -1420,7 +1425,7 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
 uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
 
-  uw_check_script(ctx, strlen(s) * 4 + 2);
+  uw_check_script(ctx, strlen(s) * 4 + 3);
 
   r = s2 = ctx->script.front;
   *s2++ = '"';
@@ -1467,27 +1472,28 @@ char *uw_Basis_jsifyChannel(uw_context ctx, uw_Basis_channel chn) {
   }
 }
 
-uw_Basis_int uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
+uw_Basis_source uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
   int len;
   size_t s_len = strlen(s);
 
-  uw_check_script(ctx, 18 + INTS_MAX + s_len);
-  sprintf(ctx->script.front, "var s%d=sc(exec(%n", ctx->source_count, &len);
+  uw_check_script(ctx, 15 + 2 * INTS_MAX + s_len);
+  sprintf(ctx->script.front, "s%d_%llu=sc(exec(%n", ctx->id, ctx->source_count, &len);
   ctx->script.front += len;
   strcpy(ctx->script.front, s);
   ctx->script.front += s_len;
   strcpy(ctx->script.front, "));");
   ctx->script.front += 3;
 
-  return ctx->source_count++;
+  uw_Basis_source r = {ctx->id, ctx->source_count++};
+  return r;
 }
 
-uw_unit uw_Basis_set_client_source(uw_context ctx, uw_Basis_int n, uw_Basis_string s) {
+uw_unit uw_Basis_set_client_source(uw_context ctx, uw_Basis_source src, uw_Basis_string s) {
   int len;
   size_t s_len = strlen(s);
 
-  uw_check_script(ctx, 12 + INTS_MAX + s_len);
-  sprintf(ctx->script.front, "sv(s%d,exec(%n", (int)n, &len);
+  uw_check_script(ctx, 15 + 2 * INTS_MAX + s_len);
+  sprintf(ctx->script.front, "sv(s%d_%llu,exec(%n", src.context, src.source, &len);
   ctx->script.front += len;
   strcpy(ctx->script.front, s);
   ctx->script.front += s_len;
@@ -2125,6 +2131,27 @@ uw_unit uw_Basis_htmlifyTime_w(uw_context ctx, uw_Basis_time t) {
     ctx->page.front += 19;
   }
 
+  return uw_unit_v;
+}
+
+char *uw_Basis_htmlifySource(uw_context ctx, uw_Basis_source src) {
+  int len;
+  char *r;
+
+  uw_check_heap(ctx, 2 * INTS_MAX + 2);
+  r = ctx->heap.front;
+  sprintf(r, "s%d_%llu%n", src.context, src.source, &len);
+  ctx->heap.front += len+1;
+  return r;
+}
+
+uw_unit uw_Basis_htmlifySource_w(uw_context ctx, uw_Basis_source src) {
+  int len;
+
+  uw_check(ctx, 2 * INTS_MAX + 1);
+  sprintf(ctx->page.front, "s%d_%llu%n", src.context, src.source, &len);
+  ctx->page.front += len;
+  
   return uw_unit_v;
 }
 

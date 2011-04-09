@@ -161,7 +161,7 @@ fun cifyTyp x =
                 in
                     ((L'.TList (t', si), loc), sm)
                 end
-              | L.TSource => ((L'.TFfi ("Basis", "int"), loc), sm)
+              | L.TSource => ((L'.TFfi ("Basis", "source"), loc), sm)
               | L.TSignal _ => raise Fail "Cjrize: TSignal remains"
     in
         cify IM.empty x

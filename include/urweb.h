@@ -20,7 +20,7 @@ void uw_client_connect(unsigned id, int pass, int sock,
 void uw_prune_clients(uw_context);
 failure_kind uw_initialize(uw_context);
 
-uw_context uw_init(void *logger_data, uw_logger log_debug);
+uw_context uw_init(int id, void *logger_data, uw_logger log_debug);
 void uw_close(uw_context);
 int uw_set_app(uw_context, uw_app*);
 uw_app *uw_get_app(uw_context);
@@ -71,12 +71,13 @@ int uw_next_entry(uw_context);
 
 void uw_write(uw_context, const char*);
 
-uw_Basis_int uw_Basis_new_client_source(uw_context, uw_Basis_string);
-uw_unit uw_Basis_set_client_source(uw_context, uw_Basis_int, uw_Basis_string);
+uw_Basis_source uw_Basis_new_client_source(uw_context, uw_Basis_string);
+uw_unit uw_Basis_set_client_source(uw_context, uw_Basis_source, uw_Basis_string);
 
 void uw_set_script_header(uw_context, const char*);
 const char *uw_Basis_get_settings(uw_context, uw_unit);
 const char *uw_Basis_get_script(uw_context, uw_unit);
+const char *uw_get_real_script(uw_context);
 
 uw_Basis_string uw_Basis_maybe_onload(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_maybe_onunload(uw_context, uw_Basis_string);
@@ -90,6 +91,7 @@ char *uw_Basis_htmlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_htmlifyBool(uw_context, uw_Basis_bool);
 char *uw_Basis_htmlifyTime(uw_context, uw_Basis_time);
 char *uw_Basis_htmlifySpecialChar(uw_context, unsigned char);
+char *uw_Basis_htmlifySource(uw_context, uw_Basis_source);
 
 uw_unit uw_Basis_htmlifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_htmlifyFloat_w(uw_context, uw_Basis_float);
@@ -97,6 +99,7 @@ uw_unit uw_Basis_htmlifyString_w(uw_context, uw_Basis_string);
 uw_unit uw_Basis_htmlifyBool_w(uw_context, uw_Basis_bool);
 uw_unit uw_Basis_htmlifyTime_w(uw_context, uw_Basis_time);
 uw_unit uw_Basis_htmlifySpecialChar_w(uw_context, unsigned char);
+uw_unit uw_Basis_htmlifySource_w(uw_context, uw_Basis_source);
 
 char *uw_Basis_attrifyInt(uw_context, uw_Basis_int);
 char *uw_Basis_attrifyFloat(uw_context, uw_Basis_float);

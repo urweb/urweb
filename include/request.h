@@ -22,7 +22,7 @@ request_result uw_request(uw_request_context, uw_context,
                           int (*send)(int sockfd, const void *buf, ssize_t len),
                           int (*close)(int fd));
 
-uw_context uw_request_new_context(uw_app*, void *logger_data, uw_logger log_error, uw_logger log_debug);
+uw_context uw_request_new_context(int id, uw_app*, void *logger_data, uw_logger log_error, uw_logger log_debug);
 
 typedef struct {
   uw_app *app;

@@ -2723,7 +2723,11 @@ fun p_file env (ds, ps) =
                           string ", 0);",
                           newline,
                           box (case ek of
-                                   Core.Rpc _ => [urlify env ran]
+                                   Core.Rpc _ => [string "uw_write(ctx, uw_get_real_script(ctx));",
+                                                  newline,
+                                                  string "uw_write(ctx, \"\\n\");",
+                                                  newline,
+                                                  urlify env ran]
                                  | _ => [string "uw_write(ctx, \"</html>\");",
                                          newline]),
                           string "return;",

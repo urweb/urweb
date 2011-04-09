@@ -56,7 +56,7 @@ static void log_debug(void *data, const char *fmt, ...) {
 }
 
 int main(int argc, char *argv[]) {
-  uw_context ctx = uw_request_new_context(&uw_application, NULL, log_error, log_debug);
+  uw_context ctx = uw_request_new_context(0, &uw_application, NULL, log_error, log_debug);
   uw_request_context rc = uw_new_request_context();
   request_result rr;
   char *method = getenv("REQUEST_METHOD"),

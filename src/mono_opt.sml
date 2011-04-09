@@ -249,6 +249,9 @@ fun exp e =
       | EFfiApp ("Basis", "htmlifyString_w", [(EPrim (Prim.String s), loc)]) =>
         EWrite (EPrim (Prim.String (htmlifyString s)), loc)
 
+      | EWrite (EFfiApp ("Basis", "htmlifySource", [e]), _) =>
+        EFfiApp ("Basis", "htmlifySource_w", [e])
+
       | EFfiApp ("Basis", "attrifyInt", [(EPrim (Prim.Int n), _)]) =>
         EPrim (Prim.String (attrifyInt n))
       | EWrite (EFfiApp ("Basis", "attrifyInt", [(EPrim (Prim.Int n), _)]), loc) =>
