@@ -198,7 +198,7 @@ static void *worker(void *data) {
                         on_success, on_failure,
                         NULL, log_error, log_debug,
                         sock, uw_really_send, close);
-        uw_send(ctx, sock);
+        if (rr != KEEP_OPEN) uw_send(ctx, sock);
 
         if (rr == SERVED || rr == FAILED)
           close(sock);

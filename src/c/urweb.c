@@ -311,16 +311,25 @@ static uw_Basis_channel new_channel(client *c) {
   return ch;
 }
 
-static void client_send(client *c, uw_buffer *msg) {
+static void client_send(client *c, uw_buffer *msg, const char *script, int script_len) {
   pthread_mutex_lock(&c->lock);
 
   if (c->sock != -1) {
     c->send(c->sock, on_success, strlen(on_success));
     c->send(c->sock, begin_msgs, sizeof(begin_msgs) - 1);
+    if (script_len > 0) {
+      c->send(c->sock, "E\n", 2);
+      c->send(c->sock, script, script_len);
+      c->send(c->sock, "\n", 1);
+    }
     c->send(c->sock, msg->start, uw_buffer_used(msg));
     c->close(c->sock);
     c->sock = -1;
-  } else if (uw_buffer_append(&c->msgs, msg->start, uw_buffer_used(msg)))
+  } else if ((script_len > 0
+              && (c->send(c->sock, "E\n", 2)
+                  || c->send(c->sock, script, script_len)
+                  || c->send(c->sock, "\n", 1)))
+             || uw_buffer_append(&c->msgs, msg->start, uw_buffer_used(msg)))
     fprintf(stderr, "Client message buffer size exceeded");
 
   pthread_mutex_unlock(&c->lock);
@@ -3167,7 +3176,7 @@ void uw_commit(uw_context ctx) {
 
     assert (c != NULL && c->mode == USED);
 
-    client_send(c, &d->msgs);
+    client_send(c, &d->msgs, ctx->script.start, uw_buffer_used(&ctx->script));
   }
 
   if (ctx->client)
