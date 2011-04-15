@@ -3749,20 +3749,10 @@ uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t
   return !!(uw_Basis_eq_time(ctx, t1, t2) || uw_Basis_lt_time(ctx, t1, t2));
 }
 
-/*uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
-  uw_Basis_time *r = uw_Basis_stringToTime(ctx, s);
-
-  printf("timezone = %ld\n", timezone);
-
-  if (r)
-    r->seconds -= timezone;
-
-  return r;
-}*/
-
 uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
   struct tm stm = {};
   char *end = strchr(s, 0);
+  stm.tm_isdst = -1;
 
   if (strptime(s, TIME_FMT_PG, &stm) == end || strptime(s, TIME_FMT, &stm) == end) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
