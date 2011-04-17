@@ -2651,6 +2651,8 @@ fun p_file env (ds, ps) =
                                     newline,
                                     string "uw_write(ctx, begin_xhtml);",
                                     newline,
+                                    string "uw_mayReturnIndirectly(ctx);",
+                                    newline,
                                     string "uw_set_script_header(ctx, \"",
                                     let
                                         val scripts =

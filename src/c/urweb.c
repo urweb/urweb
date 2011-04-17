@@ -414,7 +414,7 @@ struct uw_context {
   void *get_header_data;
 
   uw_buffer outHeaders, page, heap, script;
-  int returning_indirectly;
+  int allowed_to_return_indirectly, returning_indirectly;
   input *inputs, *subinputs, *cur_container;
   size_t sz_inputs, n_subinputs, used_subinputs;
 
@@ -477,7 +477,7 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->outHeaders.start[0] = 0;
   uw_buffer_init(uw_page_max, &ctx->page, 1);
   ctx->page.start[0] = 0;
-  ctx->returning_indirectly = 0;
+  ctx->allowed_to_return_indirectly = ctx->returning_indirectly = 0;
   uw_buffer_init(uw_heap_max, &ctx->heap, uw_min_heap);
   uw_buffer_init(uw_script_max, &ctx->script, 1);
   ctx->script.start[0] = 0;
@@ -591,7 +591,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   uw_buffer_reset(&ctx->script);
   ctx->script.start[0] = 0;
   uw_buffer_reset(&ctx->page);
-  ctx->returning_indirectly = 0;
+  ctx->allowed_to_return_indirectly = ctx->returning_indirectly = 0;
   uw_buffer_reset(&ctx->heap);
   ctx->regions = NULL;
   ctx->cleanup_front = ctx->cleanup;
@@ -3418,6 +3418,9 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   cleanup *cl;
   int len;
 
+  if (!ctx->allowed_to_return_indirectly)
+    uw_error(ctx, FATAL, "Tried to return a blob from an RPC");
+
   ctx->returning_indirectly = 1;
   uw_buffer_reset(&ctx->outHeaders);
   uw_buffer_reset(&ctx->page);
@@ -3444,6 +3447,9 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
 __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) {
   cleanup *cl;
   char *s;
+
+  if (!ctx->allowed_to_return_indirectly)
+    uw_error(ctx, FATAL, "Tried to redirect from an RPC");
 
   ctx->returning_indirectly = 1;
   uw_buffer_reset(&ctx->page);
@@ -3791,4 +3797,8 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
     return r;
   } else
     uw_error(ctx, FATAL, "Tried to run nonexistent onError handler");
+}
+
+void uw_mayReturnIndirectly(uw_context ctx) {
+  ctx->allowed_to_return_indirectly = 1;
 }

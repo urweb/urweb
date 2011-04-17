@@ -238,6 +238,7 @@ void uw_postBody(uw_context, uw_Basis_postBody);
 int uw_hasPostBody(uw_context);
 uw_Basis_postBody uw_getPostBody(uw_context);
 
+void uw_mayReturnIndirectly(uw_context);
 __attribute__((noreturn)) void uw_return_blob(uw_context, uw_Basis_blob, uw_Basis_string mimeType);
 __attribute__((noreturn)) void uw_redirect(uw_context, uw_Basis_string url);
 
