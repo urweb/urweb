@@ -691,6 +691,8 @@ val p : bodyTag boxAttrs
 val b : bodyTag boxAttrs
 val i : bodyTag boxAttrs
 val tt : bodyTag boxAttrs
+val sub : bodyTag boxAttrs
+val sup : bodyTag boxAttrs
 
 val h1 : bodyTag boxAttrs
 val h2 : bodyTag boxAttrs
