@@ -1381,11 +1381,11 @@ fun projectCon env {sgn, str, field} =
                           else
                               NONE
                         | SgiClassAbs (x, _, k) => if x = field then
-                                                       SOME ((KArrow (k, (KType, #2 sgn)), #2 sgn), NONE)
+                                                       SOME (k, NONE)
                                                    else
                                                        NONE
                         | SgiClass (x, _, k, c) => if x = field then
-                                                       SOME ((KArrow (k, (KType, #2 sgn)), #2 sgn), SOME c)
+                                                       SOME (k, SOME c)
                                                    else
                                                        NONE
                         | _ => NONE) sgis of
