@@ -1043,8 +1043,8 @@ fun sgnS_con' (m1, ms', (sgns, strs, cons)) =
     U.Con.map {kind = fn x => x,
                con = fn c =>
                         case c of
-                            CModProj (m1, ms, x) =>
-                            (case IM.find (strs, m1) of
+                            CModProj (m1', ms, x) =>
+                            (case IM.find (strs, m1') of
                                  NONE => c
                                | SOME m1x => CModProj (m1, ms' @ m1x :: ms, x))
                           | CNamed n =>
