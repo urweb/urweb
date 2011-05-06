@@ -466,7 +466,11 @@ fun corifyCon st (c, loc) =
         in
             case St.lookupConByName st x of
                 St.CNormal n => (L'.CNamed n, loc)
-              | St.CFfi m => (L'.CFfi (m, x), loc)
+              | St.CFfi m => 
+                if (m, x) = ("Basis", "unit") then 
+                    (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc)
+                else
+                    (L'.CFfi (m, x), loc)
         end
 
       | L.CApp (c1, c2) => (L'.CApp (corifyCon st c1, corifyCon st c2), loc)
