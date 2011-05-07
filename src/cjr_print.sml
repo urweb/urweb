@@ -2661,14 +2661,14 @@ fun p_file env (ds, ps) =
                                               | _ =>
                                                 let
                                                     val scripts =
-                                                        "<script src=\\\""
+                                                        "<script type=\\\"text/javascript\\\" src=\\\""
                                                         ^ OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
                                                                                file = "app.js"}
                                                         ^ "\\\"></script>\\n"
                                                 in
                                                     foldl (fn (x, scripts) =>
                                                               scripts
-                                                              ^ "<script src=\\\"" ^ x ^ "\\\"></script>\\n")
+                                                              ^ "<script type=\\\"text/javascript\\\" src=\\\"" ^ x ^ "\\\"></script>\\n")
                                                           scripts (Settings.getScripts ())
                                                 end
                                     in
