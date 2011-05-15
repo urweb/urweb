@@ -1,4 +1,21 @@
 ========
+20110515
+========
+
+- Cygwin compatibility
+- Compatibility with Gentoo packaging process, including a .ebuild file
+- Change typing of SQL subqueries, to indicate that they may always return NULL
+  (for no rows)
+- Syntactic sugar for GROUP BY with variable numbers of columns
+  (using 'tab.{{c}}', where 'c :: {Type}')
+- 'ALL' for SQL relational operators
+- Add nullable types to the class for valid operands for SQL arithmetic
+- 'alt' attribute for <img>
+- <sup> and <sub> HTML tags
+- Allow 'debug' and 'naughtyDebug' in client-side code, implemented with 'alert'
+- Bug fixes and optimization improvements
+
+========
 20110123
 ========
 
