@@ -105,8 +105,7 @@ AC_DEFUN([AX_CHECK_OPENSSL], [
     LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
     LIBS="$OPENSSL_LIBS $LIBS"
     CPPFLAGS="$OPENSSL_INCLUDES $CPPFLAGS"
-    AC_LINK_IFELSE(
-        AC_LANG_PROGRAM([#include <openssl/ssl.h>], [SSL_new(NULL)]),
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <openssl/ssl.h>], [SSL_new(NULL)])],
         [
             AC_MSG_RESULT([yes])
             $1
