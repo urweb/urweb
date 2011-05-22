@@ -600,7 +600,6 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->cur_container = NULL;
   ctx->used_transactionals = 0;
   ctx->script_header = "";
-  ctx->hasPostBody = 0;
   ctx->queryString = NULL;
 }
 
@@ -614,8 +613,7 @@ void uw_reset(uw_context ctx) {
   if (ctx->app)
     memset(ctx->inputs, 0, ctx->app->inputs_len * sizeof(input));
   memset(ctx->subinputs, 0, ctx->n_subinputs * sizeof(input));
-  ctx->used_subinputs = 0;
-  ctx->isPost = 0;
+  ctx->used_subinputs = ctx->hasPostBody = ctx->isPost = 0;
 }
 
 failure_kind uw_begin_init(uw_context ctx) {
