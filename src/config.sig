@@ -10,4 +10,8 @@ signature CONFIG = sig
 
     val gccArgs : string
     val openssl : string
+
+    val pgheader : string
+    val msheader : string
+    val sqheader : string
 end

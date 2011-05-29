@@ -95,7 +95,7 @@ GCCARGS=-fnested-functions ./configure
 
 Some Mac OS X users have reported needing to use this particular GCCARGS value.
 
-Since the author is still getting a handle on the GNU Autotools that provide the build system, you may need to do some further work to get started, especially in environments with significant differences from Linux (where most testing is done).  One OS X user reported needing to run \texttt{./configure} with \texttt{CFLAGS=-I/opt/local/include}, since this directory wound up holding a header file associated with a \texttt{libmhash} package installed via DarwinPorts.  Further, to get libpq to link, another user reported setting \texttt{GCCARGS="-I/opt/local/include -L/opt/local/lib/postgresql84"}, after creating a symbolic link with \texttt{ln -s /opt/local/include/postgresql84 /opt/local/include/postgresql}.
+Since the author is still getting a handle on the GNU Autotools that provide the build system, you may need to do some further work to get started, especially in environments with significant differences from Linux (where most testing is done).  The variables \texttt{PGHEADER}, \texttt{MSHEADER}, and \texttt{SQHEADER} may be used to set the proper C header files to include for the development libraries of PostgreSQL, MySQL, and SQLite, respectively.  To get libpq to link, one OS X user reported setting \texttt{GCCARGS="-I/opt/local/include -L/opt/local/lib/postgresql84"}, after creating a symbolic link with \texttt{ln -s /opt/local/include/postgresql84 /opt/local/include/postgresql}.
 
 The Emacs mode can be set to autoload by adding the following to your \texttt{.emacs} file.
 

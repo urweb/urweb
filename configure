@@ -612,6 +612,9 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+SQHEADER
+MSHEADER
+PGHEADER
 GCCARGS
 SITELISP
 INCLUDE
@@ -12130,6 +12133,51 @@ else
 fi
 
 
+if test -z $PGHEADER; then
+   for ac_header in postgresql/libpq-fe.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "postgresql/libpq-fe.h" "ac_cv_header_postgresql_libpq_fe_h" "$ac_includes_default"
+if test "x$ac_cv_header_postgresql_libpq_fe_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_POSTGRESQL_LIBPQ_FE_H 1
+_ACEOF
+ PGHEADER=postgresql/libpq-fe.h
+fi
+
+done
+
+fi
+
+if test -z $PGHEADER; then
+   PGHEADER=libpq-fe.h
+fi
+
+if test -z $MSHEADER; then
+   for ac_header in mysql/mysql.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "mysql/mysql.h" "ac_cv_header_mysql_mysql_h" "$ac_includes_default"
+if test "x$ac_cv_header_mysql_mysql_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_MYSQL_MYSQL_H 1
+_ACEOF
+ MSHEADER=mysql/mysql.h
+fi
+
+done
+
+fi
+
+if test -z $MSHEADER; then
+   MSHEADER=mysql.h
+fi
+
+if test -z $SQHEADER; then
+   SQHEADER=sqlite3.h
+fi
+
+
+
+
 
 
 
@@ -14523,4 +14571,7 @@ Ur/Web configuration:
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
   Extra GCC args:      GCCARGS        $GCCARGS
+  Postgres C header:   PGHEADER       $PGHEADER
+  MySQL C header:      MSHEADER       $MSHEADER
+  SQLite C header:     SQHEADER       $SQHEADER
 EOF

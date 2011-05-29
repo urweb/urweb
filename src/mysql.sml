@@ -1526,7 +1526,7 @@ fun p_cast (s, _) = s
 fun p_blank _ = "?"
 
 val () = addDbms {name = "mysql",
-                  header = "mysql/mysql.h",
+                  header = Config.msheader,
                   link = "-lmysqlclient",
                   init = init,
                   p_sql_type = p_sql_type,

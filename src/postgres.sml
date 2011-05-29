@@ -1026,7 +1026,7 @@ fun p_cast (s, t) = s ^ "::" ^ p_sql_type t
 fun p_blank (n, t) = p_cast ("$" ^ Int.toString n, t)
 
 val () = addDbms {name = "postgres",
-                  header = "postgresql/libpq-fe.h",
+                  header = Config.pgheader,
                   link = "-lpq",
                   p_sql_type = p_sql_type,
                   init = init,

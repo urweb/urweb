@@ -820,7 +820,7 @@ fun p_cast (s, _) = s
 fun p_blank _ = "?"
 
 val () = addDbms {name = "sqlite",
-                  header = "sqlite3.h",
+                  header = Config.sqheader,
                   link = "-lsqlite3",
                   init = init,
                   p_sql_type = p_sql_type,

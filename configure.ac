@@ -57,11 +57,36 @@ AC_ARG_WITH([emacs],
 
 AM_CONDITIONAL(USE_EMACS, test "x$with_emacs" = xyes)
 
+if test [-z $PGHEADER]; then
+   AC_CHECK_HEADERS([postgresql/libpq-fe.h],
+                    [PGHEADER=postgresql/libpq-fe.h])
+fi
+
+if test [-z $PGHEADER]; then
+   PGHEADER=libpq-fe.h
+fi
+
+if test [-z $MSHEADER]; then
+   AC_CHECK_HEADERS([mysql/mysql.h],
+                    [MSHEADER=mysql/mysql.h])
+fi
+
+if test [-z $MSHEADER]; then
+   MSHEADER=mysql.h
+fi
+
+if test [-z $SQHEADER]; then
+   SQHEADER=sqlite3.h
+fi
+
 AC_SUBST(BIN)
 AC_SUBST(LIB)
 AC_SUBST(INCLUDE)
 AC_SUBST(SITELISP)
 AC_SUBST(GCCARGS)
+AC_SUBST(PGHEADER)
+AC_SUBST(MSHEADER)
+AC_SUBST(SQHEADER)
 
 AC_CONFIG_FILES([
         Makefile
@@ -79,4 +104,7 @@ Ur/Web configuration:
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
   Extra GCC args:      GCCARGS        $GCCARGS  
+  Postgres C header:   PGHEADER       $PGHEADER
+  MySQL C header:      MSHEADER       $MSHEADER
+  SQLite C header:     SQHEADER       $SQHEADER
 EOF

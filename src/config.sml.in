@@ -15,4 +15,8 @@ val libJs = OS.Path.joinDirFile {dir = lib,
 val gccArgs = "@GCCARGS@"
 val openssl = "@OPENSSL_LDFLAGS@ @OPENSSL_LIBS@"
 
+val pgheader = "@PGHEADER@"
+val msheader = "@MSHEADER@"
+val sqheader = "@SQHEADER@"
+
 end
