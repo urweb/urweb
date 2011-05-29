@@ -96,6 +96,14 @@ signature SETTINGS = sig
     val getMimeRules : unit -> rule list
     val checkMime : string -> bool
 
+    val setRequestHeaderRules : rule list -> unit
+    val getRequestHeaderRules : unit -> rule list
+    val checkRequestHeader : string -> bool
+
+    val setResponseHeaderRules : rule list -> unit
+    val getResponseHeaderRules : unit -> rule list
+    val checkResponseHeader : string -> bool
+
     (* Web protocols that generated programs may speak *)
     type protocol = {
         name : string,       (* Call it this on the command line *)

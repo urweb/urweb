@@ -435,6 +435,33 @@ fun exp e =
          else
              ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessMime'");
          se)
+      | EFfiApp ("Basis", "checkMime", [(se as EPrim (Prim.String s), loc)]) =>
+        (if Settings.checkMime s then
+             ESome ((TFfi ("Basis", "string"), loc), (se, loc))
+         else
+             ENone (TFfi ("Basis", "string"), loc))
+      | EFfiApp ("Basis", "blessRequestHeader", [(se as EPrim (Prim.String s), loc)]) =>
+        (if Settings.checkRequestHeader s then
+             ()
+         else
+             ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessRequestHeader'");
+         se)
+      | EFfiApp ("Basis", "checkRequestHeader", [(se as EPrim (Prim.String s), loc)]) =>
+        (if Settings.checkRequestHeader s then
+             ESome ((TFfi ("Basis", "string"), loc), (se, loc))
+         else
+             ENone (TFfi ("Basis", "string"), loc))
+      | EFfiApp ("Basis", "blessResponseHeader", [(se as EPrim (Prim.String s), loc)]) =>
+        (if Settings.checkResponseHeader s then
+             ()
+         else
+             ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessResponseHeader'");
+         se)
+      | EFfiApp ("Basis", "checkResponseHeader", [(se as EPrim (Prim.String s), loc)]) =>
+        (if Settings.checkResponseHeader s then
+             ESome ((TFfi ("Basis", "string"), loc), (se, loc))
+         else
+             ENone (TFfi ("Basis", "string"), loc))
 
       | EFfiApp ("Basis", "checkString", [(EPrim (Prim.String s), loc)]) => 
         let

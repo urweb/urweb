@@ -1,0 +1,5 @@
+rewrite url Headers/*
+allow requestHeader User-Agent
+allow responseHeader Location
+
+headers

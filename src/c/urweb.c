@@ -3346,7 +3346,7 @@ uw_Basis_string uw_Basis_checkUrl(uw_context ctx, uw_Basis_string s) {
     return NULL;
 }
 
-int mime_format(const char *s) {
+static int mime_format(const char *s) {
   for (; *s; ++s)
     if (!isalnum((int)*s) && *s != '/' && *s != '-' && *s != '.')
       return 0;
@@ -3372,6 +3372,70 @@ uw_Basis_string uw_Basis_checkMime(uw_context ctx, uw_Basis_string s) {
     return s;
   else
     return NULL;
+}
+
+uw_Basis_string uw_Basis_blessRequestHeader(uw_context ctx, uw_Basis_string s) {
+  if (!mime_format(s))
+    uw_error(ctx, FATAL, "Request header \"%s\" contains invalid character", uw_Basis_htmlifyString(ctx, s));
+
+  if (ctx->app->check_requestHeader(s))
+    return s;
+  else
+    uw_error(ctx, FATAL, "Disallowed request header %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_string uw_Basis_checkRequestHeader(uw_context ctx, uw_Basis_string s) {
+  if (!mime_format(s))
+    return NULL;
+
+  if (ctx->app->check_requestHeader(s))
+    return s;
+  else
+    return NULL;
+}
+
+uw_Basis_string uw_Basis_blessResponseHeader(uw_context ctx, uw_Basis_string s) {
+  if (!mime_format(s))
+    uw_error(ctx, FATAL, "Response header \"%s\" contains invalid character", uw_Basis_htmlifyString(ctx, s));
+
+  if (ctx->app->check_responseHeader(s))
+    return s;
+  else
+    uw_error(ctx, FATAL, "Disallowed response header %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_string uw_Basis_checkResponseHeader(uw_context ctx, uw_Basis_string s) {
+  if (!mime_format(s))
+    return NULL;
+
+  if (ctx->app->check_responseHeader(s))
+    return s;
+  else
+    return NULL;
+}
+
+uw_Basis_string uw_Basis_getHeader(uw_context ctx, uw_Basis_string name) {
+  return uw_Basis_requestHeader(ctx, name);
+}
+
+static int mime_value_format(const char *s) {
+  for (; *s; ++s)
+    if (*s == '\r' || *s == '\n')
+      return 0;
+
+  return 1;
+}
+
+uw_unit uw_Basis_setHeader(uw_context ctx, uw_Basis_string name, uw_Basis_string value) {
+  if (!mime_value_format(value))
+    uw_error(ctx, FATAL, "Invalid value for HTTP response header");
+
+  uw_write_header(ctx, name);
+  uw_write_header(ctx, ": ");
+  uw_write_header(ctx, value);
+  uw_write_header(ctx, "\r\n");
+
+  return uw_unit_v;
 }
 
 uw_Basis_string uw_unnull(uw_Basis_string s) {

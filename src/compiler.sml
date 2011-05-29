@@ -55,6 +55,8 @@ type job = {
      rewrites : Settings.rewrite list,
      filterUrl : Settings.rule list,
      filterMime : Settings.rule list,
+     filterRequest : Settings.rule list,
+     filterResponse : Settings.rule list,
      protocol : string option,
      dbms : string option,
      sigFile : string option,
@@ -335,6 +337,8 @@ fun institutionalizeJob (job : job) =
      Settings.setRewriteRules (#rewrites job);
      Settings.setUrlRules (#filterUrl job);
      Settings.setMimeRules (#filterMime job);
+     Settings.setRequestHeaderRules (#filterRequest job);
+     Settings.setResponseHeaderRules (#filterResponse job);
      Option.app Settings.setProtocol (#protocol job);
      Option.app Settings.setDbms (#dbms job);
      Settings.setSafeGets (#safeGets job);
@@ -384,6 +388,8 @@ fun parseUrp' accLibs fname =
                                     from = capitalize (OS.Path.file fname) ^ "/", to = ""}],
                        filterUrl = [],
                        filterMime = [],
+                       filterRequest = [],
+                       filterResponse = [],
                        protocol = NONE,
                        dbms = NONE,
                        sigFile = NONE,
@@ -497,6 +503,8 @@ fun parseUrp' accLibs fname =
                     val rewrites = ref []
                     val url = ref []
                     val mime = ref []
+                    val request = ref []
+                    val response = ref []
                     val libs = ref []
                     val protocol = ref NONE
                     val dbms = ref NONE
@@ -529,6 +537,8 @@ fun parseUrp' accLibs fname =
                                 rewrites = rev (!rewrites),
                                 filterUrl = rev (!url),
                                 filterMime = rev (!mime),
+                                filterRequest = rev (!request),
+                                filterResponse = rev (!response),
                                 sources = sources,
                                 protocol = !protocol,
                                 dbms = !dbms,
@@ -573,6 +583,8 @@ fun parseUrp' accLibs fname =
                                 rewrites = #rewrites old @ #rewrites new,
                                 filterUrl = #filterUrl old @ #filterUrl new,
                                 filterMime = #filterMime old @ #filterMime new,
+                                filterRequest = #filterRequest old @ #filterRequest new,
+                                filterResponse = #filterResponse old @ #filterResponse new,
                                 sources = #sources new
                                           @ List.filter (fn s => List.all (fn s' => s' <> s) (#sources new))
                                                         (#sources old),
@@ -613,6 +625,8 @@ fun parseUrp' accLibs fname =
                         case s of
                             "url" => url
                           | "mime" => mime
+                          | "requestHeader" => request
+                          | "responseHeader" => response
                           | _ => (ErrorMsg.error "Bad filter kind";
                                   url)
 

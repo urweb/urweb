@@ -90,6 +90,8 @@ typedef struct {
   uw_Basis_string (*cookie_sig)(uw_context);
   int (*check_url)(const char *);
   int (*check_mime)(const char *);
+  int (*check_requestHeader)(const char *);
+  int (*check_responseHeader)(const char *);
 
   void (*on_error)(uw_context, char *);
 

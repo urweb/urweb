@@ -51,6 +51,8 @@ signature COMPILER = sig
          rewrites : Settings.rewrite list,
          filterUrl : Settings.rule list,
          filterMime : Settings.rule list,
+         filterRequest : Settings.rule list,
+         filterResponse : Settings.rule list,
          protocol : string option,
          dbms : string option,
          sigFile : string option,

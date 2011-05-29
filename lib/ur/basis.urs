@@ -163,6 +163,16 @@ val setCookie : t ::: Type -> http_cookie t -> {Value : t,
                                                 Secure : bool} -> transaction unit
 val clearCookie : t ::: Type -> http_cookie t -> transaction unit
 
+type requestHeader
+val blessRequestHeader : string -> requestHeader
+val checkRequestHeader : string -> option requestHeader
+val getHeader : requestHeader -> transaction (option string)
+
+type responseHeader
+val blessResponseHeader : string -> responseHeader
+val checkResponseHeader : string -> option responseHeader
+val setHeader : responseHeader -> string -> transaction unit
+
 
 (** JavaScript-y gadgets *)
 

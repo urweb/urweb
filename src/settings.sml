@@ -140,7 +140,9 @@ val benignBase = basis ["get_cookie",
                         "debug",
                         "naughtyDebug",
                         "rand",
-                        "now"]
+                        "now",
+                        "getHeader",
+                        "setHeader"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
@@ -293,12 +295,18 @@ fun rewrite pk s =
 
 val url = ref ([] : rule list)
 val mime = ref ([] : rule list)
+val request = ref ([] : rule list)
+val response = ref ([] : rule list)
 
 fun setUrlRules ls = url := ls
 fun setMimeRules ls = mime := ls
+fun setRequestHeaderRules ls = request := ls
+fun setResponseHeaderRules ls = response := ls
 
 fun getUrlRules () = !url
 fun getMimeRules () = !mime
+fun getRequestHeaderRules () = !request
+fun getResponseHeaderRules () = !response
 
 fun check f rules s =
     let
@@ -324,9 +332,12 @@ fun check f rules s =
     end
 
 val checkUrl = check (fn _ => true) url
-val checkMime = check
-                    (CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"/" orelse ch = #"-" orelse ch = #"."))
-                    mime
+
+val validMime = CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"/" orelse ch = #"-" orelse ch = #".")
+
+val checkMime = check validMime mime
+val checkRequestHeader = check validMime request
+val checkResponseHeader = check validMime response
 
 
 type protocol = {
