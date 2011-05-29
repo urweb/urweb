@@ -2737,8 +2737,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                (L.EFfi ("Basis", "sql_nfunc"), _),
                _), _),
               _), _),
-             _), _),
-            _) =>
+             _), _), 
+           _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
@@ -3258,7 +3258,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              | SOME (_, src, _) =>
                                (strcat [str "<script type=\"text/javascript\">inp(exec(",
                                         (L'.EJavaScript (L'.Script, src), loc),
-                                        str "))</script>"],
+                                        str "), \"",
+                                        str name,
+                                        str "\")</script>"],
                                 fm))
                         | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                 raise Fail "No name passed to textbox tag"))
