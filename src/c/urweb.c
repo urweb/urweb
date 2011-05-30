@@ -3562,7 +3562,7 @@ __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) 
 }
 
 uw_Basis_string uw_Basis_unAs(uw_context ctx, uw_Basis_string s) {
-  uw_Basis_string r = uw_malloc(ctx, strlen(s) + 1);
+  uw_Basis_string ret = uw_malloc(ctx, strlen(s) + 1), r = ret;
 
   for (; *s; ++s) {
     if (s[0] == '\'') {
@@ -3572,27 +3572,21 @@ uw_Basis_string uw_Basis_unAs(uw_context ctx, uw_Basis_string s) {
           *r++ = '\'';
           break;
         } else if (s[0] == '\\') {
-          if (s[1] == '\\') {
-            *r++ = '\\';
-            *r++ = '\\';
-            ++s;
-          } else if (s[1] == '\'') {
-            *r++ = '\\';
-            *r++ = '\'';
-            ++s;
-          } else
-            *r++ = '\'';
+          *r++ = '\\';
+          *r++ = s[1];
+          ++s;
         } else
           *r++ = s[0];
       }
       if (*s == 0) break;
-    } else if (s[0] == 'T' && s[1] == '.')
-      ++s;
+    } else if (s[0] == 'T' && s[1] == '_' && s[2] == 'T' && s[3] == '.')
+      s += 3;
     else
       *r++ = s[0];
   }
 
-  return r;
+  *r = 0;
+  return ret;
 }
 
 uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {

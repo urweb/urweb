@@ -102,7 +102,7 @@ fun unAs s =
         fun doChars (cs, acc) =
             case cs of
                 #"T" :: #"_" :: #"T" :: #"." :: cs => doChars (cs, acc)
-              | #"'" :: cs => doString (cs, acc)
+              | #"'" :: cs => doString (cs, #"'" :: acc)
               | ch :: cs => doChars (cs, ch :: acc)
               | [] => String.implode (rev acc)
 
