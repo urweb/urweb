@@ -1,0 +1,5 @@
+dbms sqlite
+database /tmp/test
+sql t_t.sql
+
+t_t

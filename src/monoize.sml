@@ -1823,10 +1823,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                 strcatComma (map (fn (x, _) =>
                                                                                      strcat [sc ("uw_" ^ x
                                                                                                  ^ " = "),
-                                                                                             (L'.EField
-                                                                                                  ((L'.ERel 2,
-                                                                                                    loc),
-                                                                                                   x), loc)])
+                                                                                             (L'.EFfiApp ("Basis", "unAs",
+                                                                                                          [(L'.EField
+                                                                                                                ((L'.ERel 2,
+                                                                                                                  loc),
+                                                                                                                 x), loc)]), loc)])
                                                                                  changed),
                                                                 sc " WHERE ",
                                                                 (L'.EFfiApp ("Basis", "unAs", [(L'.ERel 0, loc)]), loc)]),
