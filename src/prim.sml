@@ -55,11 +55,7 @@ fun int2s' n =
     else
         Int64.toString n
 
-fun float2s n =
-    if Real64.compare (n, Real64.fromInt 0) = LESS then
-        "-" ^ Real64.toString (Real64.~ n)
-    else
-        Real64.toString n
+val float2s = String.translate (fn #"~" => "-" | ch => str ch) o Real64.toString
 
 fun toString t =
     case t of
