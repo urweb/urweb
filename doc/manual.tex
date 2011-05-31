@@ -2192,6 +2192,11 @@ void uw_error(uw_context, failure_kind, const char *fmt, ...);
   All pointers to the context-local heap (see description below of \texttt{uw\_malloc()}) become invalid at the start and end of any execution of a main entry point function of an application.  For example, if the request handler is restarted because of a \texttt{uw\_error()} call with \texttt{BOUNDED\_RETRY} or for any other reason, it is unsafe to access any local heap pointers that may have been stashed somewhere beforehand.
 
   \item \begin{verbatim}
+void uw_set_error_message(uw_context, const char *fmt, ...);
+  \end{verbatim}
+  This simpler form of \texttt{uw\_error()} saves an error message without immediately aborting execution.
+
+  \item \begin{verbatim}
 void uw_push_cleanup(uw_context, void (*func)(void *), void *arg);
 void uw_pop_cleanup(uw_context);
   \end{verbatim}
@@ -2219,6 +2224,8 @@ void uw_register_transactional(uw_context, void *data, uw_callback commit,
   When a request handler ends with multiple pending transactional actions, their handlers are run in a first-in-last-out stack-like order, wherever the order would otherwise be ambiguous.
 
   It is not safe for any of these handlers to access a context-local heap through a pointer returned previously by \texttt{uw\_malloc()}, nor should any new calls to that function be made.  Think of the context-local heap as meant for use by the Ur/Web code itself, while transactional handlers execute after the Ur/Web code has finished.
+
+  A handler may signal an error by calling \texttt{uw\_set\_error\_message()}, but it is not safe to call \texttt{uw\_error()} from a handler.  Signaling an error in a commit handler will cause the runtime system to switch to aborting the transaction, immediately after the current commit handler returns.
 
   \item \begin{verbatim}
 void *uw_get_global(uw_context, char *name);
