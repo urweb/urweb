@@ -44,16 +44,21 @@ fun setUrlPrefix p =
                      else
                          p
 
+        fun findPrefix n =
+            let
+                val (befor, after) = Substring.splitl (fn ch => ch <> #"/") (Substring.extract (prefix, n, NONE))
+            in
+                if Substring.isEmpty after then
+                    ("", prefix)
+                else
+                    (String.substring (prefix, 0, n) ^ Substring.string befor, Substring.string after)
+            end            
+
         val (prepre, prefix) =
             if String.isPrefix "http://" prefix then
-                let
-                    val (befor, after) = Substring.splitl (fn ch => ch <> #"/") (Substring.extract (prefix, 7, NONE))
-                in
-                    if Substring.isEmpty after then
-                        ("", prefix)
-                    else
-                        ("http://" ^ Substring.string befor, Substring.string after)
-                end
+                findPrefix 7
+            else if String.isPrefix "https://" prefix then
+                findPrefix 8
             else
                 ("", prefix)
     in
