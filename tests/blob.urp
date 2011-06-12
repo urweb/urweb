@@ -1,7 +1,5 @@
-debug
-database dbname=blobo
-sql blob.sql
-allow mime image/gif
-allow mime image/png
+allow responseHeader X-Test
+allow mime text/plain
+rewrite url Blob/*
 
 blob

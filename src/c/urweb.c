@@ -3488,14 +3488,34 @@ uw_Basis_string uw_Basis_postData(uw_context ctx, uw_Basis_postBody pb) {
   return pb.data;
 }
 
+static char *old_headers(uw_context ctx) {
+  if (uw_buffer_used(&ctx->outHeaders) == 0)
+    return NULL;
+  else {
+    char *s = strchr(ctx->outHeaders.start, '\n');
+
+    if (s == NULL || strncasecmp(s+1, "Content-type: ", 14))
+      return NULL;
+    else {
+      s = strchr(s+15, '\n');
+      if (s == NULL)
+        return NULL;
+      else
+        return uw_strdup(ctx, s+1);
+    }
+  }
+}
+
 __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, uw_Basis_string mimeType) {
   cleanup *cl;
   int len;
+  char *oldh;
 
   if (!ctx->allowed_to_return_indirectly)
     uw_error(ctx, FATAL, "Tried to return a blob from an RPC");
 
   ctx->returning_indirectly = 1;
+  oldh = old_headers(ctx);
   uw_buffer_reset(&ctx->outHeaders);
   uw_buffer_reset(&ctx->page);
 
@@ -3507,6 +3527,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   sprintf(ctx->outHeaders.front, "%lu%n", (unsigned long)b.size, &len);
   ctx->outHeaders.front += len;
   uw_write_header(ctx, "\r\n");
+  if (oldh) uw_write_header(ctx, oldh);
 
   ctx_uw_buffer_append(ctx, "page", &ctx->page, b.data, b.size);
 
@@ -3521,11 +3542,13 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
 __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) {
   cleanup *cl;
   char *s;
+  char *oldh;
 
   if (!ctx->allowed_to_return_indirectly)
     uw_error(ctx, FATAL, "Tried to redirect from an RPC");
 
   ctx->returning_indirectly = 1;
+  oldh = old_headers(ctx);
   uw_buffer_reset(&ctx->page);
   ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->outHeaders)+1);
   memcpy(ctx->page.start, ctx->outHeaders.start, uw_buffer_used(&ctx->outHeaders));
@@ -3552,6 +3575,7 @@ __attribute__((noreturn)) void uw_redirect(uw_context ctx, uw_Basis_string url) 
   uw_write_header(ctx, "Location: ");
   uw_write_header(ctx, url);
   uw_write_header(ctx, "\r\n\r\n");
+  if (oldh) uw_write_header(ctx, oldh);
 
   for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
     cl->func(cl->arg);
