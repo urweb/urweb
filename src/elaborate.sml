@@ -1751,6 +1751,7 @@ fun findHead e e' =
                         case e of
                             L'.ENamed _ => true
                           | L'.EModProj _ => true
+                          | L'.ERel _ => true
                           | L'.EApp (e, _) => findHead' e
                           | L'.ECApp (e, _) => findHead' e
                           | L'.EKApp (e, _) => findHead' e

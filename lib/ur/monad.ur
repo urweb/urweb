@@ -21,7 +21,7 @@ fun foldR [K] [m] (_ : monad m) [tf :: K -> Type] [tr :: {K} -> Type]
      (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] 
                       (acc : _ -> m (tr rest)) r =>
          acc' <- acc (r -- nm);
-         f [nm] [t] [rest] ! r.nm acc')
+         f [nm] [t] [rest] r.nm acc')
      (fn _ => return i)
      fl
 
@@ -34,7 +34,7 @@ fun foldR2 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type] [tr :: {K
      (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] 
                       (acc : _ -> _ -> m (tr rest)) r1 r2 =>
          acc' <- acc (r1 -- nm) (r2 -- nm);
-         f [nm] [t] [rest] ! r1.nm r2.nm acc')
+         f [nm] [t] [rest] r1.nm r2.nm acc')
      (fn _ _ => return i)
      fl
 
@@ -47,7 +47,7 @@ fun foldR3 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K
      (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] 
                       (acc : _ -> _ -> _ -> m (tr rest)) r1 r2 r3 =>
          acc' <- acc (r1 -- nm) (r2 -- nm) (r3 -- nm);
-         f [nm] [t] [rest] ! r1.nm r2.nm r3.nm acc')
+         f [nm] [t] [rest] r1.nm r2.nm r3.nm acc')
      (fn _ _ _ => return i)
      fl
 
@@ -88,7 +88,7 @@ fun foldMapR [K] [m] (_ : monad m) [tf :: K -> Type] [tf' :: K -> Type] [tr :: {
      (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] 
                       (acc : _ -> m ($(map tf' rest) * tr rest)) r =>
          p <- acc (r -- nm);
-         p' <- f [nm] [t] [rest] ! r.nm p.2;
+         p' <- f [nm] [t] [rest] r.nm p.2;
          return ({nm = p'.1} ++ p.1, p'.2))
      (fn _ => return ({}, i))
      fl
