@@ -1307,6 +1307,8 @@ val sqlify = {
 
 val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
+val escapeFilename = String.translate (fn #" " => "\\ " | #"\"" => "\\\"" | #"'" => "\\'" | ch => str ch)
+
 fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
     let
         val proto = Settings.currentProtocol ()
@@ -1318,10 +1320,10 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
 
         val compile = "gcc " ^ Config.gccArgs ^ " -Wimplicit -Werror -O3 -fno-inline -I " ^ Config.includ
                       ^ " " ^ #compile proto
-                      ^ " -c " ^ cname ^ " -o " ^ oname
+                      ^ " -c " ^ escapeFilename cname ^ " -o " ^ escapeFilename oname
 
-        val link = "gcc -Werror -O3 -lm -pthread " ^ Config.gccArgs ^ " " ^ lib ^ " " ^ Config.openssl ^ " " ^ oname
-                   ^ " -o " ^ ename ^ " " ^ libs
+        val link = "gcc -Werror -O3 -lm -pthread " ^ Config.gccArgs ^ " " ^ lib ^ " " ^ Config.openssl ^ " " ^ escapeFilename oname
+                   ^ " -o " ^ escapeFilename ename ^ " " ^ libs
 
         val (compile, link) =
             if profile then
