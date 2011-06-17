@@ -6,4 +6,4 @@ liburweb_cgi_la_SOURCES = cgi.c
 liburweb_fastcgi_la_SOURCES = fastcgi.c
 
 AM_CPPFLAGS = -I../../include @OPENSSL_INCLUDES@
-AM_CFLAGS = -Wimplicit -Wall -Werror
+AM_CFLAGS = -Wimplicit -Wall -Werror -Wno-format-security

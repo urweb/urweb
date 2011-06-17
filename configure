@@ -12184,6 +12184,7 @@ fi
 
 
 
+
 ac_config_files="$ac_config_files Makefile src/c/Makefile src/config.sml"
 
 
@@ -14570,6 +14571,7 @@ Ur/Web configuration:
   lib directory:       LIB            $LIB
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
+  C compiler:          CC             $CC
   Extra GCC args:      GCCARGS        $GCCARGS
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER

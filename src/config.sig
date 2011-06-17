@@ -8,6 +8,7 @@ signature CONFIG = sig
     val libC : string
     val libJs : string
 
+    val ccompiler : string
     val gccArgs : string
     val openssl : string
 

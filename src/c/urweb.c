@@ -829,7 +829,7 @@ static input *check_input_space(uw_context ctx, size_t len) {
   r = &ctx->subinputs[ctx->used_subinputs];
 
   for (i = 0; i < len; ++i)
-    ctx->subinputs[ctx->used_subinputs++].kind = UNUSED;
+    ctx->subinputs[ctx->used_subinputs++].kind = UNSET;
 
   return r;
 }

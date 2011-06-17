@@ -79,6 +79,7 @@ if test [-z $SQHEADER]; then
    SQHEADER=sqlite3.h
 fi
 
+AC_SUBST(CC)
 AC_SUBST(BIN)
 AC_SUBST(LIB)
 AC_SUBST(INCLUDE)
@@ -103,6 +104,7 @@ Ur/Web configuration:
   lib directory:       LIB            $LIB
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
+  C compiler:          CC             $CC
   Extra GCC args:      GCCARGS        $GCCARGS  
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER
