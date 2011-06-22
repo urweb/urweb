@@ -824,10 +824,10 @@ val tr : other ::: {Unit} -> [other ~ [Body, Table, Tr]] => unit
   -> tag tableAttrs
          ([Body, Table] ++ other) ([Body, Tr] ++ other) [] []
 val th : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
-  -> tag ([Colspan = int] ++ tableAttrs)
+  -> tag ([Colspan = int, Rowspan = int] ++ tableAttrs)
          ([Body, Tr] ++ other) ([Body] ++ other) [] []
 val td : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
-  -> tag ([Colspan = int] ++ tableAttrs)
+  -> tag ([Colspan = int, Rowspan = int] ++ tableAttrs)
          ([Body, Tr] ++ other) ([Body] ++ other) [] []
 
 
