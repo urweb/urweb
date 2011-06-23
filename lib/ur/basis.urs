@@ -593,6 +593,7 @@ val setval : sql_sequence -> int -> transaction unit
 (** XML *)
 
 type css_class
+val show_css_class : show css_class
 val classes : css_class -> css_class -> css_class
 (* The equivalent of writing one class after the other, separated by a space, in
  * an HTML 'class' attribute *)

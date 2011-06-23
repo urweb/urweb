@@ -1202,6 +1202,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
             end
+          | L.EFfi ("Basis", "show_css_class") =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
+            end
           | L.EFfi ("Basis", "show_char") =>
             ((L'.EFfi ("Basis", "charToString"), loc), fm)
           | L.EFfi ("Basis", "show_bool") =>
