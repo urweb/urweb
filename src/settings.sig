@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -227,4 +227,7 @@ signature SETTINGS = sig
 
     val addAlwaysInline : string -> unit
     val checkAlwaysInline : string -> bool
+
+    val addNoXsrfProtection : string -> unit
+    val checkNoXsrfProtection : string -> bool
 end

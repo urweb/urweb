@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -569,5 +569,9 @@ structure SS = BinarySetFn(struct
 val alwaysInline = ref SS.empty
 fun addAlwaysInline s = alwaysInline := SS.add (!alwaysInline, s)
 fun checkAlwaysInline s = SS.member (!alwaysInline, s)
+
+val noXsrfProtection = ref SS.empty
+fun addNoXsrfProtection s = noXsrfProtection := SS.add (!noXsrfProtection, s)
+fun checkNoXsrfProtection s = SS.member (!noXsrfProtection, s)
 
 end

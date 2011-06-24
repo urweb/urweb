@@ -2619,7 +2619,7 @@ fun p_file env (ds, ps) =
                      newline,
                      string "if (*request == '/') ++request;",
                      newline,
-                     if couldWrite ek then
+                     if couldWrite ek andalso not (Settings.checkNoXsrfProtection s) then
                          box [string "{",
                               newline,
                               string "uw_Basis_string sig = ",

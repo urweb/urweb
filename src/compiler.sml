@@ -780,6 +780,7 @@ fun parseUrp' accLibs fname =
                                          NONE => ErrorMsg.error ("invalid min heap '" ^ arg ^ "'")
                                        | SOME n => minHeap := n)
                                   | "alwaysInline" => Settings.addAlwaysInline arg
+                                  | "noXsrfProtection" => Settings.addNoXsrfProtection arg
 
                                   | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                 read ()
