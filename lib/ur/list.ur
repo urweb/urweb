@@ -353,3 +353,7 @@ fun assocAdd [a] [b] (_ : eq a) (x : a) (y : b) (ls : t (a * b)) =
     case assoc x ls of
         None => (x, y) :: ls
       | Some _ => ls
+
+fun recToList [a ::: Type] [r ::: {Unit}] (fl : folder r)
+  = @foldUR [a] [fn _ => list a] (fn [nm ::_] [rest ::_] [[nm] ~ rest] x xs =>
+				      x :: xs) [] fl

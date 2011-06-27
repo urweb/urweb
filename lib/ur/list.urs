@@ -79,3 +79,7 @@ val replaceNth : a ::: Type -> list a -> int -> a -> list a
 val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
 
 val assocAdd : a ::: Type -> b ::: Type -> eq a -> a -> b -> t (a * b) -> t (a * b)
+
+(** Converting records to lists *)
+
+val recToList : a ::: Type -> r ::: {Unit} -> folder r -> $(mapU a r) -> t a
