@@ -339,6 +339,7 @@ uw_Basis_time *uw_Basis_readUtc(uw_context, uw_Basis_string);
 
 void uw_isPost(uw_context);
 uw_Basis_bool uw_Basis_currentUrlHasPost(uw_context);
+uw_Basis_bool uw_Basis_currentUrlHasQueryString(uw_context);
 
 void uw_cutErrorLocation(char *);
 

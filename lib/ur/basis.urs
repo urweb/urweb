@@ -655,6 +655,7 @@ val bless : string -> url
 val checkUrl : string -> option url
 val currentUrl : transaction url
 val currentUrlHasPost : transaction bool
+val currentUrlHasQueryString : transaction bool
 val url : transaction page -> url
 val effectfulUrl : (option queryString -> transaction page) -> url
 val redirect : t ::: Type -> url -> transaction t

@@ -3802,6 +3802,10 @@ uw_Basis_bool uw_Basis_currentUrlHasPost(uw_context ctx) {
   return ctx->isPost;
 }
 
+uw_Basis_bool uw_Basis_currentUrlHasQueryString(uw_context ctx) {
+  return ctx->queryString != NULL && ctx->queryString[0] != 0;
+}
+
 void uw_setQueryString(uw_context ctx, uw_Basis_string s) {
   ctx->queryString = s;
 }
