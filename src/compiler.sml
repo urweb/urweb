@@ -324,7 +324,8 @@ fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
 fun institutionalizeJob (job : job) =
-    (Settings.setUrlPrefix (#prefix job);
+    (Settings.setDebug (#debug job);
+     Settings.setUrlPrefix (#prefix job);
      Settings.setTimeout (#timeout job);
      Settings.setHeaders (#headers job);
      Settings.setScripts (#scripts job);

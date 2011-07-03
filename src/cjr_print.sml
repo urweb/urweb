@@ -3112,6 +3112,11 @@ fun p_file env (ds, ps) =
                  NONE => box []
                | SOME n => box [string "static void uw_onError(uw_context ctx, char *msg) {",
                                 newline,
+                                if Settings.getDebug () then
+                                    box []
+                                else
+                                    box [string "uw_cutErrorLocation(msg);",
+                                         newline],
                                 box [string "uw_write(ctx, ",
                                      p_enamed env n,
                                      string "(ctx, msg, 0));",
