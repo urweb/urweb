@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <openssl/des.h>
+#include <openssl/rand.h>
 #include <time.h>
 
 #include <pthread.h>
@@ -3777,8 +3778,13 @@ uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_int uw_Basis_rand(uw_context ctx) {
-  uw_Basis_int n = abs(rand());
-  return n;
+  uw_Basis_int ret;
+  int r = RAND_bytes((unsigned char *)&ret, sizeof ret);
+  
+  if (r)
+    return abs(ret);
+  else
+    uw_error(ctx, FATAL, "Random number generation failed");
 }
 
 void uw_noPostBody(uw_context ctx) {
