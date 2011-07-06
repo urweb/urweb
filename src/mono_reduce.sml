@@ -204,15 +204,12 @@ fun match (env, p : pat, e : exp) =
         else
             No
 
-      | (PCon (_, PConVar n1, NONE), ECon (_, PConVar n2, NONE)) =>
+      | (PCon (_, PConVar n1, po), ECon (_, PConVar n2, eo)) =>
         if n1 = n2 then
-            Yes env
-        else
-            No
-
-      | (PCon (_, PConVar n1, SOME p), ECon (_, PConVar n2, SOME e)) =>
-        if n1 = n2 then
-            match (env, p, e)
+            case (po, eo) of
+                (NONE, NONE) => Yes env
+              | (SOME p, SOME e) => match (env, p, e)
+              | _ => Maybe
         else
             No
 
