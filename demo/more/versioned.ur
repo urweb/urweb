@@ -47,7 +47,7 @@ functor Make(M : sig
                           (e : after :: {Type} -> [before ~ after]
                            => sql_exp [T = before ++ after] [] [] bool)
                           [after :: {Type}] [[nm = t] ++ before ~ after] =>
-             (SQL t.{nm} = {[v]} AND {e [[nm = t] ++ after] !}))
+             (SQL t.{nm} = {[v]} AND {e [[nm = t] ++ after]}))
          (fn [after :: {Type}] [[] ~ after] => (SQL TRUE))
          M.keyFolder M.key r
          [_] !

@@ -403,7 +403,7 @@ functor Make(M : sig
                                            (meta : rawMeta t) (v : t)
                                            (exp : rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] bool)
                                            [rest :: {Type}] [rest ~ [nm = t] ++ key] =>
-                              (WHERE T.{nm} = {@sql_inject meta.Inj v} AND {exp [[nm = t] ++ rest] !}))
+                              (WHERE T.{nm} = {@sql_inject meta.Inj v} AND {exp [[nm = t] ++ rest]}))
                           (fn [rest :: {Type}] [rest ~ []] => (WHERE TRUE))
                           M.keyFolder (M.raw --- map rawMeta M.row) r
                           [_] !

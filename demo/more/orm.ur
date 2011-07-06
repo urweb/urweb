@@ -70,7 +70,7 @@ functor Table(M : sig
                     {nm = {Col = {Exp = sql_field [#T] [nm],
                                   Inj = meta.Inj},
                            Parent = fn r => meta.Link r.nm}}
-                        ++ acc [[nm = ts] ++ after] !)
+                        ++ acc [[nm = ts] ++ after])
                 (fn [after :: {(Type * Type)}] [[] ~ after] => {})
                 M.folder M.cols
                 [[Id = (id, row)]] !
