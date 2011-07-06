@@ -248,7 +248,11 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("le_time", "le"),
 
                           ("debug", "alert"),
-                          ("naughtyDebug", "alert")]
+                          ("naughtyDebug", "alert"),
+
+                          ("now", "now"),
+                          ("timeToString", "showTime"),
+                          ("htmlifyTime", "showTime")]
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)

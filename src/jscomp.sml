@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -646,7 +646,6 @@ fun process file =
                                 val name = case Settings.jsFunc (m, x) of
                                                NONE => (EM.errorAt loc ("Unsupported FFI function "
                                                                         ^ m ^ "." ^ x ^ " in JavaScript");
-                                                        app (fn ((m', x'), _) => print (m' ^ "." ^ x' ^ "\n")) (Settings.allJsFuncs ());
                                                         "ERROR")
                                              | SOME s => s
 
