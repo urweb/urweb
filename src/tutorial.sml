@@ -27,7 +27,7 @@
 
 structure Tutorial :> TUTORIAL = struct
 
-fun readAll' inf =
+fun readAll inf =
     let
         fun loop acc =
             case TextIO.inputLine inf of
@@ -38,10 +38,87 @@ fun readAll' inf =
         before TextIO.closeIn inf
     end
 
-fun readAll fname = readAll' (TextIO.openIn fname)
+val readAllFile = readAll o TextIO.openIn
+
+fun fixupFile (fname, title) =
+    let
+        val source = readAllFile "/tmp/final.html"
+        val outf = TextIO.openOut (OS.Path.mkAbsolute {relativeTo = OS.FileSys.getDir (),
+                                                       path = OS.Path.joinBaseExt {base = OS.Path.base fname, ext = SOME "html"}})
+
+        val (befor, after) = Substring.position "<title>" source
+
+        fun loop source =
+            let
+                val (befor, after) = Substring.position "<span class=\"comment-delimiter\">(* </span><span class=\"comment\">" source
+            in
+                if Substring.isEmpty after then
+                    TextIO.outputSubstr (outf, source)
+                else
+                    let
+                        val (befor', after) = Substring.position " </span><span class=\"comment-delimiter\">*)</span>"
+                                                             (Substring.slice (after, 64, NONE))
+                    in
+                        if Substring.isEmpty after then
+                            TextIO.outputSubstr (outf, source)
+                        else
+                            (TextIO.outputSubstr (outf, befor);
+                             TextIO.output (outf, "<div class=\"prose\">");
+                             TextIO.outputSubstr (outf, befor');
+                             TextIO.output (outf, "</div>");
+                             loop (Substring.slice (after, 49, NONE)))
+                    end
+            end
+    in
+        if Substring.isEmpty after then
+            raise Fail ("Missing <title> for " ^ title)
+        else
+            (TextIO.outputSubstr (outf, befor);
+             TextIO.output (outf, "<style type=\"text/css\">\n");
+             TextIO.output (outf, "<!--\n");
+             TextIO.output (outf, "\tdiv.prose {\n");
+             TextIO.output (outf, "\t\tfont-family: Arial;\n");
+             TextIO.output (outf, "\t\tbackground-color: #CCFFCC;\n");
+             TextIO.output (outf, "\t\tborder-style: solid;\n");
+             TextIO.output (outf, "\t\tpadding: 5px;\n");
+             TextIO.output (outf, "\t\tfont-size: larger;\n");
+             TextIO.output (outf, "\t}\n");
+             TextIO.output (outf, "-->\n");
+             TextIO.output (outf, "</style>\n");
+             TextIO.output (outf, "<title>");
+             TextIO.output (outf, title);
+             let
+                 val (befor, after) = Substring.position "</title>" after
+             in
+                 if Substring.isEmpty after then
+                     raise Fail ("Missing </title> for " ^ title)
+                 else
+                     let
+                         val (befor, after) = Substring.position "<body>" after
+                     in
+                         if Substring.isEmpty after then
+                             raise Fail ("Missing <body> for " ^ title)
+                         else
+                             (TextIO.outputSubstr (outf, befor);
+                              TextIO.output (outf, "<body><h1>");
+                              TextIO.output (outf, title);
+                              TextIO.output (outf, "</h1>");
+                              loop (Substring.slice (after, 6, NONE)))
+                     end
+             end;
+             TextIO.closeOut outf)
+    end
 
 fun doUr fname =
     let
+        val inf = TextIO.openIn fname
+
+        val title = case TextIO.inputLine inf of
+                        NONE => raise Fail ("No title comment at start of " ^ fname)
+                      | SOME title => title
+
+        val title = String.substring (title, 3, size title - 7)
+
         val eval = TextIO.openOut "/tmp/eval.ur"
         val gen = TextIO.openOut "/tmp/gen.ur"
 
@@ -115,11 +192,11 @@ fun doUr fname =
                     end
             end
     in
-        doDirectives (0, readAll fname);
+        doDirectives (0, readAll inf);
         TextIO.closeOut gen;
 
         TextIO.output (eval, "\n\nfun main () : transaction page =\nreturn <xml><body>");
-        TextIO.outputSubstr (eval, readAll "/tmp/gen.ur");
+        TextIO.outputSubstr (eval, readAllFile "/tmp/gen.ur");
         TextIO.output (eval, "</body></xml>");
         TextIO.closeOut eval;
 
@@ -127,7 +204,7 @@ fun doUr fname =
             let
                 val proc = Unix.execute ("/bin/sh", ["-c", "/tmp/eval.exe /main"])
                 val inf = Unix.textInstreamOf proc
-                val s = readAll' inf
+                val s = readAll inf
                 val _ = Unix.reap proc
 
                 val (befor, after) = Substring.position "<sc>" s
@@ -165,15 +242,13 @@ fun doUr fname =
                                           ^ "(urweb-mode) "
                                           ^ "(find-file \\\"/tmp/final.ur\\\") "
                                           ^ "(switch-to-buffer (htmlize-buffer)) "
-                                          ^ "(write-file \\\""
-                                          ^ OS.Path.mkAbsolute {relativeTo = OS.FileSys.getDir (),
-                                                                path = OS.Path.joinBaseExt {base = OS.Path.base fname, ext = SOME "html"}}
-                                          ^ "\\\") "
+                                          ^ "(write-file \\\"/tmp/final.html\\\") "
                                           ^ "(kill-emacs))\""
                             in
                                 eatNls befor;
                                 TextIO.closeOut outf;
-                                ignore (OS.Process.system cmd)
+                                ignore (OS.Process.system cmd);
+                                fixupFile (fname, title)
                             end
                     end
             end
