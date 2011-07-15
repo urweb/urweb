@@ -48,6 +48,28 @@ fun fixupFile (fname, title) =
 
         val (befor, after) = Substring.position "<title>" source
 
+        fun proseLoop source =
+            let
+                val (befor, after) = Substring.splitl (fn ch => ch <> #"&") source
+            in
+                if Substring.isEmpty after then
+                    TextIO.outputSubstr (outf, source)
+                else if Substring.size after >= 8 andalso Substring.string (Substring.slice (after, 1, SOME 7)) = "amp;lt;" then
+                    (TextIO.outputSubstr (outf, befor);
+                     TextIO.output (outf, "<");
+                     proseLoop (Substring.slice (after, 8, NONE)))
+                else if Substring.size after >= 4 andalso Substring.string (Substring.slice (after, 1, SOME 3)) = "gt;" then
+                    (TextIO.outputSubstr (outf, befor);
+                     TextIO.output (outf, ">");
+                     proseLoop (Substring.slice (after, 4, NONE)))
+                else if Substring.size after >= 5 andalso Substring.string (Substring.slice (after, 1, SOME 4)) = "amp;" then
+                    (TextIO.outputSubstr (outf, befor);
+                     TextIO.output (outf, "&");
+                     proseLoop (Substring.slice (after, 5, NONE)))
+                else
+                    raise Fail "Unsupported HTML escape"
+            end
+
         fun loop source =
             let
                 val (befor, after) = Substring.position "<span class=\"comment-delimiter\">(* </span><span class=\"comment\">" source
@@ -64,7 +86,7 @@ fun fixupFile (fname, title) =
                         else
                             (TextIO.outputSubstr (outf, befor);
                              TextIO.output (outf, "<div class=\"prose\">");
-                             TextIO.outputSubstr (outf, befor');
+                             proseLoop befor';
                              TextIO.output (outf, "</div>");
                              loop (Substring.slice (after, 49, NONE)))
                     end
