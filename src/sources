@@ -28,6 +28,9 @@ cgi.sml
 fastcgi.sig
 fastcgi.sml
 
+static.sig
+static.sml
+
 mysql.sig
 mysql.sml
 
@@ -209,3 +212,6 @@ compiler.sml
 
 demo.sig
 demo.sml
+
+tutorial.sig
+tutorial.sml

@@ -83,6 +83,9 @@ liburweb_fastcgi_la_OBJECTS = $(am_liburweb_fastcgi_la_OBJECTS)
 liburweb_http_la_LIBADD =
 am_liburweb_http_la_OBJECTS = http.lo
 liburweb_http_la_OBJECTS = $(am_liburweb_http_la_OBJECTS)
+liburweb_static_la_LIBADD =
+am_liburweb_static_la_OBJECTS = static.lo
+liburweb_static_la_OBJECTS = $(am_liburweb_static_la_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -97,9 +100,11 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(liburweb_la_SOURCES) $(liburweb_cgi_la_SOURCES) \
-	$(liburweb_fastcgi_la_SOURCES) $(liburweb_http_la_SOURCES)
+	$(liburweb_fastcgi_la_SOURCES) $(liburweb_http_la_SOURCES) \
+	$(liburweb_static_la_SOURCES)
 DIST_SOURCES = $(liburweb_la_SOURCES) $(liburweb_cgi_la_SOURCES) \
-	$(liburweb_fastcgi_la_SOURCES) $(liburweb_http_la_SOURCES)
+	$(liburweb_fastcgi_la_SOURCES) $(liburweb_http_la_SOURCES) \
+	$(liburweb_static_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -231,11 +236,12 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-lib_LTLIBRARIES = liburweb.la liburweb_http.la liburweb_cgi.la liburweb_fastcgi.la
+lib_LTLIBRARIES = liburweb.la liburweb_http.la liburweb_cgi.la liburweb_fastcgi.la liburweb_static.la
 liburweb_la_SOURCES = memmem.c openssl.c urweb.c request.c queue.c
 liburweb_http_la_SOURCES = http.c
 liburweb_cgi_la_SOURCES = cgi.c
 liburweb_fastcgi_la_SOURCES = fastcgi.c
+liburweb_static_la_SOURCES = static.c
 AM_CPPFLAGS = -I../../include @OPENSSL_INCLUDES@
 AM_CFLAGS = -Wimplicit -Wall -Werror -Wno-format-security
 all: all-am
@@ -311,6 +317,8 @@ liburweb_fastcgi.la: $(liburweb_fastcgi_la_OBJECTS) $(liburweb_fastcgi_la_DEPEND
 	$(LINK) -rpath $(libdir) $(liburweb_fastcgi_la_OBJECTS) $(liburweb_fastcgi_la_LIBADD) $(LIBS)
 liburweb_http.la: $(liburweb_http_la_OBJECTS) $(liburweb_http_la_DEPENDENCIES) 
 	$(LINK) -rpath $(libdir) $(liburweb_http_la_OBJECTS) $(liburweb_http_la_LIBADD) $(LIBS)
+liburweb_static.la: $(liburweb_static_la_OBJECTS) $(liburweb_static_la_DEPENDENCIES) 
+	$(LINK) -rpath $(libdir) $(liburweb_static_la_OBJECTS) $(liburweb_static_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -325,6 +333,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/queue.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/request.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/static.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/urweb.Plo@am__quote@
 
 .c.o:

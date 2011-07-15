@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@ val timing = ref false
 val tc = ref false
 val sources = ref ([] : string list)
 val demo = ref (NONE : (string * bool) option)
+val tutorial = ref false
 val css = ref false
 
 fun doArgs args =
@@ -42,6 +43,9 @@ fun doArgs args =
          doArgs rest)
       | "-guided-demo" :: prefix :: rest =>
         (demo := SOME (prefix, true);
+         doArgs rest)
+      | "-tutorial" :: rest =>
+        (tutorial := true;
          doArgs rest)
       | "-protocol" :: name :: rest =>
         (Settings.setProtocol name;
@@ -118,8 +122,8 @@ val job =
       | _ => raise Fail "Zero or multiple job files specified"
 
 val () =
-    case (!css, !demo) of
-        (true, _) =>
+    case (!css, !demo, !tutorial) of
+        (true, _, _) =>
         (case Compiler.run Compiler.toCss job of
              NONE => OS.Process.exit OS.Process.failure
            | SOME {Overall = ov, Classes = cl} =>
@@ -131,8 +135,9 @@ val () =
                        app (print o Css.inheritableToString) ins;
                        app (print o Css.othersToString) ots;
                        print "\n")) cl))
-      | (_, SOME (prefix, guided)) =>
+      | (_, SOME (prefix, guided), _) =>
         Demo.make {prefix = prefix, dirname = job, guided = guided}
+      | (_, _, true) => Tutorial.make job
       | _ =>
         if !tc then
             (Compiler.check Compiler.toElaborate job;
