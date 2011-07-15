@@ -1,4 +1,4 @@
-(* Introduction *)
+(* Chapter 1: Introduction *)
 
 (* begin hide *)
 val show_string = mkShow (fn s => "\"" ^ s ^ "\"")
@@ -109,4 +109,109 @@ length numbers
 
 (* begin eval *)
 length strings
+(* end *)
+
+(* And lists make a good setting for demonstrating higher-order functions and local functions.  (This example also introduces one idiosyncrasy of Ur, which is that "map" is a keyword, so we name our "map" function "mp.") *)
+
+(* begin hide *)
+fun show_list [t] (_ : show t) : show (list t) =
+    mkShow (let
+                fun shower (ls : list t) =
+                    case ls of
+                        [] => "[]"
+                      | x :: ls' => show x ^ " :: " ^ shower ls'
+            in
+                shower
+            end)
+(* end *)
+
+fun mp [a] [b] (f : a -> b) : list a -> list b =
+    let
+        fun loop (ls : list a) =
+            case ls of
+                [] => []
+              | x :: ls' => f x :: loop ls'
+    in
+        loop
+    end
+
+(* begin eval *)
+mp inc numbers
+(* end *)
+
+(* begin eval *)
+mp (fn s => s ^ "!") strings
+(* end *)
+
+(* We can define our own polymorphic datatypes and write higher-order functions over them. *)
+
+datatype tree a = Leaf of a | Node of tree a * tree a
+
+(* begin hide *)
+fun show_tree [t] (_ : show t) : show (tree t) =
+    mkShow (let
+                fun shower (t : tree t) =
+                    case t of
+                        Leaf x => "Leaf(" ^ show x ^ ")"
+                      | Node (t1, t2) => "Node(" ^ shower t1 ^ ", " ^ shower t2 ^ ")"
+            in
+                shower
+            end)
+(* end *)
+
+fun size [a] (t : tree a) : int =
+    case t of
+        Leaf _ => 1
+      | Node (t1, t2) => size t1 + size t2
+
+(* begin eval *)
+size (Node (Leaf 0, Leaf 1))
+(* end *)
+
+(* begin eval *)
+size (Node (Leaf 1.2, Node (Leaf 3.4, Leaf 4.5)))
+(* end *)
+
+fun tmap [a] [b] (f : a -> b) : tree a -> tree b =
+    let
+        fun loop (t : tree a) : tree b =
+            case t of
+                Leaf x => Leaf (f x)
+              | Node (t1, t2) => Node (loop t1, loop t2)
+    in
+        loop
+    end
+
+(* begin eval *)
+tmap inc (Node (Leaf 0, Leaf 1))
+(* end *)
+
+(* We also have anonymous record types, as in Standard ML.  The next chapter will show that there is quite a lot more going on here with records than in SML or OCaml, but we'll stick to the basics in this chapter.  We will add one tantalizing hint of what's to come by demonstrating the record concatention operator "++" and the record field removal operator "--". *)
+
+val x = { A = 0, B = 1.2, C = "hi", D = True }
+
+(* begin eval *)
+x.A
+(* end *)
+
+(* begin eval *)
+x.C
+(* end *)
+
+type myRecord = { A : int, B : float, C : string, D : bool }
+
+fun getA (r : myRecord) = r.A
+
+(* begin eval *)
+getA x
+(* end *)
+
+(* begin eval *)
+getA (x -- #A ++ {A = 4})
+(* end *)
+
+val y = { A = "uhoh", B = 2.3, C = "bye", D = False }
+
+(* begin eval *)
+getA (y -- #A ++ {A = 5})
 (* end *)
