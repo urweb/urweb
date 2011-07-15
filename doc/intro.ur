@@ -74,7 +74,7 @@ fun compose [a] [b] [c] (f : b -> c) (g : a -> b) (x : a) : c = f (g x)
 compose inc inc 3
 (* end *)
 
-(* The "option" type family is like ML's "option" or Haskell's "maybe."  Note that, while Ur follows most syntactic conventions of ML, one key difference is that type families appear before their arguments, as in Haskell. *)
+(* The "option" type family is like ML's "option" or Haskell's "maybe."  We also have a "case" expression form lifted directly from ML.  Note that, while Ur follows most syntactic conventions of ML, one key difference is that type families appear before their arguments, as in Haskell. *)
 
 fun predecessor (n : int) : option int = if n >= 1 then Some (n - 1) else None
 
@@ -91,4 +91,22 @@ predecessor 6
 
 (* begin eval *)
 predecessor 0
+(* end *)
+
+(* Naturally, there are lists, too! *)
+
+val numbers : list int = 1 :: 2 :: 3 :: []
+val strings : list string = "a" :: "bc" :: []
+
+fun length [a] (ls : list a) : int =
+    case ls of
+        [] => 0
+      | _ :: ls' => 1 + length ls'
+
+(* begin eval *)
+length numbers
+(* end *)
+
+(* begin eval *)
+length strings
 (* end *)

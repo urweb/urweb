@@ -182,6 +182,7 @@ fun doUr fname =
                                               | #"{" => "&#123;"
                                               | #"(" => "&#40;"
                                               | #"\n" => "&#40;*NL*)\n"
+                                              | #" " => "&#40;*NL*) "
                                               | ch => str ch) o Substring.string
 
                 val (befor, after) = Substring.position "(* begin " source
