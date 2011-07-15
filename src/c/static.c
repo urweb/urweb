@@ -25,15 +25,18 @@ int main(int argc, char *argv[]) {
  
   ctx = uw_init(0, NULL, log_debug);
   uw_set_app(ctx, &uw_application);
-  fk = uw_begin(ctx, argv[1]);
 
-  if (fk == SUCCESS) {
-    uw_print(ctx, 1);
-    puts("");
-    return 0;
-  } else {
-    fprintf(stderr, "Error!\n");
-    return 1;
+  while (1) {
+    fk = uw_begin(ctx, argv[1]);
+
+    if (fk == SUCCESS) {
+      uw_print(ctx, 1);
+      puts("");
+      return 0;
+    } else if (fk != UNLIMITED_RETRY) {
+      fprintf(stderr, "Error: %s\n", uw_error_message(ctx));
+      return 1;
+    }
   }
 }
 

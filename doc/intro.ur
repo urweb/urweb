@@ -73,3 +73,22 @@ fun compose [a] [b] [c] (f : b -> c) (g : a -> b) (x : a) : c = f (g x)
 (* begin eval *)
 compose inc inc 3
 (* end *)
+
+(* The "option" type family is like ML's "option" or Haskell's "maybe."  Note that, while Ur follows most syntactic conventions of ML, one key difference is that type families appear before their arguments, as in Haskell. *)
+
+fun predecessor (n : int) : option int = if n >= 1 then Some (n - 1) else None
+
+(* begin hide *)
+fun show_option [t] (_ : show t) : show (option t) =
+    mkShow (fn x => case x of
+                        None => "None"
+                      | Some x => "Some(" ^ show x ^ ")")
+(* end *)
+
+(* begin eval *)
+predecessor 6
+(* end *)
+
+(* begin eval *)
+predecessor 0
+(* end *)

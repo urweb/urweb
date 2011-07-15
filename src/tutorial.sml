@@ -79,7 +79,7 @@ fun fixupFile (fname, title) =
                 else
                     let
                         val (befor', after) = Substring.position " </span><span class=\"comment-delimiter\">*)</span>"
-                                                             (Substring.slice (after, 64, NONE))
+                                                                 (Substring.slice (after, 64, NONE))
                     in
                         if Substring.isEmpty after then
                             TextIO.outputSubstr (outf, source)
