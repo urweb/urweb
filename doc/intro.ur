@@ -1,6 +1,6 @@
 (* Introduction *)
 
-(* This work is licensed under a <a href="http://creativecommons.org/licenses/by-nc-nd/3.0/">Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License</a>. *)
+(* This tutorial is licensed under a <a href="http://creativecommons.org/licenses/by-nc-nd/3.0/">Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License</a>. *)
 
 (* Test evaluation.... *)
 
@@ -10,4 +10,6 @@ fun f [a] (x : a) : a = x
 f 6
 (* end *)
 
-(* Did it work? *)
+(** Section *)
+
+val y = 9

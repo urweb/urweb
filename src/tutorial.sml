@@ -75,7 +75,26 @@ fun fixupFile (fname, title) =
                 val (befor, after) = Substring.position "<span class=\"comment-delimiter\">(* </span><span class=\"comment\">" source
             in
                 if Substring.isEmpty after then
-                    TextIO.outputSubstr (outf, source)
+                    let
+                        val (befor, after) = Substring.position "<span class=\"comment-delimiter\">(** </span><span class=\"comment\">" source
+                    in
+                        if Substring.isEmpty after then
+                            TextIO.outputSubstr (outf, source)
+                        else
+                            let
+                                val (befor', after) = Substring.position " </span><span class=\"comment-delimiter\">*)</span>"
+                                                                         (Substring.slice (after, 65, NONE))
+                            in
+                                if Substring.isEmpty after then
+                                    TextIO.outputSubstr (outf, source)
+                                else
+                                    (TextIO.outputSubstr (outf, befor);
+                                     TextIO.output (outf, "<h2>");
+                                     proseLoop befor';
+                                     TextIO.output (outf, "</h2>");
+                                     loop (Substring.slice (after, 49, NONE)))
+                            end
+                    end
                 else
                     let
                         val (befor', after) = Substring.position " </span><span class=\"comment-delimiter\">*)</span>"
@@ -104,6 +123,12 @@ fun fixupFile (fname, title) =
              TextIO.output (outf, "\t\tborder-style: solid;\n");
              TextIO.output (outf, "\t\tpadding: 5px;\n");
              TextIO.output (outf, "\t\tfont-size: larger;\n");
+             TextIO.output (outf, "\t}\n");
+             TextIO.output (outf, "\th2 {\n");
+             TextIO.output (outf, "\t\tfont-family: Arial;\n");
+             TextIO.output (outf, "\t\tfont-size: 20pt;\n");
+             TextIO.output (outf, "\t\tbackground-color: #99FF99;\n");
+             TextIO.output (outf, "\t\tpadding: 5px;\n");
              TextIO.output (outf, "\t}\n");
              TextIO.output (outf, "-->\n");
              TextIO.output (outf, "</style>\n");
