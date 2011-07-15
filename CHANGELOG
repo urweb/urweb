@@ -1,4 +1,23 @@
 ========
+20110715
+========
+
+- Treat local variables the same as module-level variables, for the purpose of
+  implicit argument insertion
+- New 'noXsrfProtection' directive for .urp files
+- Non-debug builds omit source location information in error messages shown to
+  the user (but keep that information in log entries)
+- Basis.getHeader and Basis.setHeader
+- Basis.show_css_class
+- Basis.currentUrlHasQueryString
+- Make Basis.rand cryptographically secure
+- Client-side versions of Basis.now and Basis.show_time
+- Bug fixes
+- Improvements to auto-configuration and build process (now builds with LLVM's
+  Clang!)
+- Clarifications in the manual
+
+========
 20110517
 ========
 
