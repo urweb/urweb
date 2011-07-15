@@ -54,10 +54,10 @@ fun fixupFile (fname, title) =
             in
                 if Substring.isEmpty after then
                     TextIO.outputSubstr (outf, source)
-                else if Substring.size after >= 8 andalso Substring.string (Substring.slice (after, 1, SOME 7)) = "amp;lt;" then
+                else if Substring.size after >= 4 andalso Substring.string (Substring.slice (after, 1, SOME 3)) = "lt;" then
                     (TextIO.outputSubstr (outf, befor);
                      TextIO.output (outf, "<");
-                     proseLoop (Substring.slice (after, 8, NONE)))
+                     proseLoop (Substring.slice (after, 4, NONE)))
                 else if Substring.size after >= 4 andalso Substring.string (Substring.slice (after, 1, SOME 3)) = "gt;" then
                     (TextIO.outputSubstr (outf, befor);
                      TextIO.output (outf, ">");
@@ -75,26 +75,7 @@ fun fixupFile (fname, title) =
                 val (befor, after) = Substring.position "<span class=\"comment-delimiter\">(* </span><span class=\"comment\">" source
             in
                 if Substring.isEmpty after then
-                    let
-                        val (befor, after) = Substring.position "<span class=\"comment-delimiter\">(** </span><span class=\"comment\">" source
-                    in
-                        if Substring.isEmpty after then
-                            TextIO.outputSubstr (outf, source)
-                        else
-                            let
-                                val (befor', after) = Substring.position " </span><span class=\"comment-delimiter\">*)</span>"
-                                                                         (Substring.slice (after, 65, NONE))
-                            in
-                                if Substring.isEmpty after then
-                                    TextIO.outputSubstr (outf, source)
-                                else
-                                    (TextIO.outputSubstr (outf, befor);
-                                     TextIO.output (outf, "<h2>");
-                                     proseLoop befor';
-                                     TextIO.output (outf, "</h2>");
-                                     loop (Substring.slice (after, 49, NONE)))
-                            end
-                    end
+                   TextIO.outputSubstr (outf, source)
                 else
                     let
                         val (befor', after) = Substring.position " </span><span class=\"comment-delimiter\">*)</span>"
@@ -104,9 +85,16 @@ fun fixupFile (fname, title) =
                             TextIO.outputSubstr (outf, source)
                         else
                             (TextIO.outputSubstr (outf, befor);
-                             TextIO.output (outf, "<div class=\"prose\">");
-                             proseLoop befor';
-                             TextIO.output (outf, "</div>");
+                             TextIO.output (outf, "</pre>");
+                             if Substring.size befor' >= 1 andalso Substring.sub (befor', 0) = #"*" then
+                                 (TextIO.output (outf, "<h2>");
+                                  proseLoop (Substring.slice (befor', 2, NONE));
+                                  TextIO.output (outf, "</h2>"))
+                             else
+                                 (TextIO.output (outf, "<div class=\"prose\">");
+                                  proseLoop befor';
+                                  TextIO.output (outf, "</div>"));
+                             TextIO.output (outf, "<pre>");
                              loop (Substring.slice (after, 49, NONE)))
                     end
             end
@@ -129,6 +117,14 @@ fun fixupFile (fname, title) =
              TextIO.output (outf, "\t\tfont-size: 20pt;\n");
              TextIO.output (outf, "\t\tbackground-color: #99FF99;\n");
              TextIO.output (outf, "\t\tpadding: 5px;\n");
+             TextIO.output (outf, "\t}\n");
+             TextIO.output (outf, "\ta:link {\n");
+             TextIO.output (outf, "\t\ttext-decoration: underline;\n");
+             TextIO.output (outf, "\t\tcolor: blue;\n");
+             TextIO.output (outf, "\t}\n");
+             TextIO.output (outf, "\ta:visited {\n");
+             TextIO.output (outf, "\t\ttext-decoration: underline;\n");
+             TextIO.output (outf, "\t\tcolor: red;\n");
              TextIO.output (outf, "\t}\n");
              TextIO.output (outf, "-->\n");
              TextIO.output (outf, "</style>\n");
@@ -287,13 +283,14 @@ fun doUr fname =
                                           ^ "/\\\") "
                                           ^ "(load \\\"urweb-mode-startup\\\") "
                                           ^ "(urweb-mode) "
-                                          ^ "(find-file \\\"/tmp/final.ur\\\") "
+                                          ^ "(find-file \\\"/tmp/final2.ur\\\") "
                                           ^ "(switch-to-buffer (htmlize-buffer)) "
                                           ^ "(write-file \\\"/tmp/final.html\\\") "
                                           ^ "(kill-emacs))\""
                             in
                                 eatNls befor;
                                 TextIO.closeOut outf;
+                                ignore (OS.Process.system "sed -e 's/&lt;/</g;s/&amp;/\\&/g' </tmp/final.ur >/tmp/final2.ur");
                                 ignore (OS.Process.system cmd);
                                 fixupFile (fname, title)
                             end
