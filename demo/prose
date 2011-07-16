@@ -30,7 +30,7 @@ ProxyPassReverse /Demo/ http://localhost:8080/Demo/</pre></blockquote></p>
 sqlite3 /path/to/database/file &lt;demo/demo.sql
 demo/demo.exe</pre></blockquote></p>
 
-<p>Then you can skip the static content and connect directly to the demo server at <tt>http://localhost:8080/Demo/Demo/main</tt>, which contains links to the individual demos.</p>
+<p>Then you can skip the static content and connect directly to the demo server at <tt>http://localhost:8080/Demo/Demo/main</tt>, which contains links to the individual demos.  If you're running the server created just for <tt>hello</tt>, then the URL will be <tt>http://localhost:8080/Hello/main</tt>.</p>
 
 <p>The rest of the demo focuses on the individual applications.  Follow the links in the lefthand frame to visit the applications, commentary, and syntax-highlighted source code.  (An Emacs mode is behind the syntax highlighting.)  I recommend visiting the applications in the order listed, since that is the order in which new concepts are introduced.</p>
 
