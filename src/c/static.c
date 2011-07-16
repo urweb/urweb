@@ -37,6 +37,8 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "Error: %s\n", uw_error_message(ctx));
       return 1;
     }
+
+    uw_reset(ctx);
   }
 }
 

@@ -6,9 +6,9 @@ val show_string = mkShow (fn s => "\"" ^ s ^ "\"")
 
 (* This tutorial by <a href="http://adam.chlipala.net/">Adam Chlipala</a> is licensed under a <a href="http://creativecommons.org/licenses/by-nc-nd/3.0/">Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License</a>. *)
 
-(* This is a tutorial for the <a href="http://www.impredicative.com/ur/">Ur/Web</a> programming language.  The <a href="http://www.impredicative.com/ur/">official project web site</a> is your starting point for information, like a reference manual and where to download the latest code release.  In this tutorial, we'll just focus on introducing the language features. *)
+(* This is a tutorial for the <a href="http://www.impredicative.com/ur/">Ur/Web</a> programming language.  The <a href="http://www.impredicative.com/ur/">official project web site</a> is your starting point for information, like a reference manual and a pointer to download the latest code release.  In this tutorial, we'll just focus on introducing the language features. *)
 
-(* Ur/Web contains a web-indendent core language called Ur, which will be the subject of the first few chapters of the tutorial.  Ur inherits its foundation from ML and Haskell, then going further to add fancier stuff.  This first chapter of the tutorial reviews the key ML and Haskell features, giving their syntax in Ur. *)
+(* Ur/Web contains a web-indendent core language called Ur, which will be the subject of the first few chapters of the tutorial.  Ur inherits its foundation from ML and Haskell, then going further to add fancier stuff.  This first chapter of the tutorial reviews the key ML and Haskell features, giving their syntax in Ur.  I do assume reading familiarity with ML and Haskell and won't dwell too much on explaining the imported features. *)
 
 (* * Basics *)
 
@@ -52,6 +52,14 @@ fun fact n = if n = 0 then 1 else n * fact (n - 1)
 fact 5
 (* end *)
 
+fun isEven n = n = 0 || isOdd (n - 1)
+and isOdd n = n = 1 || isEven (n - 1)
+
+(* begin eval *)
+isEven 32
+(* end *)
+
+
 (* Of course we have anonymous functions, too. *)
 
 val inc = fn x => x + 1
@@ -74,7 +82,7 @@ fun compose [a] [b] [c] (f : b -> c) (g : a -> b) (x : a) : c = f (g x)
 compose inc inc 3
 (* end *)
 
-(* The <tt>option</tt> type family is like ML's <tt>option</tt> or Haskell's <tt>Maybe</tt>.  We also have a <tt>case</tt> expression form lifted directly from ML.  Note that, while Ur follows most syntactic conventions of ML, one key difference is that type families appear before their arguments, as in Haskell. *)
+(* The <tt>option</tt> type family is like ML's <tt>option</tt> or Haskell's <tt>Maybe</tt>.  We also have a <tt>case</tt> expression form lifted directly from ML.  Note that, while Ur follows most syntactic conventions of ML, one key difference is that type family names appear before their arguments, as in Haskell. *)
 
 fun predecessor (n : int) : option int = if n >= 1 then Some (n - 1) else None
 
@@ -111,7 +119,7 @@ length numbers
 length strings
 (* end *)
 
-(* And lists make a good setting for demonstrating higher-order functions and local functions.  (This example also introduces one idiosyncrasy of Ur, which is that <tt>map</tt> is a keyword, so we name our"map" function <tt>mp</tt>. *)
+(* And lists make a good setting for demonstrating higher-order functions and local functions.  (This example also introduces one idiosyncrasy of Ur, which is that <tt>map</tt> is a keyword, so we name our "map" function <tt>mp</tt>.) *)
 
 (* begin hide *)
 fun show_list [t] (_ : show t) : show (list t) =
@@ -219,7 +227,7 @@ getA (y -- #A ++ {A = 5})
 
 (* * Borrowed from ML *)
 
-(* Ur includes an ML-style module system.  The most basic use case involves packaging abstract types with their "methods." *)
+(* Ur includes an ML-style <b>module system</b>.  The most basic use case involves packaging abstract types with their "methods." *)
 
 signature COUNTER = sig
     type t
@@ -230,7 +238,7 @@ end
 
 structure Counter : COUNTER = struct
     type t = int
-    val zero = 9
+    val zero = 0
     val increment = plus 1
     fun toInt x = x
 end
@@ -239,7 +247,7 @@ end
 Counter.toInt (Counter.increment Counter.zero)
 (* end *)
 
-(* We may package not just abstract types, but also abstract type families.  Here we see our first use of the <tt>con</tt> keyword, which stands for <b>constructor</b>.  Constructors are a generalization of types to include other "compile-time things"; for instance, type families, which are assigned the kind <tt>Type -> Type</tt>.  Kinds are to constructors as types are to normal values.  We also see how to write the type of a polymorphic function, using the <tt>:::</tt> syntax for type variable binding.  This <tt>:::</tt> differs from the <tt>::</tt> used with the <tt>con</tt> keyword because it marks a type parameter as implicit, so that it need not be supplied explicitly at call sites.  Such an option is the only one available in ML and Haskell, but, in the next chapter, we'll meet cases where it is appropriate to use explicit constructor parameters. *)
+(* We may package not just abstract types, but also abstract type families.  Here we see our first use of the <tt>con</tt> keyword, which stands for <b>constructor</b>.  Constructors are a generalization of types to include other "compile-time things"; for instance, basic type families, which are assigned the <b>kind</b> <tt>Type -> Type</tt>.  Kinds are to constructors as types are to normal values.  We also see how to write the type of a polymorphic function, using the <tt>:::</tt> syntax for type variable binding.  This <tt>:::</tt> differs from the <tt>::</tt> used with the <tt>con</tt> keyword because it marks a type parameter as implicit, so that it need not be supplied explicitly at call sites.  Such an option is the only one available in ML and Haskell, but, in the next chapter, we'll meet cases where it is appropriate to use explicit constructor parameters. *)
 
 signature STACK = sig
     con t :: Type -> Type
@@ -288,7 +296,7 @@ functor BinarySearchTree(M : COMPARABLE) : DICTIONARY where type key = M.t = str
         case t of
             Leaf => Node (Leaf, k, v, Leaf)
           | Node (left, k', v', right) =>
-            case M.compare k' k of
+            case M.compare k k' of
                 Equal => Node (left, k, v, right)
               | Less => Node (insert left k v, k', v', right)
               | Greater => Node (left, k', v', insert right k v)
@@ -297,7 +305,7 @@ functor BinarySearchTree(M : COMPARABLE) : DICTIONARY where type key = M.t = str
         case t of
             Leaf => None
           | Node (left, k', v, right) =>
-            case M.compare k' k of
+            case M.compare k k' of
                 Equal => Some v
               | Less => lookup left k
               | Greater => lookup right k
@@ -333,3 +341,93 @@ open IT
 (* begin eval *)
 lookup (insert (insert empty 0 "A") 1 "B") 2
 (* end *)
+
+(* Ur adopts OCaml's approach to splitting projects across source files.  When a project contains files <tt>foo.ur</tt> and <tt>foo.urs</tt>, these are taken as defining a module named <tt>Foo</tt> whose signature is drawn from <tt>foo.urs</tt> and whose implementation is drawn from <tt>foo.ur</tt>.  If <tt>foo.ur</tt> exists without <tt>foo.urs</tt>, then module <tt>Foo</tt> is defined without an explicit signature, so that it is assigned its <b>principal signature</b>, which exposes all typing details without abstraction. *)
+
+
+(* * Borrowed from Haskell *)
+
+(* Ur includes a take on <b>type classes</b>.  For instance, here is a generic "max" function that relies on a type class <tt>ord</tt>.  Notice that the type class membership witness is treated like an ordinary function parameter, though we don't assign it a name here, because type inference figures out where it should be used.  The more advanced examples of the next chapter will include cases where we manipulate type class witnesses explicitly. *)
+
+fun max [a] (_ : ord a) (x : a) (y : a) : a =
+    if x < y then
+        y
+    else
+        x
+
+(* begin eval *)
+max 1 2
+(* end *)
+
+(* begin eval *)
+max "ABC" "ABA"
+(* end *)
+
+(* The idiomatic way to define a new type class is to stash it inside a module, like in this example: *)
+
+signature DOUBLE = sig
+    class double
+    val double : a ::: Type -> double a -> a -> a
+    val mkDouble : a ::: Type -> (a -> a) -> double a
+
+    val double_int : double int
+    val double_string : double string
+end
+
+structure Double : DOUBLE = struct
+    class double a = a -> a
+
+    fun double [a] (f : double a) (x : a) : a = f x
+    fun mkDouble [a] (f : a -> a) : double a = f
+
+    val double_int = mkDouble (times 2)
+    val double_string = mkDouble (fn s => s ^ s)
+end
+
+open Double
+
+(* begin eval *)
+double 13
+(* end *)
+
+(* begin eval *)
+double "ho"
+(* end *)
+
+val double_float = mkDouble (times 2.0)
+
+(* begin eval *)
+double 2.3
+(* end *)
+
+(* That example had a mix of instances defined with a class and instances defined outside its module.  Its possible to create <b>closed type classes</b> simply by omitting from the module an instance creation function like <tt>mkDouble</tt>.  This way, only the instances you decide on may be allowed, which enables you to enforce program-wide invariants over instances. *)
+
+signature OK_TYPE = sig
+    class ok
+    val importantOperation : a ::: Type -> ok a -> a -> string
+    val ok_int : ok int
+    val ok_float : ok float
+end
+
+structure OkType : OK_TYPE = struct
+    class ok a = unit
+    fun importantOperation [a] (_ : ok a) (_ : a) = "You found an OK value!"
+    val ok_int = ()
+    val ok_float = ()
+end
+
+open OkType
+
+(* begin eval *)
+importantOperation 13
+(* end *)
+
+(* Like Haskell, Ur supports the more general notion of <b>constructor classes</b>, whose instances may be parameterized over constructors with kinds beside <tt>Type</tt>.  Also like in Haskell, the flagship constructor class is <tt>monad</tt>.  Ur/Web's counterpart of Haskell's <tt>IO</tt> monad is <tt>transaction</tt>, which indicates the tight coupling with transactional execution in server-side code.  Just as in Haskell, <tt>transaction</tt> must be used to create side-effecting actions, since Ur is purely functional (but has eager evaluation).  Here is a quick example transaction, showcasing Ur's variation on Haskell <tt>do</tt> notation. *)
+
+val readBack : transaction int =
+   src <- source 0;
+   set src 1;
+   n <- get src;
+   return (n + 1)
+
+(* We get ahead of ourselves a bit here, as this example uses functions associated with client-side code to create and manipulate a mutable data source. *)
