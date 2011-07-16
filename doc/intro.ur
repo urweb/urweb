@@ -12,7 +12,7 @@ val show_string = mkShow (fn s => "\"" ^ s ^ "\"")
 
 (* * Basics *)
 
-(* Let's start with features shared with both ML and Haskell.  First, we have the basic numeric, string, and Boolean stuff.  (In the following examples, "==" is used to indicate the result of evaluating an expression.  It's not valid Ur syntax!) *)
+(* Let's start with features shared with both ML and Haskell.  First, we have the basic numeric, string, and Boolean stuff.  (In the following examples, <tt>==</tt> is used to indicate the result of evaluating an expression.  It's not valid Ur syntax!) *)
 
 (* begin eval *)
 1 + 1
@@ -74,7 +74,7 @@ fun compose [a] [b] [c] (f : b -> c) (g : a -> b) (x : a) : c = f (g x)
 compose inc inc 3
 (* end *)
 
-(* The "option" type family is like ML's "option" or Haskell's "maybe."  We also have a "case" expression form lifted directly from ML.  Note that, while Ur follows most syntactic conventions of ML, one key difference is that type families appear before their arguments, as in Haskell. *)
+(* The <tt>option</tt> type family is like ML's <tt>option</tt> or Haskell's <tt>Maybe</tt>.  We also have a <tt>case</tt> expression form lifted directly from ML.  Note that, while Ur follows most syntactic conventions of ML, one key difference is that type families appear before their arguments, as in Haskell. *)
 
 fun predecessor (n : int) : option int = if n >= 1 then Some (n - 1) else None
 
@@ -111,7 +111,7 @@ length numbers
 length strings
 (* end *)
 
-(* And lists make a good setting for demonstrating higher-order functions and local functions.  (This example also introduces one idiosyncrasy of Ur, which is that "map" is a keyword, so we name our "map" function "mp.") *)
+(* And lists make a good setting for demonstrating higher-order functions and local functions.  (This example also introduces one idiosyncrasy of Ur, which is that <tt>map</tt> is a keyword, so we name our"map" function <tt>mp</tt>. *)
 
 (* begin hide *)
 fun show_list [t] (_ : show t) : show (list t) =
@@ -186,7 +186,7 @@ fun tmap [a] [b] (f : a -> b) : tree a -> tree b =
 tmap inc (Node (Leaf 0, Leaf 1))
 (* end *)
 
-(* We also have anonymous record types, as in Standard ML.  The next chapter will show that there is quite a lot more going on here with records than in SML or OCaml, but we'll stick to the basics in this chapter.  We will add one tantalizing hint of what's to come by demonstrating the record concatention operator "++" and the record field removal operator "--". *)
+(* We also have anonymous record types, as in Standard ML.  The next chapter will show that there is quite a lot more going on here with records than in SML or OCaml, but we'll stick to the basics in this chapter.  We will add one tantalizing hint of what's to come by demonstrating the record concatention operator <tt>++</tt> and the record field removal operator <tt>--</tt>. *)
 
 val x = { A = 0, B = 1.2, C = "hi", D = True }
 
@@ -214,4 +214,122 @@ val y = { A = "uhoh", B = 2.3, C = "bye", D = False }
 
 (* begin eval *)
 getA (y -- #A ++ {A = 5})
+(* end *)
+
+
+(* * Borrowed from ML *)
+
+(* Ur includes an ML-style module system.  The most basic use case involves packaging abstract types with their "methods." *)
+
+signature COUNTER = sig
+    type t
+    val zero : t
+    val increment : t -> t
+    val toInt : t -> int
+end
+
+structure Counter : COUNTER = struct
+    type t = int
+    val zero = 9
+    val increment = plus 1
+    fun toInt x = x
+end
+
+(* begin eval *)
+Counter.toInt (Counter.increment Counter.zero)
+(* end *)
+
+(* We may package not just abstract types, but also abstract type families.  Here we see our first use of the <tt>con</tt> keyword, which stands for <b>constructor</b>.  Constructors are a generalization of types to include other "compile-time things"; for instance, type families, which are assigned the kind <tt>Type -> Type</tt>.  Kinds are to constructors as types are to normal values.  We also see how to write the type of a polymorphic function, using the <tt>:::</tt> syntax for type variable binding.  This <tt>:::</tt> differs from the <tt>::</tt> used with the <tt>con</tt> keyword because it marks a type parameter as implicit, so that it need not be supplied explicitly at call sites.  Such an option is the only one available in ML and Haskell, but, in the next chapter, we'll meet cases where it is appropriate to use explicit constructor parameters. *)
+
+signature STACK = sig
+    con t :: Type -> Type
+    val empty : a ::: Type -> t a
+    val push : a ::: Type -> t a -> a -> t a
+    val pop : a ::: Type -> t a -> option a
+end
+
+structure Stack : STACK = struct
+    con t = list
+    val empty [a] = []
+    fun push [a] (t : t a) (x : a) = x :: t
+    fun pop [a] (t : t a) = case t of
+                                [] => None
+                              | x :: _ => Some x
+end
+
+(* begin eval *)
+Stack.pop (Stack.push (Stack.push Stack.empty "A") "B")
+(* end *)
+
+(* Ur also inherits the ML concept of <b>functors</b>, which are functions from modules to modules. *)
+
+datatype order = Less | Equal | Greater
+
+signature COMPARABLE = sig
+    type t
+    val compare : t -> t -> order
+end
+
+signature DICTIONARY = sig
+    type key
+    con t :: Type -> Type
+    val empty : a ::: Type -> t a
+    val insert : a ::: Type -> t a -> key -> a -> t a
+    val lookup : a ::: Type -> t a -> key -> option a
+end
+
+functor BinarySearchTree(M : COMPARABLE) : DICTIONARY where type key = M.t = struct
+    type key = M.t
+    datatype t a = Leaf | Node of t a * key * a * t a
+
+    val empty [a] = Leaf
+
+    fun insert [a] (t : t a) (k : key) (v : a) : t a =
+        case t of
+            Leaf => Node (Leaf, k, v, Leaf)
+          | Node (left, k', v', right) =>
+            case M.compare k' k of
+                Equal => Node (left, k, v, right)
+              | Less => Node (insert left k v, k', v', right)
+              | Greater => Node (left, k', v', insert right k v)
+
+    fun lookup [a] (t : t a) (k : key) : option a =
+        case t of
+            Leaf => None
+          | Node (left, k', v, right) =>
+            case M.compare k' k of
+                Equal => Some v
+              | Less => lookup left k
+              | Greater => lookup right k
+end
+
+structure IntTree = BinarySearchTree(struct
+                                         type t = int
+                                         fun compare n1 n2 =
+                                             if n1 = n2 then
+                                                 Equal
+                                             else if n1 < n2 then
+                                                 Less
+                                             else
+                                                 Greater
+                                     end)
+
+(* begin eval *)
+IntTree.lookup (IntTree.insert (IntTree.insert IntTree.empty 0 "A") 1 "B") 1
+(* end *)
+
+(* It is sometimes handy to rebind modules to shorter names. *)
+
+structure IT = IntTree
+
+(* begin eval *)
+IT.lookup (IT.insert (IT.insert IT.empty 0 "A") 1 "B") 0
+(* end *)
+
+(* One can even use the <tt>open</tt> command to import a module's namespace wholesale, though this can make it harder for someone reading code to tell which identifiers come from which modules. *)
+
+open IT
+
+(* begin eval *)
+lookup (insert (insert empty 0 "A") 1 "B") 2
 (* end *)
