@@ -202,3 +202,100 @@ fun join [ts ::: {Type}] (fl : folder ts) (r : $(map option ts)) : option $ts =
      (Some {}) fl r
 
 (* See <tt>lib/ur/top.urs</tt> for the types of <tt>foldR</tt> and some other handy folding functions. *)
+
+
+(* * Working with First-Class Disjointness Obligations *)
+
+(* The syntax <tt>[r1 ~ r2]</tt> in a function definition introduces a constraint that the type-level records <tt>r1</tt> and <tt>r2</tt> share no field names.  The same syntax may also be used with anonymous function definitions, which can be useful in certain kinds of record traversals.  To pick a simple example, let's pretend that the general value-level <tt>++</tt> operator is missing form the language, so that we must implement it ourselves on top of a version of <tt>++</tt> that can only add one field at a time.  This code demonstrates the use of the syntax <tt>!</tt> to discharge a disjointness obligation explicitly.  This will generally only be needed when working with the <tt>@</tt> version of an identifier, which not only requires that folders be passed explicitly, but also disjointness proofs (which are always written as just <tt>!</tt>) and type class witnesses. *)
+
+fun concat [ts1 ::: {Type}] [ts2 ::: {Type}] [ts1 ~ ts2]
+           (fl : folder ts1) (r1 : $ts1) (r2 : $ts2) : $(ts1 ++ ts2) =
+    @foldR [id] [fn ts1 => ts2 ::: {Type} -> [ts1 ~ ts2] => $ts2 -> $(ts1 ++ ts2)]
+     (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] v
+                  (acc : ts2 ::: {Type} -> [r ~ ts2] => $ts2 -> $(r ++ ts2))
+                  [ts2] [[nm = v] ++ r ~ ts2] r =>
+         {nm = v} ++ acc r)
+     (fn [ts2] [[] ~ ts2] (r : $ts2) => r) fl r1 ! r2
+
+(* begin hide *)
+val show_r = mkShow (fn r : {A : int, B : string, C : float, D : bool} =>
+                        "{A = " ^ show r.A ^ ", B = " ^ show r.B ^ ", C = " ^ show r.C ^ ", D = " ^ show r.D ^ "}")
+(* end *)
+
+(* begin eval *)
+concat {A = 1, B = "x"} {C = 2.3, D = True}
+(* end *)
+
+
+(* * Type-Level Computation Meets Type Classes *)
+
+(* Ur's treatment of type classes makes some special allowances for records.  In particular, a record of type class witnesses may be inferred automatically.  Our next example shows how to put that functionality to good use, in writing a function for pretty-printing records as strings.  The type class <tt>show</tt> is part of the Ur standard library, and its instances are valid arguments to the string-producing function <tt>show</tt>. *)
+
+fun showRecord [ts ::: {Type}] (fl : folder ts) (shows : $(map show ts))
+               (names : $(map (fn _ => string) ts)) (r : $ts) : string =
+    "{" ^ @foldR3 [fn _ => string] [show] [id] [fn _ => string]
+           (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] name shower value acc =>
+               name ^ " = " ^ @show shower value ^ ", " ^ acc)
+           "...}" fl names shows r
+
+(* begin eval *)
+showRecord {A = "A", B = "B"} {A = 1, B = 2.3}
+(* end *)
+
+(* One natural complaint about this code is that field names are repeated unnecessarily as strings.  Following Ur's design rationale, this is a consequence of a "feature," not a "bug," since allowing the syntactic analysis of type-level data would break the celebrated property of <b>parametricity</b>. *)
+
+
+(* * Type-Level Computation Meets Modules *)
+
+(* To illustrate how the features from this chapter integrate with Ur's module system, let's reimplement the last example as a functor. *)
+
+functor ShowRecord(M : sig
+                       con ts :: {Type}
+                       val fl : folder ts
+                       val shows : $(map show ts)
+                       val names : $(map (fn _ => string) ts)
+                   end) : sig
+                            val show_ts : show $M.ts
+                          end = struct
+    open M
+
+    val show_ts = mkShow (fn r : $ts =>
+        "{" ^ @foldR3 [fn _ => string] [show] [id] [fn _ => string]
+               (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] name shower value acc =>
+                   name ^ " = " ^ @show shower value ^ ", " ^ acc)
+               "...}" fl names shows r)
+end
+
+open ShowRecord(struct
+                    con ts = [A = int, B = float, C = bool]
+                    val names = {A = "A", B = "B", C = "C"}
+                end)
+
+(* begin eval *)
+show {A = 1, B = 2.3, C = True}
+(* end *)
+
+(* A few important points show up in this example.  First, Ur extends the standard ML module system feature base by allowing functors to be applied to structures with omitted members, when those members can be inferred from the others.  Thus, we call <tt>ShowRecord</tt> omitting the fields <tt>fl</tt> and <tt>shows</tt>.  Second, merely calling a functor that produces an output with a type class instance can bring that instance into scope, so that it is applied automatically, as in our evaluation example above.<br>
+<br>
+To illustrate the mixing of constraints and functors, we translate another of our earlier examples in a somewhat silly way: *)
+
+functor Concat(M : sig
+                   con f :: Type -> Type
+                   con r1 :: {Type}
+                   con r2 :: {Type}
+                   constraint r1 ~ r2
+               end) : sig
+                        val concat : $(map M.f M.r1) -> $(map M.f M.r2) -> $(map M.f (M.r1 ++ M.r2))
+                      end = struct
+    fun concat r1 r2 = r1 ++ r2
+end
+
+structure C = Concat(struct
+                         con f = id
+                         con r1 = [A = int]
+                         con r2 = [B = float, C = bool]
+                     end)
+
+(* begin eval *)
+show (C.concat {A = 6} {B = 6.0, C = False})
+(* end *)
