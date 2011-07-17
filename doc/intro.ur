@@ -6,13 +6,15 @@ val show_string = mkShow (fn s => "\"" ^ s ^ "\"")
 
 (* This tutorial by <a href="http://adam.chlipala.net/">Adam Chlipala</a> is licensed under a <a href="http://creativecommons.org/licenses/by-nc-nd/3.0/">Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License</a>. *)
 
-(* This is a tutorial for the <a href="http://www.impredicative.com/ur/">Ur/Web</a> programming language.  The <a href="http://www.impredicative.com/ur/">official project web site</a> is your starting point for information, like a reference manual and a pointer to download the latest code release.  In this tutorial, we'll just focus on introducing the language features.<br>
+(* This is a tutorial for the <a href="http://www.impredicative.com/ur/">Ur/Web</a> programming language.<br>
 <br>
 Briefly, <b>Ur</b> is a programming language in the tradition of <a target="_top" href="http://en.wikipedia.org/wiki/ML_(programming_language)">ML</a> and <a target="_top" href="http://en.wikipedia.org/wiki/Haskell_(programming_language)">Haskell</a>, but featuring a significantly richer type system.  Ur is <a target="_top" href="http://en.wikipedia.org/wiki/Functional_programming">functional</a>, <a target="_top" href="http://en.wikipedia.org/wiki/Purely_functional">pure</a>, <a target="_top" href="http://en.wikipedia.org/wiki/Statically-typed">statically-typed</a>, and <a target="_top" href="http://en.wikipedia.org/wiki/Strict_programming_language">strict</a>.  Ur supports a powerful kind of <b>metaprogramming</b> based on <b>row types</b>.<br>
 <br>
 <b>Ur/Web</b> is Ur plus a special standard library and associated rules for parsing and optimization.  Ur/Web supports construction of dynamic web applications backed by SQL databases, with mixed server-side and client-side applications generated from source code in one language.<br>
 <br>
-Ur inherits its foundation from ML and Haskell, then going further to add fancier stuff.  This first chapter of the tutorial reviews the key ML and Haskell features, giving their syntax in Ur.  I do assume reading familiarity with ML and Haskell and won't dwell too much on explaining the imported features. *)
+Ur inherits its foundation from ML and Haskell, then going further to add fancier stuff.  This first chapter of the tutorial reviews the key ML and Haskell features, giving their syntax in Ur.  I do assume reading familiarity with ML and Haskell and won't dwell too much on explaining the imported features.<br>
+<br>
+For information on compiling applications (and for some full example applications), see the intro page of <a href="http://www.impredicative.com/ur/demo/">the online demo</a>, with further detail available in <a href="http://www.impredicative.com/ur/manual.pdf">the reference manual</a>. *)
 
 (* * Basics *)
 
