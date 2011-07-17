@@ -1,4 +1,13 @@
 ========
+Next
+========
+
+- Start of official tutorial
+- Compiler support for generating nice tutorial HTML from literate source files
+- New protocol 'static' for generating static pages
+- Bug fixes
+
+========
 20110715
 ========
 

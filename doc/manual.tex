@@ -293,6 +293,8 @@ fastcgi.server = (
     The least obvious requirement is setting \texttt{max-procs} to 1, so that lighttpd doesn't try to multiplex requests across multiple external processes.  This is required for message-passing applications, where a single database of client connections is maintained within a multi-threaded server process.  Multiple processes may, however, be used safely with applications that don't use message-passing.
 
     A FastCGI process reads the environment variable \texttt{URWEB\_NUM\_THREADS} to determine how many threads to spawn for handling client requests.  The default is 1.
+
+  \item \texttt{static}: This protocol may be used to generate static web pages from Ur/Web code.  The output executable expects a single command-line argument, giving the URI of a page to generate.  For instance, this argument might be \cd{/main}, in which case a static HTTP response for that page will be written to stdout.
   \end{itemize}
 
 \item \texttt{-root Name PATH}: Trigger an alternate module convention for all source files found in directory \texttt{PATH} or any of its subdirectories.  Any file \texttt{PATH/foo.ur} defines a module \texttt{Name.Foo} instead of the usual \texttt{Foo}.  Any file \texttt{PATH/subdir/foo.ur} defines a module \texttt{Name.Subdir.Foo}, and so on for arbitrary nesting of subdirectories.
@@ -305,6 +307,22 @@ fastcgi.server = (
 \end{itemize}
 
 There is an additional convenience method for invoking \texttt{urweb}.  If the main argument is \texttt{FOO}, and \texttt{FOO.ur} exists but \texttt{FOO.urp} doesn't, then the invocation is interpreted as if called on a \texttt{.urp} file containing \texttt{FOO} as its only main entry, with an additional \texttt{rewrite all FOO/*} directive.
+
+\subsection{Tutorial Formatting}
+
+The Ur/Web compiler also supports rendering of nice HTML tutorials from Ur source files, when invoked like \cd{urweb -tutorial DIR}.  The directory \cd{DIR} is examined for files whose names end in \cd{.ur}.  Every such file is translated into a \cd{.html} version.
+
+These input files follow normal Ur syntax, with a few exceptions:
+\begin{itemize}
+\item The first line must be a comment like \cd{(* TITLE *)}, where \cd{TITLE} is a string of your choice that will be used as the title of the output page.
+\item While most code in the output HTML will be formatted as a monospaced code listing, text in regular Ur comments is formatted as normal English text.
+\item A comment like \cd{(* * HEADING *)} introduces a section heading, with text \cd{HEADING} of your choice.
+\item To include both a rendering of an Ur expression and a pretty-printed version of its value, bracket the expression with \cd{(* begin eval *)} and \cd{(* end *)}.  The result of expression evaluation is pretty-printed with \cd{show}, so the expression type must belong to that type class.
+\item To include code that should not be shown in the tutorial (e.g., to add a \cd{show} instance to use with \cd{eval}), bracket the code with \cd{(* begin hide *)} and \cd{(* end *)}.
+\end{itemize}
+
+A word of warning: as for demo generation, tutorial generation calls Emacs to syntax-highlight Ur code.
+
 
 \section{Ur Syntax}
 
