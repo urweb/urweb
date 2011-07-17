@@ -119,3 +119,86 @@ three [int] 0 (plus 1)
 (* begin eval *)
 three [string] "" (strcat "!")
 (* end *)
+
+
+(* * Folders *)
+
+(* We're almost ready to implement some more polymorphic operations on records.  The key missing piece is <b>folders</b>; more specifically, the type family <tt>folder</tt> that allows iteration over the fields of type-level records.  The Ur standard library exposes <tt>folder</tt> abstractly, along with the following key operation over it.  Don't mind the clutter at the end of this definition as we rebind the function <tt>fold</tt> from the default-open module <tt>Top</tt>, as we must include an explicit kind-polymorphic binder to appease the associated let-polymorphism. *)
+
+val fold : K --> tf :: ({K} -> Type)
+           -> (nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
+               tf r -> tf ([nm = v] ++ r))
+           -> tf []
+           -> r ::: {K} -> folder r -> tf r
+         = K ==> Top.fold
+
+(* The type is a bit of a mouthful.  We can describe the function arguments in order.  First, <tt>K</tt> is the kind of data associated with fields in the record we will be iterating over.  Next, <tt>tf</tt> describes the type of an accumulator, much as for standard "fold" operations over lists.  The difference here is that the accumulator description is not a mere type, but rather a <b>type-level function</b> that returns a type given a properly kinded record.  When we begin iterating over a record <tt>r</tt>, the accumulator has type <tt>tf []</tt> (where <tt>[]</tt> is the empty record), and when we finish iterating, the accumulator has type <tt>tf r</tt>.  As we step through the fields of the record, we add each one to the argument we keep passing to <tt>tf</tt> to determine accumulator types.<br>
+<br>
+The next arguments of <tt>fold</tt> are much like for normal list fold functions: a step function and an initial value.  The latter has type <tt>tf []</tt>, just as we expect from the explanation in the last paragraph.  The final arguments are <tt>r</tt>, the record we fold over; and a <tt>folder</tt> for it.  The function return type follows last paragraph's explanation of accmulator typing.<br>
+<br>
+We've left a big unexplained piece: the type of the step function.  In order, its arguments are <tt>nm</tt>, the current field being processed; <tt>v</tt>, the data associated with that field; <tt>r</tt>, the portion of the input record that we had already stepped through before this point; a proof that the name <tt>nm</tt> didn't already occur in <tt>r</tt>; and the accumulator, typed to show that the set of fields we've already visited is exactly <tt>r</tt>.  The return type of the step function is another accumulator type, extended to show that now we've visited <tt>nm</tt>, too.<br>
+<br>
+Here's a simple example usage, where we write a function to count the number of fields in a type-level record of types. *)
+
+fun countFields [ts :: {Type}] (fl : folder ts) : int =
+    @fold [fn _ => int] (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] n => n + 1) 0 fl
+
+(* We preface <tt>fold</tt> with <tt>@</tt>, to disable inference of folders, since we have one we'd like to pass explicitly.  The accumulator type family we use is a simple one that ignores its argument and always returns <tt>int</tt>; at every stage of our traversal of input record <tt>ts</tt>, we keep an integer as our sole state, and the type of this state doesn't depend on which record fields we've visited.  The step function binds each type parameter with the notation <tt>::_</tt>, for an explicit parameter whose kind should be inferred.<br>
+<br>
+The function <tt>countFields</tt> is a lot easier to use than it is to define!  Here's an example invocation, where we see that the appropriate folder is inferred. *)
+
+(* begin eval *)
+countFields [[A = int, B = float, C = string]]
+(* end *)
+
+(* If folders are generally inferred, why bother requiring that they be passed around?  The answer has to do with Ur's general rule that type-level records are considered equivalent modulo permutation.  As a result, there is no unique traversal order for a record, in general.  The programmer has freedom in constructing folders that embody different permutations, using the functions exposed from the module <tt>Folder</tt> (see the top of <tt>lib/ur/top.urs</tt> in the Ur/Web distribution).  Still, in most cases, the order in which fields are written in the source code provides an unambiguous clue about desired ordering.  Thus, by default, folder parameters are implicit, and they are inferred to follow the order of fields in program text.<br>
+<br>
+Let's implement a more ambitious traversal.  We will take in a record whose fields all contain <tt>option</tt> types, and we will determine if every field contains a <tt>Some</tt>.  If so, we return <tt>Some</tt> of a "de-optioned" version; if not, we return <tt>None</tt>. *)
+
+fun join [ts ::: {Type}] (fl : folder ts) (r : $(map option ts)) : option $ts =
+    @fold [fn ts => $(map option ts) -> option $ts]
+     (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] (f : $(map option r) -> option $r) =>
+         fn r : $(map option ([nm = v] ++ r)) =>
+            case r.nm of
+                None => None
+              | Some v =>
+                case f (r -- nm) of
+                    None => None
+                  | Some vs => Some ({nm = v} ++ vs))
+     (fn _ : $(map option []) => Some {}) fl r
+
+(* Rather than take in an arbitrary record type and add some sort of constraint requiring that it contain only <tt>option</tt> types, the Ur way is to <b>construct</b> a record type with computation over some more primitive inputs, such that the process (A) is guaranteed to construct only records satisfying the constraint and (B) is capable, given the proper inputs, of constructing any record satisfying the original constraint.<br>
+<br>
+This use of folding involves an accumulator type that <i>is</i> record-dependent.  In particular, as we traverse the record, we are building up a "de-optioning" function.  To implement the step function, we rely on the record projection form <tt>r.nm</tt> and the record field removal form <tt>r -- nm</tt>, both of which work fine with variables standing for unknown field names.  To extend the output record with a new mapping for field <tt>nm</tt>, we use concatenation <tt>++</tt> with a singleton record literal.<br>
+<br>
+Like for the last example, <tt>join</tt> is much easier to use than to implement!  The simple invocations below use Ur's <b>reverse-engineering unification</b> to deduce the value of parameter <tt>ts</tt> from the type of parameter <tt>r</tt>.  Also, as before, the folder argument is inferred. *)
+
+(* begin hide *)
+fun show_option [t] (_ : show t) : show (option t) =
+    mkShow (fn x => case x of
+                        None => "None"
+                      | Some x => "Some(" ^ show x ^ ")")
+
+val show_r = mkShow (fn r : {A : int, B : string} =>
+                        "{A = " ^ show r.A ^ ", B = " ^ show r.B ^ "}")
+(* end *)
+
+(* begin eval *)
+join {A = Some 1, B = Some "X"}
+(* end *)
+
+(* begin eval *)
+join {A = Some 1, B = None : option string}
+(* end *)
+
+(* The Ur/Web standard library includes many variations on <tt>fold</tt> that encapsulate common traversal patterns.  For instance, <tt>foldR</tt> captures the idea of folding over a value-level record, and we can use it to simplify the definition of <tt>join</tt>: *)
+
+fun join [ts ::: {Type}] (fl : folder ts) (r : $(map option ts)) : option $ts =
+    @foldR [option] [fn ts => option $ts]
+     (fn [nm ::_] [v ::_] [r ::_] [[nm] ~ r] v vs =>
+         case (v, vs) of
+             (Some v, Some vs) => Some ({nm = v} ++ vs)
+           | _ => None)
+     (Some {}) fl r
+
+(* See <tt>lib/ur/top.urs</tt> for the types of <tt>foldR</tt> and some other handy folding functions. *)
