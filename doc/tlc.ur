@@ -12,7 +12,7 @@ val show_string = mkShow (fn s => "\"" ^ s ^ "\"")
 
 (* Last chapter, we met Ur's basic record features, including record construction and field projection. *)
 
-val r = { A = 0, B = 1.2, C = "hi"}
+val r = { A = 0, B = 1.2, C = "hi" }
 
 (* begin eval *)
 r.B
@@ -30,9 +30,9 @@ project [#B] r
 <br>
 Two new kinds appear in this example.  We met the basic kind <tt>Type</tt> in a previous example.  Here we meet <tt>Name</tt>, the kind of record field names; and <tt>{Type}</tt> the type of finite maps from field names to types, where we'll generally refer to this notion of "finite map" by the name <b>record</b>, as it will be clear from context whether we're discussing type-level or value-level records.  That is, in this case, we are referring to names and records <b>at the level of types</b> that <b>exist only at compile time</b>!  By the way, the kind <tt>{Type}</tt> is one example of the general <tt>{K}</tt> kind form, which refers to records with fields of kind <tt>K</tt>.<br>
 <br>
-The English description of <tt>project</tt> is that it projects a field with name <tt>nm</tt> and type <tt>t</tt> out of a record <tt>r</tt> whose other fields are described by type-level record <tt>ts</tt>.  We make all this formal by assigning <tt>r</tt> a type that first builds the singleton record <tt>[nm = t]</tt> that maps <tt>nm</tt> to <tt>t</tt>, and then concatenating this record with the remaining field information in <tt>ts</tt>.  The <tt>$</tt> operator translates a type-level record (of kind <tt>{Type}</tt>) into a record type (of kind <tt>Type</tt>).<br>
+The English description of <tt>project</tt> is that it projects a field with name <tt>nm</tt> and type <tt>t</tt> out of a record <tt>r</tt> whose other fields are described by type-level record <tt>ts</tt>.  We make all this formal by assigning <tt>r</tt> a type that first builds the singleton record <tt>[nm = t]</tt> that maps <tt>nm</tt> to <tt>t</tt>, and then concatenates this record with the remaining field information in <tt>ts</tt>.  The <tt>$</tt> operator translates a type-level record (of kind <tt>{Type}</tt>) into a record type (of kind <tt>Type</tt>).<br>
 <br>
-The type annotation on <tt>r</tt> uses the record concatenation operator <tt>++</tt>.  Ur enforces that any concatenation happens between records that share no field names.  Otherwise, we'd need to resolve field name ambiguity in some predictable way, which would force us to treat <tt>++</tt> as non-commutative, if we are to maintain the nice modularity properties of polymorphism.  However, treating <tt>++</tt> as commutative, and treating records as equal up to field permutation in general, are very convenient for type inference and general programmer experience.  Thus, we enforce disjointness to keep things simple.<br>
+The type annotation on <tt>r</tt> uses the record concatenation operator <tt>++</tt>.  Ur enforces that any concatenation happens between records that share no field names.  Otherwise, we'd need to resolve field name ambiguity in some predictable way, which would force us to treat <tt>++</tt> as non-commutative, if we are to maintain the nice modularity properties of polymorphism.  However, treating <tt>++</tt> as commutative, and treating records as equal up to field permutation in general, are very convenient for type inference.  Thus, we enforce disjointness to keep things simple.<br>
 <br>
 For a polymorphic function like <tt>project</tt>, the compiler doesn't know which fields a type-level record variable like <tt>ts</tt> contains.  To enable self-contained type-checking, we need to declare some constraints about field disjointness.  That's exactly the meaning of syntax like <tt>[r1 ~ r2]</tt>, which asserts disjointness of two type-level records.  The disjointness clause for <tt>project</tt> asserts that the name <tt>nm</tt> is not used by <tt>ts</tt>.  The syntax <tt>[nm]</tt> is shorthand for <tt>[nm = ()]</tt>, which defines a singleton record of kind <tt>{Unit}</tt>, where <tt>Unit</tt> is the degenerate kind inhabited only by the constructor <tt>()</tt>.<br>
 <br>
@@ -81,7 +81,7 @@ val x : snd twoFuncs int = ((1, 2), (3, 4))
 
 (* * Type-Level Map *)
 
-(* The examples from the same section may seem cute but not especially useful.  In this section, we meet <tt>map</tt>, the real workhorse of Ur's type-level computation.  We'll use it to type some useful operations over value-level records.  A few more pieces will be necessary before getting there, so we'll start just by showing how interesting type-level operations on records may be built from <tt>map</tt>. *)
+(* The examples from the last section may seem cute but not especially useful.  In this section, we meet <tt>map</tt>, the real workhorse of Ur's type-level computation.  We'll use it to type some useful operations over value-level records.  A few more pieces will be necessary before getting there, so we'll start just by showing how interesting type-level operations on records may be built from <tt>map</tt>. *)
 
 con r = [A = int, B = float, C = string]
 
@@ -123,16 +123,16 @@ three [string] "" (strcat "!")
 
 (* * Folders *)
 
-(* We're almost ready to implement some more polymorphic operations on records.  The key missing piece is <b>folders</b>; more specifically, the type family <tt>folder</tt> that allows iteration over the fields of type-level records.  The Ur standard library exposes <tt>folder</tt> abstractly, along with the following key operation over it.  Don't mind the clutter at the end of this definition as we rebind the function <tt>fold</tt> from the default-open module <tt>Top</tt>, as we must include an explicit kind-polymorphic binder to appease the associated let-polymorphism. *)
+(* We're almost ready to implement some more polymorphic operations on records.  The key missing piece is <b>folders</b>; more specifically, the type family <tt>folder</tt> that allows iteration over the fields of type-level records.  The Ur standard library exposes <tt>folder</tt> abstractly, along with the following key operation over it.  Don't mind the clutter at the end of this definition, where we rebind the function <tt>fold</tt> from the default-open module <tt>Top</tt>, as we must include an explicit kind-polymorphic binder to appease the associated let-polymorphism.  (A normal program would omit this definition, anyway; we include it here only to show the type of <tt>fold</tt>.) *)
 
 val fold : K --> tf :: ({K} -> Type)
            -> (nm :: Name -> v :: K -> r :: {K} -> [[nm] ~ r] =>
                tf r -> tf ([nm = v] ++ r))
            -> tf []
            -> r ::: {K} -> folder r -> tf r
-         = K ==> Top.fold
+         = K ==> fold
 
-(* The type is a bit of a mouthful.  We can describe the function arguments in order.  First, <tt>K</tt> is the kind of data associated with fields in the record we will be iterating over.  Next, <tt>tf</tt> describes the type of an accumulator, much as for standard "fold" operations over lists.  The difference here is that the accumulator description is not a mere type, but rather a <b>type-level function</b> that returns a type given a properly kinded record.  When we begin iterating over a record <tt>r</tt>, the accumulator has type <tt>tf []</tt> (where <tt>[]</tt> is the empty record), and when we finish iterating, the accumulator has type <tt>tf r</tt>.  As we step through the fields of the record, we add each one to the argument we keep passing to <tt>tf</tt> to determine accumulator types.<br>
+(* The type is a bit of a mouthful.  We can describe the function arguments in order.  First, <tt>K</tt> is the kind of data associated with fields in the record we will be iterating over.  Next, <tt>tf</tt> describes the type of an accumulator, much as for standard "fold" operations over lists.  The difference here is that the accumulator description is not a mere type, but rather a <b>type-level function</b> that returns a type given a properly kinded record.  When we begin iterating over a record <tt>r</tt>, the accumulator has type <tt>tf []</tt> (where <tt>[]</tt> is the empty record), and when we finish iterating, the accumulator has type <tt>tf r</tt>.  As we step through the fields of the record, we add each one to the argument we keep passing to <tt>tf</tt>.<br>
 <br>
 The next arguments of <tt>fold</tt> are much like for normal list fold functions: a step function and an initial value.  The latter has type <tt>tf []</tt>, just as we expect from the explanation in the last paragraph.  The final arguments are <tt>r</tt>, the record we fold over; and a <tt>folder</tt> for it.  The function return type follows last paragraph's explanation of accmulator typing.<br>
 <br>
@@ -151,7 +151,7 @@ The function <tt>countFields</tt> is a lot easier to use than it is to define!  
 countFields [[A = int, B = float, C = string]]
 (* end *)
 
-(* If folders are generally inferred, why bother requiring that they be passed around?  The answer has to do with Ur's general rule that type-level records are considered equivalent modulo permutation.  As a result, there is no unique traversal order for a record, in general.  The programmer has freedom in constructing folders that embody different permutations, using the functions exposed from the module <tt>Folder</tt> (see the top of <tt>lib/ur/top.urs</tt> in the Ur/Web distribution).  Still, in most cases, the order in which fields are written in the source code provides an unambiguous clue about desired ordering.  Thus, by default, folder parameters are implicit, and they are inferred to follow the order of fields in program text.<br>
+(* If folders are generally inferred, why bother requiring that they be passed around?  The answer has to do with Ur's rule that type-level records are considered equivalent modulo permutation.  As a result, there is no unique traversal order for a record, in general.  The programmer has freedom in constructing folders that embody different permutations, using the functions exposed from the module <tt>Folder</tt> (see the top of <tt>lib/ur/top.urs</tt> in the Ur/Web distribution).  Still, in most cases, the order in which fields are written in the source code provides an unambiguous clue about desired ordering.  Thus, by default, folder parameters are implicit, and they are inferred to follow the order of fields in program text.<br>
 <br>
 Let's implement a more ambitious traversal.  We will take in a record whose fields all contain <tt>option</tt> types, and we will determine if every field contains a <tt>Some</tt>.  If so, we return <tt>Some</tt> of a "de-optioned" version; if not, we return <tt>None</tt>. *)
 
@@ -169,7 +169,7 @@ fun join [ts ::: {Type}] (fl : folder ts) (r : $(map option ts)) : option $ts =
 
 (* Rather than take in an arbitrary record type and add some sort of constraint requiring that it contain only <tt>option</tt> types, the Ur way is to <b>construct</b> a record type with computation over some more primitive inputs, such that the process (A) is guaranteed to construct only records satisfying the constraint and (B) is capable, given the proper inputs, of constructing any record satisfying the original constraint.<br>
 <br>
-This use of folding involves an accumulator type that <i>is</i> record-dependent.  In particular, as we traverse the record, we are building up a "de-optioning" function.  To implement the step function, we rely on the record projection form <tt>r.nm</tt> and the record field removal form <tt>r -- nm</tt>, both of which work fine with variables standing for unknown field names.  To extend the output record with a new mapping for field <tt>nm</tt>, we use concatenation <tt>++</tt> with a singleton record literal.<br>
+Our use of folding here involves an accumulator type that <i>is</i> record-dependent.  In particular, as we traverse the record, we are building up a "de-optioning" function.  To implement the step function, we rely on the record projection form <tt>r.nm</tt> and the record field removal form <tt>r -- nm</tt>, both of which work fine with variables standing for unknown field names.  To extend the output record with a new mapping for field <tt>nm</tt>, we use concatenation <tt>++</tt> with a singleton record literal.<br>
 <br>
 Like for the last example, <tt>join</tt> is much easier to use than to implement!  The simple invocations below use Ur's <b>reverse-engineering unification</b> to deduce the value of parameter <tt>ts</tt> from the type of parameter <tt>r</tt>.  Also, as before, the folder argument is inferred. *)
 
@@ -206,7 +206,7 @@ fun join [ts ::: {Type}] (fl : folder ts) (r : $(map option ts)) : option $ts =
 
 (* * Working with First-Class Disjointness Obligations *)
 
-(* The syntax <tt>[r1 ~ r2]</tt> in a function definition introduces a constraint that the type-level records <tt>r1</tt> and <tt>r2</tt> share no field names.  The same syntax may also be used with anonymous function definitions, which can be useful in certain kinds of record traversals.  To pick a simple example, let's pretend that the general value-level <tt>++</tt> operator is missing form the language, so that we must implement it ourselves on top of a version of <tt>++</tt> that can only add one field at a time.  This code demonstrates the use of the syntax <tt>!</tt> to discharge a disjointness obligation explicitly.  This will generally only be needed when working with the <tt>@</tt> version of an identifier, which not only requires that folders be passed explicitly, but also disjointness proofs (which are always written as just <tt>!</tt>) and type class witnesses. *)
+(* The syntax <tt>[r1 ~ r2]</tt> in a function definition introduces a constraint that the type-level records <tt>r1</tt> and <tt>r2</tt> share no field names.  The same syntax may also be used with anonymous function definitions, which can be useful in certain kinds of record traversals, as we've seen in the types of step functions above.  Sometimes we must mark explicitly the places where these disjointness proof obligations must be proved.  To pick a simple example, let's pretend that the general value-level <tt>++</tt> operator is missing form the language, so that we must implement it ourselves on top of a version of <tt>++</tt> that can only add one field at a time.  The following code demonstrates the use of the syntax <tt>!</tt> to discharge a disjointness obligation explicitly.  We generally only need to do that when working with the <tt>@</tt> version of an identifier, which not only requires that folders be passed explicitly, but also disjointness proofs (which are always written as just <tt>!</tt>) and type class witnesses. *)
 
 fun concat [ts1 ::: {Type}] [ts2 ::: {Type}] [ts1 ~ ts2]
            (fl : folder ts1) (r1 : $ts1) (r2 : $ts2) : $(ts1 ++ ts2) =

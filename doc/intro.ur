@@ -8,7 +8,7 @@ val show_string = mkShow (fn s => "\"" ^ s ^ "\"")
 
 (* This is a tutorial for the <a href="http://www.impredicative.com/ur/">Ur/Web</a> programming language.  The <a href="http://www.impredicative.com/ur/">official project web site</a> is your starting point for information, like a reference manual and a pointer to download the latest code release.  In this tutorial, we'll just focus on introducing the language features. *)
 
-(* Ur/Web contains a web-indendent core language called Ur, which will be the subject of the first few chapters of the tutorial.  Ur inherits its foundation from ML and Haskell, then going further to add fancier stuff.  This first chapter of the tutorial reviews the key ML and Haskell features, giving their syntax in Ur.  I do assume reading familiarity with ML and Haskell and won't dwell too much on explaining the imported features. *)
+(* Ur/Web contains a web-independent core language called Ur, which will be the subject of the first few chapters of the tutorial.  Ur inherits its foundation from ML and Haskell, then going further to add fancier stuff.  This first chapter of the tutorial reviews the key ML and Haskell features, giving their syntax in Ur.  I do assume reading familiarity with ML and Haskell and won't dwell too much on explaining the imported features. *)
 
 (* * Basics *)
 
