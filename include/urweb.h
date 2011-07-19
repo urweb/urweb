@@ -230,6 +230,7 @@ uw_unit uw_Basis_setHeader(uw_context, uw_Basis_string name, uw_Basis_string val
 
 uw_Basis_string uw_unnull(uw_Basis_string);
 uw_Basis_string uw_Basis_makeSigString(uw_context, uw_Basis_string);
+int uw_streq(uw_Basis_string, uw_Basis_string);
 uw_Basis_string uw_Basis_sigString(uw_context, uw_unit);
 
 uw_Basis_string uw_Basis_fileName(uw_context, uw_Basis_file);

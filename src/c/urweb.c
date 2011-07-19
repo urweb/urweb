@@ -3455,6 +3455,23 @@ uw_Basis_string uw_Basis_makeSigString(uw_context ctx, uw_Basis_string sig) {
   return r;
 }
 
+/* This bit of crafty code is intended to prevent GCC from performing
+ * optimizations that would enable timing attacks.  See:
+ *   http://www.impredicative.com/pipermail/ur/2011-July/000659.html
+ */
+int uw_streq(uw_Basis_string s1, uw_Basis_string s2) {
+  int i, x = 0, len1 = strlen(s1);
+
+  if (len1 != strlen(s2)) return 0;
+
+  for (i = 0; i < len1; ++i) {
+        __asm__ __volatile__ ("");
+        x |= s1[i] ^ s2[i];
+  }
+
+  return x == 0;
+}
+
 uw_Basis_string uw_Basis_sigString(uw_context ctx, uw_unit u) {
   return ctx->app->cookie_sig(ctx);
 }

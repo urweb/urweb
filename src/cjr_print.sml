@@ -2634,7 +2634,7 @@ fun p_file env (ds, ps) =
                               newline,
                               string "if (sig == NULL) uw_error(ctx, FATAL, \"Missing cookie signature\");",
                               newline,
-                              string "if (strcmp(sig, uw_cookie_sig(ctx)))",
+                              string "if (!uw_streq(sig, uw_cookie_sig(ctx)))",
                               newline,
                               box [string "uw_error(ctx, FATAL, \"Wrong cookie signature\");",
                                    newline],
