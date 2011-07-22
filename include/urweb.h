@@ -252,6 +252,8 @@ __attribute__((noreturn)) void uw_redirect(uw_context, uw_Basis_string url);
 
 uw_Basis_time uw_Basis_now(uw_context);
 uw_Basis_time uw_Basis_addSeconds(uw_context, uw_Basis_time, uw_Basis_int);
+uw_Basis_int uw_Basis_diffInSeconds(uw_context, uw_Basis_time, uw_Basis_time);
+uw_Basis_int uw_Basis_toSeconds(uw_context, uw_Basis_time);
 extern const uw_Basis_time uw_Basis_minTime;
 
 void uw_register_transactional(uw_context, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);

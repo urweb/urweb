@@ -145,6 +145,9 @@ val current : t ::: Type -> signal t -> transaction t
 val now : transaction time
 val minTime : time
 val addSeconds : time -> int -> time
+val toSeconds : time -> int
+val diffInSeconds : time -> time -> int
+(* Earlier time first *)
 val timef : string -> time -> string (* Uses strftime() format string *)
 val readUtc : string -> option time
 

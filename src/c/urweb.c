@@ -3664,6 +3664,14 @@ uw_Basis_time uw_Basis_addSeconds(uw_context ctx, uw_Basis_time tm, uw_Basis_int
   return tm;
 }
 
+uw_Basis_int uw_Basis_diffInSeconds(uw_context ctx, uw_Basis_time tm1, uw_Basis_time tm2) {
+  return difftime(tm2.seconds, tm1.seconds);
+}
+
+uw_Basis_int uw_Basis_toSeconds(uw_context ctx, uw_Basis_time tm) {
+  return tm.seconds;
+}
+
 void *uw_get_global(uw_context ctx, char *name) {
   int i;
 
