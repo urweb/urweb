@@ -93,7 +93,7 @@ Even with the right packages installed, configuration and building might fail to
 GCCARGS=-fnested-functions ./configure
 \end{verbatim}
 
-Some Mac OS X users have reported needing to use this particular GCCARGS value.
+Some Mac OS X users have reported needing to use this particular GCCARGS value.  Also, some older GCC versions have inlining-related bugs that can be masked (at some cost to output code quality) by adding \texttt{-fno-inline} here.
 
 Since the author is still getting a handle on the GNU Autotools that provide the build system, you may need to do some further work to get started, especially in environments with significant differences from Linux (where most testing is done).  The variables \texttt{PGHEADER}, \texttt{MSHEADER}, and \texttt{SQHEADER} may be used to set the proper C header files to include for the development libraries of PostgreSQL, MySQL, and SQLite, respectively.  To get libpq to link, one OS X user reported setting \texttt{GCCARGS="-I/opt/local/include -L/opt/local/lib/postgresql84"}, after creating a symbolic link with \texttt{ln -s /opt/local/include/postgresql84 /opt/local/include/postgresql}.
 
