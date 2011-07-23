@@ -523,18 +523,34 @@ fun capitalize s =
     else
         str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
+local
+    val urlHandlers = ref ([] : pp_desc list)
+in
+
+fun addUrlHandler v = urlHandlers := v :: !urlHandlers
+
+fun latestUrlHandlers () =
+    !urlHandlers
+    before urlHandlers := []
+
+fun clearUrlHandlers () = urlHandlers := []
+
+end
+
+val unurlifies = ref IS.empty
+
 fun unurlify fromClient env (t, loc) =
     let
-        fun unurlify' rf t =
+        fun unurlify' request t =
             case t of
-                TFfi ("Basis", "unit") => string "uw_Basis_unurlifyUnit(ctx, &request)"
+                TFfi ("Basis", "unit") => string ("uw_Basis_unurlifyUnit(ctx, &" ^ request ^ ")")
               | TFfi ("Basis", "string") => string (if fromClient then
-                                                        "uw_Basis_unurlifyString_fromClient(ctx, &request)"
+                                                        "uw_Basis_unurlifyString_fromClient(ctx, &" ^ request ^ ")"
                                                     else
-                                                        "uw_Basis_unurlifyString(ctx, &request)")
-              | TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &request)")
+                                                        "uw_Basis_unurlifyString(ctx, &" ^ request ^ ")")
+              | TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &" ^ request ^ ")")
 
-              | TRecord 0 => string "uw_Basis_unurlifyUnit(ctx, &request)"
+              | TRecord 0 => string ("uw_Basis_unurlifyUnit(ctx, &" ^ request ^ ")")
               | TRecord i =>
                 let
                     val xts = E.lookupStruct env i
@@ -549,7 +565,7 @@ fun unurlify fromClient env (t, loc) =
                                            space,
                                            string "=",
                                            space,
-                                           unurlify' rf (#1 t),
+                                           unurlify' request (#1 t),
                                            string ";",
                                            newline]) xts),
                          string "struct",
@@ -583,17 +599,17 @@ fun unurlify fromClient env (t, loc) =
                                           ^ x ^ "\"), (enum __uwe_"
                                           ^ x ^ "_" ^ Int.toString i ^ ")0)")
                           | (x', n, to) :: rest =>
-                            box [string "((!strncmp(request, \"",
+                            box [string ("((!strncmp(" ^ request ^ ", \""),
                                  string x',
                                  string "\", ",
                                  string (Int.toString (size x')),
-                                 string ") && (request[",
+                                 string (") && (" ^ request ^ "["),
                                  string (Int.toString (size x')),
-                                 string "] == 0 || request[",
+                                 string ("] == 0 || " ^ request ^ "["),
                                  string (Int.toString (size x')),
-                                 string "] == '/')) ? (request += ",
+                                 string ("] == '/')) ? (" ^ request ^ " += "),
                                  string (Int.toString (size x')),
-                                 string (", (*request == '/' ? ++request : NULL), __uwc_" ^ ident x' ^ "_" ^ Int.toString n ^ ")"),
+                                 string (", (" ^ request ^ "[0] == '/' ? ++" ^ request ^ " : NULL), __uwc_" ^ ident x' ^ "_" ^ Int.toString n ^ ")"),
                                  space,
                                  string ":",
                                  space,
@@ -604,10 +620,10 @@ fun unurlify fromClient env (t, loc) =
                 end
 
               | TDatatype (Option, i, xncs) =>
-                if IS.member (rf, i) then
+                if IS.member (!unurlifies, i) then
                     box [string "unurlify_",
                          string (Int.toString i),
-                         string "()"]
+                         string ("(ctx, &" ^ request ^ ")")]
                 else
                     let
                         val (x, _) = E.lookupDatatype env i
@@ -619,114 +635,111 @@ fun unurlify fromClient env (t, loc) =
                               | [(has_arg, _, SOME t), (no_arg, _, NONE)] =>
                                 (no_arg, has_arg, t)
                               | _ => raise Fail "CjrPrint: unfooify misclassified Option datatype"
-
-                        val rf = IS.add (rf, i)
                     in
-                        box [string "({",
-                             space,
-                             p_typ env t,
-                             space,
-                             string "*unurlify_",
-                             string (Int.toString i),
-                             string "(void) {",
-                             newline,
-                             box [string "return (request[0] == '/' ? ++request : request,",
-                                  newline,
-                                  string "((!strncmp(request, \"",
-                                  string no_arg,
-                                  string "\", ",
-                                  string (Int.toString (size no_arg)),
-                                  string ") && (request[",
-                                  string (Int.toString (size no_arg)),
-                                  string "] == 0 || request[",
-                                  string (Int.toString (size no_arg)),
-                                  string "] == '/')) ? (request",
-                                  space,
-                                  string "+=",
-                                  space,
-                                  string (Int.toString (size no_arg)),
-                                  string ", NULL) : ((!strncmp(request, \"",
-                                  string has_arg,
-                                  string "\", ",
-                                  string (Int.toString (size has_arg)),
-                                  string ") && (request[",
-                                  string (Int.toString (size has_arg)),
-                                  string "] == 0 || request[",
-                                  string (Int.toString (size has_arg)),
-                                  string "] == '/')) ? (request",
-                                  space,
-                                  string "+=",
-                                  space,
-                                  string (Int.toString (size has_arg)),
-                                  string ", (request[0] == '/' ? ++request : NULL), ",
-                                  newline,
-                                  
-                                  if isUnboxable  t then
-                                      unurlify' rf (#1 t)
-                                  else
-                                      box [string "({",
-                                           newline,
-                                           p_typ env t,
-                                           space,
-                                           string "*tmp",
-                                           space,
-                                           string "=",
-                                           space,
-                                           string "uw_malloc(ctx, sizeof(",
-                                           p_typ env t,
-                                           string "));",
-                                           newline,
-                                           string "*tmp",
-                                           space,
-                                           string "=",
-                                           space,
-                                           unurlify' rf (#1 t),
-                                           string ";",
-                                           newline,
-                                           string "tmp;",
-                                           newline,
-                                           string "})"],
-                                  string ")",
-                                  newline,
-                                  string ":",
-                                  space,
-                                  string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x
-                                          ^ "\"), NULL))));"),
-                                  newline],
-                             string "}",
-                             newline,
-                             newline,
+                        unurlifies := IS.add (!unurlifies, i);
+                        addUrlHandler (box [string "static",
+                                            space,
+                                            p_typ env t,
+                                            space,
+                                            string "*unurlify_",
+                                            string (Int.toString i),
+                                            string "(uw_context ctx, char **request) {",
+                                            newline,
+                                            box [string "return ((*request)[0] == '/' ? ++*request : *request,",
+                                                 newline,
+                                                 string "((!strncmp(*request, \"",
+                                                 string no_arg,
+                                                 string "\", ",
+                                                 string (Int.toString (size no_arg)),
+                                                 string ") && ((*request)[",
+                                                 string (Int.toString (size no_arg)),
+                                                 string "] == 0 || (*request)[",
+                                                 string (Int.toString (size no_arg)),
+                                                 string "] == '/')) ? (*request",
+                                                 space,
+                                                 string "+=",
+                                                 space,
+                                                 string (Int.toString (size no_arg)),
+                                                 string ", NULL) : ((!strncmp(*request, \"",
+                                                 string has_arg,
+                                                 string "\", ",
+                                                 string (Int.toString (size has_arg)),
+                                                 string ") && ((*request)[",
+                                                 string (Int.toString (size has_arg)),
+                                                 string "] == 0 || (*request)[",
+                                                 string (Int.toString (size has_arg)),
+                                                 string "] == '/')) ? (*request",
+                                                 space,
+                                                 string "+=",
+                                                 space,
+                                                 string (Int.toString (size has_arg)),
+                                                 string ", ((*request)[0] == '/' ? ++*request : NULL), ",
+                                                 newline,
+                                                 
+                                                 if isUnboxable  t then
+                                                     unurlify' "(*request)" (#1 t)
+                                                 else
+                                                     box [string "({",
+                                                          newline,
+                                                          p_typ env t,
+                                                          space,
+                                                          string "*tmp",
+                                                          space,
+                                                          string "=",
+                                                          space,
+                                                          string "uw_malloc(ctx, sizeof(",
+                                                          p_typ env t,
+                                                          string "));",
+                                                          newline,
+                                                          string "*tmp",
+                                                          space,
+                                                          string "=",
+                                                          space,
+                                                          unurlify' "(*request)" (#1 t),
+                                                          string ";",
+                                                          newline,
+                                                          string "tmp;",
+                                                          newline,
+                                                          string "})"],
+                                                 string ")",
+                                                 newline,
+                                                 string ":",
+                                                 space,
+                                                 string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype " ^ x
+                                                         ^ "\"), NULL))));"),
+                                                 newline],
+                                            string "}",
+                                            newline,
+                                            newline]);
 
-                             string "unurlify_",
-                             string (Int.toString i),
-                             string "();",
-                             newline,
-                             string "})"]
+                             box [string "unurlify_",
+                                  string (Int.toString i),
+                                  string ("(ctx, &" ^ request ^ ")")]
                     end
 
               | TDatatype (Default, i, _) =>
-                if IS.member (rf, i) then
+                if IS.member (!unurlifies, i) then
                     box [string "unurlify_",
                          string (Int.toString i),
-                         string "()"]
+                         string ("(ctx, &" ^ request ^ ")")]
                 else
                     let
                         val (x, xncs) = E.lookupDatatype env i
 
-                        val rf = IS.add (rf, i)
+                        val () = unurlifies := IS.add (!unurlifies, i)
 
                         fun doEm xncs =
                             case xncs of
                                 [] => string ("(uw_error(ctx, FATAL, \"Error unurlifying datatype "
                                               ^ x ^ "\"), NULL)")
                               | (x', n, to) :: rest =>
-                                box [string "((!strncmp(request, \"",
+                                box [string "((!strncmp(*request, \"",
                                      string x',
                                      string "\", ",
                                      string (Int.toString (size x')),
-                                     string ") && (request[",
+                                     string ") && ((*request)[",
                                      string (Int.toString (size x')),
-                                     string "] == 0 || request[",
+                                     string "] == 0 || (*request)[",
                                      string (Int.toString (size x')),
                                      string "] == '/')) ? ({",
                                      newline,
@@ -747,14 +760,14 @@ fun unurlify fromClient env (t, loc) =
                                      string ("__uwc_" ^ ident x' ^ "_" ^ Int.toString n),
                                      string ";",
                                      newline,
-                                     string "request",
+                                     string "*request",
                                      space,
                                      string "+=",
                                      space,
                                      string (Int.toString (size x')),
                                      string ";",
                                      newline,
-                                     string "if (request[0] == '/') ++request;",
+                                     string "if ((*request)[0] == '/') ++*request;",
                                      newline,
                                      case to of
                                          NONE => box []
@@ -763,7 +776,7 @@ fun unurlify fromClient env (t, loc) =
                                                              space,
                                                              string "=",
                                                              space,
-                                                             unurlify' rf t,
+                                                             unurlify' "(*request)" t,
                                                              string ";",
                                                              newline],
                                      string "tmp;",
@@ -775,111 +788,104 @@ fun unurlify fromClient env (t, loc) =
                                      doEm rest,
                                      string ")"]
                     in
-                        box [string "({",
-                             space,
-                             p_typ env (t, ErrorMsg.dummySpan),
-                             space,
-                             string "unurlify_",
-                             string (Int.toString i),
-                             string "(void) {",
-                             newline,
-                             box [string "return",
-                                  space,
-                                  doEm xncs,
-                                  string ";",
-                                  newline],
-                             string "}",
-                             newline,
-                             newline,
+                        addUrlHandler (box [string "static",
+                                            space,
+                                            p_typ env (t, ErrorMsg.dummySpan),
+                                            space,
+                                            string "unurlify_",
+                                            string (Int.toString i),
+                                            string "(uw_context ctx, char **request) {",
+                                            newline,
+                                            box [string "return",
+                                                 space,
+                                                 doEm xncs,
+                                                 string ";",
+                                                 newline],
+                                            string "}",
+                                            newline,
+                                            newline]);
 
-                             string "unurlify_",
+                        box [string "unurlify_",
                              string (Int.toString i),
-                             string "();",
-                             newline,
-                             string "})"]
+                             string ("(ctx, &" ^ request ^ ")")]
                     end
 
               | TList (t', i) =>
-                if IS.member (rf, i) then
+                if IS.member (!unurlifies, i) then
                     box [string "unurlify_list_",
                          string (Int.toString i),
-                         string "()"]
+                         string ("(ctx, &" ^ request ^ ")")]
                 else
-                    let
-                        val rf = IS.add (rf, i)
-                    in
-                        box [string "({",
-                             space,
-                             p_typ env (t, loc),
-                             space,
-                             string "unurlify_list_",
-                             string (Int.toString i),
-                             string "(void) {",
-                             newline,
-                             box [string "return (request[0] == '/' ? ++request : request,",
-                                  newline,
-                                  string "((!strncmp(request, \"Nil\", 3) && (request[3] == 0 ",
-                                  string "|| request[3] == '/')) ? (request",
-                                  space,
-                                  string "+=",
-                                  space,
-                                  string "3, (*request == '/' ? *request++ = 0 : 0), NULL) : ((!strncmp(request, \"Cons\", 4) && (request[4] == 0 ",
-                                  string "|| request[4] == '/')) ? (request",
-                                  space,
-                                  string "+=",
-                                  space,
-                                  string "4, (request[0] == '/' ? ++request : NULL), ",
-                                  newline,
-                                  
-                                  string "({",
-                                  newline,
-                                  p_typ env (t, loc),
-                                  space,
-                                  string "tmp",
-                                  space,
-                                  string "=",
-                                  space,
-                                  string "uw_malloc(ctx, sizeof(struct __uws_",
-                                  string (Int.toString i),
-                                  string "));",
-                                  newline,
-                                  string "*tmp",
-                                  space,
-                                  string "=",
-                                  space,
-                                  unurlify' rf (TRecord i),
-                                  string ";",
-                                  newline,
-                                  string "tmp;",
-                                  newline,
-                                  string "})",
-                                  string ")",
-                                  newline,
-                                  string ":",
-                                  space,
-                                  string ("(uw_error(ctx, FATAL, \"Error unurlifying list: %s\", request), NULL))));"),
-                                  newline],
-                             string "}",
-                             newline,
-                             newline,
+                    (unurlifies := IS.add (!unurlifies, i);
+                     addUrlHandler (box [string "static",
+                                         space,
+                                         p_typ env (t, loc),
+                                         space,
+                                         string "unurlify_list_",
+                                         string (Int.toString i),
+                                         string "(uw_context ctx, char **request) {",
+                                         newline,
+                                         box [string "return ((*request)[0] == '/' ? ++*request : *request,",
+                                              newline,
+                                              string "((!strncmp(*request, \"Nil\", 3) && ((*request)[3] == 0 ",
+                                              string "|| (*request)[3] == '/')) ? (*request",
+                                              space,
+                                              string "+=",
+                                              space,
+                                              string "3, (*request == '/' ? *request++ = 0 : 0), NULL) : ((!strncmp(*request, \"Cons\", 4) && ((*request)[4] == 0 ",
+                                              string "|| (*request)[4] == '/')) ? (*request",
+                                              space,
+                                              string "+=",
+                                              space,
+                                              string "4, ((*request)[0] == '/' ? ++*request : NULL), ",
+                                              newline,
+                                              
+                                              string "({",
+                                              newline,
+                                              p_typ env (t, loc),
+                                              space,
+                                              string "tmp",
+                                              space,
+                                              string "=",
+                                              space,
+                                              string "uw_malloc(ctx, sizeof(struct __uws_",
+                                              string (Int.toString i),
+                                              string "));",
+                                              newline,
+                                              string "*tmp",
+                                              space,
+                                              string "=",
+                                              space,
+                                              unurlify' "(*request)" (TRecord i),
+                                              string ";",
+                                              newline,
+                                              string "tmp;",
+                                              newline,
+                                              string "})",
+                                              string ")",
+                                              newline,
+                                              string ":",
+                                              space,
+                                              string ("(uw_error(ctx, FATAL, \"Error unurlifying list: %s\", request), NULL))));"),
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline]);
 
-                             string "unurlify_list_",
-                             string (Int.toString i),
-                             string "();",
-                             newline,
-                             string "})"]
-                    end
+                     box [string "unurlify_list_",
+                          string (Int.toString i),
+                          string ("(ctx, &" ^ request ^ ")")])
 
               | TOption t =>
-                box [string "(request[0] == '/' ? ++request : request, ",
-                     string "((!strncmp(request, \"None\", 4) ",
-                     string "&& (request[4] == 0 || request[4] == '/')) ",
-                     string "? (request += (request[4] == 0 ? 4 : 5), NULL) ",
-                     string ": ((!strncmp(request, \"Some\", 4) ",
-                     string "&& request[4] == '/') ",
-                     string "? (request += 5, ",
+                box [string ("(" ^ request ^ "[0] == '/' ? ++" ^ request ^ " : " ^ request ^ ", "),
+                     string ("((!strncmp(" ^ request ^ ", \"None\", 4) "),
+                     string ("&& (" ^ request ^ "[4] == 0 || " ^ request ^ "[4] == '/')) "),
+                     string ("? (" ^ request ^ " += (" ^ request ^ "[4] == 0 ? 4 : 5), NULL) "),
+                     string (": ((!strncmp(" ^ request ^ ", \"Some\", 4) "),
+                     string ("&& " ^ request ^ "[4] == '/') "),
+                     string ("? (" ^ request ^ " += 5, "),
                      if isUnboxable  t then
-                         unurlify' rf (#1 t)
+                         unurlify' request (#1 t)
                      else
                          box [string "({",
                               newline,
@@ -897,7 +903,7 @@ fun unurlify fromClient env (t, loc) =
                               space,
                               string "=",
                               space,
-                              unurlify' rf (#1 t),
+                              unurlify' request (#1 t),
                               string ";",
                               newline,
                               string "tmp;",
@@ -910,14 +916,17 @@ fun unurlify fromClient env (t, loc) =
               | _ => (ErrorMsg.errorAt loc "Unable to choose a URL decoding function";
                       space)
     in
-        unurlify' IS.empty t
+        unurlify' "request" t
     end
 
 val urlify1 = ref 0
 
+val urlifies = ref IS.empty
+val urlifiesL = ref IS.empty
+
 fun urlify env t =
     let
-        fun urlify' rf rfl level (t as (_, loc)) =
+        fun urlify' level (t as (_, loc)) =
             case #1 t of
                 TFfi ("Basis", "unit") => box []
               | TFfi (m, t) => box [string ("uw_" ^ ident m ^ "_urlify" ^ capitalize t
@@ -960,7 +969,7 @@ fun urlify env t =
                                                                   newline]
                                                              else
                                                                  []),
-                                                        urlify' rf rfl (level + 1) t,
+                                                        urlify' (level + 1) t,
                                                         string "}",
                                                         newline] :: blocks,
                                                    true)
@@ -995,10 +1004,12 @@ fun urlify env t =
                 end
 
               | TDatatype (Option, i, xncs) =>
-                if IS.member (rf, i) then
+                if IS.member (!urlifies, i) then
                     box [string "urlify_",
                          string (Int.toString i),
-                         string "(it",
+                         string "(ctx,",
+                         space,
+                         string "it",
                          string (Int.toString level),
                          string ");",
                          newline]
@@ -1013,71 +1024,73 @@ fun urlify env t =
                               | [(has_arg, _, SOME t), (no_arg, _, NONE)] =>
                                 (no_arg, has_arg, t)
                               | _ => raise Fail "CjrPrint: urlify misclassified Option datatype"
-
-                        val rf = IS.add (rf, i)
                     in
-                        box [string "({",
-                             space,
-                             string "void",
-                             space,
-                             string "urlify_",
-                             string (Int.toString i),
-                             string "(",
-                             p_typ env t,
-                             space,
-                             if isUnboxable t then
-                                 box []
-                             else
-                                 string "*",
-                             string "it0) {",
-                             newline,
-                             box [string "if (it0) {",
-                                  newline,
-                                  if isUnboxable t then
-                                      urlify' rf rfl 0 t
-                                  else
-                                      box [p_typ env t,
-                                           space,
-                                           string "it1",
-                                           space,
-                                           string "=",
-                                           space,
-                                           string "*it0;",
-                                           newline,
-                                           string "uw_write(ctx, \"",
-                                           string has_arg,
-                                           string "/\");",
-                                           newline,
-                                           urlify' rf rfl 1 t,
-                                           string ";",
-                                           newline],
-                                  string "} else {",
-                                  box [newline,
-                                       string "uw_write(ctx, \"",
-                                       string no_arg,
-                                       string "\");",
-                                       newline],
-                                  string "}",
-                                  newline],
-                             string "}",
-                             newline,
-                             newline,
+                        urlifies := IS.add (!urlifies, i);
+                        addUrlHandler (box [string "static",
+                                            space,
+                                            string "void",
+                                            space,
+                                            string "urlify_",
+                                            string (Int.toString i),
+                                            string "(uw_context ctx,",
+                                            space,
+                                            p_typ env t,
+                                            space,
+                                            if isUnboxable t then
+                                                box []
+                                            else
+                                                string "*",
+                                            string "it0) {",
+                                            newline,
+                                            box [string "if (it0) {",
+                                                 newline,
+                                                 if isUnboxable t then
+                                                     urlify' 0 t
+                                                 else
+                                                     box [p_typ env t,
+                                                          space,
+                                                          string "it1",
+                                                          space,
+                                                          string "=",
+                                                          space,
+                                                          string "*it0;",
+                                                          newline,
+                                                          string "uw_write(ctx, \"",
+                                                          string has_arg,
+                                                          string "/\");",
+                                                          newline,
+                                                          urlify' 1 t,
+                                                          string ";",
+                                                          newline],
+                                                 string "} else {",
+                                                 box [newline,
+                                                      string "uw_write(ctx, \"",
+                                                      string no_arg,
+                                                      string "\");",
+                                                      newline],
+                                                 string "}",
+                                                 newline],
+                                            string "}",
+                                            newline,
+                                            newline]);
 
-                             string "urlify_",
+                        box [string "urlify_",
                              string (Int.toString i),
-                             string "(it",
+                             string "(ctx,",
+                             space,
+                             string "it",
                              string (Int.toString level),
                              string ");",
-                             newline,
-                             string "});",
                              newline]
                     end
 
               | TDatatype (Default, i, _) =>
-                if IS.member (rf, i) then
+                if IS.member (!urlifies, i) then
                     box [string "urlify_",
                          string (Int.toString i),
-                         string "(it",
+                         string "(ctx,",
+                         space,
+                         string "it",
                          string (Int.toString level), 
                          string ");",
                          newline]
@@ -1085,7 +1098,7 @@ fun urlify env t =
                     let
                         val (x, xncs) = E.lookupDatatype env i
 
-                        val rf = IS.add (rf, i)
+                        val () = urlifies := IS.add (!urlifies, i)
 
                         fun doEm xncs =
                             case xncs of
@@ -1120,7 +1133,7 @@ fun urlify env t =
                                                         string x',
                                                         string ";",
                                                         newline,
-                                                        urlify' rf rfl 1 t,
+                                                        urlify' 1 t,
                                                         newline],
                                      string "} else {",
                                      newline,
@@ -1129,30 +1142,32 @@ fun urlify env t =
                                      string "}",
                                      newline]
                     in
-                        box [string "({",
-                             space,
-                             string "void",
-                             space,
-                             string "urlify_",
-                             string (Int.toString i),
-                             string "(",
-                             p_typ env t,
-                             space,
-                             string "it0) {",
-                             newline,
-                             box [doEm xncs,
-                                  newline],
-                             newline,
-                             string "}",
-                             newline,
+                        addUrlHandler (box [string "static",
+                                            space,
+                                            string "void",
+                                            space,
+                                            string "urlify_",
+                                            string (Int.toString i),
+                                            string "(uw_context ctx,",
+                                            space,
+                                            p_typ env t,
+                                            space,
+                                            string "it0) {",
+                                            newline,
+                                            box [doEm xncs,
+                                                 newline],
+                                            newline,
+                                            string "}",
+                                            newline,
+                                            newline]);
 
-                             string "urlify_",
+                        box [string "urlify_",
                              string (Int.toString i),
-                             string "(it",
+                             string "(ctx,",
+                             space,
+                             string "it",
                              string (Int.toString level),
                              string ");",
-                             newline,
-                             string "});",
                              newline]
                     end
 
@@ -1163,7 +1178,7 @@ fun urlify env t =
                      if isUnboxable t then
                          box [string "uw_write(ctx, \"Some/\");",
                               newline,
-                              urlify' rf rfl level t]
+                              urlify' level t]
                      else
                          box [p_typ env t,
                               space,
@@ -1178,7 +1193,7 @@ fun urlify env t =
                               newline,
                               string "uw_write(ctx, \"Some/\");",
                               newline,
-                              urlify' rf rfl (level + 1) t,
+                              urlify' (level + 1) t,
                               string ";",
                               newline],
                      string "} else {",
@@ -1189,73 +1204,74 @@ fun urlify env t =
                      newline]
 
               | TList (t, i) =>
-                if IS.member (rfl, i) then
+                if IS.member (!urlifiesL, i) then
                     box [string "urlifyl_",
                          string (Int.toString i),
-                         string "(it",
+                         string "(ctx,",
+                         space,
+                         string "it",
                          string (Int.toString level),
                          string ");",
                          newline]
                 else
-                    let
-                        val rfl = IS.add (rfl, i)
-                    in
-                        box [string "({",
-                             space,
-                             string "void",
-                             space,
-                             string "urlifyl_",
-                             string (Int.toString i),
-                             string "(struct __uws_",
-                             string (Int.toString i),
-                             space,
-                             string "*it0) {",
-                             newline,
-                             box [string "if (it0) {",
-                                  newline,
-                                  p_typ env t,
-                                  space,
-                                  string "it1",
-                                  space,
-                                  string "=",
-                                  space,
-                                  string "it0->__uwf_1;",
-                                  newline,
-                                  string "uw_write(ctx, \"Cons/\");",
-                                  newline,
-                                  urlify' rf rfl 1 t,
-                                  string ";",
-                                  newline,
-                                  string "uw_write(ctx, \"/\");",
-                                  newline,
-                                  string "urlifyl_",
-                                  string (Int.toString i),
-                                  string "(it0->__uwf_2);",
-                                  newline,
-                                  string "} else {",
-                                  newline,
-                                  box [string "uw_write(ctx, \"Nil\");",
-                                       newline],
-                                  string "}",
-                                  newline],
-                             string "}",
-                             newline,
-                             newline,
+                    (urlifiesL := IS.add (!urlifiesL, i);
+                     addUrlHandler (box [string "static",
+                                         space,
+                                         string "void",
+                                         space,
+                                         string "urlifyl_",
+                                         string (Int.toString i),
+                                         string "(uw_context ctx,",
+                                         space,
+                                         string "struct __uws_",
+                                         string (Int.toString i),
+                                         space,
+                                         string "*it0) {",
+                                         newline,
+                                         box [string "if (it0) {",
+                                              newline,
+                                              p_typ env t,
+                                              space,
+                                              string "it1",
+                                              space,
+                                              string "=",
+                                              space,
+                                              string "it0->__uwf_1;",
+                                              newline,
+                                              string "uw_write(ctx, \"Cons/\");",
+                                              newline,
+                                              urlify' 1 t,
+                                              string ";",
+                                              newline,
+                                              string "uw_write(ctx, \"/\");",
+                                              newline,
+                                              string "urlifyl_",
+                                              string (Int.toString i),
+                                              string "(ctx, it0->__uwf_2);",
+                                              newline,
+                                              string "} else {",
+                                              newline,
+                                              box [string "uw_write(ctx, \"Nil\");",
+                                                   newline],
+                                              string "}",
+                                              newline],
+                                         string "}",
+                                         newline,
+                                         newline]);
 
-                             string "urlifyl_",
-                             string (Int.toString i),
-                             string "(it",
-                             string (Int.toString level),
-                             string ");",
-                             newline,
-                             string "});",
-                             newline]
-                    end
-
+                     box [string "urlifyl_",
+                          string (Int.toString i),
+                          string "(ctx,",
+                          space,
+                          string "it",
+                          string (Int.toString level),
+                          string ");",
+                          newline])
+                    
               | _ => (ErrorMsg.errorAt loc "Unable to choose a URL encoding function";
                       space)
     in
-        urlify' IS.empty IS.empty 0 t
+        urlify' 0 t
     end
 
 fun sql_type_in env (tAll as (t, loc)) =
@@ -1338,6 +1354,7 @@ fun p_exp' par env (e, loc) =
                      string "*tmp",
                      space,
                      string "=",
+                     space,
                      p_exp' par env e,
                      string ";",
                      newline,
@@ -1404,6 +1421,7 @@ fun p_exp' par env (e, loc) =
                  string "*tmp",
                  space,
                  string "=",
+                 space,
                  p_exp' par env e,
                  string ";",
                  newline,
@@ -1563,18 +1581,21 @@ fun p_exp' par env (e, loc) =
              foldr (fn ((p, e), body) =>
                        let
                            val pm = p_patMatch (env, "disc") p
-                           val (pb, env) = p_patBind (env, "disc") p
+                           val (pb, env') = p_patBind (env, "disc") p
                        in
                            box [pm,
                                 space,
                                 string "?",
                                 space,
-                                box [string "({",
-                                     pb,
-                                     p_exp env e,
-                                     string ";",
-                                     newline,
-                                     string "})"],
+                                if E.countERels env' = E.countERels env then
+                                    p_exp env e
+                                else
+                                    box [string "({",
+                                         pb,
+                                         p_exp env' e,
+                                         string ";",
+                                         newline,
+                                         string "})"],
                                 newline,
                                 space,
                                 string ":",
@@ -2225,9 +2246,18 @@ fun sigName fields =
 
 fun p_file env (ds, ps) =
     let
+        val () = (clearUrlHandlers ();
+                  unurlifies := IS.empty;
+                  urlifies := IS.empty;
+                  urlifiesL := IS.empty)
+
         val (pds, env) = ListUtil.foldlMap (fn (d, env) =>
-                                               (p_decl env d,
-                                                E.declBinds env d))
+                                               let
+                                                   val d' = p_decl env d
+                                               in
+                                                   (box (List.revAppend (latestUrlHandlers (), [d'])),
+                                                    E.declBinds env d)
+                                               end)
                              env ds
 
         fun flatFields always (t : typ) =
@@ -2740,8 +2770,13 @@ fun p_file env (ds, ps) =
                     ]
             end
 
-        val pds' = map p_page ps
-
+        val (pds', handlers) = ListUtil.foldlMap (fn (p, handlers) =>
+                                                     let
+                                                         val p' = p_page p
+                                                     in
+                                                         (p', latestUrlHandlers () @ handlers)
+                                                     end) [] ps
+                               
         val hasDb = ref false
         val tables = ref []
         val views = ref []
@@ -3012,6 +3047,8 @@ fun p_file env (ds, ps) =
              string "}",
              newline,
              newline,
+
+             box (rev handlers),
 
              string "static void uw_handle(uw_context ctx, char *request) {",
              newline,

@@ -87,13 +87,11 @@ apt-get install emacs-goodies-el
 
 If you don't want to install the Emacs mode, run \texttt{./configure} with the argument \texttt{--without-emacs}.
 
-Even with the right packages installed, configuration and building might fail to work.  After you run \texttt{./configure}, you will see the values of some named environment variables printed.  You may need to adjust these values to get proper installation for your system.  To change a value, store your preferred alternative in the corresponding UNIX environment variable, before running \texttt{./configure}.  For instance, here is how to change the list of extra arguments that the Ur/Web compiler will pass to GCC on every invocation.
+Even with the right packages installed, configuration and building might fail to work.  After you run \texttt{./configure}, you will see the values of some named environment variables printed.  You may need to adjust these values to get proper installation for your system.  To change a value, store your preferred alternative in the corresponding UNIX environment variable, before running \texttt{./configure}.  For instance, here is how to change the list of extra arguments that the Ur/Web compiler will pass to GCC on every invocation.  Some older GCC versions need this setting to mask a bug in function inlining.
 
 \begin{verbatim}
-GCCARGS=-fnested-functions ./configure
+GCCARGS=-fno-inline ./configure
 \end{verbatim}
-
-Some Mac OS X users have reported needing to use this particular GCCARGS value.  Also, some older GCC versions have inlining-related bugs that can be masked (at some cost to output code quality) by adding \texttt{-fno-inline} here.
 
 Since the author is still getting a handle on the GNU Autotools that provide the build system, you may need to do some further work to get started, especially in environments with significant differences from Linux (where most testing is done).  The variables \texttt{PGHEADER}, \texttt{MSHEADER}, and \texttt{SQHEADER} may be used to set the proper C header files to include for the development libraries of PostgreSQL, MySQL, and SQLite, respectively.  To get libpq to link, one OS X user reported setting \texttt{GCCARGS="-I/opt/local/include -L/opt/local/lib/postgresql84"}, after creating a symbolic link with \texttt{ln -s /opt/local/include/postgresql84 /opt/local/include/postgresql}.
 
