@@ -797,6 +797,12 @@ val submit : ctx ::: {Unit} -> use ::: {Type}
                    -> tag ([Value = string, Action = $use -> transaction page] ++ boxAttrs)
                           ([Form] ++ ctx) ([Form] ++ ctx) use []
 
+val image : ctx ::: {Unit} -> use ::: {Type}
+             -> [[Form] ~ ctx] =>
+                   unit
+                   -> tag ([Src = url, Width = int, Height = int, Alt = string, Action = $use -> transaction page] ++ boxAttrs)
+                          ([Form] ++ ctx) ([Form] ++ ctx) use []
+
 val label : bodyTag ([For = string, Accesskey = string] ++ tableAttrs)
 
 

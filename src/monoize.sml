@@ -3258,6 +3258,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                      end
                      
                    | "submit" => normal ("input type=\"submit\"", NONE, NONE)
+                   | "image" => normal ("input type=\"image\"", NONE, NONE)
                    | "button" => normal ("input type=\"submit\"", NONE, NONE)
                    | "hidden" => input "hidden"
 
