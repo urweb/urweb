@@ -206,6 +206,20 @@ fun foldlMap [a] [b] [c] f =
         fold []
     end
 
+fun find [a] f =
+    let
+        fun find' ls =
+            case ls of
+                [] => None
+              | x :: ls =>
+                if f x then
+                    Some x
+                else
+                    find' ls
+    in
+        find'
+    end
+
 fun search [a] [b] f =
     let
         fun search' ls =
