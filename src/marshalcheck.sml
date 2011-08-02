@@ -108,7 +108,7 @@ fun check file =
                                            ()
                                        else
                                            E.error ("Input to exported function '"
-                                                    ^ tag ^ "' involves one or more disallowed types: "
+                                                    ^ tag ^ "' involves one or more types that are disallowed for page handler inputs: "
                                                     ^ PS.toString s);
                                        (cmap, emap)
                                    end)
@@ -120,7 +120,7 @@ fun check file =
                                   if PS.isEmpty s then
                                       ()
                                   else
-                                      E.error ("Cookie '" ^ tag ^ "' includes one or more disallowed types: "
+                                      E.error ("Cookie '" ^ tag ^ "' includes one or more types that are disallowed for cookies: "
                                                ^ PS.toString s);
                                   (cmap, emap)
                               end

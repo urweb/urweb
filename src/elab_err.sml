@@ -267,10 +267,10 @@ val p_decl = P.p_decl
 fun declError env err =
     case err of
         KunifsRemain ds =>
-        (ErrorMsg.errorAt (lspan ds) "Some kind unification variables are undetermined in declaration";
+        (ErrorMsg.errorAt (lspan ds) "Some kind unification variables are undetermined in declaration\n(look for them as \"<UNIF:...>\")";
          eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
       | CunifsRemain ds =>
-        (ErrorMsg.errorAt (lspan ds) "Some constructor unification variables are undetermined in declaration";
+        (ErrorMsg.errorAt (lspan ds) "Some constructor unification variables are undetermined in declaration\n(look for them as \"<UNIF:...>\")";
          eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
       | Nonpositive d =>
         (ErrorMsg.errorAt (#2 d) "Non-strictly-positive datatype declaration (could allow non-termination)";
