@@ -1319,7 +1319,9 @@ fun potentiallyFancy (e, _) =
       | ESetval {seq = e1, count = e2} => potentiallyFancy e1 orelse potentiallyFancy e2
       | EUnurlify _ => true
 
-fun p_exp' par env (e, loc) =
+val self = ref (NONE : int option)
+
+fun p_exp' par tail env (e, loc) =
     case e of
         EPrim p => Prim.p_t_GCC p
       | ERel n => p_rel env n
@@ -1337,7 +1339,7 @@ fun p_exp' par env (e, loc) =
                       | SOME t => t
         in
             if isUnboxable t then
-                p_exp' par env e
+                p_exp' par tail env e
             else
                 box [string "({",
                      newline,
@@ -1355,7 +1357,7 @@ fun p_exp' par env (e, loc) =
                      space,
                      string "=",
                      space,
-                     p_exp' par env e,
+                     p_exp' par false env e,
                      string ";",
                      newline,
                      string "tmp;",
@@ -1394,7 +1396,7 @@ fun p_exp' par env (e, loc) =
                                     space,
                                     string "=",
                                     space,
-                                    p_exp env e,
+                                    p_exp' false false env e,
                                     string ";",
                                     newline],
                  string "tmp;",
@@ -1404,7 +1406,7 @@ fun p_exp' par env (e, loc) =
       | ENone _ => string "NULL"
       | ESome (t, e) =>
         if isUnboxable t then
-            p_exp' par env e
+            p_exp' par tail env e
         else
             box [string "({",
                  newline,
@@ -1422,7 +1424,7 @@ fun p_exp' par env (e, loc) =
                  space,
                  string "=",
                  space,
-                 p_exp' par env e,
+                 p_exp' par false env e,
                  string ";",
                  newline,
                  string "tmp;",
@@ -1440,7 +1442,7 @@ fun p_exp' par env (e, loc) =
              string "uw_error(ctx, FATAL, \"",
              string (ErrorMsg.spanToString loc),
              string ": %s\", ",
-             p_exp env e,
+             p_exp' false false env e,
              string ");",
              newline,
              string "tmp;",
@@ -1454,9 +1456,9 @@ fun p_exp' par env (e, loc) =
              string "tmp;",
              newline,
              string "uw_return_blob(ctx, ",
-             p_exp env blob,
+             p_exp' false false env blob,
              string ", ",
-             p_exp env mimeType,
+             p_exp' false false env mimeType,
              string ");",
              newline,
              string "tmp;",
@@ -1470,16 +1472,16 @@ fun p_exp' par env (e, loc) =
              string "tmp;",
              newline,
              string "uw_redirect(ctx, ",
-             p_exp env e,
+             p_exp' false false env e,
              string ");",
              newline,
              string "tmp;",
              newline,
              string "})"]
       | EApp ((EError (e, (TFun (_, ran), _)), loc), _) =>
-        p_exp env (EError (e, ran), loc)
+        p_exp' false false env (EError (e, ran), loc)
       | EApp ((EReturnBlob {blob, mimeType, t = (TFun (_, ran), _)}, loc), _) =>
-        p_exp env (EReturnBlob {blob = blob, mimeType = mimeType, t = ran}, loc)
+        p_exp' false false env (EReturnBlob {blob = blob, mimeType = mimeType, t = ran}, loc)
 
       | EFfiApp ("Basis", "strcat", [e1, e2]) =>
         let
@@ -1490,12 +1492,12 @@ fun p_exp' par env (e, loc) =
         in
             case flatten e1 @ flatten e2 of
                 [e1, e2] => box [string "uw_Basis_strcat(ctx, ",
-                                 p_exp env e1,
+                                 p_exp' false false env e1,
                                  string ",",
-                                 p_exp env e2,
+                                 p_exp' false false env e2,
                                  string ")"]
               | es => box [string "uw_Basis_mstrcat(ctx, ",
-                           p_list (p_exp env) es,
+                           p_list (p_exp' false false env) es,
                            string ", NULL)"]
         end
 
@@ -1510,35 +1512,88 @@ fun p_exp' par env (e, loc) =
                                    string "_",
                                    p_ident x,
                                    string "(ctx, ",
-                                   p_list (p_exp env) es,
+                                   p_list (p_exp' false false env) es,
                                    string ")"]
       | EApp (f, args) =>
-        parenIf par (box [p_exp' true env f,
-                          string "(ctx,",
-                          space,
-                          p_list_sep (box [string ",", space]) (p_exp env) args,
-                          string ")"])
+        let
+            fun default () = parenIf par (box [p_exp' true false env f,
+                                               string "(ctx,",
+                                               space,
+                                               p_list_sep (box [string ",", space]) (p_exp' false false env) args,
+                                               string ")"])
+
+            fun isSelf n =
+                let
+                    val (_, t) = E.lookupENamed env n
+
+                    fun getSig (t, args) =
+                        case #1 t of
+                            TFun (dom, t) => getSig (t, dom :: args)
+                          | _ => (args, t)
+
+                    val (argts, ret) = getSig (t, [])
+                in
+                    parenIf par (box [string "({",
+                                      newline,
+                                      p_list_sepi newline
+                                      (fn i => fn (e, t) =>
+                                          box [p_typ env t,
+                                               space,
+                                               string ("rearg" ^ Int.toString i),
+                                               space,
+                                               string "=",
+                                               space,
+                                               p_exp' false false env e,
+                                               string ";"])
+                                      (ListPair.zip (args, argts)),
+                                      newline,
+                                      p_typ env ret,
+                                      space,
+                                      string "tmp;",
+                                      newline,
+                                      p_list_sepi newline
+                                      (fn i => fn _ =>
+                                          box [p_rel env (E.countERels env - 1 - i),
+                                               space,
+                                               string "=",
+                                               space,
+                                               string ("rearg" ^ Int.toString i ^ ";")]) args,
+                                      newline,
+                                      string "goto restart;",
+                                      newline,
+                                      string "tmp;",
+                                      newline,
+                                      string "})"])
+                end
+        in
+            case #1 f of
+                ENamed n => if SOME n = !self andalso tail then
+                                isSelf n
+                            else
+                                default ()
+              | _ => default ()
+        end
 
       | EUnop (s, e1) =>
         parenIf par (box [string s,
                           space,
-                          p_exp' true env e1])
+                          p_exp' true false env e1])
 
       | EBinop (s, e1, e2) =>
         if Char.isAlpha (String.sub (s, size s - 1)) then
             box [string s,
                  string "(",
-                 p_exp env e1,
+                 p_exp' false false env e1,
                  string ",",
                  space,
-                 p_exp env e2,
+                 p_exp' false false env e2,
                  string ")"]
         else
-            parenIf par (box [p_exp' true env e1,
+            parenIf par (box [p_exp' true false env e1,
                               space,
                               string s,
                               space,
-                              p_exp' true env e2])
+                              p_exp' true false env e2])
 
       | ERecord (0, _) => string "0"
 
@@ -1554,14 +1609,14 @@ fun p_exp' par env (e, loc) =
                                  space,
                                  string "{",
                                  p_list (fn (_, e) =>
-                                            p_exp env e) xes,
+                                            p_exp' false false env e) xes,
                                  string "};",
                                  space,
                                  string "tmp;",
                                  space,
                                  string "})" ]
       | EField (e, x) =>
-        box [p_exp' true env e,
+        box [p_exp' true false env e,
              string ".__uwf_",
              p_ident x]
 
@@ -1574,7 +1629,7 @@ fun p_exp' par env (e, loc) =
              space,
              string "=",
              space,
-             p_exp env e,
+             p_exp' false false env e,
              string ";",
              newline,
              newline,
@@ -1588,11 +1643,11 @@ fun p_exp' par env (e, loc) =
                                 string "?",
                                 space,
                                 if E.countERels env' = E.countERels env then
-                                    p_exp env e
+                                    p_exp' false tail env e
                                 else
                                     box [string "({",
                                          pb,
-                                         p_exp env' e,
+                                         p_exp' false tail env' e,
                                          string ";",
                                          newline,
                                          string "})"],
@@ -1619,7 +1674,7 @@ fun p_exp' par env (e, loc) =
              string "})"]
 
       | EWrite e => box [string "(uw_write(ctx, ",
-                         p_exp env e,
+                         p_exp' false false env e,
                          string "), 0)"]
 
       | ESeq (e1, e2) =>
@@ -1632,7 +1687,7 @@ fun p_exp' par env (e, loc) =
                           space]
                  else
                      box [],
-                 p_exp env e1,
+                 p_exp' false false env e1,
                  string ",",
                  space,
                  if useRegion then
@@ -1640,7 +1695,7 @@ fun p_exp' par env (e, loc) =
                           space]
                  else
                      box [],
-                 p_exp env e2,
+                 p_exp' false tail env e2,
                  string ")"]
         end
       | ELet (x, t, e1, e2) =>
@@ -1663,7 +1718,7 @@ fun p_exp' par env (e, loc) =
                           space]
                  else
                      box [],
-                 p_exp env e1,
+                 p_exp' false false env e1,
                  if useRegion then
                      string ")"
                  else
@@ -1675,7 +1730,7 @@ fun p_exp' par env (e, loc) =
                           newline]
                  else
                      box [],
-                 p_exp (E.pushERel env x t) e2,
+                 p_exp' false tail (E.pushERel env x t) e2,
                  string ";",
                  newline,
                  string "})"]
@@ -1745,10 +1800,10 @@ fun p_exp' par env (e, loc) =
                      space,
                      string "=",
                      space,
-                     p_exp (E.pushERel
-                                (E.pushERel env "r" (TRecord rnum, loc))
-                                "acc" state) 
-                           body,
+                     p_exp' false false (E.pushERel
+                                             (E.pushERel env "r" (TRecord rnum, loc))
+                                             "acc" state) 
+                            body,
                      string ";",
                      newline]
         in
@@ -1764,7 +1819,7 @@ fun p_exp' par env (e, loc) =
                  space,
                  string "=",
                  space,
-                 p_exp env initial,
+                 p_exp' false false env initial,
                  string ";",
                  newline,
                  string "int dummy = (uw_begin_region(ctx), 0);",
@@ -1773,7 +1828,7 @@ fun p_exp' par env (e, loc) =
                  case prepared of
                      NONE =>
                      box [string "char *query = ",
-                          p_exp env query,
+                          p_exp' false false env query,
                           string ";",
                           newline,
                           newline,
@@ -1792,7 +1847,7 @@ fun p_exp' par env (e, loc) =
                                                        space,
                                                        string "=",
                                                        space,
-                                                       p_exp env e,
+                                                       p_exp' false false env e,
                                                        string ";"])
                                       inputs,
                           newline,
@@ -1827,7 +1882,7 @@ fun p_exp' par env (e, loc) =
              newline,
              case prepared of
                  NONE => box [string "char *dml = ",
-                              p_exp env dml,
+                              p_exp' false false env dml,
                               string ";",
                               newline,
                               newline,
@@ -1845,7 +1900,7 @@ fun p_exp' par env (e, loc) =
                                                        space,
                                                        string "=",
                                                        space,
-                                                       p_exp env e,
+                                                       p_exp' false false env e,
                                                        string ";"])
                                       inputs,
                           newline,
@@ -1877,7 +1932,7 @@ fun p_exp' par env (e, loc) =
 
              case prepared of
                  NONE => #nextval (Settings.currentDbms ()) {loc = loc,
-                                                             seqE = p_exp env seq,
+                                                             seqE = p_exp' false false env seq,
                                                              seqName = case #1 seq of
                                                                            EPrim (Prim.String s) => SOME s
                                                                          | _ => NONE}
@@ -1896,8 +1951,8 @@ fun p_exp' par env (e, loc) =
              newline,
 
              #setval (Settings.currentDbms ()) {loc = loc,
-                                                seqE = p_exp env seq,
-                                                count = p_exp env count},
+                                                seqE = p_exp' false false env seq,
+                                                count = p_exp' false false env count},
              newline,
              newline,
 
@@ -1929,7 +1984,7 @@ fun p_exp' par env (e, loc) =
             box [string "({",
                  newline,
                  string "uw_Basis_string request = uw_maybe_strdup(ctx, ",
-                 p_exp env e,
+                 p_exp' false false env e,
                  string ");",
                  newline,
                  newline,
@@ -1964,7 +2019,7 @@ fun p_exp' par env (e, loc) =
             box [string "({",
                  newline,
                  string "uw_Basis_string request = uw_maybe_strdup(ctx, ",
-                 p_exp env e,
+                 p_exp' false false env e,
                  string ");",
                  newline,
                  newline,
@@ -1974,7 +2029,7 @@ fun p_exp' par env (e, loc) =
                  string "})"]
         end
 
-and p_exp env = p_exp' false env
+and p_exp env = p_exp' false true env
 
 fun p_fun isRec env (fx, n, args, ran, e) =
     let
@@ -1995,6 +2050,11 @@ fun p_fun isRec env (fx, n, args, ran, e) =
              string ")",
              space,
              string "{",
+             if isRec then
+                 box [string "restart:",
+                      newline]
+             else
+                 box [],
              newline,
              if isRec andalso Settings.getDeadlines () then
                  box [string "uw_check_deadline(ctx);",
@@ -2127,7 +2187,10 @@ fun p_decl env (dAll as (d, _) : decl) =
                                                         (fn (_, dom) => p_typ env dom) args,
                                              string ");"]) vis,
                  newline,
-                 p_list_sep newline (p_fun true env) vis,
+                 p_list_sep newline (fn vi as (_, n, _, _, _) =>
+                                        (self := SOME n;
+                                         p_fun true env vi
+                                         before self := NONE)) vis,
                  newline]
         end
       | DTable (x, _, pk, csts) => box [string "/* SQL table ",
@@ -2249,7 +2312,8 @@ fun p_file env (ds, ps) =
         val () = (clearUrlHandlers ();
                   unurlifies := IS.empty;
                   urlifies := IS.empty;
-                  urlifiesL := IS.empty)
+                  urlifiesL := IS.empty;
+                  self := NONE)
 
         val (pds, env) = ListUtil.foldlMap (fn (d, env) =>
                                                let
