@@ -4,6 +4,7 @@ BIN      := @BIN@
 LIB      := @LIB@
 INCLUDE  := @INCLUDE@
 SITELISP := @SITELISP@
+VERSION  := @VERSION@
 
 LIB_UR   := $(LIB)/ur
 LIB_C    := $(LIB)/c
@@ -99,7 +100,7 @@ uninstall-local-main:
 uninstall-local: uninstall-local-main uninstall-emacs
 
 package:
-	hg archive -t tgz -X tests /tmp/urweb.tgz
+	hg archive -t tgz -X tests "/tmp/urweb-$(VERSION).tgz"
 
 reauto:
 	-autoreconf

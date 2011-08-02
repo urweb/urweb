@@ -179,7 +179,7 @@ SHELL = @SHELL@
 SITELISP := @SITELISP@
 SQHEADER = @SQHEADER@
 STRIP = @STRIP@
-VERSION = @VERSION@
+VERSION := @VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -818,7 +818,7 @@ uninstall-local-main:
 uninstall-local: uninstall-local-main uninstall-emacs
 
 package:
-	hg archive -t tgz -X tests /tmp/urweb.tgz
+	hg archive -t tgz -X tests "/tmp/urweb-$(VERSION).tgz"
 
 reauto:
 	-autoreconf

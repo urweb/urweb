@@ -15,4 +15,7 @@ signature CONFIG = sig
     val pgheader : string
     val msheader : string
     val sqheader : string
+
+    val versionNumber : string
+    val versionString : string
 end

@@ -1,4 +1,5 @@
-AC_INIT([urweb], [1.0])
+AC_INIT([urweb], [20110715])
+WORKING_VERSION=1
 AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-define])
 AC_PROG_CC()
@@ -79,6 +80,10 @@ if test [-z $SQHEADER]; then
    SQHEADER=sqlite3.h
 fi
 
+if test [$WORKING_VERSION = "1"]; then
+   VERSION="$VERSION + `hg identify || cat .hg_archival.txt || echo ?`"
+fi
+
 AC_SUBST(CC)
 AC_SUBST(BIN)
 AC_SUBST(LIB)
@@ -88,6 +93,7 @@ AC_SUBST(GCCARGS)
 AC_SUBST(PGHEADER)
 AC_SUBST(MSHEADER)
 AC_SUBST(SQHEADER)
+AC_SUBST(VERSION)
 
 AC_CONFIG_FILES([
         Makefile
@@ -109,4 +115,6 @@ Ur/Web configuration:
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER
   SQLite C header:     SQHEADER       $SQHEADER
+
+  Version:             $VERSION
 EOF
