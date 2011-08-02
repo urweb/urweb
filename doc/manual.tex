@@ -321,6 +321,15 @@ These input files follow normal Ur syntax, with a few exceptions:
 
 A word of warning: as for demo generation, tutorial generation calls Emacs to syntax-highlight Ur code.
 
+\subsection{Run-Time Options}
+
+Compiled applications consult a few environment variables to modify their behavior:
+
+\begin{itemize}
+  \item \cd{URWEB\_NUM\_THREADS}: alternative to the \cd{-t} command-line argument (currently used only by FastCGI)
+  \item \cd{URWEB\_STACK\_SIZE}: size of per-thread stacks, in bytes
+\end{itemize}
+
 
 \section{Ur Syntax}
 

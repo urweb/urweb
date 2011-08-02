@@ -123,12 +123,40 @@ static void *periodic_loop(void *data) {
   };
 }
 
+static unsigned long long stackSize;
+
+int pthread_create_big(pthread_t *outThread, void *foo, void *threadFunc, void *arg)
+{
+  int err;
+  pthread_attr_t stackSizeAttribute;
+
+  err = pthread_attr_init(&stackSizeAttribute);
+  if (err) return err; 
+
+  if (stackSize > 0) {
+    err = pthread_attr_setstacksize(&stackSizeAttribute, stackSize);
+    if (err) return err;
+  }
+
+  return pthread_create(outThread, &stackSizeAttribute, threadFunc, arg);
+}
+
 void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
   uw_context ctx;
   failure_kind fk;
   uw_periodic *ps;
   loggers *ls = malloc(sizeof(loggers));
   int id;
+  char *stackSize_s;
+
+  if ((stackSize_s = getenv("URWEB_STACK_SIZE")) != NULL && stackSize_s[0] != 0) {
+    stackSize = atoll(stackSize_s);
+
+    if (stackSize <= 0) {
+      fprintf(stderr, "Invalid stack size \"%s\"\n", stackSize_s);
+      exit(1);
+    }
+  }
 
   ls->app = app;
   ls->logger_data = logger_data;
@@ -141,7 +169,7 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
   {
     pthread_t thread;
     
-    if (uw_time_max && pthread_create(&thread, NULL, ticker, NULL)) {
+    if (uw_time_max && pthread_create_big(&thread, NULL, ticker, NULL)) {
       fprintf(stderr, "Error creating ticker thread\n");
       exit(1);
     }
@@ -174,7 +202,7 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
     arg->ls = ls;
     arg->pdic = *ps;
     
-    if (pthread_create(&thread, NULL, periodic_loop, arg)) {
+    if (pthread_create_big(&thread, NULL, periodic_loop, arg)) {
       fprintf(stderr, "Error creating periodic thread\n");
       exit(1);
     }

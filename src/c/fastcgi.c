@@ -569,7 +569,7 @@ int main(int argc, char *argv[]) {
   {
     pthread_t thread;
 
-    if (pthread_create(&thread, NULL, client_pruner, &ls)) {
+    if (pthread_create_big(&thread, NULL, client_pruner, &ls)) {
       fprintf(stderr, "Error creating pruner thread\n");
       return 1;
     }
@@ -578,7 +578,7 @@ int main(int argc, char *argv[]) {
   for (i = 0; i < nthreads; ++i) {
     pthread_t thread;    
     names[i] = i;
-    if (pthread_create(&thread, NULL, worker, &names[i])) {
+    if (pthread_create_big(&thread, NULL, worker, &names[i])) {
       fprintf(stderr, "Error creating worker thread #%d\n", i);
       return 1;
     }

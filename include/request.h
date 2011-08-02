@@ -32,4 +32,6 @@ typedef struct {
 
 void *client_pruner(void *data);
 
+int pthread_create_big(pthread_t *outThread, void *foo, void *threadFunc, void *arg);
+
 #endif
