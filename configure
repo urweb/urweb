@@ -615,7 +615,7 @@ LIBOBJS
 SQHEADER
 MSHEADER
 PGHEADER
-GCCARGS
+CCARGS
 SITELISP
 INCLUDE
 LIB
@@ -14578,7 +14578,7 @@ Ur/Web configuration:
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
   C compiler:          CC             $CC
-  Extra GCC args:      GCCARGS        $GCCARGS
+  Extra CC args:       CCARGS         $CCARGS
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER
   SQLite C header:     SQHEADER       $SQHEADER

@@ -13,7 +13,7 @@ val libJs = OS.Path.joinDirFile {dir = lib,
                                  file = "js"}
 
 val ccompiler = "@CC@"
-val gccArgs = "@GCCARGS@"
+val ccArgs = "@CCARGS@"
 val openssl = "@OPENSSL_LDFLAGS@ @OPENSSL_LIBS@"
 
 val pgheader = "@PGHEADER@"

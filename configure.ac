@@ -89,7 +89,7 @@ AC_SUBST(BIN)
 AC_SUBST(LIB)
 AC_SUBST(INCLUDE)
 AC_SUBST(SITELISP)
-AC_SUBST(GCCARGS)
+AC_SUBST(CCARGS)
 AC_SUBST(PGHEADER)
 AC_SUBST(MSHEADER)
 AC_SUBST(SQHEADER)
@@ -111,7 +111,7 @@ Ur/Web configuration:
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
   C compiler:          CC             $CC
-  Extra GCC args:      GCCARGS        $GCCARGS  
+  Extra CC args:       CCARGS         $CCARGS  
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER
   SQLite C header:     SQHEADER       $SQHEADER

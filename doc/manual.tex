@@ -56,7 +56,7 @@ make
 sudo make install
 \end{verbatim}
 
-Some other packages must be installed for the above to work.  At a minimum, you need a standard UNIX shell, with standard UNIX tools like sed and GCC in your execution path; MLton, the whole-program optimizing compiler for Standard ML; and the development files for the OpenSSL C library.  As of this writing, in the ``testing'' version of Debian Linux, this command will install the more uncommon of these dependencies:
+Some other packages must be installed for the above to work.  At a minimum, you need a standard UNIX shell, with standard UNIX tools like sed and GCC (or an alternate C compiler) in your execution path; MLton, the whole-program optimizing compiler for Standard ML; and the development files for the OpenSSL C library.  As of this writing, in the ``testing'' version of Debian Linux, this command will install the more uncommon of these dependencies:
 \begin{verbatim}
 apt-get install mlton libssl-dev
 \end{verbatim}
@@ -87,13 +87,13 @@ apt-get install emacs-goodies-el
 
 If you don't want to install the Emacs mode, run \texttt{./configure} with the argument \texttt{--without-emacs}.
 
-Even with the right packages installed, configuration and building might fail to work.  After you run \texttt{./configure}, you will see the values of some named environment variables printed.  You may need to adjust these values to get proper installation for your system.  To change a value, store your preferred alternative in the corresponding UNIX environment variable, before running \texttt{./configure}.  For instance, here is how to change the list of extra arguments that the Ur/Web compiler will pass to GCC on every invocation.  Some older GCC versions need this setting to mask a bug in function inlining.
+Even with the right packages installed, configuration and building might fail to work.  After you run \texttt{./configure}, you will see the values of some named environment variables printed.  You may need to adjust these values to get proper installation for your system.  To change a value, store your preferred alternative in the corresponding UNIX environment variable, before running \texttt{./configure}.  For instance, here is how to change the list of extra arguments that the Ur/Web compiler will pass to the C compiler and linker on every invocation.  Some older GCC versions need this setting to mask a bug in function inlining.
 
 \begin{verbatim}
-GCCARGS=-fno-inline ./configure
+CCARGS=-fno-inline ./configure
 \end{verbatim}
 
-Since the author is still getting a handle on the GNU Autotools that provide the build system, you may need to do some further work to get started, especially in environments with significant differences from Linux (where most testing is done).  The variables \texttt{PGHEADER}, \texttt{MSHEADER}, and \texttt{SQHEADER} may be used to set the proper C header files to include for the development libraries of PostgreSQL, MySQL, and SQLite, respectively.  To get libpq to link, one OS X user reported setting \texttt{GCCARGS="-I/opt/local/include -L/opt/local/lib/postgresql84"}, after creating a symbolic link with \texttt{ln -s /opt/local/include/postgresql84 /opt/local/include/postgresql}.
+Since the author is still getting a handle on the GNU Autotools that provide the build system, you may need to do some further work to get started, especially in environments with significant differences from Linux (where most testing is done).  The variables \texttt{PGHEADER}, \texttt{MSHEADER}, and \texttt{SQHEADER} may be used to set the proper C header files to include for the development libraries of PostgreSQL, MySQL, and SQLite, respectively.  To get libpq to link, one OS X user reported setting \texttt{CCARGS="-I/opt/local/include -L/opt/local/lib/postgresql84"}, after creating a symbolic link with \texttt{ln -s /opt/local/include/postgresql84 /opt/local/include/postgresql}.
 
 The Emacs mode can be set to autoload by adding the following to your \texttt{.emacs} file.
 
@@ -163,7 +163,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
   \item \texttt{time}: maximum running time of a single page request, in units of approximately 0.1 seconds
   \item \texttt{transactionals}: maximum number of custom transactional actions (e.g., sending an e-mail) that may be run in a single page generation
   \end{itemize}
-\item \texttt{link FILENAME} adds \texttt{FILENAME} to the list of files to be passed to the GCC linker at the end of compilation.  This is most useful for importing extra libraries needed by new FFI modules.
+\item \texttt{link FILENAME} adds \texttt{FILENAME} to the list of files to be passed to the linker at the end of compilation.  This is most useful for importing extra libraries needed by new FFI modules.
 \item \texttt{minHeap NUMBYTES} sets the initial size for thread-local heaps used in handling requests.  These heaps grow automatically as needed (up to any maximum set with \texttt{limit}), but each regrow requires restarting the request handling process.
 \item \texttt{noXsrfProtection URIPREFIX} turns off automatic cross-site request forgery protection for the page handler identified by the given URI prefix.  This will avoid checking cryptographic signatures on cookies, which is generally a reasonable idea for some pages, such as login pages that are going to discard all old cookie values, anyway.
 \item \texttt{onError Module.var} changes the handling of fatal application errors.  Instead of displaying a default, ugly error 500 page, the error page will be generated by calling function \texttt{Module.var} on a piece of XML representing the error message.  The error handler should have type $\mt{xbody} \to \mt{transaction} \; \mt{page}$.  Note that the error handler \emph{cannot} be in the application's main module, since that would register it as explicitly callable via URLs.
@@ -2382,7 +2382,7 @@ The program is translated to what is more or less a subset of C.  If any use of 
 
 \subsection{C Compilation and Linking}
 
-The output of the last phase is pretty-printed as C source code and passed to GCC.
+The output of the last phase is pretty-printed as C source code and passed to the C compiler.
 
 
 \end{document}

@@ -5,6 +5,9 @@ Next
 - Start of official tutorial
 - Compiler support for generating nice tutorial HTML from literate source files
 - New protocol 'static' for generating static pages
+- Replace GCCARGS configure variable with CCARGS
+- Applications consult URWEB_STACK_SIZE environment variable to determine thread
+  stack size
 - Bug fixes
 
 ========
