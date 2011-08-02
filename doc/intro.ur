@@ -259,20 +259,24 @@ signature STACK = sig
     con t :: Type -> Type
     val empty : a ::: Type -> t a
     val push : a ::: Type -> t a -> a -> t a
-    val pop : a ::: Type -> t a -> option a
+    val peek : a ::: Type -> t a -> option a
+    val pop : a ::: Type -> t a -> option (t a)
 end
 
 structure Stack : STACK = struct
     con t = list
     val empty [a] = []
     fun push [a] (t : t a) (x : a) = x :: t
+    fun peek [a] (t : t a) = case t of
+                                 [] => None
+                               | x :: _ => Some x
     fun pop [a] (t : t a) = case t of
-                                [] => None
-                              | x :: _ => Some x
+                                 [] => None
+                               | _ :: t' => Some t'
 end
 
 (* begin eval *)
-Stack.pop (Stack.push (Stack.push Stack.empty "A") "B")
+Stack.peek (Stack.push (Stack.push Stack.empty "A") "B")
 (* end *)
 
 (* Ur also inherits the ML concept of <b>functors</b>, which are functions from modules to modules. *)
