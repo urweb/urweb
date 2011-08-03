@@ -12177,7 +12177,7 @@ if test -z $SQHEADER; then
 fi
 
 if test $WORKING_VERSION = "1"; then
-   VERSION="$VERSION + `hg identify || cat .hg_archival.txt || echo ?`"
+   VERSION="$VERSION + `hg identify || (cat .hg_archival.txt | grep 'node\:') || echo ?`"
 fi
 
 
