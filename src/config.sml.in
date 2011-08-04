@@ -23,4 +23,7 @@ val sqheader = "@SQHEADER@"
 val versionNumber  = "@VERSION@"
 val versionString  = "The Ur/Web compiler, version " ^ versionNumber
 
+val pthreadCflags = "@PTHREAD_CFLAGS@"
+val pthreadLibs = "@PTHREAD_LIBS@"
+
 end

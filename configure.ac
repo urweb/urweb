@@ -7,6 +7,8 @@ AC_PROG_LIBTOOL()
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 
+AX_PTHREAD([echo >/dev/null], [echo "Your C compiler does not support POSIX threads."; exit 1])
+
 AX_CHECK_OPENSSL([echo >/dev/null], [echo "You must install OpenSSL development files."; exit 1])
 
 AC_CHECK_PROG(MLTON, mlton, yes, [])
@@ -94,6 +96,8 @@ AC_SUBST(PGHEADER)
 AC_SUBST(MSHEADER)
 AC_SUBST(SQHEADER)
 AC_SUBST(VERSION)
+AC_SUBST(PTHREAD_CFLAGS)
+AC_SUBST(PTHREAD_LIBS)
 
 AC_CONFIG_FILES([
         Makefile

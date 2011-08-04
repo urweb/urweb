@@ -18,4 +18,7 @@ signature CONFIG = sig
 
     val versionNumber : string
     val versionString : string
+
+    val pthreadCflags : string
+    val pthreadLibs : string
 end
