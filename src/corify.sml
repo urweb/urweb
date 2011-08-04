@@ -212,7 +212,7 @@ fun lookupConByName ({current, ...} : t) x =
         FFfi {mod = m, ...} => CFfi m
       | FNormal {cons, ...} =>
         case SM.find (cons, x) of
-            NONE => raise Fail "Corify.St.lookupConByName"
+            NONE => raise Fail ("Corify.St.lookupConByName " ^ x)
           | SOME n => CNormal n
 
 fun bindVal {basis, cons, constructors, vals, strs, funs, current, nested} s n =
@@ -275,7 +275,7 @@ fun lookupValByName ({current, ...} : t) x =
            | SOME t => EFfi (m, t))
       | FNormal {name, vals, ...} =>
         case SM.find (vals, x) of
-            NONE => raise Fail ("Corify.St.lookupValByName " ^ String.concatWith "." name ^ "." ^ x)
+            NONE => raise Fail ("Corify.St.lookupValByName " ^ String.concatWith "." (rev name) ^ "." ^ x)
           | SOME n => ENormal n
 
 fun bindConstructor {basis, cons, constructors, vals, strs, funs, current, nested} s n n' =

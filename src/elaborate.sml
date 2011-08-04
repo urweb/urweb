@@ -2723,6 +2723,8 @@ and selfifyAt env {str, sgn} =
 
 and dopen env {str, strs, sgn} =
     let
+        fun isVisible x = x <> "" andalso String.sub (x, 0) <> #"?"
+
         val m = foldl (fn (m, str) => (L'.StrProj (str, m), #2 sgn))
                 (L'.StrVar str, #2 sgn) strs
     in
@@ -2734,37 +2736,64 @@ and dopen env {str, strs, sgn} =
                         val d =
                             case sgi of
                                 L'.SgiConAbs (x, n, k) =>
-                                let
-                                    val c = (L'.CModProj (str, strs, x), loc)
-                                in
-                                    [(L'.DCon (x, n, k, c), loc)]
-                                end
+                                if isVisible x then
+                                    let
+                                        val c = (L'.CModProj (str, strs, x), loc)
+                                    in
+                                        [(L'.DCon (x, n, k, c), loc)]
+                                    end
+                                else
+                                    []
                               | L'.SgiCon (x, n, k, c) =>
-                                [(L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)]
+                                if isVisible x then
+                                    [(L'.DCon (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)]
+                                else
+                                    []
                               | L'.SgiDatatype dts =>
-                                map (fn (x, n, xs, xncs) => (L'.DDatatypeImp (x, n, str, strs, x, xs, xncs), loc)) dts
+                                List.mapPartial (fn (x, n, xs, xncs) => if isVisible x then
+                                                                            SOME (L'.DDatatypeImp (x, n, str, strs, x, xs, xncs), loc)
+                                                                        else
+                                                                            NONE) dts
                               | L'.SgiDatatypeImp (x, n, m1, ms, x', xs, xncs) =>
-                                [(L'.DDatatypeImp (x, n, m1, ms, x', xs, xncs), loc)]
+                                if isVisible x then
+                                    [(L'.DDatatypeImp (x, n, m1, ms, x', xs, xncs), loc)]
+                                else
+                                    []
                               | L'.SgiVal (x, n, t) =>
-                                [(L'.DVal (x, n, t, (L'.EModProj (str, strs, x), loc)), loc)]
+                                if isVisible x then
+                                    [(L'.DVal (x, n, t, (L'.EModProj (str, strs, x), loc)), loc)]
+                                else
+                                    []
                               | L'.SgiStr (x, n, sgn) =>
-                                [(L'.DStr (x, n, sgn, (L'.StrProj (m, x), loc)), loc)]
+                                if isVisible x then
+                                    [(L'.DStr (x, n, sgn, (L'.StrProj (m, x), loc)), loc)]
+                                else
+                                    []
                               | L'.SgiSgn (x, n, sgn) =>
-                                [(L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc)]
+                                if isVisible x then
+                                    [(L'.DSgn (x, n, (L'.SgnProj (str, strs, x), loc)), loc)]
+                                else
+                                    []
                               | L'.SgiConstraint (c1, c2) =>
                                 [(L'.DConstraint (c1, c2), loc)]
                               | L'.SgiClassAbs (x, n, k) =>
-                                let
-                                    val c = (L'.CModProj (str, strs, x), loc)
-                                in
-                                    [(L'.DCon (x, n, k, c), loc)]
-                                end
+                                if isVisible x then
+                                    let
+                                        val c = (L'.CModProj (str, strs, x), loc)
+                                    in
+                                        [(L'.DCon (x, n, k, c), loc)]
+                                    end
+                                else
+                                    []
                               | L'.SgiClass (x, n, k, _) =>
-                                let
-                                    val c = (L'.CModProj (str, strs, x), loc)
-                                in
-                                    [(L'.DCon (x, n, k, c), loc)]
-                                end
+                                if isVisible x then
+                                    let
+                                        val c = (L'.CModProj (str, strs, x), loc)
+                                    in
+                                        [(L'.DCon (x, n, k, c), loc)]
+                                    end
+                                else
+                                    []
                     in
                         (d, foldl (fn (d, env') => E.declBinds env' d) env' d)
                     end)
