@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -3380,8 +3380,12 @@ and wildifyStr env (str, sgn) =
                        | L'.KRel _ => NONE
                        | L'.KFun _ => NONE
 
-                 fun decompileCon env (c, loc) =
-                     case c of
+                 fun maybeHnorm env c =
+                     hnormCon env c
+                     handle E.UnboundNamed _ => c
+
+                 fun decompileCon env (c as (_, loc)) =
+                     case #1 (maybeHnorm env c) of
                          L'.CRel i =>
                          let
                              val (s, _) = E.lookupCRel env i
