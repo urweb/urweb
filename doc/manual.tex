@@ -199,6 +199,8 @@ urweb -tc P
 \end{verbatim}
 It is often worthwhile to run \cd{urweb} in this mode, because later phases of compilation can take significantly longer than type-checking alone, and the type checker catches many errors that would traditionally be found through debugging a running application.
 
+A related option is \cd{-dumpTypes}, which, as long as parsing succeeds, outputs to stdout a summary of the kinds of all identifiers declared with \cd{con} and the types of all identifiers declared with \cd{val} or \cd{val rec}.  This information is dumped even if there are errors during type inference.  Compiler error messages go to stderr, not stdout, so it is easy to distinguish the two kinds of output programmatically.
+
 To output information relevant to CSS stylesheets (and not finish regular compilation), run
 \begin{verbatim}
 urweb -css P

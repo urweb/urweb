@@ -80,6 +80,9 @@ fun doArgs args =
       | "-tc" :: rest =>
         (tc := true;
          doArgs rest)
+      | "-dumpTypes" :: rest =>
+        (Elaborate.dumpTypes := true;
+         doArgs rest)
       | "-output" :: s :: rest =>
         (Settings.setExe (SOME s);
          doArgs rest)

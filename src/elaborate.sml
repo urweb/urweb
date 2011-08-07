@@ -38,6 +38,8 @@
  open ElabPrint
  open ElabErr
 
+ val dumpTypes = ref false
+
  structure IS = IntBinarySet
  structure IM = IntBinaryMap
 
@@ -4486,6 +4488,58 @@ fun elabFile basis topStr topSgn env file =
                 (!delayedExhaustives);
 
         (*preface ("file", p_file env' file);*)
+
+        if !dumpTypes then
+            let
+                open L'
+                open Print.PD
+                open Print
+
+                fun dumpDecl (d, env) =
+                    case #1 d of
+                        DCon (x, _, k, _) => (print (box [string x,
+                                                          space,
+                                                          string "::",
+                                                          space,
+                                                          p_kind env k,
+                                                          newline,
+                                                          newline]);
+                                              E.declBinds env d)
+                      | DVal (x, _, t, _) => (print (box [string x,
+                                                          space,
+                                                          string ":",
+                                                          space,
+                                                          p_con env t,
+                                                          newline,
+                                                          newline]);
+                                              E.declBinds env d)
+                      | DValRec vis => (app (fn (x, _, t, _) => print (box [string x,
+                                                                            space,
+                                                                            string ":",
+                                                                            space,
+                                                                            p_con env t,
+                                                                            newline,
+                                                                            newline])) vis;
+                                        E.declBinds env d)
+                      | DStr (x, _, _, str) => (print (box [string ("<" ^ x ^ ">"),
+                                                            newline,
+                                                            newline]);
+                                                dumpStr (str, env);
+                                                print (box [string ("</" ^ x ^ ">"),
+                                                            newline,
+                                                            newline]);
+                                                E.declBinds env d)
+                      | _ => E.declBinds env d
+
+                and dumpStr (str, env) =
+                    case #1 str of
+                        StrConst ds => ignore (foldl dumpDecl env ds)
+                      | _ => ()
+            in
+                ignore (foldl dumpDecl env' file)
+            end
+        else
+            ();
         
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
         :: ds

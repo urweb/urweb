@@ -32,4 +32,8 @@ signature ELABORATE = sig
 
     val resolveClass : ElabEnv.env -> Elab.con -> Elab.exp option
 
+    val dumpTypes : bool ref
+    (* After elaboration (successful or failed), should I output a mapping from
+     * all identifiers to their kinds/types? *)
+
 end
