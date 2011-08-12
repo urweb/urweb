@@ -371,6 +371,15 @@ fun kindConAndExp (namedC, namedE) =
                          else
                              ()*)
 
+                fun patBinds (p, _) =
+                    case p of
+                        PWild => 0
+                      | PVar _ => 1
+                      | PPrim _ => 0
+                      | PCon (_, _, _, NONE) => 0
+                      | PCon (_, _, _, SOME p) => patBinds p
+                      | PRecord xpts => foldl (fn ((_, p, _), n) => n + patBinds p) 0 xpts
+
                 val r = case e of
                             EPrim _ => all
                           | ERel n =>
@@ -458,6 +467,20 @@ fun kindConAndExp (namedC, namedE) =
                                                                ("r", CorePrint.p_exp CoreEnv.empty r)];*)
                                         r
                                     end
+                                  | ECase (e, pes, cc as {disc, result = res as (TFun (_, c2), _)}) =>
+                                    let
+                                        val pes' = map (fn (p, body) =>
+                                                           let
+                                                               val env' = List.tabulate (patBinds p, fn _ => UnknownE) @ (deKnown env)
+                                                               val body' = exp env' (EApp (body, multiLiftExpInExp (patBinds p) e2), #2 body)
+                                                           in
+                                                               (p, body')
+                                                           end) pes
+
+                                        val cc' = {disc = disc, result = c2}
+                                    in
+                                        (ECase (e, pes', cc'), loc)
+                                    end
                                   | _ => (EApp (e1, e2), loc)
                             end
 
@@ -479,6 +502,22 @@ fun kindConAndExp (namedC, namedE) =
                                                                ("c", CorePrint.p_con CoreEnv.empty c),
                                                                ("r", CorePrint.p_exp CoreEnv.empty r)];*)
                                         r
+                                    end
+                                  | ECase (e, pes, cc as {disc, result = res as (TCFun (_, _, c'), _)}) =>
+                                    let
+                                        val pes' = map (fn (p, body) =>
+                                                        let
+                                                            val env' = List.tabulate (patBinds p, fn _ => UnknownE) @ (deKnown env)
+
+                                                            val body' = exp env' (ECApp (body, c), #2 body)
+                                                        in
+                                                            (p, body')
+                                                        end) pes
+
+                                        val c' = E.subConInCon (0, c) c'
+                                        val cc' = {disc = disc, result = c'}
+                                    in
+                                        (ECase (e, pes', cc'), loc)
                                     end
                                   | _ => (ECApp (e, c), loc)
                             end
@@ -611,15 +650,6 @@ fun kindConAndExp (namedC, namedE) =
 
                           | ECase (e, pes, {disc, result}) =>
                             let
-                                fun patBinds (p, _) =
-                                    case p of
-                                        PWild => 0
-                                      | PVar _ => 1
-                                      | PPrim _ => 0
-                                      | PCon (_, _, _, NONE) => 0
-                                      | PCon (_, _, _, SOME p) => patBinds p
-                                      | PRecord xpts => foldl (fn ((_, p, _), n) => n + patBinds p) 0 xpts
-
                                 fun pat (all as (p, loc)) =
                                     case p of
                                         PWild => all
