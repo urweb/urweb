@@ -43,36 +43,6 @@ type free = {
 
 fun shake file =
     let
-        val usedVars = U.Exp.fold {typ = fn (c, st as (cs, es)) =>
-                                            case c of
-                                                TDatatype (n, _) => (IS.add (cs, n), es)
-                                              | _ => st,
-                                   exp = fn (e, st as (cs, es)) =>
-                                            case e of
-                                                ENamed n => (cs, IS.add (es, n))
-                                              | _ => st}
-
-        val (page_cs, page_es) =
-            List.foldl
-                (fn ((DExport (_, _, n, _, _, _), _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
-                  | ((DDatabase {expunge = n1, initialize = n2, ...}, _), (page_cs, page_es)) =>
-                    (page_cs, IS.addList (page_es, [n1, n2]))
-                  | ((DTask (e1, e2), _), st) => usedVars (usedVars st e2) e1
-                  | ((DView (_, _, e), _), st) => usedVars st e
-                  | ((DPolicy pol, _), st) =>
-                    let
-                        val e1 = case pol of
-                                     PolClient e1 => e1
-                                   | PolInsert e1 => e1
-                                   | PolDelete e1 => e1
-                                   | PolUpdate e1 => e1
-                                   | PolSequence e1 => e1
-                    in
-                        usedVars st e1
-                    end
-                  | ((DOnError n, _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
-                  | (_, st) => st) (IS.empty, IS.empty) file
-
         val (cdef, edef) = foldl (fn ((DDatatype dts, _), (cdef, edef)) =>
                                      (foldl (fn ((_, n, xncs), cdef) => IM.insert (cdef, n, xncs)) cdef dts, edef)
                                    | ((DVal (_, n, t, e, _), _), (cdef, edef)) =>
@@ -131,6 +101,45 @@ fun shake file =
               | _ => s
 
         and shakeExp s = U.Exp.fold {typ = typ, exp = exp} s
+
+(*
+        val usedVars = U.Exp.fold {typ = fn (c, st as (cs, es)) =>
+                                            case c of
+                                                TDatatype (n, _) => (IS.add (cs, n), es)
+                                              | _ => st,
+                                   exp = fn (e, st as (cs, es)) =>
+                                            case e of
+                                                ENamed n => (cs, IS.add (es, n))
+                                              | _ => st}
+*)
+
+        fun usedVars (cs, es) e =
+            let
+                val {con = cs', exp = es'} = shakeExp {con = cs, exp = es} e
+            in
+                (cs', es')
+            end
+
+        val (page_cs, page_es) =
+            List.foldl
+                (fn ((DExport (_, _, n, _, _, _), _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
+                  | ((DDatabase {expunge = n1, initialize = n2, ...}, _), (page_cs, page_es)) =>
+                    (page_cs, IS.addList (page_es, [n1, n2]))
+                  | ((DTask (e1, e2), _), st) => usedVars (usedVars st e2) e1
+                  | ((DView (_, _, e), _), st) => usedVars st e
+                  | ((DPolicy pol, _), st) =>
+                    let
+                        val e1 = case pol of
+                                     PolClient e1 => e1
+                                   | PolInsert e1 => e1
+                                   | PolDelete e1 => e1
+                                   | PolUpdate e1 => e1
+                                   | PolSequence e1 => e1
+                    in
+                        usedVars st e1
+                    end
+                  | ((DOnError n, _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
+                  | (_, st) => st) (IS.empty, IS.empty) file
 
         val s = {con = page_cs, exp = page_es}
 
