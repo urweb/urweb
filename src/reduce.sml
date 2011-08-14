@@ -471,7 +471,7 @@ fun kindConAndExp (namedC, namedE) =
                                     let
                                         val pes' = map (fn (p, body) =>
                                                            let
-                                                               val env' = List.tabulate (patBinds p, fn _ => UnknownE) @ (deKnown env)
+                                                               val env' = List.tabulate (patBinds p, fn _ => UnknownE) @ deKnown env
                                                                val body' = exp env' (EApp (body, multiLiftExpInExp (patBinds p) e2), #2 body)
                                                            in
                                                                (p, body')
@@ -507,7 +507,7 @@ fun kindConAndExp (namedC, namedE) =
                                     let
                                         val pes' = map (fn (p, body) =>
                                                         let
-                                                            val env' = List.tabulate (patBinds p, fn _ => UnknownE) @ (deKnown env)
+                                                            val env' = List.tabulate (patBinds p, fn _ => UnknownE) @ deKnown env
 
                                                             val body' = exp env' (ECApp (body, c), #2 body)
                                                         in
