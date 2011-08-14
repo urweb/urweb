@@ -102,17 +102,6 @@ fun shake file =
 
         and shakeExp s = U.Exp.fold {typ = typ, exp = exp} s
 
-(*
-        val usedVars = U.Exp.fold {typ = fn (c, st as (cs, es)) =>
-                                            case c of
-                                                TDatatype (n, _) => (IS.add (cs, n), es)
-                                              | _ => st,
-                                   exp = fn (e, st as (cs, es)) =>
-                                            case e of
-                                                ENamed n => (cs, IS.add (es, n))
-                                              | _ => st}
-*)
-
         fun usedVars (cs, es) e =
             let
                 val {con = cs', exp = es'} = shakeExp {con = cs, exp = es} e
