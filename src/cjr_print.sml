@@ -832,7 +832,7 @@ fun unurlify fromClient env (t, loc) =
                                               space,
                                               string "+=",
                                               space,
-                                              string "3, (*request == '/' ? *request++ = 0 : 0), NULL) : ((!strncmp(*request, \"Cons\", 4) && ((*request)[4] == 0 ",
+                                              string "3, ((*request)[0] == '/' ? *request++ = 0 : 0), NULL) : ((!strncmp(*request, \"Cons\", 4) && ((*request)[4] == 0 ",
                                               string "|| (*request)[4] == '/')) ? (*request",
                                               space,
                                               string "+=",
