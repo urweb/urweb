@@ -32,6 +32,8 @@ val demo = ref (NONE : (string * bool) option)
 val tutorial = ref false
 val css = ref false
 
+val () = Compiler.beforeC := MLton.GC.pack
+
 fun printVersion () = (print (Config.versionString ^ "\n");
 		       OS.Process.exit OS.Process.success)
 fun printNumericVersion () = (print (Config.versionNumber ^ "\n");

@@ -1311,6 +1311,8 @@ val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
 val escapeFilename = String.translate (fn #" " => "\\ " | #"\"" => "\\\"" | #"'" => "\\'" | ch => str ch)
 
+val beforeC = ref (fn () => ())
+
 fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
     let
         val proto = Settings.currentProtocol ()
@@ -1348,6 +1350,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                  ();
              OS.Process.isSuccess (OS.Process.system s))
     in
+        !beforeC ();
         system compile andalso system link
     end
 

@@ -65,6 +65,11 @@ signature COMPILER = sig
     val compileC : {cname : string, oname : string, ename : string, libs : string,
                     profile : bool, debug : bool, link : string list} -> bool
 
+    val beforeC : (unit -> unit) ref
+    (* This function is called before beginning C compilation.
+     * The current use is for MLton to compact its heap here, to avoid hogging
+     * space after all the interesting ML code is done. *)
+
     type ('src, 'dst) phase
     type ('src, 'dst) transform
 
