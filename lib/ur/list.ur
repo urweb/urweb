@@ -133,6 +133,16 @@ fun mapX [a] [ctx ::: {Unit}] f =
         mapX'
     end
 
+fun mapXi [a] [ctx ::: {Unit}] f =
+    let
+        fun mapX' i ls =
+            case ls of
+                [] => <xml/>
+              | x :: ls => <xml>{f i x}{mapX' (i + 1) ls}</xml>
+    in
+        mapX' 0
+    end
+
 fun mapM [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
     let
         fun mapM' acc ls =

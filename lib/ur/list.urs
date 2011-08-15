@@ -26,6 +26,8 @@ val mapi : a ::: Type -> b ::: Type -> (int -> a -> b) -> t a -> t b
 
 val mapX : a ::: Type -> ctx ::: {Unit} -> (a -> xml ctx [] []) -> t a -> xml ctx [] []
 
+val mapXi : a ::: Type -> ctx ::: {Unit} -> (int -> a -> xml ctx [] []) -> t a -> xml ctx [] []
+
 val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
            -> (a -> m b) -> t a -> m (t b)
 
