@@ -2637,6 +2637,10 @@ fun p_file env (ds, ps) =
                               newline]
             end
 
+        val timestamp = LargeInt.toString (Time.toMilliseconds (Time.now ()))
+        val app_js = OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
+                                          file = "app." ^ timestamp ^ ".js"}
+
         fun p_page (ek, s, n, ts, ran, side, tellSig) =
             let
                 val (ts, defInputs, inputsVar, fields) =
@@ -2756,8 +2760,7 @@ fun p_file env (ds, ps) =
                                                 let
                                                     val scripts =
                                                         "<script type=\\\"text/javascript\\\" src=\\\""
-                                                        ^ OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
-                                                                               file = "app.js"}
+                                                        ^ app_js
                                                         ^ "\\\"></script>\\n"
                                                 in
                                                     foldl (fn (x, scripts) =>
@@ -3117,8 +3120,7 @@ fun p_file env (ds, ps) =
              string "static void uw_handle(uw_context ctx, char *request) {",
              newline,
              string "if (!strcmp(request, \"",
-             string (OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
-                                          file = "app.js"}),
+             string app_js,
              string "\")) {",
              newline,
              box [string "uw_Basis_string ims = uw_Basis_requestHeader(ctx, \"If-modified-since\");",
