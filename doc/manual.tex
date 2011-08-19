@@ -1382,7 +1382,11 @@ $$\begin{array}{l}
   \mt{val} \; \mt{bind} : \mt{m} ::: (\mt{Type} \to \mt{Type}) \to \mt{t1} ::: \mt{Type} \to \mt{t2} ::: \mt{Type} \\
   \hspace{.1in} \to \mt{monad} \; \mt{m} \\
   \hspace{.1in} \to \mt{m} \; \mt{t1} \to (\mt{t1} \to \mt{m} \; \mt{t2}) \\
-  \hspace{.1in} \to \mt{m} \; \mt{t2}
+  \hspace{.1in} \to \mt{m} \; \mt{t2} \\
+  \mt{val} \; \mt{mkMonad} : \mt{m} ::: (\mt{Type} \to \mt{Type}) \\
+  \hspace{.1in} \to \{\mt{Return} : \mt{t} ::: \mt{Type} \to \mt{t} \to \mt{m} \; \mt{t}, \\
+  \hspace{.3in} \mt{Bind} : \mt{t1} ::: \mt{Type} \to \mt{t2} ::: \mt{Type} \to \mt{m} \; \mt{t1} \to (\mt{t1} \to \mt{m} \; \mt{t2}) \to \mt{m} \; \mt{t2}\} \\
+  \hspace{.1in} \to \mt{monad} \; \mt{m}
 \end{array}$$
 
 \subsection{Transactions}

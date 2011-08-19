@@ -1,5 +1,11 @@
 datatype t = datatype Basis.option
 
+val monad = mkMonad {Return = @@Some,
+                     Bind = fn [a] [b] (m1 : t a) (m2 : a -> t b) =>
+                               case m1 of
+                                   None => None
+                                 | Some v => m2 v}
+
 fun eq [a] (_ : eq a) =
     mkEq (fn x y =>
              case (x, y) of

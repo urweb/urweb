@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -281,7 +281,7 @@ fun p_exp' par env (e, _) =
       | EApp (e1, e2) => parenIf par (box [p_exp' true env e1,
                                            space,
                                            p_exp' true env e2])
-      | EAbs (x, t, _, e) => parenIf par (box [string "fn",
+      | EAbs (x, t, _, e) => parenIf par (box [string "(fn",
                                                space,
                                                string x,
                                                space,
@@ -291,7 +291,8 @@ fun p_exp' par env (e, _) =
                                                space,
                                                string "=>",
                                                space,
-                                               p_exp (E.pushERel env x t) e])
+                                               p_exp (E.pushERel env x t) e,
+                                               string ")"])
       | ECApp (e, c) => parenIf par (box [p_exp env e,
                                           space,
                                           string "[",

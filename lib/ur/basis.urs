@@ -126,6 +126,11 @@ val bind : m ::: (Type -> Type) -> t1 ::: Type -> t2 ::: Type
            -> m t1 -> (t1 -> m t2)
            -> m t2
 
+val mkMonad : m ::: (Type -> Type)
+              -> {Return : t ::: Type -> t -> m t,
+                  Bind : t1 ::: Type -> t2 ::: Type -> m t1 -> (t1 -> m t2) -> m t2}
+              -> monad m
+
 con transaction :: Type -> Type
 val transaction_monad : monad transaction
 

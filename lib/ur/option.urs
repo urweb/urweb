@@ -1,5 +1,7 @@
 datatype t = datatype Basis.option
 
+val monad : monad t
+
 val eq : a ::: Type -> eq a -> eq (t a)
 val ord : a ::: Type -> ord a -> ord (t a)
 
