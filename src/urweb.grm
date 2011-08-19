@@ -1921,6 +1921,7 @@ obexps : obitem                         (let
 diropt :                                (EVar (["Basis"], "sql_asc", Infer), dummy)
        | ASC                            (EVar (["Basis"], "sql_asc", Infer), s (ASCleft, ASCright))
        | DESC                           (EVar (["Basis"], "sql_desc", Infer), s (DESCleft, DESCright))
+       | LBRACE eexp RBRACE             (eexp)
 
 lopt   :                                 (EVar (["Basis"], "sql_no_limit", Infer), dummy)
        | LIMIT ALL                       (EVar (["Basis"], "sql_no_limit", Infer), dummy)
