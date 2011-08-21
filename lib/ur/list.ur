@@ -255,6 +255,18 @@ fun foldlM [m] (_ : monad m) [a] [b] f =
         foldlM'
     end
 
+fun foldlMi [m] (_ : monad m) [a] [b] f =
+    let
+        fun foldlMi' i acc ls =
+            case ls of
+                [] => return acc
+              | x :: ls =>
+                acc <- f i x acc;
+                foldlMi' (i + 1) acc ls
+    in
+        foldlMi' 0
+    end
+
 fun all [m] f =
     let
         fun all' ls =

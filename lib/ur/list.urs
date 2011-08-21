@@ -43,6 +43,9 @@ val exists : a ::: Type -> (a -> bool) -> t a -> bool
 val foldlM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
              -> (a -> b -> m b) -> b -> t a -> m b
 
+val foldlMi : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
+             -> (int -> a -> b -> m b) -> b -> t a -> m b
+
 val foldlMap : a ::: Type -> b ::: Type -> c ::: Type
                -> (a -> b -> c * b) -> b -> t a -> t c * b
 
