@@ -541,16 +541,21 @@ val unurlifies = ref IS.empty
 
 fun unurlify fromClient env (t, loc) =
     let
+        fun deStar request =
+            case request of
+                "(*request)" => "request"
+              | _ => "&" ^ request
+
         fun unurlify' request t =
             case t of
-                TFfi ("Basis", "unit") => string ("uw_Basis_unurlifyUnit(ctx, &" ^ request ^ ")")
+                TFfi ("Basis", "unit") => string ("uw_Basis_unurlifyUnit(ctx, " ^ deStar request ^ ")")
               | TFfi ("Basis", "string") => string (if fromClient then
-                                                        "uw_Basis_unurlifyString_fromClient(ctx, &" ^ request ^ ")"
+                                                        "uw_Basis_unurlifyString_fromClient(ctx, " ^ deStar request ^ ")"
                                                     else
-                                                        "uw_Basis_unurlifyString(ctx, &" ^ request ^ ")")
-              | TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, &" ^ request ^ ")")
+                                                        "uw_Basis_unurlifyString(ctx, " ^ deStar request ^ ")")
+              | TFfi (m, t) => string ("uw_" ^ ident m ^ "_unurlify" ^ capitalize t ^ "(ctx, " ^ deStar request ^ ")")
 
-              | TRecord 0 => string ("uw_Basis_unurlifyUnit(ctx, &" ^ request ^ ")")
+              | TRecord 0 => string ("uw_Basis_unurlifyUnit(ctx, " ^ deStar request ^ ")")
               | TRecord i =>
                 let
                     val xts = E.lookupStruct env i
@@ -623,7 +628,7 @@ fun unurlify fromClient env (t, loc) =
                 if IS.member (!unurlifies, i) then
                     box [string "unurlify_",
                          string (Int.toString i),
-                         string ("(ctx, &" ^ request ^ ")")]
+                         string ("(ctx, " ^ deStar request ^ ")")]
                 else
                     let
                         val (x, _) = E.lookupDatatype env i
@@ -721,7 +726,7 @@ fun unurlify fromClient env (t, loc) =
                 if IS.member (!unurlifies, i) then
                     box [string "unurlify_",
                          string (Int.toString i),
-                         string ("(ctx, &" ^ request ^ ")")]
+                         string ("(ctx, " ^ deStar request ^ ")")]
                 else
                     let
                         val (x, xncs) = E.lookupDatatype env i
@@ -807,14 +812,14 @@ fun unurlify fromClient env (t, loc) =
 
                         box [string "unurlify_",
                              string (Int.toString i),
-                             string ("(ctx, &" ^ request ^ ")")]
+                             string ("(ctx, " ^ deStar request ^ ")")]
                     end
 
               | TList (t', i) =>
                 if IS.member (!unurlifies, i) then
                     box [string "unurlify_list_",
                          string (Int.toString i),
-                         string ("(ctx, &" ^ request ^ ")")]
+                         string ("(ctx, " ^ deStar request ^ ")")]
                 else
                     (unurlifies := IS.add (!unurlifies, i);
                      addUrlHandler (box [string "static",
@@ -832,7 +837,7 @@ fun unurlify fromClient env (t, loc) =
                                               space,
                                               string "+=",
                                               space,
-                                              string "3, ((*request)[0] == '/' ? *request++ = 0 : 0), NULL) : ((!strncmp(*request, \"Cons\", 4) && ((*request)[4] == 0 ",
+                                              string "3, ((*request)[0] == '/' ? ((*request)[0] = 0, (*request)++) : NULL)) : ((!strncmp(*request, \"Cons\", 4) && ((*request)[4] == 0 ",
                                               string "|| (*request)[4] == '/')) ? (*request",
                                               space,
                                               string "+=",
@@ -874,7 +879,7 @@ fun unurlify fromClient env (t, loc) =
 
                      box [string "unurlify_list_",
                           string (Int.toString i),
-                          string ("(ctx, &" ^ request ^ ")")])
+                          string ("(ctx, " ^ deStar request ^ ")")])
 
               | TOption t =>
                 box [string ("(" ^ request ^ "[0] == '/' ? ++" ^ request ^ " : " ^ request ^ ", "),
