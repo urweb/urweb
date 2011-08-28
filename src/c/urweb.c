@@ -247,6 +247,13 @@ void uw_set_on_success(char *s) {
   on_success = s;
 }
 
+static void chastise(int (*send)(int sockfd, const void *buf, ssize_t len), int sock) {
+  send(sock, on_success, strlen(on_success));
+  send(sock, begin_msgs, sizeof(begin_msgs) - 1);
+  send(sock, "R", 1);
+  close(sock);
+}
+
 void uw_client_connect(unsigned id, int pass, int sock,
                        int (*send)(int sockfd, const void *buf, ssize_t len),
                        int (*close)(int fd),
@@ -254,7 +261,7 @@ void uw_client_connect(unsigned id, int pass, int sock,
   client *c = find_client(id);
 
   if (c == NULL) {
-    close(sock);
+    chastise(send, sock);
     log_error(logger_data, "Out-of-bounds client request (%u)\n", id);
     return;
   }
@@ -263,14 +270,14 @@ void uw_client_connect(unsigned id, int pass, int sock,
 
   if (c->mode != USED) {
     pthread_mutex_unlock(&c->lock);
-    close(sock);
+    chastise(send, sock);
     log_error(logger_data, "Client request for unused slot (%u)\n", id);
     return;
   }
 
   if (pass != c->pass) {
     pthread_mutex_unlock(&c->lock);
-    close(sock);
+    chastise(send, sock);
     log_error(logger_data, "Wrong client password (%u, %d)\n", id, pass);
     return;
   }
@@ -1342,7 +1349,8 @@ const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
     char *sig = ctx->needs_sig ? ctx->app->cookie_sig(ctx) : "";
     char *r = uw_malloc(ctx, 59 + 3 * INTS_MAX + strlen(ctx->app->url_prefix)
                         + (ctx->needs_sig ? strlen(sig) + 7 : 0));
-    sprintf(r, "client_id=%u;client_pass=%d;url_prefix=\"%s\";timeout=%d;%s%s%slistener();",
+    sprintf(r, "isPost=%s;client_id=%u;client_pass=%d;url_prefix=\"%s\";timeout=%d;%s%s%slistener();",
+            (ctx->isPost ? "true" : "false"),
             ctx->client->id,
             ctx->client->pass,
             ctx->app->url_prefix,

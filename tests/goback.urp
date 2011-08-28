@@ -1,0 +1,6 @@
+database dbname=goback
+sql goback.sql
+rewrite all Goback/*
+safeGet get
+
+goback
