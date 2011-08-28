@@ -2033,6 +2033,8 @@ The $\mt{channel}$ and $\mt{send}$ operations may only be executed on the server
 
 Clients and channels live only as long as the web browser page views that they are associated with.  When a user surfs away, his client and its channels will be garbage-collected, after that user is not heard from for the timeout period.  Garbage collection deletes any database row that contains a client or channel directly.  Any reference to one of these types inside an $\mt{option}$ is set to $\mt{None}$ instead.  Both kinds of handling have the flavor of weak pointers, and that is a useful way to think about clients and channels in the database.
 
+\emph{Note}: Currently, there are known concurrency issues with multi-threaded applications that employ message-passing on top of database engines that don't support true serializable transactions.  Postgres 9.1 is the only supported engine that does this properly.
+
 
 \section{Ur/Web Syntax Extensions}
 

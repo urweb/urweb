@@ -220,7 +220,6 @@ static void release_client(client *c) {
   pthread_mutex_lock(&c->lock);
   --c->refcount;
   pthread_mutex_unlock(&c->lock);
-
 }
 
 static const char begin_msgs[] = "Content-type: text/plain\r\n\r\n";
@@ -3185,7 +3184,8 @@ void uw_commit(uw_context ctx) {
     delta *d = &ctx->deltas[i];
     client *c = find_client(d->client);
 
-    assert (c != NULL && c->mode == USED);
+    assert (c != NULL);
+    assert(c->mode == USED);
 
     client_send(c, &d->msgs, ctx->script.start, uw_buffer_used(&ctx->script));
   }
