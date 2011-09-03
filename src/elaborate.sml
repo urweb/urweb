@@ -2184,6 +2184,9 @@ and elabEdecl denv (dAll as (d, loc), (env, gs)) =
 
                     val () = checkCon env e' et pt
 
+                    val env' = E.patBinds env p'
+                    (* Redo to get proper detection of type class witnesses *)
+
                     val pt = normClassConstraint env pt
                 in
                     case exhaustive (env, et, [p'], loc) of
