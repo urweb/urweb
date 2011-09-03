@@ -463,6 +463,8 @@ struct uw_context {
   uw_Basis_postBody postBody;
   uw_Basis_string queryString;
 
+  unsigned nextId;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -531,6 +533,8 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->isPost = ctx->hasPostBody = 0;
 
   ctx->queryString = NULL;
+
+  ctx->nextId = 0;
 
   return ctx;
 }
@@ -608,6 +612,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->used_transactionals = 0;
   ctx->script_header = "";
   ctx->queryString = NULL;
+  ctx->nextId = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -3946,4 +3951,8 @@ void uw_cutErrorLocation(char *s) {
     return;
 
   memmove(s, s2+2, strlen(s2+2)+1);
+}
+
+uw_Basis_string uw_Basis_fresh(uw_context ctx) {
+  return uw_Basis_htmlifyInt(ctx, ctx->nextId++);
 }

@@ -155,7 +155,8 @@ val benignBase = basis ["get_cookie",
                         "onKeypress",
                         "onKeyup",
                         "onMousedown",
-                        "onMouseup"]
+                        "onMouseup",
+                        "fresh"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
@@ -278,7 +279,9 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("onKeypress", "uw_onKeypress"),
                           ("onKeyup", "uw_onKeyup"),
                           ("onMousedown", "uw_onMousedown"),
-                          ("onMouseup", "uw_onMouseup")]
+                          ("onMouseup", "uw_onMouseup"),
+
+                          ("fresh", "fresh")]
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)

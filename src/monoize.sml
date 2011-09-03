@@ -219,6 +219,7 @@ fun monoType env =
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "css_class") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "id") => (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "serialized"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)

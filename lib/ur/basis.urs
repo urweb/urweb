@@ -668,12 +668,15 @@ val url : transaction page -> url
 val effectfulUrl : (option queryString -> transaction page) -> url
 val redirect : t ::: Type -> url -> transaction t
 
+type id
+val fresh : transaction id
+
 val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ body] => unit
           -> tag [Signal = signal (xml (body ++ ctx) use bind)] (body ++ ctx) [] use bind
 
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
-val link : unit -> tag [Id = string, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
+val link : unit -> tag [Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
 
 val body : unit -> tag [Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit]
                        html body [] []
@@ -686,7 +689,7 @@ con bodyTagStandalone = fn (attrs :: {Type}) =>
                            -> [[Body] ~ ctx] =>
                                  unit -> tag attrs ([Body] ++ ctx) [] [] []
 
-val br : bodyTagStandalone [Id = int]
+val br : bodyTagStandalone [Id = id]
 
 con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
 con mouseEvents = [Onclick = transaction unit, Ondblclick = transaction unit,
@@ -701,8 +704,8 @@ con resizeEvents = [Onresize = transaction unit]
 con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents
 con tableEvents = focusEvents ++ mouseEvents ++ keyEvents
 
-con boxAttrs = [Id = string, Title = string] ++ boxEvents
-con tableAttrs = [Id = string, Title = string] ++ tableEvents
+con boxAttrs = [Id = id, Title = string] ++ boxEvents
+con tableAttrs = [Id = id, Title = string] ++ tableEvents
 
 val span : bodyTag boxAttrs
 val div : bodyTag boxAttrs
@@ -789,7 +792,7 @@ val postType : postBody -> string
 val postData : postBody -> string
 
 con radio = [Body, Radio]
-val radio : formTag string radio [Id = string]
+val radio : formTag string radio [Id = id]
 val radioOption : unit -> tag ([Value = string, Checked = bool] ++ boxAttrs) radio [] [] []
 
 con select = [Select]

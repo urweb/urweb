@@ -1983,6 +1983,17 @@ $$\begin{array}{l}
  \mt{val} \; \mt{onMouseup} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
+\subsubsection{Node IDs}
+
+There is an abstract type of node IDs that may be assigned to \cd{id} attributes of most HTML tags.
+
+$$\begin{array}{l}
+  \mt{type} \; \mt{id} \\
+  \mt{val} \; \mt{fresh} : \mt{transaction} \; \mt{id}
+\end{array}$$
+
+The \cd{fresh} function is allowed on both server and client, but there is no other way to create IDs, which includes lack of a way to force an ID to match a particular string.  The only semantic importance of IDs within Ur/Web is in uses of the HTML \cd{<label>} tag.  IDs play a much more central role in mainstream JavaScript programming, but Ur/Web uses a very different model to enable changes to particular nodes of a page tree, as the next manual subsection explains.  IDs may still be useful in interfacing with JavaScript code (for instance, through Ur/Web's FFI).
+
 \subsubsection{Functional-Reactive Page Generation}
 
 Most approaches to ``AJAX''-style coding involve imperative manipulation of the DOM tree representing an HTML document's structure.  Ur/Web follows the \emph{functional-reactive} approach instead.  Programs may allocate mutable \emph{sources} of arbitrary types, and an HTML page is effectively a pure function over the latest values of the sources.  The page is not mutated directly, but rather it changes automatically as the sources are mutated.

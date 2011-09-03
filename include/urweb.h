@@ -346,4 +346,6 @@ uw_Basis_bool uw_Basis_currentUrlHasQueryString(uw_context);
 
 void uw_cutErrorLocation(char *);
 
+uw_Basis_string uw_Basis_fresh(uw_context);
+
 #endif
