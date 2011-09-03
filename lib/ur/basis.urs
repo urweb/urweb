@@ -811,7 +811,7 @@ val image : ctx ::: {Unit} -> use ::: {Type}
                    -> tag ([Src = url, Width = int, Height = int, Alt = string, Action = $use -> transaction page] ++ boxAttrs)
                           ([Form] ++ ctx) ([Form] ++ ctx) use []
 
-val label : bodyTag ([For = string, Accesskey = string] ++ tableAttrs)
+val label : bodyTag ([For = id, Accesskey = string] ++ tableAttrs)
 
 
 (*** AJAX-oriented widgets *)
