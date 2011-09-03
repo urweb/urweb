@@ -858,6 +858,15 @@ val onConnectFail : transaction unit -> transaction unit
 val onDisconnect : transaction unit -> transaction unit
 val onServerError : (string -> transaction unit) -> transaction unit
 
+(* More standard document-level JavaScript handlers *)
+val onClick : transaction unit -> transaction unit
+val onDblclick : transaction unit -> transaction unit
+val onKeydown : (int -> transaction unit) -> transaction unit
+val onKeypress : (int -> transaction unit) -> transaction unit
+val onKeyup : (int -> transaction unit) -> transaction unit
+val onMousedown : transaction unit -> transaction unit
+val onMouseup : transaction unit -> transaction unit
+
 val show_xml : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> show (xml ctx use bind)
 
 

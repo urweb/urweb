@@ -1971,6 +1971,18 @@ $$\begin{array}{l}
   \mt{val} \; \mt{onServerError} : (\mt{string} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
+There are also functions to register standard document-level event handlers.
+
+$$\begin{array}{l}
+ \mt{val} \; \mt{onClick} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onDblclick} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onKeydown} : (\mt{int} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onKeypress} : (\mt{int} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onKeyup} : (\mt{int} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onMousedown} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onMouseup} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit}
+\end{array}$$
+
 \subsubsection{Functional-Reactive Page Generation}
 
 Most approaches to ``AJAX''-style coding involve imperative manipulation of the DOM tree representing an HTML document's structure.  Ur/Web follows the \emph{functional-reactive} approach instead.  Programs may allocate mutable \emph{sources} of arbitrary types, and an HTML page is effectively a pure function over the latest values of the sources.  The page is not mutated directly, but rather it changes automatically as the sources are mutated.

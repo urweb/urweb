@@ -147,7 +147,15 @@ val benignBase = basis ["get_cookie",
                         "rand",
                         "now",
                         "getHeader",
-                        "setHeader"]
+                        "setHeader",
+                        "spawn",
+                        "onClick",
+                        "onDblclick",
+                        "onKeydown",
+                        "onKeypress",
+                        "onKeyup",
+                        "onMousedown",
+                        "onMouseup"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
@@ -166,7 +174,14 @@ val clientBase = basis ["get",
                         "onConnectFail",
                         "onDisconnect",
                         "onServerError",
-                        "kc"]
+                        "kc",
+                        "onClick",
+                        "onDblclick",
+                        "onKeydown",
+                        "onKeypress",
+                        "onKeyup",
+                        "onMousedown",
+                        "onMouseup"]
 val client = ref clientBase
 fun setClientOnly ls = client := S.addList (clientBase, ls)
 fun isClientOnly x = S.member (!client, x)
@@ -255,7 +270,15 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("htmlifyTime", "showTime"),
                           ("toSeconds", "toSeconds"),
                           ("addSeconds", "addSeconds"),
-                          ("diffInSeconds", "diffInSeconds")]
+                          ("diffInSeconds", "diffInSeconds"),
+
+                          ("onClick", "uw_onClick"),
+                          ("onDblclick", "uw_onDblclick"),
+                          ("onKeydown", "uw_onKeydown"),
+                          ("onKeypress", "uw_onKeypress"),
+                          ("onKeyup", "uw_onKeyup"),
+                          ("onMousedown", "uw_onMousedown"),
+                          ("onMouseup", "uw_onMouseup")]
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)
