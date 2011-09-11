@@ -1322,11 +1322,17 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                   else
                       "-L" ^ Config.lib ^ "/.. -lurweb " ^ #linkDynamic proto
 
-        val compile = Config.ccompiler ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " -Wimplicit -Werror -Wno-unused-value -O3 -I " ^ Config.includ
+        val opt = if debug then
+                      ""
+                  else
+                      " -O3"
+
+        val compile = Config.ccompiler ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " -Wimplicit -Werror -Wno-unused-value"
+                      ^ opt ^ " -I " ^ Config.includ
                       ^ " " ^ #compile proto
                       ^ " -c " ^ escapeFilename cname ^ " -o " ^ escapeFilename oname
 
-        val link = Config.ccompiler ^ " -Werror -O3 -lm " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs
+        val link = Config.ccompiler ^ " -Werror" ^ opt ^ " -lm " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs
                    ^ " " ^ lib ^ " " ^ Config.openssl ^ " " ^ escapeFilename oname ^ " -o " ^ escapeFilename ename ^ " " ^ libs
 
         val (compile, link) =
