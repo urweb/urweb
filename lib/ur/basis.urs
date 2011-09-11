@@ -870,6 +870,11 @@ val onKeyup : (int -> transaction unit) -> transaction unit
 val onMousedown : transaction unit -> transaction unit
 val onMouseup : transaction unit -> transaction unit
 
+(* Prevents default handling of current event *)
+val preventDefault : transaction unit
+(* Stops propagation of current event *)
+val stopPropagation : transaction unit
+
 val show_xml : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> show (xml ctx use bind)
 
 

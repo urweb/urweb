@@ -156,6 +156,8 @@ val benignBase = basis ["get_cookie",
                         "onKeyup",
                         "onMousedown",
                         "onMouseup",
+                        "preventDefault",
+                        "stopPropagation",
                         "fresh"]
 
 val benign = ref benignBase
@@ -182,7 +184,9 @@ val clientBase = basis ["get",
                         "onKeypress",
                         "onKeyup",
                         "onMousedown",
-                        "onMouseup"]
+                        "onMouseup",
+                        "preventDefault",
+                        "stopPropagation"]
 val client = ref clientBase
 fun setClientOnly ls = client := S.addList (clientBase, ls)
 fun isClientOnly x = S.member (!client, x)
@@ -280,6 +284,8 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("onKeyup", "uw_onKeyup"),
                           ("onMousedown", "uw_onMousedown"),
                           ("onMouseup", "uw_onMouseup"),
+                          ("preventDefault", "uw_preventDefault"),
+                          ("stopPropagation", "uw_stopPropagation"),
 
                           ("fresh", "fresh")]
 val jsFuncs = ref jsFuncsBase
