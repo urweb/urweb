@@ -1,14 +1,24 @@
 ========
-Next
+20110917
 ========
 
 - Start of official tutorial
 - Compiler support for generating nice tutorial HTML from literate source files
 - New protocol 'static' for generating static pages
-- Replace GCCARGS configure variable with CCARGS
+- Replace GCCARGS 'configure' variable with CCARGS
+- Better support for compilation with Clang (including on OS X)
+- Fancier 'configure' script with versioning
 - Applications consult URWEB_STACK_SIZE environment variable to determine thread
   stack size
-- Bug fixes
+- HTML tag IDs now drawn from an abstract type
+- New Basis functions: diffInSeconds, mkMonad, onClick, onDblclick, onKeydown,
+  onKeypress, onKeyup, onMousedown, onMouseup, preventDefault, stopPropagation,
+  toSeconds
+- Add <image> tag
+- Add 'target' attribute for <a>
+- New compiler command-line option: -dumpTypes
+- New syntactic sugar for computed ORDER BY clauses
+- Bug fixes and optimization improvements
 
 ========
 20110715

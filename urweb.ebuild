@@ -1,9 +1,6 @@
 # Distributed under the terms of the BSD3 license
 
-# This file needs to be renamed to something like "urweb-20110123.ebuild", to reflect the Ur/Web version to use.
-# It won't work with versions from Ur/Web Mercurial repository snapshots older than this file.
-# (The specific version number referenced above is an example of a version that _won't_ work!
-# There hasn't yet been an official release that will.)
+# This file needs to be renamed to something like "urweb-20110917.ebuild", to reflect the Ur/Web version to use.
 
 inherit eutils
 
