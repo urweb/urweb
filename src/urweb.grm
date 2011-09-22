@@ -1397,6 +1397,11 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                          end)
          
        | tag GT xmlOpt END_TAG          (let
+                                             fun tagOut s =
+                                                 case s of
+                                                     "tabl" => "table"
+                                                   | _ => s
+
                                              val pos = s (tagleft, GTright)
                                              val et = tagIn END_TAG
                                          in
@@ -1423,9 +1428,9 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                       ()
                                                   else
                                                       ErrorMsg.errorAt pos ("Begin tag <"
-                                                                            ^ #1 (#1 tag)
+                                                                            ^ tagOut (#1 (#1 tag))
                                                                             ^ "> and end tag </"
-                                                                            ^ et
+                                                                            ^ tagOut et
                                                                             ^ "> don't match.");
                                                   (EWild, pos))
                                          end)
