@@ -476,9 +476,11 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
 
          string "static void uw_db_init(uw_context ctx) {",
          newline,
-         string "PGconn *conn = PQconnectdb(\"",
+         string "char *env_db_str = getenv(\"URWEB_PQ_CON\");",
+	 newline,
+         string "PGconn *conn = PQconnectdb(env_db_str == NULL ? \"",
          string (String.toCString dbstring),
-         string "\");",
+         string "\" : env_db_str);",
          newline,
          string "if (conn == NULL) uw_error(ctx, FATAL, ",
          string "\"libpq can't allocate a connection.\");",
