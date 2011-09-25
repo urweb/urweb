@@ -170,7 +170,7 @@ See doc for the variable `urweb-mode-info'."
           (finished nil)
           (answer nil)
           )
-      (while (and (not finished) (re-search-backward "[<{}]" nil t))
+      (while (and (not finished) (re-search-backward "[-<{}]" nil t))
         (cond
          ((looking-at "{")
           (if (> depth 0)
@@ -186,6 +186,10 @@ See doc for the variable `urweb-mode-info'."
               (setq finished t))))
          ((looking-at "</xml>")
           (incf depth))
+
+         ((looking-at "-")
+          (if (looking-at "->")
+            (setq finished (= depth 0))))
 
          ((and (= depth 0)
                (not (looking-at "<xml")) ;; ignore <xml/>
