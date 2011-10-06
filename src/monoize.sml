@@ -2855,6 +2855,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ESetval (e1, e2), loc), fm)
             end
 
+          | L.EFfi ("Basis", "null") => ((L'.EPrim (Prim.String ""), loc), fm)
+
           | L.EFfiApp ("Basis", "classes", [s1, s2]) =>
             let
                 val (s1, fm) = monoExp (env, st, fm) s1
