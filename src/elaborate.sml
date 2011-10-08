@@ -1772,7 +1772,7 @@ fun findHead e e' =
         findHead e
     end
 
-datatype needed = Needed of {Cons : (L'.kind * L'.con option) SM.map,
+datatype needed = Needed of {Cons : L'.kind SM.map,
                              Constraints : (E.env * (L'.con * L'.con) * ErrorMsg.span) list,
                              Vals : SS.set,
                              Mods : (E.env * needed) SM.map}
@@ -3435,8 +3435,8 @@ and wildifyStr env (str, sgn) =
                  fun buildNeeded env sgis =
                      #1 (foldl (fn ((sgi, loc), (nd, env')) =>
                                    (case sgi of
-                                        L'.SgiCon (x, _, k, c) => naddCon (nd, x, (k, SOME c))
-                                      | L'.SgiConAbs (x, _, k) => naddCon (nd, x, (k, NONE))
+                                        L'.SgiCon (x, _, k, _) => naddCon (nd, x, k)
+                                      | L'.SgiConAbs (x, _, k) => naddCon (nd, x, k)
                                       | L'.SgiConstraint cs => naddConstraint (nd, (env', cs, loc))
                                       | L'.SgiVal (x, _, t) =>
                                         let
@@ -3513,7 +3513,7 @@ and wildifyStr env (str, sgn) =
                              case SM.listItemsi (ncons nd) of
                                  [] => ds'
                                | xs =>
-                                 map (fn (x, (k, co)) =>
+                                 map (fn (x, k) =>
                                          let
                                              val k =
                                                  case decompileKind k of
@@ -3521,15 +3521,8 @@ and wildifyStr env (str, sgn) =
                                                    | SOME k => k
                                                                
                                              val cwild = (L.CWild k, #2 str)
-                                             val c =
-                                                 case co of
-                                                     NONE => cwild
-                                                   | SOME c =>
-                                                     case decompileCon env c of
-                                                         NONE => cwild
-                                                       | SOME c' => c'
                                          in
-                                             (L.DCon (x, NONE, c), #2 str)
+                                             (L.DCon (x, NONE, cwild), #2 str)
                                          end) xs @ ds'
 
                          val ds = ds @ ds'
