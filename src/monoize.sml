@@ -1356,6 +1356,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
           | L.EFfiApp ("Basis", "recv", _) => poly ()
 
+          | L.EFfiApp ("Basis", "float", [e]) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                ((L'.EFfiApp ("Basis", "floatFromInt", [e]), loc), fm)
+            end
+
           | L.EFfiApp ("Basis", "sleep", [n]) =>
             let
                 val (n, fm) = monoExp (env, st, fm) n

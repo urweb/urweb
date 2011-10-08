@@ -16,6 +16,7 @@
 #include <openssl/des.h>
 #include <openssl/rand.h>
 #include <time.h>
+#include <math.h>
 
 #include <pthread.h>
 
@@ -3955,4 +3956,20 @@ void uw_cutErrorLocation(char *s) {
 
 uw_Basis_string uw_Basis_fresh(uw_context ctx) {
   return uw_Basis_htmlifyInt(ctx, ctx->nextId++);
+}
+
+uw_Basis_float uw_Basis_floatFromInt(uw_context ctx, uw_Basis_int n) {
+  return n;
+}
+
+uw_Basis_int uw_Basis_ceil(uw_context ctx, uw_Basis_float n) {
+  return ceil(n);
+}
+
+uw_Basis_int uw_Basis_trunc(uw_context ctx, uw_Basis_float n) {
+  return trunc(n);
+}
+
+uw_Basis_int uw_Basis_round(uw_context ctx, uw_Basis_float n) {
+  return round(n);
 }

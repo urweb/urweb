@@ -348,4 +348,9 @@ void uw_cutErrorLocation(char *);
 
 uw_Basis_string uw_Basis_fresh(uw_context);
 
+uw_Basis_float uw_Basis_floatFromInt(uw_context, uw_Basis_int);
+uw_Basis_int uw_Basis_ceil(uw_context, uw_Basis_float);
+uw_Basis_int uw_Basis_trunc(uw_context, uw_Basis_float);
+uw_Basis_int uw_Basis_round(uw_context, uw_Basis_float);
+
 #endif

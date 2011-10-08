@@ -145,6 +145,14 @@ val signal : t ::: Type -> source t -> signal t
 val current : t ::: Type -> signal t -> transaction t
 
 
+(** * Floats *)
+
+val float : int -> float
+val ceil : float -> int
+val trunc : float -> int
+val round : float -> int
+
+
 (** * Time *)
 
 val now : transaction time
