@@ -480,6 +480,10 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "MIN"       => (Tokens.MIN (pos yypos, pos yypos + size yytext));
 <INITIAL> "MAX"       => (Tokens.MAX (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "IF"        => (Tokens.CIF (pos yypos, pos yypos + size yytext));
+<INITIAL> "THEN"      => (Tokens.CTHEN (pos yypos, pos yypos + size yytext));
+<INITIAL> "ELSE"      => (Tokens.CELSE (pos yypos, pos yypos + size yytext));
+
 <INITIAL> "ASC"       => (Tokens.ASC (pos yypos, pos yypos + size yytext));
 <INITIAL> "DESC"      => (Tokens.DESC (pos yypos, pos yypos + size yytext));
 

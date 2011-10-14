@@ -150,7 +150,8 @@ See doc for the variable `urweb-mode-info'."
                  "ASC" "DESC" "INSERT" "INTO" "VALUES" "UPDATE" "SET" "DELETE"
                  "PRIMARY" "KEY" "CONSTRAINT" "UNIQUE" "CHECK"
                  "FOREIGN" "REFERENCES" "ON" "NO" "ACTION" "CASCADE" "RESTRICT" "NULL"
-                 "JOIN" "INNER" "OUTER" "LEFT" "RIGHT" "FULL" "CROSS" "SELECT1")
+                 "JOIN" "INNER" "OUTER" "LEFT" "RIGHT" "FULL" "CROSS" "SELECT1"
+                 "IF" "THEN" "ELSE")
   "A regexp that matches SQL keywords.")
 
 (defconst urweb-lident-regexp "\\<[a-z_][A-Za-z0-9_']*\\>"

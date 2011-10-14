@@ -249,6 +249,7 @@ fun tnamesOf (e, _) =
  | NE | LT | LE | GT | GE
  | CCONSTRAINT | UNIQUE | CHECK | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
  | JOIN | INNER | CROSS | OUTER | LEFT | RIGHT | FULL
+ | CIF | CTHEN | CELSE
 
 %nonterm
    file of decl list
@@ -1827,6 +1828,13 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                              (EApp ((EVar (["Basis"], "sql_is_null", Infer), loc),
                                                     sqlexp), loc)
                                          end)
+
+       | CIF sqlexp CTHEN sqlexp CELSE sqlexp (let
+                                                   val loc = s (CIFleft, sqlexp3right)
+                                                   val e = (EVar (["Basis"], "sql_if_then_else", Infer), loc) 
+                                               in
+                                                   (EApp ((EApp ((EApp (e, sqlexp1), loc), sqlexp2), loc), sqlexp3), loc)
+                                               end)
 
        | LBRACE LBRACK eexp RBRACK RBRACE  (sql_inject (#1 eexp,
                                                         s (LBRACEleft, RBRACEright)))

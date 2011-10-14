@@ -474,6 +474,13 @@ val sql_is_null : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                   -> sql_exp tables agg exps (option t)
                   -> sql_exp tables agg exps bool
 
+val sql_if_then_else : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                       -> t ::: Type
+                       -> sql_exp tables agg exps bool
+                       -> sql_exp tables agg exps t
+                       -> sql_exp tables agg exps t
+                       -> sql_exp tables agg exps t
+
 class sql_arith
 val sql_arith_int : sql_arith int
 val sql_arith_float : sql_arith float

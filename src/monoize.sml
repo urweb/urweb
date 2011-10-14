@@ -2804,6 +2804,31 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_if_then_else"), _), _),
+                _), _),
+               _), _),
+              _), _)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("if", s, (L'.TFun (s, s), loc),
+                           (L'.EAbs ("then", s, (L'.TFun (s, s), loc),
+                                     (L'.EAbs ("else", s, (L'.TFun (s, s), loc),
+                                               strcat [sc "(CASE WHEN (",
+                                                       (L'.ERel 2, loc),
+                                                       sc ") THEN (",
+                                                       (L'.ERel 1, loc),
+                                                       sc ") ELSE (",
+                                                       (L'.ERel 0, loc),
+                                                       sc ") END)"]), loc)), loc)), loc),
+                 fm)
+            end
+
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
