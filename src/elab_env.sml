@@ -545,8 +545,14 @@ fun eqCons (c1, c2) =
 
       | (CRecord (k1, xcs1), CRecord (k2, xcs2)) =>
         (unifyKinds (k1, k2);
-         ListPair.appEq (fn ((x1, c1), (x2, c2)) => (eqCons (x1, x2); eqCons (c1, c2))) (xcs1, xcs2)
-         handle ListPair.UnequalLengths => raise Unify)
+         if length xcs1 <> length xcs2 then
+             raise Unify
+         else
+             List.app (fn (x1, c1) =>
+                          if List.exists (fn (x2, c2) => (eqCons (x1, x2); eqCons (c1, c2); true) handle Unify => false) xcs2 then
+                              ()
+                          else
+                              raise Unify) xcs1)
       | (CConcat (f1, x1), CConcat (f2, x2)) => (eqCons (f1, f2); eqCons (x1, x2))
       | (CMap (d1, r1), CMap (d2, r2)) => (unifyKinds (d1, d2); unifyKinds (r1, r2))
 
@@ -606,8 +612,14 @@ fun unifyCons (hnorm : con -> con) rs =
 
               | (CRecord (k1, xcs1), CRecord (k2, xcs2)) =>
                 (unifyKinds (k1, k2);
-                 ListPair.appEq (fn ((x1, c1), (x2, c2)) => (unify d (x1, x2); unify d (c1, c2))) (xcs1, xcs2)
-                 handle ListPair.UnequalLengths => raise Unify)
+                 if length xcs1 <> length xcs2 then
+                     raise Unify
+                 else
+                     app (fn (x1, c1) =>
+                             if List.exists (fn (x2, c2) => (unify d (x1, x2); unify d (c1, c2); true) handle Unify => false) xcs2 then
+                                 ()
+                             else
+                                 raise Unify) xcs1)
               | (CConcat (f1, x1), CConcat (f2, x2)) => (unify d (f1, f2); unify d (x1, x2))
               | (CMap (d1, r1), CMap (d2, r2)) => (unifyKinds (d1, d2); unifyKinds (r1, r2))
 
