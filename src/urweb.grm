@@ -706,8 +706,14 @@ sgntm  : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
 sgi    : CON SYMBOL DCOLON kind         ((SgiConAbs (SYMBOL, kind), s (CONleft, kindright)))
        | LTYPE SYMBOL                   ((SgiConAbs (SYMBOL, (KType, s (LTYPEleft, SYMBOLright))),
                                           s (LTYPEleft, SYMBOLright)))
-       | CON SYMBOL EQ cexp             ((SgiCon (SYMBOL, NONE, cexp), s (CONleft, cexpright)))
-       | CON SYMBOL DCOLON kind EQ cexp ((SgiCon (SYMBOL, SOME kind, cexp), s (CONleft, cexpright)))
+       | CON SYMBOL cargl2 kopt EQ cexp (let
+                                             val loc = s (CONleft, cexpright)
+
+                                             val k = Option.getOpt (kopt, (KWild, loc))
+                                             val (c, k) = cargl2 (cexp, k)
+                                         in
+                                             (SgiCon (SYMBOL, SOME k, c), loc)
+                                         end)
        | LTYPE SYMBOL EQ cexp           ((SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
                                           s (LTYPEleft, cexpright)))
        | DATATYPE dtypes                ((SgiDatatype dtypes, s (DATATYPEleft, dtypesright)))

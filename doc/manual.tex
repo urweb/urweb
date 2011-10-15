@@ -380,7 +380,7 @@ $$\begin{array}{rrcll}
   &&& \{\kappa\} & \textrm{type-level records} \\
   &&& (\kappa\times^+) & \textrm{type-level tuples} \\
   &&& X & \textrm{variable} \\
-  &&& X \longrightarrow k & \textrm{kind-polymorphic type-level function} \\
+  &&& X \longrightarrow \kappa & \textrm{kind-polymorphic type-level function} \\
   &&& \_\_ & \textrm{wildcard} \\
   &&& (\kappa) & \textrm{explicit precedence} \\
 \end{array}$$
@@ -548,6 +548,8 @@ The notation $[c_1, \ldots, c_n]$ is shorthand for $[c_1 = (), \ldots, c_n = ()]
 A tuple type $\tau_1 \times \ldots \times \tau_n$ expands to a record type $\{1 : \tau_1, \ldots, n : \tau_n\}$, with natural numbers as field names.  A tuple expression $(e_1, \ldots, e_n)$ expands to a record expression $\{1 = e_1, \ldots, n = e_n\}$.  A tuple pattern $(p_1, \ldots, p_n)$ expands to a rigid record pattern $\{1 = p_1, \ldots, n = p_n\}$.  Positive natural numbers may be used in most places where field names would be allowed.
 
 In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid X$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.
+
+Further, the signature item or declaration syntax $\mt{con} \; x \; b^+ = c$ is shorthand for wrapping of the appropriate $\lambda$s around the righthand side $c$.  The $b$ elements may not include $X$, and there may also be an optional $:: \kappa$ before the $=$.
 
 In some contexts, the parser isn't happy with token sequences like $x :: \_$, to indicate a constructor variable of wildcard kind.  In such cases, write the second two tokens as $::\hspace{-.05in}\_$, with no intervening spaces.  Analogous syntax $:::\hspace{-.05in}\_$ is available for implicit constructor arguments.
 
