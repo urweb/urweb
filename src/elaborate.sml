@@ -4335,6 +4335,8 @@ fun elabFile basis topStr topSgn env file =
                             unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2))
                         delayed
                 end
+
+        val checkConstraintErrors = ref (fn () => ())
     in
         oneSummaryRound ();
 
@@ -4404,42 +4406,36 @@ fun elabFile basis topStr topSgn env file =
                             ([], _) => ()
                           | (_, true) => (oneSummaryRound (); solver gs)
                           | _ =>
-                            app (fn Disjoint (loc, env, denv, c1, c2) =>
-                                    let
-                                        val c1' = ElabOps.hnormCon env c1
-                                        val c2' = ElabOps.hnormCon env c2
+                            checkConstraintErrors :=
+                            (fn () => app (fn Disjoint (loc, env, denv, c1, c2) =>
+                                              let
+                                                  val c1' = ElabOps.hnormCon env c1
+                                                  val c2' = ElabOps.hnormCon env c2
 
-                                        fun isUnif (c, _) =
-                                            case c of
-                                                L'.CUnif _ => true
-                                              | _ => false
+                                                  fun isUnif (c, _) =
+                                                      case c of
+                                                          L'.CUnif _ => true
+                                                        | _ => false
 
-                                        fun maybeAttr (c, _) =
-                                            case c of
-                                                L'.CRecord ((L'.KType, _), xts) => true
-                                              | _ => false
-                                    in
-                                        ErrorMsg.errorAt loc "Couldn't prove field name disjointness";
-                                        eprefaces' [("Con 1", p_con env c1),
-                                                    ("Con 2", p_con env c2),
-                                                    ("Hnormed 1", p_con env c1'),
-                                                    ("Hnormed 2", p_con env c2')];
+                                                  fun maybeAttr (c, _) =
+                                                      case c of
+                                                          L'.CRecord ((L'.KType, _), xts) => true
+                                                        | _ => false
+                                              in
+                                                  ErrorMsg.errorAt loc "Couldn't prove field name disjointness";
+                                                  eprefaces' [("Con 1", p_con env c1),
+                                                              ("Con 2", p_con env c2),
+                                                              ("Hnormed 1", p_con env c1'),
+                                                              ("Hnormed 2", p_con env c2')]
 
-                                        (*app (fn (loc, env, k, s1, s2) =>
-                                                eprefaces' [("s1", p_summary env (normalizeRecordSummary env s1)),
-                                                            ("s2", p_summary env (normalizeRecordSummary env s2))])
-                                            (!delayedUnifs);*)
-
-                                        if (isUnif c1' andalso maybeAttr c2')
-                                           orelse (isUnif c2' andalso maybeAttr c1') then
-                                            TextIO.output (TextIO.stdErr,
-                                                           "You may be using a disallowed attribute with an HTML tag.\n")
-                                        else
-                                            ()
-                                    end
-                                  | TypeClass (env, c, r, loc) =>
-                                    expError env (Unresolvable (loc, c)))
-                                gs
+                                              (*app (fn (loc, env, k, s1, s2) =>
+                                                        eprefaces' [("s1", p_summary env (normalizeRecordSummary env s1)),
+                                                                    ("s2", p_summary env (normalizeRecordSummary env s2))])
+                                                    (!delayedUnifs);*)
+                                              end
+                                            | TypeClass (env, c, r, loc) =>
+                                              expError env (Unresolvable (loc, c)))
+                                          gs)
                     end
             in
                 solver gs
@@ -4482,6 +4478,11 @@ fun elabFile basis topStr topSgn env file =
                         NONE => ()
                       | SOME p => expError env (Inexhaustive (loc, p)))
                 (!delayedExhaustives);
+
+        if ErrorMsg.anyErrors () then
+            ()
+        else
+            !checkConstraintErrors ();
 
         (*preface ("file", p_file env' file);*)
 
