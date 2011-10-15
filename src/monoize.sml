@@ -2816,9 +2816,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
             in
-                ((L'.EAbs ("if", s, (L'.TFun (s, s), loc),
+                ((L'.EAbs ("if", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("then", s, (L'.TFun (s, s), loc),
-                                     (L'.EAbs ("else", s, (L'.TFun (s, s), loc),
+                                     (L'.EAbs ("else", s, s,
                                                strcat [sc "(CASE WHEN (",
                                                        (L'.ERel 2, loc),
                                                        sc ") THEN (",
