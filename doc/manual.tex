@@ -1870,14 +1870,14 @@ $$\begin{array}{l}
   \hspace{.1in} \to \$(\mt{map} \; (\mt{sql\_exp} \; [] \; [] \; []) \; \mt{fields}) \to \mt{dml}
 \end{array}$$
 
-An $\mt{UPDATE}$ command is formed from a choice of which table fields to leave alone and which to change, along with an expression to use to compute the new value of each changed field and a $\mt{WHERE}$ clause.
+An $\mt{UPDATE}$ command is formed from a choice of which table fields to leave alone and which to change, along with an expression to use to compute the new value of each changed field and a $\mt{WHERE}$ clause.  Note that, in the table environment applied to expressions, the table being updated is hardcoded at the name $\mt{T}$.  The parsing extension for $\mt{UPDATE}$ will elaborate all table-free field references to use table variable $\mt{T}$.
 $$\begin{array}{l}
   \mt{val} \; \mt{update} : \mt{unchanged} ::: \{\mt{Type}\} \to \mt{changed} :: \{\mt{Type}\} \to [\mt{changed} \sim \mt{unchanged}] \\
   \hspace{.1in} \Rightarrow \$(\mt{map} \; (\mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; []) \; \mt{changed}) \\
   \hspace{.1in} \to \mt{sql\_table} \; (\mt{changed} \rc \mt{unchanged}) \to \mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{bool} \to \mt{dml}
 \end{array}$$
 
-A $\mt{DELETE}$ command is formed from a table and a $\mt{WHERE}$ clause.
+A $\mt{DELETE}$ command is formed from a table and a $\mt{WHERE}$ clause.  The above use of $\mt{T}$ is repeated.
 $$\begin{array}{l}
   \mt{val} \; \mt{delete} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \to \mt{sql\_exp} \; [\mt{T} = \mt{fields}] \; [] \; [] \; \mt{bool} \to \mt{dml}
 \end{array}$$
