@@ -426,7 +426,7 @@ $$\begin{array}{rrcll}
   &&& M.x & \textrm{projection from a module} \\
 \end{array}$$
 
-We include both abstraction and application for kind polymorphism, but applications are only inferred internally; they may not be written explicitly in source programs.
+We include both abstraction and application for kind polymorphism, but applications are only inferred internally; they may not be written explicitly in source programs.  Also, in the ``known-length type-level record'' form, in $c_1 = c_2$ terms, the parser currently only allows $c_1$ to be of the forms $X$ (as a shorthand for $\#X$) or $x$, or a natural number to stand for the corresponding field name (e.g., for tuples).
 
 Modules of the module system are described by \emph{signatures}.
 $$\begin{array}{rrcll}
