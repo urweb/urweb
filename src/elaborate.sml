@@ -3265,7 +3265,8 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
 
       | _ => sgnError env (SgnWrongForm (strLoc, sgn1, sgn2)))
 
-and subSgn env = subSgn' (ref IM.empty) env
+and subSgn env x y z = subSgn' (ref IM.empty) env x y z
+    handle e as E.UnboundNamed _ => if ErrorMsg.anyErrors () then () else raise e
 
 and positive self =
     let
