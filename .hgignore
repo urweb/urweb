@@ -43,7 +43,6 @@ doc/*.html
 *.pdf
 *.ps
 *.toc
-aclocal.m4
 
 .depend
 Makefile.coq
