@@ -127,29 +127,29 @@ fun cunifyError env err =
     case err of
         CKind (k1, k2, kerr) =>
         (eprefaces "Kind unification failure"
-                   [("Kind 1", p_kind env k1),
-                    ("Kind 2", p_kind env k2)];
+                   [("Have", p_kind env k1),
+                    ("Need", p_kind env k2)];
          kunifyError env kerr)
       | COccursCheckFailed (c1, c2) =>
         eprefaces "Constructor occurs check failed"
-                  [("Con 1", p_con env c1),
-                   ("Con 2", p_con env c2)]
+                  [("Have", p_con env c1),
+                   ("Need", p_con env c2)]
       | CIncompatible (c1, c2) =>
         eprefaces "Incompatible constructors"
-                  [("Con 1", p_con env c1),
-                   ("Con 2", p_con env c2)]
+                  [("Have", p_con env c1),
+                   ("Need", p_con env c2)]
       | CExplicitness (c1, c2) =>
         eprefaces "Differing constructor function explicitness"
-                  [("Con 1", p_con env c1),
-                   ("Con 2", p_con env c2)]
+                  [("Have", p_con env c1),
+                   ("Need", p_con env c2)]
       | CKindof (k, c, expected) =>
         eprefaces ("Unexpected kind for kindof calculation (expecting " ^ expected ^ ")")
                   [("Kind", p_kind env k),
                    ("Con", p_con env c)]
       | CRecordFailure (c1, c2, fo) =>
         (eprefaces "Can't unify record constructors"
-                   (("Summary 1", p_con env c1)
-                    :: ("Summary 2", p_con env c2)
+                   (("Have", p_con env c1)
+                    :: ("Need", p_con env c2)
                     :: (case fo of
                             NONE => []
                           | SOME (nm, t1, t2, _) =>
@@ -210,8 +210,8 @@ fun expError env err =
                      ("Type", p_con env t)])
       | IncompatibleCons (c1, c2) =>
         (ErrorMsg.errorAt (#2 c1) "Incompatible constructors";
-         eprefaces' [("Con 1", p_con env c1),
-                     ("Con 2", p_con env c2)])
+         eprefaces' [("Have", p_con env c1),
+                     ("Need", p_con env c2)])
       | DuplicatePatternVariable (loc, s) =>
         ErrorMsg.errorAt loc ("Duplicate pattern variable " ^ s)
       | PatUnify (p, c1, c2, uerr) =>

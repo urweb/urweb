@@ -698,6 +698,8 @@
                  bind = fn (bound, U.Con.RelC _) => bound + 1
                          | (bound, _) => bound} 0
 
+ val reducedSummaries = ref (NONE : (Print.PD.pp_desc * Print.PD.pp_desc) option)
+
  fun unifyRecordCons env (loc, c1, c2) =
      let
          fun rkindof c =
@@ -890,6 +892,12 @@
                   else
                       (fs1, fs2, others1, others2, unifs1, unifs2)
                | _ => (fs1, fs2, others1, others2, unifs1, unifs2)
+
+         val () = if !mayDelay then
+                      ()
+                  else
+                      reducedSummaries := SOME (p_summary env {fields = fs1, unifs = unifs1, others = others1},
+                                                p_summary env {fields = fs2, unifs = unifs2, others = others2})
 
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
@@ -4450,7 +4458,13 @@ fun elabFile basis topStr topSgn env file =
             (app (fn (loc, env, k, s1, s2) =>
                      unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)
                      handle CUnify' err => (ErrorMsg.errorAt loc "Error in final record unification";
-                                            cunifyError env err))
+                                            cunifyError env err;
+                                            case !reducedSummaries of
+                                                NONE => ()
+                                              | SOME (s1, s2) =>
+                                                (ErrorMsg.errorAt loc "Stuck unifying these records after canceling matching pieces:";
+                                                 eprefaces' [("Have", s1),
+                                                             ("Need", s2)])))
                  (!delayedUnifs);
              delayedUnifs := []);
 
