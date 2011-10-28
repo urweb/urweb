@@ -777,6 +777,8 @@
 
  and unifySummaries env (loc, k, s1 : record_summary, s2 : record_summary) =
      let
+         val () = reducedSummaries := NONE
+
          (*val () = eprefaces "Summaries" [("loc", PD.string (ErrorMsg.spanToString loc)),
                                          ("#1", p_summary env s1),
                                          ("#2", p_summary env s2)]*)
