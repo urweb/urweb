@@ -226,6 +226,8 @@ end
 
 structure File : sig
     val maxName : Elab.file -> int
+
+    val findDecl : (Elab.decl -> bool) -> Elab.file -> Elab.decl option
 end
 
 end

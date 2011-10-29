@@ -500,9 +500,9 @@
      case c of
          L'.CUnif (_, loc, k, _, r as ref NONE) =>
          (case #1 (hnormKind k) of
-              L'.KUnit => (r := SOME (L'.CUnit, loc); NONE)
-            | _ => SOME loc)
-       | _ => NONE
+              L'.KUnit => (r := SOME (L'.CUnit, loc); false)
+            | _ => true)
+       | _ => false
 
  val kunifsInDecl = U.Decl.exists {kind = kunifsRemain,
                                    con = fn _ => false,
@@ -512,13 +512,13 @@
                                    str = fn _ => false,
                                    decl = fn _ => false}
 
- val cunifsInDecl = U.Decl.search {kind = fn _ => NONE,
+ val cunifsInDecl = U.Decl.exists {kind = fn _ => false,
                                    con = cunifsRemain,
-                                   exp = fn _ => NONE,
-                                   sgn_item = fn _ => NONE,
-                                   sgn = fn _ => NONE,
-                                   str = fn _ => NONE,
-                                   decl = fn _ => NONE}
+                                   exp = fn _ => false,
+                                   sgn_item = fn _ => false,
+                                   sgn = fn _ => false,
+                                   str = fn _ => false,
+                                   decl = fn _ => false}
 
  fun occursCon r =
      U.Con.exists {kind = fn _ => false,
@@ -4473,19 +4473,22 @@ fun elabFile basis topStr topSgn env file =
         if ErrorMsg.anyErrors () then
             ()
         else
-            ignore (List.exists (fn d => if kunifsInDecl d then
-                                             (declError env'' (KunifsRemain [d]);
-                                              true)
-                                         else
-                                             false) file);
+            if List.exists kunifsInDecl file then
+                case U.File.findDecl kunifsInDecl file of
+                    NONE => ()
+                  | SOME d => declError env'' (KunifsRemain [d])
+            else
+                ();
         
         if ErrorMsg.anyErrors () then
             ()
         else
-            ignore (List.exists (fn d => case cunifsInDecl d of
-                                             NONE => false
-                                           | SOME _ => (declError env'' (CunifsRemain [d]);
-                                                        true)) file);
+            if List.exists cunifsInDecl file then
+                case U.File.findDecl cunifsInDecl file of
+                    NONE => ()
+                  | SOME d => declError env'' (CunifsRemain [d])
+            else
+                ();
 
         if ErrorMsg.anyErrors () then
             ()

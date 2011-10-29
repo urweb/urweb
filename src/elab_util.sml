@@ -1235,6 +1235,32 @@ and maxNameSgi (sgi, _) =
       | SgiConstraint _ => 0
       | SgiClassAbs (_, n, _) => n
       | SgiClass (_, n, _, _) => n
+
+fun findDecl pred file =
+    let
+        fun decl d =
+            let
+                val r = case #1 d of
+                            DStr (_, _, _, s) => str s
+                          | _ => NONE
+            in
+                case r of
+                    NONE => if pred d then SOME d else NONE
+                  | _ => r
+            end
+
+        and str s =
+            case #1 s of
+                StrConst ds => ListUtil.search decl ds
+              | StrFun (_, _, _, _, s) => str s
+              | StrApp (s1, s2) =>
+                (case str s1 of
+                     NONE => str s2
+                   | r => r)
+              | _ => NONE
+    in
+        ListUtil.search decl file
+    end
               
 end
 

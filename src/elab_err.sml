@@ -262,7 +262,55 @@ datatype decl_error =
 fun lspan [] = ErrorMsg.dummySpan
   | lspan ((_, loc) :: _) = loc
 
-val p_decl = P.p_decl
+val baseLen = 2000
+
+fun p_decl env d =
+    let
+        val fname = OS.FileSys.tmpName ()
+        val out' = TextIO.openOut fname
+        val out = Print.openOut {dst = out', wid = 80}
+
+        fun readFromFile () =
+            let
+                val inf = TextIO.openIn fname
+
+                fun loop acc =
+                    case TextIO.inputLine inf of
+                        NONE => String.concat (rev acc)
+                      | SOME line => loop (line :: acc)
+            in
+                loop []
+                before TextIO.closeIn inf
+            end
+    in
+        Print.fprint out (P.p_decl env d);
+        TextIO.closeOut out';
+        let
+            val content = readFromFile ()
+        in
+            OS.FileSys.remove fname;
+            Print.PD.string (if size content <= baseLen then
+                                 content
+                             else
+                                 let
+                                     val (befor, after) = Substring.position "<UNIF:" (Substring.full content)
+                                 in
+                                     if Substring.isEmpty after then
+                                         raise Fail "No unification variables in rendering"
+                                     else
+                                         Substring.concat [Substring.full "\n.....\n",
+                                                           if Substring.size befor <= baseLen then
+                                                               befor
+                                                           else
+                                                               Substring.slice (befor, Substring.size befor - baseLen, SOME baseLen),
+                                                           if Substring.size after <= baseLen then
+                                                               after
+                                                           else
+                                                               Substring.slice (after, 0, SOME baseLen),
+                                                           Substring.full "\n.....\n"]
+                                 end)
+        end
+    end
 
 fun declError env err =
     case err of
