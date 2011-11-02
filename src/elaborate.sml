@@ -3512,9 +3512,7 @@ and wildifyStr env (str, sgn) =
                                                        case (decompileCon env' c1, decompileCon env' c2) of
                                                            (SOME c1, SOME c2) =>
                                                            SOME (L.DConstraint (c1, c2), loc)
-                                                         | _ => (Print.prefaces "BAD" [("c1", p_con env' c1),
-                                                                                       ("c2", p_con env' c2)];
-                                                                 NONE)) (nconstraints nd)
+                                                         | _ => NONE) (nconstraints nd)
 
                          val ds' =
                              case SS.listItems (nvals nd) of
