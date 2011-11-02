@@ -3441,7 +3441,12 @@ and wildifyStr env (str, sgn) =
                        | L'.CUnit => SOME (L.CUnit, loc)
                        | L'.CUnif (nl, _, _, _, ref (SOME c)) => decompileCon env (E.mliftConInCon nl c)
 
-                       | _ => NONE
+                       | L'.CApp (f, x) =>
+                         (case (decompileCon env f, decompileCon env x) of
+                              (SOME f, SOME x) => SOME (L.CApp (f, x), loc)
+                            | _ => NONE)
+
+                       | c => (Print.preface ("WTF?", p_con env (c, loc)); NONE)
 
                  fun buildNeeded env sgis =
                      #1 (foldl (fn ((sgi, loc), (nd, env')) =>
@@ -3507,7 +3512,9 @@ and wildifyStr env (str, sgn) =
                                                        case (decompileCon env' c1, decompileCon env' c2) of
                                                            (SOME c1, SOME c2) =>
                                                            SOME (L.DConstraint (c1, c2), loc)
-                                                         | _ => NONE) (nconstraints nd)
+                                                         | _ => (Print.prefaces "BAD" [("c1", p_con env' c1),
+                                                                                       ("c2", p_con env' c2)];
+                                                                 NONE)) (nconstraints nd)
 
                          val ds' =
                              case SS.listItems (nvals nd) of
