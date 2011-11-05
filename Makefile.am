@@ -21,7 +21,7 @@ mlton: bin/urweb
 
 clean-local:
 	rm -f src/*.mlton.grm.* src/*.mlton.lex.* \
-		src/urweb.cm src/urweb.mlb
+		src/urweb.cm src/urweb.mlb xml/parse xml/entities.sml
 	rm -rf .cm src/.cm
 
 src/urweb.cm: src/prefix.cm src/sources
@@ -55,10 +55,17 @@ MLTON := mlton
 #	MLTON += -profile $(PROFILE)
 #endif
 
-bin/urweb: src/compiler.mlb src/urweb.mlb src/*.sig src/*.sml \
+bin/urweb: xml/entities.sml \
+		src/compiler.mlb src/urweb.mlb src/*.sig src/*.sml \
 		src/urweb.mlton.lex.sml \
 		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
 	$(MLTON) -output $@ src/compiler.mlb
+
+xml/entities.sml: xml/parse xml/xhtml-lat1.ent xml/xhtml-special.ent xml/xhtml-symbol.ent
+	xml/parse >xml/entities.sml
+
+xml/parse: xml/parse.sml
+	$(MLTON) xml/parse.sml
 
 install-exec-emacs:
 if USE_EMACS

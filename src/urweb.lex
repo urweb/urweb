@@ -113,6 +113,14 @@ fun initialize () = (xmlTag := [];
 		     xmlString := false)
 
 
+structure StringMap = BinaryMapFn(struct
+                                  type ord_key = string
+                                  val compare = String.compare
+                                  end)
+
+val entities = foldl (fn ((key, value), entities) => StringMap.insert (entities, key, value))
+                     StringMap.empty Entities.all
+
 fun unescape loc s =
     let
         fun process (s, acc) =
@@ -141,20 +149,16 @@ fun unescape loc s =
                                         let
                                             val code = Substring.string (Substring.slice (code, 1, NONE))
                                         in
-                                            Option.map chr (Int.fromString code)
+                                            Option.map Utf8.encode (Int.fromString code)
                                         end
-                                    else case Substring.string code of
-                                             "amp" => SOME #"&"
-                                           | "lt" => SOME #"<"
-                                           | "gt" => SOME #">"
-                                           | "quot" => SOME #"\""
-                                           | _ => NONE
+                                    else
+                                        Option.map Utf8.encode (StringMap.find (entities, Substring.string code))
                             in
                                 case special of
                                     NONE => (ErrorMsg.errorAt' loc ("Unsupported XML character entity "
                                                                         ^ Substring.string code);
                                              "")
-                                  | SOME ch => process (s, Substring.full (String.str ch) :: pre :: acc)
+                                  | SOME sp => process (s, Substring.full sp :: pre :: acc)
                             end
                     end
             end

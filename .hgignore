@@ -48,6 +48,9 @@ doc/*.html
 Makefile.coq
 *.vo
 
+xml/parse
+xml/entities.sml
+
 syntax: regexp
 
 ^Makefile$
