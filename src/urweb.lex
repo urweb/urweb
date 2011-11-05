@@ -416,7 +416,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "structure" => (Tokens.STRUCTURE (pos yypos, pos yypos + size yytext));
 <INITIAL> "signature" => (Tokens.SIGNATURE (pos yypos, pos yypos + size yytext));
 <INITIAL> "struct"    => (Tokens.STRUCT (pos yypos, pos yypos + size yytext));
-<INITIAL> "sig"       => (if yypos = 2 then initialSig () else (); Tokens.SIG (pos yypos, pos yypos + size yytext));
+<INITIAL> "sig"       => (if yypos <= 2 then initialSig () else (); Tokens.SIG (pos yypos, pos yypos + size yytext));
 <INITIAL> "let"       => (Tokens.LET (pos yypos, pos yypos + size yytext));
 <INITIAL> "in"        => (Tokens.IN (pos yypos, pos yypos + size yytext));
 <INITIAL> "end"       => (Tokens.END (pos yypos, pos yypos + size yytext));
