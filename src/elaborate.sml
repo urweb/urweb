@@ -919,7 +919,9 @@
                              if consEq env loc (c1, c2) then
                                  findPointwise fs1
                              else
-                                 SOME (nm1, c1, c2, (unifyCons env loc c1 c2; NONE) handle CUnify (_, _, err) => SOME err)
+                                 SOME (nm1, c1, c2, (unifyCons env loc c1 c2; NONE)
+                                                    handle CUnify (_, _, err) => (reducedSummaries := NONE;
+                                                                                  SOME err))
              in
                  raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2, findPointwise (#fields s1)))
              end
@@ -939,7 +941,8 @@
                   val c = summaryToCon {fields = fs1, unifs = unifs1, others = others1}
               in
                   if occursCon r c then
-                      raise CUnify' (COccursCheckFailed (cr, c))
+                      (reducedSummaries := NONE;
+                       raise CUnify' (COccursCheckFailed (cr, c)))
                   else
                       (r := SOME (squish nl c))
                       handle CantSquish => default ()
@@ -949,7 +952,8 @@
                   val c = summaryToCon {fields = fs2, unifs = unifs2, others = others2}
               in
                   if occursCon r c then
-                      raise CUnify' (COccursCheckFailed (cr, c))
+                      (reducedSummaries := NONE;
+                       raise CUnify' (COccursCheckFailed (cr, c)))
                   else
                       (r := SOME (squish nl c))
                       handle CantSquish => default ()
