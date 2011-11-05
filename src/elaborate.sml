@@ -773,6 +773,10 @@
        | (L'.CRel _, L'.CModProj _) => true
        | (L'.CModProj _, L'.CRel _) => true
        | (L'.CModProj (_, _, n1), L'.CModProj (_, _, n2)) => n1 <> n2
+       | (L'.CModProj _, L'.CName _) => true
+       | (L'.CName _, L'.CModProj _) => true
+       | (L'.CNamed _, L'.CName _) => true
+       | (L'.CName _, L'.CNamed _) => true
        | _ => false
 
  and unifySummaries env (loc, k, s1 : record_summary, s2 : record_summary) =
