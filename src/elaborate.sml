@@ -1255,6 +1255,11 @@
           Disjoint of D.goal
         | TypeClass of E.env * L'.con * L'.exp option ref * ErrorMsg.span
 
+ fun relocConstraint loc c =
+     case c of
+         Disjoint (_, a, b, c, d) => Disjoint (loc, a, b, c, d)
+       | TypeClass (a, b, c, _) => TypeClass (a, b, c, loc)
+
  val enD = map Disjoint
 
  fun isClassOrFolder env cl =
@@ -1351,10 +1356,12 @@
                  else
                      (e, t, [])
                | t => (e, t, [])
+
+         val (e, t, gs) = case infer of
+                              L.DontInfer => unravelKind (t, e)
+                            | _ => unravel (t, e)
      in
-         case infer of
-             L.DontInfer => unravelKind (t, e)
-           | _ => unravel (t, e)
+         ((#1 e, loc), (#1 t, loc), map (relocConstraint loc) gs)
      end
 
 fun elabPat (pAll as (p, loc), (env, bound)) =
@@ -1865,6 +1872,11 @@ fun ndelVal (r : needed, k) =
                 Mods = #Mods r}
     end
 
+fun chaseUnifs c =
+    case #1 c of
+        L'.CUnif (_, _, _, _, ref (SOME c)) => chaseUnifs c
+      | _ => c
+
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
         (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)]*)
@@ -1933,7 +1945,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val ef = (L'.EApp (e1', e2'), loc)
                 val (ef, et, gs3) =
                     case findHead e1 e1' of
-                        NONE => (ef, ran, [])
+                        NONE => (ef, (#1 (chaseUnifs ran), loc), [])
                       | SOME infer => elabHead (env, denv) infer ef ran
             in
                 (ef, et, gs1 @ gs2 @ gs3)
@@ -1983,7 +1995,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                                                ("eb", p_con (E.pushCRel env x k) eb),
                                                ("c", p_con env c'),
                                                ("eb'", p_con env eb')];*)
-                        (ef, eb', gs1 @ enD gs2 @ gs3)
+                        (ef, (#1 eb', loc), gs1 @ enD gs2 @ gs3)
                     end
 
                   | _ =>
@@ -2040,7 +2052,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val () = checkCon env e' t (L'.TDisjoint (c1, c2, t'), loc)
                 val gs2 = D.prove env denv (c1, c2, loc)
             in
-                (e', t', enD gs2 @ gs1)
+                (e', (#1 (chaseUnifs t'), loc), enD gs2 @ gs1)
             end
 
           | L.ERecord xes =>
@@ -2915,14 +2927,14 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                 in
                     case sgi of
                         L'.SgiConAbs (x, n2, k2) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  let
                                      fun found (x', n1, k1, co1) =
                                          if x = x' then
                                              let
                                                  val () = unifyKinds env k1 k2
                                                      handle KUnify (k1, k2, err) =>
-                                                            sgnError env (SgiWrongKind (strLoc, sgi1All, k1,
+                                                            sgnError env (SgiWrongKind (loc, sgi1All, k1,
                                                                                         sgi2All, k2, err))
                                                  val env = E.pushCNamedAs env x n1 k1 co1
                                              in
@@ -2969,7 +2981,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                  end)
 
                       | L'.SgiCon (x, n2, k2, c2) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  let
                                      fun found (x', n1, k1, c1) =
                                          if x = x' then
@@ -2991,7 +3003,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                                  (unifyCons env loc c1 c2;
                                                   good ())
                                                  handle CUnify (c1, c2, err) =>
-                                                        (sgnError env (SgiWrongCon (strLoc, sgi1All, c1,
+                                                        (sgnError env (SgiWrongCon (loc, sgi1All, c1,
                                                                                     sgi2All, c2, err));
                                                          good ())
                                              end
@@ -3006,13 +3018,13 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
 
                       | L'.SgiDatatype dts2 =>
                         let
-                            fun found' (sgi1All, (x1, n1, xs1, xncs1), (x2, n2, xs2, xncs2), env) =
+                            fun found' (sgi1All as (_, loc), (x1, n1, xs1, xncs1), (x2, n2, xs2, xncs2), env) =
                                 if x1 <> x2 then
                                     NONE
                                 else
                                     let
                                         fun mismatched ue =
-                                            (sgnError env (SgiMismatchedDatatypes (strLoc, sgi1All, sgi2All, ue));
+                                            (sgnError env (SgiMismatchedDatatypes (loc, sgi1All, sgi2All, ue));
                                              SOME env)
 
                                         val k = (L'.KType, loc)
@@ -3095,7 +3107,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                         end
 
                       | L'.SgiDatatypeImp (x, n2, m12, ms2, s2, xs, _) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  case sgi1 of
                                      L'.SgiDatatypeImp (x', n1, m11, ms1, s1, _, _) =>
                                      if x = x' then
@@ -3117,7 +3129,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                              (unifyCons env loc t1 t2;
                                               good ())
                                              handle CUnify (c1, c2, err) =>
-                                                    (sgnError env (SgiWrongCon (strLoc, sgi1All, c1, sgi2All, c2, err));
+                                                    (sgnError env (SgiWrongCon (loc, sgi1All, c1, sgi2All, c2, err));
                                                      good ())
                                          end
                                      else
@@ -3126,7 +3138,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                    | _ => NONE)
 
                       | L'.SgiVal (x, n2, c2) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  case sgi1 of
                                      L'.SgiVal (x', n1, c1) =>
                                      if x = x' then
@@ -3138,19 +3150,19 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                           unifyCons env loc c1 (sub2 c2);
                                           SOME env)
                                          handle CUnify (c1, c2, err) =>
-                                                (sgnError env (SgiWrongCon (strLoc, sgi1All, c1, sgi2All, c2, err));
+                                                (sgnError env (SgiWrongCon (loc, sgi1All, c1, sgi2All, c2, err));
                                                  SOME env)
                                      else
                                          NONE
                                    | _ => NONE)
 
                       | L'.SgiStr (x, n2, sgn2) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  case sgi1 of
                                      L'.SgiStr (x', n1, sgn1) =>
                                      if x = x' then
                                          let
-                                             val () = subSgn' counterparts env strLoc sgn1 sgn2
+                                             val () = subSgn' counterparts env loc sgn1 sgn2
                                              val env = E.pushStrNamedAs env x n1 sgn1
                                              val env = if n1 = n2 then
                                                            env
@@ -3166,13 +3178,13 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                    | _ => NONE)
 
                       | L'.SgiSgn (x, n2, sgn2) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  case sgi1 of
                                      L'.SgiSgn (x', n1, sgn1) =>
                                      if x = x' then
                                          let
-                                             val () = subSgn' counterparts env strLoc sgn1 sgn2
-                                             val () = subSgn' counterparts env strLoc sgn2 sgn1
+                                             val () = subSgn' counterparts env loc sgn1 sgn2
+                                             val () = subSgn' counterparts env loc sgn2 sgn1
 
                                              val env = E.pushSgnNamedAs env x n2 sgn2
                                              val env = if n1 = n2 then
@@ -3188,7 +3200,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                    | _ => NONE)
 
                       | L'.SgiConstraint (c2, d2) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  case sgi1 of
                                      L'.SgiConstraint (c1, d1) =>
                                      if consEq env loc (c1, c2)
@@ -3199,14 +3211,14 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                    | _ => NONE)
 
                       | L'.SgiClassAbs (x, n2, k2) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  let
                                      fun found (x', n1, k1, co) =
                                          if x = x' then
                                              let
                                                  val () = unifyKinds env k1 k2
                                                      handle KUnify (k1, k2, err) =>
-                                                            sgnError env (SgiWrongKind (strLoc, sgi1All, k1,
+                                                            sgnError env (SgiWrongKind (loc, sgi1All, k1,
                                                                                         sgi2All, k2, err))
 
                                                  val env = E.pushCNamedAs env x n1 k1 co
@@ -3226,14 +3238,14 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                        | _ => NONE
                                  end)
                       | L'.SgiClass (x, n2, k2, c2) =>
-                        seek (fn (env, sgi1All as (sgi1, _)) =>
+                        seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  let
                                      fun found (x', n1, k1, c1) =
                                          if x = x' then
                                              let
                                                  val () = unifyKinds env k1 k2
                                                      handle KUnify (k1, k2, err) =>
-                                                            sgnError env (SgiWrongKind (strLoc, sgi1All, k1,
+                                                            sgnError env (SgiWrongKind (loc, sgi1All, k1,
                                                                                         sgi2All, k2, err))
 
                                                  val c2 = sub2 c2
@@ -3253,7 +3265,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                                  (unifyCons env loc c1 c2;
                                                   good ())
                                                  handle CUnify (c1, c2, err) =>
-                                                        (sgnError env (SgiWrongCon (strLoc, sgi1All, c1,
+                                                        (sgnError env (SgiWrongCon (loc, sgi1All, c1,
                                                                                     sgi2All, c2, err));
                                                          good ())
                                              end

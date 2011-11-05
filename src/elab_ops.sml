@@ -156,7 +156,7 @@ fun reset () = (identity := 0;
 
 fun hnormCon env (cAll as (c, loc)) =
     case c of
-        CUnif (nl, _, _, _, ref (SOME c)) => hnormCon env (E.mliftConInCon nl c)
+        CUnif (nl, _, _, _, ref (SOME c)) => (#1 (hnormCon env (E.mliftConInCon nl c)), loc)
 
       | CNamed xn =>
         (case E.lookupCNamed env xn of
