@@ -55,7 +55,7 @@ fun main () =
                                               else
                                                   raise Fail "Bad entity expansion [2]"
                                 in
-                                    print ("\t\t(\"" ^ ent ^ "\", " ^ exp ^ "),\n");
+                                    print ("\t\t(\"" ^ ent ^ "\", " ^ exp ^ ") ::\n");
                                     loop ()
                                 end
                               | _ => raise Fail "Bad ENTITY line"
@@ -66,11 +66,11 @@ fun main () =
             end
     in
         print "structure Entities = struct\n";
-        print "\tval all = [\n";
+        print "\tval all =\n";
         doFile "xml/xhtml-lat1.ent";
         doFile "xml/xhtml-special.ent";
         doFile "xml/xhtml-symbol.ent";
-        print "\t(\"\", 0)]\n";
+        print "\t[]\n";
         print "end\n"
     end
 
