@@ -164,8 +164,7 @@ val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
 fun isBenignEffectful x = S.member (!benign, x)
 
-val clientBase = basis ["get",
-                        "set",
+val clientBase = basis ["get_client_source",
                         "current",
                         "alert",
                         "confirm",

@@ -189,6 +189,9 @@ jscomp.sml
 pathcheck.sig
 pathcheck.sml
 
+sidecheck.sig
+sidecheck.sml
+
 cjr.sml
 
 postgres.sig

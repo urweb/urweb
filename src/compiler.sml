@@ -1274,12 +1274,19 @@ val pathcheck = {
 
 val toPathcheck = transform pathcheck "pathcheck" o toMono_shake3
 
+val sidecheck = {
+    func = SideCheck.check,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toSidecheck = transform sidecheck "sidecheck" o toPathcheck
+
 val cjrize = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toCjrize = transform cjrize "cjrize" o toPathcheck
+val toCjrize = transform cjrize "cjrize" o toSidecheck
 
 val scriptcheck = {
     func = ScriptCheck.classify,
