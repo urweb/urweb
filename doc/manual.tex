@@ -517,7 +517,7 @@ $$\begin{array}{rrcll}
   &&& \mt{constraint} \; c \sim c & \textrm{record disjointness constraint} \\
   &&& \mt{open} \; \mt{constraints} \; M & \textrm{inclusion of just the constraints from a module} \\
   &&& \mt{table} \; x : c & \textrm{SQL table} \\
-  &&& \mt{view} \; x : c & \textrm{SQL view} \\
+  &&& \mt{view} \; x = e & \textrm{SQL view} \\
   &&& \mt{sequence} \; x & \textrm{SQL sequence} \\
   &&& \mt{cookie} \; x : \tau & \textrm{HTTP cookie} \\
   &&& \mt{style} \; x : \tau & \textrm{CSS class} \\
@@ -533,7 +533,7 @@ $$\begin{array}{rrcll}
 
 There are two kinds of Ur files.  A file named $M\texttt{.ur}$ is an \emph{implementation file}, and it should contain a sequence of declarations $d^*$.  A file named $M\texttt{.urs}$ is an \emph{interface file}; it must always have a matching $M\texttt{.ur}$ and should contain a sequence of signature items $s^*$.  When both files are present, the overall effect is the same as a monolithic declaration $\mt{structure} \; M : \mt{sig} \; s^* \; \mt{end} = \mt{struct} \; d^* \; \mt{end}$.  When no interface file is included, the overall effect is similar, with a signature for module $M$ being inferred rather than just checked against an interface.
 
-We omit some extra possibilities in $\mt{table}$ syntax, deferring them to Section \ref{tables}.
+We omit some extra possibilities in $\mt{table}$ syntax, deferring them to Section \ref{tables}.  The concrete syntax of $\mt{view}$ declarations is also more complex than shown in the table above, with details deferred to Section \ref{tables}.
 
 \subsection{Shorthands}
 
@@ -985,8 +985,8 @@ $$\infer{\Gamma \vdash \mt{constraint} \; c_1 \sim c_2 \leadsto \Gamma}{
 $$\infer{\Gamma \vdash \mt{table} \; x : c \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_table} \; c \; []}{
   \Gamma \vdash c :: \{\mt{Type}\}
 }
-\quad \infer{\Gamma \vdash \mt{view} \; x : c \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_view} \; c}{
-  \Gamma \vdash c :: \{\mt{Type}\}
+\quad \infer{\Gamma \vdash \mt{view} \; x = e \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_view} \; c}{
+  \Gamma \vdash e :: \mt{Basis}.\mt{sql\_query} \; [] \; [] \; (\mt{map} \; (\lambda \_ \Rightarrow []) \; c') \; c
 }$$
 
 $$\infer{\Gamma \vdash \mt{sequence} \; x \leadsto \Gamma, x : \mt{Basis}.\mt{sql\_sequence}}{}$$
@@ -1221,7 +1221,7 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{sigOf}(\mt{constraint} \; c_1 \sim c_2) &=& \mt{constraint} \; c_1 \sim c_2 \\
   \mt{sigOf}(\mt{open} \; \mt{constraints} \; M) &=& \cdot \\
   \mt{sigOf}(\mt{table} \; x : c) &=& \mt{table} \; x : c \\
-  \mt{sigOf}(\mt{view} \; x : c) &=& \mt{view} \; x : c \\
+  \mt{sigOf}(\mt{view} \; x = e) &=& \mt{view} \; x : c \textrm{ (where $\Gamma \vdash e : \mt{Basis}.\mt{sql\_query} \; [] \; [] \; (\mt{map} \; (\lambda \_ \Rightarrow []) \; c') \; c$)} \\
   \mt{sigOf}(\mt{sequence} \; x) &=& \mt{sequence} \; x \\
   \mt{sigOf}(\mt{cookie} \; x : \tau) &=& \mt{cookie} \; x : \tau \\
   \mt{sigOf}(\mt{style} \; x) &=& \mt{style} \; x \\
@@ -2088,14 +2088,15 @@ Ur/Web features some syntactic shorthands for building values using the function
 
 $\mt{table}$ declarations may include constraints, via these grammar rules.
 $$\begin{array}{rrcll}
-  \textrm{Declarations} & d &::=& \mt{table} \; x : c \; [pk[,]] \; cts \\
+  \textrm{Declarations} & d &::=& \mt{table} \; x : c \; [pk[,]] \; cts \mid \mt{view} \; x = V \\
   \textrm{Primary key constraints} & pk &::=& \mt{PRIMARY} \; \mt{KEY} \; K \\
   \textrm{Keys} & K &::=& f \mid (f, (f,)^+) \\
   \textrm{Constraint sets} & cts &::=& \mt{CONSTRAINT} f \; ct \mid cts, cts \mid \{\{e\}\} \\
   \textrm{Constraints} & ct &::=& \mt{UNIQUE} \; K \mid \mt{CHECK} \; E \\
   &&& \mid \mt{FOREIGN} \; \mt{KEY} \; K \; \mt{REFERENCES} \; F \; (K) \; [\mt{ON} \; \mt{DELETE} \; pr] \; [\mt{ON} \; \mt{UPDATE} \; pr] \\
   \textrm{Foreign tables} & F &::=& x \mid \{\{e\}\} \\
-  \textrm{Propagation modes} & pr &::=& \mt{NO} \; \mt{ACTION} \mid \mt{RESTRICT} \mid \mt{CASCADE} \mid \mt{SET} \; \mt{NULL}
+  \textrm{Propagation modes} & pr &::=& \mt{NO} \; \mt{ACTION} \mid \mt{RESTRICT} \mid \mt{CASCADE} \mid \mt{SET} \; \mt{NULL} \\
+  \textrm{View expressions} & V &::=& Q \mid \{e\}
 \end{array}$$
 
 A signature item $\mt{table} \; \mt{x} : \mt{c}$ is actually elaborated into two signature items: $\mt{con} \; \mt{x\_hidden\_constraints} :: \{\{\mt{Unit}\}\}$ and $\mt{val} \; \mt{x} : \mt{sql\_table} \; \mt{c} \; \mt{x\_hidden\_constraints}$.  This is appropriate for common cases where client code doesn't care which keys a table has.  It's also possible to include constraints after a $\mt{table}$ signature item, with the same syntax as for $\mt{table}$ declarations.  This may look like dependent typing, but it's just a convenience.  The constraints are type-checked to determine a constructor $u$ to include in $\mt{val} \; \mt{x} : \mt{sql\_table} \; \mt{c} \; (u \rc \mt{x\_hidden\_constraints})$, and then the expressions are thrown away.  Nonetheless, it can be useful for documentation purposes to include table constraint details in signatures.  Note that the automatic generation of $\mt{x\_hidden\_constraints}$ leads to a kind of free subtyping with respect to which constraints are defined.
