@@ -2814,7 +2814,7 @@ fun p_file env (ds, ps) =
                      box (case ek of
                               Core.Rpc _ => [string "uw_write_header(ctx, \"Content-type: text/plain\\r\\n\");",
                                              newline]
-                            | _ => [string "uw_write_header(ctx, \"Content-type: text/html\\r\\n\");",
+                            | _ => [string "uw_write_header(ctx, \"Content-type: text/html; charset=utf-8\\r\\n\");",
                                     newline,
                                     string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
                                     newline,
