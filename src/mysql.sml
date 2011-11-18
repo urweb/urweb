@@ -83,26 +83,28 @@ fun checkRel (table, checkNullable) (s, xts) =
         val q' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE ",
                                 both,
                                 " AND (",
-                                String.concatWith " OR "
-                                                  (map (fn (x, t) =>
-                                                           String.concat ["(column_name IN ('uw_",
-                                                                          CharVector.map
-                                                                              Char.toLower (ident x),
-                                                                          "', 'uw_",
-                                                                          ident x,
-                                                                          "') AND data_type = '",
-                                                                          p_sql_type_base t,
-                                                                          "'",
-                                                                          if checkNullable then
-                                                                              (" AND is_nullable = '"
-                                                                               ^ (if isNotNull t then
-                                                                                      "NO"
-                                                                                  else
-                                                                                      "YES")
-                                                                               ^ "'")
-                                                                          else
-                                                                              "",
-                                                                          ")"]) xts),
+                                case String.concatWith " OR "
+                                                       (map (fn (x, t) =>
+                                                                String.concat ["(column_name IN ('uw_",
+                                                                               CharVector.map
+                                                                                   Char.toLower (ident x),
+                                                                               "', 'uw_",
+                                                                               ident x,
+                                                                               "') AND data_type = '",
+                                                                               p_sql_type_base t,
+                                                                               "'",
+                                                                               if checkNullable then
+                                                                                   (" AND is_nullable = '"
+                                                                                    ^ (if isNotNull t then
+                                                                                           "NO"
+                                                                                       else
+                                                                                           "YES")
+                                                                                    ^ "'")
+                                                                               else
+                                                                                   "",
+                                                                               ")"]) xts) of
+                                    "" => "FALSE"
+                                  | s => s,
                                 ")"]
 
         val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE ",

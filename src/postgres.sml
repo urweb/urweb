@@ -70,28 +70,30 @@ fun checkRel (table, checkNullable) (s, xts) =
         val q' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
                                 sl,
                                 "' AND (",
-                                String.concatWith " OR "
-                                                  (map (fn (x, t) =>
-                                                           String.concat ["(column_name = 'uw_",
-                                                                          CharVector.map
-                                                                              Char.toLower (ident x),
-                                                                          (case p_sql_type_base t of
-                                                                               "bigint" =>
-                                                                               "' AND data_type IN ('bigint', 'numeric')"
-                                                                             | t =>
-                                                                               String.concat ["' AND data_type = '",
-                                                                                              t,
-                                                                                              "'"]),
-                                                                          if checkNullable then
-                                                                              (" AND is_nullable = '"
-                                                                               ^ (if isNotNull t then
-                                                                                      "NO"
-                                                                                  else
-                                                                                      "YES")
-                                                                               ^ "'")
-                                                                          else
-                                                                              "",
-                                                                          ")"]) xts),
+                                case String.concatWith " OR "
+                                                       (map (fn (x, t) =>
+                                                                String.concat ["(column_name = 'uw_",
+                                                                               CharVector.map
+                                                                                   Char.toLower (ident x),
+                                                                               (case p_sql_type_base t of
+                                                                                    "bigint" =>
+                                                                                    "' AND data_type IN ('bigint', 'numeric')"
+                                                                                  | t =>
+                                                                                    String.concat ["' AND data_type = '",
+                                                                                                   t,
+                                                                                                   "'"]),
+                                                                               if checkNullable then
+                                                                                   (" AND is_nullable = '"
+                                                                                    ^ (if isNotNull t then
+                                                                                           "NO"
+                                                                                       else
+                                                                                           "YES")
+                                                                                    ^ "'")
+                                                                               else
+                                                                                   "",
+                                                                               ")"]) xts) of
+                                    "" => "FALSE"
+                                  | s => s,
                                 ")"]
 
         val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",

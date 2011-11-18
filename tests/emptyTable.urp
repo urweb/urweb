@@ -1,0 +1,4 @@
+database dbname=test
+sql emptyTable.sql
+
+emptyTable
