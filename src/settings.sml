@@ -204,7 +204,8 @@ fun isServerOnly x = S.member (!server, x)
 val basisM = foldl (fn ((k, v : string), m) => M.insert (m, ("Basis", k), v)) M.empty
 
 val jsFuncsBase = basisM [("alert", "alert"),
-                          ("stringToTime","stringToTime"),
+                          ("stringToTime", "stringToTime"),
+                          ("stringToTime_error", "stringToTime_error"),
                           ("confirm", "confrm"),
                           ("get_client_source", "sg"),
                           ("current", "scur"),
