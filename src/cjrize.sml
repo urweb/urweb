@@ -237,106 +237,111 @@ fun cifyPat ((p, loc), sm) =
         end
 
 fun cifyExp (eAll as (e, loc), sm) =
-    case e of
-        L.EPrim p => ((L'.EPrim p, loc), sm)
-      | L.ERel n => ((L'.ERel n, loc), sm)
-      | L.ENamed n => ((L'.ENamed n, loc), sm)
-      | L.ECon (dk, pc, eo) =>
-        let
-            val (eo, sm) =
-                case eo of
-                    NONE => (NONE, sm)
-                  | SOME e =>
-                    let
-                        val (e, sm) = cifyExp (e, sm)
-                    in
-                        (SOME e, sm)
-                    end
-            val (pc, sm) = cifyPatCon (pc, sm)
-        in
-            ((L'.ECon (dk, pc, eo), loc), sm)
-        end
-      | L.ENone t =>
-        let
-            val (t, sm) = cifyTyp (t, sm)
-        in
-            ((L'.ENone t, loc), sm)
-        end
-      | L.ESome (t, e) =>
-        let
-            val (t, sm) = cifyTyp (t, sm)
-            val (e, sm) = cifyExp (e, sm)
-        in
-            ((L'.ESome (t, e), loc), sm)
-        end
-      | L.EFfi mx => ((L'.EFfi mx, loc), sm)
-      | L.EFfiApp (m, x, es) =>
-        let
-            val (es, sm) = ListUtil.foldlMap cifyExp sm es
-        in
-            ((L'.EFfiApp (m, x, es), loc), sm)
-        end
-      | L.EApp (e1, e2) =>
-        let
-            fun unravel (e, args) =
-                case e of
-                    (L.EApp (e1, e2), _) => unravel (e1, e2 :: args)
-                  | _ => (e, args)
+    let
+        fun fail msg =
+            (ErrorMsg.errorAt loc msg;
+             ((L'.EPrim (Prim.String ""), loc), sm))
+    in
+        case e of
+            L.EPrim p => ((L'.EPrim p, loc), sm)
+          | L.ERel n => ((L'.ERel n, loc), sm)
+          | L.ENamed n => ((L'.ENamed n, loc), sm)
+          | L.ECon (dk, pc, eo) =>
+            let
+                val (eo, sm) =
+                    case eo of
+                        NONE => (NONE, sm)
+                      | SOME e =>
+                        let
+                            val (e, sm) = cifyExp (e, sm)
+                        in
+                            (SOME e, sm)
+                        end
+                val (pc, sm) = cifyPatCon (pc, sm)
+            in
+                ((L'.ECon (dk, pc, eo), loc), sm)
+            end
+          | L.ENone t =>
+            let
+                val (t, sm) = cifyTyp (t, sm)
+            in
+                ((L'.ENone t, loc), sm)
+            end
+          | L.ESome (t, e) =>
+            let
+                val (t, sm) = cifyTyp (t, sm)
+                val (e, sm) = cifyExp (e, sm)
+            in
+                ((L'.ESome (t, e), loc), sm)
+            end
+          | L.EFfi mx => ((L'.EFfi mx, loc), sm)
+          | L.EFfiApp (m, x, es) =>
+            let
+                val (es, sm) = ListUtil.foldlMap cifyExp sm es
+            in
+                ((L'.EFfiApp (m, x, es), loc), sm)
+            end
+          | L.EApp (e1, e2) =>
+            let
+                fun unravel (e, args) =
+                    case e of
+                        (L.EApp (e1, e2), _) => unravel (e1, e2 :: args)
+                      | _ => (e, args)
 
-            val (f, es) = unravel (e1, [e2])
+                val (f, es) = unravel (e1, [e2])
 
-            val (f, sm) = cifyExp (f, sm)
-            val (es, sm) = ListUtil.foldlMap cifyExp sm es
-        in
-            ((L'.EApp (f, es), loc), sm)
-        end
-      | L.EAbs _ => (ErrorMsg.errorAt loc "Anonymous function remains at code generation";
-                     Print.prefaces' [("Function", MonoPrint.p_exp MonoEnv.empty eAll)];
-                     (dummye, sm))
+                val (f, sm) = cifyExp (f, sm)
+                val (es, sm) = ListUtil.foldlMap cifyExp sm es
+            in
+                ((L'.EApp (f, es), loc), sm)
+            end
+          | L.EAbs _ => (ErrorMsg.errorAt loc "Anonymous function remains at code generation";
+                         Print.prefaces' [("Function", MonoPrint.p_exp MonoEnv.empty eAll)];
+                         (dummye, sm))
 
-      | L.EUnop (s, e1) =>
-        let
-            val (e1, sm) = cifyExp (e1, sm)
-        in
-            ((L'.EUnop (s, e1), loc), sm)
-        end
-      | L.EBinop (_, s, e1, e2) =>
-        let
-            val (e1, sm) = cifyExp (e1, sm)
-            val (e2, sm) = cifyExp (e2, sm)
-        in
-            ((L'.EBinop (s, e1, e2), loc), sm)
-        end
+          | L.EUnop (s, e1) =>
+            let
+                val (e1, sm) = cifyExp (e1, sm)
+            in
+                ((L'.EUnop (s, e1), loc), sm)
+            end
+          | L.EBinop (_, s, e1, e2) =>
+            let
+                val (e1, sm) = cifyExp (e1, sm)
+                val (e2, sm) = cifyExp (e2, sm)
+            in
+                ((L'.EBinop (s, e1, e2), loc), sm)
+            end
 
-      | L.ERecord xes =>
-        let
-            val old_xts = map (fn (x, _, t) => (x, t)) xes
+          | L.ERecord xes =>
+            let
+                val old_xts = map (fn (x, _, t) => (x, t)) xes
 
-            val (xets, sm) = ListUtil.foldlMap (fn ((x, e, t), sm) =>
-                                                  let
-                                                      val (e, sm) = cifyExp (e, sm)
-                                                      val (t, sm) = cifyTyp (t, sm)
-                                                  in
-                                                      ((x, e, t), sm)
-                                                  end)
-                            sm xes
+                val (xets, sm) = ListUtil.foldlMap (fn ((x, e, t), sm) =>
+                                                       let
+                                                           val (e, sm) = cifyExp (e, sm)
+                                                           val (t, sm) = cifyTyp (t, sm)
+                                                       in
+                                                           ((x, e, t), sm)
+                                                       end)
+                                                   sm xes
 
-            val (sm, si) = Sm.find (sm, old_xts, map (fn (x, _, t) => (x, t)) xets)
+                val (sm, si) = Sm.find (sm, old_xts, map (fn (x, _, t) => (x, t)) xets)
 
-            val xes = map (fn (x, e, _) => (x, e)) xets
-            val xes = ListMergeSort.sort (fn ((x1, _), (x2, _)) => String.compare (x1, x2) = GREATER) xes
-        in
-            ((L'.ERecord (si, xes), loc), sm)
-        end
-      | L.EField (e, x) =>
-        let
-            val (e, sm) = cifyExp (e, sm)
-        in
-            ((L'.EField (e, x), loc), sm)
-        end
+                val xes = map (fn (x, e, _) => (x, e)) xets
+                val xes = ListMergeSort.sort (fn ((x1, _), (x2, _)) => String.compare (x1, x2) = GREATER) xes
+            in
+                ((L'.ERecord (si, xes), loc), sm)
+            end
+          | L.EField (e, x) =>
+            let
+                val (e, sm) = cifyExp (e, sm)
+            in
+                ((L'.EField (e, x), loc), sm)
+            end
 
-      | L.ECase (e, pes, {disc, result}) =>
-        let
+          | L.ECase (e, pes, {disc, result}) =>
+            let
                 val (e, sm) = cifyExp (e, sm)
                 val (pes, sm) = ListUtil.foldlMap
                                     (fn ((p, e), sm) =>
@@ -352,148 +357,149 @@ fun cifyExp (eAll as (e, loc), sm) =
                 ((L'.ECase (e, pes, {disc = disc, result = result}), loc), sm)
             end
 
-      | L.EError (e, t) =>
-        let
-            val (e, sm) = cifyExp (e, sm)
-            val (t, sm) = cifyTyp (t, sm)
-        in
-            ((L'.EError (e, t), loc), sm)
-        end
-      | L.EReturnBlob {blob, mimeType, t} =>
-        let
-            val (blob, sm) = cifyExp (blob, sm)
-            val (mimeType, sm) = cifyExp (mimeType, sm)
-            val (t, sm) = cifyTyp (t, sm)
-        in
-            ((L'.EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), sm)
-        end
-      | L.ERedirect (e, t) =>
-        let
-            val (e, sm) = cifyExp (e, sm)
-            val (t, sm) = cifyTyp (t, sm)
-        in
-            ((L'.ERedirect (e, t), loc), sm)
-        end
+          | L.EError (e, t) =>
+            let
+                val (e, sm) = cifyExp (e, sm)
+                val (t, sm) = cifyTyp (t, sm)
+            in
+                ((L'.EError (e, t), loc), sm)
+            end
+          | L.EReturnBlob {blob, mimeType, t} =>
+            let
+                val (blob, sm) = cifyExp (blob, sm)
+                val (mimeType, sm) = cifyExp (mimeType, sm)
+                val (t, sm) = cifyTyp (t, sm)
+            in
+                ((L'.EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), sm)
+            end
+          | L.ERedirect (e, t) =>
+            let
+                val (e, sm) = cifyExp (e, sm)
+                val (t, sm) = cifyTyp (t, sm)
+            in
+                ((L'.ERedirect (e, t), loc), sm)
+            end
 
-      | L.EStrcat (e1, e2) =>
-        let
-            val (e1, sm) = cifyExp (e1, sm)
-            val (e2, sm) = cifyExp (e2, sm)
-        in
-            ((L'.EFfiApp ("Basis", "strcat", [e1, e2]), loc), sm)
-        end
+          | L.EStrcat (e1, e2) =>
+            let
+                val (e1, sm) = cifyExp (e1, sm)
+                val (e2, sm) = cifyExp (e2, sm)
+            in
+                ((L'.EFfiApp ("Basis", "strcat", [e1, e2]), loc), sm)
+            end
 
-      | L.EWrite e =>
-        let
-            val (e, sm) = cifyExp (e, sm)
-        in
-            ((L'.EWrite e, loc), sm)
-        end
+          | L.EWrite e =>
+            let
+                val (e, sm) = cifyExp (e, sm)
+            in
+                ((L'.EWrite e, loc), sm)
+            end
 
-      | L.ESeq (e1, e2) =>
-        let
-            val (e1, sm) = cifyExp (e1, sm)
-            val (e2, sm) = cifyExp (e2, sm)
-        in
-            ((L'.ESeq (e1, e2), loc), sm)
-        end
+          | L.ESeq (e1, e2) =>
+            let
+                val (e1, sm) = cifyExp (e1, sm)
+                val (e2, sm) = cifyExp (e2, sm)
+            in
+                ((L'.ESeq (e1, e2), loc), sm)
+            end
 
-      | L.ELet (x, t, e1, e2) =>
-        let
-            val (t, sm) = cifyTyp (t, sm)
-            val (e1, sm) = cifyExp (e1, sm)
-            val (e2, sm) = cifyExp (e2, sm)
-        in
-            ((L'.ELet (x, t, e1, e2), loc), sm)
-        end
+          | L.ELet (x, t, e1, e2) =>
+            let
+                val (t, sm) = cifyTyp (t, sm)
+                val (e1, sm) = cifyExp (e1, sm)
+                val (e2, sm) = cifyExp (e2, sm)
+            in
+                ((L'.ELet (x, t, e1, e2), loc), sm)
+            end
 
-      | L.EClosure _ => (ErrorMsg.errorAt loc "Nested closure remains in code generation";
-                         (dummye, sm))
+          | L.EClosure _ => (ErrorMsg.errorAt loc "Nested closure remains in code generation";
+                             (dummye, sm))
 
-      | L.EQuery {exps, tables, state, query, body, initial} =>
-        let
-            val (exps', sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
-                                                    let
-                                                        val (t, sm) = cifyTyp (t, sm)
-                                                    in
-                                                        ((x, t), sm)
-                                                    end) sm exps
-            val (tables', sm) = ListUtil.foldlMap (fn ((x, xts), sm) =>
-                                                      let
-                                                          val (xts, sm) = ListUtil.foldlMap
-                                                                              (fn ((x, t), sm) =>
-                                                                                  let
-                                                                                      val (t, sm) = cifyTyp (t, sm)
-                                                                                  in
-                                                                                      ((x, t), sm)
-                                                                                  end) sm xts
-                                                      in
-                                                          ((x, xts), sm)
-                                                      end) sm tables
-
-            val row = exps @ map (fn (x, xts) => (x, (L.TRecord xts, loc))) tables
-            val row = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) row
-
-            val (tableRows, sm) = ListUtil.foldlMap (fn (((x, xts), (_, xts')), sm) =>
+          | L.EQuery {exps, tables, state, query, body, initial} =>
+            let
+                val (exps', sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
                                                         let
-                                                            val (sm, rnum) = Sm.find (sm, xts, xts')
+                                                            val (t, sm) = cifyTyp (t, sm)
                                                         in
-                                                            ((x, rnum), sm)
-                                                        end)
-                                                    sm (ListPair.zip (tables, tables'))
-            val row' = exps' @ map (fn (x, n) => (x, (L'.TRecord n, loc))) tableRows
-            val row' = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) row'
+                                                            ((x, t), sm)
+                                                        end) sm exps
+                val (tables', sm) = ListUtil.foldlMap (fn ((x, xts), sm) =>
+                                                          let
+                                                              val (xts, sm) = ListUtil.foldlMap
+                                                                                  (fn ((x, t), sm) =>
+                                                                                      let
+                                                                                          val (t, sm) = cifyTyp (t, sm)
+                                                                                      in
+                                                                                          ((x, t), sm)
+                                                                                      end) sm xts
+                                                          in
+                                                              ((x, xts), sm)
+                                                          end) sm tables
 
-            val (sm, rnum) = Sm.find (sm, row, row')
+                val row = exps @ map (fn (x, xts) => (x, (L.TRecord xts, loc))) tables
+                val row = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) row
 
-            val (state, sm) = cifyTyp (state, sm)
-            val (query, sm) = cifyExp (query, sm)
-            val (body, sm) = cifyExp (body, sm)
-            val (initial, sm) = cifyExp (initial, sm)
-        in
-            ((L'.EQuery {exps = exps', tables = tables', rnum = rnum, state = state,
-                         query = query, body = body, initial = initial, prepared = NONE}, loc), sm)
-        end
+                val (tableRows, sm) = ListUtil.foldlMap (fn (((x, xts), (_, xts')), sm) =>
+                                                            let
+                                                                val (sm, rnum) = Sm.find (sm, xts, xts')
+                                                            in
+                                                                ((x, rnum), sm)
+                                                            end)
+                                                        sm (ListPair.zip (tables, tables'))
+                val row' = exps' @ map (fn (x, n) => (x, (L'.TRecord n, loc))) tableRows
+                val row' = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) row'
 
-      | L.EDml (e, mode) =>
-        let
-            val (e, sm) = cifyExp (e, sm)
-        in
-            ((L'.EDml {dml = e, prepared = NONE, mode = mode}, loc), sm)
-        end
+                val (sm, rnum) = Sm.find (sm, row, row')
 
-      | L.ENextval e =>
-        let
-            val (e, sm) = cifyExp (e, sm)
-        in
-            ((L'.ENextval {seq = e, prepared = NONE}, loc), sm)
-        end
-      | L.ESetval (e1, e2) =>
-        let
-            val (e1, sm) = cifyExp (e1, sm)
-            val (e2, sm) = cifyExp (e2, sm)
-        in
-            ((L'.ESetval {seq = e1, count = e2}, loc), sm)
-        end
+                val (state, sm) = cifyTyp (state, sm)
+                val (query, sm) = cifyExp (query, sm)
+                val (body, sm) = cifyExp (body, sm)
+                val (initial, sm) = cifyExp (initial, sm)
+            in
+                ((L'.EQuery {exps = exps', tables = tables', rnum = rnum, state = state,
+                             query = query, body = body, initial = initial, prepared = NONE}, loc), sm)
+            end
 
-      | L.EUnurlify (e, t, b) =>
-        let
-            val (e, sm) = cifyExp (e, sm)
-            val (t, sm) = cifyTyp (t, sm)
-        in
-            ((L'.EUnurlify (e, t, b), loc), sm)
-        end
+          | L.EDml (e, mode) =>
+            let
+                val (e, sm) = cifyExp (e, sm)
+            in
+                ((L'.EDml {dml = e, prepared = NONE, mode = mode}, loc), sm)
+            end
 
-      | L.EJavaScript _ => raise Fail "Cjrize: EJavaScript remains"
+          | L.ENextval e =>
+            let
+                val (e, sm) = cifyExp (e, sm)
+            in
+                ((L'.ENextval {seq = e, prepared = NONE}, loc), sm)
+            end
+          | L.ESetval (e1, e2) =>
+            let
+                val (e1, sm) = cifyExp (e1, sm)
+                val (e2, sm) = cifyExp (e2, sm)
+            in
+                ((L'.ESetval {seq = e1, count = e2}, loc), sm)
+            end
 
-      | L.ESignalReturn _ => raise Fail "Cjrize: ESignalReturn remains"
-      | L.ESignalBind _ => raise Fail "Cjrize: ESignalBind remains"
-      | L.ESignalSource _ => raise Fail "Cjrize: ESignalSource remains"
+          | L.EUnurlify (e, t, b) =>
+            let
+                val (e, sm) = cifyExp (e, sm)
+                val (t, sm) = cifyTyp (t, sm)
+            in
+                ((L'.EUnurlify (e, t, b), loc), sm)
+            end
 
-      | L.EServerCall _ => raise Fail "Cjrize EServerCall"
-      | L.ERecv _ => raise Fail "Cjrize ERecv"
-      | L.ESleep _ => raise Fail "Cjrize ESleep"
-      | L.ESpawn _ => raise Fail "Cjrize ESpawn"
+          | L.EJavaScript _ => fail "Uncompilable JavaScript remains"
+
+          | L.ESignalReturn _ => fail "Signal monad 'return' remains in server-side code"
+          | L.ESignalBind _ => fail "Signal monad 'bind' remains in server-side code"
+          | L.ESignalSource _ => fail "Signal monad 'source' remains in server-side code"
+
+          | L.EServerCall _ => fail "RPC in server-side code"
+          | L.ERecv _ => fail "Message receive in server-side code"
+          | L.ESleep _ => fail "Sleep in server-side code"
+          | L.ESpawn _ => fail "Thread spawn in server-side code"
+    end
 
 fun cifyDecl ((d, loc), sm) =
     case d of
