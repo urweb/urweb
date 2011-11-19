@@ -244,7 +244,7 @@ fun tnamesOf (e, _) =
  | TRUE | FALSE | CAND | OR | NOT
  | COUNT | AVG | SUM | MIN | MAX
  | ASC | DESC
- | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS
+ | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS | COALESCE
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
  | CCONSTRAINT | UNIQUE | CHECK | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
@@ -1880,6 +1880,14 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                             e), loc)
                                          in
                                              (EApp (e, sqlexp), loc)
+                                         end)
+       | COALESCE LPAREN sqlexp COMMA sqlexp RPAREN
+                                        (let
+                                             val loc = s (COALESCEright, sqlexp2right)
+                                             val e = (EVar (["Basis"], "sql_coalesce", Infer), loc)
+                                             val e = (EApp (e, sqlexp1), loc)
+                                         in
+                                             (EApp (e, sqlexp2), loc)
                                          end)
        | fname LPAREN sqlexp RPAREN     (let
                                              val loc = s (fnameleft, RPARENright)

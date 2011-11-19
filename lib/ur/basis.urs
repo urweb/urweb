@@ -474,6 +474,12 @@ val sql_is_null : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                   -> sql_exp tables agg exps (option t)
                   -> sql_exp tables agg exps bool
 
+val sql_coalesce : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                  -> t ::: Type
+                  -> sql_exp tables agg exps (option t)
+                  -> sql_exp tables agg exps t
+                  -> sql_exp tables agg exps t
+
 val sql_if_then_else : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                        -> t ::: Type
                        -> sql_exp tables agg exps bool

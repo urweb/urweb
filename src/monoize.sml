@@ -2808,6 +2808,28 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
+                (L.EFfi ("Basis", "sql_coalesce"), _), _),
+                _), _),
+               _), _),
+              _), _)) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+            in
+                ((L'.EAbs ("x1", s, (L'.TFun (s, s), loc),
+                           (L'.EAbs ("x1", s, s,
+                                     strcat [sc "COALESCE(",
+                                             (L'.ERel 1, loc),
+                                             sc ",",
+                                             (L'.ERel 0, loc),
+                                             sc ")"]), loc)), loc),
+                 fm)
+            end
+
+          | (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
                 (L.EFfi ("Basis", "sql_if_then_else"), _), _),
                 _), _),
                _), _),

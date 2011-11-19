@@ -499,6 +499,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "DELETE"    => (Tokens.DELETE (pos yypos, pos yypos + size yytext));
 <INITIAL> "NULL"      => (Tokens.NULL (pos yypos, pos yypos + size yytext));
 <INITIAL> "IS"        => (Tokens.IS (pos yypos, pos yypos + size yytext));
+<INITIAL> "COALESCE"  => (Tokens.COALESCE (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "CONSTRAINT"=> (Tokens.CCONSTRAINT (pos yypos, pos yypos + size yytext));
 <INITIAL> "UNIQUE"    => (Tokens.UNIQUE (pos yypos, pos yypos + size yytext));

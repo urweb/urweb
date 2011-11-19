@@ -1709,6 +1709,15 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; (\mt{option} \; \mt{t}) \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{bool}
 \end{array}$$
 
+As another way of dealing with null values, there is also a restricted form of the standard \cd{COALESCE} function.
+$$\begin{array}{l}
+  \mt{val} \; \mt{sql\_coalesce} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; (\mt{option} \; \mt{t}) \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+\end{array}$$
+
 We have generic nullary, unary, and binary operators.
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_nfunc} :: \mt{Type} \to \mt{Type} \\
@@ -2140,6 +2149,7 @@ $$\begin{array}{rrcll}
   &&& \ell & \textrm{primitive type literals} \\
   &&& \mt{NULL} & \textrm{null value (injection of $\mt{None}$)} \\
   &&& E \; \mt{IS} \; \mt{NULL} & \textrm{nullness test} \\
+  &&& \mt{COALESCE}(E, E) & \textrm{take first non-null value} \\
   &&& n & \textrm{nullary operators} \\
   &&& u \; E & \textrm{unary operators} \\
   &&& E \; b \; E & \textrm{binary operators} \\
