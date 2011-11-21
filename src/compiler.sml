@@ -497,7 +497,8 @@ fun parseUrp' accLibs fname =
                             in
                                 readSources acc
                             end
-                          | _ => rev acc
+                          | OnlyComment => readSources acc
+                          | EndOfFile => rev acc
 
                     val prefix = ref (case Settings.getUrlPrefix () of "/" => NONE | s => SOME s)
                     val database = ref (Settings.getDbstring ())
