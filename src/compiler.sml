@@ -433,7 +433,8 @@ fun parseUrp' accLibs fname =
                         case inputCommentableLine inf of
                             Content s => s = "debug" orelse s = "profile"
                                          orelse CharVector.exists (fn ch => ch = #" " orelse ch = #"\t") s orelse hasSpaceLine ()
-                          | _ => false
+                          | EndOfFile => false
+                          | OnlyComment => hasSpaceLine ()
 
                     val hasBlankLine = hasSpaceLine ()
 
