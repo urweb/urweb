@@ -523,6 +523,8 @@ val sql_le : t ::: Type -> sql_binary t t bool
 val sql_gt : t ::: Type -> sql_binary t t bool
 val sql_ge : t ::: Type -> sql_binary t t bool
 
+val sql_like : sql_binary string string bool
+
 val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps int
 

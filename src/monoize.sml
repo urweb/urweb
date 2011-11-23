@@ -2470,6 +2470,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfi ("Basis", "sql_mod") =>
             ((L'.EPrim (Prim.String "%"), loc), fm)
 
+          | L.EFfi ("Basis", "sql_like") =>
+            ((L'.EPrim (Prim.String "LIKE"), loc), fm)
+
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (

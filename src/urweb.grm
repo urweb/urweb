@@ -244,7 +244,7 @@ fun tnamesOf (e, _) =
  | TRUE | FALSE | CAND | OR | NOT
  | COUNT | AVG | SUM | MIN | MAX
  | ASC | DESC
- | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS | COALESCE
+ | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS | COALESCE | LIKE
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
  | CCONSTRAINT | UNIQUE | CHECK | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
@@ -1833,6 +1833,8 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
 
        | sqlexp CAND sqlexp             (sql_binary ("and", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp OR sqlexp               (sql_binary ("or", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+
+       | sqlexp LIKE sqlexp             (sql_binary ("like", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
 
        | NOT sqlexp                     (sql_unary ("not", sqlexp, s (NOTleft, sqlexpright)))
        | MINUS sqlexp                   (sql_unary ("neg", sqlexp, s (MINUSleft, sqlexpright)))
