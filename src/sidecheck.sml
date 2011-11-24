@@ -50,7 +50,16 @@ fun check ds =
     in
         FS.app (fn k as (k1, k2) =>
                    if Settings.isClientOnly k then
-                       E.error ("Server-side code uses client-side-only identifier \"" ^ k1 ^ "." ^ k2 ^ "\"")
+                       let
+                           val k2 = case k1 of
+                                        "Basis" =>
+                                        (case k2 of
+                                             "get_client_source" => "get"
+                                           | _ => k2)
+                                      | _ => k2
+                       in
+                           E.error ("Server-side code uses client-side-only identifier \"" ^ k1 ^ "." ^ k2 ^ "\"")
+                       end
                    else
                        ()) fs;
         ds
