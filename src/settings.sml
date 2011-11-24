@@ -206,6 +206,7 @@ val basisM = foldl (fn ((k, v : string), m) => M.insert (m, ("Basis", k), v)) M.
 val jsFuncsBase = basisM [("alert", "alert"),
                           ("stringToTime", "stringToTime"),
                           ("stringToTime_error", "stringToTime_error"),
+                          ("timef", "strftime"),
                           ("confirm", "confrm"),
                           ("get_client_source", "sg"),
                           ("current", "scur"),
