@@ -2037,12 +2037,13 @@ $$\begin{array}{l}
 
 Only source creation and setting are supported server-side, as a convenience to help in setting up a page, where you may wish to allocate many sources that will be referenced through the page.  All server-side storage of values inside sources uses string serializations of values, while client-side storage uses normal JavaScript values.
 
-Pure functions over arbitrary numbers of sources are represented in a monad of \emph{signals}, which may only be used in client-side code.  This is presented to the programmer in the form of a monad $\mt{signal}$, each of whose values represents (conceptually) some pure function over all sources that may be allocated in the course of program execution.  A monad operation $\mt{signal}$ denotes the identity function over a particular source.  By using $\mt{signal}$ on a source, you implicitly subscribe to change notifications for that source.  That is, your signal will automatically be recomputed as that source changes.  The usual monad operators make it possible to build up complex signals that depend on multiple sources; automatic updating upon source-value changes still happens automatically.
+Pure functions over arbitrary numbers of sources are represented in a monad of \emph{signals}, which may only be used in client-side code.  This is presented to the programmer in the form of a monad $\mt{signal}$, each of whose values represents (conceptually) some pure function over all sources that may be allocated in the course of program execution.  A monad operation $\mt{signal}$ denotes the identity function over a particular source.  By using $\mt{signal}$ on a source, you implicitly subscribe to change notifications for that source.  That is, your signal will automatically be recomputed as that source changes.  The usual monad operators make it possible to build up complex signals that depend on multiple sources; automatic updating upon source-value changes still happens automatically.  There is also an operator for computing a signal's current value within a transaction.
 
 $$\begin{array}{l}
   \mt{con} \; \mt{signal} :: \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{signal\_monad} : \mt{monad} \; \mt{signal} \\
-  \mt{val} \; \mt{signal} : \mt{t} ::: \mt{Type} \to \mt{source} \; \mt{t} \to \mt{signal} \; \mt{t}
+  \mt{val} \; \mt{signal} : \mt{t} ::: \mt{Type} \to \mt{source} \; \mt{t} \to \mt{signal} \; \mt{t} \\
+  \mt{val} \; \mt{current} : \mt{t} ::: \mt{Type} \to \mt{signal} \; \mt{t} \to \mt{transaction} \; \mt{t}
 \end{array}$$
 
 A reactive portion of an HTML page is injected with a $\mt{dyn}$ tag, which has a signal-valued attribute $\mt{Signal}$.
