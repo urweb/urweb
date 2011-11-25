@@ -119,7 +119,7 @@ fun make' {prefix, dirname, guided} =
             protocol = mergeWith #2 (#protocol combined, #protocol urp),
             dbms = mergeWith #2 (#dbms combined, #dbms urp),
             sigFile = mergeWith #2 (#sigFile combined, #sigFile urp),
-            safeGets = [],
+            safeGets = #safeGets combined @ #safeGets urp,
             onError = NONE,
             minHeap = 0
         }
@@ -426,6 +426,10 @@ fun make' {prefix, dirname, guided} =
                          TextIO.output (outf, "\n"))) (#rewrites combined);
                 filters "url" (#filterUrl combined);
                 filters "mime" (#filterMime combined);
+                app (fn path =>
+                        (TextIO.output (outf, "safeGet ");
+                         TextIO.output (outf, path);
+                         TextIO.output (outf, "\n"))) (#safeGets combined);
                 TextIO.output (outf, "\n");
 
                 app (fn s =>
