@@ -80,6 +80,8 @@ structure Exp : sig
                  exp : 'context * Mono.exp' * 'state -> 'state,
                  bind : 'context * binder -> 'context}
                 -> 'context -> 'state -> Mono.exp -> 'state
+
+    val appLoc : (Mono.exp -> unit) -> Mono.exp -> unit
 end
 
 structure Decl : sig
@@ -143,6 +145,8 @@ structure File : sig
                -> 'state -> Mono.file -> 'state
 
     val maxName : Mono.file -> int
+
+    val appLoc : (Mono.exp -> unit) -> Mono.file -> unit
 end
 
 end

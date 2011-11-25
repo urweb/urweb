@@ -31,38 +31,29 @@ open Mono
 
 structure E = ErrorMsg
 
-structure FS = BinarySetFn(struct
-                           type ord_key = string * string
-                           fun compare ((x1, y1), (x2, y2)) = Order.join (String.compare (x1, x2),
-                                                                          fn () => String.compare (y1, y2))
-                           end)
-
 fun check ds =
-    let
-        val fs = MonoUtil.File.fold {typ = fn (_, fs) => fs,
-                                     exp = fn (e, fs) =>
-                                              case e of
-                                                  EFfi k => FS.add (fs, k)
-                                                | EFfiApp (k1, k2, _) => FS.add (fs, (k1, k2))
-                                                | _ => fs,
-                                     decl = fn (_, fs) => fs}
-                                    FS.empty ds
-    in
-        FS.app (fn k as (k1, k2) =>
-                   if Settings.isClientOnly k then
-                       let
-                           val k2 = case k1 of
-                                        "Basis" =>
-                                        (case k2 of
-                                             "get_client_source" => "get"
-                                           | _ => k2)
-                                      | _ => k2
-                       in
-                           E.error ("Server-side code uses client-side-only identifier \"" ^ k1 ^ "." ^ k2 ^ "\"")
-                       end
-                   else
-                       ()) fs;
-        ds
-    end
+    (MonoUtil.File.appLoc (fn (e, loc) =>
+                              let
+                                  fun error (k as (k1, k2)) =
+                                      if Settings.isClientOnly k then
+                                          let
+                                              val k2 = case k1 of
+                                                           "Basis" =>
+                                                           (case k2 of
+                                                                "get_client_source" => "get"
+                                                              | _ => k2)
+                                                         | _ => k2
+                                          in
+                                              E.errorAt loc ("Server-side code uses client-side-only identifier \"" ^ k1 ^ "." ^ k2 ^ "\"")
+                                          end
+                                      else
+                                          ()
+                              in
+                                  case e of
+                                      EFfi k => error k
+                                    | EFfiApp (k1, k2, _) => error (k1, k2)
+                                    | _ => ()
+                              end) ds;
+     ds)
 
 end

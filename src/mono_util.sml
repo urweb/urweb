@@ -467,6 +467,51 @@ fun foldB {typ, exp, bind} ctx s e =
         S.Continue (_, s) => s
       | S.Return _ => raise Fail "MonoUtil.Exp.foldB: Impossible"
 
+fun appLoc f =
+    let
+        fun appl e =
+            (f e;
+             case #1 e of
+                 EPrim _ => ()
+               | ERel _ => ()
+               | ENamed _ => ()
+               | ECon (_, _, eo) => Option.app appl eo
+               | ENone _ => ()
+               | ESome (_, e) => appl e
+               | EFfi _ => ()
+               | EFfiApp (_, _, es) => app appl es
+               | EApp (e1, e2) => (appl e1; appl e2)
+               | EAbs (_, _, _, e1) => appl e1
+               | EUnop (_, e1) => appl e1
+               | EBinop (_, _, e1, e2) => (appl e1; appl e2)
+               | ERecord xets => app (appl o #2) xets
+               | EField (e1, _) => appl e1
+               | ECase (e1, pes, _) => (appl e1; app (appl o #2) pes)
+               | EStrcat (e1, e2) => (appl e1; appl e2)
+               | EError (e1, _) => appl e1
+               | EReturnBlob {blob = e1, mimeType = e2, ...} => (appl e1; appl e2)
+               | ERedirect (e1, _) => appl e1
+               | EWrite e1 => appl e1
+               | ESeq (e1, e2) => (appl e1; appl e2)
+               | ELet (_, _, e1, e2) => (appl e1; appl e2)
+               | EClosure (_, es) => app appl es
+               | EQuery {query = e1, body = e2, initial = e3, ...} => (appl e1; appl e2; appl e3)
+               | EDml (e1, _) => appl e1
+               | ENextval e1 => appl e1
+               | ESetval (e1, e2) => (appl e1; appl e2)
+               | EUnurlify (e1, _, _) => appl e1
+               | EJavaScript (_, e1) => appl e1
+               | ESignalReturn e1 => appl e1
+               | ESignalBind (e1, e2) => (appl e1; appl e2)
+               | ESignalSource e1 => appl e1
+               | EServerCall (e1, _, _) => appl e1
+               | ERecv (e1, _) => appl e1
+               | ESleep e1 => appl e1
+               | ESpawn e1 => appl e1)
+    in
+        appl
+    end
+
 end
 
 structure Decl = struct
@@ -702,6 +747,38 @@ val maxName = foldl (fn ((d, _) : decl, count) =>
                           | DTask _ => count
                           | DPolicy _ => count
                           | DOnError _ => count) 0
+
+fun appLoc f =
+    let
+        val eal = Exp.appLoc f
+
+        fun appl (d : decl) =
+            case #1 d of
+                DDatatype _ => ()
+              | DVal (_, _, _, e1, _) => eal e1
+              | DValRec vis => app (eal o #4) vis
+              | DExport _ => ()
+              | DTable (_, _, e1, e2) => (eal e1; eal e2)
+              | DSequence _ => ()
+              | DView (_, _, e1) => eal e1
+              | DDatabase _ => ()
+              | DJavaScript _ => ()
+              | DCookie _ => ()
+              | DStyle _ => ()
+              | DTask (e1, e2) => (eal e1; eal e2)
+              | DPolicy pol => applPolicy pol
+              | DOnError _ => ()
+
+        and applPolicy p =
+            case p of
+                PolClient e1 => eal e1
+              | PolInsert e1 => eal e1
+              | PolDelete e1 => eal e1
+              | PolUpdate e1 => eal e1
+              | PolSequence e1 => eal e1
+    in
+        app appl
+    end
 
 end
 
