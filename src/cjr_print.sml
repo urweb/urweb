@@ -1090,7 +1090,13 @@ fun urlify env t =
                                             box [string "if (it0) {",
                                                  newline,
                                                  if isUnboxable t then
-                                                     urlify' 0 t
+                                                     box [string "uw_write(ctx, \"",
+                                                          string has_arg,
+                                                          string "/\");",
+                                                          newline,
+                                                          urlify' 0 t,
+                                                          string ";",
+                                                          newline]
                                                  else
                                                      box [p_typ env t,
                                                           space,
