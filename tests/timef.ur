@@ -1,5 +1,5 @@
 fun main () : transaction page =
-    date <- source "";
+    date <- source "2011/11/26 10:08:42";
     format <- source "";
     return <xml><body>
       <ctextbox source={date}/>
