@@ -1,4 +1,18 @@
 ========
+20111127
+========
+
+- Improvements to type inference and error messages
+- New Basis members: ceil, float, null, round, trunc
+- New SQL expression forms: 'IF..THEN..ELSE', 'COALESCE', and 'LIKE'
+- Support for the full set of HTML character entities
+- Client-side versions of some time-related functions
+- New URWEB_PG_CON environment variable
+- Allow arguments for 'con' signature items, not just declarations
+- Bug fixes and performance improvements
+- Tweaks for idiosyncrasies of OS X (like deprecated OpenSSL)
+
+========
 20110917
 ========
 
