@@ -1,4 +1,4 @@
-(* Copyright (c) 2009, Adam Chlipala
+(* Copyright (c) 2009, 2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-Require Import Eqdep.
+Require Import Eqdep_dec.
 
 Require Import Axioms.
 Require Import Syntax.
@@ -54,8 +54,8 @@ Definition disjoint T (r1 r2 : row T) :=
               | _, _ => True
             end.
 
-Fixpoint cDen k (c : con kDen k) {struct c} : kDen k :=
-  match c in con _ k return kDen k with
+Fixpoint cDen k (c : con kDen k) : kDen k :=
+  match c with
     | CVar _ x => x
     | Arrow c1 c2 => cDen c1 -> cDen c2
     | Poly _ c1 => forall x, cDen (c1 x)
@@ -147,7 +147,7 @@ Definition tDen (t : con kDen KType) : Set := cDen t.
 Theorem name_eq_dec_refl : forall n, name_eq_dec n n = left _ (refl_equal n).
   intros; destruct (name_eq_dec n n); intuition; [
     match goal with
-      | [ e : _ = _ |- _ ] => rewrite (UIP_refl _ _ e); reflexivity
+      | [ e : _ = _ |- _ ] => rewrite (UIP_dec name_eq_dec e (refl_equal _)); reflexivity
     end
     | elimtype False; tauto
   ].
@@ -168,7 +168,7 @@ Qed.
 
 Implicit Arguments cut_disjoint [v r].
 
-Fixpoint eDen t (e : exp dvar tDen t) {struct e} : tDen t :=
+Fixpoint eDen t (e : exp dvar tDen t) : tDen t :=
   match e in exp _ _ t return tDen t with
     | Var _ x => x
     | App _ _ e1 e2 => (eDen e1) (eDen e2)
@@ -181,21 +181,21 @@ Fixpoint eDen t (e : exp dvar tDen t) {struct e} : tDen t :=
                            | refl_equal => eDen e1
                          end
     | Empty => fun _ => tt
-    | Single c _ e1 => fun n => if name_eq_dec n (cDen c) as B
-      return (match (match (if B then _ else _) with Some _ => if B then _ else _ | None => _ end)
+    | Single c c' e1 => fun n => if name_eq_dec n (cDen c) as B
+      return (match (match (if B then _ else _) with Some _ => _ | None => _ end)
                 with Some _ => _ | None => unit end)
       then eDen e1 else tt
     | Proj c _ _ e1 =>
       match name_eq_dec_refl (cDen c) in _ = B
         return (match (match (if B then _ else _) with
-                         | Some _ => if B then _ else _
+                         | Some _ => _
                          | None => _ end)
         return Set
                   with Some _ => _ | None => _ end) with
         | refl_equal => (eDen e1) (cDen c)
       end
     | Cut c _ c' Hdisj e1 => fun n =>
-      match name_eq_dec n (cDen c) as B return (match (match (if B then Some _ else None) with Some _ => if B then _ else _ | None => (cDen c') n end)
+      match name_eq_dec n (cDen c) as B return (match (match (if B then Some _ else None) with Some _ => _ | None => (cDen c') n end)
                                                   with Some T => T | None => unit end
       -> match (cDen c') n with
            | None => unit
@@ -218,7 +218,7 @@ Fixpoint eDen t (e : exp dvar tDen t) {struct e} : tDen t :=
                                     end
       -> match (match D with
                   | None => (cDen c2) n
-                  | v => v
+                  | Some v => Some v
                 end) with
            | None => unit
            | Some T => T

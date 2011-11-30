@@ -47,6 +47,8 @@ doc/*.html
 .depend
 Makefile.coq
 *.vo
+*.v.d
+*.glob
 
 xml/parse
 xml/entities.sml
@@ -55,7 +57,6 @@ syntax: regexp
 
 ^Makefile$
 ^src/c/Makefile$
-^src/coq/Makefile$
 ^libtool$
 ^config.h$
 ^stamp-h1$

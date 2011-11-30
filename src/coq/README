@@ -1,3 +1,3 @@
 This is a Coq formalization of a simplified version of the Ur programming language.
 
-It has only been tested with Coq version 8.1pl3.
+It has only been tested with Coq version 8.3pl2.
