@@ -44,6 +44,7 @@ datatype select_item =
          Field of con * con
        | Exp of con option * exp
        | Fields of con * con
+       | StarFields of con
 
 datatype select =
          Star
@@ -65,6 +66,11 @@ fun nameString (c, _) =
       | CVar (_, x) => x
       | _ => "?"
 
+datatype tableMode =
+         Unknown
+       | Everything
+       | Selective of con
+
 fun amend_select loc (si, (count, tabs, exps)) =
     case si of
         Field (tx, fx) =>
@@ -73,7 +79,15 @@ fun amend_select loc (si, (count, tabs, exps)) =
 
             val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
                                                       if eqTnames (tx, tx') then
-                                                          ((tx', (CConcat (c, c'), loc)), true)
+                                                          case c' of
+                                                              Everything =>
+                                                              (ErrorMsg.errorAt loc
+                                                                                "Mixing specific-field and '*' selection of fields from same table";
+                                                               ((tx', c'), found))
+                                                            | Unknown =>
+                                                              ((tx', Selective c), true)
+                                                            | Selective c' =>
+                                                              ((tx', Selective (CConcat (c, c'), loc)), true)
                                                       else
                                                           ((tx', c'), found))
                                                   false tabs
@@ -89,7 +103,15 @@ fun amend_select loc (si, (count, tabs, exps)) =
         let
             val (tabs, found) = ListUtil.foldlMap (fn ((tx', c'), found) =>
                                                       if eqTnames (tx, tx') then
-                                                          ((tx', (CConcat (fs, c'), loc)), true)
+                                                          case c' of
+                                                              Everything =>
+                                                              (ErrorMsg.errorAt loc
+                                                                                "Mixing specific-field and '*' selection of fields from same table";
+                                                               ((tx', c'), found))
+                                                            | Selective c' =>
+                                                              ((tx', Selective (CConcat (fs, c'), loc)), true)
+                                                            | Unknown =>
+                                                              ((tx', Selective fs), true)
                                                       else
                                                           ((tx', c'), found))
                                                   false tabs
@@ -101,6 +123,17 @@ fun amend_select loc (si, (count, tabs, exps)) =
             
             (count, tabs, exps)
         end
+      | StarFields tx =>
+        if List.exists (fn (tx', c') => eqTnames (tx, tx') andalso case c' of
+                                                                       Unknown => false
+                                                                     | _ => true) tabs then
+            (ErrorMsg.errorAt loc "Selection with '*' from table already mentioned in same SELECT clause";
+             (count, tabs, exps))
+        else if List.all (fn (tx', c') => not (eqTnames (tx, tx'))) tabs then
+            (ErrorMsg.errorAt loc "Select of all fields from unbound table";
+             (count, tabs, exps))
+        else
+            (count, map (fn (tx', c') => (tx', if eqTnames (tx, tx') then Everything else c')) tabs, exps)
       | Exp (SOME c, e) => (count, tabs, (c, e) :: exps)
       | Exp (NONE, e) => (count+1, tabs, ((CName (Int.toString count), loc), e) :: exps)
 
@@ -1560,18 +1593,31 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                                               [])
                                                    | Items sis =>
                                                      let
-                                                         val tabs = map (fn nm => (nm, (CRecord [], loc))) (#1 tables)
+                                                         val tabs = map (fn nm => (nm, Unknown)) (#1 tables)
                                                          val (_, tabs, exps) = foldl (amend_select loc)
                                                                                      (1, tabs, []) sis
-                                                         val empties = List.mapPartial (fn (nm, (CRecord [], _)) =>
-                                                                                           SOME nm
-                                                                                         | _ => NONE) tabs
+                                                         val empties = List.mapPartial (fn (nm, c) =>
+                                                                                           case c of
+                                                                                               Unknown => SOME nm
+                                                                                             | Selective (CRecord [], _) => SOME nm
+                                                                                             | _ => NONE) tabs
                                                      in
                                                          (empties,
                                                           map (fn (nm, c) => (nm,
-                                                                              (CTuple [c,
-                                                                                       (CWild (KRecord (KType, loc), loc),
-                                                                                        loc)], loc))) tabs,
+                                                                              case c of
+                                                                                  Everything =>
+                                                                                  (CTuple [(CWild (KRecord (KType, loc), loc), loc),
+                                                                                           (CRecord [], loc)], loc)
+                                                                                | _ =>
+                                                                                  let
+                                                                                      val c = case c of
+                                                                                                  Selective c => c
+                                                                                                | _ => (CRecord [], loc)
+                                                                                  in
+                                                                                      (CTuple [c,
+                                                                                               (CWild (KRecord (KType, loc), loc),
+                                                                                                loc)], loc)
+                                                                                  end)) tabs,
                                                           exps)
                                                      end
 
@@ -1770,6 +1816,7 @@ seli   : tident DOT fident              (Field (tident, fident))
        | sqlexp                         (Exp (NONE, sqlexp))
        | sqlexp AS fident               (Exp (SOME fident, sqlexp))
        | tident DOT LBRACE LBRACE cexp RBRACE RBRACE (Fields (tident, cexp))
+       | tident DOT STAR                (StarFields tident)
 
 selis  : seli                           ([seli])
        | seli COMMA selis               (seli :: selis)
