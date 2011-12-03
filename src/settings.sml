@@ -270,8 +270,8 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("lt_time", "lt"),
                           ("le_time", "le"),
 
-                          ("debug", "alert"),
-                          ("naughtyDebug", "alert"),
+                          ("debug", "uw_debug"),
+                          ("naughtyDebug", "uw_debug"),
 
                           ("floatFromInt", "float"),
                           ("ceil", "ceil"),
