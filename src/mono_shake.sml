@@ -115,6 +115,8 @@ fun shake file =
                   | ((DDatabase {expunge = n1, initialize = n2, ...}, _), (page_cs, page_es)) =>
                     (page_cs, IS.addList (page_es, [n1, n2]))
                   | ((DTask (e1, e2), _), st) => usedVars (usedVars st e2) e1
+                  | ((DTable (_, xts, e1, e2), _), st) => usedVars (usedVars (usedVars st e1) e2)
+                                                                   (ERecord (map (fn (x, t) => (x, (ERecord [], #2 e1), t)) xts), #2 e1)
                   | ((DView (_, _, e), _), st) => usedVars st e
                   | ((DPolicy pol, _), st) =>
                     let
