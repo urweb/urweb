@@ -310,6 +310,8 @@ fun process file =
 
               | TFfi ("Basis", "bool") => ("t[i++] == \"1\"", st)
 
+              | TSource => ("parseSource(t[i++], t[i++])", st)
+
               | TOption t =>
                 let
                     val (e, st) = unurlifyExp loc (t, st)

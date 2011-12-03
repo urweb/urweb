@@ -121,6 +121,7 @@ char *uw_Basis_urlifyString(uw_context, uw_Basis_string);
 char *uw_Basis_urlifyBool(uw_context, uw_Basis_bool);
 char *uw_Basis_urlifyTime(uw_context, uw_Basis_time);
 char *uw_Basis_urlifyChannel(uw_context, uw_Basis_channel);
+char *uw_Basis_urlifySource(uw_context, uw_Basis_source);
 
 uw_unit uw_Basis_urlifyInt_w(uw_context, uw_Basis_int);
 uw_unit uw_Basis_urlifyFloat_w(uw_context, uw_Basis_float);
@@ -128,6 +129,7 @@ uw_unit uw_Basis_urlifyString_w(uw_context, uw_Basis_string);
 uw_unit uw_Basis_urlifyBool_w(uw_context, uw_Basis_bool);
 uw_unit uw_Basis_urlifyTime_w(uw_context, uw_Basis_time);
 uw_unit uw_Basis_urlifyChannel_w(uw_context, uw_Basis_channel);
+uw_unit uw_Basis_urlifySource_w(uw_context, uw_Basis_source);
 
 uw_Basis_unit uw_Basis_unurlifyUnit(uw_context ctx, char **s);
 uw_Basis_int uw_Basis_unurlifyInt(uw_context, char **);

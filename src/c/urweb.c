@@ -1762,6 +1762,16 @@ char *uw_Basis_urlifyBool(uw_context ctx, uw_Basis_bool b) {
     return "1";
 }
 
+char *uw_Basis_urlifySource(uw_context ctx, uw_Basis_source src) {
+  char *r;
+  int len;
+  uw_check_heap(ctx, 2 * INTS_MAX + 2);
+  r = ctx->heap.front;
+  sprintf(r, "%d/%llu%n", src.context, src.source, &len);
+  ctx->heap.front += len+1;
+  return r;
+}
+
 static void uw_Basis_urlifyInt_w_unsafe(uw_context ctx, uw_Basis_int n) {
   int len;
 
@@ -1840,6 +1850,16 @@ uw_unit uw_Basis_urlifyBool_w(uw_context ctx, uw_Basis_bool b) {
   else
     uw_writec(ctx, '1');
 
+  return uw_unit_v;
+}
+
+uw_unit uw_Basis_urlifySource_w(uw_context ctx, uw_Basis_source src) {
+  int len;
+    
+  uw_check(ctx, 2 * INTS_MAX + 2);
+  sprintf(ctx->page.front, "%d/%llu%n", src.context, src.source, &len);
+  ctx->page.front += len;
+    
   return uw_unit_v;
 }
 
