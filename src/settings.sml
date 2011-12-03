@@ -248,6 +248,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("strchr", "schr"),
                           ("substring", "ssub"),
                           ("strcspn", "sspn"),
+                          ("strlenGe", "strlenGe"),
                           ("kc", "kc"),
                           ("minTime", "0"),
 
