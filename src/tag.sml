@@ -65,38 +65,43 @@ fun exp env (e, s) =
                       | _ => (ErrorMsg.errorAt loc ("Invalid " ^ newAttr
                                                     ^ " expression");
                               Print.epreface ("Expression",
-                                              CorePrint.p_exp CoreEnv.empty eOrig);
+                                              CorePrint.p_exp env eOrig);
                               (0, []))
 
                 val (f, args) = unravel e
-
-                val (cn, count, tags, newTags) =
-                    case IM.find (tags, f) of
-                        NONE =>
-                        (count, count + 1, IM.insert (tags, f, count),
-                         (ek, f, count) :: newTags)
-                      | SOME cn => (cn, count, tags, newTags)
-                                   
-                val (_, _, _, s) = E.lookupENamed env f
-
-                val byTag = case SM.find (byTag, s) of
-                                NONE => SM.insert (byTag, s, (ek, f))
-                              | SOME (ek', f') =>
-                                (if f = f' then
-                                     ()
-                                 else
-                                     ErrorMsg.errorAt loc 
-                                                      ("Duplicate HTTP tag "
-                                                       ^ s);
-                                 if ek = ek' then
-                                     ()
-                                 else
-                                     both (loc, s);
-                                 byTag)
-
-                val e = (EClosure (cn, args), loc)
             in
-                (e, (count, tags, byTag, newTags))
+                if f = 0 then
+                    (e, (count, tags, byTag, newTags))
+                else
+                    let
+                        val (cn, count, tags, newTags) =
+                            case IM.find (tags, f) of
+                                NONE =>
+                                (count, count + 1, IM.insert (tags, f, count),
+                                 (ek, f, count) :: newTags)
+                              | SOME cn => (cn, count, tags, newTags)
+                                           
+                        val (_, _, _, s) = E.lookupENamed env f
+
+                        val byTag = case SM.find (byTag, s) of
+                                        NONE => SM.insert (byTag, s, (ek, f))
+                                      | SOME (ek', f') =>
+                                        (if f = f' then
+                                             ()
+                                         else
+                                             ErrorMsg.errorAt loc 
+                                                              ("Duplicate HTTP tag "
+                                                               ^ s);
+                                         if ek = ek' then
+                                             ()
+                                         else
+                                             both (loc, s);
+                                         byTag)
+
+                        val e = (EClosure (cn, args), loc)
+                    in
+                        (e, (count, tags, byTag, newTags))
+                    end
             end
     in
         case e of
