@@ -535,11 +535,18 @@
 
  fun summaryToCon {fields, unifs, others} =
      let
+         fun concat (c1, c2) =
+             case #1 c1 of
+                 L'.CRecord (_, []) => c2
+               | _ => case #1 c2 of
+                          L'.CRecord (_, []) => c1
+                        | _ => (L'.CConcat (c1, c2), dummy)
+
          val c = (L'.CRecord (ktype, []), dummy)
-         val c = List.foldr (fn (c', c) => (L'.CConcat (c', c), dummy)) c others
-         val c = List.foldr (fn ((c', _), c) => (L'.CConcat (c', c), dummy)) c unifs
+         val c = List.foldr concat c others
+         val c = List.foldr (fn ((c', _), c) => concat (c', c)) c unifs
      in
-         (L'.CConcat ((L'.CRecord (ktype, fields), dummy), c), dummy)
+         concat ((L'.CRecord (ktype, fields), dummy), c)
      end
 
  fun p_summary env s = p_con env (summaryToCon s)
@@ -902,8 +909,14 @@
          val () = if !mayDelay then
                       ()
                   else
-                      reducedSummaries := SOME (p_summary env {fields = fs1, unifs = unifs1, others = others1},
-                                                p_summary env {fields = fs2, unifs = unifs2, others = others2})
+                      let
+                          val c1 = summaryToCon {fields = fs1, unifs = unifs1, others = others1}
+                          val c2 = summaryToCon {fields = fs2, unifs = unifs2, others = others2}
+                      in
+                          case (c1, c2) of
+                              ((L'.CRecord (_, []), _), (L'.CRecord (_, []), _)) => reducedSummaries := NONE
+                            | _ => reducedSummaries := SOME (p_con env c1, p_con env c2)
+                      end
 
          (*val () = eprefaces "Summaries5" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
