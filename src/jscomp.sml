@@ -706,6 +706,8 @@ fun process file =
                                              | "*" => "times"
                                              | "/" => (case bi of Int => "divInt" | NotInt => "div")
                                              | "%" => (case bi of Int => "modInt" | NotInt => "mod")
+                                             | "fdiv" => "div"
+                                             | "fmod" => "mod"
                                              | "<" => "lt"
                                              | "<=" => "le"
                                              | "strcmp" => "strcmp"

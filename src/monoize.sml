@@ -1031,7 +1031,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        floatBin "+",
                        floatBin "-",
                        floatBin "*",
-                       floatBin "/",
+                       floatBin "fdiv",
                        floatBin "fmod")
             end
 

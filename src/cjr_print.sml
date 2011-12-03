@@ -1655,7 +1655,7 @@ fun p_exp' par tail env (e, loc) =
                           p_exp' true false env e1])
 
       | EBinop (s, e1, e2) =>
-        if Char.isAlpha (String.sub (s, size s - 1)) then
+        if s <> "fdiv" andalso Char.isAlpha (String.sub (s, size s - 1)) then
             box [string s,
                  string "(",
                  p_exp' false false env e1,
@@ -1663,10 +1663,48 @@ fun p_exp' par tail env (e, loc) =
                  space,
                  p_exp' false false env e2,
                  string ")"]
+        else if s = "/" orelse s = "%" then
+            box [string "({",
+                 newline,
+                 string "uw_Basis_int",
+                 space,
+                 string "dividend",
+                 space,
+                 string "=",
+                 space,
+                 p_exp env e1,
+                 string ",",
+                 space,
+                 string "divisor",
+                 space,
+                 string "=",
+                 space,
+                 p_exp env e2,
+                 string ";",
+                 newline,
+                 string "if",
+                 space,
+                 string "(divisor",
+                 space,
+                 string "==",
+                 space,
+                 string "0)",
+                 newline,
+                 box [string "uw_error(ctx, FATAL, \"",
+                      string (ErrorMsg.spanToString loc),
+                      string ": division by zero\");",
+                      newline],
+                 string "dividend",
+                 space,
+                 string s,
+                 space,
+                 string "divisor;",
+                 newline,
+                 string "})"]
         else
             parenIf par (box [p_exp' true false env e1,
                               space,
-                              string s,
+                              string (if s = "fdiv" then "/" else s),
                               space,
                               p_exp' true false env e2])
 
