@@ -2150,6 +2150,7 @@ uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
 
 #define TIME_FMT "%x %X"
 #define TIME_FMT_PG "%Y-%m-%d %T"
+#define TIME_FMT_JS "%Y/%m/%d %T"
 
 uw_Basis_string uw_Basis_timeToString(uw_context, uw_Basis_time);
 
@@ -2799,6 +2800,11 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
       r->seconds = mktime(&stm);
       r->microseconds = 0;
       return r;
+    } else if (strptime(s, TIME_FMT_JS, &stm) == end) {
+      uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
+      r->seconds = mktime(&stm);
+      r->microseconds = 0;
+      return r;
     }
     else
       return NULL;
@@ -2937,6 +2943,9 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
       uw_Basis_time r = { mktime(&stm) };
       return r;
     } else if (strptime(s, TIME_FMT, &stm) == end) {
+      uw_Basis_time r = { mktime(&stm) };
+      return r;
+    } else if (strptime(s, TIME_FMT_JS, &stm) == end) {
       uw_Basis_time r = { mktime(&stm) };
       return r;
     } else
@@ -3883,7 +3892,7 @@ uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
   char *end = strchr(s, 0);
   stm.tm_isdst = -1;
 
-  if (strptime(s, TIME_FMT_PG, &stm) == end || strptime(s, TIME_FMT, &stm) == end) {
+  if (strptime(s, TIME_FMT_PG, &stm) == end || strptime(s, TIME_FMT, &stm) == end || strptime(s, TIME_FMT_JS, &stm) == end) {
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
 
     r->seconds = timegm(&stm);
