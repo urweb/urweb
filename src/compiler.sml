@@ -799,6 +799,7 @@ fun parseUrp' accLibs fname =
                                        | SOME n => minHeap := n)
                                   | "alwaysInline" => Settings.addAlwaysInline arg
                                   | "noXsrfProtection" => Settings.addNoXsrfProtection arg
+                                  | "timeFormat" => Settings.setTimeFormat arg
 
                                   | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                 read ()

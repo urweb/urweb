@@ -96,6 +96,8 @@ typedef struct {
   void (*on_error)(uw_context, char *);
 
   uw_periodic *periodics; // 0-terminated array
+
+  uw_Basis_string time_format;
 } uw_app;
 
 #define ERROR_BUF_LEN 1024

@@ -3391,7 +3391,8 @@ fun p_file env (ds, ps) =
                          "uw_db_init", "uw_db_begin", "uw_db_commit", "uw_db_rollback", "uw_db_close",
                          "uw_handle",
                          "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader",
-                         case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics"],
+                         case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
+                         "\"" ^ String.toCString (Settings.getTimeFormat ()) ^ "\""],
              string "};",
              newline]
     end

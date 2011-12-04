@@ -1,0 +1,4 @@
+timeFormat %H:%M %Y
+rewrite url ShowTime/*
+
+showTime

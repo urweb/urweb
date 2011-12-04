@@ -2151,40 +2151,14 @@ uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
 #define TIME_FMT "%x %X"
 #define TIME_FMT_PG "%Y-%m-%d %T"
 
-uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
-  size_t len;
-  char *r;
-  struct tm stm = {};
-  stm.tm_isdst = -1;
+uw_Basis_string uw_Basis_timeToString(uw_context, uw_Basis_time);
 
-  if (localtime_r(&t.seconds, &stm)) {
-    uw_check_heap(ctx, TIMES_MAX);
-    r = ctx->heap.front;
-    len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
-    ctx->heap.front += len+1;
-    return r;
-  } else
-    return "<i>Invalid time</i>";
+uw_Basis_string uw_Basis_htmlifyTime(uw_context ctx, uw_Basis_time t) {
+  return uw_Basis_htmlifyString(ctx, uw_Basis_timeToString(ctx, t));
 }
 
 uw_unit uw_Basis_htmlifyTime_w(uw_context ctx, uw_Basis_time t) {
-  size_t len;
-  char *r;
-  struct tm stm = {};
-  stm.tm_isdst = -1;
-
-  if (localtime_r(&t.seconds, &stm)) {
-    uw_check(ctx, TIMES_MAX);
-    r = ctx->page.front;
-    len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
-    ctx->page.front += len;
-  } else {
-    uw_check(ctx, 20);
-    strcpy(ctx->page.front, "<i>Invalid time</i>");
-    ctx->page.front += 19;
-  }
-
-  return uw_unit_v;
+  return uw_Basis_htmlifyString_w(ctx, uw_Basis_timeToString(ctx, t));
 }
 
 char *uw_Basis_htmlifySource(uw_context ctx, uw_Basis_source src) {
@@ -2724,22 +2698,6 @@ uw_Basis_string uw_Basis_boolToString(uw_context ctx, uw_Basis_bool b) {
     return "True";
 }
 
-uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
-  size_t len;
-  char *r;
-  struct tm stm = {};
-  stm.tm_isdst = -1;
-
-  if (localtime_r(&t.seconds, &stm)) {
-    uw_check_heap(ctx, TIMES_MAX);
-    r = ctx->heap.front;
-    len = strftime(r, TIMES_MAX, TIME_FMT, &stm);
-    ctx->heap.front += len+1;
-    return r;
-  } else
-    return "<Invalid time>";
-}
-
 uw_Basis_string uw_Basis_timef(uw_context ctx, const char *fmt, uw_Basis_time t) {
   size_t len;
   char *r;
@@ -2754,6 +2712,10 @@ uw_Basis_string uw_Basis_timef(uw_context ctx, const char *fmt, uw_Basis_time t)
     return r;
   } else
     return "<Invalid time>";
+}
+
+uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
+  return uw_Basis_timef(ctx, ctx->app->time_format, t);
 }
 
 uw_Basis_int *uw_Basis_stringToInt(uw_context ctx, uw_Basis_string s) {

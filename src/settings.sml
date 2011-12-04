@@ -280,7 +280,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
 
                           ("now", "now"),
                           ("timeToString", "showTime"),
-                          ("htmlifyTime", "showTime"),
+                          ("htmlifyTime", "showTimeHtml"),
                           ("toSeconds", "toSeconds"),
                           ("addSeconds", "addSeconds"),
                           ("diffInSeconds", "diffInSeconds"),
@@ -620,5 +620,9 @@ fun checkAlwaysInline s = SS.member (!alwaysInline, s)
 val noXsrfProtection = ref SS.empty
 fun addNoXsrfProtection s = noXsrfProtection := SS.add (!noXsrfProtection, s)
 fun checkNoXsrfProtection s = SS.member (!noXsrfProtection, s)
+
+val timeFormat = ref "%c"
+fun setTimeFormat v = timeFormat := v
+fun getTimeFormat () = !timeFormat
 
 end

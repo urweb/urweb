@@ -230,4 +230,7 @@ signature SETTINGS = sig
 
     val addNoXsrfProtection : string -> unit
     val checkNoXsrfProtection : string -> bool
+
+    val setTimeFormat : string -> unit
+    val getTimeFormat : unit -> string
 end
