@@ -267,6 +267,18 @@ fun foldlMi [m] (_ : monad m) [a] [b] f =
         foldlMi' 0
     end
 
+fun filterM [m] (_ : monad m) [a] (p : a -> m bool) =
+    let
+        fun filterM' (acc : list a) (xs : list a) : m (list a) =
+            case xs of
+                [] => return (rev acc)
+              | x :: xs =>
+                c <- p x;
+                filterM' (if c then x :: acc else acc) xs
+    in
+        filterM' []
+    end
+
 fun all [m] f =
     let
         fun all' ls =
@@ -393,3 +405,22 @@ fun assocAdd [a] [b] (_ : eq a) (x : a) (y : b) (ls : t (a * b)) =
 fun recToList [a ::: Type] [r ::: {Unit}] (fl : folder r)
   = @foldUR [a] [fn _ => list a] (fn [nm ::_] [rest ::_] [[nm] ~ rest] x xs =>
 				      x :: xs) [] fl
+
+fun take [a] (n : int) (xs : list a) : list a = 
+    if n <= 0 then
+        []
+    else
+        case xs of
+            [] => []
+          | x :: xs => x :: take (n-1) xs
+
+fun drop [a] (n : int) (xs : list a) : list a =
+    if n <= 0 then
+        xs
+    else
+        case xs of
+            [] => []
+          | x :: xs => drop (n-1) xs
+
+fun splitAt [a] (n : int) (xs : list a) : list a * list a =
+    (take n xs, drop n xs)

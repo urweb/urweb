@@ -46,6 +46,9 @@ val foldlM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
 val foldlMi : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
              -> (int -> a -> b -> m b) -> b -> t a -> m b
 
+val filterM : m ::: (Type -> Type) -> monad m -> a ::: Type
+              -> (a -> m bool) -> t a -> m (t a)
+
 val foldlMap : a ::: Type -> b ::: Type -> c ::: Type
                -> (a -> b -> c * b) -> b -> t a -> t c * b
 
@@ -90,3 +93,8 @@ val assocAdd : a ::: Type -> b ::: Type -> eq a -> a -> b -> t (a * b) -> t (a *
 (** Converting records to lists *)
 
 val recToList : a ::: Type -> r ::: {Unit} -> folder r -> $(mapU a r) -> t a
+
+(* Divide a list into two sections at a particular 0-based position, returning the second, first, or both parts, respectively. *)
+val drop : t ::: Type -> int -> list t -> list t
+val take : t ::: Type -> int -> list t -> list t
+val splitAt : t ::: Type -> int -> list t -> list t * list t
