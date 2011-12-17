@@ -27,12 +27,14 @@
 
 structure Settings :> SETTINGS = struct
 
+val urlPrefixFull = ref "/"
 val urlPrefix = ref "/"
 val urlPrePrefix = ref ""
 val timeout = ref 0
 val headers = ref ([] : string list)
 val scripts = ref ([] : string list)
 
+fun getUrlPrefixFull () = !urlPrefixFull
 fun getUrlPrefix () = !urlPrefix
 fun getUrlPrePrefix () = !urlPrePrefix
 fun setUrlPrefix p =
@@ -62,6 +64,7 @@ fun setUrlPrefix p =
             else
                 ("", prefix)
     in
+        urlPrefixFull := p;
         urlPrePrefix := prepre;
         urlPrefix := prefix
     end

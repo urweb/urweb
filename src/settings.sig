@@ -36,6 +36,10 @@ signature SETTINGS = sig
     val setUrlPrefix : string -> unit
     val getUrlPrefix : unit -> string
     val getUrlPrePrefix : unit -> string
+    val getUrlPrefixFull : unit -> string
+    (* The full prefix is the value that was set explicitly, while the "pre"
+     * prefix gets the protocol/host/port part and the unqualified prefix gets
+     * the URI. *)
 
     (* How many seconds should the server wait before assuming a Comet client has left? *)
     val setTimeout : int -> unit
