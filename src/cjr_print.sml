@@ -676,13 +676,19 @@ fun unurlify fromClient env (t, loc) =
                               | [(has_arg, _, SOME t), (no_arg, _, NONE)] =>
                                 (no_arg, has_arg, t)
                               | _ => raise Fail "CjrPrint: unfooify misclassified Option datatype"
+
+                        val unboxable = isUnboxable t
                     in
                         unurlifies := IS.add (!unurlifies, i);
                         addUrlHandler (box [string "static",
                                             space,
                                             p_typ env t,
                                             space,
-                                            string "*unurlify_",
+                                            if unboxable then
+                                                box []
+                                            else
+                                                string "*",
+                                            string "unurlify_",
                                             string (Int.toString i),
                                             string "(uw_context, char **);",
                                             newline],
@@ -690,7 +696,11 @@ fun unurlify fromClient env (t, loc) =
                                             space,
                                             p_typ env t,
                                             space,
-                                            string "*unurlify_",
+                                            if unboxable then
+                                                box []
+                                            else
+                                                string "*",
+                                            string "unurlify_",
                                             string (Int.toString i),
                                             string "(uw_context ctx, char **request) {",
                                             newline,
@@ -725,7 +735,7 @@ fun unurlify fromClient env (t, loc) =
                                                  string ", ((*request)[0] == '/' ? ++*request : NULL), ",
                                                  newline,
                                                  
-                                                 if isUnboxable  t then
+                                                 if unboxable then
                                                      unurlify' "(*request)" (#1 t)
                                                  else
                                                      box [string "({",
