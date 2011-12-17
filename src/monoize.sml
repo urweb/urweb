@@ -2785,6 +2785,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          "octet_length"
                                      else
                                          "length")), loc), fm)
+          | L.EFfi ("Basis", "sql_lower") =>
+            ((L'.EPrim (Prim.String "lower"), loc), fm)
+          | L.EFfi ("Basis", "sql_upper") =>
+            ((L'.EPrim (Prim.String "upper"), loc), fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_known"), _), _) =>
             ((L'.EFfi ("Basis", "sql_known"), loc), fm)
 

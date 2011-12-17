@@ -1,0 +1,4 @@
+database dbname=test
+sql lower.sql
+
+lower

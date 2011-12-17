@@ -565,7 +565,8 @@ val sql_ufunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps ran
 val sql_octet_length : sql_ufunc blob int
 val sql_known : t ::: Type -> sql_ufunc t bool
-
+val sql_lower : sql_ufunc string string
+val sql_upper : sql_ufunc string string
 
 val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                    -> sql_injectable_prim t
