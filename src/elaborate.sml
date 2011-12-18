@@ -1900,17 +1900,21 @@ fun findHead e e' =
         findHead e
     end
 
-datatype needed = Needed of {Cons : L'.kind SM.map,
+datatype needed = Needed of {Cons : (L'.kind * int) SM.map,
+                             NextCon : int,
                              Constraints : (E.env * (L'.con * L'.con) * ErrorMsg.span) list,
                              Vals : SS.set,
                              Mods : (E.env * needed) SM.map}
 
-fun ncons (Needed r) = #Cons r
+fun ncons (Needed r) = map (fn (k, (v, _)) => (k, v))
+                       (ListMergeSort.sort (fn ((_, (_, n1)), (_, (_, n2))) => n1 > n2)
+                                           (SM.listItemsi (#Cons r)))
 fun nconstraints (Needed r) = #Constraints r
 fun nvals (Needed r) = #Vals r
 fun nmods (Needed r) = #Mods r
 
 val nempty = Needed {Cons = SM.empty,
+                     NextCon = 0,
                      Constraints = nil,
                      Vals = SS.empty,
                      Mods = SM.empty}
@@ -1919,7 +1923,8 @@ fun naddCon (r : needed, k, v) =
     let
         val Needed r = r
     in
-        Needed {Cons = SM.insert (#Cons r, k, v),
+        Needed {Cons = SM.insert (#Cons r, k, (v, #NextCon r)),
+                NextCon = #NextCon r + 1,
                 Constraints = #Constraints r,
                 Vals = #Vals r,
                 Mods = #Mods r}
@@ -1930,6 +1935,7 @@ fun naddConstraint (r : needed, v) =
         val Needed r = r
     in
         Needed {Cons = #Cons r,
+                NextCon = #NextCon r,
                 Constraints = v :: #Constraints r,
                 Vals = #Vals r,
                 Mods = #Mods r}
@@ -1940,6 +1946,7 @@ fun naddVal (r : needed, k) =
         val Needed r = r
     in
         Needed {Cons = #Cons r,
+                NextCon = #NextCon r,
                 Constraints = #Constraints r,
                 Vals = SS.add (#Vals r, k),
                 Mods = #Mods r}
@@ -1950,6 +1957,7 @@ fun naddMod (r : needed, k, v) =
         val Needed r = r
     in
         Needed {Cons = #Cons r,
+                NextCon = #NextCon r,
                 Constraints = #Constraints r,
                 Vals = #Vals r,
                 Mods = SM.insert (#Mods r, k, v)}
@@ -1960,6 +1968,7 @@ fun ndelCon (r : needed, k) =
         val Needed r = r
     in
         Needed {Cons = #1 (SM.remove (#Cons r, k)) handle NotFound => #Cons r,
+                NextCon = #NextCon r,
                 Constraints = #Constraints r,
                 Vals = #Vals r,
                 Mods = #Mods r}
@@ -1970,6 +1979,7 @@ fun ndelVal (r : needed, k) =
         val Needed r = r
     in
         Needed {Cons = #Cons r,
+                NextCon = #NextCon r,
                 Constraints = #Constraints r,
                 Vals = SS.delete (#Vals r, k) handle NotFound => #Vals r,
                 Mods = #Mods r}
@@ -3649,7 +3659,7 @@ and wildifyStr env (str, sgn) =
                                  end
 
                          val ds' =
-                             case SM.listItemsi (ncons nd) of
+                             case ncons nd of
                                  [] => ds'
                                | xs =>
                                  map (fn (x, k) =>
