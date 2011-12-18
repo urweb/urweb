@@ -42,9 +42,9 @@ fun explifyKind (k, loc) =
       | L.KTuple ks => (L'.KTuple (map explifyKind ks), loc)
 
       | L.KError => raise Fail ("explifyKind: KError at " ^ EM.spanToString loc)
-      | L.KUnif (_, _, ref (SOME k)) => explifyKind k
+      | L.KUnif (_, _, ref (L.KKnown k)) => explifyKind k
       | L.KUnif _ => raise Fail ("explifyKind: KUnif at " ^ EM.spanToString loc)
-      | L.KTupleUnif (loc, _, ref (SOME k)) => explifyKind k
+      | L.KTupleUnif (loc, _, ref (L.KKnown k)) => explifyKind k
       | L.KTupleUnif _ => raise Fail ("explifyKind: KTupleUnif at " ^ EM.spanToString loc)
 
       | L.KRel n => (L'.KRel n, loc)
@@ -76,7 +76,7 @@ fun explifyCon (c, loc) =
       | L.CProj (c, n) => (L'.CProj (explifyCon c, n), loc)
 
       | L.CError => raise Fail ("explifyCon: CError at " ^ EM.spanToString loc)
-      | L.CUnif (nl, _, _, _, ref (SOME c)) => explifyCon (ElabEnv.mliftConInCon nl c)
+      | L.CUnif (nl, _, _, _, ref (L.Known c)) => explifyCon (ElabEnv.mliftConInCon nl c)
       | L.CUnif _ => raise Fail ("explifyCon: CUnif at " ^ EM.spanToString loc)
 
       | L.CKAbs (x, c) => (L'.CKAbs (x, explifyCon c), loc)

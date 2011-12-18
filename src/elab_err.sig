@@ -35,6 +35,7 @@ signature ELAB_ERR = sig
     datatype kunify_error =
              KOccursCheckFailed of Elab.kind * Elab.kind
            | KIncompatible of Elab.kind * Elab.kind
+           | KScope of Elab.kind * Elab.kind
 
     val kunifyError : ElabEnv.env -> kunify_error -> unit
 
@@ -59,6 +60,7 @@ signature ELAB_ERR = sig
            | TooLifty of ErrorMsg.span * ErrorMsg.span
            | TooUnify of Elab.con * Elab.con
            | TooDeep
+           | CScope of Elab.con * Elab.con
 
     val cunifyError : ElabEnv.env -> cunify_error -> unit
 

@@ -63,6 +63,7 @@ fun kindError env err =
 datatype kunify_error =
          KOccursCheckFailed of kind * kind
        | KIncompatible of kind * kind
+       | KScope of kind * kind
 
 fun kunifyError env err =
     case err of
@@ -74,7 +75,10 @@ fun kunifyError env err =
         eprefaces "Incompatible kinds"
         [("Kind 1", p_kind env k1),
          ("Kind 2", p_kind env k2)]
-
+      | KScope (k1, k2) =>
+        eprefaces "Scoping prevents kind unification"
+        [("Kind 1", p_kind env k1),
+         ("Kind 2", p_kind env k2)]
 
 fun p_con env c = P.p_con env (simplCon env c)
 
@@ -122,6 +126,7 @@ datatype cunify_error =
        | TooLifty of ErrorMsg.span * ErrorMsg.span
        | TooUnify of con * con
        | TooDeep
+       | CScope of con * con
 
 fun cunifyError env err =
     case err of
@@ -167,6 +172,10 @@ fun cunifyError env err =
          eprefaces' [("Replacement", p_con env c1),
                      ("Body", p_con env c2)])
       | TooDeep => ErrorMsg.error "Can't reverse-engineer unification variable lifting"
+      | CScope (c1, c2) =>
+        eprefaces "Scoping prevents constructor unification"
+                  [("Have", p_con env c1),
+                   ("Need", p_con env c2)]
 
 datatype exp_error =
        UnboundExp of ErrorMsg.span * string

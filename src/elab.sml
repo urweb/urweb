@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,11 +38,15 @@ datatype kind' =
        | KTuple of kind list
 
        | KError
-       | KUnif of ErrorMsg.span * string * kind option ref
-       | KTupleUnif of ErrorMsg.span * (int * kind) list * kind option ref
+       | KUnif of ErrorMsg.span * string * kunif ref
+       | KTupleUnif of ErrorMsg.span * (int * kind) list * kunif ref
 
        | KRel of int
        | KFun of string * kind
+
+and kunif =
+    KUnknown of kind -> bool (* Is the kind a valid unification? *)
+  | KKnown of kind
 
 withtype kind = kind' located
 
@@ -78,7 +82,11 @@ datatype con' =
        | CProj of con * int
 
        | CError
-       | CUnif of int * ErrorMsg.span * kind * string * con option ref
+       | CUnif of int * ErrorMsg.span * kind * string * cunif ref
+
+and cunif =
+    Unknown of con -> bool (* Is the constructor a valid unification? *)
+  | Known of con
 
 withtype con = con' located
 

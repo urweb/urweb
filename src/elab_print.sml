@@ -54,9 +54,9 @@ fun p_kind' par env (k, _) =
                           string ")"]
 
       | KError => string "<ERROR>"
-      | KUnif (_, _, ref (SOME k)) => p_kind' par env k
+      | KUnif (_, _, ref (KKnown k)) => p_kind' par env k
       | KUnif (_, s, _) => string ("<UNIF:" ^ s ^ ">")
-      | KTupleUnif (_, _, ref (SOME k)) => p_kind' par env k
+      | KTupleUnif (_, _, ref (KKnown k)) => p_kind' par env k
       | KTupleUnif (_, nks, _) => box [string "(",
                                        p_list_sep (box [space, string "*", space])
                                                   (fn (n, k) => box [string (Int.toString n ^ ":"),
@@ -202,7 +202,7 @@ fun p_con' par env (c, _) =
                              string (Int.toString n)]
 
       | CError => string "<ERROR>"
-      | CUnif (nl, _, _, _, ref (SOME c)) => p_con' par env (E.mliftConInCon nl c)
+      | CUnif (nl, _, _, _, ref (Known c)) => p_con' par env (E.mliftConInCon nl c)
       | CUnif (nl, _, k, s, _) => box [string ("<UNIF:" ^ s ^ "::"),
                                        p_kind env k,
                                        case nl of

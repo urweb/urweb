@@ -75,10 +75,10 @@ fun mapfoldB {kind, bind} =
 
               | KError => S.return2 kAll
 
-              | KUnif (_, _, ref (SOME k)) => mfk' ctx k
+              | KUnif (_, _, ref (KKnown k)) => mfk' ctx k
               | KUnif _ => S.return2 kAll
 
-              | KTupleUnif (_, _, ref (SOME k)) => mfk' ctx k
+              | KTupleUnif (_, _, ref (KKnown k)) => mfk' ctx k
               | KTupleUnif (loc, nks, r) =>
                 S.map2 (ListUtil.mapfold (fn (n, k) =>
                                              S.map2 (mfk ctx k,
@@ -217,7 +217,7 @@ fun mapfoldB {kind = fk, con = fc, bind} =
                            (CProj (c', n), loc))
 
               | CError => S.return2 cAll
-              | CUnif (nl, _, _, _, ref (SOME c)) => mfc' ctx (!mliftConInCon nl c)
+              | CUnif (nl, _, _, _, ref (Known c)) => mfc' ctx (!mliftConInCon nl c)
               | CUnif _ => S.return2 cAll
                         
               | CKAbs (x, c) =>
@@ -255,6 +255,19 @@ fun map {kind, con} s =
                   con = fn c => fn () => S.Continue (con c, ())} s () of
         S.Return () => raise Fail "ElabUtil.Con.map: Impossible"
       | S.Continue (s, ()) => s
+
+fun appB {kind, con, bind} ctx c =
+    case mapfoldB {kind = fn ctx => fn k => fn () => (kind ctx k; S.Continue (k, ())),
+                   con = fn ctx => fn c => fn () => (con ctx c; S.Continue (c, ())),
+                   bind = bind} ctx c () of
+        S.Continue _ => ()
+      | S.Return _ => raise Fail "ElabUtil.Con.appB: Impossible"
+
+fun app {kind, con} s =
+    case mapfold {kind = fn k => fn () => (kind k; S.Continue (k, ())),
+                  con = fn c => fn () => (con c; S.Continue (c, ()))} s () of
+        S.Return () => raise Fail "ElabUtil.Con.app: Impossible"
+      | S.Continue _ => ()
 
 fun existsB {kind, con, bind} ctx c =
     case mapfoldB {kind = fn ctx => fn k => fn () =>

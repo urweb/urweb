@@ -484,7 +484,7 @@ fun class_name_in (c, _) =
     case c of
         CNamed n => SOME (ClNamed n)
       | CModProj x => SOME (ClProj x)
-      | CUnif (_, _, _, _, ref (SOME c)) => class_name_in c
+      | CUnif (_, _, _, _, ref (Known c)) => class_name_in c
       | _ => NONE
 
 fun isClass (env : env) c =
@@ -498,7 +498,7 @@ fun isClass (env : env) c =
 fun class_head_in c =
     case #1 c of
         CApp (f, _) => class_head_in f
-      | CUnif (_, _, _, _, ref (SOME c)) => class_head_in c
+      | CUnif (_, _, _, _, ref (Known c)) => class_head_in c
       | _ => class_name_in c
 
 exception Unify
@@ -512,16 +512,16 @@ fun unifyKinds (k1, k2) =
       | (KUnit, KUnit) => ()
       | (KTuple ks1, KTuple ks2) => (ListPair.appEq unifyKinds (ks1, ks2)
                                      handle ListPair.UnequalLengths => raise Unify)
-      | (KUnif (_, _, ref (SOME k1)), _) => unifyKinds (k1, k2)
-      | (_, KUnif (_, _, ref (SOME k2))) => unifyKinds (k1, k2)
+      | (KUnif (_, _, ref (KKnown k1)), _) => unifyKinds (k1, k2)
+      | (_, KUnif (_, _, ref (KKnown k2))) => unifyKinds (k1, k2)
       | (KRel n1, KRel n2) => if n1 = n2 then () else raise Unify
       | (KFun (_, k1), KFun (_, k2)) => unifyKinds (k1, k2)
       | _ => raise Unify
 
 fun eqCons (c1, c2) =
     case (#1 c1, #1 c2) of
-        (CUnif (nl, _, _, _, ref (SOME c1)), _) => eqCons (mliftConInCon nl c1, c2)
-      | (_, CUnif (nl, _, _, _, ref (SOME c2))) => eqCons (c1, mliftConInCon nl c2)
+        (CUnif (nl, _, _, _, ref (Known c1)), _) => eqCons (mliftConInCon nl c1, c2)
+      | (_, CUnif (nl, _, _, _, ref (Known c2))) => eqCons (c1, mliftConInCon nl c2)
 
       | (CRel n1, CRel n2) => if n1 = n2 then () else raise Unify
 
@@ -569,8 +569,8 @@ fun unifyCons (hnorm : con -> con) rs =
     let
         fun unify d (c1, c2) =
             case (#1 (hnorm c1), #1 (hnorm c2)) of
-                (CUnif (nl, _, _, _, ref (SOME c1)), _) => unify d (mliftConInCon nl c1, c2)
-              | (_, CUnif (nl, _, _, _, ref (SOME c2))) => unify d (c1, mliftConInCon nl c2)
+                (CUnif (nl, _, _, _, ref (Known c1)), _) => unify d (mliftConInCon nl c1, c2)
+              | (_, CUnif (nl, _, _, _, ref (Known c2))) => unify d (c1, mliftConInCon nl c2)
 
               | (CUnif _, _) => ()
 
@@ -663,7 +663,7 @@ fun unifySubst (rs : con list) =
 exception Bad of con * con
 
 val hasUnif = U.Con.exists {kind = fn _ => false,
-                            con = fn CUnif (_, _, _, _, ref NONE) => true
+                            con = fn CUnif (_, _, _, _, ref (Unknown _)) => true
                                    | _ => false}
 
 fun startsWithUnif c =
@@ -697,9 +697,9 @@ fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
 
                                         fun isRecord () =
                                             let
-                                                val rk = ref NONE
+                                                val rk = ref (KUnknown (fn _ => true))
                                                 val k = (KUnif (loc, "k", rk), loc)
-                                                val r = ref NONE
+                                                val r = ref (Unknown (fn _ => true))
                                                 val rc = (CUnif (0, loc, k, "x", r), loc)
                                             in
                                                 ((CApp (f, rc), loc),

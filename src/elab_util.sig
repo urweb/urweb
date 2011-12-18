@@ -64,6 +64,13 @@ structure Con : sig
     val map : {kind : Elab.kind' -> Elab.kind',
                con : Elab.con' -> Elab.con'}
               -> Elab.con -> Elab.con
+    val appB : {kind : 'context -> Elab.kind' -> unit,
+                con : 'context -> Elab.con' -> unit,
+                bind : 'context * binder -> 'context}
+               -> 'context -> (Elab.con -> unit)
+    val app : {kind : Elab.kind' -> unit,
+               con : Elab.con' -> unit}
+              -> Elab.con -> unit
     val existsB : {kind : 'context * Elab.kind' -> bool,
                   con : 'context * Elab.con' -> bool,
                    bind : 'context * binder -> 'context}
