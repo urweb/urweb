@@ -1393,7 +1393,7 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{monad} \; \mt{m}
 \end{array}$$
 
-The Ur/Web compiler provides syntactic sugar for monads, similar to Haskell's \cd{do} notation.  An expression $x \leftarrow e_1; e_2$ is desugarded to $\mt{bind} \; e_1 \; (\lambda x \Rightarrow e_2)$, and an expression $e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda () \Rightarrow e_2)$.
+The Ur/Web compiler provides syntactic sugar for monads, similar to Haskell's \cd{do} notation.  An expression $x \leftarrow e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda x \Rightarrow e_2)$, and an expression $e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda () \Rightarrow e_2)$.
 
 \subsection{Transactions}
 
