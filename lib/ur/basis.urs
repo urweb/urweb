@@ -664,11 +664,18 @@ val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type}
 
 con html = [Html]
 con head = [Head]
-con body = [Dyn, Body]
-con form = [Dyn, Body, Form]
-con subform = [Dyn, Body, Subform]
-con tabl = [Dyn, Table]
-con tr = [Dyn, Tr]
+
+con body' = [MakeForm, Body]
+con form' = [Body, Form]
+con subform' = [Body, Subform]
+con tabl' = [MakeForm, Table]
+con tr' = [MakeForm, Tr]
+
+con body = [Dyn] ++ body'
+con form = [Dyn] ++ form'
+con subform = [Dyn] ++ subform'
+con tabl = [Dyn] ++ tabl'
+con tr = [Dyn] ++ tr'
 
 con xhtml = xml html
 con page = xhtml [] []
@@ -763,10 +770,10 @@ val img : bodyTag ([Alt = string, Src = url, Width = int, Height = int,
                     Onload = transaction unit] ++ boxAttrs)
           
 val form : ctx ::: {Unit} -> bind ::: {Type}
-           -> [[Body, Form] ~ ctx] =>
+           -> [[MakeForm, Form] ~ ctx] =>
     option css_class
-    -> xml ([Body, Form] ++ ctx) [] bind
-    -> xml ([Body] ++ ctx) [] []
+    -> xml ([Form] ++ ctx) [] bind
+    -> xml ([MakeForm] ++ ctx) [] []
        
 val subform : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
               -> [[Form] ~ ctx] =>
