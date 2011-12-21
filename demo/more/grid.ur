@@ -125,7 +125,7 @@ functor Make(M : sig
       <table class={tabl}>
         <tr class={tr}>
           <th/> <th/> <th><button value="No sort" onclick={set grid.Sort None}/></th>
-          {@mapX2 [fst3] [colMeta M.row] [[Body, Tr]]
+          {@mapX2 [fst3] [colMeta M.row] [tr]
             (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
                              data (meta : colMeta M.row p) =>
                 <xml><th class={th}>

@@ -12,11 +12,11 @@ val size : t ::: Type -> dlist t -> signal int
 val numPassing : t ::: Type -> (t -> signal bool) -> dlist t -> signal int
 val foldl : t ::: Type -> acc ::: Type -> (t -> acc -> signal acc) -> acc -> dlist t -> signal acc
 
-val render : ctx ::: {Unit} -> [ctx ~ body] => t ::: Type
-             -> (t -> position -> xml (ctx ++ body) [] [])
+val render : ctx ::: {Unit} -> [ctx ~ [Dyn]] => t ::: Type
+             -> (t -> position -> xml (ctx ++ [Dyn]) [] [])
              -> {StartPosition : signal (option int),
                  MaxLength : signal (option int),
                  Filter : t -> signal bool,
                  Sort : signal (option (t -> t -> signal bool)) (* <= *)}
              -> dlist t
-             -> xml (ctx ++ body) [] []
+             -> xml (ctx ++ [Dyn]) [] []

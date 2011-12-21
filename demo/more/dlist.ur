@@ -66,7 +66,7 @@ fun replace [t] dl ls =
             set dl (Nonempty {Head = Cons (x, hd), Tail = tlS})
         end
 
-fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] []) filter pos len dl = <xml>
+fun renderDyn [ctx] [ctx ~ [Dyn]] [t] (f : t -> position -> xml (ctx ++ [Dyn]) [] []) filter pos len dl = <xml>
   <dyn signal={dl' <- signal dl;
                case dl' of
                    Empty => return <xml/>
@@ -119,8 +119,8 @@ fun renderDyn [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] 
                    end}/>
 </xml>
 
-fun renderFlat [ctx] [ctx ~ body] [t] (f : t -> position -> xml (ctx ++ body) [] [])
-    : option int -> list (t * position) -> xml (ctx ++ body) [] [] =
+fun renderFlat [ctx] [ctx ~ [Dyn]] [t] (f : t -> position -> xml (ctx ++ [Dyn]) [] [])
+    : option int -> list (t * position) -> xml (ctx ++ [Dyn]) [] [] =
     let
         fun renderFlat' len ls =
             case len of
@@ -186,10 +186,10 @@ fun sort [t] (cmp : t -> t -> signal bool) =
         sort'
     end
 
-fun render [ctx] [ctx ~ body] [t] f (r : {Filter : t -> signal bool,
-                                          Sort : signal (option (t -> t -> signal bool)),
-                                          StartPosition : signal (option int),
-                                          MaxLength : signal (option int)}) dl = <xml>
+fun render [ctx] [ctx ~ [Dyn]] [t] f (r : {Filter : t -> signal bool,
+                                           Sort : signal (option (t -> t -> signal bool)),
+                                           StartPosition : signal (option int),
+                                           MaxLength : signal (option int)}) dl = <xml>
     <dyn signal={len <- r.MaxLength;
                  cmp <- r.Sort;
                  pos <- r.StartPosition;

@@ -662,23 +662,23 @@ val useMore : ctx ::: {Unit} -> use1 ::: {Type} -> use2 ::: {Type}
                     xml ctx use1 bind
                     -> xml ctx (use1 ++ use2) bind
 
-con xhtml = xml [Html]
+con html = [Html]
+con head = [Head]
+con body = [Dyn, Body]
+con form = [Dyn, Body, Form]
+con subform = [Dyn, Body, Subform]
+con tabl = [Dyn, Table]
+con tr = [Dyn, Tr]
+
+con xhtml = xml html
 con page = xhtml [] []
-con xbody = xml [Body] [] []
-con xtable = xml [Body, Table] [] []
-con xtr = xml [Body, Tr] [] []
-con xform = xml [Body, Form] [] []
+con xbody = xml body [] []
+con xtable = xml tabl [] []
+con xtr = xml tr [] []
+con xform = xml form [] []
 
 
 (*** HTML details *)
-
-con html = [Html]
-con head = [Head]
-con body = [Body]
-con form = [Body, Form]
-con subform = [Body, Subform]
-con tabl = [Body, Table]
-con tr = [Body, Tr]
 
 type queryString
 val show_queryString : show queryString
@@ -697,8 +697,8 @@ val redirect : t ::: Type -> url -> transaction t
 type id
 val fresh : transaction id
 
-val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ body] => unit
-          -> tag [Signal = signal (xml (body ++ ctx) use bind)] (body ++ ctx) [] use bind
+val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ [Dyn]] => unit
+          -> tag [Signal = signal (xml ([Dyn] ++ ctx) use bind)] ([Dyn] ++ ctx) [] use bind
 
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
@@ -763,7 +763,7 @@ val img : bodyTag ([Alt = string, Src = url, Width = int, Height = int,
                     Onload = transaction unit] ++ boxAttrs)
           
 val form : ctx ::: {Unit} -> bind ::: {Type}
-           -> [[Body, Form, Table] ~ ctx] =>
+           -> [[Body, Form] ~ ctx] =>
     option css_class
     -> xml ([Body, Form] ++ ctx) [] bind
     -> xml ([Body] ++ ctx) [] []
@@ -864,16 +864,16 @@ val ctextarea : cformTag ([Value = string, Rows = int, Cols = int, Source = sour
 
 val tabl : other ::: {Unit} -> [other ~ [Body, Table]] => unit
   -> tag ([Border = int] ++ boxAttrs)
-         ([Body] ++ other) ([Body, Table] ++ other) [] []
-val tr : other ::: {Unit} -> [other ~ [Body, Table, Tr]] => unit
+         ([Body] ++ other) ([Table] ++ other) [] []
+val tr : other ::: {Unit} -> [other ~ [Table, Tr]] => unit
   -> tag tableAttrs
-         ([Body, Table] ++ other) ([Body, Tr] ++ other) [] []
+         ([Table] ++ other) ([Tr] ++ other) [] []
 val th : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
   -> tag ([Colspan = int, Rowspan = int] ++ tableAttrs)
-         ([Body, Tr] ++ other) ([Body] ++ other) [] []
+         ([Tr] ++ other) ([Body] ++ other) [] []
 val td : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
   -> tag ([Colspan = int, Rowspan = int] ++ tableAttrs)
-         ([Body, Tr] ++ other) ([Body] ++ other) [] []
+         ([Tr] ++ other) ([Body] ++ other) [] []
 
 
 (** Aborting *)

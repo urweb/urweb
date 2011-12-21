@@ -1907,7 +1907,7 @@ $$\begin{array}{l}
 
 Ur/Web's library contains an encoding of XML syntax and semantic constraints.  We make no effort to follow the standards governing XML schemas.  Rather, XML fragments are viewed more as values of ML datatypes, and we only track which tags are allowed inside which other tags.  The Ur/Web standard library encodes a very loose version of XHTML, where it is very easy to produce documents which are invalid XHTML, but which still display properly in all major browsers.  The main purposes of the invariants that are enforced are first, to provide some documentation about the places where it would make sense to insert XML fragments; and second, to rule out code injection attacks and other abstraction violations related to HTML syntax.
 
-The basic XML type family has arguments respectively indicating the \emph{context} of a fragment, the fields that the fragment expects to be bound on entry (and their types), and the fields that the fragment will bind (and their types).  Contexts are a record-based ``poor man's subtyping'' encoding, with each possible set of valid tags corresponding to a different context record.  For instance, the context for the \texttt{<td>} tag is $[\mt{Body}, \mt{Tr}]$, to indicate a kind of nesting inside \texttt{<body>} and \texttt{<tr>}.  Contexts are maintained in a somewhat ad-hoc way; the only definitive reference for their meanings is the types of the tag values in \texttt{basis.urs}.  The arguments dealing with field binding are only relevant to HTML forms.
+The basic XML type family has arguments respectively indicating the \emph{context} of a fragment, the fields that the fragment expects to be bound on entry (and their types), and the fields that the fragment will bind (and their types).  Contexts are a record-based ``poor man's subtyping'' encoding, with each possible set of valid tags corresponding to a different context record.  For instance, the context for the \texttt{<td>} tag is $[\mt{Dyn}, \mt{Tr}]$, to indicate nesting inside a \texttt{<tr>} tag with the ability to use the \texttt{<dyn>} tag (see below).  Contexts are maintained in a somewhat ad-hoc way; the only definitive reference for their meanings is the types of the tag values in \texttt{basis.urs}.  The arguments dealing with field binding are only relevant to HTML forms.
 $$\begin{array}{l}
   \mt{con} \; \mt{xml} :: \{\mt{Unit}\} \to \{\mt{Type}\} \to \{\mt{Type}\} \to \mt{Type}
 \end{array}$$
@@ -1956,7 +1956,7 @@ We will not list here the different HTML tags and related functions from the sta
 
 One last useful function is for aborting any page generation, returning some XML as an error message.  This function takes the place of some uses of a general exception mechanism.
 $$\begin{array}{l}
-  \mt{val} \; \mt{error} : \mt{t} ::: \mt{Type} \to \mt{xml} \; [\mt{Body}] \; [] \; [] \to \mt{t}
+  \mt{val} \; \mt{error} : \mt{t} ::: \mt{Type} \to \mt{xbody} \to \mt{t}
 \end{array}$$
 
 
@@ -2050,8 +2050,8 @@ $$\begin{array}{l}
 A reactive portion of an HTML page is injected with a $\mt{dyn}$ tag, which has a signal-valued attribute $\mt{Signal}$.
 
 $$\begin{array}{l}
-  \mt{val} \; \mt{dyn} : \mt{use} ::: \{\mt{Type}\} \to \mt{bind} ::: \{\mt{Type}\} \to \mt{unit} \\
-  \hspace{.1in} \to \mt{tag} \; [\mt{Signal} = \mt{signal} \; (\mt{xml} \; \mt{body} \; \mt{use} \; \mt{bind})] \; \mt{body} \; [] \; \mt{use} \; \mt{bind}
+  \mt{val} \; \mt{dyn} : \mt{ctx} ::: \{\mt{Unit}\} \to \mt{use} ::: \{\mt{Type}\} \to \mt{bind} ::: \{\mt{Type}\} \to [\mt{ctx} \sim [\mt{Dyn}]] \Rightarrow \mt{unit} \\
+  \hspace{.1in} \to \mt{tag} \; [\mt{Signal} = \mt{signal} \; (\mt{xml} \; ([\mt{Dyn}] \rc \mt{ctx}) \; \mt{use} \; \mt{bind})] \; ([\mt{Dyn}] \rc \mt{ctx}) \; [] \; \mt{use} \; \mt{bind}
 \end{array}$$
 
 Transactions can be run on the client by including them in attributes like the $\mt{Onclick}$ attribute of $\mt{button}$, and GUI widgets like $\mt{ctextbox}$ have $\mt{Source}$ attributes that can be used to connect them to sources, so that their values can be read by code running because of, e.g., an $\mt{Onclick}$ event.
