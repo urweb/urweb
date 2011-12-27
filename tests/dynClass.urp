@@ -1,0 +1,4 @@
+rewrite all DynClass/*
+allow url http://localhost/*
+
+dynClass

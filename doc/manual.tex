@@ -1933,11 +1933,14 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{useOuter} ::: \{\mt{Type}\} \to \mt{useInner} ::: \{\mt{Type}\} \to \mt{bindOuter} ::: \{\mt{Type}\} \to \mt{bindInner} ::: \{\mt{Type}\} \\
   \hspace{.1in} \to [\mt{attrsGiven} \sim \mt{attrsAbsent}] \Rightarrow [\mt{useOuter} \sim \mt{useInner}] \Rightarrow [\mt{bindOuter} \sim \mt{bindInner}] \\
   \hspace{.1in} \Rightarrow \mt{option} \; \mt{css\_class} \\
+  \hspace{.1in} \to \mt{option} \; (\mt{signal} \; \mt{css\_class}) \\
   \hspace{.1in} \to \$\mt{attrsGiven} \\
   \hspace{.1in} \to \mt{tag} \; (\mt{attrsGiven} \rc \mt{attrsAbsent}) \; \mt{ctxOuter} \; \mt{ctxInner} \; \mt{useOuter} \; \mt{bindOuter} \\
   \hspace{.1in} \to \mt{xml} \; \mt{ctxInner} \; \mt{useInner} \; \mt{bindInner} \to \mt{xml} \; \mt{ctxOuter} \; (\mt{useOuter} \rc \mt{useInner}) \; (\mt{bindOuter} \rc \mt{bindInner})
 \end{array}$$
 Note that any tag may be assigned a CSS class.  This is the sole way of making use of the values produced by $\mt{style}$ declarations.  Ur/Web itself doesn't deal with the syntax or semantics of style sheets; they can be linked via URLs with \texttt{link} tags.  However, Ur/Web does make it easy to calculate upper bounds on usage of CSS classes through program analysis.  The function $\mt{Basis.classes}$ can be used to specify a list of CSS classes for a single tag.
+
+Also note that two different arguments are available for setting CSS classes: the first, associated with the \texttt{class} pseudo-attribute syntactic sugar, fixes the class of a tag for the duration of the tag's life; while the second, associated with the \texttt{dynClass} pseudo-attribute, allows the class to vary over the tag's life.  See Section \ref{signals} for an introduction to the $\mt{signal}$ type family.
 
 Two XML fragments may be concatenated.
 $$\begin{array}{l}
@@ -2023,7 +2026,7 @@ $$\begin{array}{l}
 
 The \cd{fresh} function is allowed on both server and client, but there is no other way to create IDs, which includes lack of a way to force an ID to match a particular string.  The only semantic importance of IDs within Ur/Web is in uses of the HTML \cd{<label>} tag.  IDs play a much more central role in mainstream JavaScript programming, but Ur/Web uses a very different model to enable changes to particular nodes of a page tree, as the next manual subsection explains.  IDs may still be useful in interfacing with JavaScript code (for instance, through Ur/Web's FFI).
 
-\subsubsection{Functional-Reactive Page Generation}
+\subsubsection{\label{signals}Functional-Reactive Page Generation}
 
 Most approaches to ``AJAX''-style coding involve imperative manipulation of the DOM tree representing an HTML document's structure.  Ur/Web follows the \emph{functional-reactive} approach instead.  Programs may allocate mutable \emph{sources} of arbitrary types, and an HTML page is effectively a pure function over the latest values of the sources.  The page is not mutated directly, but rather it changes automatically as the sources are mutated.
 
