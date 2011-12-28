@@ -3501,12 +3501,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 	    in
 		case #1 dynClass of
 		    L'.ENone _ => baseAll
-		  | _ => (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
-				  (L'.EJavaScript (L'.Script, base), loc),
-				  str "),execD(",
-				  (L'.EJavaScript (L'.Script, dynClass), loc),
-				  str "))</script>"],
-			  fm)
+		  | L'.ESome (_, dc) => (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
+				                 (L'.EJavaScript (L'.Script, base), loc),
+				                 str "),execD(",
+				                 (L'.EJavaScript (L'.Script, dc), loc),
+				                 str "))</script>"],
+			                 fm)
+                  | _ => (E.errorAt loc "Absence/presence of 'dynClass' unknown";
+                          baseAll)
             end
 
           | L.EApp (
@@ -3541,7 +3543,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         (L.EApp (
                          (L.EApp (
                           (L.EApp (
-                           (L.ECApp (
+                           (L.EApp (
                             (L.ECApp (
                              (L.ECApp (
                               (L.ECApp (
@@ -3549,8 +3551,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                 (L.ECApp (
                                  (L.ECApp (
                                   (L.ECApp (
-                                   (L.EFfi ("Basis", "tag"),
-                                    _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                                   (L.ECApp (
+                                    (L.EFfi ("Basis", "tag"),
+                                     _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                            _), _),
                            _), _),
                           attrs), _),
                          _), _),

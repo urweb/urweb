@@ -1461,9 +1461,6 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                          val e = (EApp (e, case #2 tag of
                                                                                NONE => (EVar (["Basis"], "None", Infer), pos)
                                                                              | SOME c => (EApp ((EVar (["Basis"], "Some", Infer), pos), c), pos)), pos)
-                                                         val e = (EApp (e, case #3 tag of
-                                                                               NONE => (EVar (["Basis"], "None", Infer), pos)
-                                                                             | SOME c => (EApp ((EVar (["Basis"], "Some", Infer), pos), c), pos)), pos)
                                                      in
                                                          (EApp (e, xmlOpt), pos)
                                                      end

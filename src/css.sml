@@ -144,7 +144,7 @@ fun summarize file =
                         (EApp (
                          (EApp (
                           (EApp (
-                           (ECApp (
+                           (EApp (
                             (ECApp (
                              (ECApp (
                               (ECApp (
@@ -152,9 +152,11 @@ fun summarize file =
                                 (ECApp (
                                  (ECApp (
                                   (ECApp (
-                                   (EFfi ("Basis", "tag"),
-                                    _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
-                           (ECon (_, _, _, SOME (ENamed class, _)), _)), _),
+                                   (ECApp (
+                                    (EFfi ("Basis", "tag"),
+                                     _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                            (ECon (_, _, _, SOME (ENamed class, _)), _)), _),
+                           _), _),
                           attrs), _),
                          tag), _),
                         xml) =>
@@ -182,7 +184,7 @@ fun summarize file =
                         (EApp (
                          (EApp (
                           (EApp (
-                           (ECApp (
+                           (EApp (
                             (ECApp (
                              (ECApp (
                               (ECApp (
@@ -190,8 +192,10 @@ fun summarize file =
                                 (ECApp (
                                  (ECApp (
                                   (ECApp (
-                                   (EFfi ("Basis", "tag"),
-                                    _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                                   (ECApp (
+                                    (EFfi ("Basis", "tag"),
+                                     _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                            _), _),
                            _), _),
                           attrs), _),
                          tag), _),
