@@ -2967,17 +2967,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             (L.EApp (
              (L.EApp (
               (L.EApp (
-               (L.ECApp (
-                (L.ECApp (
+               (L.EApp (
+		(L.ECApp (
                  (L.ECApp (
                   (L.ECApp (
                    (L.ECApp (
                     (L.ECApp (
                      (L.ECApp (
                       (L.ECApp (
-                       (L.EFfi ("Basis", "tag"),
-                        _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
-               class), _),
+                       (L.ECApp (
+			(L.EFfi ("Basis", "tag"),
+                         _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+		class), _),
+	       dynClass), _),
               attrs), _),
              tag), _),
             xml) =>
@@ -3030,6 +3032,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (onload, onunload, attrs) = findOnload (attrs, NONE, NONE, [])
 
                 val (class, fm) = monoExp (env, st, fm) class
+                val (dynClass, fm) = monoExp (env, st, fm) dynClass
 
                 fun tagStart tag' =
                     let
@@ -3267,233 +3270,243 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          (L'.EStrcat ((L'.EJavaScript (L'.Attribute, e), loc),
                                                       (L'.EPrim (Prim.String ")"), loc)), loc)), loc)
                         end
-            in
-                (case tag of
-                     "body" => let
-                         val onload = execify onload
-                         val onunload = execify onunload
-                     in
-                         normal ("body",
-                                 SOME (L'.EStrcat ((L'.EFfiApp ("Basis", "maybe_onload",
-                                                                [(L'.EStrcat ((L'.EFfiApp ("Basis", "get_settings",
-                                                                                           [(L'.ERecord [], loc)]), loc),
-                                                                              onload), loc)]),
-                                                    loc),
-                                                   (L'.EFfiApp ("Basis", "maybe_onunload",
-                                                                [onunload]),
-                                                    loc)), loc),
-                                 SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
-                     end
 
-                   | "dyn" =>
-                     let
-                         fun inTag tag = case targs of
-                                             (L.CRecord (_, ctx), _) :: _ =>
-                                             List.exists (fn ((L.CName tag', _), _) => tag' = tag
-                                                           | _ => false) ctx
-                                           | _ => false
-                                                  
-                         val tag = if inTag "Tr" then
-                                       "tr"
-                                   else if inTag "Table" then
-                                       "table"
-                                   else
-                                       "span"
-                     in
-                         case attrs of
-                             [("Signal", e, _)] =>
-                             ((L'.EStrcat
-                                   ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(\""
-                                                            ^ tag ^ "\", execD(")), loc),
-                                    (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                                 (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
-                              fm)
-                           | _ => raise Fail "Monoize: Bad dyn attributes"
-                     end
-                     
-                   | "submit" => normal ("input type=\"submit\"", NONE, NONE)
-                   | "image" => normal ("input type=\"image\"", NONE, NONE)
-                   | "button" => normal ("input type=\"submit\"", NONE, NONE)
-                   | "hidden" => input "hidden"
+		val baseAll as (base, fm) =
+                    case tag of
+			"body" => let
+                            val onload = execify onload
+                            val onunload = execify onunload
+			in
+                            normal ("body",
+                                    SOME (L'.EStrcat ((L'.EFfiApp ("Basis", "maybe_onload",
+                                                                   [(L'.EStrcat ((L'.EFfiApp ("Basis", "get_settings",
+                                                                                              [(L'.ERecord [], loc)]), loc),
+										 onload), loc)]),
+                                                       loc),
+                                                      (L'.EFfiApp ("Basis", "maybe_onunload",
+                                                                   [onunload]),
+                                                       loc)), loc),
+                                    SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
+			end
 
-                   | "textbox" =>
-                     (case targs of
-                          [_, (L.CName name, _)] =>
-                          (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
-                               NONE =>
-                               let
-                                   val (ts, fm) = tagStart "input"
-                               in
-                                   ((L'.EStrcat (ts,
-                                                 (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\" />")),
-                                                  loc)), loc), fm)
-                               end
-                             | SOME (_, src, _) =>
-                               (strcat [str "<script type=\"text/javascript\">inp(exec(",
-                                        (L'.EJavaScript (L'.Script, src), loc),
-                                        str "), \"",
-                                        str name,
-                                        str "\")</script>"],
-                                fm))
-                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
-                                raise Fail "No name passed to textbox tag"))
-                   | "password" => input "password"
-                   | "textarea" =>
-                     (case targs of
-                          [_, (L.CName name, _)] =>
-                          let
-                              val (ts, fm) = tagStart "textarea"
-                              val (xml, fm) = monoExp (env, st, fm) xml
-                          in
-                              ((L'.EStrcat ((L'.EStrcat (ts,
-                                                         (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")), loc)), loc),
-                                            (L'.EStrcat (xml,
-                                                         (L'.EPrim (Prim.String "</textarea>"),
-                                                          loc)), loc)),
-                                loc), fm)
-                          end
-                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
-                                raise Fail "No name passed to ltextarea tag"))
+                      | "dyn" =>
+			let
+                            fun inTag tag = case targs of
+						(L.CRecord (_, ctx), _) :: _ =>
+						List.exists (fn ((L.CName tag', _), _) => tag' = tag
+                                                              | _ => false) ctx
+                                              | _ => false
+                                                     
+                            val tag = if inTag "Tr" then
+					  "tr"
+                                      else if inTag "Table" then
+					  "table"
+                                      else
+					  "span"
+			in
+                            case attrs of
+				[("Signal", e, _)] =>
+				((L'.EStrcat
+                                      ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(\""
+                                                               ^ tag ^ "\", execD(")), loc),
+                                       (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
+                                                    (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
+				 fm)
+                              | _ => raise Fail "Monoize: Bad dyn attributes"
+			end
+			
+                      | "submit" => normal ("input type=\"submit\"", NONE, NONE)
+                      | "image" => normal ("input type=\"image\"", NONE, NONE)
+                      | "button" => normal ("input type=\"submit\"", NONE, NONE)
+                      | "hidden" => input "hidden"
 
-                   | "checkbox" => input "checkbox"
-                   | "upload" => input "file"
+                      | "textbox" =>
+			(case targs of
+                             [_, (L.CName name, _)] =>
+                             (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+				  NONE =>
+				  let
+                                      val (ts, fm) = tagStart "input"
+				  in
+                                      ((L'.EStrcat (ts,
+                                                    (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\" />")),
+                                                     loc)), loc), fm)
+				  end
+				| SOME (_, src, _) =>
+				  (strcat [str "<script type=\"text/javascript\">inp(exec(",
+                                           (L'.EJavaScript (L'.Script, src), loc),
+                                           str "), \"",
+                                           str name,
+                                           str "\")</script>"],
+                                   fm))
+                           | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                                   raise Fail "No name passed to textbox tag"))
+                      | "password" => input "password"
+                      | "textarea" =>
+			(case targs of
+                             [_, (L.CName name, _)] =>
+                             let
+				 val (ts, fm) = tagStart "textarea"
+				 val (xml, fm) = monoExp (env, st, fm) xml
+                             in
+				 ((L'.EStrcat ((L'.EStrcat (ts,
+                                                            (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")), loc)), loc),
+                                               (L'.EStrcat (xml,
+                                                            (L'.EPrim (Prim.String "</textarea>"),
+                                                             loc)), loc)),
+                                   loc), fm)
+                             end
+                           | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                                   raise Fail "No name passed to ltextarea tag"))
 
-                   | "radio" =>
-                     (case targs of
-                          [_, (L.CName name, _)] =>
-                          monoExp (env, St.setRadioGroup (st, name), fm) xml
-                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
-                                raise Fail "No name passed to radio tag"))
-                   | "radioOption" =>
-                     (case St.radioGroup st of
-                          NONE => raise Fail "No name for radioGroup"
-                        | SOME name =>
-                          normal ("input",
-                                  SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc),
-                                  NONE))
+                      | "checkbox" => input "checkbox"
+                      | "upload" => input "file"
 
-                   | "select" =>
-                     (case targs of
-                          [_, (L.CName name, _)] =>
-                          let
-                              val (ts, fm) = tagStart "select"
-                              val (xml, fm) = monoExp (env, st, fm) xml
-                          in
-                              ((L'.EStrcat ((L'.EStrcat (ts,
-                                                         (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")),
-                                                          loc)), loc),
-                                            (L'.EStrcat (xml,
-                                                         (L'.EPrim (Prim.String "</select>"),
-                                                          loc)), loc)),
-                                loc),
-                               fm)
-                          end
-                        | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
-                                raise Fail "No name passed to lselect tag"))
+                      | "radio" =>
+			(case targs of
+                             [_, (L.CName name, _)] =>
+                             monoExp (env, St.setRadioGroup (st, name), fm) xml
+                           | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                                   raise Fail "No name passed to radio tag"))
+                      | "radioOption" =>
+			(case St.radioGroup st of
+                             NONE => raise Fail "No name for radioGroup"
+                           | SOME name =>
+                             normal ("input",
+                                     SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc),
+                                     NONE))
 
-                   | "ctextbox" =>
-                     (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
-                          NONE =>
-                          let
-                              val (ts, fm) = tagStart "input"
-                          in
-                              ((L'.EStrcat (ts,
-                                            (L'.EPrim (Prim.String " />"), loc)),
-                                loc), fm)
-                          end
-                        | SOME (_, src, _) =>
-                          let
-                              val sc = strcat [str "inp(exec(",
-                                               (L'.EJavaScript (L'.Script, src), loc),
-                                               str "))"]
-                              val sc = setAttrs sc
-                          in
-                              (strcat [str "<script type=\"text/javascript\">",
-                                       sc,
-                                       str "</script>"],
-                               fm)
-                          end)
+                      | "select" =>
+			(case targs of
+                             [_, (L.CName name, _)] =>
+                             let
+				 val (ts, fm) = tagStart "select"
+				 val (xml, fm) = monoExp (env, st, fm) xml
+                             in
+				 ((L'.EStrcat ((L'.EStrcat (ts,
+                                                            (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")),
+                                                             loc)), loc),
+                                               (L'.EStrcat (xml,
+                                                            (L'.EPrim (Prim.String "</select>"),
+                                                             loc)), loc)),
+                                   loc),
+				  fm)
+                             end
+                           | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
+                                   raise Fail "No name passed to lselect tag"))
 
-                   | "ccheckbox" =>
-                     (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
-                          NONE =>
-                          let
-                              val (ts, fm) = tagStart "input type=\"checkbox\""
-                          in
-                              ((L'.EStrcat (ts,
-                                            (L'.EPrim (Prim.String " />"), loc)),
-                                loc), fm)
-                          end
-                        | SOME (_, src, _) =>
-                          let
-                              val sc = strcat [str "chk(exec(",
-                                               (L'.EJavaScript (L'.Script, src), loc),
-                                               str "))"]
-                              val sc = setAttrs sc
-                          in
-                              (strcat [str "<script type=\"text/javascript\">",
-                                       sc,
-                                       str "</script>"],
-                               fm)
-                          end)
+                      | "ctextbox" =>
+			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                             NONE =>
+                             let
+				 val (ts, fm) = tagStart "input"
+                             in
+				 ((L'.EStrcat (ts,
+                                               (L'.EPrim (Prim.String " />"), loc)),
+                                   loc), fm)
+                             end
+                           | SOME (_, src, _) =>
+                             let
+				 val sc = strcat [str "inp(exec(",
+						  (L'.EJavaScript (L'.Script, src), loc),
+						  str "))"]
+				 val sc = setAttrs sc
+                             in
+				 (strcat [str "<script type=\"text/javascript\">",
+					  sc,
+					  str "</script>"],
+				  fm)
+                             end)
 
-                   | "cselect" =>
-                     (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
-                          NONE =>
-                          let
-                              val (xml, fm) = monoExp (env, st, fm) xml
-                              val (ts, fm) = tagStart "select"
-                          in
-                              (strcat [ts,
-                                       str ">",
-                                       xml,
-                                       str "</select>"],
-                               fm)
-                          end
-                        | SOME (_, src, _) =>
-                          let
-                              val (xml, fm) = monoExp (env, st, fm) xml
+                      | "ccheckbox" =>
+			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                             NONE =>
+                             let
+				 val (ts, fm) = tagStart "input type=\"checkbox\""
+                             in
+				 ((L'.EStrcat (ts,
+                                               (L'.EPrim (Prim.String " />"), loc)),
+                                   loc), fm)
+                             end
+                           | SOME (_, src, _) =>
+                             let
+				 val sc = strcat [str "chk(exec(",
+						  (L'.EJavaScript (L'.Script, src), loc),
+						  str "))"]
+				 val sc = setAttrs sc
+                             in
+				 (strcat [str "<script type=\"text/javascript\">",
+					  sc,
+					  str "</script>"],
+				  fm)
+                             end)
 
-                              val sc = strcat [str "sel(exec(",
-                                               (L'.EJavaScript (L'.Script, src), loc),
-                                               str "),exec(",
-                                               (L'.EJavaScript (L'.Script, xml), loc),
-                                               str "))"]
-                              val sc = setAttrs sc
-                          in
-                              (strcat [str "<script type=\"text/javascript\">",
-                                       sc,
-                                       str "</script>"],
-                               fm)
-                          end)
+                      | "cselect" =>
+			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                             NONE =>
+                             let
+				 val (xml, fm) = monoExp (env, st, fm) xml
+				 val (ts, fm) = tagStart "select"
+                             in
+				 (strcat [ts,
+					  str ">",
+					  xml,
+					  str "</select>"],
+				  fm)
+                             end
+                           | SOME (_, src, _) =>
+                             let
+				 val (xml, fm) = monoExp (env, st, fm) xml
 
-                   | "coption" => normal ("option", NONE, NONE)
+				 val sc = strcat [str "sel(exec(",
+						  (L'.EJavaScript (L'.Script, src), loc),
+						  str "),exec(",
+						  (L'.EJavaScript (L'.Script, xml), loc),
+						  str "))"]
+				 val sc = setAttrs sc
+                             in
+				 (strcat [str "<script type=\"text/javascript\">",
+					  sc,
+					  str "</script>"],
+				  fm)
+                             end)
 
-                   | "ctextarea" =>
-                     (case List.find (fn ("Source", _, _) => true | _ => false) attrs of
-                          NONE =>
-                          let
-                              val (ts, fm) = tagStart "textarea"
-                          in
-                              ((L'.EStrcat (ts,
-                                            (L'.EPrim (Prim.String " />"), loc)),
-                                loc), fm)
-                          end
-                        | SOME (_, src, _) =>
-                          let
-                              val sc = strcat [str "tbx(exec(",
-                                               (L'.EJavaScript (L'.Script, src), loc),
-                                               str "))"]
-                              val sc = setAttrs sc
-                          in
-                              (strcat [str "<script type=\"text/javascript\">",
-                                       sc,
-                                       str "</script>"],
-                               fm)
-                          end)
+                      | "coption" => normal ("option", NONE, NONE)
 
-                   | "tabl" => normal ("table", NONE, NONE)
-                   | _ => normal (tag, NONE, NONE))
+                      | "ctextarea" =>
+			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                             NONE =>
+                             let
+				 val (ts, fm) = tagStart "textarea"
+                             in
+				 ((L'.EStrcat (ts,
+                                               (L'.EPrim (Prim.String " />"), loc)),
+                                   loc), fm)
+                             end
+                           | SOME (_, src, _) =>
+                             let
+				 val sc = strcat [str "tbx(exec(",
+						  (L'.EJavaScript (L'.Script, src), loc),
+						  str "))"]
+				 val sc = setAttrs sc
+                             in
+				 (strcat [str "<script type=\"text/javascript\">",
+					  sc,
+					  str "</script>"],
+				  fm)
+                             end)
+
+                      | "tabl" => normal ("table", NONE, NONE)
+                      | _ => normal (tag, NONE, NONE)
+	    in
+		case #1 dynClass of
+		    L'.ENone _ => baseAll
+		  | _ => (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
+				  (L'.EJavaScript (L'.Script, base), loc),
+				  str "),execD(",
+				  (L'.EJavaScript (L'.Script, dynClass), loc),
+				  str "))</script>"],
+			  fm)
             end
 
           | L.EApp (

@@ -645,6 +645,7 @@ val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type}
              [useOuter ~ useInner] =>
              [bindOuter ~ bindInner] =>
            option css_class
+	   -> option (signal css_class)
            -> $attrsGiven
            -> tag (attrsGiven ++ attrsAbsent)
                   ctxOuter ctxInner useOuter bindOuter
