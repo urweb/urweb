@@ -2339,13 +2339,33 @@ In contrast to C FFI code, JavaScript FFI functions take no extra context argume
 
 \begin{itemize}
 \item Integers, floats, strings, characters, and booleans are represented in the usual JavaScript way.
-\item Ur functions are represented in an unspecified way.  This means that you should not rely on any details of function representation.  Named FFI functions are represented as JavaScript functions with as many arguments as their Ur types specify.  To call a non-FFI function \texttt{f} on argument \texttt{x}, run \texttt{execF(f, x)}.
+\item Ur functions are represented in an unspecified way.  This means that you should not rely on any details of function representation.  Named FFI functions are represented as JavaScript functions with as many arguments as their Ur types specify.  To call a non-FFI function \texttt{f} on argument \texttt{x}, run \texttt{execF(f, x)}.  To lift a normal JavaScript function \cd{f} into an Ur/Web JavaScript function, run \cd{flift(f)}.
 \item An Ur record is represented with a JavaScript record, where Ur field name \texttt{N} translates to JavaScript field name \texttt{\_N}.  An exception to this rule is that the empty record is encoded as \texttt{null}.
 \item \texttt{option}-like types receive special handling similar to their handling in C.  The ``\texttt{None}'' constructor is \texttt{null}, and a use of the ``\texttt{Some}'' constructor on a value \texttt{v} is either \texttt{v}, if the underlying type doesn't need to use \texttt{null}; or \texttt{\{v:v\}} otherwise.
 \item Any other datatypes represent a non-value-carrying constructor \texttt{C} as \texttt{"C"} and an application of a constructor \texttt{C} to value \texttt{v} as \texttt{\{n:"C", v:v\}}.  This rule only applies to datatypes defined in FFI module signatures; the compiler is free to optimize the representations of other, non-\texttt{option}-like datatypes in arbitrary ways.
 \end{itemize}
 
-It is possible to write JavaScript FFI code that interacts with the functional-reactive structure of a document, but this version of the manual doesn't cover the details.
+It is possible to write JavaScript FFI code that interacts with the functional-reactive structure of a document.  Here is a quick summary of some of the simpler functions to use; descriptions of fancier stuff may be added later on request (and such stuff should be considered ``undocumented features'' until then).
+
+\begin{itemize}
+\item Sources should be treated as an abstract type, manipulated via:
+  \begin{itemize}
+  \item \cd{sc(v)}, to create a source initialized to \cd{v}
+  \item \cd{sg(s)}, to retrieve the current value of source \cd{s}
+  \item \cd{sv(s, v)}, to set source \cd{s} to value \cd{v}
+  \end{itemize}
+
+\item Signals should be treated as an abstract type, manipulated via:
+  \begin{itemize}
+  \item \cd{sr(v)} and \cd{sb(s, f)}, the ``return'' and ``bind'' monad operators, respectively
+  \item \cd{ss(s)}, to produce the signal corresponding to source \cd{s}
+  \item \cd{scur(s)}, to get the current value of signal \cd{s}
+  \end{itemize}
+
+\item The behavior of the \cd{<dyn>} pseudo-tag may be mimicked by following the right convention in a piece of HTML source code with a type like $\mt{xbody}$.  Such a piece of source code may be encoded with a JavaScript string.  To insert a dynamic section, include a \cd{<script>} tag whose content is just a call \cd{dyn(pnode, s)}.  The argument \cd{pnode} specifies what the relevant enclosing parent tag is.  Use value \cd{"tr"} when the immediate parent is \cd{<tr>}, use \cd{"table"} when the immediate parent is \cd{<table>}, and use \cd{"span"} otherwise.  The argument \cd{s} is a string-valued signal giving the HTML code to be inserted at this point.  As with the usual \cd{<dyn>} tag, that HTML subtree is automatically updated as the value of \cd{s} changes.
+
+\item It is possible to use the more standard ``IDs and mutation'' style of JavaScript coding, though that style is unidiomatic for Ur/Web and should be avoided wherever possible.  Recall the abstract type $\mt{id}$ and its constructor $\mt{fresh}$, which can be used to generate new unique IDs in Ur/Web code.  Values of this type are represented as strings in JavaScript, and a function \cd{fresh()} is available to generate new unique IDs.  Application-specific ID generation schemes may cause bad interactions with Ur/Web code that also generates IDs, so the recommended approach is to produce IDs only via calls to \cd{fresh()}.  FFI code shouldn't depend on the ID generation scheme (on either server side or client side), but it is safe to include these IDs in tag attributes (in either server-side or client-side code) and manipulate the associated DOM nodes in the standard way (in client-side code).  Be forewarned that this kind of imperative DOM manipulation may confuse the Ur/Web runtime system and interfere with proper behavior of tags like \cd{<dyn>}!
+\end{itemize}
 
 
 \section{Compiler Phases}
