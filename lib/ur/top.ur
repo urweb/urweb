@@ -51,7 +51,7 @@ end
 
 fun not b = if b then False else True
 
-con id = K ==> fn t :: K => t
+con ident = K ==> fn t :: K => t
 con record (t :: {Type}) = $t
 con fst = K1 ==> K2 ==> fn t :: (K1 * K2) => t.1
 con snd = K1 ==> K2 ==> fn t :: (K1 * K2) => t.2

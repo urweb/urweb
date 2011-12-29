@@ -22,7 +22,7 @@ end
 val not : bool -> bool
 
 (* Type-level identity function *)
-con id = K ==> fn t :: K => t
+con ident = K ==> fn t :: K => t
 
 (* Type-level function which yields the value-level record
    described by the given type-level record *)

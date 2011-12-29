@@ -253,17 +253,17 @@ functor Make(M : sig
                       grid.Rows}
 
             <dyn signal={rows <- Dlist.foldl (fn row : listT =>
-                                                 @Monad.mapR2 _ [aggregateMeta M.row] [id] [id]
+                                                 @Monad.mapR2 _ [aggregateMeta M.row] [ident] [ident]
                                                   (fn [nm :: Name] [t :: Type] meta acc =>
                                                       Monad.mp (fn v => meta.Step v acc)
                                                                (signal row.Row))
                                                   M.aggFolder M.aggregates)
-                                 (@mp [aggregateMeta M.row] [id]
+                                 (@mp [aggregateMeta M.row] [ident]
                                   (fn [t] meta => meta.Initial)
                                   M.aggFolder M.aggregates) grid.Rows;
                          return <xml><tr>
                            <th colspan={3}>Aggregates</th>
-                           {@mapX2 [aggregateMeta M.row] [id] [_]
+                           {@mapX2 [aggregateMeta M.row] [ident] [_]
                              (fn [nm :: Name] [t :: Type] [rest :: {Type}] [[nm] ~ rest] meta acc =>
                                  <xml><td class={agg}>{meta.Display acc}</td></xml>)
                              M.aggFolder M.aggregates rows}
