@@ -680,7 +680,7 @@ fun makeParams inputs =
          string " };",
          newline,
          if List.exists isBlob inputs then
-             box [string "const int *paramLengths = uw_malloc(ctx, ",
+             box [string "int *paramLengths = uw_malloc(ctx, ",
                   string (Int.toString (length inputs)),
                   string " * sizeof(int));",
                   newline,
@@ -696,7 +696,6 @@ fun makeParams inputs =
                                                  | _ => string "0",
                                                string ";",
                                                newline]) inputs,
-                  string " };",
                   newline]
          else
              box [string "const int *paramLengths = paramFormats;",
