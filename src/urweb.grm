@@ -1462,6 +1462,9 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                                                NONE => (EVar (["Basis"], "None", Infer), pos)
                                                                              | SOME c => (EApp ((EVar (["Basis"], "Some", Infer), pos), c), pos)), pos)
                                                      in
+                                                         case #3 tag of
+                                                             NONE => ()
+                                                           | SOME _ => ErrorMsg.errorAt pos "<form> does not support 'dynClass' attribute";
                                                          (EApp (e, xmlOpt), pos)
                                                      end
                                                  else if et = "subform" orelse et = "subforms" then

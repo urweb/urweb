@@ -3034,6 +3034,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (class, fm) = monoExp (env, st, fm) class
                 val (dynClass, fm) = monoExp (env, st, fm) dynClass
 
+                val dynamics = ["dyn", "ctextbox", "ccheckbox", "cselect", "coption", "ctextarea"]
+
+                val () = case #1 dynClass of
+                             L'.ENone _ => ()
+                           | _ => if List.exists (fn x => x = tag) dynamics then
+                                      E.errorAt loc ("Dynamic tag <" ^ tag ^ "> cannot be combined with 'dynClass' attribute; an additional <span> may be useful")
+                                  else
+                                      ()
+
                 fun tagStart tag' =
                     let
                         val t = (L'.TFfi ("Basis", "string"), loc)
