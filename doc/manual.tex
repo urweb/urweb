@@ -2226,7 +2226,12 @@ When the standalone web server receives a request for a known page, it calls the
 
 HTML forms are handled in a similar way.  The $\mt{action}$ attribute of a $\mt{submit}$ form tag takes a value of type $\$\mt{use} \to \mt{transaction} \; \mt{page}$, where $\mt{use}$ is a kind-$\{\mt{Type}\}$ record of the form fields used by this action handler.  Action handlers are assigned URL patterns in the same way as above.
 
-For both links and actions, direct arguments and local variables mentioned implicitly via closures are automatically included in serialized form in URLs, in the order in which they appear in the source code.
+For both links and actions, direct arguments and local variables mentioned implicitly via closures are automatically included in serialized form in URLs, in the order in which they appear in the source code.  Such serialized values may only be drawn from a limited set of types, and programs will fail to compile when the (implicit or explicit) arguments of page handler functions involve disallowed types.  (Keep in mind that every free variable of a function is an implicit argument if it was not defined at the top level of a module.)  For instance:
+\begin{itemize}
+  \item Functions are disallowed, since there is no obvious way to serialize them safely.
+  \item XML fragments are disallowed, since it is unclear how to check client-provided XML to be sure it doesn't break the HTML invariants of the application (for instance, by mutating the DOM in the conventional way, interfering with Ur/Web's functional-reactive regime).
+  \item Blobs (``files'') are disallowed, since they can easily have very large serializations that could not fit within most web servers' URL size limits.  (And you probably don't want to be serializing, e.g., image files in URLs, anyway.)
+\end{itemize}
 
 Ur/Web programs generally mix server- and client-side code in a fairly transparent way.  The one important restriction is that mixed client-server code must encapsulate all server-side pieces within named functions.  This is because execution of such pieces will be implemented by explicit calls to the remote web server, and it is useful to get the programmer's help in designing the interface to be used.  For example, this makes it easier to allow a client running an old version of an application to continue interacting with a server that has been upgraded to a new version, if the programmer took care to keep the interfaces of all of the old remote calls the same.  The functions implementing these services are assigned names in the same way as normal web entry points, by using module structure.
 
