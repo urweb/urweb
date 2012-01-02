@@ -473,8 +473,14 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                          in
                                              [(DCon (SYMBOL, SOME k, c), loc)]
                                          end)
-       | LTYPE SYMBOL EQ cexp           ([(DCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
-                                           s (LTYPEleft, cexpright))])
+       | LTYPE SYMBOL cargl2 EQ cexp    (let
+                                             val loc = s (LTYPEleft, cexpright)
+
+                                             val k = (KWild, loc)
+                                             val (c, k) = cargl2 (cexp, k)
+                                         in
+                                             [(DCon (SYMBOL, SOME k, c), loc)]
+                                         end)
        | DATATYPE dtypes                ([(DDatatype dtypes, s (DATATYPEleft, dtypesright))])
        | DATATYPE SYMBOL dargs EQ DATATYPE CSYMBOL DOT path
                 (case dargs of
@@ -756,8 +762,20 @@ sgi    : LTYPE SYMBOL                   ((SgiConAbs (SYMBOL, (KType, s (LTYPElef
                                                      (SgiCon (SYMBOL, SOME k, c), loc)
                                                  end
                                          end)
-       | LTYPE SYMBOL EQ cexp           ((SgiCon (SYMBOL, SOME (KType, s (LTYPEleft, cexpright)), cexp),
-                                          s (LTYPEleft, cexpright)))
+       | LTYPE SYMBOL cargl2 cexpO      (let
+                                             val loc = s (LTYPEleft, cexpOright)
+
+                                             val k = (KWild, loc)
+                                         in
+                                             case cexpO of
+                                                 NONE => (SgiConAbs (SYMBOL, k), loc)
+                                               | SOME cexp =>
+                                                 let
+                                                     val (c, k) = cargl2 (cexp, k)
+                                                 in
+                                                     (SgiCon (SYMBOL, SOME k, c), loc)
+                                                 end
+                                         end)
        | DATATYPE dtypes                ((SgiDatatype dtypes, s (DATATYPEleft, dtypesright)))
        | DATATYPE SYMBOL dargs EQ DATATYPE CSYMBOL DOT path
                 (case dargs of
