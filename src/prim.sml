@@ -70,12 +70,24 @@ fun pad (n, ch, s) =
     else
         str ch ^ pad (n-1, ch, s)
 
+fun quoteDouble ch =
+    case ch of
+        #"'" => str ch
+      | _ => Char.toCString ch
+
+fun toCChar ch =
+    case ch of
+        #"\"" => str ch
+      | _ => Char.toCString ch
+
+val toCString = String.translate quoteDouble
+
 fun p_t_GCC t =
     case t of
         Int n => string (int2s n)
       | Float n => string (float2s n)
-      | String s => box [string "\"", string (String.toCString s), string "\""]
-      | Char ch => box [string "'", string (Char.toCString ch), string "'"]
+      | String s => box [string "\"", string (toCString s), string "\""]
+      | Char ch => box [string "'", string (toCChar ch), string "'"]
 
 fun equal x =
     case x of

@@ -31,14 +31,14 @@ fastcgi.sml
 static.sig
 static.sml
 
+prim.sig
+prim.sml
+
 mysql.sig
 mysql.sml
 
 sqlite.sig
 sqlite.sml
-
-prim.sig
-prim.sml
 
 datatype_kind.sml
 

@@ -2388,7 +2388,7 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DPreparedStatements _ => box []
 
       | DJavaScript s => box [string "static char jslib[] = \"",
-                              string (String.toCString s),
+                              string (Prim.toCString s),
                               string "\";"]
       | DCookie s => box [string "/*",
                           space,
@@ -2863,7 +2863,7 @@ fun p_file env (ds, ps) =
                             prefix ^ s
             in
                 box [string "if (!strncmp(request, \"",
-                     string (String.toCString s),
+                     string (Prim.toCString s),
                      string "\", ",
                      string (Int.toString (size s)),
                      string ") && (request[",
@@ -3090,10 +3090,10 @@ fun p_file env (ds, ps) =
                           box [string "if (!str",
                                case #kind rule of
                                    Settings.Exact => box [string "cmp(s, \"",
-                                                          string (String.toCString (#pattern rule)),
+                                                          string (Prim.toCString (#pattern rule)),
                                                           string "\"))"]
                                  | Settings.Prefix => box [string "ncmp(s, \"",
-                                                           string (String.toCString (#pattern rule)),
+                                                           string (Prim.toCString (#pattern rule)),
                                                            string "\", ",
                                                            string (Int.toString (size (#pattern rule))),
                                                            string "))"],
@@ -3402,7 +3402,7 @@ fun p_file env (ds, ps) =
                          "uw_handle",
                          "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader",
                          case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
-                         "\"" ^ String.toCString (Settings.getTimeFormat ()) ^ "\""],
+                         "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\""],
              string "};",
              newline]
     end

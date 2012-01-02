@@ -41,4 +41,7 @@ signature PRIM = sig
 
     val toString : t -> string
 
+    val toCString : string -> string
+    (* SML's built-in [String.toCString] gets confused by single quotes! *)
+
 end

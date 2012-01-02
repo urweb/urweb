@@ -1,4 +1,4 @@
-(* Copyright (c) 2009-2010, Adam Chlipala
+ (* Copyright (c) 2009-2010, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -230,7 +230,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                                                                    newline]
                                                       in
                                                           box [string "if (sqlite3_prepare_v2(conn->conn, \"",
-                                                               string (String.toCString s),
+                                                               string (Prim.toCString s),
                                                                string "\", -1, &conn->p",
                                                                string (Int.toString i),
                                                                string ", NULL) != SQLITE_OK) {",
@@ -242,7 +242,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                                                                     string "msg[1023] = 0;",
                                                                     newline,
                                                                     uhoh false ("Error preparing statement: "
-                                                                                ^ String.toCString s ^ "<br />%s") ["msg"]],
+                                                                                ^ Prim.toCString s ^ "<br />%s") ["msg"]],
                                                                string "}",
                                                                newline]
                                                       end)
@@ -659,9 +659,9 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                   newline],
 
          string "if (sqlite3_prepare_v2(conn->conn, \"",
-         string (String.toCString query),
+         string (Prim.toCString query),
          string "\", -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: ",
-         string (String.toCString query),
+         string (Prim.toCString query),
          string "<br />%s\", sqlite3_errmsg(conn->conn));",
          newline,
          if nested then
@@ -685,7 +685,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
          newline,
 
          queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
-                                                                            string (String.toCString query),
+                                                                            string (Prim.toCString query),
                                                                             string "\""]},
 
          string "uw_pop_cleanup(ctx);",
@@ -750,9 +750,9 @@ fun dmlPrepared {loc, id, dml, inputs, mode = mode} =
          string "if (stmt == NULL) {",
          newline,
          box [string "if (sqlite3_prepare_v2(conn->conn, \"",
-              string (String.toCString dml),
+              string (Prim.toCString dml),
               string "\", -1, &stmt, NULL) != SQLITE_OK) uw_error(ctx, FATAL, \"Error preparing statement: ",
-              string (String.toCString dml),
+              string (Prim.toCString dml),
               string "<br />%s\", sqlite3_errmsg(conn->conn));",
               newline,
               string "conn->p",
@@ -771,7 +771,7 @@ fun dmlPrepared {loc, id, dml, inputs, mode = mode} =
          newline,
 
          dmlCommon {loc = loc, dml = box [string "\"",
-                                          string (String.toCString dml),
+                                          string (Prim.toCString dml),
                                           string "\""], mode = mode},
 
          string "uw_pop_cleanup(ctx);",

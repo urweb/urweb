@@ -346,7 +346,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
         fun stringOf r = case !r of
                              NONE => string "NULL"
                            | SOME s => box [string "\"",
-                                            string (String.toCString s),
+                                            string (Prim.toCString s),
                                             string "\""]
     in
         app (fn s =>
@@ -479,7 +479,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                                                                newline,
 
                                                                string "if (mysql_stmt_prepare(stmt, \"",
-                                                               string (String.toCString s),
+                                                               string (Prim.toCString s),
                                                                string "\", ",
                                                                string (Int.toString (size s)),
                                                                string ")) {",
@@ -978,7 +978,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
               else
                   box [],
               string "if (mysql_stmt_prepare(stmt, \"",
-              string (String.toCString query),
+              string (Prim.toCString query),
               string "\", ",
               string (Int.toString (size query)),
               string ")) {",
@@ -1189,7 +1189,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
          newline,
 
          queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
-                                                                            string (String.toCString query),
+                                                                            string (Prim.toCString query),
                                                                             string "\""]},
 
          if nested then
@@ -1283,7 +1283,7 @@ fun dmlPrepared {loc, id, dml, inputs, mode} =
               string "if (stmt == NULL) uw_error(ctx, FATAL, \"Out of memory allocating prepared statement\");",
               newline,
               string "if (mysql_stmt_prepare(stmt, \"",
-              string (String.toCString dml),
+              string (Prim.toCString dml),
               string "\", ",
               string (Int.toString (size dml)),
               string ")) {",
@@ -1477,7 +1477,7 @@ fun dmlPrepared {loc, id, dml, inputs, mode} =
          newline,
 
          dmlCommon {loc = loc, dml = box [string "\"",
-                                          string (String.toCString dml),
+                                          string (Prim.toCString dml),
                                           string "\""], mode = mode}]
 
 fun nextval {loc, seqE, seqName} =
@@ -1521,7 +1521,7 @@ fun sqlifyString s = "'" ^ String.translate (fn #"'" => "\\'"
                                                     (ErrorMsg.error
                                                          "Non-printing character found in SQL string literal";
                                                      ""))
-                                            (String.toCString s) ^ "'"
+                                            (Prim.toCString s) ^ "'"
 
 fun p_cast (s, _) = s
 
