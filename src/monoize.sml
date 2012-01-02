@@ -531,7 +531,20 @@ fun fooifyExp fk env =
                     let
                         fun makeDecl n fm =
                             let
-                                val (x, _, xncs) = Env.lookupDatatype env i
+                                val (x, xncs) =
+                                    case ListUtil.search (fn (L'.DDatatype [(x, i', xncs)], _) =>
+                                                             if i' = i then
+                                                                 SOME (x, xncs)
+                                                             else
+                                                                 NONE
+                                                           | _ => NONE) (!pvarDefs) of
+                                        NONE =>
+                                        let
+                                            val (x, _, xncs) = Env.lookupDatatype env i
+                                        in
+                                            (x, map (fn (x, n, c) => (x, n, Option.map (monoType env) c)) xncs)
+                                        end
+                                      | SOME v => v
 
                                 val (branches, fm) =
                                     ListUtil.foldlMap
@@ -543,7 +556,6 @@ fun fooifyExp fk env =
                                                  fm)
                                               | SOME t =>
                                                 let
-                                                    val t = monoType env t
                                                     val (arg, fm) = fooify fm ((L'.ERel 0, loc), t)
                                                 in
                                                     (((L'.PCon (dk, L'.PConVar n, SOME (L'.PVar ("a", t), loc)), loc),
