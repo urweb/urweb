@@ -865,7 +865,13 @@
 
          val (unifs1, unifs2) = eatMatching (fn ((_, r1), (_, r2)) => r1 = r2) (#unifs s1, #unifs s2)
 
-         val (others1, others2) = eatMatching (consEq env loc) (#others s1, #others s2)
+         val hasUnifs = U.Con.exists {kind = fn _ => false,
+                                      con = fn L'.CUnif _ => true
+                                             | _ => false}
+
+         val (others1, others2) = eatMatching (fn (c1, c2) =>
+                                                  not (hasUnifs c1 andalso hasUnifs c2)
+                                                  andalso consEq env loc (c1, c2)) (#others s1, #others s2)
          (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
