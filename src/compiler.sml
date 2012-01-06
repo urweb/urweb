@@ -1354,7 +1354,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
         val lib = if Settings.getStaticLinking () then
                       #linkStatic proto ^ " " ^ Config.lib ^ "/../liburweb.a"
                   else
-                      "-L" ^ Config.lib ^ "/.. -lurweb " ^ #linkDynamic proto
+                      "-L" ^ Config.lib ^ "/.. " ^ #linkDynamic proto ^ " -lurweb"
 
         val opt = if debug then
                       ""
@@ -1366,8 +1366,8 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                       ^ " " ^ #compile proto
                       ^ " -c " ^ escapeFilename cname ^ " -o " ^ escapeFilename oname
 
-        val link = Config.ccompiler ^ " -Werror" ^ opt ^ " -lm " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs
-                   ^ " " ^ lib ^ " " ^ Config.openssl ^ " " ^ escapeFilename oname ^ " -o " ^ escapeFilename ename ^ " " ^ libs
+        val link = Config.ccompiler ^ " -Werror" ^ opt ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs
+                   ^ " " ^ lib ^ " " ^ escapeFilename oname ^ " " ^ libs ^ " -lm " ^ Config.openssl ^ " -o " ^ escapeFilename ename
 
         val (compile, link) =
             if profile then
