@@ -119,6 +119,7 @@ Ur/Web configuration:
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER
   SQLite C header:     SQHEADER       $SQHEADER
+  OpenSSL:             OPENSSL_LIBS   $OPENSSL_LIBS
 
   Version:             $VERSION
 EOF
