@@ -509,7 +509,7 @@ fun fooifyExp fk env =
               | _ =>
                 case t of
                     L'.TFfi ("Basis", "unit") => ((L'.EPrim (Prim.String ""), loc), fm)
-                  | L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [e]), loc), fm)
+                  | L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm)
 
                   | L'.TRecord [] => ((L'.EPrim (Prim.String ""), loc), fm)
                   | L'.TRecord ((x, t) :: xts) =>
@@ -944,7 +944,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        (L'.TFun ((L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                        (L'.EAbs ("y", (L'.TFfi ("Basis", "time"), loc),
                                  (L'.TFfi ("Basis", "bool"), loc),
-                                 (L'.EFfiApp ("Basis", "eq_time", [(L'.ERel 1, loc), (L'.ERel 0, loc)]), loc)), loc)), loc),
+                                 (L'.EFfiApp ("Basis", "eq_time", [((L'.ERel 1, loc), (L'.TFfi ("Basis", "time"), loc)),
+                                                                   ((L'.ERel 0, loc), (L'.TFfi ("Basis", "time"), loc))]), loc)), loc)), loc),
              fm)
 
           | L.ECApp ((L.EFfi ("Basis", "mkEq"), _), t) =>
@@ -1169,7 +1170,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               (L'.TFun ((L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
                               (L'.EAbs ("y", (L'.TFfi ("Basis", "time"), loc),
                                         (L'.TFfi ("Basis", "bool"), loc),
-                                        (L'.EFfiApp ("Basis", s, [(L'.ERel 1, loc), (L'.ERel 0, loc)]), loc)), loc)), loc)
+                                        (L'.EFfiApp ("Basis", s, [((L'.ERel 1, loc), (L'.TFfi ("Basis", "time"), loc)),
+                                                                  ((L'.ERel 0, loc), (L'.TFfi ("Basis", "time"), loc))]), loc)), loc)), loc)
             in
                 ordEx ((L'.TFfi ("Basis", "time"), loc),
                        boolBin "lt_time",
@@ -1368,14 +1370,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
           | L.EFfiApp ("Basis", "recv", _) => poly ()
 
-          | L.EFfiApp ("Basis", "float", [e]) =>
+          | L.EFfiApp ("Basis", "float", [(e, t)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EFfiApp ("Basis", "floatFromInt", [e]), loc), fm)
+                ((L'.EFfiApp ("Basis", "floatFromInt", [(e, monoType env t)]), loc), fm)
             end
 
-          | L.EFfiApp ("Basis", "sleep", [n]) =>
+          | L.EFfiApp ("Basis", "sleep", [(n, _)]) =>
             let
                 val (n, fm) = monoExp (env, st, fm) n
             in
@@ -1390,7 +1392,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("x", t, (L'.TFun ((L'.TRecord [], loc), (L'.TSource, loc)), loc),
                            (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TSource, loc),
                                      (L'.EFfiApp ("Basis", "new_client_source",
-                                                  [(L'.EJavaScript (L'.Source t, (L'.ERel 1, loc)), loc)]),
+                                                  [((L'.EJavaScript (L'.Source t, (L'.ERel 1, loc)), loc),
+                                                    (L'.TSource, loc))]),
                                       loc)), loc)),
                   loc),
                  fm)
@@ -1404,9 +1407,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.EAbs ("v", t, (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc),
                                      (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
                                                (L'.EFfiApp ("Basis", "set_client_source",
-                                                            [(L'.ERel 2, loc),
-                                                             (L'.EJavaScript (L'.Source t,
-                                                                              (L'.ERel 1, loc)), loc)]),
+                                                            [((L'.ERel 2, loc), (L'.TSource, loc)),
+                                                             ((L'.EJavaScript (L'.Source t,
+                                                                               (L'.ERel 1, loc)), loc),
+                                                              t)]),
                                                 loc)), loc)), loc)), loc),
                  fm)
             end
@@ -1418,7 +1422,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.TFun ((L'.TRecord [], loc), t), loc),
                            (L'.EAbs ("_", (L'.TRecord [], loc), t,
                                      (L'.EFfiApp ("Basis", "get_client_source",
-                                                  [(L'.ERel 1, loc)]),
+                                                  [((L'.ERel 1, loc), (L'.TSource, loc))]),
                                       loc)), loc)), loc),
                  fm)
             end
@@ -1430,12 +1434,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.TFun ((L'.TRecord [], loc), t), loc),
                            (L'.EAbs ("_", (L'.TRecord [], loc), t,
                                      (L'.EFfiApp ("Basis", "current",
-                                                  [(L'.ERel 1, loc)]),
+                                                  [((L'.ERel 1, loc), (L'.TSource, loc))]),
                                       loc)), loc)), loc),
                  fm)
             end
 
-          | L.EFfiApp ("Basis", "spawn", [e]) =>
+          | L.EFfiApp ("Basis", "spawn", [(e, _)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
@@ -1480,7 +1484,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("c", s, (L'.TFun (un, s), loc),
                            (L'.EAbs ("_", un, s,
-                                     (L'.EUnurlify ((L'.EFfiApp ("Basis", "get_cookie", [(L'.ERel 1, loc)]), loc),
+                                     (L'.EUnurlify ((L'.EFfiApp ("Basis", "get_cookie", [((L'.ERel 1, loc), s)]), loc),
                                                     t, true),
                                       loc)), loc)), loc),
                  fm)
@@ -1502,13 +1506,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("c", s, (L'.TFun (rt, (L'.TFun (un, un), loc)), loc),
                            (L'.EAbs ("r", rt, (L'.TFun (un, un), loc),
                                      (L'.EAbs ("_", un, un,
-                                               (L'.EFfiApp ("Basis", "set_cookie", [(L'.EPrim (Prim.String
-                                                                                                   (Settings.getUrlPrefix ())),
-                                                                                     loc),
-                                                                                    (L'.ERel 2, loc),
-                                                                                    e,
-                                                                                    fd "Expires",
-                                                                                    fd "Secure"])
+                                               (L'.EFfiApp ("Basis", "set_cookie", [((L'.EPrim (Prim.String
+                                                                                                    (Settings.getUrlPrefix ())),
+                                                                                      loc), s),
+                                                                                    ((L'.ERel 2, loc), s),
+                                                                                    (e, s),
+                                                                                    (fd "Expires", (L'.TOption (L'.TFfi ("Basis", "time"), loc), loc)),
+                                                                                    (fd "Secure", (L'.TFfi ("Basis", "bool"), loc))])
                                               , loc)), loc)), loc)), loc),
                  fm)
             end
@@ -1521,17 +1525,17 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("c", s, (L'.TFun (un, un), loc),
                            (L'.EAbs ("_", un, un,
                                      (L'.EFfiApp ("Basis", "clear_cookie",
-                                                  [(L'.EPrim (Prim.String
-                                                                  (Settings.getUrlPrefix ())),
-                                                    loc),
-                                                   (L'.ERel 1, loc)]),
+                                                  [((L'.EPrim (Prim.String
+                                                                   (Settings.getUrlPrefix ())),
+                                                     loc), s),
+                                                   ((L'.ERel 1, loc), s)]),
                                       loc)), loc)), loc),
                  fm)
             end
 
           | L.ECApp ((L.EFfi ("Basis", "channel"), _), t) =>
                 ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "channel"), loc),
-                           (L'.EFfiApp ("Basis", "new_channel", [(L'.ERecord [], loc)]), loc)), loc),
+                           (L'.EFfiApp ("Basis", "new_channel", [((L'.ERecord [], loc), (L'.TRecord [], loc))]), loc)), loc),
                  fm)
           | L.ECApp ((L.EFfi ("Basis", "send"), _), t) =>
             let
@@ -1543,8 +1547,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.EAbs ("v", t, (L'.TFun ((L'.TRecord [], loc), (L'.TRecord [], loc)), loc),
                                      (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
                                                (L'.EFfiApp ("Basis", "send",
-                                                            [(L'.ERel 2, loc),
-                                                             e]),
+                                                            [((L'.ERel 2, loc), (L'.TFfi ("Basis", "channel"), loc)),
+                                                             (e, (L'.TFfi ("Basis", "string"), loc))]),
                                                 loc)), loc)), loc)), loc),
                  fm)
             end
@@ -1763,11 +1767,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("e", string, string,
                            (L'.EStrcat ((L'.EPrim (Prim.String "CHECK "), loc),
                                         (L'.EFfiApp ("Basis", "checkString",
-                                                     [(L'.ERel 0, loc)]), loc)), loc)), loc),
+                                                     [((L'.ERel 0, loc), string)]), loc)), loc)), loc),
                  fm)
             end
 
-          | L.EFfiApp ("Basis", "dml", [e]) =>
+          | L.EFfiApp ("Basis", "dml", [(e, _)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
@@ -1775,7 +1779,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.EFfiApp ("Basis", "tryDml", [e]) =>
+          | L.EFfiApp ("Basis", "tryDml", [(e, _)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
@@ -1841,13 +1845,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                      strcat [sc ("uw_" ^ x
                                                                                                  ^ " = "),
                                                                                              (L'.EFfiApp ("Basis", "unAs",
-                                                                                                          [(L'.EField
-                                                                                                                ((L'.ERel 2,
-                                                                                                                  loc),
-                                                                                                                 x), loc)]), loc)])
+                                                                                                          [((L'.EField
+                                                                                                                 ((L'.ERel 2,
+                                                                                                                   loc),
+                                                                                                                  x), loc),
+                                                                                                            s)]), loc)])
                                                                                  changed),
                                                                 sc " WHERE ",
-                                                                (L'.EFfiApp ("Basis", "unAs", [(L'.ERel 0, loc)]), loc)]),
+                                                                (L'.EFfiApp ("Basis", "unAs", [((L'.ERel 0, loc), s)]), loc)]),
                                            loc)), loc)), loc),
                       fm)
                  end
@@ -1869,7 +1874,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          strcat [sc "DELETE FROM ",
                                                  (L'.ERel 1, loc),
                                                  sc " WHERE ",
-                                                 (L'.EFfiApp ("Basis", "unAs", [(L'.ERel 0, loc)]), loc)]), loc)), loc),
+                                                 (L'.EFfiApp ("Basis", "unAs", [((L'.ERel 0, loc), s)]), loc)]), loc)), loc),
                  fm)
             end
 
@@ -2108,43 +2113,43 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_int") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "int"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyInt", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyInt", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "int"), loc))]), loc)), loc),
              fm)
           | L.EFfi ("Basis", "sql_float") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "float"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyFloat", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyFloat", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "float"), loc))]), loc)), loc),
              fm)
           | L.EFfi ("Basis", "sql_bool") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "bool"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyBool", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyBool", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "bool"), loc))]), loc)), loc),
              fm)
           | L.EFfi ("Basis", "sql_string") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyString", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyString", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "string"), loc))]), loc)), loc),
              fm)
           | L.EFfi ("Basis", "sql_char") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "char"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyChar", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyChar", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "char"), loc))]), loc)), loc),
              fm)
           | L.EFfi ("Basis", "sql_time") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyTime", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyTime", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "time"), loc))]), loc)), loc),
              fm)
           | L.EFfi ("Basis", "sql_blob") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "blob"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyBlob", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyBlob", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "blob"), loc))]), loc)), loc),
              fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_channel"), _), _) =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "channel"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyChannel", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyChannel", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "channel"), loc))]), loc)), loc),
              fm)
           | L.EFfi ("Basis", "sql_client") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "client"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyClient", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyClient", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "client"), loc))]), loc)), loc),
              fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_serialized"), _), _) =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "sqlifyString", [(L'.ERel 0, loc)]), loc)), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyString", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "string"), loc))]), loc)), loc),
              fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_prim"), _), t) =>
             let
@@ -2430,26 +2435,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_no_limit") =>
             ((L'.EPrim (Prim.String ""), loc), fm)
-          | L.EFfiApp ("Basis", "sql_limit", [e]) =>
+          | L.EFfiApp ("Basis", "sql_limit", [(e, t)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
                 (strcat [
                  (L'.EPrim (Prim.String " LIMIT "), loc),
-                 (L'.EFfiApp ("Basis", "sqlifyInt", [e]), loc)
+                 (L'.EFfiApp ("Basis", "sqlifyInt", [(e, monoType env t)]), loc)
                  ],
                  fm)
             end
 
           | L.EFfi ("Basis", "sql_no_offset") =>
             ((L'.EPrim (Prim.String ""), loc), fm)
-          | L.EFfiApp ("Basis", "sql_offset", [e]) =>
+          | L.EFfiApp ("Basis", "sql_offset", [(e, t)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
                 (strcat [
                  (L'.EPrim (Prim.String " OFFSET "), loc),
-                 (L'.EFfiApp ("Basis", "sqlifyInt", [e]), loc)
+                 (L'.EFfiApp ("Basis", "sqlifyInt", [(e, monoType env t)]), loc)
                  ],
                  fm)
             end
@@ -2914,13 +2919,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.EFfiApp ("Basis", "nextval", [e]) =>
+          | L.EFfiApp ("Basis", "nextval", [(e, _)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
                 ((L'.ENextval e, loc), fm)
             end
-          | L.EFfiApp ("Basis", "setval", [e1, e2]) =>
+          | L.EFfiApp ("Basis", "setval", [(e1, _), (e2, _)]) =>
             let
                 val (e1, fm) = monoExp (env, st, fm) e1
                 val (e2, fm) = monoExp (env, st, fm) e2
@@ -2930,7 +2935,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "null") => ((L'.EPrim (Prim.String ""), loc), fm)
 
-          | L.EFfiApp ("Basis", "classes", [s1, s2]) =>
+          | L.EFfiApp ("Basis", "classes", [(s1, _), (s2, _)]) =>
             let
                 val (s1, fm) = monoExp (env, st, fm) s1
                 val (s2, fm) = monoExp (env, st, fm) s2
@@ -2947,13 +2952,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val (se, fm) = monoExp (env, st, fm) se
             in
-                ((L'.EFfiApp ("Basis", "htmlifyString", [se]), loc), fm)
+                ((L'.EFfiApp ("Basis", "htmlifyString", [(se, (L'.TFfi ("Basis", "string"), loc))]), loc), fm)
             end
           | L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "cdataChar"), _), _), _),
              _) =>
             ((L'.EAbs ("ch", (L'.TFfi ("Basis", "char"), loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EFfiApp ("Basis", "htmlifySpecialChar", [(L'.ERel 0, loc)]), loc)), loc), fm)
+                       (L'.EFfiApp ("Basis", "htmlifySpecialChar", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "char"), loc))]), loc)), loc), fm)
 
           | L.EApp (
             (L.EApp (
@@ -3010,7 +3015,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 fun getTag (e, _) =
                     case e of
-                        L.EFfiApp ("Basis", tag, [(L.ERecord [], _)]) => (tag, [])
+                        L.EFfiApp ("Basis", tag, [((L.ERecord [], _), _)]) => (tag, [])
                       | L.EApp (e, (L.ERecord [], _)) => getTag' e
                       | _ => (E.errorAt loc "Non-constant XML tag";
                               Print.eprefaces' [("Expression", CorePrint.p_exp env tag)];
@@ -3297,17 +3302,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 			"body" => let
                             val onload = execify onload
                             val onunload = execify onunload
+                            val s = (L'.TFfi ("Basis", "string"), loc)
 			in
                             normal ("body",
                                     SOME (L'.EStrcat ((L'.EFfiApp ("Basis", "maybe_onload",
-                                                                   [(L'.EStrcat ((L'.EFfiApp ("Basis", "get_settings",
-                                                                                              [(L'.ERecord [], loc)]), loc),
-										 onload), loc)]),
+                                                                   [((L'.EStrcat ((L'.EFfiApp ("Basis", "get_settings",
+                                                                                               [((L'.ERecord [], loc),
+                                                                                                 (L'.TRecord [], loc))]), loc),
+										  onload), loc),
+                                                                     s)]),
                                                        loc),
                                                       (L'.EFfiApp ("Basis", "maybe_onunload",
-                                                                   [onunload]),
+                                                                   [(onunload, s)]),
                                                        loc)), loc),
-                                    SOME (L'.EFfiApp ("Basis", "get_script", [(L'.ERecord [], loc)]), loc))
+                                    SOME (L'.EFfiApp ("Basis", "get_script", [((L'.ERecord [], loc), (L'.TRecord [], loc))]), loc))
 			end
 
                       | "dyn" =>
@@ -3645,7 +3653,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                 end
 
                             val sigName = getSigName ()
-                            val sigSet = (L'.EFfiApp ("Basis", "sigString", [(L'.ERecord [], loc)]), loc)
+                            val sigSet = (L'.EFfiApp ("Basis", "sigString", [((L'.ERecord [], loc), (L'.TRecord [], loc))]), loc)
                             val sigSet = (L'.EStrcat ((L'.EPrim (Prim.String ("<input type=\"hidden\" name=\""
                                                                               ^ sigName
                                                                               ^ "\" value=\"")), loc),
@@ -3788,7 +3796,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.EFfiApp ("Basis", "url", [e]) =>
+          | L.EFfiApp ("Basis", "url", [(e, _)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
                 val (e, fm) = urlifyExp env fm (e, dummyTyp)
@@ -3815,7 +3823,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfi mx => ((L'.EFfi mx, loc), fm)
           | L.EFfiApp (m, x, es) =>
             let
-                val (es, fm) = ListUtil.foldlMap (fn (e, fm) => monoExp (env, st, fm) e) fm es
+                val (es, fm) = ListUtil.foldlMap (fn ((e, t), fm) =>
+                                                     let
+                                                         val (e, fm) = monoExp (env, st, fm) e
+                                                     in
+                                                         ((e, monoType env t), fm)
+                                                     end) fm es
             in
                 ((L'.EFfiApp (m, x, es), loc), fm)
             end
@@ -4054,7 +4067,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                 val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
 
                 val (e, fm) = monoExp (env, St.empty, fm) e
-                val e = (L'.EFfiApp ("Basis", "viewify", [e]), loc)
+                val e = (L'.EFfiApp ("Basis", "viewify", [(e, t')]), loc)
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
@@ -4110,7 +4123,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             let
                 fun policies (e, fm) =
                     case #1 e of
-                        L.EFfiApp ("Basis", "also", [e1, e2]) =>
+                        L.EFfiApp ("Basis", "also", [(e1, _), (e2, _)]) =>
                         let
                             val (ps1, fm) = policies (e1, fm)
                             val (ps2, fm) = policies (e2, fm)
@@ -4129,7 +4142,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                                     (e, L'.PolDelete)
                                   | L.EApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "mayUpdate"), _), _), _), _), _), e) =>
                                     (e, L'.PolUpdate)
-                                  | L.EFfiApp ("Basis", "sendOwnIds", [e]) =>
+                                  | L.EFfiApp ("Basis", "sendOwnIds", [(e, _)]) =>
                                     (e, L'.PolSequence)
                                   | _ => (poly (); (e, L'.PolClient))
 
@@ -4186,7 +4199,7 @@ fun monoize env file =
 
         fun expunger () =
             let
-                val target = (L'.EFfiApp ("Basis", "sqlifyClient", [(L'.ERel 0, loc)]), loc)
+                val target = (L'.EFfiApp ("Basis", "sqlifyClient", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "client"), loc))]), loc)
 
                 fun doTable (tab, xts, e) =
                     case xts of

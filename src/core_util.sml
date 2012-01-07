@@ -468,7 +468,7 @@ fun compare ((e1, _), (e2, _)) =
       | (EFfiApp (f1, x1, es1), EFfiApp (f2, x2, es2)) =>
         join (String.compare (f1, f2),
            fn () => join (String.compare (x1, x2),
-                       fn () => joinL compare (es1, es2)))
+                       fn () => joinL (fn ((e1, _), (e2, _)) => compare (e1, e2))(es1, es2)))
       | (EFfiApp _, _) => LESS
       | (_, EFfiApp _) => GREATER
 
@@ -586,6 +586,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
         fun mfe ctx e acc =
             S.bindP (mfe' ctx e acc, fe ctx)
 
+        and mfet ctx (e, t) =
+            S.bind2 (mfe ctx e,
+                  fn e' =>
+                     S.map2 (mfc ctx t,
+                          fn t' => (e', t')))
+
         and mfe' ctx (eAll as (e, loc)) =
             case e of
                 EPrim _ => S.return2 eAll
@@ -603,7 +609,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                     (ECon (dk, n, cs', SOME e'), loc)))
               | EFfi _ => S.return2 eAll
               | EFfiApp (m, x, es) =>
-                S.map2 (ListUtil.mapfold (mfe ctx) es,
+                S.map2 (ListUtil.mapfold (mfet ctx) es,
                      fn es' =>
                         (EFfiApp (m, x, es'), loc))
               | EApp (e1, e2) =>

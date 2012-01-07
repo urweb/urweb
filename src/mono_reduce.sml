@@ -390,20 +390,20 @@ fun reduce file =
                       | ENone _ => []
                       | ESome (_, e) => summarize d e
                       | EFfi _ => []
-                      | EFfiApp ("Basis", "get_cookie", [e]) =>
+                      | EFfiApp ("Basis", "get_cookie", [(e, _)]) =>
                         summarize d e @ [ReadCookie]
                       | EFfiApp ("Basis", "set_cookie", es) =>
-                        List.concat (map (summarize d) es) @ [WriteCookie]
+                        List.concat (map (summarize d o #1) es) @ [WriteCookie]
                       | EFfiApp ("Basis", "clear_cookie", es) =>
-                        List.concat (map (summarize d) es) @ [WriteCookie]
+                        List.concat (map (summarize d o #1) es) @ [WriteCookie]
                       | EFfiApp (m, x, es) =>
                         if Settings.isEffectful (m, x) orelse Settings.isBenignEffectful (m, x) then
-                            List.concat (map (summarize d) es) @ [if m = "Basis" andalso String.isSuffix "_w" x then
-                                                                      WritePage
-                                                                  else
-                                                                      Unsure]
+                            List.concat (map (summarize d o #1) es) @ [if m = "Basis" andalso String.isSuffix "_w" x then
+                                                                           WritePage
+                                                                       else
+                                                                           Unsure]
                         else
-                            List.concat (map (summarize d) es)
+                            List.concat (map (summarize d o #1) es)
                       | EApp ((EFfi _, _), e) => summarize d e
                       | EApp _ =>
                         let

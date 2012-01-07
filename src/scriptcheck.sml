@@ -92,12 +92,12 @@ fun classify (ds, ps) =
                       | EFfi ("Basis", x) => SS.member (basis, x)
                       | EFfi _ => false
                       | EFfiApp ("Basis", "maybe_onload",
-                                 [(EFfiApp ("Basis", "strcat", all as [_, (EPrim (Prim.String s), _)]), _)]) =>
-                        List.exists hasClient all
+                                 [((EFfiApp ("Basis", "strcat", all as [_, ((EPrim (Prim.String s), _), _)]), _), _)]) =>
+                        List.exists (hasClient o #1) all
                         orelse (onload andalso size s > 0)
                       | EFfiApp ("Basis", x, es) => SS.member (basis, x)
-                                                    orelse List.exists hasClient es
-                      | EFfiApp (_, _, es) => List.exists hasClient es
+                                                    orelse List.exists (hasClient o #1) es
+                      | EFfiApp (_, _, es) => List.exists (hasClient o #1) es
                       | EApp (e, es) => hasClient e orelse List.exists hasClient es
                       | EUnop (_, e) => hasClient e
                       | EBinop (_, e1, e2) => hasClient e1 orelse hasClient e2

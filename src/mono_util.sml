@@ -156,6 +156,12 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
         fun mfe ctx e acc =
             S.bindP (mfe' ctx e acc, fe ctx)
 
+        and mfet ctx (e, t) =
+            S.bind2 (mfe ctx e,
+                  fn e' =>
+                     S.map2 (mft t,
+                          fn t' => (e', t')))
+
         and mfe' ctx (eAll as (e, loc)) =
             case e of
                 EPrim _ => S.return2 eAll
@@ -178,7 +184,7 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                     (ESome (t', e'), loc)))
               | EFfi _ => S.return2 eAll
               | EFfiApp (m, x, es) =>
-                S.map2 (ListUtil.mapfold (fn e => mfe ctx e) es,
+                S.map2 (ListUtil.mapfold (fn e => mfet ctx e) es,
                      fn es' =>
                         (EFfiApp (m, x, es'), loc))
               | EApp (e1, e2) =>
@@ -479,7 +485,7 @@ fun appLoc f =
                | ENone _ => ()
                | ESome (_, e) => appl e
                | EFfi _ => ()
-               | EFfiApp (_, _, es) => app appl es
+               | EFfiApp (_, _, es) => app (appl o #1) es
                | EApp (e1, e2) => (appl e1; appl e2)
                | EAbs (_, _, _, e1) => appl e1
                | EUnop (_, e1) => appl e1

@@ -277,7 +277,13 @@ fun cifyExp (eAll as (e, loc), sm) =
           | L.EFfi mx => ((L'.EFfi mx, loc), sm)
           | L.EFfiApp (m, x, es) =>
             let
-                val (es, sm) = ListUtil.foldlMap cifyExp sm es
+                val (es, sm) = ListUtil.foldlMap (fn ((e, t), sm) =>
+                                                     let
+                                                         val (t, sm) = cifyTyp (t, sm)
+                                                         val (e, sm) = cifyExp (e, sm)
+                                                     in
+                                                         ((e, t), sm)
+                                                     end) sm es
             in
                 ((L'.EFfiApp (m, x, es), loc), sm)
             end
@@ -384,8 +390,9 @@ fun cifyExp (eAll as (e, loc), sm) =
             let
                 val (e1, sm) = cifyExp (e1, sm)
                 val (e2, sm) = cifyExp (e2, sm)
+                val s = (L'.TFfi ("Basis", "string"), loc)
             in
-                ((L'.EFfiApp ("Basis", "strcat", [e1, e2]), loc), sm)
+                ((L'.EFfiApp ("Basis", "strcat", [(e1, s), (e2, s)]), loc), sm)
             end
 
           | L.EWrite e =>
@@ -673,7 +680,7 @@ fun cifyDecl ((d, loc), sm) =
                  val tk = case #1 e1 of
                               L.EFfi ("Basis", "initialize") => L'.Initialize
                             | L.EFfi ("Basis", "clientLeaves") => L'.ClientLeaves
-                            | L.EFfiApp ("Basis", "periodic", [(L.EPrim (Prim.Int n), _)]) => L'.Periodic n
+                            | L.EFfiApp ("Basis", "periodic", [((L.EPrim (Prim.Int n), _), _)]) => L'.Periodic n
                             | _ => (ErrorMsg.errorAt loc "Task kind not fully determined";
                                     L'.Initialize)
                  val (e, sm) = cifyExp (e, sm)

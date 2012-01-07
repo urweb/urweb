@@ -167,7 +167,7 @@ fun p_exp' par env (e, _) =
                                    string ".",
                                    string x,
                                    string "(",
-                                   p_list (p_exp env) es,
+                                   p_list (p_exp env o #1) es,
                                    string "))"]
       | EApp (e1, e2) => parenIf par (box [p_exp env e1,
                                            space,

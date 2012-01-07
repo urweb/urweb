@@ -562,8 +562,8 @@ fun corifyExp st (e, loc) =
 
                             fun makeApp n =
                                 let
-                                    val (actuals, _) = foldr (fn (_, (actuals, n)) =>
-                                                                 ((L'.ERel n, loc) :: actuals,
+                                    val (actuals, _) = foldr (fn (t, (actuals, n)) =>
+                                                                 (((L'.ERel n, loc), t) :: actuals,
                                                                   n + 1)) ([], n) args
                                 in
                                     (L'.EFfiApp (m, x, actuals), loc)

@@ -67,25 +67,25 @@ fun prepString (e, st) =
                 case #1 e of
                     EPrim (Prim.String s) =>
                     SOME (s :: ss, n)
-                  | EFfiApp ("Basis", "strcat", [e1, e2]) =>
+                  | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) =>
                     (case prepString' (e1, ss, n) of
                          NONE => NONE
                        | SOME (ss, n) => prepString' (e2, ss, n))
-                  | EFfiApp ("Basis", "sqlifyInt", [e]) => doOne Int
-                  | EFfiApp ("Basis", "sqlifyFloat", [e]) => doOne Float
-                  | EFfiApp ("Basis", "sqlifyString", [e]) => doOne String
-                  | EFfiApp ("Basis", "sqlifyBool", [e]) => doOne Bool
-                  | EFfiApp ("Basis", "sqlifyTime", [e]) => doOne Time
-                  | EFfiApp ("Basis", "sqlifyBlob", [e]) => doOne Blob
-                  | EFfiApp ("Basis", "sqlifyChannel", [e]) => doOne Channel
-                  | EFfiApp ("Basis", "sqlifyClient", [e]) => doOne Client
+                  | EFfiApp ("Basis", "sqlifyInt", [_]) => doOne Int
+                  | EFfiApp ("Basis", "sqlifyFloat", [_]) => doOne Float
+                  | EFfiApp ("Basis", "sqlifyString", [_]) => doOne String
+                  | EFfiApp ("Basis", "sqlifyBool", [_]) => doOne Bool
+                  | EFfiApp ("Basis", "sqlifyTime", [_]) => doOne Time
+                  | EFfiApp ("Basis", "sqlifyBlob", [_]) => doOne Blob
+                  | EFfiApp ("Basis", "sqlifyChannel", [_]) => doOne Channel
+                  | EFfiApp ("Basis", "sqlifyClient", [_]) => doOne Client
 
                   | ECase (e,
                            [((PNone _, _),
                              (EPrim (Prim.String "NULL"), _)),
                             ((PSome (_, (PVar _, _)), _),
-                             (EFfiApp (m, x, [(ERel 0, _)]), _))],
-                           _) => prepString' ((EFfiApp (m, x, [e]), #2 e), ss, n)
+                             (EFfiApp (m, x, [((ERel 0, _), _)]), _))],
+                           {disc = t, ...}) => prepString' ((EFfiApp (m, x, [(e, t)]), #2 e), ss, n)
 
                   | ECase (e,
                            [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
@@ -130,7 +130,12 @@ fun prepExp (e as (_, loc), st) =
       | EFfi _ => (e, st)
       | EFfiApp (m, x, es) =>
         let
-            val (es, st) = ListUtil.foldlMap prepExp st es
+            val (es, st) = ListUtil.foldlMap (fn ((e, t), st) =>
+                                                 let
+                                                     val (e, st) = prepExp (e, st)
+                                                 in
+                                                     ((e, t), st)
+                                                 end) st es
         in
             ((EFfiApp (m, x, es), loc), st)
         end
@@ -260,9 +265,10 @@ fun prepExp (e as (_, loc), st) =
                             (EPrim (Prim.String ("SELECT NEXTVAL('" ^ s ^ "')")), loc)
                           | _ =>
                             let
-                                val s' = (EFfiApp ("Basis", "strcat", [seq, (EPrim (Prim.String "')"), loc)]), loc)
+                                val t = (TFfi ("Basis", "string"), loc)
+                                val s' = (EFfiApp ("Basis", "strcat", [(seq, t), ((EPrim (Prim.String "')"), loc), t)]), loc)
                             in
-                                (EFfiApp ("Basis", "strcat", [(EPrim (Prim.String "SELECT NEXTVAL('"), loc), s']), loc)
+                                (EFfiApp ("Basis", "strcat", [((EPrim (Prim.String "SELECT NEXTVAL('"), loc), t), (s', t)]), loc)
                             end
             in
                 case prepString (s, st) of

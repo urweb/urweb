@@ -493,7 +493,7 @@ fun kindConAndExp (namedC, namedE) =
                                        bindType (CFfi ("Basis", "signal"), loc) loc)], loc)
 
                           | EFfi _ => all
-                          | EFfiApp (m, f, es) => (EFfiApp (m, f, map (exp env) es), loc)
+                          | EFfiApp (m, f, es) => (EFfiApp (m, f, map (fn (e, t) => (exp env e, con env t)) es), loc)
 
                           (*| EApp (
                            (EApp

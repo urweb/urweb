@@ -78,7 +78,7 @@ datatype exp' =
        | ENone of typ
        | ESome of typ * exp
        | EFfi of string * string
-       | EFfiApp of string * string * exp list
+       | EFfiApp of string * string * (exp * typ) list
        | EApp of exp * exp
        | EAbs of string * typ * typ * exp
 

@@ -490,23 +490,23 @@ fun p_sql_type t = string (Settings.p_sql_ctype t)
 fun getPargs (e, _) =
     case e of
         EPrim (Prim.String _) => []
-      | EFfiApp ("Basis", "strcat", [e1, e2]) => getPargs e1 @ getPargs e2
+      | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) => getPargs e1 @ getPargs e2
 
-      | EFfiApp ("Basis", "sqlifyInt", [e]) => [(e, Int)]
-      | EFfiApp ("Basis", "sqlifyFloat", [e]) => [(e, Float)]
-      | EFfiApp ("Basis", "sqlifyString", [e]) => [(e, String)]
-      | EFfiApp ("Basis", "sqlifyBool", [e]) => [(e, Bool)]
-      | EFfiApp ("Basis", "sqlifyTime", [e]) => [(e, Time)]
-      | EFfiApp ("Basis", "sqlifyBlob", [e]) => [(e, Blob)]
-      | EFfiApp ("Basis", "sqlifyChannel", [e]) => [(e, Channel)]
-      | EFfiApp ("Basis", "sqlifyClient", [e]) => [(e, Client)]
+      | EFfiApp ("Basis", "sqlifyInt", [(e, _)]) => [(e, Int)]
+      | EFfiApp ("Basis", "sqlifyFloat", [(e, _)]) => [(e, Float)]
+      | EFfiApp ("Basis", "sqlifyString", [(e, _)]) => [(e, String)]
+      | EFfiApp ("Basis", "sqlifyBool", [(e, _)]) => [(e, Bool)]
+      | EFfiApp ("Basis", "sqlifyTime", [(e, _)]) => [(e, Time)]
+      | EFfiApp ("Basis", "sqlifyBlob", [(e, _)]) => [(e, Blob)]
+      | EFfiApp ("Basis", "sqlifyChannel", [(e, _)]) => [(e, Channel)]
+      | EFfiApp ("Basis", "sqlifyClient", [(e, _)]) => [(e, Client)]
 
       | ECase (e,
                [((PNone _, _),
                  (EPrim (Prim.String "NULL"), _)),
                 ((PSome (_, (PVar _, _)), _),
-                 (EFfiApp (m, x, [(ERel 0, _)]), _))],
-               _) => map (fn (x, y) => (x, Nullable y)) (getPargs (EFfiApp (m, x, [e]), #2 e))
+                 (EFfiApp (m, x, [((ERel 0, _), _)]), _))],
+               {disc = t, ...}) => map (fn (x, y) => (x, Nullable y)) (getPargs (EFfiApp (m, x, [(e, t)]), #2 e))
 
       | ECase (e,
                [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
@@ -1442,7 +1442,63 @@ fun potentiallyFancy (e, _) =
 
 val self = ref (NONE : int option)
 
-fun p_exp' par tail env (e, loc) =
+(* The crucial thing to do here is assign arguments to local variables, to enforce order of evaluation.
+ * Otherwise, we are at the mercy of C's undefined order of function argument evaluation. *)
+fun pFuncall env (m, x, es, extra) =
+    case es of
+        [] => box [string "uw_",
+                   p_ident m,
+                   string "_",
+                   p_ident x,
+                   string "(ctx",
+                   case extra of
+                       NONE => box []
+                     | SOME extra => box [string ",",
+                                          space,
+                                          string extra],
+                   string ")"]
+      | [(e, _)] => box [string "uw_",
+                         p_ident m,
+                         string "_",
+                         p_ident x,
+                         string "(ctx,",
+                         space,
+                         p_exp' false false env e,
+                         case extra of
+                             NONE => box []
+                           | SOME extra => box [string ",",
+                                                space,
+                                                string extra],
+                         string ")"]
+      | _ => box [string "({",
+                  newline,
+                  p_list_sepi (box []) (fn i => fn (e, t) =>
+                                                   box [p_typ env t,
+                                                        space,
+                                                        string "arg",
+                                                        string (Int.toString i),
+                                                        space,
+                                                        string "=",
+                                                        space,
+                                                        p_exp' false false env e,
+                                                        string ";",
+                                                        newline]) es,
+                  string "uw_",
+                  p_ident m,
+                  string "_",
+                  p_ident x,
+                  string "(ctx, ",
+                  p_list_sepi (box [string ",", space]) (fn i => fn _ => box [string "arg", string (Int.toString i)]) es,
+                  case extra of
+                      NONE => box []
+                    | SOME extra => box [string ",",
+                                         space,
+                                         string extra],
+                  string ");",
+                  newline,
+                  string "})"]
+
+and p_exp' par tail env (e, loc) =
     case e of
         EPrim p => Prim.p_t_GCC p
       | ERel n => p_rel env n
@@ -1572,15 +1628,29 @@ fun p_exp' par tail env (e, loc) =
       | EReturnBlob {blob, mimeType, t} =>
         box [string "({",
              newline,
+             string "uw_Basis_blob",
+             space,
+             string "blob",
+             space,
+             string "=",
+             space,
+             p_exp' false false env blob,
+             string ";",
+             newline,
+             string "uw_Basis_string",
+             space,
+             string "mimeType",
+             space,
+             string "=",
+             space,
+             p_exp' false false env mimeType,
+             string ";",
+             newline,
              p_typ env t,
              space,
              string "tmp;",
              newline,
-             string "uw_return_blob(ctx, ",
-             p_exp' false false env blob,
-             string ", ",
-             p_exp' false false env mimeType,
-             string ");",
+             string "uw_return_blob(ctx, blob, mimeType);",
              newline,
              string "tmp;",
              newline,
@@ -1604,37 +1674,23 @@ fun p_exp' par tail env (e, loc) =
       | EApp ((EReturnBlob {blob, mimeType, t = (TFun (_, ran), _)}, loc), _) =>
         p_exp' false false env (EReturnBlob {blob = blob, mimeType = mimeType, t = ran}, loc)
 
-      | EFfiApp ("Basis", "strcat", [e1, e2]) =>
+      | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) =>
         let
             fun flatten e =
                 case #1 e of
-                    EFfiApp ("Basis", "strcat", [e1, e2]) => flatten e1 @ flatten e2
+                    EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) => flatten e1 @ flatten e2
                   | _ => [e]
+
+            val es = flatten e1 @ flatten e2
+            val t = (TFfi ("Basis", "string"), loc)
+            val es = map (fn e => (e, t)) es
         in
-            case flatten e1 @ flatten e2 of
-                [e1, e2] => box [string "uw_Basis_strcat(ctx, ",
-                                 p_exp' false false env e1,
-                                 string ",",
-                                 p_exp' false false env e2,
-                                 string ")"]
-              | es => box [string "uw_Basis_mstrcat(ctx, ",
-                           p_list (p_exp' false false env) es,
-                           string ", NULL)"]
+            case es of
+                [_, _] => pFuncall env ("Basis", "strcat", es, NONE)
+              | _ => pFuncall env ("Basis", "mstrcat", es, SOME "NULL")
         end
 
-      | EFfiApp (m, x, []) => box [string "uw_",
-                                   p_ident m,
-                                   string "_",
-                                   p_ident x,
-                                   string "(ctx)"]
-
-      | EFfiApp (m, x, es) => box [string "uw_",
-                                   p_ident m,
-                                   string "_",
-                                   p_ident x,
-                                   string "(ctx, ",
-                                   p_list (p_exp' false false env) es,
-                                   string ")"]
+      | EFfiApp (m, x, es) => pFuncall env (m, x, es, NONE)
       | EApp (f, args) =>
         let
             fun default () = parenIf par (box [p_exp' true false env f,
@@ -3036,7 +3092,7 @@ fun p_file env (ds, ps) =
             case e of
                 ECon (_, _, SOME e) => expDb e
               | ESome (_, e) => expDb e
-              | EFfiApp (_, _, es) => List.exists expDb es
+              | EFfiApp (_, _, es) => List.exists (expDb o #1) es
               | EApp (e, es) => expDb e orelse List.exists expDb es
               | EUnop (_, e) => expDb e
               | EBinop (_, e1, e2) => expDb e1 orelse expDb e2

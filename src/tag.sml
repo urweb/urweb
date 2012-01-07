@@ -170,22 +170,22 @@ fun exp env (e, s) =
                  end
                | _ => (e, s))
 
-          | EFfiApp ("Basis", "url", [(ERel 0, _)]) => (e, s)
+          | EFfiApp ("Basis", "url", [((ERel 0, _), _)]) => (e, s)
 
-          | EFfiApp ("Basis", "url", [e]) =>
+          | EFfiApp ("Basis", "url", [(e, t)]) =>
             let
                 val (e, s) = tagIt (e, Link, "Url", s)
             in
-                (EFfiApp ("Basis", "url", [e]), s)
+                (EFfiApp ("Basis", "url", [(e, t)]), s)
             end
 
-          | EFfiApp ("Basis", "effectfulUrl", [(ERel 0, _)]) => (e, s)
+          | EFfiApp ("Basis", "effectfulUrl", [((ERel 0, _), _)]) => (e, s)
 
-          | EFfiApp ("Basis", "effectfulUrl", [e]) =>
+          | EFfiApp ("Basis", "effectfulUrl", [(e, t)]) =>
             let
                 val (e, s) = tagIt (e, Extern ReadCookieWrite, "Url", s)
             in
-                (EFfiApp ("Basis", "url", [e]), s)
+                (EFfiApp ("Basis", "url", [(e, t)]), s)
             end
 
           | EApp ((ENamed n, _), e') =>
@@ -193,11 +193,11 @@ fun exp env (e, s) =
                 val (_, _, eo, _) = E.lookupENamed env n
             in
                 case eo of
-                    SOME (EAbs (_, _, _, (EFfiApp ("Basis", "url", [(ERel 0, _)]), _)), _) =>
+                    SOME (EAbs (_, _, _, (EFfiApp ("Basis", "url", [((ERel 0, _), t)]), _)), _) =>
                     let
                         val (e, s) = tagIt (e', Link, "Url", s)
                     in
-                        (EFfiApp ("Basis", "url", [e]), s)
+                        (EFfiApp ("Basis", "url", [(e, t)]), s)
                     end
                   | _ => (e, s)
             end

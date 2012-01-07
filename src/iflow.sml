@@ -1044,7 +1044,7 @@ fun known' chs =
 
 fun sqlify chs =
     case chs of
-        Exp (EFfiApp ("Basis", f, [e]), _) :: chs =>
+        Exp (EFfiApp ("Basis", f, [(e, _)]), _) :: chs =>
         if String.isPrefix "sqlify" f then
             SOME (e, chs)
         else
@@ -1859,7 +1859,7 @@ fun evalExp env (e as (_, loc)) k =
                             [] =>
                             (if s = "set_cookie" then
                                  case es of
-                                     [_, cname, _, _, _] =>
+                                     [_, (cname, _), _, _, _] =>
                                      (case #1 cname of
                                           EPrim (Prim.String cname) =>
                                           St.havocCookie cname
@@ -1868,7 +1868,7 @@ fun evalExp env (e as (_, loc)) k =
                              else
                                  ();
                              k (Recd []))
-                          | e :: es =>
+                          | (e, _) :: es =>
                             evalExp env e (fn e => (St.send (e, loc); doArgs es))
                 in
                     doArgs es
@@ -1880,7 +1880,7 @@ fun evalExp env (e as (_, loc)) k =
                     fun doArgs (es, acc) =
                         case es of
                             [] => k (Func (Other (m ^ "." ^ s), rev acc))
-                          | e :: es =>
+                          | (e, _) :: es =>
                             evalExp env e (fn e => doArgs (es, e :: acc))
                 in
                     doArgs (es, [])
@@ -1904,7 +1904,7 @@ fun evalExp env (e as (_, loc)) k =
                 k e
             end
           | EFfiApp x => doFfi x
-          | EApp ((EFfi (m, s), _), e) => doFfi (m, s, [e])
+          | EApp ((EFfi (m, s), _), e) => doFfi (m, s, [(e, (TRecord [], loc))])
 
           | EApp (e1 as (EError _, _), _) => evalExp env e1 k
 
@@ -2051,7 +2051,7 @@ fun evalExp env (e as (_, loc)) k =
                                                                                        | Update (tab, _, _) =>
                                                                                          (cs, SS.add (ts, tab)))
                                                                               | EFfiApp ("Basis", "set_cookie",
-                                                                                         [_, (EPrim (Prim.String cname), _),
+                                                                                         [_, ((EPrim (Prim.String cname), _), _),
                                                                                           _, _, _]) =>
                                                                                 (SS.add (cs, cname), ts)
                                                                               | _ => st}
@@ -2189,7 +2189,7 @@ fun evalExp env (e as (_, loc)) k =
           | ENextval _ => default ()
           | ESetval _ => default ()
 
-          | EUnurlify ((EFfiApp ("Basis", "get_cookie", [(EPrim (Prim.String cname), _)]), _), _, _) =>
+          | EUnurlify ((EFfiApp ("Basis", "get_cookie", [((EPrim (Prim.String cname), _), _)]), _), _, _) =>
             let
                 val e = Var (St.nextVar ())
                 val e' = Func (Other ("cookie/" ^ cname), [])
@@ -2301,10 +2301,10 @@ fun check file =
                           | EFfi _ => e
                           | EFfiApp (m, f, es) =>
                             (case (m, f, es) of
-                                 ("Basis", "set_cookie", [_, (EPrim (Prim.String cname), _), _, _, _]) =>
+                                 ("Basis", "set_cookie", [_, ((EPrim (Prim.String cname), _), _), _, _, _]) =>
                                  cookies := SS.add (!cookies, cname)
                                | _ => ();
-                             (EFfiApp (m, f, map (doExp env) es), loc))
+                             (EFfiApp (m, f, map (fn (e, t) => (doExp env e, t)) es), loc))
 
                           | EApp (e1, e2) =>
                             let

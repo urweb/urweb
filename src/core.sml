@@ -92,7 +92,7 @@ datatype exp' =
        | ENamed of int
        | ECon of datatype_kind * patCon * con list * exp option
        | EFfi of string * string
-       | EFfiApp of string * string * exp list
+       | EFfiApp of string * string * (exp * con) list
        | EApp of exp * exp
        | EAbs of string * con * con * exp
        | ECApp of exp * con

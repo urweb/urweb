@@ -256,7 +256,7 @@ fun exp env (all as (e, loc)) =
       | ENamed _ => all
       | ECon (dk, pc, cs, eo) => (ECon (dk, patCon pc, map (con env) cs, Option.map (exp env) eo), loc)
       | EFfi _ => all
-      | EFfiApp (m, f, es) => (EFfiApp (m, f, map (exp env) es), loc)
+      | EFfiApp (m, f, es) => (EFfiApp (m, f, map (fn (e, t) => (exp env e, con env t)) es), loc)
 
       | EApp (e1, e2) =>
         let

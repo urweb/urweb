@@ -180,7 +180,12 @@ fun specialize' (funcs, specialized) file =
                       | EFfi _ => (e, st)
                       | EFfiApp (m, x, es) =>
                         let
-                            val (es, st) = ListUtil.foldlMap (fn (e, st) => exp (env, e, st)) st es
+                            val (es, st) = ListUtil.foldlMap (fn ((e, t), st) =>
+                                                                 let
+                                                                     val (e, st) = exp (env, e, st)
+                                                                 in
+                                                                     ((e, t), st)
+                                                                 end) st es
                         in
                             ((EFfiApp (m, x, es), loc), st)
                         end

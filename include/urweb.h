@@ -30,7 +30,7 @@ void uw_free(uw_context);
 void uw_reset(uw_context);
 void uw_reset_keep_request(uw_context);
 void uw_reset_keep_error_message(uw_context);
-const char *uw_get_url_prefix(uw_context);
+char *uw_get_url_prefix(uw_context);
 
 failure_kind uw_begin_init(uw_context);
 void uw_set_on_success(char *);
@@ -75,9 +75,9 @@ uw_Basis_source uw_Basis_new_client_source(uw_context, uw_Basis_string);
 uw_unit uw_Basis_set_client_source(uw_context, uw_Basis_source, uw_Basis_string);
 
 void uw_set_script_header(uw_context, const char*);
-const char *uw_Basis_get_settings(uw_context, uw_unit);
-const char *uw_Basis_get_script(uw_context, uw_unit);
-const char *uw_get_real_script(uw_context);
+char *uw_Basis_get_settings(uw_context, uw_unit);
+char *uw_Basis_get_script(uw_context, uw_unit);
+char *uw_get_real_script(uw_context);
 
 uw_Basis_string uw_Basis_maybe_onload(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_maybe_onunload(uw_context, uw_Basis_string);

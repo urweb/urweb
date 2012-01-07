@@ -91,7 +91,7 @@ fun process file =
 
         fun quoteExp loc (t : typ) (e, st) =
             case #1 t of
-                TSource => ((EFfiApp ("Basis", "htmlifySource", [e]), loc), st)
+                TSource => ((EFfiApp ("Basis", "htmlifySource", [(e, t)]), loc), st)
 
               | TRecord [] => (str loc "null", st)
               | TRecord [(x, t)] =>
@@ -120,12 +120,12 @@ fun process file =
                                  @ [str loc "}"]), st)
                 end
 
-              | TFfi ("Basis", "string") => ((EFfiApp ("Basis", "jsifyString", [e]), loc), st)
-              | TFfi ("Basis", "char") => ((EFfiApp ("Basis", "jsifyChar", [e]), loc), st)
-              | TFfi ("Basis", "int") => ((EFfiApp ("Basis", "htmlifyInt", [e]), loc), st)
-              | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [e]), loc), st)
-              | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "jsifyChannel", [e]), loc), st)
-              | TFfi ("Basis", "time") => ((EFfiApp ("Basis", "jsifyTime", [e]), loc), st)
+              | TFfi ("Basis", "string") => ((EFfiApp ("Basis", "jsifyString", [(e, t)]), loc), st)
+              | TFfi ("Basis", "char") => ((EFfiApp ("Basis", "jsifyChar", [(e, t)]), loc), st)
+              | TFfi ("Basis", "int") => ((EFfiApp ("Basis", "htmlifyInt", [(e, t)]), loc), st)
+              | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [(e, t)]), loc), st)
+              | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "jsifyChannel", [(e, t)]), loc), st)
+              | TFfi ("Basis", "time") => ((EFfiApp ("Basis", "jsifyTime", [(e, t)]), loc), st)
 
               | TFfi ("Basis", "bool") => ((ECase (e,
                                                    [((PCon (Enum, PConFfi {mod = "Basis",
@@ -511,7 +511,7 @@ fun process file =
                             case e of
                                 EPrim (Prim.String s) => jsifyStringMulti (level, s)
                               | EStrcat (e1, e2) => deStrcat level e1 ^ deStrcat level e2
-                              | EFfiApp ("Basis", "jsifyString", [e]) => "\"" ^ deStrcat (level + 1) e ^ "\""
+                              | EFfiApp ("Basis", "jsifyString", [(e, _)]) => "\"" ^ deStrcat (level + 1) e ^ "\""
                               | _ => (Print.prefaces "deStrcat" [("e", MonoPrint.p_exp MonoEnv.empty all)];
                                       raise Fail "Jscomp: deStrcat")
 
@@ -645,7 +645,7 @@ fun process file =
                                                         "ERROR")
                                              | SOME s => s
 
-                                val (e, st) = foldr (fn (e, (acc, st)) =>
+                                val (e, st) = foldr (fn ((e, _), (acc, st)) =>
                                                         let
                                                             val (e, st) = jsE inner (e, st)
                                                         in
@@ -1024,7 +1024,12 @@ fun process file =
                | EFfi _ => (e, st)
                | EFfiApp (m, x, es) =>
                  let
-                     val (es, st) = ListUtil.foldlMap (exp outer) st es
+                     val (es, st) = ListUtil.foldlMap (fn ((e, t), st) =>
+                                                          let
+                                                              val (e, st) = exp outer (e, st)
+                                                          in
+                                                              ((e, t), st)
+                                                          end) st es
                  in
                      ((EFfiApp (m, x, es), loc), st)
                  end

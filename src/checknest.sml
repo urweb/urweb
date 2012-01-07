@@ -44,7 +44,7 @@ fun expUses globals =
               | ENone _ => IS.empty
               | ESome (_, e) => eu e
               | EFfi _ => IS.empty
-              | EFfiApp (_, _, es) => foldl IS.union IS.empty (map eu es)
+              | EFfiApp (_, _, es) => foldl IS.union IS.empty (map (eu o #1) es)
               | EApp (e, es) => foldl IS.union (eu e) (map eu es)
 
               | EUnop (_, e) => eu e
@@ -106,7 +106,7 @@ fun annotateExp globals =
               | ENone _ => e
               | ESome (t, e) => (ESome (t, ae e), loc)
               | EFfi _ => e
-              | EFfiApp (m, f, es) => (EFfiApp (m, f, map ae es), loc)
+              | EFfiApp (m, f, es) => (EFfiApp (m, f, map (fn (e, t) => (ae e, t)) es), loc)
               | EApp (e, es) => (EApp (ae e, map ae es), loc)
 
               | EUnop (uo, e) => (EUnop (uo, ae e), loc)

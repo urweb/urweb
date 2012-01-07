@@ -138,7 +138,7 @@ fun summarize file =
                       | ECon (_, _, _, NONE) => ([], classes)
                       | ECon (_, _, _, SOME e) => exp (e, classes)
                       | EFfi _ => ([], classes)
-                      | EFfiApp (_, _, es) => expList (es, classes)
+                      | EFfiApp (_, _, es) => expList (map #1 es, classes)
 
                       | EApp (
                         (EApp (
