@@ -13,14 +13,12 @@ fun page (n, s) = return <xml>A = {[n]}, B = {[s]}</xml>
 open Make(struct
               structure F = Direct.Foreign(struct
                                                con nm = #Id
-                                               con t = _
                                                val tab = t1
                                                fun render r = r.A
                                            end)
 
               val tab = t
               con key = [Id = _]
-              con row = _
 
               val raw = {Id = {New = nextval s,
                                Inj = _},

@@ -3645,6 +3645,30 @@ and wildifyStr env (str, sgn) =
 
                  val nd = removeUsed (nd, ds)
 
+                 (* Among the declarations present explicitly in the program, find the last constructor or constraint declaration.
+                  * The new constructor/constraint declarations that we add may safely be put after that point. *)
+                 fun findLast (ds, acc) =
+                     case ds of
+                         [] => ([], acc)
+                       | (d : L.decl) :: ds' =>
+                         let
+                             val isCony = case #1 d of
+                                              L.DCon _ => true
+                                            | L.DDatatype _ => true
+                                            | L.DDatatypeImp _ => true
+                                            | L.DStr _ => true
+                                            | L.DConstraint _ => true
+                                            | L.DClass _ => true
+                                            | _ => false
+                         in
+                             if isCony then
+                                 (ds, acc)
+                             else
+                                 findLast (ds', d :: acc)
+                         end
+
+                 val (dPrefix, dSuffix) = findLast (rev ds, [])
+
                  fun extend (env, nd, ds) =
                      let
                          val ds' = List.mapPartial (fn (env', (c1, c2), loc) =>
@@ -3690,7 +3714,7 @@ and wildifyStr env (str, sgn) =
                                | d => d) ds
                      end
              in
-                 (L.StrConst (extend (env, nd, ds)), #2 str)
+                 (L.StrConst (extend (env, nd, rev dPrefix) @ dSuffix), #2 str)
              end
            | _ => str)
       | _ => str
