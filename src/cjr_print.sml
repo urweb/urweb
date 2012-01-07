@@ -1693,13 +1693,7 @@ and p_exp' par tail env (e, loc) =
       | EFfiApp (m, x, es) => pFuncall env (m, x, es, NONE)
       | EApp (f, args) =>
         let
-            fun default () = parenIf par (box [p_exp' true false env f,
-                                               string "(ctx,",
-                                               space,
-                                               p_list_sep (box [string ",", space]) (p_exp' false false env) args,
-                                               string ")"])
-
-            fun isSelf n =
+            fun getSig n =
                 let
                     val (_, t) = E.lookupENamed env n
 
@@ -1707,8 +1701,51 @@ and p_exp' par tail env (e, loc) =
                         case #1 t of
                             TFun (dom, t) => getSig (t, dom :: args)
                           | _ => (args, t)
+                in
+                    getSig (t, [])
+                end
 
-                    val (argts, ret) = getSig (t, [])
+            fun default () =
+                case (#1 f, args) of
+                    (ENamed n, _ :: _ :: _) =>
+                    let
+                        val (args', ret) = getSig n
+                        val args = ListPair.zip (args, args')
+                    in
+                        parenIf par (box [string "({",
+                                          newline,
+                                          p_list_sepi newline
+                                                      (fn i => fn (e, t) =>
+                                                                  box [p_typ env t,
+                                                                       space,
+                                                                       string ("arg" ^ Int.toString i),
+                                                                       space,
+                                                                       string "=",
+                                                                       space,
+                                                                       p_exp' false false env e,
+                                                                       string ";"])
+                                                      args,
+                                          newline,
+                                          p_exp' false false env f,
+                                          string "(ctx,",
+                                          space,
+                                          p_list_sepi (box [string ",", space])
+                                                      (fn i => fn _ =>
+                                                                  string ("arg" ^ Int.toString i)) args,
+                                          string ");",
+                                          newline,
+                                          string "})"])
+                    end
+                  | _ =>
+                    parenIf par (box [p_exp' true false env f,
+                                      string "(ctx,",
+                                      space,
+                                      p_list_sep (box [string ",", space]) (p_exp' false false env) args,
+                                      string ")"])
+
+            fun isSelf n =
+                let
+                    val (argts, ret) = getSig n
                 in
                     parenIf par (box [string "({",
                                       newline,

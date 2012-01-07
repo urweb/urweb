@@ -1410,7 +1410,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                             [((L'.ERel 2, loc), (L'.TSource, loc)),
                                                              ((L'.EJavaScript (L'.Source t,
                                                                                (L'.ERel 1, loc)), loc),
-                                                              t)]),
+                                                              (L'.TFfi ("Basis", "string"), loc))]),
                                                 loc)), loc)), loc)), loc),
                  fm)
             end
