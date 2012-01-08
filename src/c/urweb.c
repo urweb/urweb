@@ -333,11 +333,7 @@ static void client_send(client *c, uw_buffer *msg, const char *script, int scrip
     c->send(c->sock, msg->start, uw_buffer_used(msg));
     c->close(c->sock);
     c->sock = -1;
-  } else if ((script_len > 0
-              && (c->send(c->sock, "E\n", 2)
-                  || c->send(c->sock, script, script_len)
-                  || c->send(c->sock, "\n", 1)))
-             || uw_buffer_append(&c->msgs, msg->start, uw_buffer_used(msg)))
+  } else if (uw_buffer_append(&c->msgs, msg->start, uw_buffer_used(msg)))
     fprintf(stderr, "Client message buffer size exceeded");
 
   pthread_mutex_unlock(&c->lock);
