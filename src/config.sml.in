@@ -14,7 +14,13 @@ val libJs = OS.Path.joinDirFile {dir = lib,
 
 val ccompiler = "@CC@"
 val ccArgs = "@CCARGS@"
+
 val openssl = "@OPENSSL_LDFLAGS@ @OPENSSL_LIBS@"
+
+(* Something is rotten in the state of Ubuntu 11.10, so here's a manual fix that I hope doesn't break other platforms. *)
+val openssl = case String.tokens Char.isSpace openssl of
+                  ["-lssl", "-lcrypto"] => "-lcrypto -lssl"
+                | _ => openssl
 
 val pgheader = "@PGHEADER@"
 val msheader = "@MSHEADER@"

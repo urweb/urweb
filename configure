@@ -12348,7 +12348,7 @@ $as_echo_n "checking for openssl/ssl.h in $ssldir... " >&6; }
             if test -f "$ssldir/include/openssl/ssl.h"; then
                 OPENSSL_INCLUDES="-I$ssldir/include"
                 OPENSSL_LDFLAGS="-L$ssldir/lib"
-                OPENSSL_LIBS=" -lcrypto -lssl"
+                OPENSSL_LIBS="-lssl -lcrypto"
                 found=true
                 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
