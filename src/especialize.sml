@@ -121,13 +121,6 @@ type state = {
 
 fun default (_, x, st) = (x, st)
 
-structure SS = BinarySetFn(struct
-                           type ord_key = string
-                           val compare = String.compare
-                           end)
-
-val mayNotSpec = ref SS.empty
-
 val functionInside = U.Con.exists {kind = fn _ => false,
                                    con = fn TFun _ => true
                                           | CFfi ("Basis", "transaction") => true
@@ -351,6 +344,12 @@ fun specialize' (funcs, specialized) file =
                             val fxs' = map (squish (IS.listItems fvs)) fxs
 
                             val p_bool = Print.PD.string o Bool.toString
+
+                            fun bumpCount n =
+                                if IS.member (#specialized st, f) then
+                                    n
+                                else
+                                    5 + 2 *n
                         in
                             (*Print.prefaces "Func" [("name", Print.PD.string name),
                                                    ("e", CorePrint.p_exp CoreEnv.empty e),
@@ -359,8 +358,7 @@ fun specialize' (funcs, specialized) file =
                                orelse List.all (fn (ERel _, _) => true
                                                  | _ => false) fxs'
                                orelse List.exists (not o valueish) fxs'
-                               orelse (IS.numItems fvs >= length fxs
-                                       andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs) then
+                               orelse IS.numItems fvs >= bumpCount (length fxs) then
                                 ((*Print.prefaces "No" [("name", Print.PD.string name),
                                                       ("f", Print.PD.string (Int.toString f)),
                                                       ("fxs'",
@@ -373,9 +371,8 @@ fun specialize' (funcs, specialized) file =
                                                                      andalso IS.exists (fn n => functionInside (#2 (List.nth (env, n)))) fvs))];*)
                                  default ())
                             else
-                                case (KM.find (args, (vts, fxs')),
-                                      SS.member (!mayNotSpec, name) (*orelse IS.member (#specialized st, f)*)) of
-                                    (SOME f', _) =>
+                                case KM.find (args, (vts, fxs')) of
+                                    SOME f' =>
                                     let
                                         val e = (ENamed f', loc)
                                         val e = IS.foldr (fn (arg, e) => (EApp (e, (ERel arg, loc)), loc))
@@ -387,16 +384,14 @@ fun specialize' (funcs, specialized) file =
                                                        [("e'", CorePrint.p_exp CoreEnv.empty e)];*)
                                         (e, st)
                                     end
-                                  | (_, true) => ((*Print.prefaces ("No!(" ^ name ^ ")")
-                                                                 [("fxs'",
-                                                                   Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs')];*)
-                                                  default ())
-                                  | (NONE, false) =>
+                                  | NONE =>
                                     let
                                         (*val () = Print.prefaces "New one"
-                                                 [("f", Print.PD.string (Int.toString f)),
-                                                  ("mns", Print.p_list Print.PD.string
-                                                                       (SS.listItems (!mayNotSpec)))]*)
+                                                 [("name", Print.PD.string name),
+                                                  ("f", Print.PD.string (Int.toString f)),
+                                                  ("|fvs|", Print.PD.string (Int.toString (IS.numItems fvs))),
+                                                  ("|fxs|", Print.PD.string (Int.toString (length fxs))),
+                                                  ("spec", Print.PD.string (Bool.toString (IS.member (#specialized st, f))))]*)
 
                                         (*val () = Print.prefaces ("Yes(" ^ name ^ ")")
                                                                 [("fxs'",
@@ -450,13 +445,10 @@ fun specialize' (funcs, specialized) file =
                                                                                       (TFun (xt, typ'), loc))
                                                                                  end)
                                                                              (body', typ') fvs
-                                                val mns = !mayNotSpec
-                                                (*val () = mayNotSpec := SS.add (mns, name)*)
                                                 (*val () = print ("NEW: " ^ name ^ "__" ^ Int.toString f' ^ "\n");*)
                                                 val body' = ReduceLocal.reduceExp body'
                                                 (*val () = Print.preface ("PRE", CorePrint.p_exp CoreEnv.empty body')*)
                                                 val (body', st) = exp (env, body', st)
-                                                val () = mayNotSpec := mns
 
                                                 val e' = (ENamed f', loc)
                                                 val e' = IS.foldr (fn (arg, e) => (EApp (e, (ERel arg, loc)), loc))
@@ -503,8 +495,6 @@ fun specialize' (funcs, specialized) file =
 
                 (*val () = Print.prefaces "decl" [("d", CorePrint.p_decl CoreEnv.empty d)]*)
 
-                val () = mayNotSpec := SS.empty
-
                 val (d', st) =
                     if isPoly d then
                         (d, st)
@@ -536,7 +526,6 @@ fun specialize' (funcs, specialized) file =
 
                                 val (vis, st) = ListUtil.foldlMap (fn ((x, n, t, e, s), st) =>
                                                                       let
-                                                                          val () = mayNotSpec := SS.empty
                                                                           val (e, st) = exp ([], e, st)
                                                                       in
                                                                           ((x, n, t, e, s), st)
@@ -565,8 +554,6 @@ fun specialize' (funcs, specialized) file =
                                 ((DTask (e1, e2), #2 d), st)
                             end
                           | _ => (d, st)
-
-                val () = mayNotSpec := SS.empty
 
                 (*val () = print "/decl\n"*)
 
