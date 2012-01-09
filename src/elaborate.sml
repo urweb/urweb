@@ -1188,16 +1188,19 @@
                | (_, L'.CProj (c2, n2)) => projSpecial2 (c2, n2, isRecord')
                | _ => isRecord' ()
      in
-         (*eprefaces "unifyCons''" [("c1All", p_con env c1All),
-                                  ("c2All", p_con env c2All)];*)
+         (*eprefaces "unifyCons''" [("c1", p_con env c1All),
+                                  ("c2", p_con env c2All)];*)
 
-         case (c1, c2) of
+         (case (c1, c2) of
              (L'.CError, _) => ()
            | (_, L'.CError) => ()
 
            | (L'.CUnif (nl1, loc1, k1, _, r1 as ref (L'.Unknown f1)), L'.CUnif (nl2, loc2, k2, _, r2 as ref (L'.Unknown f2))) =>
-             if r1 = r2 andalso nl1 = nl2 then
-                 ()
+             if r1 = r2 then
+                 if nl1 = nl2 then
+                     ()
+                 else
+                     err (fn _ => TooLifty (loc1, loc2))
              else if nl1 = 0 then
                  (unifyKinds env k1 k2;
                   if f1 c2All then
@@ -1335,7 +1338,9 @@
            | (L'.TKFun (x, c1), L'.TKFun (_, c2)) =>
              unifyCons' (E.pushKRel env x) loc c1 c2
 
-           | _ => err CIncompatible
+           | _ => err CIncompatible)(*;
+        eprefaces "/unifyCons''" [("c1", p_con env c1All),
+                                  ("c2", p_con env c2All)]*)
      end
 
  and unifyCons env loc c1 c2 =
@@ -3010,7 +3015,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
 
             fun folder (sgi2All as (sgi, loc), env) =
                 let
-                    (*val () = prefaces "folder" [("sgis1", p_sgn env (L'.SgnConst sgis1, loc2))]*)
+                    (*val () = prefaces "folder" [("sgi2", p_sgn_item env sgi2All)]*)
 
                     fun seek' f p =
                         let
@@ -4496,7 +4501,6 @@ fun elabFile basis topStr topSgn env file =
                 val () = resetCunif ()
                 val (ds, (env', _, gs)) = elabDecl (d, (env, D.empty, gs))
             in
-                                    (**)
                 (ds, (env', gs))
             end
 
