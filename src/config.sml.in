@@ -18,9 +18,15 @@ val ccArgs = "@CCARGS@"
 val openssl = "@OPENSSL_LDFLAGS@ @OPENSSL_LIBS@"
 
 (* Something is rotten in the state of Ubuntu 11.10, so here's a manual fix that I hope doesn't break other platforms. *)
-val openssl = case String.tokens Char.isSpace openssl of
-                  ["-lssl", "-lcrypto"] => "-lcrypto -lssl"
-                | _ => openssl
+val openssl =
+    let
+        val tokens = String.tokens Char.isSpace openssl
+    in
+        if List.exists (fn s => s = "-lssl") tokens then
+            String.concatWith " " (List.filter (fn s => s <> "-lssl") tokens @ ["-lssl"])
+        else
+            openssl
+    end
 
 val pgheader = "@PGHEADER@"
 val msheader = "@MSHEADER@"
