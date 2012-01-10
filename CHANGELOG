@@ -1,4 +1,22 @@
 ========
+20120110
+========
+
+- Improvements to type inference and error messages
+- New 'dynClass' pseudo-attribute for most HTML tags
+- New 't.*' notation for selecting all columns of a table
+- New SQL functions: 'lower' and 'upper'
+- 'timeFormat' .urp directive
+- Client-side 'debug' and 'naughtyDebug' calls use a browser debug console, if available
+- Allow 'source' values to be returned by RPCs
+- Change the HTML context classification scheme in 'Basis'
+- Rename 'Top.id' to 'ident' to avoid clash with 'Basis.id'
+- More client-side function implementations
+- Some expanded reference manual sections
+- Tweak to linker command line argument order (to prevent issues with new Ubuntu versions)
+- Bug fixes
+
+========
 20111127
 ========
 
