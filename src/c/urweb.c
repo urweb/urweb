@@ -159,7 +159,7 @@ typedef struct client {
 static client **clients, *clients_free, *clients_used;
 static unsigned n_clients;
 
-static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t clients_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 size_t uw_messages_max = SIZE_MAX;
 size_t uw_clients_max = SIZE_MAX;
@@ -177,9 +177,10 @@ static client *new_client() {
     c = clients_free;
     clients_free = clients_free->next;
   }
-  else if (n_clients >= uw_clients_max)
+  else if (n_clients >= uw_clients_max) {
+    pthread_mutex_unlock(&clients_mutex);
     return NULL;
-  else {
+  } else {
     ++n_clients;
     clients = realloc(clients, sizeof(client) * n_clients);
     c = malloc(sizeof(client));
