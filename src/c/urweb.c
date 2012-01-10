@@ -1314,6 +1314,12 @@ const char *uw_Basis_get_script(uw_context ctx, uw_unit u) {
 }
 
 const char *uw_get_real_script(uw_context ctx) {
+  if (strstr(ctx->outHeaders.start, "Set-Cookie: ")) {
+    uw_write_script(ctx, "sig=\"");
+    uw_write_script(ctx, ctx->app->cookie_sig(ctx));
+    uw_write_script(ctx, "\";");
+  }
+
   return ctx->script.start;
 }
 
