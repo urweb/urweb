@@ -180,7 +180,7 @@ fun calcConstArgs enclosingFunction e =
                                         in
                                             case #1 arg of
                                                 ERel n =>
-                                                if n = depth - 1 then
+                                                if n = depth - 1 - count then
                                                     visitArgs (count + 1, args')
                                                 else
                                                     default ()
