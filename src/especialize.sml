@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2011, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -349,7 +349,7 @@ fun specialize' (funcs, specialized) file =
                                 if IS.member (#specialized st, f) then
                                     n
                                 else
-                                    5 + 2 *n
+                                    5 + n
                         in
                             (*Print.prefaces "Func" [("name", Print.PD.string name),
                                                    ("e", CorePrint.p_exp CoreEnv.empty e),
