@@ -1,4 +1,4 @@
-(* Copyright (c) 2009, Adam Chlipala
+(* Copyright (c) 2009, 2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -93,6 +93,8 @@ fun frob file =
                     case getApp (#1 trans, []) of
                         NONE => (ErrorMsg.errorAt (#2 trans)
                                                   "RPC code doesn't use a named function or transaction";
+                                 (*Print.preface ("Expression",
+                                                CorePrint.p_exp CoreEnv.empty trans);*)
                                  (#1 trans, st))
                       | SOME (n, args) =>
                         case IM.find (tfuncs, n) of

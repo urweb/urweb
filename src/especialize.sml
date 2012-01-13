@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -210,13 +210,8 @@ fun calcConstArgs enclosingFunction e =
             case #1 e of
                 EAbs (_, _, _, e1) => enterAbs (depth + 1) e1
               | _ => ca depth e
-
-        val n = enterAbs 0 e
     in
-        if n = maxInt then
-            0
-        else
-            n
+        enterAbs 0 e
     end
 
 
@@ -373,18 +368,23 @@ fun specialize' (funcs, specialized) file =
 
                             val loc = ErrorMsg.dummySpan
 
+                            val oldXs = xs
+
                             fun findSplit av (constArgs, xs, typ, fxs, fvs) =
                                 case (#1 typ, xs) of
                                     (TFun (dom, ran), e :: xs') =>
                                     if constArgs > 0 then
-                                        findSplit av (constArgs - 1,
-                                                      xs',
-                                                      ran,
-                                                      e :: fxs,
-                                                      IS.union (fvs, freeVars e))
+                                        if functionInside dom then
+                                            (rev (e :: fxs), xs', IS.union (fvs, freeVars e))
+                                        else
+                                            findSplit av (constArgs - 1,
+                                                          xs',
+                                                          ran,
+                                                          e :: fxs,
+                                                          IS.union (fvs, freeVars e))
                                     else
-                                        (rev fxs, xs, fvs)
-                                  | _ => (rev fxs, xs, fvs)
+                                        ([], oldXs, IS.empty)
+                                  | _ => ([], oldXs, IS.empty)
 
                             val (fxs, xs, fvs) = findSplit true (constArgs, xs, typ, [], IS.empty)
 

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -84,6 +84,9 @@ fun doArgs args =
          doArgs rest)
       | "-dumpTypes" :: rest =>
         (Elaborate.dumpTypes := true;
+         doArgs rest)
+      | "-dumpSource" :: rest =>
+        (Compiler.dumpSource := true;
          doArgs rest)
       | "-output" :: s :: rest =>
         (Settings.setExe (SOME s);

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -79,7 +79,10 @@ type ('src, 'dst) transform = {
 }
 
 val debug = ref false
+val dumpSource = ref false
 val doIflow = ref false
+
+val doDumpSource = ref (fn () => ())
 
 fun transform (ph : ('src, 'dst) phase) name = {
     func = fn input => let
@@ -94,9 +97,15 @@ fun transform (ph : ('src, 'dst) phase) name = {
                   else
                       ();
                   if ErrorMsg.anyErrors () then
-                      NONE
+                      (!doDumpSource ();
+                       doDumpSource := (fn () => ());
+                       NONE)
                   else
-                      SOME v
+                      (if !dumpSource then
+                           doDumpSource := (fn () => Print.eprint (#print ph v))
+                       else
+                           ();
+                       SOME v)
               end,
     print = #print ph,
     time = fn (input, pmap) => let

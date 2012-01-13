@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -185,6 +185,8 @@ signature COMPILER = sig
     val toSqlify : (string, Cjr.file) transform
 
     val debug : bool ref
+    val dumpSource : bool ref
+
     val doIflow : bool ref
 
     val addPath : string * string -> unit
