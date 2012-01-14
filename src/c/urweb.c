@@ -159,8 +159,13 @@ typedef struct client {
 static client **clients, *clients_free, *clients_used;
 static unsigned n_clients;
 
-static pthread_mutex_t clients_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-
+static pthread_mutex_t clients_mutex =
+    #ifdef PTHREAD_RECURSIVE_MUTEX_INITIALIZER
+        PTHREAD_RECURSIVE_MUTEX_INITIALIZER
+    #else
+        PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
+    #endif
+    ;
 size_t uw_messages_max = SIZE_MAX;
 size_t uw_clients_max = SIZE_MAX;
 
