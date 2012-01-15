@@ -3247,11 +3247,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                              in
                                                  case x of
                                                      "Onkeyup" =>
-                                                     SOME (strcat [str ("((function(c){addOnKeyUp(d,function(){window.uw_event=window.event;return c();});})(exec("),
+                                                     SOME (strcat [str ("((function(c){addOnKeyUp(d,function(ev){window.uw_event=ev?ev:window.event;return c();});})(exec("),
                                                                    (L'.EJavaScript (L'.Script, e), loc),
                                                                    str ")));"])
                                                    | _ =>
-                                                     SOME (strcat [str ("((function(c){d." ^ lowercaseFirst x ^ "=function(){window.uw_event=window.event;return c();};})(exec("),
+                                                     SOME (strcat [str ("((function(c){d." ^ lowercaseFirst x ^ "=function(ev){window.uw_event=ev?ev:window.event;return c();};})(exec("),
                                                                    (L'.EJavaScript (L'.Script, e), loc),
                                                                    str ")));"])
                                              end

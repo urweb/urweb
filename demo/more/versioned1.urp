@@ -1,4 +1,3 @@
-debug
 library versioned
 database dbname=test
 sql versioned1.sql
