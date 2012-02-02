@@ -276,7 +276,7 @@ fun tnamesOf (e, _) =
  | LIMIT | OFFSET | ALL
  | TRUE | FALSE | CAND | OR | NOT
  | COUNT | AVG | SUM | MIN | MAX
- | ASC | DESC
+ | ASC | DESC | RANDOM
  | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS | COALESCE | LIKE
  | CURRENT_TIMESTAMP
  | NE | LT | LE | GT | GE
@@ -405,6 +405,7 @@ fun tnamesOf (e, _) =
  | obopt of exp
  | obitem of exp * exp
  | obexps of exp
+ | popt of unit
  | diropt of exp
  | lopt of exp
  | ofopt of exp
@@ -2034,6 +2035,10 @@ obexps : obitem                         (let
                                          in
                                              (EApp (e, obexps), loc)
                                          end)
+       | RANDOM popt                    (EVar (["Basis"], "sql_order_by_random", Infer), s (RANDOMleft, poptright))
+
+popt   :                                ()
+       | LPAREN RPAREN                  ()
 
 diropt :                                (EVar (["Basis"], "sql_asc", Infer), dummy)
        | ASC                            (EVar (["Basis"], "sql_asc", Infer), s (ASCleft, ASCright))

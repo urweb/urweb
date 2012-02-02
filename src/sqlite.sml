@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -255,7 +255,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                       string "static void uw_db_validate(uw_context ctx) { }"],
              newline,
              newline,
-             
+
              string "static void uw_db_init(uw_context ctx) {",
              newline,
              string "sqlite3 *sqlite;",
@@ -308,7 +308,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              string "}",
              newline,
              newline,
-                  
+
              string "conn = calloc(1, sizeof(uw_conn));",
              newline,
              string "conn->conn = sqlite;",
@@ -820,6 +820,7 @@ fun p_cast (s, _) = s
 fun p_blank _ = "?"
 
 val () = addDbms {name = "sqlite",
+                  randomFunction = "RANDOM",
                   header = Config.sqheader,
                   link = "-lsqlite3",
                   init = init,

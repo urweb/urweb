@@ -151,7 +151,7 @@ See doc for the variable `urweb-mode-info'."
                  "PRIMARY" "KEY" "CONSTRAINT" "UNIQUE" "CHECK"
                  "FOREIGN" "REFERENCES" "ON" "NO" "ACTION" "CASCADE" "RESTRICT" "NULL"
                  "JOIN" "INNER" "OUTER" "LEFT" "RIGHT" "FULL" "CROSS" "SELECT1"
-                 "IF" "THEN" "ELSE" "COALESCE" "LIKE")
+                 "IF" "THEN" "ELSE" "COALESCE" "LIKE" "RANDOM")
   "A regexp that matches SQL keywords.")
 
 (defconst urweb-lident-regexp "\\<[a-z_][A-Za-z0-9_']*\\>"

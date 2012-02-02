@@ -467,6 +467,7 @@ datatype failure_mode = Error | None
 
 type dbms = {
      name : string,
+     randomFunction : string,
      header : string,
      link : string,
      p_sql_type : sql_type -> string,
@@ -511,6 +512,7 @@ type dbms = {
 
 val dbmses = ref ([] : dbms list)
 val curDb = ref ({name = "",
+                  randomFunction = "",
                   header = "",
                   link = "",
                   p_sql_type = fn _ => "",

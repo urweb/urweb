@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -74,7 +74,7 @@ fun pvar (r, r', loc) =
                                                SM.insert (fs', x, n))) ([], SM.empty) (r, fs)
         in
             pvars := RM.insert (!pvars, r', (n, fs));
-            pvarDefs := (L'.DDatatype [("$poly" ^ Int.toString n, n, map (fn (x, n, t) => (x, n, SOME t)) fs)], loc) 
+            pvarDefs := (L'.DDatatype [("$poly" ^ Int.toString n, n, map (fn (x, n, t) => (x, n, SOME t)) fs)], loc)
                         :: !pvarDefs;
             pvarOldDefs := (n, r) :: !pvarOldDefs;
             (n, fs)
@@ -312,9 +312,9 @@ fun monoType env =
                          let
                              val r = ref (L'.Default, [])
                              val (_, xs, xncs) = Env.lookupDatatype env n
-                                                 
+
                              val dtmap' = IM.insert (dtmap, n, r)
-                                          
+
                              val xncs = map (fn (x, n, to) => (x, n, Option.map (mt env dtmap') to)) xncs
                          in
                              case xs of
@@ -580,7 +580,7 @@ fun fooifyExp fk env =
                                                                      result = ran}), loc)), loc),
                                                "")], loc),
                                  fm)
-                            end       
+                            end
 
                         val (fm, n) = Fm.lookup fm fk i makeDecl
                     in
@@ -594,7 +594,7 @@ fun fooifyExp fk env =
                         ((L'.ECase (e,
                                     [((L'.PNone t, loc),
                                       (L'.EPrim (Prim.String "None"), loc)),
-                                     
+
                                      ((L'.PSome (t, (L'.PVar ("x", t), loc)), loc),
                                       (L'.EStrcat ((L'.EPrim (Prim.String "Some/"), loc),
                                                    body), loc))],
@@ -1186,7 +1186,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("f", dom, dom,
                            (L'.ERel 0, loc)), loc), fm)
             end
-                       
+
           | L.ECApp ((L.EFfi ("Basis", "show"), _), t) =>
             let
                 val t = monoType env t
@@ -2059,7 +2059,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                         strcat [sc " WHERE ", gf "Where"])],
                                                       {disc = s,
                                                        result = s}), loc),
-                                           
+
                                            if List.all (fn (x, xts) =>
                                                            case List.find (fn (x', _) => x' = x) grouped of
                                                                NONE => List.null xts
@@ -2194,7 +2194,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_subset_concat"),
                                                     _), _), _), _), _), _), _), _) =>
             let
-                val un = (L'.TRecord [], loc) 
+                val un = (L'.TRecord [], loc)
             in
                 ((L'.EAbs ("_", un, (L'.TFun (un, un), loc),
                            (L'.EAbs ("_", un, un,
@@ -2406,6 +2406,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_Nil"), _), _), _), _) =>
             ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_random"), _), _), _), _) =>
+            ((L'.EPrim (Prim.String (#randomFunction (Settings.currentDbms ()) ^ "()")), loc), fm)
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
@@ -2755,7 +2757,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_asc") => ((L'.EPrim (Prim.String ""), loc), fm)
           | L.EFfi ("Basis", "sql_desc") => ((L'.EPrim (Prim.String " DESC"), loc), fm)
-
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
@@ -2763,7 +2764,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                (L.EFfi ("Basis", "sql_nfunc"), _),
                _), _),
               _), _),
-             _), _), 
+             _), _),
            _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
@@ -2893,7 +2894,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                      (L'.ERel 0, loc)), loc)), loc),
                  fm)
             end
- 
+
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
@@ -3045,7 +3046,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | ("Onload", e, _) :: rest => findOnload (rest, SOME e, onunload, acc)
                       | ("Onunload", e, _) :: rest => findOnload (rest, onload, SOME e, acc)
                       | x :: rest => findOnload (rest, onload, onunload, x :: acc)
-                                     
+
                 val (onload, onunload, attrs) = findOnload (attrs, NONE, NONE, [])
 
                 val (class, fm) = monoExp (env, st, fm) class
@@ -3325,7 +3326,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 						List.exists (fn ((L.CName tag', _), _) => tag' = tag
                                                               | _ => false) ctx
                                               | _ => false
-                                                     
+
                             val tag = if inTag "Tr" then
 					  "tr"
                                       else if inTag "Table" then
@@ -3343,7 +3344,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				 fm)
                               | _ => raise Fail "Monoize: Bad dyn attributes"
 			end
-			
+
                       | "submit" => normal ("input type=\"submit\"", NONE, NONE)
                       | "image" => normal ("input type=\"image\"", NONE, NONE)
                       | "button" => normal ("input type=\"submit\"", NONE, NONE)
@@ -4312,7 +4313,7 @@ fun monoize env file =
                                             let
                                                 val (nExp, fm) = Fm.freshName fm
                                                 val (nIni, fm) = Fm.freshName fm
-                                                                 
+
                                                 val dExp = L'.DVal ("expunger",
                                                                     nExp,
                                                                     (L'.TFun (client, unit), loc),

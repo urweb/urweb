@@ -490,6 +490,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 
 <INITIAL> "ASC"       => (Tokens.ASC (pos yypos, pos yypos + size yytext));
 <INITIAL> "DESC"      => (Tokens.DESC (pos yypos, pos yypos + size yytext));
+<INITIAL> "RANDOM"    => (Tokens.RANDOM (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "INSERT"    => (Tokens.INSERT (pos yypos, pos yypos + size yytext));
 <INITIAL> "INTO"      => (Tokens.INTO (pos yypos, pos yypos + size yytext));

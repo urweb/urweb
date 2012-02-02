@@ -399,7 +399,7 @@ val sql_query1 : free ::: {{Type}}
                                             selectedExps) }
                  -> sql_query1 free afree tables selectedFields selectedExps
 
-type sql_relop 
+type sql_relop
 val sql_union : sql_relop
 val sql_intersect : sql_relop
 val sql_except : sql_relop
@@ -428,11 +428,13 @@ val sql_order_by_Cons : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                         -> sql_exp tables [] exps t -> sql_direction
                         -> sql_order_by tables exps
                         -> sql_order_by tables exps
+val sql_order_by_random : tables ::: {{Type}} -> exps ::: {Type}
+                          -> sql_order_by tables exps
 
 type sql_limit
 val sql_no_limit : sql_limit
 val sql_limit : int -> sql_limit
-                       
+
 type sql_offset
 val sql_no_offset : sql_offset
 val sql_offset : int -> sql_offset
@@ -651,7 +653,7 @@ val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type}
                   ctxOuter ctxInner useOuter bindOuter
            -> xml ctxInner useInner bindInner
            -> xml ctxOuter (useOuter ++ useInner) (bindOuter ++ bindInner)
-val join : ctx ::: {Unit} 
+val join : ctx ::: {Unit}
         -> use1 ::: {Type} -> bind1 ::: {Type} -> bind2 ::: {Type}
         -> [use1 ~ bind1] => [bind1 ~ bind2] =>
               xml ctx use1 bind1
@@ -769,13 +771,13 @@ val a : bodyTag ([Link = transaction page, Href = url, Target = string] ++ boxAt
 val img : bodyTag ([Alt = string, Src = url, Width = int, Height = int,
                     Onabort = transaction unit, Onerror = transaction unit,
                     Onload = transaction unit] ++ boxAttrs)
-          
+
 val form : ctx ::: {Unit} -> bind ::: {Type}
            -> [[MakeForm, Form] ~ ctx] =>
     option css_class
     -> xml ([Form] ++ ctx) [] bind
     -> xml ([MakeForm] ++ ctx) [] []
-       
+
 val subform : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type}
               -> [[Form] ~ ctx] =>
     nm :: Name -> [[nm] ~ use] =>

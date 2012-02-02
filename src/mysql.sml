@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -258,7 +258,7 @@ fun checkRel (table, checkNullable) (s, xts) =
              string "mysql_free_result(res);",
              newline,
              newline,
-             
+
              string "if (mysql_query(conn->conn, \"",
              string q'',
              string "\")) {",
@@ -503,7 +503,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                       string "static void uw_db_validate(uw_context ctx) { }"],
              newline,
              newline,
-             
+
              string "static void uw_db_init(uw_context ctx) {",
              newline,
              string "MYSQL *mysql = mysql_init(NULL);",
@@ -829,7 +829,7 @@ fun queryCommon {loc, query, cols, doCols} =
                                                    string (Int.toString i),
                                                    string ";",
                                                    newline,
-                                                               
+
                                                    case t of
                                                        Nullable t => buffers t
                                                      | _ => buffers t,
@@ -1123,7 +1123,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                       string (Int.toString i),
                                                                       string ";",
                                                                       newline]
-                                                                   
+
                                                     | _ => box [string "in[",
                                                                 string (Int.toString i),
                                                                 string "].buffer = &arg",
@@ -1137,7 +1137,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                    string (p_buffer_type t),
                                                    string ";",
                                                    newline,
-                                                               
+
                                                    case t of
                                                        Nullable t => box [string "in[",
                                                                           string (Int.toString i),
@@ -1177,7 +1177,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                                                newline],
                                                                           string "}",
                                                                           newline]
-                                                                          
+
                                                      | _ => buffers t,
                                                    newline]
                                           end) inputs,
@@ -1404,7 +1404,7 @@ fun dmlPrepared {loc, id, dml, inputs, mode} =
                                                                       string (Int.toString i),
                                                                       string ";",
                                                                       newline]
-                                                                   
+
                                                     | _ => box [string "in[",
                                                                 string (Int.toString i),
                                                                 string "].buffer = &arg",
@@ -1425,7 +1425,7 @@ fun dmlPrepared {loc, id, dml, inputs, mode} =
                                                                        string "].is_unsigned = 1;",
                                                                        newline]
                                                      | _ => box [],
-                                                               
+
                                                    case t of
                                                        Nullable t => box [string "in[",
                                                                           string (Int.toString i),
@@ -1465,7 +1465,7 @@ fun dmlPrepared {loc, id, dml, inputs, mode} =
                                                                                newline],
                                                                           string "}",
                                                                           newline]
-                                                                          
+
                                                      | _ => buffers t,
                                                    newline]
                                           end) inputs,
@@ -1529,6 +1529,7 @@ fun p_blank _ = "?"
 
 val () = addDbms {name = "mysql",
                   header = Config.msheader,
+                  randomFunction = "RAND",
                   link = "-lmysqlclient",
                   init = init,
                   p_sql_type = p_sql_type,
