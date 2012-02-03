@@ -2178,7 +2178,7 @@ $$\begin{array}{rrcll}
 
 Additionally, an SQL expression may be inserted into normal Ur code with the syntax $(\mt{SQL} \; E)$ or $(\mt{WHERE} \; E)$.  Similar shorthands exist for other nonterminals, with the prefix $\mt{FROM}$ for $\mt{FROM}$ items and $\mt{SELECT1}$ for pre-queries.
 
-Unnamed expression columns in $\mt{SELECT}$ clauses are assigned consecutive natural numbers, starting with 1.
+Unnamed expression columns in $\mt{SELECT}$ clauses are assigned consecutive natural numbers, starting with 1.  Any expression in a $p$ position that is enclosed in parentheses is treated as an expression column, rather than a column pulled directly out of a table, even if it is only a field projection.  (This distinction affects the record type used to describe query results.)
 
 \subsubsection{DML}
 
