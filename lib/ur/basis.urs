@@ -161,6 +161,8 @@ val addSeconds : time -> int -> time
 val toSeconds : time -> int
 val diffInSeconds : time -> time -> int
 (* Earlier time first *)
+val toMilliseconds : time -> int
+val diffInMilliseconds : time -> time -> int
 val timef : string -> time -> string (* Uses strftime() format string *)
 val readUtc : string -> option time
 

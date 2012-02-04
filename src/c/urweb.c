@@ -3681,6 +3681,14 @@ uw_Basis_int uw_Basis_diffInSeconds(uw_context ctx, uw_Basis_time tm1, uw_Basis_
   return difftime(tm2.seconds, tm1.seconds);
 }
 
+uw_Basis_int uw_Basis_toMilliseconds(uw_context ctx, uw_Basis_time tm) {
+  return tm.seconds * 1000 + tm.microseconds / 1000;
+}
+
+uw_Basis_int uw_Basis_diffInMilliseconds(uw_context ctx, uw_Basis_time tm1, uw_Basis_time tm2) {
+  return uw_Basis_toMilliseconds(ctx, tm2) - uw_Basis_toMilliseconds(ctx, tm1);
+}
+
 uw_Basis_int uw_Basis_toSeconds(uw_context ctx, uw_Basis_time tm) {
   return tm.seconds;
 }
