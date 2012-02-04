@@ -1848,6 +1848,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_order\_by\_Nil} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} :: \{\mt{Type}\} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
   \mt{val} \; \mt{sql\_order\_by\_Cons} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
   \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; [] \; \mt{exps} \; \mt{t} \to \mt{sql\_direction} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
+  \mt{val} \; \mt{sql\_order\_by\_random} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
   \\
   \mt{type} \; \mt{sql\_limit} \\
   \mt{val} \; \mt{sql\_no\_limit} : \mt{sql\_limit} \\
@@ -2125,10 +2126,11 @@ A signature item $\mt{table} \; \mt{x} : \mt{c}$ is actually elaborated into two
 Queries $Q$ are added to the rules for expressions $e$.
 
 $$\begin{array}{rrcll}
-  \textrm{Queries} & Q &::=& (q \; [\mt{ORDER} \; \mt{BY} \; (E \; [o],)^+] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N]) \\
+  \textrm{Queries} & Q &::=& (q \; [\mt{ORDER} \; \mt{BY} \; O] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N]) \\
   \textrm{Pre-queries} & q &::=& \mt{SELECT} \; [\mt{DISTINCT}] \; P \; \mt{FROM} \; F,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
   &&& \mid q \; R \; q \mid \{\{\{e\}\}\} \\
-  \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT}
+  \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT} \\
+  \textrm{$\mt{ORDER \; BY}$ items} & O &::=& \mt{RANDOM} [()] \mid E \; [o] \mid E \; [o], O
 \end{array}$$
 
 $$\begin{array}{rrcll}

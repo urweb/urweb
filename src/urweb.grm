@@ -2039,6 +2039,7 @@ obexps : obitem                         (let
 
 popt   :                                ()
        | LPAREN RPAREN                  ()
+       | UNIT                           ()
 
 diropt :                                (EVar (["Basis"], "sql_asc", Infer), dummy)
        | ASC                            (EVar (["Basis"], "sql_asc", Infer), s (ASCleft, ASCright))
