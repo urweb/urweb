@@ -348,7 +348,7 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
   \begin{tabular}{rl}
     \textbf{\LaTeX} & \textbf{ASCII} \\
     $\to$ & \cd{->} \\
-    $\longrightarrow$ & \cd{-->} \\
+    $\longrightarrow$ & \cd{-{}->} \\
     $\times$ & \cd{*} \\
     $\lambda$ & \cd{fn} \\
     $\Rightarrow$ & \cd{=>} \\
@@ -547,6 +547,8 @@ A record type may be written $\{(c = c,)^*\}$, which elaborates to $\$[(c = c,)^
 The notation $[c_1, \ldots, c_n]$ is shorthand for $[c_1 = (), \ldots, c_n = ()]$.
 
 A tuple type $\tau_1 \times \ldots \times \tau_n$ expands to a record type $\{1 : \tau_1, \ldots, n : \tau_n\}$, with natural numbers as field names.  A tuple expression $(e_1, \ldots, e_n)$ expands to a record expression $\{1 = e_1, \ldots, n = e_n\}$.  A tuple pattern $(p_1, \ldots, p_n)$ expands to a rigid record pattern $\{1 = p_1, \ldots, n = p_n\}$.  Positive natural numbers may be used in most places where field names would be allowed.
+
+The syntax $()$ expands to $\{\}$ as a pattern or expression.
 
 In general, several adjacent $\lambda$ forms may be combined into one, and kind and type annotations may be omitted, in which case they are implicitly included as wildcards.  More formally, for constructor-level abstractions, we can define a new non-terminal $b ::= x \mid (x :: \kappa) \mid X$ and allow composite abstractions of the form $\lambda b^+ \Rightarrow c$, elaborating into the obvious sequence of one core $\lambda$ per element of $b^+$.
 
@@ -1393,7 +1395,7 @@ $$\begin{array}{l}
   \hspace{.1in} \to \mt{monad} \; \mt{m}
 \end{array}$$
 
-The Ur/Web compiler provides syntactic sugar for monads, similar to Haskell's \cd{do} notation.  An expression $x \leftarrow e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda x \Rightarrow e_2)$, and an expression $e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda () \Rightarrow e_2)$.
+The Ur/Web compiler provides syntactic sugar for monads, similar to Haskell's \cd{do} notation.  An expression $x \leftarrow e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda x \Rightarrow e_2)$, and an expression $e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda () \Rightarrow e_2)$.  Note a difference from Haskell: as the $e_1; e_2$ case desugaring involves a function with $()$ as its formal argument, the type of $e_1$ must be of the form $m \; \{\}$, rather than some arbitrary $m \; t$.
 
 \subsection{Transactions}
 
