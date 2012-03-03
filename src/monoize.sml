@@ -4115,6 +4115,20 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             let
                 val (e1, fm) = monoExp (env, St.empty, fm) e1
                 val (e2, fm) = monoExp (env, St.empty, fm) e2
+
+                val un = (L'.TRecord [], loc)
+                val t = if MonoUtil.Exp.exists {typ = fn _ => false,
+                                                exp = fn L'.EFfiApp ("Basis", "periodic", _) => true
+                                                       | _ => false} e1 then
+                            (L'.TFfi ("Basis", "int"), loc)
+                        else
+                            un
+                            
+                val e2 = (L'.EAbs ("$x", t, (L'.TFun (un, un), loc),
+                                   (L'.EAbs ("$y", un, un,
+                                             (L'.EApp (
+                                              (L'.EApp (e2, (L'.ERel 1, loc)), loc),
+                                              (L'.ERel 0, loc)), loc)), loc)), loc)
             in
                 SOME (env,
                       fm,
