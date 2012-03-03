@@ -2429,7 +2429,7 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
         s2 += 4;
       }
       else
-        uw_error(ctx, FATAL, "Non-printable character %u in string to SQLify", c);
+        *s2++ = c; // I hope this is safe to do... don't know how to support UTF-8 outside Postgres otherwise!
     }
   }
 
