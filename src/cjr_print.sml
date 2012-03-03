@@ -2971,6 +2971,18 @@ fun p_file env (ds, ps) =
                      newline,
                      string "if (*request == '/') ++request;",
                      newline,
+                     case ek of
+                         Rpc _ => box [string "if (uw_hasPostBody(ctx)) {",
+                                       newline,
+                                       box [string "uw_Basis_postBody pb = uw_getPostBody(ctx);",
+                                            newline,
+                                            string "if (pb.data[0])",
+                                            newline,
+                                            box [string "request = uw_Basis_strcat(ctx, request, pb.data);"],
+                                            newline],
+                                       string "}",
+                                       newline]
+                       | _ => box [],
                      if couldWrite ek andalso not (Settings.checkNoXsrfProtection s) then
                          box [string "{",
                               newline,
