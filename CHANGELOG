@@ -1,4 +1,14 @@
 ========
+20120310
+========
+
+- 'ORDER BY RANDOM'
+- New Basis members: diffInMilliseconds, toMilliseconds
+- <radio> widget now returns 'option string' instead of 'string'
+- '-dumpSource' command-line flag
+- Bug fixes and optimization improvements
+
+========
 20120110
 ========
 
