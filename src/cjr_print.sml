@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -2868,6 +2868,16 @@ fun p_file env (ds, ps) =
                                   string "}}",
                                   newline]
                          end
+                       | TOption _ =>
+                         box [string "uw_input_",
+                              p_ident x,
+                              space,
+                              string "=",
+                              space,
+                              string "uw_get_input(ctx, ",
+                              string (Int.toString n),
+                              string ");",
+                              newline]
                        | _ =>
                          box [string "request = uw_get_",
                               string f,

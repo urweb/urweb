@@ -1,13 +1,15 @@
-val handler = fn x => <html><body>
-        You entered: {cdata x.A}
-</body></html>
+fun handler x = return <xml><body>
+  You entered: {[case x.A of
+                     None => "nothing at all"
+                   | Some v => v]}
+</body></xml>
 
-val main = fn () => <html><body>
-        <lform>
-                <radio{#A}>
-                        <li> <radioOption value="A"/>A</li>
-                        <li> <radioOption value="B"/>B</li>
-                </radio>
-                <submit action={handler}/>
-        </lform>
-</body></html>
+fun main () = return <xml><body>
+  <form>
+    <radio{#A}>
+      <li><radioOption value="A"/>A</li>
+      <li><radioOption value="B"/>B</li>
+    </radio>
+    <submit action={handler}/>
+  </form>
+</body></xml>
