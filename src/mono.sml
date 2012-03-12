@@ -44,7 +44,7 @@ datatype typ' =
 withtype typ = typ' located
 
 datatype patCon =
-         PConVar of int
+         PConVar of int (* constructor identifier *)
        | PConFfi of {mod : string, datatyp : string, con : string, arg : typ option}
 
 datatype pat' =
@@ -72,8 +72,8 @@ datatype binop_intness = Int | NotInt
 
 datatype exp' =
          EPrim of Prim.t
-       | ERel of int
-       | ENamed of int
+       | ERel of int   (* deBruijn index *)
+       | ENamed of int (* named variable *)
        | ECon of datatype_kind * patCon * exp option
        | ENone of typ
        | ESome of typ * exp
@@ -102,10 +102,11 @@ datatype exp' =
 
        | EClosure of int * exp list
 
-       | EQuery of { exps : (string * typ) list,
+       | EQuery of { exps : (string * typ) list, (* name of computed field, type of field*)
                      tables : (string * (string * typ) list) list,
                      state : typ,
-                     query : exp,
+                     query : exp, (* exp of string type containing sql query
+                     (after mono opt) *)
                      body : exp,
                      initial : exp }
        | EDml of exp * failure_mode
