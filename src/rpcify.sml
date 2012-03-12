@@ -142,7 +142,7 @@ fun frob file =
                                               decl = fn x => x}
                               st d
             in
-                (#export_decls st @ [d],
+                (d :: #export_decls st,
                  {exported = #exported st,
                   export_decls = []})
             end
