@@ -180,6 +180,8 @@ mono_shake.sml
 fuse.sig
 fuse.sml
 
+sql.sml
+
 iflow.sig
 iflow.sml
 
