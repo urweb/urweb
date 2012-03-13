@@ -105,8 +105,7 @@ datatype exp' =
        | EQuery of { exps : (string * typ) list, (* name of computed field, type of field*)
                      tables : (string * (string * typ) list) list,
                      state : typ,
-                     query : exp, (* exp of string type containing sql query
-                     (after mono opt) *)
+                     query : exp, (* exp of string type containing sql query *)
                      body : exp,
                      initial : exp }
        | EDml of exp * failure_mode
