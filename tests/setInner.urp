@@ -1,0 +1,7 @@
+rewrite all SetInner/*
+script http://localhost/setInner.js
+jsFunc Ffi.setIt=setIt
+benignEffectful Ffi.setIt
+ffi ffi
+
+setInner
