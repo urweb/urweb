@@ -1425,10 +1425,10 @@ fun compile job =
                     in
                         OS.FileSys.mkDir dir;
                         (cname, oname,
-                      fn () => (OS.FileSys.remove cname;
-                                OS.FileSys.remove oname;
-                                OS.FileSys.rmDir dir)
-                         handle OS.SysErr _ => OS.FileSys.rmDir dir)
+                      fn () => (if OS.Process.isSuccess (OS.Process.system ("rm -rf " ^ dir)) then
+                                    ()
+                                else
+                                    raise Fail ("Unable to delete temporary directory " ^ dir)))
                     end
             val ename = #exe job
         in
