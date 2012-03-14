@@ -541,9 +541,7 @@ fun corifyExp st (e, loc) =
                     St.ENormal n => (L'.ENamed n, loc)
                   | St.EFfi (m, t) =>
                     case t of
-                        (L'.TFun (dom as (L'.TRecord (L'.CRecord (_, []), _), _), ran), _) =>
-                        (L'.EAbs ("arg", dom, ran, (L'.EFfiApp (m, x, []), loc)), loc)
-                      | (L'.CApp ((L'.CFfi ("Basis", "transaction"), _), dom), _) =>
+                        (L'.CApp ((L'.CFfi ("Basis", "transaction"), _), dom), _) =>
                         (L'.EAbs ("arg", dom, (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc),
                                   (L'.EFfiApp (m, x, []), loc)), loc)
                       | t as (L'.TFun _, _) =>
