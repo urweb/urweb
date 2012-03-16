@@ -3962,7 +3962,14 @@ void uw_cutErrorLocation(char *s) {
 }
 
 uw_Basis_string uw_Basis_fresh(uw_context ctx) {
-  return uw_Basis_htmlifyInt(ctx, ctx->nextId++);
+  int len;
+  char *r;
+
+  uw_check_heap(ctx, 2+INTS_MAX);
+  r = ctx->heap.front;
+  sprintf(r, "uw%u%n", ctx->nextId++, &len);
+  ctx->heap.front += len+1;
+  return r;
 }
 
 uw_Basis_float uw_Basis_floatFromInt(uw_context ctx, uw_Basis_int n) {
