@@ -1,4 +1,12 @@
 ========
+20120329
+========
+
+- New JavaScript FFI function: setInnerHTML
+- Bug fixes
+- Documentation improvements
+
+========
 20120310
 ========
 
