@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -91,7 +91,8 @@ structure St : sig
     val lookupConById : t -> int -> int option
     val lookupConByName : t -> string -> core_con
 
-    val bindConstructor : t -> string -> int -> L'.patCon -> t
+    val bindConstructor : t -> string -> int -> t * int
+    val bindConstructorAs : t -> string -> int -> L'.patCon -> t
     val lookupConstructorByNameOpt : t -> string -> L'.patCon option
     val lookupConstructorByName : t -> string -> L'.patCon
     val lookupConstructorById : t -> int -> L'.patCon
@@ -100,7 +101,7 @@ structure St : sig
              ENormal of int
            | EFfi of string * L'.con
     val bindVal : t -> string -> int -> t * int
-    val bindConstructorVal : t -> string -> int -> t
+    val bindConstructorVal : t -> string -> int -> int -> t
     val lookupValById : t -> int -> int option
     val lookupValByName : t -> string -> core_val
 
@@ -241,7 +242,7 @@ fun bindVal {basis, cons, constructors, vals, strs, funs, current, nested} s n =
          n')
     end
 
-fun bindConstructorVal {basis, cons, constructors, vals, strs, funs, current, nested} s n =
+fun bindConstructorVal {basis, cons, constructors, vals, strs, funs, current, nested} s n n' =
     let
         val current =
             case current of
@@ -250,14 +251,14 @@ fun bindConstructorVal {basis, cons, constructors, vals, strs, funs, current, ne
                 FNormal {name = name,
                          cons = cons,
                          constructors = constructors,
-                         vals = SM.insert (vals, s, n),
+                         vals = SM.insert (vals, s, n'),
                          strs = strs,
                          funs = funs}
     in
         {basis = basis,
          cons = cons,
          constructors = constructors,
-         vals = IM.insert (vals, n, n),
+         vals = IM.insert (vals, n, n'),
          strs = strs,
          funs = funs,
          current = current,
@@ -278,7 +279,7 @@ fun lookupValByName ({current, ...} : t) x =
             NONE => raise Fail ("Corify.St.lookupValByName " ^ String.concatWith "." (rev name) ^ "." ^ x)
           | SOME n => ENormal n
 
-fun bindConstructor {basis, cons, constructors, vals, strs, funs, current, nested} s n n' =
+fun bindConstructorAs {basis, cons, constructors, vals, strs, funs, current, nested} s n c' =
     let
         val current =
             case current of
@@ -286,19 +287,27 @@ fun bindConstructor {basis, cons, constructors, vals, strs, funs, current, neste
               | FNormal {name, cons, constructors, vals, strs, funs} =>
                 FNormal {name = name,
                          cons = cons,
-                         constructors = SM.insert (constructors, s, n'),
+                         constructors = SM.insert (constructors, s, c'),
                          vals = vals,
                          strs = strs,
                          funs = funs}
     in
         {basis = basis,
          cons = cons,
-         constructors = IM.insert (constructors, n, n'),
+         constructors = IM.insert (constructors, n, c'),
          vals = vals,
          strs = strs,
          funs = funs,
          current = current,
          nested = nested}
+    end
+
+fun bindConstructor st s n =
+    let
+        val n' = alloc ()
+        val c' = L'.PConVar n'
+    in
+        (bindConstructorAs st s n c', n')
     end
 
 fun lookupConstructorById ({constructors, ...} : t) n =
@@ -642,11 +651,11 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                             val (xncs, st) = ListUtil.foldlMap
                                                  (fn ((x, n, co), st) =>
                                                      let
-                                                         val st = St.bindConstructor st x n (L'.PConVar n)
-                                                         val st = St.bindConstructorVal st x n
+                                                         val (st, n') = St.bindConstructor st x n
+                                                         val st = St.bindConstructorVal st x n n'
                                                          val co = Option.map (corifyCon st) co
                                                      in
-                                                         ((x, n, co), st)
+                                                         ((x, n', co), st)
                                                      end) st xncs
 
                             val dk = ElabUtil.classifyDatatype xncs
@@ -695,7 +704,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
             val (xncs, st) = ListUtil.foldlMap (fn ((x, n, co), st) =>
                                                    let
                                                        val n' = St.lookupConstructorByName inner x
-                                                       val st = St.bindConstructor st x n n'
+                                                       val st = St.bindConstructorAs st x n n'
                                                        val (st, n) = St.bindVal st x n
                                                        val co = Option.map (corifyCon st) co
                                                    in
@@ -884,7 +893,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                                                                    (SM.insert (cmap, x', wrapT tf), d)
                                                                                end
 
-                                                                       val st = St.bindConstructor st x' n pc
+                                                                       val st = St.bindConstructorAs st x' n pc
                                                                                 
                                                                        val conmap = SM.insert (conmap, x',
                                                                                                (x, xs, to, dk))
