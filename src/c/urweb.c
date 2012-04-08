@@ -229,17 +229,18 @@ static int pruning_thread_initialized = 0;
 
 static client *find_client(unsigned id) {
   client *c;
+  int i_am_pruner = pruning_thread_initialized && pthread_equal(pruning_thread, pthread_self());
 
-  if (!pruning_thread_initialized || !pthread_equal(pruning_thread, pthread_self())) pthread_mutex_lock(&clients_mutex);
+  if (!i_am_pruner) pthread_mutex_lock(&clients_mutex);
 
   if (id >= n_clients) {
-    if (!pruning_thread_initialized || !pthread_equal(pruning_thread, pthread_self())) pthread_mutex_unlock(&clients_mutex);
+    if (!i_am_pruner) pthread_mutex_unlock(&clients_mutex);
     return NULL;
   }
 
   c = clients[id];
 
-  if (!pruning_thread_initialized || !pthread_equal(pruning_thread, pthread_self())) pthread_mutex_unlock(&clients_mutex);
+  if (!i_am_pruner) pthread_mutex_unlock(&clients_mutex);
   return c;
 }
 
