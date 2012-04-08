@@ -1,0 +1,6 @@
+database dbname=goodbye
+sql goodbye.sql
+rewrite all Goodbye/*
+timeout 5
+
+goodbye
