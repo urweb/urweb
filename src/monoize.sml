@@ -3112,14 +3112,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                     end
                                                   | (L'.TFun (dom, _), _) =>
                                                     let
-                                                        val s' = " " ^ lowercaseFirst x ^ "='"
-                                                        val (e, s') =
+                                                        val e =
                                                             case #1 dom of
-                                                                L'.TRecord [] => ((L'.EApp (e, (L'.ERecord [], loc)), loc), s')
-                                                              | _ => ((L'.EApp ((L'.EApp (e, (L'.EFfiApp ("Basis", "kc", []), loc)),
-                                                                                 loc), (L'.ERecord [], loc)), loc),
-                                                                      s' ^ "uw_event=event;")
-                                                        val s' = s' ^ "exec("
+                                                                L'.TRecord [] => (L'.EApp (e, (L'.ERecord [], loc)), loc)
+                                                              | _ => (L'.EApp ((L'.EApp (e, (L'.EFfiApp ("Basis", "kc", []), loc)),
+                                                                                 loc), (L'.ERecord [], loc)), loc)
+                                                        val s' = " " ^ lowercaseFirst x ^ "='uw_event=event;exec("
                                                     in
                                                         ((L'.EStrcat (s,
                                                                       (L'.EStrcat (
