@@ -716,7 +716,7 @@ val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
 val link : unit -> tag [Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
 
-val body : unit -> tag [Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit]
+val body : unit -> tag [Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit, Onhashchange = transaction unit]
                        html body [] []
 con bodyTag = fn (attrs :: {Type}) =>
                  ctx ::: {Unit} ->
@@ -738,11 +738,12 @@ con keyEvents = [Onkeydown = int -> transaction unit, Onkeypress = int -> transa
                  Onkeyup = int -> transaction unit]
 (* Key arguments are character codes. *)
 con resizeEvents = [Onresize = transaction unit]
+con scrollEvents = [Onscroll = transaction unit]
 
-con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents
+con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents ++ scrollEvents
 con tableEvents = focusEvents ++ mouseEvents ++ keyEvents
 
-con boxAttrs = [Id = id, Title = string] ++ boxEvents
+con boxAttrs = [Id = id, Title = string, Style = string] ++ boxEvents
 con tableAttrs = [Id = id, Title = string] ++ tableEvents
 
 val span : bodyTag boxAttrs
@@ -803,7 +804,7 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                         nm :: Name -> unit
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
 val hidden : formTag string [] [Id = string, Value = string]
-val textbox : formTag string [] ([Value = string, Size = int, Source = source string, Onchange = transaction unit,
+val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Onchange = transaction unit,
                                   Ontext = transaction unit] ++ boxAttrs)
 val password : formTag string [] ([Value = string, Size = int] ++ boxAttrs)
 val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
@@ -859,7 +860,7 @@ con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
                   -> [[Body] ~ ctx] =>
                         unit -> tag attrs ([Body] ++ ctx) inner [] []
 
-val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Onchange = transaction unit,
+val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
                           Ontext = transaction unit] ++ boxAttrs) []
 val button : cformTag ([Value = string] ++ boxAttrs) []
 
