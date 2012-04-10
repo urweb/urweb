@@ -3047,7 +3047,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | ("Onunload", e, _) :: rest => findOnload (rest, onload, SOME e, acc)
                       | x :: rest => findOnload (rest, onload, onunload, x :: acc)
 
-                val (onload, onunload, attrs) = findOnload (attrs, NONE, NONE, [])
+                val (onload, onunload, attrs) =
+                    if tag = "body" then
+                        findOnload (attrs, NONE, NONE, [])
+                    else
+                        (NONE, NONE, attrs)
 
                 val (class, fm) = monoExp (env, st, fm) class
                 val (dynClass, fm) = monoExp (env, st, fm) dynClass
