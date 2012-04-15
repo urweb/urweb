@@ -743,7 +743,7 @@ con scrollEvents = [Onscroll = transaction unit]
 con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents ++ scrollEvents
 con tableEvents = focusEvents ++ mouseEvents ++ keyEvents
 
-con boxAttrs = [Id = id, Title = string, Style = string] ++ boxEvents
+con boxAttrs = [Id = id, Title = string] ++ boxEvents
 con tableAttrs = [Id = id, Title = string] ++ tableEvents
 
 val span : bodyTag boxAttrs
