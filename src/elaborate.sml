@@ -4684,6 +4684,8 @@ fun elabFile basis topStr topSgn env file =
                 open Print.PD
                 open Print
 
+                fun p_con env c = ElabPrint.p_con env (ElabOps.reduceCon env c)
+
                 fun dumpDecl (d, env) =
                     case #1 d of
                         DCon (x, _, k, _) => (print (box [string x,
