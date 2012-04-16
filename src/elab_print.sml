@@ -169,7 +169,7 @@ fun p_con' par env (c, _) =
         if !debug then
             parenIf par (box [string "[",
                               p_list (fn (x, c) =>
-                                         box [p_con env x,
+                                         box [p_name env x,
                                               space,
                                               string "=",
                                               space,
@@ -179,7 +179,7 @@ fun p_con' par env (c, _) =
         else
             parenIf par (box [string "[",
                               p_list (fn (x, c) =>
-                                         box [p_con env x,
+                                         box [p_name env x,
                                               space,
                                               string "=",
                                               space,
