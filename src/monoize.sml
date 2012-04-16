@@ -52,7 +52,7 @@ structure RM = BinaryMapFn(struct
 
 val nextPvar = ref 0
 val pvars = ref (RM.empty : (int * (string * int * L'.typ) list) RM.map)
-val pvarDefs = ref ([] : L'.decl list)
+val pvarDefs = ref ([] : (string * int * (string * int * L'.typ option) list) list)
 val pvarOldDefs = ref ([] : (int * (string * int * L.con option) list) list)
 
 fun choosePvar () =
@@ -74,7 +74,7 @@ fun pvar (r, r', loc) =
                                                SM.insert (fs', x, n))) ([], SM.empty) (r, fs)
         in
             pvars := RM.insert (!pvars, r', (n, fs));
-            pvarDefs := (L'.DDatatype [("$poly" ^ Int.toString n, n, map (fn (x, n, t) => (x, n, SOME t)) fs)], loc)
+            pvarDefs := ("$poly" ^ Int.toString n, n, map (fn (x, n, t) => (x, n, SOME t)) fs)
                         :: !pvarDefs;
             pvarOldDefs := (n, r) :: !pvarOldDefs;
             (n, fs)
@@ -532,12 +532,11 @@ fun fooifyExp fk env =
                         fun makeDecl n fm =
                             let
                                 val (x, xncs) =
-                                    case ListUtil.search (fn (L'.DDatatype [(x, i', xncs)], _) =>
+                                    case ListUtil.search (fn (x, i', xncs) =>
                                                              if i' = i then
                                                                  SOME (x, xncs)
                                                              else
-                                                                 NONE
-                                                           | _ => NONE) (!pvarDefs) of
+                                                                 NONE) (!pvarDefs) of
                                         NONE =>
                                         let
                                             val (x, _, xncs) = Env.lookupDatatype env i
@@ -4361,7 +4360,11 @@ fun monoize env file =
                                                                                              cs)], loc))
                                                         env (!pvarOldDefs),
                                                   Fm.enter fm,
-                                                  ds' @ Fm.decls fm @ !pvarDefs @ ds)))
+                                                  case ds' of
+                                                      [(L'.DDatatype dts, loc)] =>
+                                                      (L'.DDatatype (dts @ !pvarDefs), loc) :: Fm.decls fm @ ds
+                                                    | _ =>
+                                                      ds' @ Fm.decls fm @ (L'.DDatatype (!pvarDefs), loc) :: ds)))
                                     (env, Fm.empty mname, []) file
     in
         pvars := RM.empty;
