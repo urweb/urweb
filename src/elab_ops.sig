@@ -40,6 +40,7 @@ signature ELAB_OPS = sig
     val subStrInSgn : int * int -> Elab.sgn -> Elab.sgn
 
     val hnormCon : ElabEnv.env -> Elab.con -> Elab.con
+    val reduceCon : ElabEnv.env -> Elab.con -> Elab.con
 
     val identity : int ref
     val distribute : int ref

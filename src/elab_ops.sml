@@ -324,4 +324,179 @@ fun hnormCon env (cAll as (c, loc)) =
 
       | _ => cAll
 
+fun reduceCon env (cAll as (c, loc)) =
+    case c of
+        TFun (c1, c2) => (TFun (reduceCon env c1, reduceCon env c2), loc)
+      | TCFun (exp, x, k, c) => (TCFun (exp, x, k, reduceCon env c), loc)
+      | TRecord c => (TRecord (reduceCon env c), loc)
+      | TDisjoint (c1, c2, c3) => (TDisjoint (reduceCon env c1, reduceCon env c2, reduceCon env c3), loc)
+
+      | CRel _ => cAll
+      | CNamed xn =>
+        (case E.lookupCNamed env xn of
+             (_, _, SOME c') => reduceCon env c'
+           | _ => cAll)
+      | CModProj _ => cAll
+      | CApp (c1, c2) =>
+        let
+            val c1 = reduceCon env c1
+            val c2 = reduceCon env c2
+            fun default () = (CApp (c1, c2), loc)
+        in
+            case #1 c1 of
+                CAbs (x, k, cb) =>
+                ((reduceCon env (subConInCon (0, c2) cb))
+                 handle SynUnif => default ())
+              | CApp (c', f) =>
+                let
+                    val c' = reduceCon env c'
+                    val f = reduceCon env f
+                in
+                    case #1 c' of
+                        CMap (ks as (k1, k2)) =>
+                        (case #1 c2 of
+                             CRecord (_, []) => (CRecord (k2, []), loc)
+                           | CRecord (_, (x, c) :: rest) =>
+                             reduceCon env
+                                       (CConcat ((CRecord (k2, [(x, (CApp (f, c), loc))]), loc),
+                                                 (CApp (c1, (CRecord (k2, rest), loc)), loc)), loc)
+                           | CConcat ((CRecord (k, (x, c) :: rest), _), rest') =>
+                             let
+                                 val rest'' = (CConcat ((CRecord (k, rest), loc), rest'), loc)
+                             in
+                                 reduceCon env
+                                           (CConcat ((CRecord (k2, [(x, (CApp (f, c), loc))]), loc),
+                                                     (CApp (c1, rest''), loc)), loc)
+                             end
+                           | _ =>
+                             let
+                                 fun unconstraint c =
+                                     case reduceCon env c of
+                                         (TDisjoint (_, _, c), _) => unconstraint c
+                                       | c => c
+
+                                 fun inc r = r := !r + 1
+
+                                 fun tryDistributivity () =
+                                     case reduceCon env c2 of
+                                         (CConcat (c1, c2), _) =>
+                                         let
+                                             val c = (CMap ks, loc)
+                                             val c = (CApp (c, f), loc)
+                                                  
+                                             val c1 = (CApp (c, c1), loc)
+                                             val c2 = (CApp (c, c2), loc)
+                                             val c = (CConcat (c1, c2), loc)
+                                         in
+                                             inc distribute;
+                                             reduceCon env c
+                                         end
+                                       | _ => default ()
+
+                                 fun tryFusion () =
+                                     case #1 (reduceCon env c2) of
+                                         CApp (f', r') =>
+                                         (case #1 (reduceCon env f') of
+                                              CApp (f', inner_f) =>
+                                              (case #1 (reduceCon env f') of
+                                                   CMap (dom, _) =>
+                                                   let
+                                                       val inner_f = liftConInCon 0 inner_f
+                                                       val f = liftConInCon 0 f
+
+                                                       val f' = (CApp (inner_f, (CRel 0, loc)), loc)
+                                                       val f' = (CApp (f, f'), loc)
+                                                       val f' = (CAbs ("v", dom, f'), loc)
+
+                                                       val c = (CMap (dom, k2), loc)
+                                                       val c = (CApp (c, f'), loc)
+                                                       val c = (CApp (c, r'), loc)
+                                                   in
+                                                       inc fuse;
+                                                       reduceCon env c
+                                                   end
+                                                 | _ => tryDistributivity ())
+                                            | _ => tryDistributivity ())
+                                       | _ => tryDistributivity ()
+
+                                 fun tryIdentity () =
+                                     let
+                                         fun cunif () =
+                                             let
+                                                 val r = ref (Unknown (fn _ => true))
+                                             in
+                                                 (r, (CUnif (0, loc, (KType, loc), "_", r), loc))
+                                             end
+                                             
+                                         val (vR, v) = cunif ()
+
+                                         val c = (CApp (f, v), loc)
+                                     in
+                                         case unconstraint c of
+                                             (CUnif (_, _, _, _, vR'), _) =>
+                                             if vR' = vR then
+                                                 (inc identity;
+                                                  reduceCon env c2)
+                                             else
+                                                 tryFusion ()
+                                           | _ => tryFusion ()
+                                     end
+                             in
+                                 tryIdentity ()
+                             end)
+                      | _ => default ()
+                end
+              | _ => default ()
+        end
+      | CAbs (x, k, b) =>
+        let
+            val b = reduceCon (E.pushCRel env x k) b
+            fun default () = (CAbs (x, k, b), loc)
+        in
+            case #1 b of
+                CApp (f, (CRel 0, _)) =>
+                if occurs f then
+                    default ()
+                else
+                    reduceCon env (subConInCon (0, (CUnit, loc)) f)
+              | _ => default ()
+        end
+
+      | CKAbs (x, b) => (CKAbs (x, reduceCon (E.pushKRel env x) b), loc)
+      | CKApp (c1, k) =>
+        (case reduceCon env c1 of
+             (CKAbs (_, body), _) => reduceCon env (subKindInCon (0, k) body)
+           | c1 => (CKApp (c1, k), loc))
+      | TKFun (x, c) => (TKFun (x, reduceCon env c), loc)
+
+      | CName _ => cAll
+
+      | CRecord (k, xcs) => (CRecord (k, map (fn (x, c) => (reduceCon env x, reduceCon env c)) xcs), loc)
+      | CConcat (c1, c2) =>
+        let
+            val c1 = reduceCon env c1
+            val c2 = reduceCon env c2
+        in
+            case (c1, c2) of
+                ((CRecord (k, xcs1), loc), (CRecord (_, xcs2), _)) => (CRecord (k, xcs1 @ xcs2), loc)
+              | ((CRecord (_, []), _), _) => c2
+              | ((CConcat (c11, c12), loc), _) => reduceCon env (CConcat (c11, (CConcat (c12, c2), loc)), loc)
+              | (_, (CRecord (_, []), _)) => c1
+              | _ => (CConcat (c1, c2), loc)
+        end
+      | CMap _ => cAll
+
+      | CUnit => cAll
+
+      | CTuple cs => (CTuple (map (reduceCon env) cs), loc)
+      | CProj (c, n) =>
+        (case reduceCon env c of
+             (CTuple cs, _) => reduceCon env (List.nth (cs, n - 1))
+           | c => (CProj (c, n), loc))
+
+      | CError => cAll
+
+      | CUnif (nl, _, _, _, ref (Known c)) => reduceCon env (E.mliftConInCon nl c)
+      | CUnif _ => cAll
+
 end

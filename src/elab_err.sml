@@ -36,20 +36,6 @@ structure U = ElabUtil
 open Print
 structure P = ElabPrint
 
-val simplCon = U.Con.mapB {kind = fn _ => fn k => k,
-                           con = fn env => fn c =>
-                                              let
-                                                  val c = (c, ErrorMsg.dummySpan)
-                                                  val c' = ElabOps.hnormCon env c
-                                              in
-                                                  (*prefaces "simpl" [("c", P.p_con env c),
-                                                                    ("c'", P.p_con env c')];*)
-                                                  #1 c'
-                                              end,
-                           bind = fn (env, U.Con.RelC (x, k)) => E.pushCRel env x k
-                                   | (env, U.Con.NamedC (x, n, k, co)) => E.pushCNamedAs env x n k co
-                                   | (env, _) => env}
-
 val p_kind = P.p_kind
              
 datatype kind_error =
@@ -80,7 +66,7 @@ fun kunifyError env err =
         [("Kind 1", p_kind env k1),
          ("Kind 2", p_kind env k2)]
 
-fun p_con env c = P.p_con env (simplCon env c)
+fun p_con env c = P.p_con env (ElabOps.reduceCon env c)
 
 datatype con_error =
          UnboundCon of ErrorMsg.span * string
@@ -195,7 +181,14 @@ datatype exp_error =
      | OutOfContext of ErrorMsg.span * (exp * con) option
      | IllegalRec of string * exp
 
-val p_exp = P.p_exp
+val simplExp = U.Exp.mapB {kind = fn _ => fn k => k,
+                           con = fn env => fn c => #1 (ElabOps.reduceCon env (c, ErrorMsg.dummySpan)),
+                           exp = fn _ => fn e => e,
+                           bind = fn (env, U.Exp.RelC (x, k)) => E.pushCRel env x k
+                                   | (env, U.Exp.NamedC (x, n, k, co)) => E.pushCNamedAs env x n k co
+                                   | (env, _) => env}
+
+fun p_exp env e = P.p_exp env (simplExp env e)
 val p_pat = P.p_pat
 
 fun expError env err =
