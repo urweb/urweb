@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -482,6 +482,7 @@ fun reduceCon env (cAll as (c, loc)) =
               | ((CRecord (_, []), _), _) => c2
               | ((CConcat (c11, c12), loc), _) => reduceCon env (CConcat (c11, (CConcat (c12, c2), loc)), loc)
               | (_, (CRecord (_, []), _)) => c1
+              | ((CRecord (k, xcs1), loc), (CConcat ((CRecord (_, xcs2), _), c2'), _)) => (CConcat ((CRecord (k, xcs1 @ xcs2), loc), c2'), loc)
               | _ => (CConcat (c1, c2), loc)
         end
       | CMap _ => cAll
