@@ -43,7 +43,7 @@ signature ELAB_ERR = sig
              UnboundCon of ErrorMsg.span * string
            | UnboundDatatype of ErrorMsg.span * string
            | UnboundStrInCon of ErrorMsg.span * string
-           | WrongKind of Elab.con * Elab.kind * Elab.kind * kunify_error
+           | WrongKind of Elab.con * Elab.kind * Elab.kind * ElabEnv.env * kunify_error
            | DuplicateField of ErrorMsg.span * string
            | ProjBounds of Elab.con * int
            | ProjMismatch of Elab.con * Elab.kind
@@ -51,12 +51,12 @@ signature ELAB_ERR = sig
     val conError : ElabEnv.env -> con_error -> unit
 
     datatype cunify_error =
-             CKind of Elab.kind * Elab.kind * kunify_error
+             CKind of Elab.kind * Elab.kind * ElabEnv.env * kunify_error
            | COccursCheckFailed of Elab.con * Elab.con
            | CIncompatible of Elab.con * Elab.con
            | CExplicitness of Elab.con * Elab.con
            | CKindof of Elab.kind * Elab.con * string
-           | CRecordFailure of Elab.con * Elab.con * (Elab.con * Elab.con * Elab.con * cunify_error option) option
+           | CRecordFailure of Elab.con * Elab.con * (Elab.con * Elab.con * Elab.con * (ElabEnv.env * cunify_error) option) option
            | TooLifty of ErrorMsg.span * ErrorMsg.span
            | TooUnify of Elab.con * Elab.con
            | TooDeep
@@ -67,12 +67,12 @@ signature ELAB_ERR = sig
     datatype exp_error =
              UnboundExp of ErrorMsg.span * string
            | UnboundStrInExp of ErrorMsg.span * string
-           | Unify of Elab.exp * Elab.con * Elab.con * cunify_error
+           | Unify of Elab.exp * Elab.con * Elab.con * ElabEnv.env * cunify_error
            | Unif of string * ErrorMsg.span * Elab.con
            | WrongForm of string * Elab.exp * Elab.con
            | IncompatibleCons of Elab.con * Elab.con
            | DuplicatePatternVariable of ErrorMsg.span * string
-           | PatUnify of Elab.pat * Elab.con * Elab.con * cunify_error
+           | PatUnify of Elab.pat * Elab.con * Elab.con * ElabEnv.env * cunify_error
            | UnboundConstructor of ErrorMsg.span * string list * string
            | PatHasArg of ErrorMsg.span
            | PatHasNoArg of ErrorMsg.span
@@ -94,13 +94,13 @@ signature ELAB_ERR = sig
     datatype sgn_error =
              UnboundSgn of ErrorMsg.span * string
            | UnmatchedSgi of ErrorMsg.span * Elab.sgn_item
-           | SgiWrongKind of ErrorMsg.span * Elab.sgn_item * Elab.kind * Elab.sgn_item * Elab.kind * kunify_error
-           | SgiWrongCon of ErrorMsg.span * Elab.sgn_item * Elab.con * Elab.sgn_item * Elab.con * cunify_error
+           | SgiWrongKind of ErrorMsg.span * Elab.sgn_item * Elab.kind * Elab.sgn_item * Elab.kind * ElabEnv.env * kunify_error
+           | SgiWrongCon of ErrorMsg.span * Elab.sgn_item * Elab.con * Elab.sgn_item * Elab.con * ElabEnv.env * cunify_error
            | SgiMismatchedDatatypes of ErrorMsg.span * Elab.sgn_item * Elab.sgn_item
-                                       * (Elab.con * Elab.con * cunify_error) option
+                                       * (Elab.con * Elab.con * ElabEnv.env * cunify_error) option
            | SgnWrongForm of ErrorMsg.span * Elab.sgn * Elab.sgn
            | UnWhereable of Elab.sgn * string
-           | WhereWrongKind of Elab.kind * Elab.kind * kunify_error
+           | WhereWrongKind of Elab.kind * Elab.kind * ElabEnv.env * kunify_error
            | NotIncludable of Elab.sgn
            | DuplicateCon of ErrorMsg.span * string
            | DuplicateVal of ErrorMsg.span * string
@@ -115,7 +115,7 @@ signature ELAB_ERR = sig
            | NotFunctor of Elab.sgn
            | FunctorRebind of ErrorMsg.span
            | UnOpenable of Elab.sgn
-           | NotType of ErrorMsg.span * Elab.kind * (Elab.kind * Elab.kind * kunify_error)
+           | NotType of ErrorMsg.span * Elab.kind * (Elab.kind * Elab.kind * ElabEnv.env * kunify_error)
            | DuplicateConstructor of string * ErrorMsg.span
            | NotDatatype of ErrorMsg.span
 

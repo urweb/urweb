@@ -86,11 +86,11 @@
 
  and validateKind env k = validateCon env (L'.CRecord (k, []), ErrorMsg.dummySpan)
 
- exception KUnify' of kunify_error
+ exception KUnify' of E.env * kunify_error
 
  fun unifyKinds' env (k1All as (k1, _)) (k2All as (k2, _)) =
      let
-         fun err f = raise KUnify' (f (k1All, k2All))
+         fun err f = raise KUnify' (env, f (k1All, k2All))
      in
          case (k1, k2) of
              (L'.KType, L'.KType) => ()
@@ -179,16 +179,16 @@
            | _ => err KIncompatible
      end
 
- exception KUnify of L'.kind * L'.kind * kunify_error
+ exception KUnify of L'.kind * L'.kind * E.env * kunify_error
 
  fun unifyKinds env k1 k2 =
      unifyKinds' env k1 k2
-     handle KUnify' err => raise KUnify (k1, k2, err)
+     handle KUnify' (env', err) => raise KUnify (k1, k2, env', err)
 
  fun checkKind env c k1 k2 =
      unifyKinds env k1 k2
-     handle KUnify (k1, k2, err) =>
-            conError env (WrongKind (c, k1, k2, err))
+     handle KUnify (k1, k2, env', err) =>
+            conError env (WrongKind (c, k1, k2, env', err))
 
  val dummy = ErrorMsg.dummySpan
 
@@ -563,7 +563,7 @@
                    con = fn L'.CUnif (_, _, _, _, r') => r = r'
                           | _ => false}
 
- exception CUnify' of cunify_error
+ exception CUnify' of E.env * cunify_error
 
  type record_summary = {
       fields : (L'.con * L'.con) list,
@@ -589,7 +589,7 @@
 
  fun p_summary env s = p_con env (summaryToCon s)
 
- exception CUnify of L'.con * L'.con * cunify_error
+ exception CUnify of L'.con * L'.con * E.env * cunify_error
 
  fun kindof env (c, loc) =
      case c of
@@ -618,7 +618,7 @@
          (case hnormKind (kindof env c) of
               (L'.KArrow (_, k), _) => k
             | (L'.KError, _) => kerror
-            | k => raise CUnify' (CKindof (k, c, "arrow")))
+            | k => raise CUnify' (env, CKindof (k, c, "arrow")))
        | L'.CAbs (x, k, c) => (L'.KArrow (k, kindof (E.pushCRel env x k) c), loc)
 
 
@@ -653,7 +653,7 @@
                        r := L'.KKnown k;
                        k
                    end)
-            | k => raise CUnify' (CKindof (k, c, "tuple")))
+            | k => raise CUnify' (env, CKindof (k, c, "tuple")))
 
        | L'.CError => kerror
        | L'.CUnif (_, _, k, _, _) => k
@@ -662,7 +662,7 @@
        | L'.CKApp (c, k) =>
          (case hnormKind (kindof env c) of
               (L'.KFun (_, k'), _) => subKindInKind (0, k) k'
-            | k => raise CUnify' (CKindof (k, c, "kapp")))
+            | k => raise CUnify' (env, CKindof (k, c, "kapp")))
        | L'.TKFun _ => ktype
 
  exception GuessFailure
@@ -758,7 +758,7 @@
                      r := L'.KKnown (L'.KRecord k, #2 c);
                      k
                  end
-               | k => raise CUnify' (CKindof (k, c, "record"))
+               | k => raise CUnify' (env, CKindof (k, c, "record"))
 
          val k1 = rkindof c1
          val k2 = rkindof c2
@@ -987,10 +987,10 @@
                                  findPointwise fs1
                              else
                                  SOME (nm1, c1, c2, (unifyCons env loc c1 c2; NONE)
-                                                    handle CUnify (_, _, err) => (reducedSummaries := NONE;
-                                                                                  SOME err))
+                                                    handle CUnify (_, _, env', err) => (reducedSummaries := NONE;
+                                                                                        SOME (env', err)))
              in
-                 raise CUnify' (CRecordFailure (unsummarize s1, unsummarize s2, findPointwise (#fields s1)))
+                 raise CUnify' (env, CRecordFailure (unsummarize s1, unsummarize s2, findPointwise (#fields s1)))
              end
 
          fun default () = if !mayDelay then
@@ -1009,7 +1009,7 @@
               in
                   if occursCon r c then
                       (reducedSummaries := NONE;
-                       raise CUnify' (COccursCheckFailed (cr, c)))
+                       raise CUnify' (env, COccursCheckFailed (cr, c)))
                   else
                       let
                           val sq = squish nl c
@@ -1027,7 +1027,7 @@
               in
                   if occursCon r c then
                       (reducedSummaries := NONE;
-                       raise CUnify' (COccursCheckFailed (cr, c)))
+                       raise CUnify' (env, COccursCheckFailed (cr, c)))
                   else
                       let
                           val sq = squish nl c
@@ -1119,7 +1119,7 @@
 
  and unifyCons'' env loc (c1All as (c1, _)) (c2All as (c2, _)) =
      let
-         fun err f = raise CUnify' (f (c1All, c2All))
+         fun err f = raise CUnify' (env, f (c1All, c2All))
 
          fun projSpecial1 (c1, n1, onFail) =
              let
@@ -1344,18 +1344,18 @@
 
  and unifyCons env loc c1 c2 =
      unifyCons' env loc c1 c2
-     handle CUnify' err => raise CUnify (c1, c2, err)
-          | KUnify args => raise CUnify (c1, c2, CKind args)
+     handle CUnify' (env', err) => raise CUnify (c1, c2, env', err)
+          | KUnify (arg as {3 = env', ...}) => raise CUnify (c1, c2, env', CKind arg)
 
  fun checkCon env e c1 c2 =
      unifyCons env (#2 e) c1 c2
-     handle CUnify (c1, c2, err) =>
-            expError env (Unify (e, c1, c2, err))
+     handle CUnify (c1, c2, env', err) =>
+            expError env (Unify (e, c1, c2, env', err))
 
  fun checkPatCon env p c1 c2 =
      unifyCons env (#2 p) c1 c2
-     handle CUnify (c1, c2, err) =>
-            expError env (PatUnify (p, c1, c2, err))
+     handle CUnify (c1, c2, env', err) =>
+            expError env (PatUnify (p, c1, c2, env', err))
 
  fun primType env p =
      case p of
@@ -2579,7 +2579,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
              val (env', n) = E.pushENamed env x c'
          in
              (unifyKinds env ck ktype
-              handle KUnify ue => strError env (NotType (loc, ck, ue)));
+              handle KUnify arg => strError env (NotType (loc, ck, arg)));
 
              ([(L'.SgiVal (x, n, c'), loc)], (env', denv, gs' @ gs))
          end
@@ -3056,9 +3056,9 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                          if x = x' then
                                              let
                                                  val () = unifyKinds env k1 k2
-                                                     handle KUnify (k1, k2, err) =>
+                                                     handle KUnify (k1, k2, env', err) =>
                                                             sgnError env (SgiWrongKind (loc, sgi1All, k1,
-                                                                                        sgi2All, k2, err))
+                                                                                        sgi2All, k2, env', err))
                                                  val env = E.pushCNamedAs env x n1 k1 co1
                                              in
                                                  SOME (if n1 = n2 then
@@ -3125,9 +3125,9 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                              in
                                                  (unifyCons env loc c1 c2;
                                                   good ())
-                                                 handle CUnify (c1, c2, err) =>
+                                                 handle CUnify (c1, c2, env', err) =>
                                                         (sgnError env (SgiWrongCon (loc, sgi1All, c1,
-                                                                                    sgi2All, c2, err));
+                                                                                    sgi2All, c2, env', err));
                                                          good ())
                                              end
                                          else
@@ -3251,8 +3251,8 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                          in
                                              (unifyCons env loc t1 t2;
                                               good ())
-                                             handle CUnify (c1, c2, err) =>
-                                                    (sgnError env (SgiWrongCon (loc, sgi1All, c1, sgi2All, c2, err));
+                                             handle CUnify (c1, c2, env', err) =>
+                                                    (sgnError env (SgiWrongCon (loc, sgi1All, c1, sgi2All, c2, env', err));
                                                      good ())
                                          end
                                      else
@@ -3272,8 +3272,8 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                                           ("c2'", p_con env (sub2 c2))];*)
                                           unifyCons env loc c1 (sub2 c2);
                                           SOME env)
-                                         handle CUnify (c1, c2, err) =>
-                                                (sgnError env (SgiWrongCon (loc, sgi1All, c1, sgi2All, c2, err));
+                                         handle CUnify (c1, c2, env', err) =>
+                                                (sgnError env (SgiWrongCon (loc, sgi1All, c1, sgi2All, c2, env', err));
                                                  SOME env)
                                      else
                                          NONE
@@ -3340,9 +3340,9 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                          if x = x' then
                                              let
                                                  val () = unifyKinds env k1 k2
-                                                     handle KUnify (k1, k2, err) =>
+                                                     handle KUnify (k1, k2, env', err) =>
                                                             sgnError env (SgiWrongKind (loc, sgi1All, k1,
-                                                                                        sgi2All, k2, err))
+                                                                                        sgi2All, k2, env', err))
 
                                                  val env = E.pushCNamedAs env x n1 k1 co
                                              in
@@ -3367,9 +3367,9 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                          if x = x' then
                                              let
                                                  val () = unifyKinds env k1 k2
-                                                     handle KUnify (k1, k2, err) =>
+                                                     handle KUnify (k1, k2, env', err) =>
                                                             sgnError env (SgiWrongKind (loc, sgi1All, k1,
-                                                                                        sgi2All, k2, err))
+                                                                                        sgi2All, k2, env', err))
 
                                                  val c2 = sub2 c2
 
@@ -3387,9 +3387,9 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                              in
                                                  (unifyCons env loc c1 c2;
                                                   good ())
-                                                 handle CUnify (c1, c2, err) =>
+                                                 handle CUnify (c1, c2, env', err) =>
                                                         (sgnError env (SgiWrongCon (loc, sgi1All, c1,
-                                                                                    sgi2All, c2, err));
+                                                                                    sgi2All, c2, env', err));
                                                          good ())
                                              end
                                          else
@@ -4630,14 +4630,14 @@ fun elabFile basis topStr topSgn env file =
         else
             (app (fn (loc, env, k, s1, s2) =>
                      unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)
-                     handle CUnify' err => (ErrorMsg.errorAt loc "Error in final record unification";
-                                            cunifyError env err;
-                                            case !reducedSummaries of
-                                                NONE => ()
-                                              | SOME (s1, s2) =>
-                                                (ErrorMsg.errorAt loc "Stuck unifying these records after canceling matching pieces:";
-                                                 eprefaces' [("Have", s1),
-                                                             ("Need", s2)])))
+                     handle CUnify' (env', err) => (ErrorMsg.errorAt loc "Error in final record unification";
+                                                    cunifyError env' err;
+                                                    case !reducedSummaries of
+                                                        NONE => ()
+                                                      | SOME (s1, s2) =>
+                                                        (ErrorMsg.errorAt loc "Stuck unifying these records after canceling matching pieces:";
+                                                         eprefaces' [("Have", s1),
+                                                                     ("Need", s2)])))
                  (!delayedUnifs);
              delayedUnifs := []);
 
