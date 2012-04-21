@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -393,11 +393,10 @@
                                         | SOME sgn => ((L'.StrProj (str, m), loc), sgn))
                                    ((L'.StrVar n, loc), sgn) ms
 
-                  val k = case E.projectCon env {sgn = sgn, str = str, field = s} of
-                              NONE => (conError env (UnboundCon (loc, s));
-                                       kerror)
-                            | SOME (k, _) => k
-                 val (c, k) = elabConHead env (L'.CModProj (n, ms, s), loc) k
+                  val (c, k) = case E.projectCon env {sgn = sgn, str = str, field = s} of
+                                   NONE => (conError env (UnboundCon (loc, s));
+                                            (cerror, kerror))
+                                 | SOME (k, _) => elabConHead env (L'.CModProj (n, ms, s), loc) k
               in
                   (c, k, [])
               end)
