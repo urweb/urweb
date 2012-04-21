@@ -112,14 +112,34 @@ fun p_con' par env (c, _) =
                                                     string "=>",
                                                     space,
                                                     p_con env c3])
-      | TRecord (CRecord (_, xcs), _) => box [string "{",
-                                              p_list (fn (x, c) =>
-                                                         box [p_name env x,
-                                                              space,
-                                                              string ":",
-                                                              space,
-                                                              p_con env c]) xcs,
-                                              string "}"]
+      | TRecord (CRecord (_, xcs), _) =>
+        let
+            fun isTuple (n, xcs) =
+                case xcs of
+                    [] => n > 2
+                  | ((CName s, _), _) :: xcs' =>
+                    s = Int.toString n andalso isTuple (n+1, xcs')
+                  | _ => false
+        in
+            if isTuple (1, xcs) then
+                case xcs of
+                    (_, c) :: xcs =>
+                    parenIf par (box [p_con' true env c,
+                                      p_list_sep (box []) (fn (_, c) => box [space,
+                                                                             string "*",
+                                                                             space,
+                                                                             p_con' true env c]) xcs])
+                  | _ => raise Fail "ElabPrint: surprise empty tuple"
+            else
+                box [string "{",
+                     p_list (fn (x, c) =>
+                                box [p_name env x,
+                                     space,
+                                     string ":",
+                                     space,
+                                     p_con env c]) xcs,
+                     string "}"]
+        end
       | TRecord c => box [string "$",
                           p_con' true env c]
 
