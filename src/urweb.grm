@@ -300,6 +300,7 @@ fun tnamesOf (e, _) =
  | dcon of string * con option
 
  | pkopt of exp
+ | pk of exp
  | commaOpt of unit
 
  | cst of exp
@@ -707,9 +708,9 @@ pmodes :                                ([])
 commaOpt:                               ()
         | COMMA                         ()
 
-pkopt  :                                (EVar (["Basis"], "no_primary_key", Infer), dummy)
-       | PRIMARY KEY tnames             (let
-                                             val loc = s (PRIMARYleft, tnamesright)
+pk     : LBRACE LBRACE eexp RBRACE RBRACE (eexp)
+       | tnames                         (let
+                                             val loc = s (tnamesleft, tnamesright)
 
                                              val e = (EVar (["Basis"], "primary_key", TypesOnly), loc)
                                              val e = (ECApp (e, #1 (#1 tnames)), loc)
@@ -724,6 +725,9 @@ pkopt  :                                (EVar (["Basis"], "no_primary_key", Infe
                                          in
                                              (EApp (e, witness), loc)
                                          end)
+
+pkopt  :                                (EVar (["Basis"], "no_primary_key", Infer), dummy)
+       | PRIMARY KEY pk                 (pk)
 
 valis  : vali                           ([vali])
        | vali AND valis                 (vali :: valis)

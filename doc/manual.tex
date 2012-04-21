@@ -2113,7 +2113,7 @@ $\mt{table}$ declarations may include constraints, via these grammar rules.
 $$\begin{array}{rrcll}
   \textrm{Declarations} & d &::=& \mt{table} \; x : c \; [pk[,]] \; cts \mid \mt{view} \; x = V \\
   \textrm{Primary key constraints} & pk &::=& \mt{PRIMARY} \; \mt{KEY} \; K \\
-  \textrm{Keys} & K &::=& f \mid (f, (f,)^+) \\
+  \textrm{Keys} & K &::=& f \mid (f, (f,)^+) \mid \{\{e\}\} \\
   \textrm{Constraint sets} & cts &::=& \mt{CONSTRAINT} f \; ct \mid cts, cts \mid \{\{e\}\} \\
   \textrm{Constraints} & ct &::=& \mt{UNIQUE} \; K \mid \mt{CHECK} \; E \\
   &&& \mid \mt{FOREIGN} \; \mt{KEY} \; K \; \mt{REFERENCES} \; F \; (K) \; [\mt{ON} \; \mt{DELETE} \; pr] \; [\mt{ON} \; \mt{UPDATE} \; pr] \\
