@@ -165,7 +165,20 @@ fun p_con' par env (c, _) =
                       else
                           m1x
         in
-            p_list_sep (string ".") string (m1x :: ms @ [x])
+            if m1x = "Basis" andalso (case E.lookupC env x of
+                                          E.Named (n, _) =>
+                                          let
+                                              val (_, _, co) = E.lookupCNamed env n
+                                          in
+                                              case co of
+                                                  SOME (CModProj (m1', [], x'), _) => m1' = m1 andalso x' = x
+                                                | _ => false
+                                          end
+                                        | E.NotBound => true
+                                        | _ => false) then
+                string x
+            else
+                p_list_sep (string ".") string (m1s :: ms @ [x])
         end 
 
       | CApp (c1, c2) => parenIf par (box [p_con env c1,
