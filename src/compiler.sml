@@ -44,6 +44,7 @@ type job = {
      timeout : int,
      ffi : string list,
      link : string list,
+     linker : string option,
      headers : string list,
      scripts : string list,
      clientToServer : Settings.ffi list,
@@ -399,6 +400,7 @@ fun parseUrp' accLibs fname =
                        timeout = 60,
                        ffi = [],
                        link = [],
+                       linker = NONE,
                        headers = [],
                        scripts = [],
                        clientToServer = [],
@@ -518,6 +520,7 @@ fun parseUrp' accLibs fname =
                     val timeout = ref NONE
                     val ffi = ref []
                     val link = ref []
+                    val linker = ref NONE
                     val headers = ref []
                     val scripts = ref []
                     val clientToServer = ref []
@@ -552,6 +555,7 @@ fun parseUrp' accLibs fname =
                                 timeout = Option.getOpt (!timeout, 60),
                                 ffi = rev (!ffi),
                                 link = rev (!link),
+                                linker = !linker,
                                 headers = rev (!headers),
                                 scripts = rev (!scripts),
                                 clientToServer = rev (!clientToServer),
@@ -607,6 +611,7 @@ fun parseUrp' accLibs fname =
                                 timeout = #timeout old,
                                 ffi = #ffi old @ #ffi new,
                                 link = #link old @ #link new,
+                                linker = mergeO (fn (_, new) => new) (#linker old, #linker new),
                                 headers = #headers old @ #headers new,
                                 scripts = #scripts old @ #scripts new,
                                 clientToServer = #clientToServer old @ #clientToServer new,
@@ -742,6 +747,7 @@ fun parseUrp' accLibs fname =
                                     in
                                         link := arg :: !link
                                     end
+                                  | "linker" => linker := SOME arg
                                   | "include" => headers := relifyA arg :: !headers
                                   | "script" => scripts := arg :: !scripts
                                   | "clientToServer" => clientToServer := ffiS () :: !clientToServer
@@ -1356,7 +1362,7 @@ val escapeFilename = String.translate (fn #" " => "\\ " | #"\"" => "\\\"" | #"'"
 
 val beforeC = ref (fn () => ())
 
-fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
+fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
     let
         val proto = Settings.currentProtocol ()
 
@@ -1375,7 +1381,9 @@ fun compileC {cname, oname, ename, libs, profile, debug, link = link'} =
                       ^ " " ^ #compile proto
                       ^ " -c " ^ escapeFilename cname ^ " -o " ^ escapeFilename oname
 
-        val link = Config.ccompiler ^ " -Werror" ^ opt ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs
+        val linker = Option.getOpt (linker, Config.ccompiler ^ " -Werror" ^ opt ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs)
+
+        val link = linker
                    ^ " " ^ lib ^ " " ^ escapeFilename oname ^ " " ^ libs ^ " -lm " ^ Config.openssl ^ " -o " ^ escapeFilename ename
 
         val (compile, link) =
@@ -1462,7 +1470,7 @@ fun compile job =
                          end;
 
                      compileC {cname = cname, oname = oname, ename = ename, libs = libs,
-                               profile = #profile job, debug = #debug job, link = #link job}
+                               profile = #profile job, debug = #debug job, linker = #linker job, link = #link job}
                      
                      before cleanup ())
             end

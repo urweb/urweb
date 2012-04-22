@@ -1,0 +1,4 @@
+debug
+linker ld -g
+
+linker

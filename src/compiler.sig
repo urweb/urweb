@@ -40,6 +40,7 @@ signature COMPILER = sig
          timeout : int,
          ffi : string list,
          link : string list,
+         linker : string option,
          headers : string list,
          scripts : string list,
          clientToServer : Settings.ffi list,
@@ -63,7 +64,7 @@ signature COMPILER = sig
     val compile : string -> bool
     val compiler : string -> unit
     val compileC : {cname : string, oname : string, ename : string, libs : string,
-                    profile : bool, debug : bool, link : string list} -> bool
+                    profile : bool, debug : bool, linker : string option, link : string list} -> bool
 
     val beforeC : (unit -> unit) ref
     (* This function is called before beginning C compilation.

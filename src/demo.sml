@@ -103,6 +103,7 @@ fun make' {prefix, dirname, guided} =
             profile = false,
             ffi = [],
             link = [],
+            linker = NONE,
             headers = [],
             scripts = [],
             clientToServer = [],
