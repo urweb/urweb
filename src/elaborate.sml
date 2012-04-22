@@ -39,6 +39,7 @@
  open ElabErr
 
  val dumpTypes = ref false
+ val unifyMore = ref false
 
  structure IS = IntBinarySet
  structure IM = IntBinaryMap
@@ -4519,10 +4520,11 @@ fun elabFile basis topStr topSgn env file =
                 end
 
         val checkConstraintErrors = ref (fn () => ())
+        fun stopHere () = not (!unifyMore) andalso ErrorMsg.anyErrors ()
     in
         oneSummaryRound ();
 
-        if ErrorMsg.anyErrors () then
+        if stopHere () then
             ()
         else
             let
@@ -4625,7 +4627,7 @@ fun elabFile basis topStr topSgn env file =
 
         mayDelay := false;
 
-        if ErrorMsg.anyErrors () then
+        if stopHere () then
             ()
         else
             (app (fn (loc, env, k, s1, s2) =>
@@ -4641,7 +4643,7 @@ fun elabFile basis topStr topSgn env file =
                  (!delayedUnifs);
              delayedUnifs := []);
 
-        if ErrorMsg.anyErrors () then
+        if stopHere () then
             ()
         else
             if List.exists kunifsInDecl file then
@@ -4651,7 +4653,7 @@ fun elabFile basis topStr topSgn env file =
             else
                 ();
         
-        if ErrorMsg.anyErrors () then
+        if stopHere () then
             ()
         else
             if List.exists cunifsInDecl file then
@@ -4661,7 +4663,7 @@ fun elabFile basis topStr topSgn env file =
             else
                 ();
 
-        if ErrorMsg.anyErrors () then
+        if stopHere () then
             ()
         else
             app (fn all as (env, _, _, loc) =>
@@ -4670,7 +4672,7 @@ fun elabFile basis topStr topSgn env file =
                       | SOME p => expError env (Inexhaustive (loc, p)))
                 (!delayedExhaustives);
 
-        if ErrorMsg.anyErrors () then
+        if stopHere () then
             ()
         else
             !checkConstraintErrors ();

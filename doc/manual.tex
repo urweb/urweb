@@ -202,6 +202,8 @@ It is often worthwhile to run \cd{urweb} in this mode, because later phases of c
 
 A related option is \cd{-dumpTypes}, which, as long as parsing succeeds, outputs to stdout a summary of the kinds of all identifiers declared with \cd{con} and the types of all identifiers declared with \cd{val} or \cd{val rec}.  This information is dumped even if there are errors during type inference.  Compiler error messages go to stderr, not stdout, so it is easy to distinguish the two kinds of output programmatically.
 
+It may be useful to combine another option \cd{-unifyMore} with \cd{-dumpTypes}.  Ur/Web type inference proceeds in a series of stages, where the first is standard Hindley-Milner type inference as in ML, and the later phases add more complex aspects.  By default, an error detected in one phase cuts off the execution of later phases.  However, the later phases might still determine more values of unification variables.  These value choices might be ``misguided,'' since earlier phases have not come up with reasonable types at a coarser detail level; but the unification decisions may still be useful for debugging and program understanding.  So, if a run with \cd{-dumpTypes} leaves unification variables undetermined in positions where you would like to see best-effort guesses instead, consider \cd{-unifyMore}.  Note that \cd{-unifyMore} has no effect when type inference succeeds fully, but it may lead to many more error messages when inference fails.
+
 To output information relevant to CSS stylesheets (and not finish regular compilation), run
 \begin{verbatim}
 urweb -css P

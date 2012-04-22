@@ -85,6 +85,9 @@ fun doArgs args =
       | "-dumpTypes" :: rest =>
         (Elaborate.dumpTypes := true;
          doArgs rest)
+      | "-unifyMore" :: rest =>
+        (Elaborate.unifyMore := true;
+         doArgs rest)
       | "-dumpSource" :: rest =>
         (Compiler.dumpSource := true;
          doArgs rest)

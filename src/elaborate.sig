@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,5 +35,9 @@ signature ELABORATE = sig
     val dumpTypes : bool ref
     (* After elaboration (successful or failed), should I output a mapping from
      * all identifiers to their kinds/types? *)
+
+    val unifyMore : bool ref
+    (* Run all phases of type inference, even if an error is detected by an
+     * early phase. *)
 
 end
