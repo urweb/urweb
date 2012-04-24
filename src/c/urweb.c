@@ -3207,8 +3207,8 @@ void uw_commit(uw_context ctx) {
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
 
-  if (*ctx->page.front)
-    uw_writec(ctx, 0);
+  uw_check(ctx, 1);
+  *ctx->page.front = 0;
 
   // Splice script data into appropriate part of page
   if (ctx->returning_indirectly || ctx->script_header[0] == 0) {
