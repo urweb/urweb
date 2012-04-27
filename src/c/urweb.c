@@ -3223,38 +3223,60 @@ void uw_commit(uw_context ctx) {
     } else if (!strncmp(s, "<head>", 6)) {
       // <head> is present.  Let's add the <script> tags immediately after it.
 
-      size_t lenH = strlen(ctx->script_header), len = uw_buffer_used(&ctx->script);
-      size_t lenP = lenH + 40 + len;
-      char *start = s + 6, *oldPage = ctx->page.start;
+      // Any freeform JavaScript to include?
+      if (uw_buffer_used(&ctx->script) > 0) {
+        size_t lenH = strlen(ctx->script_header), len = uw_buffer_used(&ctx->script);
+        size_t lenP = lenH + 40 + len;
+        char *start = s + 6, *oldPage = ctx->page.start;
 
-      ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->page) + lenP);
-      start += ctx->page.start - oldPage;
-      memmove(start + lenP, start, uw_buffer_used(&ctx->page) - (start - ctx->page.start) + 1);
-      ctx->page.front += lenP;
-      memcpy(start, ctx->script_header, lenH);
-      memcpy(start + lenH, "<script type=\"text/javascript\">", 31);
-      memcpy(start + lenH + 31, ctx->script.start, len);
-      memcpy(start + lenH + 31 + len, "</script>", 9);
+        ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->page) + lenP);
+        start += ctx->page.start - oldPage;
+        memmove(start + lenP, start, uw_buffer_used(&ctx->page) - (start - ctx->page.start) + 1);
+        ctx->page.front += lenP;
+        memcpy(start, ctx->script_header, lenH);
+        memcpy(start + lenH, "<script type=\"text/javascript\">", 31);
+        memcpy(start + lenH + 31, ctx->script.start, len);
+        memcpy(start + lenH + 31 + len, "</script>", 9);
+      } else {
+        size_t lenH = strlen(ctx->script_header);
+        char *start = s + 6, *oldPage = ctx->page.start;
+
+        ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->page) + lenH);
+        start += ctx->page.start - oldPage;
+        memmove(start + lenH, start, uw_buffer_used(&ctx->page) - (start - ctx->page.start) + 1);
+        ctx->page.front += lenH;
+        memcpy(start, ctx->script_header, lenH);
+      }
     } else {
       // No <head>.  At this point, add it, with <script> tags inside.
 
-      size_t lenH = strlen(ctx->script_header), len = uw_buffer_used(&ctx->script);
-      size_t lenP = lenH + 53 + len;
-      char *start = s, *oldPage = ctx->page.start;
+      if (uw_buffer_used(&ctx->script) > 0) {
+        size_t lenH = strlen(ctx->script_header), len = uw_buffer_used(&ctx->script);
+        size_t lenP = lenH + 53 + len;
+        char *start = s, *oldPage = ctx->page.start;
 
-      printf("start = %ld\n", start - ctx->page.start);
+        ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->page) + lenP);
+        start += ctx->page.start - oldPage;
+        memmove(start + lenP, start, uw_buffer_used(&ctx->page) - (start - ctx->page.start) + 1);
+        ctx->page.front += lenP;
+        memcpy(start, "<head>", 6);
+        memcpy(start + 6, ctx->script_header, lenH);
+        memcpy(start + 6 + lenH, "<script type=\"text/javascript\">", 31);
+        memcpy(start + 6 + lenH + 31, ctx->script.start, len);
+        memcpy(start + 6 + lenH + 31 + len, "</script></head>", 16);
+      } else {
+        size_t lenH = strlen(ctx->script_header);
+        size_t lenP = lenH + 13;
+        char *start = s, *oldPage = ctx->page.start;
 
-      ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->page) + lenP);
-      start += ctx->page.start - oldPage;
-      printf("page1 = %s\n", ctx->page.start);
-      memmove(start + lenP, start, uw_buffer_used(&ctx->page) - (start - ctx->page.start) + 1);
-      printf("page2 = %s\n", ctx->page.start);
-      ctx->page.front += lenP;
-      memcpy(start, "<head>", 6);
-      memcpy(start + 6, ctx->script_header, lenH);
-      memcpy(start + 6 + lenH, "<script type=\"text/javascript\">", 31);
-      memcpy(start + 6 + lenH + 31, ctx->script.start, len);
-      memcpy(start + 6 + lenH + 31 + len, "</script></head>", 16);
+        ctx_uw_buffer_check(ctx, "page", &ctx->page, uw_buffer_used(&ctx->page) + lenP);
+        start += ctx->page.start - oldPage;
+        memmove(start + lenP, start, uw_buffer_used(&ctx->page) - (start - ctx->page.start) + 1);
+        ctx->page.front += lenP;
+        memcpy(start, "<head>", 6);
+        memcpy(start + 6, ctx->script_header, lenH);
+        memcpy(start + 6 + lenH, "</head>", 7);
+      }
     }
   }
 }

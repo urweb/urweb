@@ -8,3 +8,13 @@ fun main () : transaction page =
         <dyn signal={signal x}/>
       </body>
     </xml>
+
+fun main2 () : transaction page =
+    return <xml>
+      <head>
+        <title>Test</title>
+      </head>
+      <body>
+        <button onclick={alert "Hi"}/>
+      </body>
+    </xml>
