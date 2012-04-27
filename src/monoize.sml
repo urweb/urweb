@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -3179,7 +3179,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                               raise Fail "No name passed to input tag")
 
-                fun normal (tag, extra, extraInner) =
+                fun normal (tag, extra) =
                     let
                         val (tagStart, fm) = tagStart tag
                         val tagStart = case extra of
@@ -3189,10 +3189,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         fun normal () =
                             let
                                 val (xml, fm) = monoExp (env, st, fm) xml
-
-                                val xml = case extraInner of
-                                              NONE => xml
-                                            | SOME ei => (L'.EStrcat (ei, xml), loc)
                             in
                                 ((L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
                                               (L'.EStrcat (xml,
@@ -3316,8 +3312,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                        loc),
                                                       (L'.EFfiApp ("Basis", "maybe_onunload",
                                                                    [(onunload, s)]),
-                                                       loc)), loc),
-                                    SOME (L'.EFfiApp ("Basis", "get_script", [((L'.ERecord [], loc), (L'.TRecord [], loc))]), loc))
+                                                       loc)), loc))
 			end
 
                       | "dyn" =>
@@ -3346,9 +3341,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                               | _ => raise Fail "Monoize: Bad dyn attributes"
 			end
 
-                      | "submit" => normal ("input type=\"submit\"", NONE, NONE)
-                      | "image" => normal ("input type=\"image\"", NONE, NONE)
-                      | "button" => normal ("input type=\"submit\"", NONE, NONE)
+                      | "submit" => normal ("input type=\"submit\"", NONE)
+                      | "image" => normal ("input type=\"image\"", NONE)
+                      | "button" => normal ("input type=\"submit\"", NONE)
                       | "hidden" => input "hidden"
 
                       | "textbox" =>
@@ -3404,8 +3399,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              NONE => raise Fail "No name for radioGroup"
                            | SOME name =>
                              normal ("input",
-                                     SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc),
-                                     NONE))
+                                     SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc)))
 
                       | "select" =>
 			(case targs of
@@ -3502,7 +3496,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				  fm)
                              end)
 
-                      | "coption" => normal ("option", NONE, NONE)
+                      | "coption" => normal ("option", NONE)
 
                       | "ctextarea" =>
 			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
@@ -3527,8 +3521,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				  fm)
                              end)
 
-                      | "tabl" => normal ("table", NONE, NONE)
-                      | _ => normal (tag, NONE, NONE)
+                      | "tabl" => normal ("table", NONE)
+                      | _ => normal (tag, NONE)
 	    in
 		case #1 dynClass of
 		    L'.ENone _ => baseAll

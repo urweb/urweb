@@ -76,7 +76,6 @@ uw_unit uw_Basis_set_client_source(uw_context, uw_Basis_source, uw_Basis_string)
 
 void uw_set_script_header(uw_context, const char*);
 char *uw_Basis_get_settings(uw_context, uw_unit);
-char *uw_Basis_get_script(uw_context, uw_unit);
 char *uw_get_real_script(uw_context);
 
 uw_Basis_string uw_Basis_maybe_onload(uw_context, uw_Basis_string);
