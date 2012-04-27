@@ -87,7 +87,7 @@ fun p_explicitness e =
 
 fun p_con' par env (c, _) =
     case c of
-        TFun (t1, t2) => parenIf true (box [p_con' true env t1,
+        TFun (t1, t2) => parenIf par (box [p_con' true env t1,
                                            space,
                                            string "->",
                                            space,
