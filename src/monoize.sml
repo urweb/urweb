@@ -357,13 +357,15 @@ fun fk2s fk =
         Attr => "attr"
       | Url => "url"
 
+type vr = string * int * L'.typ * L'.exp * string
+
 structure Fm :> sig
     type t
 
     val empty : int -> t
 
-    val lookup : t -> foo_kind -> int -> (int -> t -> L'.decl * t) -> t * int
-    val lookupList : t -> foo_kind -> L'.typ -> (int -> t -> L'.decl * t) -> t * int
+    val lookup : t -> foo_kind -> int -> (int -> t -> vr * t) -> t * int
+    val lookupList : t -> foo_kind -> L'.typ -> (int -> t -> vr * t) -> t * int
     val enter : t -> t
     val decls : t -> L'.decl list
 
@@ -390,7 +392,7 @@ type t = {
      count : int,
      map : int IM.map M.map,
      listMap : int TM.map M.map,
-     decls : L'.decl list
+     decls : vr list
 }
 
 fun empty count = {
@@ -418,7 +420,10 @@ fun freshName {count, map, listMap, decls} =
     in
         (next, {count = count , map = map, listMap = listMap, decls = decls})
     end
-fun decls ({decls, ...} : t) = decls
+fun decls ({decls, ...} : t) =
+    case decls of
+        [] => []
+      | _ => [(L'.DValRec decls, ErrorMsg.dummySpan)]
 
 fun lookup (t as {count, map, listMap, decls}) k n thunk =
     let
@@ -567,17 +572,17 @@ fun fooifyExp fk env =
                                 val dom = tAll
                                 val ran = (L'.TFfi ("Basis", "string"), loc)
                             in
-                                ((L'.DValRec [(fk2s fk ^ "ify_" ^ x,
-                                               n,
-                                               (L'.TFun (dom, ran), loc),
-                                               (L'.EAbs ("x",
-                                                         dom,
-                                                         ran,
-                                                         (L'.ECase ((L'.ERel 0, loc),
-                                                                    branches,
-                                                                    {disc = dom,
-                                                                     result = ran}), loc)), loc),
-                                               "")], loc),
+                                ((fk2s fk ^ "ify_" ^ x,
+                                  n,
+                                  (L'.TFun (dom, ran), loc),
+                                  (L'.EAbs ("x",
+                                            dom,
+                                            ran,
+                                            (L'.ECase ((L'.ERel 0, loc),
+                                                       branches,
+                                                       {disc = dom,
+                                                        result = ran}), loc)), loc),
+                                  ""),
                                  fm)
                             end
 
@@ -618,17 +623,17 @@ fun fooifyExp fk env =
                                 val dom = tAll
                                 val ran = (L'.TFfi ("Basis", "string"), loc)
                             in
-                                ((L'.DValRec [(fk2s fk ^ "ify_list",
-                                               n,
-                                               (L'.TFun (dom, ran), loc),
-                                               (L'.EAbs ("x",
-                                                         dom,
-                                                         ran,
-                                                         (L'.ECase ((L'.ERel 0, loc),
-                                                                    branches,
-                                                                    {disc = dom,
-                                                                     result = ran}), loc)), loc),
-                                               "")], loc),
+                                ((fk2s fk ^ "ify_list",
+                                  n,
+                                  (L'.TFun (dom, ran), loc),
+                                  (L'.EAbs ("x",
+                                            dom,
+                                            ran,
+                                            (L'.ECase ((L'.ERel 0, loc),
+                                                       branches,
+                                                       {disc = dom,
+                                                        result = ran}), loc)), loc),
+                                  ""),
                                  fm)
                             end
 
