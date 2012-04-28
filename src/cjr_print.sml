@@ -2905,6 +2905,19 @@ fun p_file env (ds, ps) =
         val app_js = OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
                                           file = "app." ^ timestamp ^ ".js"}
 
+        val allScripts =
+            let
+                val scripts =
+                    "<script type=\\\"text/javascript\\\" src=\\\""
+                    ^ app_js
+                    ^ "\\\"></script>\\n"
+            in
+                foldl (fn (x, scripts) =>
+                          scripts
+                          ^ "<script type=\\\"text/javascript\\\" src=\\\"" ^ x ^ "\\\"></script>\\n")
+                      scripts (Settings.getScripts ())
+            end
+
         fun p_page (ek, s, n, ts, ran, side, tellSig) =
             let
                 val (ts, defInputs, inputsVar, fields) =
@@ -3032,18 +3045,7 @@ fun p_file env (ds, ps) =
                                         val scripts =
                                             case side of
                                                 ServerOnly => ""
-                                              | _ =>
-                                                let
-                                                    val scripts =
-                                                        "<script type=\\\"text/javascript\\\" src=\\\""
-                                                        ^ app_js
-                                                        ^ "\\\"></script>\\n"
-                                                in
-                                                    foldl (fn (x, scripts) =>
-                                                              scripts
-                                                              ^ "<script type=\\\"text/javascript\\\" src=\\\"" ^ x ^ "\\\"></script>\\n")
-                                                          scripts (Settings.getScripts ())
-                                                end
+                                              | _ => allScripts
                                     in
                                         string scripts
                                     end,
@@ -3129,6 +3131,7 @@ fun p_file env (ds, ps) =
         val expunge = ref 0
         val initialize = ref 0
         val prepped = ref []
+        val hasJs = ref false
 
         val _ = foldl (fn (d, env) =>
                           ((case #1 d of
@@ -3136,6 +3139,7 @@ fun p_file env (ds, ps) =
                                                                                       dbstring := x;
                                                                                       expunge := y;
                                                                                       initialize := z)
+                              | DJavaScript _ => hasJs := true
                               | DTable (s, xts, _, _) => tables := (s, map (fn (x, t) =>
                                                                                (x, sql_type_in env t)) xts) :: !tables
                               | DView (s, xts, _) => views := (s, map (fn (x, t) =>
@@ -3499,6 +3503,13 @@ fun p_file env (ds, ps) =
                                 else
                                     box [string "uw_cutErrorLocation(msg);",
                                          newline],
+                                if !hasJs then
+                                    box [string "uw_set_script_header(ctx, \"",
+                                         string allScripts,
+                                         string "\");",
+                                         newline]
+                                else
+                                    box [],
                                 box [string "uw_write(ctx, ",
                                      p_enamed env n,
                                      string "(ctx, msg, 0));",
