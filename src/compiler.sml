@@ -917,7 +917,7 @@ val parse = {
                           val sgn = (Source.SgnConst (#func parseUrs urs), loc)
                       in
                           checkErrors ();
-                          (Source.DFfiStr (mname, sgn), loc)
+                          (Source.DFfiStr (mname, sgn, OS.FileSys.modTime urs), loc)
                       end
 
                   val defed = ref SS.empty
@@ -944,7 +944,7 @@ val parse = {
                                      last = ErrorMsg.dummyPos}
 
                           val ds = #func parseUr ur
-                          val d = (Source.DStr (mname, sgnO, (Source.StrConst ds, loc)), loc)
+                          val d = (Source.DStr (mname, sgnO, SOME (OS.FileSys.modTime ur), (Source.StrConst ds, loc)), loc)
 
                           val fname = OS.Path.mkCanonical fname
                           val d = case List.find (fn (root, name) =>
@@ -1002,14 +1002,14 @@ val parse = {
                                                                                          else
                                                                                              (Source.StrVar part, loc)
                                                                            in
-                                                                               (Source.DStr (part, NONE, imp),
+                                                                               (Source.DStr (part, NONE, NONE, imp),
                                                                                 loc) :: ds
                                                                            end
                                                                        else
                                                                            ds) [] (!fulls)
                                                   in
                                                       defed := SS.add (!defed, this);
-                                                      (Source.DStr (piece, NONE,
+                                                      (Source.DStr (piece, NONE, NONE,
                                                                     (Source.StrConst (if old then
                                                                                           simOpen ()
                                                                                           @ [makeD this pieces]
@@ -1092,11 +1092,20 @@ fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
 
 val elaborate = {
     func = fn file => let
-                  val basis = #func parseUrs (libFile "basis.urs")
-                  val topSgn = #func parseUrs (libFile "top.urs")
-                  val topStr = #func parseUr (libFile "top.ur")
+                  val basisF = libFile "basis.urs"
+                  val topF = libFile "top.urs"
+                  val topF' = libFile "top.ur"
+
+                  val basis = #func parseUrs basisF
+                  val topSgn = #func parseUrs topF
+                  val topStr = #func parseUr topF'
+
+                  val tm1 = OS.FileSys.modTime topF
+                  val tm2 = OS.FileSys.modTime topF'
               in
-                  Elaborate.elabFile basis topStr topSgn ElabEnv.empty file
+                  Elaborate.elabFile basis (OS.FileSys.modTime basisF)
+                                     topStr topSgn (if Time.< (tm1, tm2) then tm2 else tm1)
+                                     ElabEnv.empty file
               end,
     print = ElabPrint.p_file ElabEnv.empty
 }

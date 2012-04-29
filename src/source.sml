@@ -154,8 +154,8 @@ datatype decl' =
        | DVal of string * con option * exp
        | DValRec of (string * con option * exp) list
        | DSgn of string * sgn
-       | DStr of string * sgn option * str
-       | DFfiStr of string * sgn
+       | DStr of string * sgn option * Time.time option * str
+       | DFfiStr of string * sgn * Time.time
        | DOpen of string * string list
        | DConstraint of con * con
        | DOpenConstraints of string * string list

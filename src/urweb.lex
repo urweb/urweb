@@ -426,7 +426,6 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "end"       => (Tokens.END (pos yypos, pos yypos + size yytext));
 <INITIAL> "functor"   => (Tokens.FUNCTOR (pos yypos, pos yypos + size yytext));
 <INITIAL> "where"     => (Tokens.WHERE (pos yypos, pos yypos + size yytext));
-<INITIAL> "extern"    => (Tokens.EXTERN (pos yypos, pos yypos + size yytext));
 <INITIAL> "include"   => (Tokens.INCLUDE (pos yypos, pos yypos + size yytext));
 <INITIAL> "open"      => (Tokens.OPEN (pos yypos, pos yypos + size yytext));
 <INITIAL> "constraint"=> (Tokens.CONSTRAINT (pos yypos, pos yypos + size yytext));

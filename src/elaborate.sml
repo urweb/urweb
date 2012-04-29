@@ -3641,7 +3641,7 @@ and wildifyStr env (str, sgn) =
                                  | L.DClass (x, _, _) => ndelCon (nd, x)
                                  | L.DVal (x, _, _) => ndelVal (nd, x)
                                  | L.DOpen _ => nempty
-                                 | L.DStr (x, _, (L.StrConst ds', _)) =>
+                                 | L.DStr (x, _, _, (L.StrConst ds', _)) =>
                                    (case SM.find (nmods nd, x) of
                                         NONE => nd
                                       | SOME (env, nd') => naddMod (nd, x, (env, removeUsed (nd', ds'))))
@@ -3711,11 +3711,11 @@ and wildifyStr env (str, sgn) =
 
                          val ds = ds @ ds'
                      in
-                         map (fn d as (L.DStr (x, s, (L.StrConst ds', loc')), loc) =>
+                         map (fn d as (L.DStr (x, s, tm, (L.StrConst ds', loc')), loc) =>
                                  (case SM.find (nmods nd, x) of
                                       NONE => d
                                     | SOME (env, nd') =>
-                                      (L.DStr (x, s, (L.StrConst (extend (env, nd', ds')), loc')), loc))
+                                      (L.DStr (x, s, tm, (L.StrConst (extend (env, nd', ds')), loc')), loc))
                                | d => d) ds
                      end
              in
@@ -3923,56 +3923,80 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     ([(L'.DSgn (x, n, sgn'), loc)], (env', denv, enD gs' @ gs))
                 end
 
-              | L.DStr (x, sgno, str) =>
-                let
-                    val () = if x = "Basis" then
-                                 raise Fail "Not allowed to redefine structure 'Basis'"
-                             else
-                                 ()
+              | L.DStr (x, sgno, tmo, str) =>
+                (case ModDb.lookup dAll of
+                     SOME d =>
+                     let
+                         val env' = E.declBinds env d
+                         val denv' = dopenConstraints (loc, env', denv) {str = x, strs = []}
+                     in
+                         ([d], (env', denv', []))
+                     end
+                   | NONE =>
+                     let
+                         val () = if x = "Basis" then
+                                      raise Fail "Not allowed to redefine structure 'Basis'"
+                                  else
+                                      ()
 
-                    val formal = Option.map (elabSgn (env, denv)) sgno
+                         val formal = Option.map (elabSgn (env, denv)) sgno
 
-                    val (str', sgn', gs') =
-                        case formal of
-                            NONE =>
-                            let
-                                val (str', actual, gs') = elabStr (env, denv) str
-                            in
-                                (str', selfifyAt env {str = str', sgn = actual}, gs')
-                            end
-                          | SOME (formal, gs1) =>
-                            let
-                                val str = wildifyStr env (str, formal)
-                                val (str', actual, gs2) = elabStr (env, denv) str
-                            in
-                                subSgn env loc (selfifyAt env {str = str', sgn = actual}) formal;
-                                (str', formal, enD gs1 @ gs2)
-                            end
+                         val (str', sgn', gs') =
+                             case formal of
+                                 NONE =>
+                                 let
+                                     val (str', actual, gs') = elabStr (env, denv) str
+                                 in
+                                     (str', selfifyAt env {str = str', sgn = actual}, gs')
+                                 end
+                               | SOME (formal, gs1) =>
+                                 let
+                                     val str = wildifyStr env (str, formal)
+                                     val (str', actual, gs2) = elabStr (env, denv) str
+                                 in
+                                     subSgn env loc (selfifyAt env {str = str', sgn = actual}) formal;
+                                     (str', formal, enD gs1 @ gs2)
+                                 end
 
-                    val (env', n) = E.pushStrNamed env x sgn'
-                    val denv' =
-                        case #1 str' of
-                            L'.StrConst _ => dopenConstraints (loc, env', denv) {str = x, strs = []}
-                          | L'.StrApp _ => dopenConstraints (loc, env', denv) {str = x, strs = []}
-                          | _ => denv
-                in
-                    case #1 (hnormSgn env sgn') of
-                        L'.SgnFun _ =>
-                        (case #1 str' of
-                             L'.StrFun _ => ()
-                           | _ => strError env (FunctorRebind loc))
-                      | _ => ();
-                    ([(L'.DStr (x, n, sgn', str'), loc)], (env', denv', gs' @ gs))
-                end
+                         val (env', n) = E.pushStrNamed env x sgn'
+                         val denv' =
+                             case #1 str' of
+                                 L'.StrConst _ => dopenConstraints (loc, env', denv) {str = x, strs = []}
+                               | L'.StrApp _ => dopenConstraints (loc, env', denv) {str = x, strs = []}
+                               | _ => denv
 
-              | L.DFfiStr (x, sgn) =>
-                let
-                    val (sgn', gs') = elabSgn (env, denv) sgn
+                         val dNew = (L'.DStr (x, n, sgn', str'), loc)
+                     in
+                         case #1 (hnormSgn env sgn') of
+                             L'.SgnFun _ =>
+                             (case #1 str' of
+                                  L'.StrFun _ => ()
+                                | _ => strError env (FunctorRebind loc))
+                           | _ => ();
+                         Option.map (fn tm => ModDb.insert (dNew, tm)) tmo;
+                         ([dNew], (env', denv', gs' @ gs))
+                     end)
 
-                    val (env', n) = E.pushStrNamed env x sgn'
-                in
-                    ([(L'.DFfiStr (x, n, sgn'), loc)], (env', denv, enD gs' @ gs))
-                end
+              | L.DFfiStr (x, sgn, tm) =>
+                (case ModDb.lookup dAll of
+                     SOME d =>
+                     let
+                         val env' = E.declBinds env d
+                         val denv' = dopenConstraints (loc, env', denv) {str = x, strs = []}
+                     in
+                         ([d], (env', denv', []))
+                     end
+                   | NONE =>
+                     let
+                         val (sgn', gs') = elabSgn (env, denv) sgn
+                                           
+                         val (env', n) = E.pushStrNamed env x sgn'
+
+                         val dNew = (L'.DFfiStr (x, n, sgn'), loc)
+                     in
+                         ModDb.insert (dNew, tm);
+                         ([dNew], (env', denv, enD gs' @ gs))
+                     end)
 
               | L.DOpen (m, ms) =>
                 (case E.lookupStr env m of
@@ -4431,24 +4455,36 @@ and elabStr (env, denv) (str, loc) =
 
 fun resolveClass env = E.resolveClass (hnormCon env) (consEq env dummy) env
 
-fun elabFile basis topStr topSgn env file =
+fun elabFile basis basis_tm topStr topSgn top_tm env file =
     let
         val () = mayDelay := true
         val () = delayedUnifs := []
         val () = delayedExhaustives := []
 
-        val (sgn, gs) = elabSgn (env, D.empty) (L.SgnConst basis, ErrorMsg.dummySpan)
-        val () = case gs of
-                     [] => ()
-                   | _ => (app (fn (_, env, _, c1, c2) =>
-                                   prefaces "Unresolved"
-                                   [("c1", p_con env c1),
-                                    ("c2", p_con env c2)]) gs;
-                           raise Fail "Unresolved disjointness constraints in Basis")
+        val d = (L.DFfiStr ("Basis", (L.SgnConst basis, ErrorMsg.dummySpan), basis_tm), ErrorMsg.dummySpan)
+        val (basis_n, env', sgn) =
+            case ModDb.lookup d of
+                NONE =>
+                let
+                    val (sgn, gs) = elabSgn (env, D.empty) (L.SgnConst basis, ErrorMsg.dummySpan)
+                    val () = case gs of
+                                 [] => ()
+                               | _ => (app (fn (_, env, _, c1, c2) =>
+                                               prefaces "Unresolved"
+                                                        [("c1", p_con env c1),
+                                                         ("c2", p_con env c2)]) gs;
+                                       raise Fail "Unresolved disjointness constraints in Basis")
 
-        val (env', basis_n) = E.pushStrNamed env "Basis" sgn
+                    val (env', basis_n) = E.pushStrNamed env "Basis" sgn
+                in
+                    ModDb.insert ((L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan), basis_tm);
+                    (basis_n, env', sgn)
+                end
+              | SOME (d' as (L'.DFfiStr (_, basis_n, sgn), _)) =>
+                (basis_n, E.pushStrNamedAs env "Basis" basis_n sgn, sgn)
+              | _ => raise Fail "Elaborate: Basis impossible"
+                     
         val () = basis_r := basis_n
-
         val (ds, env') = dopen env' {str = basis_n, strs = [], sgn = sgn}
 
         fun discoverC r x =
@@ -4463,34 +4499,50 @@ fun elabFile basis topStr topSgn env file =
         val () = discoverC char "char"
         val () = discoverC table "sql_table"
 
-        val (topSgn, gs) = elabSgn (env', D.empty) (L.SgnConst topSgn, ErrorMsg.dummySpan)
-        val () = case gs of
-                     [] => ()
-                   | _ => raise Fail "Unresolved disjointness constraints in top.urs"
-        val (topStr, topSgn', gs) = elabStr (env', D.empty) (L.StrConst topStr, ErrorMsg.dummySpan)
-        val () = case gs of
-                     [] => ()
-                   | _ => app (fn Disjoint (loc, env, denv, c1, c2) =>
-                                  (case D.prove env denv (c1, c2, loc) of
-                                       [] => ()
-                                     | _ =>
-                                       (prefaces "Unresolved constraint in top.ur"
-                                                 [("loc", PD.string (ErrorMsg.spanToString loc)),
-                                                  ("c1", p_con env c1),
-                                                  ("c2", p_con env c2)];
-                                        raise Fail "Unresolved constraint in top.ur"))
-                                | TypeClass (env, c, r, loc) =>
-                                  let
-                                      val c = normClassKey env c
-                                  in
-                                      case resolveClass env c of
-                                          SOME e => r := SOME e
-                                        | NONE => expError env (Unresolvable (loc, c))
-                                  end) gs
+        val d = (L.DStr ("Top", SOME (L.SgnConst topSgn, ErrorMsg.dummySpan),
+                         SOME (if Time.< (top_tm, basis_tm) then basis_tm else top_tm),
+                         (L.StrConst topStr, ErrorMsg.dummySpan)), ErrorMsg.dummySpan)
+        val (top_n, env', topSgn, topStr) =
+            case ModDb.lookup d of
+                NONE =>
+                let
+                    val (topSgn, gs) = elabSgn (env', D.empty) (L.SgnConst topSgn, ErrorMsg.dummySpan)
+                    val () = case gs of
+                                 [] => ()
+                               | _ => raise Fail "Unresolved disjointness constraints in top.urs"
+                    val (topStr, topSgn', gs) = elabStr (env', D.empty) (L.StrConst topStr, ErrorMsg.dummySpan)
 
-        val () = subSgn env' ErrorMsg.dummySpan topSgn' topSgn
+                    val () = case gs of
+                                 [] => ()
+                               | _ => app (fn Disjoint (loc, env, denv, c1, c2) =>
+                                              (case D.prove env denv (c1, c2, loc) of
+                                                   [] => ()
+                                                 | _ =>
+                                                   (prefaces "Unresolved constraint in top.ur"
+                                                             [("loc", PD.string (ErrorMsg.spanToString loc)),
+                                                              ("c1", p_con env c1),
+                                                              ("c2", p_con env c2)];
+                                                    raise Fail "Unresolved constraint in top.ur"))
+                                            | TypeClass (env, c, r, loc) =>
+                                              let
+                                                  val c = normClassKey env c
+                                              in
+                                                  case resolveClass env c of
+                                                      SOME e => r := SOME e
+                                                    | NONE => expError env (Unresolvable (loc, c))
+                                              end) gs
 
-        val (env', top_n) = E.pushStrNamed env' "Top" topSgn
+                    val () = subSgn env' ErrorMsg.dummySpan topSgn' topSgn
+
+                    val (env', top_n) = E.pushStrNamed env' "Top" topSgn
+                in
+                    ModDb.insert ((L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan), top_tm);
+                    (top_n, env', topSgn, topStr)
+                end
+              | SOME (d' as (L'.DStr (_, top_n, topSgn, topStr), _)) =>
+                (top_n, E.declBinds env' d', topSgn, topStr)
+              | _ => raise Fail "Elaborate: Top impossible"                
+
         val () = top_r := top_n
 
         val (ds', env') = dopen env' {str = top_n, strs = [], sgn = topSgn}

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, 2012, Adam Chlipala
+(* Copyright (c) 2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,20 +25,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature ELABORATE = sig
+(* Cache of module code, with dependency information *)
 
-    val elabFile : Source.sgn_item list -> Time.time
-                   -> Source.decl list -> Source.sgn_item list -> Time.time
-                   -> ElabEnv.env -> Source.file -> Elab.file
+signature MOD_DB = sig
+    val reset : unit -> unit
 
-    val resolveClass : ElabEnv.env -> Elab.con -> Elab.exp option
+    val insert : Elab.decl * Time.time -> unit
+    (* Here's a declaration, including the modification timestamp of the file it came from.
+     * We might invalidate other declarations that depend on this one, if the timestamp has changed. *)
 
-    val dumpTypes : bool ref
-    (* After elaboration (successful or failed), should I output a mapping from
-     * all identifiers to their kinds/types? *)
-
-    val unifyMore : bool ref
-    (* Run all phases of type inference, even if an error is detected by an
-     * early phase. *)
-
+    val lookup : Source.decl -> Elab.decl option
 end

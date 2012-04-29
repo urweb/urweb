@@ -1180,6 +1180,17 @@ fun mapB {kind, con, exp, sgn_item, sgn, str, decl, bind} ctx s =
         S.Continue (s, ()) => s
       | S.Return _ => raise Fail "ElabUtil.Decl.mapB: Impossible"
 
+fun fold {kind, con, exp, sgn_item, sgn, str, decl} (st : 'a) d : 'a =
+    case mapfold {kind = fn k => fn st => S.Continue (k, kind (k, st)),
+                  con = fn c => fn st => S.Continue (c, con (c, st)),
+                  exp = fn e => fn st => S.Continue (e, exp (e, st)),
+                  sgn_item = fn sgi => fn st => S.Continue (sgi, sgn_item (sgi, st)),
+                  sgn = fn s => fn st => S.Continue (s, sgn (s, st)),
+                  str = fn str' => fn st => S.Continue (str', str (str', st)),
+                  decl = fn d => fn st => S.Continue (d, decl (d, st))} d st of
+        S.Continue (_, st) => st
+      | S.Return _ => raise Fail "ElabUtil.Decl.fold: Impossible"
+
 end
 
 structure File = struct

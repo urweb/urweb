@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2010, 2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -229,6 +229,15 @@ structure Decl : sig
                 decl : 'context -> Elab.decl' -> Elab.decl',
                 bind : 'context * binder -> 'context}
                -> 'context -> Elab.decl -> Elab.decl
+
+    val fold : {kind : Elab.kind' * 'state -> 'state,
+               con : Elab.con' * 'state -> 'state,
+               exp : Elab.exp' * 'state -> 'state,
+               sgn_item : Elab.sgn_item' * 'state -> 'state,
+               sgn : Elab.sgn' * 'state -> 'state,
+               str : Elab.str' * 'state -> 'state,
+               decl : Elab.decl' * 'state -> 'state}
+              -> 'state -> Elab.decl -> 'state
 end
 
 structure File : sig
