@@ -25,147 +25,271 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-val timing = ref false
-val tc = ref false
-val sources = ref ([] : string list)
-val demo = ref (NONE : (string * bool) option)
-val tutorial = ref false
-val css = ref false
+val socket = ".urweb_daemon"
 
-val () = Compiler.beforeC := MLton.GC.pack
+(* Encapsulate main invocation handler in a function, possibly to be called multiple times within a daemon. *)
 
-fun printVersion () = (print (Config.versionString ^ "\n");
-		       OS.Process.exit OS.Process.success)
-fun printNumericVersion () = (print (Config.versionNumber ^ "\n");
-			      OS.Process.exit OS.Process.success)
+exception Code of OS.Process.status
 
-fun doArgs args =
-    case args of
-        [] => ()
-      | "-version" :: rest => 
-	printVersion ()
-      | "-numeric-version" :: rest =>
-	printNumericVersion ()
-      | "-css" :: rest =>
-        (css := true;
-         doArgs rest)
-      | "-demo" :: prefix :: rest =>
-        (demo := SOME (prefix, false);
-         doArgs rest)
-      | "-guided-demo" :: prefix :: rest =>
-        (demo := SOME (prefix, true);
-         doArgs rest)
-      | "-tutorial" :: rest =>
-        (tutorial := true;
-         doArgs rest)
-      | "-protocol" :: name :: rest =>
-        (Settings.setProtocol name;
-         doArgs rest)
-      | "-prefix" :: prefix :: rest =>
-        (Settings.setUrlPrefix prefix;
-         doArgs rest)
-      | "-db" :: s :: rest =>
-        (Settings.setDbstring (SOME s);
-         doArgs rest)
-      | "-dbms" :: name :: rest =>
-        (Settings.setDbms name;
-         doArgs rest)
-      | "-debug" :: rest =>
-        (Settings.setDebug true;
-         doArgs rest)
-      | "-verbose" :: rest =>
-        (Compiler.debug := true;
-         doArgs rest)
-      | "-timing" :: rest =>
-        (timing := true;
-         doArgs rest)
-      | "-tc" :: rest =>
-        (tc := true;
-         doArgs rest)
-      | "-dumpTypes" :: rest =>
-        (Elaborate.dumpTypes := true;
-         doArgs rest)
-      | "-unifyMore" :: rest =>
-        (Elaborate.unifyMore := true;
-         doArgs rest)
-      | "-dumpSource" :: rest =>
-        (Compiler.dumpSource := true;
-         doArgs rest)
-      | "-output" :: s :: rest =>
-        (Settings.setExe (SOME s);
-         doArgs rest)
-      | "-sql" :: s :: rest =>
-        (Settings.setSql (SOME s);
-         doArgs rest)
-      | "-static" :: rest =>
-        (Settings.setStaticLinking true;
-         doArgs rest)
-      | "-path" :: name :: path :: rest =>
-        (Compiler.addPath (name, path);
-         doArgs rest)
-      | "-root" :: name :: root :: rest =>
-        (Compiler.addModuleRoot (root, name);
-         doArgs rest)
-      | "-sigfile" :: name :: rest =>
-        (Settings.setSigFile (SOME name);
-         doArgs rest)
-      | "-iflow" :: rest =>
-        (Compiler.doIflow := true;
-         doArgs rest)
-      | "-moduleOf" :: fname :: _ =>
-        (print (Compiler.moduleOf fname ^ "\n");
-         OS.Process.exit OS.Process.success)
-      | "-noEmacs" :: rest =>
-        (Demo.noEmacs := true;
-         doArgs rest)
-      | "-limit" :: class :: num :: rest =>
-        (case Int.fromString num of
-             NONE => raise Fail ("Invalid limit number '" ^ num ^ "'")
-           | SOME n =>
-             if n < 0 then
-                 raise Fail ("Invalid limit number '" ^ num ^ "'")
-             else
-                 Settings.addLimit (class, n);
-         doArgs rest)
-      | arg :: rest =>
-        (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
-             raise Fail ("Unknown flag " ^ arg)
-         else
-             sources := arg :: !sources;
-         doArgs rest)
+fun oneRun args =
+    let
+        val timing = ref false
+        val tc = ref false
+        val sources = ref ([] : string list)
+        val demo = ref (NONE : (string * bool) option)
+        val tutorial = ref false
+        val css = ref false
 
-val () = doArgs (CommandLine.arguments ())
+        val () = (Compiler.debug := false;
+                  Elaborate.dumpTypes := false;
+                  Elaborate.unifyMore := false;
+                  Compiler.dumpSource := false;
+                  Compiler.doIflow := false;
+                  Demo.noEmacs := false;
+                  Settings.setDebug false)
 
-val job =
-    case !sources of
-        [file] => file
-      | _ => printVersion ()
+        val () = Compiler.beforeC := MLton.GC.pack
 
-val () =
-    case (!css, !demo, !tutorial) of
-        (true, _, _) =>
-        (case Compiler.run Compiler.toCss job of
-             NONE => OS.Process.exit OS.Process.failure
-           | SOME {Overall = ov, Classes = cl} =>
-             (app (print o Css.inheritableToString) ov;
-              print "\n";
-              app (fn (x, (ins, ots)) =>
-                      (print x;
-                       print " ";
-                       app (print o Css.inheritableToString) ins;
-                       app (print o Css.othersToString) ots;
-                       print "\n")) cl))
-      | (_, SOME (prefix, guided), _) =>
-        Demo.make {prefix = prefix, dirname = job, guided = guided}
-      | (_, _, true) => Tutorial.make job
-      | _ =>
-        if !tc then
-            (Compiler.check Compiler.toElaborate job;
-             if ErrorMsg.anyErrors () then
-                 OS.Process.exit OS.Process.failure
-             else
-                 ())
-        else if !timing then
-            Compiler.time Compiler.toCjrize job
+        fun printVersion () = (print (Config.versionString ^ "\n");
+		               raise Code OS.Process.success)
+        fun printNumericVersion () = (print (Config.versionNumber ^ "\n");
+			              raise Code OS.Process.success)
+
+        fun doArgs args =
+            case args of
+                [] => ()
+              | "-version" :: rest => 
+	        printVersion ()
+              | "-numeric-version" :: rest =>
+	        printNumericVersion ()
+              | "-css" :: rest =>
+                (css := true;
+                 doArgs rest)
+              | "-demo" :: prefix :: rest =>
+                (demo := SOME (prefix, false);
+                 doArgs rest)
+              | "-guided-demo" :: prefix :: rest =>
+                (demo := SOME (prefix, true);
+                 doArgs rest)
+              | "-tutorial" :: rest =>
+                (tutorial := true;
+                 doArgs rest)
+              | "-protocol" :: name :: rest =>
+                (Settings.setProtocol name;
+                 doArgs rest)
+              | "-prefix" :: prefix :: rest =>
+                (Settings.setUrlPrefix prefix;
+                 doArgs rest)
+              | "-db" :: s :: rest =>
+                (Settings.setDbstring (SOME s);
+                 doArgs rest)
+              | "-dbms" :: name :: rest =>
+                (Settings.setDbms name;
+                 doArgs rest)
+              | "-debug" :: rest =>
+                (Settings.setDebug true;
+                 doArgs rest)
+              | "-verbose" :: rest =>
+                (Compiler.debug := true;
+                 doArgs rest)
+              | "-timing" :: rest =>
+                (timing := true;
+                 doArgs rest)
+              | "-tc" :: rest =>
+                (tc := true;
+                 doArgs rest)
+              | "-dumpTypes" :: rest =>
+                (Elaborate.dumpTypes := true;
+                 doArgs rest)
+              | "-unifyMore" :: rest =>
+                (Elaborate.unifyMore := true;
+                 doArgs rest)
+              | "-dumpSource" :: rest =>
+                (Compiler.dumpSource := true;
+                 doArgs rest)
+              | "-output" :: s :: rest =>
+                (Settings.setExe (SOME s);
+                 doArgs rest)
+              | "-sql" :: s :: rest =>
+                (Settings.setSql (SOME s);
+                 doArgs rest)
+              | "-static" :: rest =>
+                (Settings.setStaticLinking true;
+                 doArgs rest)
+              | "-path" :: name :: path :: rest =>
+                (Compiler.addPath (name, path);
+                 doArgs rest)
+              | "-root" :: name :: root :: rest =>
+                (Compiler.addModuleRoot (root, name);
+                 doArgs rest)
+              | "-sigfile" :: name :: rest =>
+                (Settings.setSigFile (SOME name);
+                 doArgs rest)
+              | "-iflow" :: rest =>
+                (Compiler.doIflow := true;
+                 doArgs rest)
+              | "-moduleOf" :: fname :: _ =>
+                (print (Compiler.moduleOf fname ^ "\n");
+                 raise Code OS.Process.success)
+              | "-noEmacs" :: rest =>
+                (Demo.noEmacs := true;
+                 doArgs rest)
+              | "-limit" :: class :: num :: rest =>
+                (case Int.fromString num of
+                     NONE => raise Fail ("Invalid limit number '" ^ num ^ "'")
+                   | SOME n =>
+                     if n < 0 then
+                         raise Fail ("Invalid limit number '" ^ num ^ "'")
+                     else
+                         Settings.addLimit (class, n);
+                 doArgs rest)
+              | arg :: rest =>
+                (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
+                     raise Fail ("Unknown flag " ^ arg)
+                 else
+                     sources := arg :: !sources;
+                 doArgs rest)
+
+        val () = case args of
+                     ["daemon", "stop"] => OS.Process.exit OS.Process.success
+                   | _ => ()
+
+        val () = doArgs args
+
+        val job =
+            case !sources of
+                [file] => file
+              | _ => printVersion ()
+    in
+        case (!css, !demo, !tutorial) of
+            (true, _, _) =>
+            (case Compiler.run Compiler.toCss job of
+                 NONE => OS.Process.failure
+               | SOME {Overall = ov, Classes = cl} =>
+                 (app (print o Css.inheritableToString) ov;
+                  print "\n";
+                  app (fn (x, (ins, ots)) =>
+                          (print x;
+                           print " ";
+                           app (print o Css.inheritableToString) ins;
+                           app (print o Css.othersToString) ots;
+                           print "\n")) cl;
+                  OS.Process.success))
+          | (_, SOME (prefix, guided), _) =>
+            if Demo.make' {prefix = prefix, dirname = job, guided = guided} then
+                OS.Process.success
+            else
+                OS.Process.failure
+          | (_, _, true) => (Tutorial.make job;
+                             OS.Process.success)
+          | _ =>
+            if !tc then
+                (Compiler.check Compiler.toElaborate job;
+                 if ErrorMsg.anyErrors () then
+                     OS.Process.failure
+                 else
+                     OS.Process.success)
+            else if !timing then
+                (Compiler.time Compiler.toCjrize job;
+                 OS.Process.success)
+            else
+                (if Compiler.compile job then
+                     OS.Process.success
+                 else
+                     OS.Process.failure)
+    end handle Code n => n
+
+fun send (sock, s) =
+    let
+        val n = Socket.sendVec (sock, Word8VectorSlice.full (Vector.map (Word8.fromInt o ord) s))
+    in
+        if n >= size s then
+            ()
         else
-            Compiler.compiler job
+            send (sock, String.extract (s, n, NONE))
+    end
+
+val () = case CommandLine.arguments () of
+             ["daemon", "start"] =>
+             (case Posix.Process.fork () of
+                  SOME _ => ()
+                | NONE =>
+                  let
+                      val () = Elaborate.incremental := true
+                      val listen = UnixSock.Strm.socket ()
+
+                      fun loop () =
+                          let
+                              val (sock, _) = Socket.accept listen
+
+                              fun loop' (buf, args) =
+                                  let
+                                      val s = if CharVector.exists (fn ch => ch = #"\n") buf then
+                                                  ""
+                                              else
+                                                  Vector.map (chr o Word8.toInt) (Socket.recvVec (sock, 1024))
+                                      val s = buf ^ s
+                                      val (befor, after) = Substring.splitl (fn ch => ch <> #"\n") (Substring.full s)
+                                  in
+                                      if Substring.isEmpty after then
+                                          loop' (s, args)
+                                      else
+                                          let
+                                              val cmd = Substring.string befor
+                                              val rest = Substring.string (Substring.slice (after, 1, NONE))
+                                          in
+                                              case cmd of
+                                                  "" => send (sock, if OS.Process.isSuccess ((oneRun (rev args))
+                                                                                             handle ex => (print "unhandled exception:\n";
+                                                                                                           print (General.exnMessage ex ^ "\n");
+                                                                                                           OS.Process.failure)) then
+                                                                        "0"
+                                                                    else
+                                                                        "1")
+                                                | _ => loop' (rest, cmd :: args)
+                                          end
+                                  end handle OS.SysErr _ => ()
+                          in
+                              loop' ("", []);
+                              Socket.close sock;
+                              MLton.GC.pack ();
+                              loop ()
+                          end
+                  in
+                      OS.Process.atExit (fn () => OS.FileSys.remove socket);
+                      Socket.bind (listen, UnixSock.toAddr socket);
+                      Socket.listen (listen, 1);
+                      loop ()
+                  end)
+
+           | args =>
+             let
+                 val sock = UnixSock.Strm.socket ()
+
+                 fun wait () =
+                     let
+                         val v = Socket.recvVec (sock, 1)
+                     in
+                         if Vector.length v = 0 then
+                             OS.Process.failure
+                         else
+                             case chr (Word8.toInt (Vector.sub (v, 0))) of
+                                 #"0" => OS.Process.success
+                               | #"1" => OS.Process.failure
+                               | _ => raise Fail "Weird return code from daemon"
+                     end handle OS.SysErr _ => OS.Process.failure
+             in
+                 if Socket.connectNB (sock, UnixSock.toAddr socket)
+                    orelse not (List.null (#wrs (Socket.select {rds = [],
+                                                                wrs = [Socket.sockDesc sock],
+                                                                exs = [],
+                                                                timeout = SOME (Time.fromSeconds 1)}))) then
+                     (app (fn arg => send (sock, arg ^ "\n")) args;
+                      send (sock, "\n");
+                      OS.Process.exit (wait ()))
+                 else
+                     (OS.FileSys.remove socket;
+                      raise OS.SysErr ("", NONE))
+             end handle OS.SysErr _ => case args of
+                                           ["daemon", "stop"] => (OS.FileSys.remove socket handle OS.SysErr _ => ())
+                                         | _ => OS.Process.exit (oneRun args)

@@ -131,7 +131,7 @@ fun lookup (d : Source.decl) =
                  SOME (#Decl r)
              else
                  NONE)
-      | Source.DFfiStr (x, _, tm) =>
+      | Source.DFfiStr (x, _, SOME tm) =>
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>

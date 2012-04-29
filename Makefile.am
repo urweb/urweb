@@ -75,7 +75,7 @@ endif
 
 install-exec-local-main:
 	mkdir -p $(DESTDIR)$(BIN)
-	cp bin/urweb $(DESTDIR)$(BIN)/
+	install bin/urweb $(DESTDIR)$(BIN)/
 	mkdir -p $(DESTDIR)$(LIB_UR)
 	cp lib/ur/*.urs $(DESTDIR)$(LIB_UR)/
 	cp lib/ur/*.ur $(DESTDIR)$(LIB_UR)/

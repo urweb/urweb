@@ -41,4 +41,6 @@ signature ELABORATE = sig
     (* Run all phases of type inference, even if an error is detected by an
      * early phase. *)
 
+    val incremental : bool ref
+
 end

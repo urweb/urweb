@@ -917,7 +917,7 @@ val parse = {
                           val sgn = (Source.SgnConst (#func parseUrs urs), loc)
                       in
                           checkErrors ();
-                          (Source.DFfiStr (mname, sgn, OS.FileSys.modTime urs), loc)
+                          (Source.DFfiStr (mname, sgn, if !Elaborate.incremental then SOME (OS.FileSys.modTime urs) else NONE), loc)
                       end
 
                   val defed = ref SS.empty
@@ -944,7 +944,8 @@ val parse = {
                                      last = ErrorMsg.dummyPos}
 
                           val ds = #func parseUr ur
-                          val d = (Source.DStr (mname, sgnO, SOME (OS.FileSys.modTime ur), (Source.StrConst ds, loc)), loc)
+                          val d = (Source.DStr (mname, sgnO, if !Elaborate.incremental then SOME (OS.FileSys.modTime ur) else NONE,
+                                                (Source.StrConst ds, loc)), loc)
 
                           val fname = OS.Path.mkCanonical fname
                           val d = case List.find (fn (root, name) =>

@@ -40,6 +40,7 @@
 
  val dumpTypes = ref false
  val unifyMore = ref false
+ val incremental = ref false
 
  structure IS = IntBinarySet
  structure IM = IntBinaryMap
@@ -3977,7 +3978,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                          ([dNew], (env', denv', gs' @ gs))
                      end)
 
-              | L.DFfiStr (x, sgn, tm) =>
+              | L.DFfiStr (x, sgn, tmo) =>
                 (case ModDb.lookup dAll of
                      SOME d =>
                      let
@@ -3994,7 +3995,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
 
                          val dNew = (L'.DFfiStr (x, n, sgn'), loc)
                      in
-                         ModDb.insert (dNew, tm);
+                         Option.map (fn tm => ModDb.insert (dNew, tm)) tmo;
                          ([dNew], (env', denv, enD gs' @ gs))
                      end)
 
@@ -4461,9 +4462,9 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
         val () = delayedUnifs := []
         val () = delayedExhaustives := []
 
-        val d = (L.DFfiStr ("Basis", (L.SgnConst basis, ErrorMsg.dummySpan), basis_tm), ErrorMsg.dummySpan)
+        val d = (L.DFfiStr ("Basis", (L.SgnConst basis, ErrorMsg.dummySpan), SOME basis_tm), ErrorMsg.dummySpan)
         val (basis_n, env', sgn) =
-            case ModDb.lookup d of
+            case (if !incremental then ModDb.lookup d else NONE) of
                 NONE =>
                 let
                     val (sgn, gs) = elabSgn (env, D.empty) (L.SgnConst basis, ErrorMsg.dummySpan)
@@ -4503,7 +4504,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
                          SOME (if Time.< (top_tm, basis_tm) then basis_tm else top_tm),
                          (L.StrConst topStr, ErrorMsg.dummySpan)), ErrorMsg.dummySpan)
         val (top_n, env', topSgn, topStr) =
-            case ModDb.lookup d of
+            case (if !incremental then ModDb.lookup d else NONE) of
                 NONE =>
                 let
                     val (topSgn, gs) = elabSgn (env', D.empty) (L.SgnConst topSgn, ErrorMsg.dummySpan)
