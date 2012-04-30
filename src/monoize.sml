@@ -69,6 +69,8 @@ fun pvar (r, r', loc) =
         let
             val n = choosePvar ()
             val fs = map (fn (x, t) => (x, choosePvar (), t)) r'
+            val r = ListMergeSort.sort (fn (((L.CName x, _), _), ((L.CName y, _), _)) => String.compare (x, y) = GREATER
+                                         | _ => raise Fail "Monoize: pvar, not CName") r
             val (r, fs') = ListPair.foldr (fn ((_, t), (x, n, _), (r, fs')) =>
                                               ((x, n, SOME t) :: r,
                                                SM.insert (fs', x, n))) ([], SM.empty) (r, fs)

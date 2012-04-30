@@ -400,7 +400,8 @@ fun p_datatype env (x, n, cons) =
     let
         val env = E.pushDatatype env x n cons
     in
-        box [string x,
+        box [if !debug then (string (x ^ "__" ^ Int.toString n))
+             else string x,
              space,
              string "=",
              space,
