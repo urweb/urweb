@@ -3912,8 +3912,11 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                                                   expError env (IllegalRec (x, e'));
                                                               ((x, n, c', e'), gs1 @ gs)
                                                           end) gs vis
+
+                    val vis = map (fn (x, n, t, e) => (x, n, normClassConstraint env t, e)) vis
+                    val d = (L'.DValRec vis, loc)
                 in
-                    ([(L'.DValRec vis, loc)], (env, denv, gs))
+                    ([d], (E.declBinds env d, denv, gs))
                 end
 
               | L.DSgn (x, sgn) =>
