@@ -336,7 +336,21 @@ fun reduceCon env (cAll as (c, loc)) =
         (case E.lookupCNamed env xn of
              (_, _, SOME c') => reduceCon env c'
            | _ => cAll)
-      | CModProj _ => cAll
+      | CModProj (n, ms, x) =>
+        let
+            val (_, sgn) = E.lookupStrNamed env n
+            val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                       case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                           NONE => raise Fail "reduceCon: Unknown substructure"
+                                         | SOME sgn => ((StrProj (str, m), loc), sgn))
+                                   ((StrVar n, loc), sgn) ms
+        in
+            case E.projectCon env {sgn = sgn, str = str, field = x} of
+                NONE => raise Fail "reduceCon: kindof: Unknown con in structure"
+              | SOME (_, NONE) => cAll
+              | SOME (_, SOME c) => reduceCon env c
+        end
+
       | CApp (c1, c2) =>
         let
             val c1 = reduceCon env c1
