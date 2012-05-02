@@ -35,4 +35,8 @@ signature MOD_DB = sig
      * We might invalidate other declarations that depend on this one, if the timestamp has changed. *)
 
     val lookup : Source.decl -> Elab.decl option
+
+    (* Allow undoing to snapshots after failed compilations. *)
+    val snapshot : unit -> unit
+    val revert : unit -> unit
 end

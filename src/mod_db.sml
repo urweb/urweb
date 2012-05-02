@@ -141,4 +141,10 @@ fun lookup (d : Source.decl) =
                  NONE)
       | _ => NONE
 
+val byNameBackup = ref (!byName)
+val byIdBackup = ref (!byId)
+
+fun snapshot () = (byNameBackup := !byName; byIdBackup := !byId)
+fun revert () = (byName := !byNameBackup; byId := !byIdBackup)
+
 end

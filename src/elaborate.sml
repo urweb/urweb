@@ -4461,6 +4461,8 @@ fun resolveClass env = E.resolveClass (hnormCon env) (consEq env dummy) env
 
 fun elabFile basis basis_tm topStr topSgn top_tm env file =
     let
+        val () = ModDb.snapshot ()
+
         val () = mayDelay := true
         val () = delayedUnifs := []
         val () = delayedExhaustives := []
@@ -4786,6 +4788,11 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
             in
                 ignore (foldl dumpDecl env' file)
             end
+        else
+            ();
+
+        if ErrorMsg.anyErrors () then
+            ModDb.revert ()
         else
             ();
         
