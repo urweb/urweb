@@ -1306,7 +1306,7 @@ fun process file =
                         maxName = U.File.maxName file + 1}
                        file
 
-        val inf = TextIO.openIn (OS.Path.joinDirFile {dir = Config.libJs, file = "urweb.js"})
+        val inf = TextIO.openIn (OS.Path.joinDirFile {dir = Settings.libJs (), file = "urweb.js"})
         fun lines acc =
             case TextIO.inputLine inf of
                 NONE => String.concat (rev acc)

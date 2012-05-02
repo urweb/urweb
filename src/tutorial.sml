@@ -280,7 +280,7 @@ fun doUr fname =
                                 val cmd = "emacs --eval \"(progn "
                                           ^ "(global-font-lock-mode t) "
                                           ^ "(add-to-list 'load-path \\\""
-                                          ^ Config.sitelisp
+                                          ^ !Settings.configSitelisp
                                           ^ "/\\\") "
                                           ^ "(load \\\"urweb-mode-startup\\\") "
                                           ^ "(urweb-mode) "

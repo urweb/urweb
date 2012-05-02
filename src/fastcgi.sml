@@ -32,7 +32,7 @@ open Print.PD Print
 
 val () = addProtocol {name = "fastcgi",
                       compile = "",
-                      linkStatic = Config.lib ^ "/../liburweb_fastcgi.a",
+                      linkStatic = "liburweb_fastcgi.a",
                       linkDynamic = "-lurweb_fastcgi",
                       persistent = true,
                       code = fn () => box [string "void uw_global_custom() {",

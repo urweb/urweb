@@ -82,8 +82,7 @@ install-exec-local-main:
 	mkdir -p $(DESTDIR)$(LIB_JS)
 	cp lib/js/*.js $(DESTDIR)$(LIB_JS)/
 	mkdir -p $(DESTDIR)$(INCLUDE)
-	cp config.h $(DESTDIR)$(INCLUDE)/
-	cp include/*.h $(DESTDIR)$(INCLUDE)/
+	cp include/urweb/*.h $(DESTDIR)$(INCLUDE)/
 
 install-exec-local: install-exec-local-main install-exec-emacs
 	-ldconfig

@@ -1,12 +1,11 @@
 signature CONFIG = sig
+    val builddir : string
+
     val bin : string
+    val srclib : string
     val lib : string
     val includ : string
     val sitelisp : string
-
-    val libUr : string
-    val libC : string
-    val libJs : string
 
     val ccompiler : string
     val ccArgs : string

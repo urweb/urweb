@@ -326,9 +326,24 @@ structure M = BinaryMapFn(struct
                           val compare = String.compare
                           end)
 
-val pathmap = ref (M.insert (M.empty, "", Config.libUr))
+(* XXX ezyang: pathmap gets initialized /really early/, before
+ * we do any options parsing.  So libUr will always point to the
+ * default. We override it explicitly in enableBoot *)
+val pathmap = ref (M.insert (M.empty, "", Settings.libUr ()))
 
 fun addPath (k, v) = pathmap := M.insert (!pathmap, k, v)
+
+(* XXX ezyang: this is not right; it probably doesn't work in
+ * the case of separate build and src trees *)
+fun enableBoot () =
+ (Settings.configBin := OS.Path.joinDirFile {dir = Config.builddir, file = "bin"};
+  Settings.configSrcLib := OS.Path.joinDirFile {dir = Config.builddir, file = "lib"};
+  (* joinDirFile is annoying... (ArcError; it doesn't like
+   * slashes in file) *)
+  Settings.configLib := Config.builddir ^ "/src/c/.libs";
+  Settings.configInclude := OS.Path.joinDirFile {dir = Config.builddir ^ "/include", file = "urweb"};
+  Settings.configSitelisp := Config.builddir ^ "/src/elisp";
+  addPath ("", Settings.libUr ()))
 
 fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
@@ -1098,16 +1113,11 @@ val parse = {
 
 val toParse = transform parse "parse" o toParseJob
 
-fun libFile s = OS.Path.joinDirFile {dir = Config.libUr,
-                                     file = s}
-fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
-                                      file = s}
-
 val elaborate = {
     func = fn file => let
-                  val basisF = libFile "basis.urs"
-                  val topF = libFile "top.urs"
-                  val topF' = libFile "top.ur"
+                  val basisF = Settings.libFile "basis.urs"
+                  val topF = Settings.libFile "top.urs"
+                  val topF' = Settings.libFile "top.ur"
 
                   val basis = #func parseUrs basisF
                   val topSgn = #func parseUrs topF
@@ -1389,9 +1399,9 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
         val proto = Settings.currentProtocol ()
 
         val lib = if Settings.getStaticLinking () then
-                      #linkStatic proto ^ " " ^ Config.lib ^ "/../liburweb.a"
+                      " " ^ !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a"
                   else
-                      "-L" ^ Config.lib ^ "/.. " ^ #linkDynamic proto ^ " -lurweb"
+                      "-L" ^ !Settings.configLib ^ " " ^ #linkDynamic proto ^ " -lurweb"
 
         val opt = if debug then
                       ""
@@ -1399,7 +1409,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
                       " -O3"
 
         val compile = Config.ccompiler ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " -Wimplicit -Werror -Wno-unused-value"
-                      ^ opt ^ " -I " ^ Config.includ
+                      ^ opt ^ " -I " ^ !Settings.configInclude
                       ^ " " ^ #compile proto
                       ^ " -c " ^ escapeFilename cname ^ " -o " ^ escapeFilename oname
 

@@ -32,7 +32,7 @@ open Print.PD Print
 
 val () = addProtocol {name = "static",
                       compile = "",
-                      linkStatic = Config.lib ^ "/../liburweb_static.a",
+                      linkStatic = "liburweb_static.a",
                       linkDynamic = "-lurweb_static",
                       persistent = false,
                       code = fn () => box [string "void uw_global_custom() { }",

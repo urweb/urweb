@@ -5,7 +5,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign no-define])
 AC_PROG_CC()
 AC_PROG_LIBTOOL()
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_HEADERS([include/urweb/config.h])
 
 AX_PTHREAD([echo >/dev/null], [echo "Your C compiler does not support POSIX threads."; exit 1])
 
@@ -41,7 +41,11 @@ if test [-z $BIN]; then
 fi
 
 if test [-z $LIB]; then
-    LIB=$prefix/lib/urweb
+    LIB=$prefix/lib
+fi
+
+if test [-z $SRCLIB]; then
+    SRCLIB=$prefix/lib/urweb
 fi
 
 if test [-z $INCLUDE]; then
@@ -89,6 +93,7 @@ fi
 AC_SUBST(CC)
 AC_SUBST(BIN)
 AC_SUBST(LIB)
+AC_SUBST(SRCLIB)
 AC_SUBST(INCLUDE)
 AC_SUBST(SITELISP)
 AC_SUBST(CCARGS)
@@ -112,6 +117,7 @@ cat <<EOF
 Ur/Web configuration:
   bin directory:       BIN            $BIN
   lib directory:       LIB            $LIB
+  src lib directory:   SRCLIB         $SRCLIB
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
   C compiler:          CC             $CC

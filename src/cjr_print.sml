@@ -3238,7 +3238,7 @@ fun p_file env (ds, ps) =
         val rfcFmt = "%a, %d %b %Y %H:%M:%S"
     in
         box [string "#include \"",
-             string (OS.Path.joinDirFile {dir = Config.includ,
+             string (OS.Path.joinDirFile {dir = !Settings.configInclude,
                                           file = "config.h"}),
              string "\"",
              newline,
@@ -3262,7 +3262,7 @@ fun p_file env (ds, ps) =
                                                string "\"",
                                                newline]) (Settings.getHeaders ()),
              string "#include \"",
-             string (OS.Path.joinDirFile {dir = Config.includ,
+             string (OS.Path.joinDirFile {dir = !Settings.configInclude,
                                           file = "urweb.h"}),
              string "\"",
              newline,

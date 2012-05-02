@@ -122,6 +122,10 @@ fun oneRun args =
               | "-root" :: name :: root :: rest =>
                 (Compiler.addModuleRoot (root, name);
                  doArgs rest)
+              | "-boot" :: rest =>
+                (Compiler.enableBoot ();
+                 Settings.setStaticLinking true;
+                 doArgs rest)
               | "-sigfile" :: name :: rest =>
                 (Settings.setSigFile (SOME name);
                  doArgs rest)

@@ -27,6 +27,22 @@
 
 structure Settings :> SETTINGS = struct
 
+val configBin = ref Config.bin
+val configLib = ref Config.lib
+val configSrcLib = ref Config.srclib
+val configInclude = ref Config.includ
+val configSitelisp = ref Config.sitelisp
+
+fun libUr () = OS.Path.joinDirFile {dir = !configSrcLib,
+                                    file = "ur"}
+fun libC () = OS.Path.joinDirFile {dir = !configSrcLib,
+                                   file = "c"}
+fun libJs () = OS.Path.joinDirFile {dir = !configSrcLib,
+                                    file = "js"}
+
+fun libFile s = OS.Path.joinDirFile {dir = libUr (),
+                                     file = s}
+
 val urlPrefixFull = ref "/"
 val urlPrefix = ref "/"
 val urlPrePrefix = ref ""
@@ -408,7 +424,7 @@ val protocols = ref ([] : protocol list)
 fun addProtocol p = protocols := p :: !protocols
 fun getProtocol s = List.find (fn p => #name p = s) (!protocols)
 
-fun clibFile s = OS.Path.joinDirFile {dir = Config.libC,
+fun clibFile s = OS.Path.joinDirFile {dir = libC (),
                                       file = s}
 
 val curProto = ref {name = "",

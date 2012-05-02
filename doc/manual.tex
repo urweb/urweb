@@ -225,6 +225,8 @@ Communication happens via a UNIX domain socket in file \cd{.urweb\_daemon} in th
 
 Some other command-line parameters are accepted:
 \begin{itemize}
+\item \texttt{-boot}: Run Ur/Web from a build tree (and not from a system install).  This is useful if you're testing the compiler and don't want to install it.  It forces generation of statically linked executables.
+
 \item \texttt{-db <DBSTRING>}: Set database connection information, using the format expected by Postgres's \texttt{PQconnectdb()}, which is \texttt{name1=value1 ... nameN=valueN}.  The same format is also parsed and used to discover connection parameters for MySQL and SQLite.  The only significant settings for MySQL are \texttt{host}, \texttt{hostaddr}, \texttt{port}, \texttt{dbname}, \texttt{user}, and \texttt{password}.  The only significant setting for SQLite is \texttt{dbname}, which is interpreted as the filesystem path to the database.  Additionally, when using SQLite, a database string may be just a file path.
 
 \item \texttt{-dbms [postgres|mysql|sqlite]}: Sets the database backend to use.

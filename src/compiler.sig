@@ -187,6 +187,7 @@ signature COMPILER = sig
 
     val debug : bool ref
     val dumpSource : bool ref
+    val enableBoot : unit -> unit
 
     val doIflow : bool ref
 

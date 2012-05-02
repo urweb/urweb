@@ -1,16 +1,12 @@
 structure Config :> CONFIG = struct
 
+val builddir = "@abs_top_builddir@"
+
 val bin = "@BIN@"
+val srclib = "@SRCLIB@"
 val lib = "@LIB@"
 val includ = "@INCLUDE@"
 val sitelisp = "@SITELISP@"
-
-val libUr = OS.Path.joinDirFile {dir = lib,
-                                 file = "ur"}
-val libC = OS.Path.joinDirFile {dir = lib,
-                                file = "c"}
-val libJs = OS.Path.joinDirFile {dir = lib,
-                                 file = "js"}
 
 val ccompiler = "@CC@"
 val ccArgs = "@CCARGS@"

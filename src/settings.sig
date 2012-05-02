@@ -27,9 +27,21 @@
 
 signature SETTINGS = sig
 
+    (* XXX these should be unit -> string too *)
+    val configBin : string ref
+    val configLib : string ref
+    val configSrcLib : string ref
+    val configInclude : string ref
+    val configSitelisp : string ref
+
+    val libUr : unit -> string
+    val libC : unit -> string
+    val libJs : unit -> string
+
     val setDebug : bool -> unit
     val getDebug : unit -> bool
 
+    val libFile : string -> string
     val clibFile : string -> string
 
     (* How do all application URLs begin? *)
