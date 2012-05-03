@@ -943,8 +943,11 @@ val parse = {
                                      first = ErrorMsg.dummyPos,
                                      last = ErrorMsg.dummyPos}
 
+                          val urt = OS.FileSys.modTime ur
+                          val urst = (OS.FileSys.modTime urs) handle _ => urt
+
                           val ds = #func parseUr ur
-                          val d = (Source.DStr (mname, sgnO, if !Elaborate.incremental then SOME (OS.FileSys.modTime ur) else NONE,
+                          val d = (Source.DStr (mname, sgnO, if !Elaborate.incremental then SOME (if Time.> (urt, urst) then urt else urst) else NONE,
                                                 (Source.StrConst ds, loc)), loc)
 
                           val fname = OS.Path.mkCanonical fname
@@ -1078,6 +1081,15 @@ val parse = {
                                    NONE => ds
                                  | SOME v => ds @ [(Source.DOnError v, loc)]
                   in
+                      ignore (List.foldl (fn (d, used) =>
+                                             case #1 d of
+                                                 Source.DStr (x, _, _, _) =>
+                                                 if SS.member (used, x) then
+                                                     (ErrorMsg.errorAt (#2 d) ("Duplicate top-level module name " ^ x);
+                                                      used)
+                                                 else
+                                                     SS.add (used, x)
+                                               | _ => used) SS.empty ds);
                       ds
                   end handle Empty => ds
               end,

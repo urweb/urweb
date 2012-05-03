@@ -3934,7 +3934,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                          val env' = E.declBinds env d
                          val denv' = dopenConstraints (loc, env', denv) {str = x, strs = []}
                      in
-                         ([d], (env', denv', []))
+                         ([d], (env', denv', gs))
                      end
                    | NONE =>
                      let
