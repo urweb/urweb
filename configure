@@ -618,6 +618,7 @@ PGHEADER
 CCARGS
 SITELISP
 INCLUDE
+SRCLIB
 LIB
 BIN
 USE_EMACS_FALSE
@@ -11872,7 +11873,7 @@ CC="$lt_save_CC"
 
 
 
-ac_config_headers="$ac_config_headers config.h"
+ac_config_headers="$ac_config_headers include/urweb/config.h"
 
 
 
@@ -12553,7 +12554,11 @@ if test -z $BIN; then
 fi
 
 if test -z $LIB; then
-    LIB=$prefix/lib/urweb
+    LIB=$prefix/lib
+fi
+
+if test -z $SRCLIB; then
+    SRCLIB=$prefix/lib/urweb
 fi
 
 if test -z $INCLUDE; then
@@ -12627,6 +12632,7 @@ fi
 if test $WORKING_VERSION = "1"; then
    VERSION="$VERSION + `hg identify || (cat .hg_archival.txt | grep 'node\:') || echo ?`"
 fi
+
 
 
 
@@ -13656,7 +13662,7 @@ do
   case $ac_config_target in
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
-    "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
+    "include/urweb/config.h") CONFIG_HEADERS="$CONFIG_HEADERS include/urweb/config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/c/Makefile") CONFIG_FILES="$CONFIG_FILES src/c/Makefile" ;;
     "src/config.sml") CONFIG_FILES="$CONFIG_FILES src/config.sml" ;;
@@ -15024,6 +15030,7 @@ cat <<EOF
 Ur/Web configuration:
   bin directory:       BIN            $BIN
   lib directory:       LIB            $LIB
+  src lib directory:   SRCLIB         $SRCLIB
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
   C compiler:          CC             $CC

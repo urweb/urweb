@@ -58,5 +58,5 @@ syntax: regexp
 ^Makefile$
 ^src/c/Makefile$
 ^libtool$
-^config.h$
-^stamp-h1$
+^include/urweb/config.h$
+^include/urweb/stamp-h1$
