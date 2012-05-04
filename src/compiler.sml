@@ -894,10 +894,13 @@ structure SM = BinaryMapFn(struct
 val moduleRoots = ref ([] : (string * string) list)
 fun addModuleRoot (k, v) = moduleRoots := (k, v) :: !moduleRoots
 
-structure SS = BinarySetFn(struct
-                           type ord_key = string
-                           val compare = String.compare
-                           end)
+structure SK = struct
+type ord_key = string
+val compare = String.compare
+end
+
+structure SS = BinarySetFn(SK)
+structure SM = BinaryMapFn(SK)
 
 val parse = {
     func = fn {database, sources = fnames, ffi, onError, ...} : job =>
@@ -1099,12 +1102,15 @@ val parse = {
                       ignore (List.foldl (fn (d, used) =>
                                              case #1 d of
                                                  Source.DStr (x, _, _, _) =>
-                                                 if SS.member (used, x) then
-                                                     (ErrorMsg.errorAt (#2 d) ("Duplicate top-level module name " ^ x);
-                                                      used)
-                                                 else
-                                                     SS.add (used, x)
-                                               | _ => used) SS.empty ds);
+                                                 (case SM.find (used, x) of
+                                                      SOME loc =>
+                                                      (ErrorMsg.error ("Duplicate top-level module name " ^ x);
+                                                       Print.prefaces "Files" [("Previous", Print.PD.string (ErrorMsg.spanToString loc)),
+                                                                               ("Current", Print.PD.string (ErrorMsg.spanToString (#2 d)))];
+                                                       used)
+                                                    | NONE =>
+                                                      SM.insert (used, x, #2 d))
+                                               | _ => used) SM.empty ds);
                       ds
                   end handle Empty => ds
               end,
