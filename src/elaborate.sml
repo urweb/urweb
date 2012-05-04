@@ -4676,7 +4676,13 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
                                                     (!delayedUnifs);*)
                                               end
                                             | TypeClass (env, c, r, loc) =>
-                                              expError env (Unresolvable (loc, c)))
+                                              let
+                                                  val c = normClassKey env c
+                                              in
+                                                  case resolveClass env c of
+                                                      SOME _ => raise Fail "Type class resolution succeeded unexpectedly"
+                                                    | NONE => expError env (Unresolvable (loc, c))
+                                              end)
                                           gs)
                     end
             in

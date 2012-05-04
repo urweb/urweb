@@ -678,13 +678,18 @@ fun startsWithUnif c =
           | SOME x => hasUnif x
     end
 
+val cause = ref (NONE : con option)
+fun resolveFailureCause () = !cause
+
 fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
     let
-        fun resolve c =
+        fun resolve firstLevel c =
             let
+                fun notFound () = (if firstLevel then () else cause := SOME c; NONE)
+
                 fun doHead f =
                     case CM.find (#classes env, f) of
-                        NONE => NONE
+                        NONE => notFound ()
                       | SOME class =>
                         let
                             val loc = #2 c
@@ -722,13 +727,13 @@ fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
 
                             fun tryRules rules =
                                 case rules of
-                                    [] => NONE
+                                    [] => notFound ()
                                   | (nRs, cs, c', e) :: rules' =>
                                     case tryUnify hnorm nRs (c, c') of
                                         NONE => tryRules rules'
                                       | SOME rs =>
                                         let
-                                            val eos = map (resolve o unifySubst rs) cs
+                                            val eos = map (resolve false o unifySubst rs) cs
                                         in
                                             if List.exists (not o Option.isSome) eos
                                                orelse not (equate ())
@@ -759,7 +764,7 @@ fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
                         end
             in
                 if startsWithUnif c then
-                    NONE
+                    notFound ()
                 else
                     case #1 c of
                         TRecord c =>
@@ -777,21 +782,22 @@ fun resolveClass (hnorm : con -> con) (consEq : con * con -> bool) (env : env) =
                                                          (CApp (f, x), loc) => (CApp (hnorm f, hnorm x), loc)
                                                        | _ => t
                                          in
-                                             case resolve t of
-                                                 NONE => NONE
+                                             case resolve false t of
+                                                 NONE => notFound ()
                                                | SOME e => resolver (xts, (x, e, t) :: acc)
                                          end
                              in
                                  resolver (xts, [])
                              end
-                           | _ => NONE)
+                           | _ => notFound ())
                       | _ =>
                         case class_head_in c of
                             SOME f => doHead f
-                          | _ => NONE
+                          | _ => notFound ()
             end
     in
-        resolve
+        cause := NONE;
+        resolve true
     end
 
 fun pushERel (env : env) x t =
