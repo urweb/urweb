@@ -40,6 +40,10 @@ local
   val commentLevel = ref 0
   val commentPos = ref 0
 in
+  fun reset () =
+      (commentLevel := 0;
+       commentPos := 0)
+
   fun enterComment pos =
       (if !commentLevel = 0 then
            commentPos := pos
@@ -109,7 +113,8 @@ fun exitBrace () =
 	    braceLevels := (s, i-1) :: rest
       | _ => ()
 
-fun initialize () = (xmlTag := [];
+fun initialize () = (reset ();
+                     xmlTag := [];
 		     xmlString := false)
 
 
