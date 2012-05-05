@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -94,8 +94,13 @@ fun anyErrors () = !errors
 fun error s = (TextIO.output (TextIO.stdErr, s);
                TextIO.output1 (TextIO.stdErr, #"\n");
                errors := true)
-fun errorAt span s = (TextIO.output (TextIO.stdErr, spanToString span);
-                      TextIO.output (TextIO.stdErr, ": ");
+
+fun errorAt span s = (TextIO.output (TextIO.stdErr, #file span);
+                      TextIO.output (TextIO.stdErr, ":");
+                      TextIO.output (TextIO.stdErr, posToString (#first span));
+                      TextIO.output (TextIO.stdErr, ": (to ");
+                      TextIO.output (TextIO.stdErr, posToString (#last span));
+                      TextIO.output (TextIO.stdErr, ") ");
                       error s)
 fun errorAt' span s = errorAt (spanOf span) s
 
