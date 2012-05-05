@@ -1,14 +1,14 @@
 ACLOCAL_AMFLAGS = -I m4
 
 BIN      := @BIN@
-LIB      := @LIB@
+SRCLIB   := @SRCLIB@
 INCLUDE  := @INCLUDE@
 SITELISP := @SITELISP@
 VERSION  := @VERSION@
 
-LIB_UR   := $(LIB)/ur
-LIB_C    := $(LIB)/c
-LIB_JS   := $(LIB)/js
+LIB_UR   := $(SRCLIB)/ur
+LIB_C    := $(SRCLIB)/c
+LIB_JS   := $(SRCLIB)/js
 
 all-local: smlnj mlton
 
