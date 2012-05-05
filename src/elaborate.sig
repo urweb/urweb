@@ -37,6 +37,9 @@ signature ELABORATE = sig
     (* After elaboration (successful or failed), should I output a mapping from
      * all identifiers to their kinds/types? *)
 
+    val dumpTypesOnError : bool ref
+    (* Like above, but only used if there are compile errors. *)
+
     val unifyMore : bool ref
     (* Run all phases of type inference, even if an error is detected by an
      * early phase. *)

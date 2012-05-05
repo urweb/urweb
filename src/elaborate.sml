@@ -39,6 +39,7 @@
  open ElabErr
 
  val dumpTypes = ref false
+ val dumpTypesOnError = ref false
  val unifyMore = ref false
  val incremental = ref false
  val verbose = ref false
@@ -4747,7 +4748,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
 
         (*preface ("file", p_file env' file);*)
 
-        if !dumpTypes then
+        if !dumpTypes orelse (!dumpTypesOnError andalso ErrorMsg.anyErrors ()) then
             let
                 open L'
                 open Print.PD

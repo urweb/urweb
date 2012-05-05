@@ -43,6 +43,7 @@ fun oneRun args =
         val () = (Compiler.debug := false;
                   Elaborate.verbose := false;
                   Elaborate.dumpTypes := false;
+                  Elaborate.dumpTypesOnError := false;
                   Elaborate.unifyMore := false;
                   Compiler.dumpSource := false;
                   Compiler.doIflow := false;
@@ -102,6 +103,9 @@ fun oneRun args =
                  doArgs rest)
               | "-dumpTypes" :: rest =>
                 (Elaborate.dumpTypes := true;
+                 doArgs rest)
+              | "-dumpTypesOnError" :: rest =>
+                (Elaborate.dumpTypesOnError := true;
                  doArgs rest)
               | "-unifyMore" :: rest =>
                 (Elaborate.unifyMore := true;
