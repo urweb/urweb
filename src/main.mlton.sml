@@ -41,6 +41,7 @@ fun oneRun args =
         val css = ref false
 
         val () = (Compiler.debug := false;
+                  Elaborate.verbose := false;
                   Elaborate.dumpTypes := false;
                   Elaborate.unifyMore := false;
                   Compiler.dumpSource := false;
@@ -91,6 +92,7 @@ fun oneRun args =
                  doArgs rest)
               | "-verbose" :: rest =>
                 (Compiler.debug := true;
+                 Elaborate.verbose := true;
                  doArgs rest)
               | "-timing" :: rest =>
                 (timing := true;
@@ -243,19 +245,43 @@ val () = case CommandLine.arguments () of
                                               val rest = Substring.string (Substring.slice (after, 1, NONE))
                                           in
                                               case cmd of
-                                                  "" => send (sock, if OS.Process.isSuccess ((oneRun (rev args))
-                                                                                             handle ex => (print "unhandled exception:\n";
-                                                                                                           print (General.exnMessage ex ^ "\n");
-                                                                                                           OS.Process.failure)) then
-                                                                        "0"
-                                                                    else
-                                                                        "1")
+                                                  "" =>
+                                                  let
+                                                      val success = (oneRun (rev args))
+                                                          handle ex => (print "unhandled exception:\n";
+                                                                        print (General.exnMessage ex ^ "\n");
+                                                                        OS.Process.failure)
+                                                  in
+                                                      TextIO.flushOut TextIO.stdOut;
+                                                      TextIO.flushOut TextIO.stdErr;
+                                                      send (sock, if OS.Process.isSuccess success then
+                                                                      "\001"
+                                                                  else
+                                                                      "\002")
+                                                  end
                                                 | _ => loop' (rest, cmd :: args)
                                           end
                                   end handle OS.SysErr _ => ()
+
+                              fun redirect old =
+                                  Posix.IO.dup2 {old = valOf (Posix.FileSys.iodToFD (Socket.ioDesc sock)),
+                                                 new = old}
+
+                              val oldStdout = Posix.IO.dup Posix.FileSys.stdout
+                              val oldStderr = Posix.IO.dup Posix.FileSys.stderr
                           in
+                              (* Redirect the daemon's output to the socket. *)
+                              redirect Posix.FileSys.stdout;
+                              redirect Posix.FileSys.stderr;
+                              
                               loop' ("", []);
                               Socket.close sock;
+
+                              Posix.IO.dup2 {old = oldStdout, new = Posix.FileSys.stdout};
+                              Posix.IO.dup2 {old = oldStderr, new = Posix.FileSys.stderr};
+                              Posix.IO.close oldStdout;
+                              Posix.IO.close oldStderr;
+
                               MLton.GC.pack ();
                               loop ()
                           end
@@ -272,15 +298,26 @@ val () = case CommandLine.arguments () of
 
                  fun wait () =
                      let
-                         val v = Socket.recvVec (sock, 1)
+                         val v = Socket.recvVec (sock, 1024)
                      in
                          if Vector.length v = 0 then
                              OS.Process.failure
                          else
-                             case chr (Word8.toInt (Vector.sub (v, 0))) of
-                                 #"0" => OS.Process.success
-                               | #"1" => OS.Process.failure
-                               | _ => raise Fail "Weird return code from daemon"
+                             let
+                                 val s = Vector.map (chr o Word8.toInt) v
+                                 val last = Vector.sub (v, Vector.length v - 1)
+                                 val (rc, s) = if last = Word8.fromInt 1 then
+                                                   (SOME OS.Process.success, String.substring (s, 0, size s - 1))
+                                               else if last = Word8.fromInt 2 then
+                                                   (SOME OS.Process.failure, String.substring (s, 0, size s - 1))
+                                               else
+                                                   (NONE, s)
+                             in
+                                 print s;
+                                 case rc of
+                                     NONE => wait ()
+                                   | SOME rc => rc
+                             end
                      end handle OS.SysErr _ => OS.Process.failure
              in
                  if Socket.connectNB (sock, UnixSock.toAddr socket)

@@ -42,5 +42,6 @@ signature ELABORATE = sig
      * early phase. *)
 
     val incremental : bool ref
+    val verbose : bool ref
 
 end

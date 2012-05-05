@@ -41,6 +41,7 @@
  val dumpTypes = ref false
  val unifyMore = ref false
  val incremental = ref false
+ val verbose = ref false
 
  structure IS = IntBinarySet
  structure IM = IntBinaryMap
@@ -3931,6 +3932,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                 (case ModDb.lookup dAll of
                      SOME d =>
                      let
+                         val () = if !verbose then TextIO.print ("REUSE: " ^ x ^ "\n") else ()
                          val env' = E.declBinds env d
                          val denv' = dopenConstraints (loc, env', denv) {str = x, strs = []}
                      in
@@ -3938,6 +3940,8 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                      end
                    | NONE =>
                      let
+                         val () = if !verbose then TextIO.print ("CHECK: " ^ x ^ "\n") else ()
+
                          val () = if x = "Basis" then
                                       raise Fail "Not allowed to redefine structure 'Basis'"
                                   else
@@ -4680,7 +4684,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
                                                   val c = normClassKey env c
                                               in
                                                   case resolveClass env c of
-                                                      SOME _ => raise Fail "Type class resolution succeeded unexpectedly"
+                                                      SOME _ => ()
                                                     | NONE => expError env (Unresolvable (loc, c))
                                               end)
                                           gs)
