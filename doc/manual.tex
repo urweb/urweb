@@ -1956,13 +1956,16 @@ $$\begin{array}{l}
   \hspace{.1in} \to [\mt{attrsGiven} \sim \mt{attrsAbsent}] \Rightarrow [\mt{useOuter} \sim \mt{useInner}] \Rightarrow [\mt{bindOuter} \sim \mt{bindInner}] \\
   \hspace{.1in} \Rightarrow \mt{css\_class} \\
   \hspace{.1in} \to \mt{option} \; (\mt{signal} \; \mt{css\_class}) \\
+  \hspace{.1in} \to \mt{css\_style} \\
   \hspace{.1in} \to \$\mt{attrsGiven} \\
   \hspace{.1in} \to \mt{tag} \; (\mt{attrsGiven} \rc \mt{attrsAbsent}) \; \mt{ctxOuter} \; \mt{ctxInner} \; \mt{useOuter} \; \mt{bindOuter} \\
   \hspace{.1in} \to \mt{xml} \; \mt{ctxInner} \; \mt{useInner} \; \mt{bindInner} \to \mt{xml} \; \mt{ctxOuter} \; (\mt{useOuter} \rc \mt{useInner}) \; (\mt{bindOuter} \rc \mt{bindInner})
 \end{array}$$
-Note that any tag may be assigned a CSS class, or left without a class by passing $\mt{Basis.null}$ as the first value-level argument.  This is the sole way of making use of the values produced by $\mt{style}$ declarations.  Ur/Web itself doesn't deal with the syntax or semantics of style sheets; they can be linked via URLs with \texttt{link} tags.  However, Ur/Web does make it easy to calculate upper bounds on usage of CSS classes through program analysis.  The function $\mt{Basis.classes}$ can be used to specify a list of CSS classes for a single tag.
+Note that any tag may be assigned a CSS class, or left without a class by passing $\mt{Basis.null}$ as the first value-level argument.  This is the sole way of making use of the values produced by $\mt{style}$ declarations.  The function $\mt{Basis.classes}$ can be used to specify a list of CSS classes for a single tag.  Stylesheets to assign properties to the classes can be linked via URL's with \texttt{link} tags.  Ur/Web makes it easy to calculate upper bounds on usage of CSS classes through program analysis, with the \cd{-css} command-line flag.
 
 Also note that two different arguments are available for setting CSS classes: the first, associated with the \texttt{class} pseudo-attribute syntactic sugar, fixes the class of a tag for the duration of the tag's life; while the second, associated with the \texttt{dynClass} pseudo-attribute, allows the class to vary over the tag's life.  See Section \ref{signals} for an introduction to the $\mt{signal}$ type family.
+
+The third value-level argument makes it possible to generate an HTML \cd{style} attribute.
 
 Two XML fragments may be concatenated.
 $$\begin{array}{l}

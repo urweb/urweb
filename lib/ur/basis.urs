@@ -636,6 +636,17 @@ val classes : css_class -> css_class -> css_class
 (* The equivalent of writing one class after the other, separated by a space, in
  * an HTML 'class' attribute *)
 
+type css_value
+val atom : string -> css_value
+type url
+val css_url : url -> css_value
+type css_property
+val property : string -> css_property
+val value : css_property -> css_value -> css_property
+type css_style
+val noStyle : css_style
+val oneProperty : css_style -> css_property -> css_style
+
 con tag :: {Type} -> {Unit} -> {Unit} -> {Type} -> {Type} -> Type
 
 con xml :: {Unit} -> {Type} -> {Type} -> Type
@@ -650,6 +661,7 @@ val tag : attrsGiven ::: {Type} -> attrsAbsent ::: {Type}
              [bindOuter ~ bindInner] =>
            css_class
 	   -> option (signal css_class)
+           -> css_style
            -> $attrsGiven
            -> tag (attrsGiven ++ attrsAbsent)
                   ctxOuter ctxInner useOuter bindOuter
@@ -695,7 +707,6 @@ con xform = xml form [] []
 type queryString
 val show_queryString : show queryString
 
-type url
 val show_url : show url
 val bless : string -> url
 val checkUrl : string -> option url

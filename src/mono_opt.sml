@@ -118,6 +118,26 @@ fun unAs s =
     end
 
 fun checkUrl s = CharVector.all Char.isGraph s andalso Settings.checkUrl s
+val checkAtom = CharVector.all (fn ch => Char.isAlphaNum ch
+                                         orelse ch = #"+"
+                                         orelse ch = #"-"
+                                         orelse ch = #"."
+                                         orelse ch = #"%"
+                                         orelse ch = #"#")
+val checkCssUrl = CharVector.all (fn ch => Char.isAlphaNum ch
+                                           orelse ch = #":"
+                                           orelse ch = #"/"
+                                           orelse ch = #"."
+                                           orelse ch = #"_"
+                                           orelse ch = #"-"
+                                           orelse ch = #"%"
+                                           orelse ch = #"?"
+                                           orelse ch = #"&"
+                                           orelse ch = #"="
+                                           orelse ch = #"#")
+fun checkProperty s = size s > 0
+                      andalso (Char.isLower (String.sub (s, 0)) orelse String.sub (s, 0) = #"_")
+                      andalso CharVector.all (fn ch => Char.isLower ch orelse Char.isDigit ch orelse ch = #"_" orelse ch = #"-") s
 
 fun exp e =
     case e of
@@ -440,6 +460,24 @@ fun exp e =
              ESome ((TFfi ("Basis", "string"), loc), (se, loc))
          else
              ENone (TFfi ("Basis", "string"), loc))
+      | EFfiApp ("Basis", "atom", [((se as EPrim (Prim.String s), loc), _)]) =>
+        (if checkAtom s then
+             ()
+         else
+             ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'atom'");
+         se)
+      | EFfiApp ("Basis", "css_url", [((se as EPrim (Prim.String s), loc), _)]) =>
+        (if checkCssUrl s then
+             ()
+         else
+             ErrorMsg.errorAt loc ("Invalid URL " ^ s ^ " passed to 'css_url'");
+         se)
+      | EFfiApp ("Basis", "property", [((se as EPrim (Prim.String s), loc), _)]) =>
+        (if checkProperty s then
+             ()
+         else
+             ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'property'");
+         se)
       | EFfiApp ("Basis", "blessRequestHeader", [((se as EPrim (Prim.String s), loc), _)]) =>
         (if Settings.checkRequestHeader s then
              ()

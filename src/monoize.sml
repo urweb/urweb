@@ -221,6 +221,9 @@ fun monoType env =
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "xhtml"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "css_class") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "css_value") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "css_property") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "css_style") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "id") => (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "serialized"), _), _) =>
@@ -2951,6 +2954,43 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.EFfiApp ("Basis", "css_url", [(s, _)]) =>
+            let
+                val (s, fm) = monoExp (env, st, fm) s
+            in
+                ((L'.EStrcat ((L'.EPrim (Prim.String "url("), loc),
+                              (L'.EStrcat ((L'.EFfiApp ("Basis", "css_url", [(s, (L'.TFfi ("Basis", "string"), loc))]), loc),
+                                           (L'.EPrim (Prim.String ")"), loc)), loc)), loc),
+                 fm)
+            end
+
+          | L.EFfiApp ("Basis", "property", [(s, _)]) =>
+            let
+                val (s, fm) = monoExp (env, st, fm) s
+            in
+                ((L'.EStrcat ((L'.EFfiApp ("Basis", "property", [(s, (L'.TFfi ("Basis", "string"), loc))]), loc),
+                              (L'.EPrim (Prim.String ":"), loc)), loc),
+                 fm)
+            end
+          | L.EFfiApp ("Basis", "value", [(s1, _), (s2, _)]) =>
+            let
+                val (s1, fm) = monoExp (env, st, fm) s1
+                val (s2, fm) = monoExp (env, st, fm) s2
+            in
+                ((L'.EStrcat (s1, (L'.EStrcat ((L'.EPrim (Prim.String " "), loc), s2), loc)), loc),
+                 fm)
+            end
+
+          | L.EFfi ("Basis", "noStyle") => ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.EFfiApp ("Basis", "oneProperty", [(s1, _), (s2, _)]) =>
+            let
+                val (s1, fm) = monoExp (env, st, fm) s1
+                val (s2, fm) = monoExp (env, st, fm) s2
+            in
+                ((L'.EStrcat (s1, (L'.EStrcat (s2, (L'.EPrim (Prim.String ";"), loc)), loc)), loc),
+                 fm)
+            end
+
           | L.EApp (
             (L.ECApp (
              (L.ECApp ((L.EFfi ("Basis", "cdata"), _), _), _),
@@ -2992,18 +3032,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.EApp (
               (L.EApp (
                (L.EApp (
-		(L.ECApp (
-                 (L.ECApp (
+                (L.EApp (
+		 (L.ECApp (
                   (L.ECApp (
                    (L.ECApp (
                     (L.ECApp (
                      (L.ECApp (
                       (L.ECApp (
                        (L.ECApp (
-			(L.EFfi ("Basis", "tag"),
-                         _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
-		class), _),
-	       dynClass), _),
+                        (L.ECApp (
+			 (L.EFfi ("Basis", "tag"),
+                          _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+		 class), _),
+	        dynClass), _),
+               style), _),
               attrs), _),
              tag), _),
             xml) =>
@@ -3061,6 +3103,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 val (class, fm) = monoExp (env, st, fm) class
                 val (dynClass, fm) = monoExp (env, st, fm) dynClass
+                val (style, fm) = monoExp (env, st, fm) style
 
                 val dynamics = ["dyn", "ctextbox", "ccheckbox", "cselect", "coption", "ctextarea"]
 
@@ -3082,6 +3125,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                             ((L'.PVar ("x", t), loc),
                                              (L'.EStrcat (s,
                                                          (L'.EStrcat ((L'.EPrim (Prim.String " class=\""), loc),
+                                                                      (L'.EStrcat ((L'.ERel 0, loc),
+                                                                                   (L'.EPrim (Prim.String "\""), loc)),
+                                                                       loc)), loc)), loc))],
+                                           {disc = t,
+                                            result = t}), loc)
+
+                        val s = (L'.ECase (style,
+                                           [((L'.PPrim (Prim.String ""), loc),
+                                             s),
+                                            ((L'.PVar ("x", t), loc),
+                                             (L'.EStrcat (s,
+                                                         (L'.EStrcat ((L'.EPrim (Prim.String " style=\""), loc),
                                                                       (L'.EStrcat ((L'.ERel 0, loc),
                                                                                    (L'.EPrim (Prim.String "\""), loc)),
                                                                        loc)), loc)), loc))],

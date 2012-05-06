@@ -219,7 +219,7 @@ fun tagIn bt =
 
 datatype prop_kind = Delete | Update
 
-datatype attr = Class of exp | DynClass of exp | Normal of con * exp
+datatype attr = Class of exp | DynClass of exp | Style of exp | Normal of con * exp
 
 fun patType loc (p : pat) =
     case #1 p of
@@ -254,6 +254,47 @@ fun parseClass s pos =
       | class :: classes =>
         foldl (fn (s, e) => (EApp ((EApp ((EVar (["Basis"], "classes", Infer), pos), e), pos), classOut (s, pos)), pos))
                 (classOut (class, pos)) classes
+
+fun parseValue s pos =
+    if String.isPrefix "url(" s andalso String.isSuffix ")" s then
+        let
+            val s = String.substring (s, 4, size s - 5)
+
+            val s = if size s >= 2
+                       andalso ((String.isPrefix "\"" s andalso String.isSuffix "\"" s)
+                                orelse (String.isPrefix "'" s andalso String.isSuffix "'" s)) then
+                        String.substring (s, 1, size s - 2)
+                    else
+                        s
+        in
+            (EApp ((EVar (["Basis"], "css_url", Infer), pos),
+                   (EApp ((EVar (["Basis"], "bless", Infer), pos),
+                          (EPrim (Prim.String s), pos)), pos)), pos)
+        end
+    else
+        (EApp ((EVar (["Basis"], "atom", Infer), pos),
+               (EPrim (Prim.String s), pos)), pos)
+
+fun parseProperty s pos =
+    let
+        val (befor, after) = Substring.splitl (fn ch => ch <> #":") (Substring.full s)
+    in
+        if Substring.isEmpty after then
+            (ErrorMsg.errorAt pos ("Invalid CSS property syntax: " ^ s);
+             (EPrim (Prim.String ""), pos))
+        else
+            foldl (fn (value, e) => (EApp ((EApp ((EVar (["Basis"], "value", Infer), pos), e), pos), parseValue value pos), pos))
+                (EApp ((EVar (["Basis"], "property", Infer), pos),
+                       (EPrim (Prim.String (Substring.string (#2 (Substring.splitl Char.isSpace befor)))), pos)), pos)
+                (String.tokens Char.isSpace (Substring.string (Substring.slice (after, 1, NONE))))
+    end
+
+fun parseStyle s pos =
+    case String.tokens (fn ch => ch = #";") s of
+        [] => (EVar (["Basis"], "noStyle", Infer), pos)
+      | props =>
+        foldl (fn (s, e) => (EApp ((EApp ((EVar (["Basis"], "oneProperty", Infer), pos), e), pos), parseProperty s pos), pos))
+                (EVar (["Basis"], "noStyle", Infer), pos) props
 
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
@@ -386,7 +427,7 @@ fun parseClass s pos =
  | rpat of (string * pat) list * bool
  | ptuple of pat list
 
- | attrs of exp option * exp option * (con * exp) list
+ | attrs of exp option * exp option * exp option * (con * exp) list
  | attr of attr
  | attrv of exp
 
@@ -1539,7 +1580,12 @@ tag    : tagHead attrs                  (let
                                                         | SOME e => (EApp ((EVar (["Basis"], "Some", Infer), pos),
                                                                            e), pos)
                                              val e = (EApp (e, eo), pos)
-                                             val e = (EApp (e, (ERecord (#3 attrs), pos)), pos)
+                                             val eo = case #3 attrs of
+                                                          NONE => (EVar (["Basis"], "noStyle", Infer), pos)
+                                                        | SOME (EPrim (Prim.String s), pos) => parseStyle s pos
+                                                        | SOME e => e
+                                             val e = (EApp (e, eo), pos)
+                                             val e = (EApp (e, (ERecord (#4 attrs), pos)), pos)
                                              val e = (EApp (e, (EApp (#2 tagHead,
                                                                       (ERecord [], pos)), pos)), pos)
                                          in
@@ -1555,7 +1601,7 @@ tagHead: BEGIN_TAG                      (let
                                          end)
        | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
-attrs  :                                (NONE, NONE, [])
+attrs  :                                (NONE, NONE, NONE, [])
        | attr attrs                     (let
                                              val loc = s (attrleft, attrsright)
                                          in
@@ -1564,19 +1610,25 @@ attrs  :                                (NONE, NONE, [])
                                                  (case #1 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple classes specified for tag";
-                                                  (SOME e, #2 attrs, #3 attrs))
+                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs))
                                                | DynClass e =>
                                                  (case #2 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
-                                                  (#1 attrs, SOME e, #3 attrs))
+                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs))
+                                               | Style e =>
+                                                 (case #3 attrs of
+                                                      NONE => ()
+                                                    | SOME _ => ErrorMsg.errorAt loc "Multiple styles specified for tag";
+                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs))
                                                | Normal xe =>
-                                                 (#1 attrs, #2 attrs, xe :: #3 attrs)
+                                                 (#1 attrs, #2 attrs, #3 attrs, xe :: #4 attrs)
                                          end)
 
 attr   : SYMBOL EQ attrv                (case SYMBOL of
 					     "class" => Class attrv
 					   | "dynClass" => DynClass attrv
+                                           | "style" => Style attrv
 					   | _ =>
                                              let
                                                  val sym =

@@ -1,3 +1,5 @@
+allow url http://www.google.com/*
+
 # Comment here
 css # Comment at end of line!
 # Comments everywhere!
