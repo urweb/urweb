@@ -3077,15 +3077,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         val s = (L'.EPrim (Prim.String (String.concat ["<", tag'])), loc)
 
                         val s = (L'.ECase (class,
-                                           [((L'.PNone t, loc),
+                                           [((L'.PPrim (Prim.String ""), loc),
                                              s),
-                                            ((L'.PSome (t, (L'.PVar ("x", t), loc)), loc),
+                                            ((L'.PVar ("x", t), loc),
                                              (L'.EStrcat (s,
                                                          (L'.EStrcat ((L'.EPrim (Prim.String " class=\""), loc),
                                                                       (L'.EStrcat ((L'.ERel 0, loc),
                                                                                    (L'.EPrim (Prim.String "\""), loc)),
                                                                        loc)), loc)), loc))],
-                                           {disc = (L'.TOption t, loc),
+                                           {disc = t,
                                             result = t}), loc)
 
                         val (s, fm) = foldl (fn (("Action", _, _), acc) => acc

@@ -246,6 +246,15 @@ fun tnamesOf (e, _) =
       | EDisjointApp e => tnamesOf e
       | _ => []
 
+fun classOut (s, pos) = (EVar ([], String.translate (fn #"-" => "_" | ch => str ch) s, Infer), pos)
+
+fun parseClass s pos =
+    case String.tokens Char.isSpace s of
+        [] => (EVar (["Basis"], "null", Infer), pos)
+      | class :: classes =>
+        foldl (fn (s, e) => (EApp ((EApp ((EVar (["Basis"], "classes", Infer), pos), e), pos), classOut (s, pos)), pos))
+                (classOut (class, pos)) classes
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -1521,9 +1530,9 @@ tag    : tagHead attrs                  (let
 
                                              val e = (EVar (["Basis"], "tag", Infer), pos)
                                              val eo = case #1 attrs of
-                                                          NONE => (EVar (["Basis"], "None", Infer), pos)
-                                                        | SOME e => (EApp ((EVar (["Basis"], "Some", Infer), pos),
-                                                                           e), pos)
+                                                          NONE => (EVar (["Basis"], "null", Infer), pos)
+                                                        | SOME (EPrim (Prim.String s), pos) => parseClass s pos
+                                                        | SOME e => e
                                              val e = (EApp (e, eo), pos)
                                              val eo = case #2 attrs of
                                                           NONE => (EVar (["Basis"], "None", Infer), pos)
