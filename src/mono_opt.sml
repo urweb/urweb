@@ -129,6 +129,7 @@ val checkCssUrl = CharVector.all (fn ch => Char.isAlphaNum ch
                                            orelse ch = #"/"
                                            orelse ch = #"."
                                            orelse ch = #"_"
+                                           orelse ch = #"+"
                                            orelse ch = #"-"
                                            orelse ch = #"%"
                                            orelse ch = #"?"

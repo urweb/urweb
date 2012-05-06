@@ -356,4 +356,8 @@ uw_Basis_int uw_Basis_ceil(uw_context, uw_Basis_float);
 uw_Basis_int uw_Basis_trunc(uw_context, uw_Basis_float);
 uw_Basis_int uw_Basis_round(uw_context, uw_Basis_float);
 
+uw_Basis_string uw_Basis_atom(uw_context, uw_Basis_string);
+uw_Basis_string uw_Basis_css_url(uw_context, uw_Basis_string);
+uw_Basis_string uw_Basis_property(uw_context, uw_Basis_string);
+
 #endif
