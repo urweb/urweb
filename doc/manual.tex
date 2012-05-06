@@ -1957,6 +1957,7 @@ $$\begin{array}{l}
   \hspace{.1in} \Rightarrow \mt{css\_class} \\
   \hspace{.1in} \to \mt{option} \; (\mt{signal} \; \mt{css\_class}) \\
   \hspace{.1in} \to \mt{css\_style} \\
+  \hspace{.1in} \to \mt{option} \; (\mt{signal} \; \mt{css\_style}) \\
   \hspace{.1in} \to \$\mt{attrsGiven} \\
   \hspace{.1in} \to \mt{tag} \; (\mt{attrsGiven} \rc \mt{attrsAbsent}) \; \mt{ctxOuter} \; \mt{ctxInner} \; \mt{useOuter} \; \mt{bindOuter} \\
   \hspace{.1in} \to \mt{xml} \; \mt{ctxInner} \; \mt{useInner} \; \mt{bindInner} \to \mt{xml} \; \mt{ctxOuter} \; (\mt{useOuter} \rc \mt{useInner}) \; (\mt{bindOuter} \rc \mt{bindInner})
@@ -1965,7 +1966,7 @@ Note that any tag may be assigned a CSS class, or left without a class by passin
 
 Also note that two different arguments are available for setting CSS classes: the first, associated with the \texttt{class} pseudo-attribute syntactic sugar, fixes the class of a tag for the duration of the tag's life; while the second, associated with the \texttt{dynClass} pseudo-attribute, allows the class to vary over the tag's life.  See Section \ref{signals} for an introduction to the $\mt{signal}$ type family.
 
-The third value-level argument makes it possible to generate an HTML \cd{style} attribute.
+The third and fourth value-level arguments makes it possible to generate HTML \cd{style} attributes, either with fixed content (\cd{style} attribute) or dynamic content (\cd{dynStyle} pseudo-attribute).
 
 Two XML fragments may be concatenated.
 $$\begin{array}{l}
@@ -2237,7 +2238,9 @@ $$\begin{array}{rrcll}
   &&& \{e\} & \textrm{computed value} \\
 \end{array}$$
 
-Further, there is a special convenience and compatibility form for setting CSS classes of tags.  If a \cd{class} attribute has a value that is a string literal, the literal is parsed in the usual HTML way and replaced with calls to appropriate Ur/Web combinators.  Any dashes in the text are replaced with underscores to determine Ur identifiers.
+Further, there is a special convenience and compatibility form for setting CSS classes of tags.  If a \cd{class} attribute has a value that is a string literal, the literal is parsed in the usual HTML way and replaced with calls to appropriate Ur/Web combinators.  Any dashes in the text are replaced with underscores to determine Ur identifiers.  The same desugaring can be accessed in a normal expression context by calling the pseudo-function \cd{CLASS} on a string literal.
+
+Similar support is provided for \cd{style} attributes.  Normal CSS syntax may be used in string literals that are \cd{style} attribute values, and the desugaring may be accessed elsewhere with the pseudo-function \cd{STYLE}.
 
 \section{\label{structure}The Structure of Web Applications}
 

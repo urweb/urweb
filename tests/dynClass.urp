@@ -1,4 +1,4 @@
 rewrite all DynClass/*
-allow url http://localhost/*
+allow url http://adam.chlipala.net/*
 
 dynClass

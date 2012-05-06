@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -219,7 +219,7 @@ fun tagIn bt =
 
 datatype prop_kind = Delete | Update
 
-datatype attr = Class of exp | DynClass of exp | Style of exp | Normal of con * exp
+datatype attr = Class of exp | DynClass of exp | Style of exp | DynStyle of exp | Normal of con * exp
 
 fun patType loc (p : pat) =
     case #1 p of
@@ -427,7 +427,7 @@ fun parseStyle s pos =
  | rpat of (string * pat) list * bool
  | ptuple of pat list
 
- | attrs of exp option * exp option * exp option * (con * exp) list
+ | attrs of exp option * exp option * exp option * exp option * (con * exp) list
  | attr of attr
  | attrv of exp
 
@@ -1105,7 +1105,10 @@ eapps  : eterm                          (eterm)
        | eapps LBRACK cexp RBRACK       (ECApp (eapps, cexp), s (eappsleft, RBRACKright))
        | eapps BANG                     (EDisjointApp eapps, s (eappsleft, BANGright))
 
-eexp   : eapps                          (eapps)
+eexp   : eapps                          (case #1 eapps of
+                                             EApp ((EVar ([], "CLASS", _), _), (EPrim (Prim.String s), loc)) => parseClass s loc
+                                           | EApp ((EVar ([], "STYLE", _), _), (EPrim (Prim.String s), loc)) => parseStyle s loc
+                                           | _ => eapps)
        | FN eargs DARROW eexp           (let
                                              val loc = s (FNleft, eexpright)
                                          in
@@ -1585,7 +1588,12 @@ tag    : tagHead attrs                  (let
                                                         | SOME (EPrim (Prim.String s), pos) => parseStyle s pos
                                                         | SOME e => e
                                              val e = (EApp (e, eo), pos)
-                                             val e = (EApp (e, (ERecord (#4 attrs), pos)), pos)
+                                             val eo = case #4 attrs of
+                                                          NONE => (EVar (["Basis"], "None", Infer), pos)
+                                                        | SOME e => (EApp ((EVar (["Basis"], "Some", Infer), pos),
+                                                                           e), pos)
+                                             val e = (EApp (e, eo), pos)
+                                             val e = (EApp (e, (ERecord (#5 attrs), pos)), pos)
                                              val e = (EApp (e, (EApp (#2 tagHead,
                                                                       (ERecord [], pos)), pos)), pos)
                                          in
@@ -1601,7 +1609,7 @@ tagHead: BEGIN_TAG                      (let
                                          end)
        | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
-attrs  :                                (NONE, NONE, NONE, [])
+attrs  :                                (NONE, NONE, NONE, NONE, [])
        | attr attrs                     (let
                                              val loc = s (attrleft, attrsright)
                                          in
@@ -1610,25 +1618,31 @@ attrs  :                                (NONE, NONE, NONE, [])
                                                  (case #1 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple classes specified for tag";
-                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs))
+                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs, #5 attrs))
                                                | DynClass e =>
                                                  (case #2 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
-                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs))
+                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs, #5 attrs))
                                                | Style e =>
                                                  (case #3 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple styles specified for tag";
-                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs))
+                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs, #5 attrs))
+                                               | DynStyle e =>
+                                                 (case #4 attrs of
+                                                      NONE => ()
+                                                    | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
+                                                  (#1 attrs, #2 attrs, #3 attrs, SOME e, #5 attrs))
                                                | Normal xe =>
-                                                 (#1 attrs, #2 attrs, #3 attrs, xe :: #4 attrs)
+                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, xe :: #5 attrs)
                                          end)
 
 attr   : SYMBOL EQ attrv                (case SYMBOL of
 					     "class" => Class attrv
 					   | "dynClass" => DynClass attrv
                                            | "style" => Style attrv
+					   | "dynStyle" => DynStyle attrv
 					   | _ =>
                                              let
                                                  val sym =

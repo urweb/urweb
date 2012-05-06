@@ -3033,19 +3033,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               (L.EApp (
                (L.EApp (
                 (L.EApp (
-		 (L.ECApp (
-                  (L.ECApp (
+                 (L.EApp (
+		  (L.ECApp (
                    (L.ECApp (
                     (L.ECApp (
                      (L.ECApp (
                       (L.ECApp (
                        (L.ECApp (
                         (L.ECApp (
-			 (L.EFfi ("Basis", "tag"),
-                          _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
-		 class), _),
-	        dynClass), _),
-               style), _),
+                         (L.ECApp (
+			  (L.EFfi ("Basis", "tag"),
+                           _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+		  class), _),
+	         dynClass), _),
+                style), _),
+               dynStyle), _),
               attrs), _),
              tag), _),
             xml) =>
@@ -3104,15 +3106,22 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (class, fm) = monoExp (env, st, fm) class
                 val (dynClass, fm) = monoExp (env, st, fm) dynClass
                 val (style, fm) = monoExp (env, st, fm) style
+                val (dynStyle, fm) = monoExp (env, st, fm) dynStyle
 
                 val dynamics = ["dyn", "ctextbox", "ccheckbox", "cselect", "coption", "ctextarea"]
 
-                val () = case #1 dynClass of
-                             L'.ENone _ => ()
-                           | _ => if List.exists (fn x => x = tag) dynamics then
-                                      E.errorAt loc ("Dynamic tag <" ^ tag ^ "> cannot be combined with 'dynClass' attribute; an additional <span> may be useful")
-                                  else
-                                      ()
+                fun isSome (e, _) =
+                    case e of
+                        L'.ESome _ => true
+                      | _ => false
+
+                val () = if isSome dynClass orelse isSome dynStyle then
+                             if List.exists (fn x => x = tag) dynamics then
+                                 E.errorAt loc ("Dynamic tag <" ^ tag ^ "> cannot be combined with 'dynClass' or 'dynStyle' attribute; an additional <span> may be useful")
+                             else
+                                 ()
+                         else
+                             ()
 
                 fun tagStart tag' =
                     let
@@ -3587,13 +3596,36 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | _ => normal (tag, NONE)
 	    in
 		case #1 dynClass of
-		    L'.ENone _ => baseAll
-		  | L'.ESome (_, dc) => (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
-				                 (L'.EJavaScript (L'.Script, base), loc),
-				                 str "),execD(",
-				                 (L'.EJavaScript (L'.Script, dc), loc),
-				                 str "))</script>"],
-			                 fm)
+		    L'.ENone _ =>
+		    (case #1 dynStyle of
+		         L'.ENone _ => baseAll
+		       | L'.ESome (_, ds) => (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
+				                      (L'.EJavaScript (L'.Script, base), loc),
+				                      str "),null,execD(",
+				                      (L'.EJavaScript (L'.Script, ds), loc),
+				                      str "))</script>"],
+			                      fm)
+                       | _ => (E.errorAt loc "Absence/presence of 'dynStyle' unknown";
+                               baseAll))
+		  | L'.ESome (_, dc) =>
+                    let
+                        val e = case #1 dynStyle of
+                                    L'.ENone _ => str "null"
+                                  | L'.ESome (_, ds) => strcat [str "execD(",
+                                                                (L'.EJavaScript (L'.Script, ds), loc),
+                                                                str ")"]
+                                  | _ => (E.errorAt loc "Absence/presence of 'dynStyle' unknown";
+                                          str "null")
+                    in
+                        (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
+				 (L'.EJavaScript (L'.Script, base), loc),
+				 str "),execD(",
+				 (L'.EJavaScript (L'.Script, dc), loc),
+				 str "),",
+                                 e,
+                                 str ")</script>"],
+			 fm)
+                    end
                   | _ => (E.errorAt loc "Absence/presence of 'dynClass' unknown";
                           baseAll)
             end
