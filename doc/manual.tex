@@ -265,7 +265,7 @@ sqlite3 path/to/database/file <app.sql
 
 \item \texttt{-prefix PREFIX}: Equivalent to the \texttt{prefix} directive from \texttt{.urp} files
 
-\item \texttt{-protocol [http|cgi|fastcgi]}: Set the protocol that the generated application speaks.
+\item \texttt{-protocol [http|cgi|fastcgi|static]}: Set the protocol that the generated application speaks.
   \begin{itemize}
   \item \texttt{http}: This is the default.  It is for building standalone web servers that can be accessed by web browsers directly.
 
@@ -298,6 +298,8 @@ prefix /dir/script.exe/
 FastCgiServer /path/to/hello.exe -idle-timeout 99999
     \end{verbatim}
     The idle timeout is only important for applications that use message-passing.  Client connections may go long periods without receiving messages, and Apache tries to be helpful and garbage collect them in such cases.  To prevent that behavior, we specify how long a connection must be idle to be collected.
+
+    Also see the discussion of the \cd{prefix} directive for CGI above; similar configuration is likely to be necessary for FastCGI.  An Ur/Web application won't generally run correctly if it doesn't have a unique URI prefix assigned to it and configured with \cd{prefix}.
 
     Here is some lighttpd configuration for the same application.
     \begin{verbatim}
