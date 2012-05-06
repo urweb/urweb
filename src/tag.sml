@@ -110,19 +110,23 @@ fun exp env (e, s) =
              (EApp (
               (EApp (
                (EApp (
-                (ECApp (
-                 (ECApp (
+                (EApp (
+                 (EApp (
                   (ECApp (
                    (ECApp (
                     (ECApp (
                      (ECApp (
                       (ECApp (
                        (ECApp (
-                        (EFfi ("Basis", "tag"),
-                         loc), given), _), absent), _), outer), _), inner), _),
-                    useOuter), _), useInner), _), bindOuter), _), bindInner), _),
-                class), _),
-               dynClass), _),
+                        (ECApp (
+                         (ECApp (
+                          (EFfi ("Basis", "tag"),
+                           loc), given), _), absent), _), outer), _), inner), _),
+                      useOuter), _), useInner), _), bindOuter), _), bindInner), _),
+                  class), _),
+                 dynClass), _),
+                style), _),
+               dynStyle), _),
               attrs), _),
              tag), _),
             xml) =>
@@ -152,18 +156,20 @@ fun exp env (e, s) =
                        (EApp (
                         (EApp (
                          (EApp (
-                          (ECApp (
-                           (ECApp (
+                          (EApp (
+                           (EApp (
                             (ECApp (
                              (ECApp (
                               (ECApp (
                                (ECApp (
                                 (ECApp (
                                  (ECApp (
-                                  (EFfi ("Basis", "tag"),
-                                   loc), given), loc), absent), loc), outer), loc), inner), loc),
-                              useOuter), loc), useInner), loc), bindOuter), loc), bindInner), loc),
-                          class), loc), dynClass), loc),
+                                  (ECApp (
+                                   (ECApp (
+                                    (EFfi ("Basis", "tag"),
+                                     loc), given), loc), absent), loc), outer), loc), inner), loc),
+                                useOuter), loc), useInner), loc), bindOuter), loc), bindInner), loc),
+                            class), loc), dynClass), loc), style), loc), dynStyle), loc),
                         (ERecord xets, loc)), loc),
                        tag), loc),
                       xml), s)

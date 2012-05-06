@@ -3663,16 +3663,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                          (L.EApp (
                           (L.EApp (
                            (L.EApp (
-                            (L.ECApp (
-                             (L.ECApp (
+                            (L.EApp (
+                             (L.EApp (
                               (L.ECApp (
                                (L.ECApp (
                                 (L.ECApp (
                                  (L.ECApp (
                                   (L.ECApp (
                                    (L.ECApp (
-                                    (L.EFfi ("Basis", "tag"),
-                                     _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                                    (L.ECApp (
+                                     (L.ECApp (
+                                      (L.EFfi ("Basis", "tag"),
+                                       _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                              _), _),
+                             _), _),
                             _), _),
                            _), _),
                           attrs), _),
