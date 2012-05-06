@@ -426,7 +426,8 @@ fun parseUrp' accLibs fname =
                        jsFuncs = [],
                        rewrites = [{pkind = Settings.Any,
                                     kind = Settings.Prefix,
-                                    from = capitalize (OS.Path.file fname) ^ "/", to = ""}],
+                                    from = capitalize (OS.Path.file fname) ^ "/", to = "",
+                                    hyphenate = false}],
                        filterUrl = [],
                        filterMime = [],
                        filterRequest = [],
@@ -774,17 +775,19 @@ fun parseUrp' accLibs fname =
                                   | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
                                   | "rewrite" =>
                                     let
-                                        fun doit (pkind, from, to) =
+                                        fun doit (pkind, from, to, hyph) =
                                             let
                                                 val pkind = parsePkind pkind
                                                 val (kind, from) = parseFrom from
                                             in
-                                                rewrites := {pkind = pkind, kind = kind, from = from, to = to} :: !rewrites
+                                                rewrites := {pkind = pkind, kind = kind, from = from, to = to, hyphenate = hyph} :: !rewrites
                                             end
                                     in
                                         case String.tokens Char.isSpace arg of
-                                            [pkind, from, to] => doit (pkind, from, to)
-                                          | [pkind, from] => doit (pkind, from, "")
+                                            [pkind, from, to, "[-]"] => doit (pkind, from, to, true)
+                                          | [pkind, from, "[-]"] => doit (pkind, from, "", true)
+                                          | [pkind, from, to] => doit (pkind, from, to, false)
+                                          | [pkind, from] => doit (pkind, from, "", false)
                                           | _ => ErrorMsg.error "Bad 'rewrite' syntax"
                                     end
                                   | "allow" =>

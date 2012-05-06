@@ -326,7 +326,7 @@ datatype action = Allow | Deny
 type rule = { action : action, kind : pattern_kind, pattern : string }
 
 datatype path_kind = Any | Url | Table | Sequence | View | Relation | Cookie | Style
-type rewrite = { pkind : path_kind, kind : pattern_kind, from : string, to : string }
+type rewrite = { pkind : path_kind, kind : pattern_kind, from : string, to : string, hyphenate : bool }
 
 val rewrites = ref ([] : rewrite list)
 
@@ -357,7 +357,15 @@ fun rewrite pk s =
                     if subsume (pk, #pkind rewr) then
                         case match () of
                             NONE => rew ls
-                          | SOME suffixStart => #to rewr ^ String.extract (s, suffixStart, NONE)
+                          | SOME suffixStart =>
+                            let
+                                val s = #to rewr ^ String.extract (s, suffixStart, NONE)
+                            in
+                                if #hyphenate rewr then
+                                    String.translate (fn #"_" => "-" | ch => str ch) s
+                                else
+                                    s
+                            end
                     else
                         rew ls
                 end

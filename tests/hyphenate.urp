@@ -1,0 +1,5 @@
+rewrite url Hyphenate/*
+rewrite style Hyphenate/somewhat_special spectactularly_great [-]
+rewrite style Hyphenate/* [-]
+
+hyphenate

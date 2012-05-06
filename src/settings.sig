@@ -97,7 +97,7 @@ signature SETTINGS = sig
     type rule = { action : action, kind : pattern_kind, pattern : string }
 
     datatype path_kind = Any | Url | Table | Sequence | View | Relation | Cookie | Style
-    type rewrite = { pkind : path_kind, kind : pattern_kind, from : string, to : string }
+    type rewrite = { pkind : path_kind, kind : pattern_kind, from : string, to : string, hyphenate : bool }
 
     (* Rules for rewriting URLs from canonical forms *)
     val setRewriteRules : rewrite list -> unit
