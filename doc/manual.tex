@@ -2173,8 +2173,10 @@ $$\begin{array}{rrcll}
   \textrm{Column names} & f &::=& X & \textrm{constant column name} \\
   &&& \{c\} & \textrm{computed column name (of kind $\mt{Name}$)} \\
   \textrm{Tables} & T &::=& x & \textrm{table variable, named locally by its own capitalization} \\
-  &&& x \; \mt{AS} \; t & \textrm{table variable, with local name} \\
+  &&& x \; \mt{AS} \; X & \textrm{table variable, with local name} \\
+  &&& x \; \mt{AS} \; \{c\} & \textrm{table variable, with computed local name} \\
   &&& \{\{e\}\} \; \mt{AS} \; t & \textrm{computed table expression, with local name} \\
+  &&& \{\{e\}\} \; \mt{AS} \; \{c\} & \textrm{computed table expression, with computed local name} \\
   \textrm{$\mt{FROM}$ items} & F &::=& T \mid \{\{e\}\} \mid F \; J \; \mt{JOIN} \; F \; \mt{ON} \; E \\
   &&& \mid F \; \mt{CROSS} \; \mt{JOIN} \ F \\
   &&& \mid (Q) \; \mt{AS} \; t \\
