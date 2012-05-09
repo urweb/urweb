@@ -109,6 +109,9 @@ fun insert (d, tm) =
                                                                         DStr (_, n', _, _) =>
                                                                         (byId := #1 (IM.remove (!byId, n'));
                                                                          false)
+                                                                      | DFfiStr (_, n', _) =>
+                                                                        (byId := #1 (IM.remove (!byId, n'));
+                                                                         false)
                                                                       | _ => raise Fail "ModDb: Impossible decl"
                                                                 else
                                                                     true) (!byName),
