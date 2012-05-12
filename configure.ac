@@ -1,6 +1,11 @@
 AC_INIT([urweb], [20120512])
 WORKING_VERSION=1
 AC_USE_SYSTEM_EXTENSIONS
+
+# automake 1.12 requires this, but automake 1.11 doesn't recognize it
+m4_pattern_allow([AM_PROG_AR])
+AM_PROG_AR
+
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-define])
 AC_PROG_CC()
 AC_PROG_LIBTOOL()

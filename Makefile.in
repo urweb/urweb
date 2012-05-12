@@ -37,7 +37,7 @@ subdir = .
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(top_srcdir)/configure \
 	$(top_srcdir)/include/urweb/config.h.in \
-	$(top_srcdir)/src/config.sml.in config.guess config.sub \
+	$(top_srcdir)/src/config.sml.in ar-lib config.guess config.sub \
 	depcomp install-sh ltmain.sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_openssl.m4 \
@@ -117,7 +117,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BIN := @BIN@
+BIN = @BIN@
 CC = @CC@
 CCARGS = @CCARGS@
 CCDEPMODE = @CCDEPMODE@
@@ -137,7 +137,7 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 GREP = @GREP@
-INCLUDE := @INCLUDE@
+INCLUDE = @INCLUDE@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -156,7 +156,7 @@ MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MKDIR_P = @MKDIR_P@
 MLLEX = @MLLEX@
-MLTON := mlton
+MLTON = mlton
 MLYACC = @MLYACC@
 MSHEADER = @MSHEADER@
 NM = @NM@
@@ -185,11 +185,11 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
-SITELISP := @SITELISP@
+SITELISP = @SITELISP@
 SQHEADER = @SQHEADER@
-SRCLIB := @SRCLIB@
+SRCLIB = @SRCLIB@
 STRIP = @STRIP@
-VERSION := @VERSION@
+VERSION = @VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -244,9 +244,9 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-LIB_UR := $(SRCLIB)/ur
-LIB_C := $(SRCLIB)/c
-LIB_JS := $(SRCLIB)/js
+LIB_UR = $(SRCLIB)/ur
+LIB_C = $(SRCLIB)/c
+LIB_JS = $(SRCLIB)/js
 SUBDIRS = src/c
 all: all-recursive
 

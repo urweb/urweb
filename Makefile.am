@@ -1,14 +1,14 @@
 ACLOCAL_AMFLAGS = -I m4
 
-BIN      := @BIN@
-SRCLIB   := @SRCLIB@
-INCLUDE  := @INCLUDE@
-SITELISP := @SITELISP@
-VERSION  := @VERSION@
+BIN      = @BIN@
+SRCLIB   = @SRCLIB@
+INCLUDE  = @INCLUDE@
+SITELISP = @SITELISP@
+VERSION  = @VERSION@
 
-LIB_UR   := $(SRCLIB)/ur
-LIB_C    := $(SRCLIB)/c
-LIB_JS   := $(SRCLIB)/js
+LIB_UR   = $(SRCLIB)/ur
+LIB_C    = $(SRCLIB)/c
+LIB_JS   = $(SRCLIB)/js
 
 all-local: smlnj mlton
 
@@ -45,7 +45,7 @@ src/urweb.mlton.lex.sml: src/urweb.mlton.lex
 src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml: src/urweb.mlton.grm
 	mlyacc $<
 
-MLTON := mlton
+MLTON = mlton
 
 #ifdef DEBUG
 #	MLTON += -const 'Exn.keepHistory true'
