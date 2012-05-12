@@ -1,4 +1,29 @@
 ========
+20120512
+========
+
+- New support for CSS style code embedded in Ur/Web programs.
+  Two recommended usage methods:
+  1. Use 'style' attributes with normal CSS syntax inside string literals.
+  2. Generate styles programmatically with the Style module of the Gui library
+     (distributed separately).
+- 'dynStyle' attribute, which is to 'style' as 'dynClass' is to 'class'
+- Parsing of standard syntax for 'class' attributes, via specially interpreted
+  string literals
+- New optional suffix for 'rewrite' in .urp files: [-]
+- Compiler error message improvements, including simplification of types
+- New command line parameters: '-boot', '-dumpTypesOnError', '-unifyMore'
+- New .urp directives: 'linker'
+- Support for speeding up compilation by caching type inference results:
+  Run 'urweb daemon start' to spawn a background process,
+  'urweb daemon stop' to kill it.
+- Enforcement of uniqueness of top-level module names across a project
+- Adjust error message format to match Emacs compilation mode defaults
+- More HTML attributes added
+- New antiquote syntax for 'PRIMARY KEY'
+- Bug fixes and improvements to type inference and platform compatibility
+
+========
 20120329
 ========
 
