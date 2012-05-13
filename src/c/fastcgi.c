@@ -40,7 +40,7 @@ typedef struct {
 } FCGI_Output;
 
 typedef struct {
-  char buf[sizeof(FCGI_Record) + 255];
+  FCGI_Record r;
   int available, used, sock;
 } FCGI_Input;
 
@@ -76,32 +76,28 @@ static int fastcgi_send(FCGI_Output *o,
   return uw_really_send(o->sock, &o->r, sizeof(o->r) - 65535 + contentLength);
 }
 
-#define LATEST(i) ((FCGI_Record *)(i->buf + i->used))
-
 static FCGI_Record *fastcgi_recv(FCGI_Input *i) {
+  if (i->used > 0) {
+    memmove((void*)&i->r, (void*)&i->r + i->used, i->available - i->used);
+    i->available -= i->used;
+    i->used = 0;
+  }
+
   while (1) {
     ssize_t n;
 
-    if (i->available >= i->used + sizeof(FCGI_Record) - 65535
-        && i->available >= i->used + sizeof(FCGI_Record) - 65535
-        + ((LATEST(i)->contentLengthB1 << 8) | LATEST(i)->contentLengthB0)
-        + LATEST(i)->paddingLength) {
-      FCGI_Record *r = LATEST(i);
-
-      i->used += sizeof(FCGI_Record) - 65535
-        + ((LATEST(i)->contentLengthB1 << 8) | LATEST(i)->contentLengthB0)
-        + LATEST(i)->paddingLength;
+    if (i->available >= sizeof(FCGI_Record) - 65535
+        && i->available >= sizeof(FCGI_Record) - 65535
+        + ((i->r.contentLengthB1 << 8) | i->r.contentLengthB0)
+        + i->r.paddingLength) {
+      i->used = sizeof(FCGI_Record) - 65535
+        + ((i->r.contentLengthB1 << 8) | i->r.contentLengthB0)
+        + i->r.paddingLength;
       
-      return r;
+      return &i->r;
     }
 
-    if (i->used > 0) {
-      memmove(i->buf, i->buf + i->used, i->available - i->used);
-      i->available -= i->used;
-      i->used = 0;
-    }
-
-    n = recv(i->sock, i->buf + i->available, sizeof(i->buf) - i->available, 0);
+    n = recv(i->sock, (void*)&i->r + i->available, sizeof(i->r) - i->available, 0);
 
     if (n <= 0)
       return NULL;

@@ -3445,7 +3445,6 @@ $as_echo "$ac_cv_safe_to_define___extensions__" >&6; }
 
 
 # automake 1.12 requires this, but automake 1.11 doesn't recognize it
-
 # expand $ac_aux_dir to an absolute path
 am_aux_dir=`cd $ac_aux_dir && pwd`
 
