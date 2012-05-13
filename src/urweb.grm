@@ -246,7 +246,14 @@ fun tnamesOf (e, _) =
       | EDisjointApp e => tnamesOf e
       | _ => []
 
-fun classOut (s, pos) = (EVar ([], String.translate (fn #"-" => "_" | ch => str ch) s, Infer), pos)
+fun classOut (s, pos) =
+    let
+        val s = case s of
+                    "table" => "tabl"
+                  | _ => s
+    in
+        (EVar ([], String.translate (fn #"-" => "_" | ch => str ch) s, Infer), pos)
+    end
 
 fun parseClass s pos =
     case String.tokens Char.isSpace s of

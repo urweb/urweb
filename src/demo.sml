@@ -424,6 +424,10 @@ fun make' {prefix, dirname, guided} =
                            | Settings.Prefix => TextIO.output (outf, "*");
                          TextIO.output (outf, " ");
                          TextIO.output (outf, #to rule);
+                         if #hyphenate rule then
+                             TextIO.output (outf, " [-]")
+                         else
+                             ();
                          TextIO.output (outf, "\n"))) (#rewrites combined);
                 filters "url" (#filterUrl combined);
                 filters "mime" (#filterMime combined);
