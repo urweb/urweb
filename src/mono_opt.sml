@@ -143,21 +143,24 @@ fun checkProperty s = size s > 0
 fun exp e =
     case e of
         EPrim (Prim.String s) =>
-        let
-            val (_, chs) =
-                CharVector.foldl (fn (ch, (lastSpace, chs)) =>
-                                     let
-                                         val isSpace = Char.isSpace ch
-                                     in
-                                         if isSpace andalso lastSpace then
-                                             (true, chs)
-                                         else
-                                             (isSpace, ch :: chs)
-                                     end)
-                                 (false, []) s
-        in
-            EPrim (Prim.String (String.implode (rev chs)))
-        end
+        if CharVector.exists Char.isSpace s then
+            let
+                val (_, chs) =
+                    CharVector.foldl (fn (ch, (lastSpace, chs)) =>
+                                         let
+                                             val isSpace = Char.isSpace ch
+                                         in
+                                             if isSpace andalso lastSpace then
+                                                 (true, chs)
+                                             else
+                                                 (isSpace, ch :: chs)
+                                         end)
+                                     (false, []) s
+            in
+                EPrim (Prim.String (String.implode (rev chs)))
+            end
+        else
+            e
 
       | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) => exp (EStrcat (e1, e2))
                                        
