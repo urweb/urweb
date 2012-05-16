@@ -1336,8 +1336,8 @@ uw_Basis_string uw_Basis_maybe_onunload(uw_context ctx, uw_Basis_string s) {
   if (ctx->script_header[0] == 0)
     return "";
   else {
-    char *r = uw_malloc(ctx, 22 + strlen(s));
-    sprintf(r, " onunload='unload();%s'", s);
+    char *r = uw_malloc(ctx, 37 + strlen(s));
+    sprintf(r, " onunload='unloading=true;%s;unload()'", s);
     return r;
   }
 }
