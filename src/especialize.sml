@@ -149,13 +149,13 @@ val getApp = fn e => case getApp e of
 
 val maxInt = Option.getOpt (Int.maxInt, 9999)
 
-fun calcConstArgs enclosingFunction e =
+fun calcConstArgs enclosingFunctions e =
     let
         fun ca depth e =
             case #1 e of
                 EPrim _ => maxInt
               | ERel _ => maxInt
-              | ENamed n => if n = enclosingFunction then 0 else maxInt
+              | ENamed n => if IS.member (enclosingFunctions, n) then 0 else maxInt
               | ECon (_, _, _, NONE) => maxInt
               | ECon (_, _, _, SOME e) => ca depth e
               | EFfi _ => maxInt
@@ -167,7 +167,7 @@ fun calcConstArgs enclosingFunction e =
                     case getApp e of
                         NONE => default ()
                       | SOME (f, args) =>
-                        if f <> enclosingFunction then
+                        if not (IS.member (enclosingFunctions, f)) then
                             default ()
                         else
                             let
@@ -420,6 +420,7 @@ fun specialize' (funcs, specialized) file =
                                                   ("f", Print.PD.string (Int.toString f)),
                                                   ("|fvs|", Print.PD.string (Int.toString (IS.numItems fvs))),
                                                   ("|fxs|", Print.PD.string (Int.toString (length fxs))),
+                                                  ("fxs'", Print.p_list (CorePrint.p_exp CoreEnv.empty) fxs'),
                                                   ("spec", Print.PD.string (Bool.toString (IS.member (#specialized st, f))))]*)
 
                                         (*val () = Print.prefaces ("Yes(" ^ name ^ ")")
@@ -456,7 +457,7 @@ fun specialize' (funcs, specialized) file =
                                                                                       body = body,
                                                                                       typ = typ,
                                                                                       tag = tag,
-                                                                                      constArgs = calcConstArgs f body})
+                                                                                      constArgs = calcConstArgs (IS.singleton f) body})
 
                                                 val st = {
                                                     maxName = f' + 1,
@@ -515,14 +516,21 @@ fun specialize' (funcs, specialized) file =
                 val funcs = 
                     case #1 d of
                         DValRec vis =>
-                        foldl (fn ((x, n, c, e, tag), funcs) =>
-                                  IM.insert (funcs, n, {name = x,
-                                                        args = KM.empty,
-                                                        body = e,
-                                                        typ = c,
-                                                        tag = tag,
-                                                        constArgs = calcConstArgs n e}))
-                              funcs vis
+                        let
+                            val fs = foldl (fn ((_, n, _, _, _), fs) => IS.add (fs, n)) IS.empty vis
+                            val constArgs = foldl (fn ((_, _, _, e, _), constArgs) =>
+                                                      Int.min (constArgs, calcConstArgs fs e))
+                                                  maxInt vis
+                        in
+                            foldl (fn ((x, n, c, e, tag), funcs) =>
+                                      IM.insert (funcs, n, {name = x,
+                                                            args = KM.empty,
+                                                            body = e,
+                                                            typ = c,
+                                                            tag = tag,
+                                                            constArgs = constArgs}))
+                                  funcs vis
+                        end
                       | _ => funcs
 
                 val st = {maxName = #maxName st,
@@ -603,7 +611,7 @@ fun specialize' (funcs, specialized) file =
                                               body = e,
                                               typ = c,
                                               tag = tag,
-                                              constArgs = calcConstArgs n e})
+                                              constArgs = calcConstArgs (IS.singleton n) e})
                       | DVal (_, n, _, (ENamed n', _), _) =>
                         (case IM.find (funcs, n') of
                              NONE => funcs
