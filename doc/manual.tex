@@ -2016,7 +2016,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sleep} : \mt{int} \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
-A few functions are available to registers callbacks for particular error events.  Respectively, they are triggered on calls to $\mt{error}$, uncaught JavaScript exceptions, failure of remote procedure calls, the severance of the connection serving asynchronous messages, or the occurrence of some other error with that connection.  If no handlers are registered for a kind of error, then occurrences of that error are ignored silently.
+A few functions are available to registers callbacks for particular error events.  Respectively, they are triggered on calls to $\mt{error}$, uncaught JavaScript exceptions, failure of remote procedure calls, the severance of the connection serving asynchronous messages, or the occurrence of some other error with that connection.  If no handlers are registered for a kind of error, then a JavaScript \cd{alert()} is used to announce its occurrence.  When one of these functions is called multiple times within a single page, all registered handlers are run when appropriate events occur, with handlers run in the reverse of their registration order.
 $$\begin{array}{l}
   \mt{val} \; \mt{onError} : (\mt{xbody} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
   \mt{val} \; \mt{onFail} : (\mt{string} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
