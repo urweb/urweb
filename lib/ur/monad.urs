@@ -7,6 +7,13 @@ val ignore : m ::: (Type -> Type) -> monad m -> t ::: Type
 val mp : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
          -> (a -> b) -> m a -> m b
 
+val liftM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
+            -> (a -> b) -> m a -> m b
+(* Haskell-style synonym for [mp] *)
+
+val liftM2 : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> c ::: Type
+             -> (a -> b -> c) -> m a -> m b -> m c
+
 val foldR : K --> m ::: (Type -> Type) -> monad m
             -> tf :: (K -> Type)
             -> tr :: ({K} -> Type)

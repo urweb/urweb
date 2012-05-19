@@ -424,3 +424,16 @@ fun drop [a] (n : int) (xs : list a) : list a =
 
 fun splitAt [a] (n : int) (xs : list a) : list a * list a =
     (take n xs, drop n xs)
+
+fun mapXiM [m ::: Type -> Type] (_ : monad m) [a] [ctx ::: {Unit}] (f : int -> a -> m (xml ctx [] [])) : t a -> m (xml ctx [] []) =
+    let
+        fun mapXiM' i ls =
+            case ls of
+                [] => return <xml/>
+              | x :: ls =>
+                this <- f i x;
+                rest <- mapXiM' (i+1) ls;
+                return <xml>{this}{rest}</xml>
+    in
+        mapXiM' 0
+    end

@@ -36,6 +36,8 @@ val mapPartialM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type ->
 val mapXM : m ::: (Type -> Type) -> monad m -> a ::: Type -> ctx ::: {Unit}
             -> (a -> m (xml ctx [] [])) -> t a -> m (xml ctx [] [])
 
+val mapXiM : m ::: (Type -> Type) -> monad m -> a ::: Type -> ctx ::: {Unit} -> (int -> a -> m (xml ctx [] [])) -> t a -> m (xml ctx [] [])
+
 val filter : a ::: Type -> (a -> bool) -> t a -> t a
 
 val exists : a ::: Type -> (a -> bool) -> t a -> bool

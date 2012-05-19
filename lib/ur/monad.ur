@@ -12,6 +12,8 @@ fun mp [m] (_ : monad m) [a] [b] f m =
     v <- m;
     return (f v)
 
+val liftM = @@mp
+
 fun foldR [K] [m] (_ : monad m) [tf :: K -> Type] [tr :: {K} -> Type]
           (f : nm :: Name -> t :: K -> rest :: {K}
                -> [[nm] ~ rest] =>
@@ -122,3 +124,8 @@ fun appR3 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K 
          f [nm] [t] r1.nm r2.nm r3.nm)
      (fn _ _ _ => return ())
      fl
+
+fun liftM2 [m ::: Type -> Type] (_ : monad m) [a] [b] [c] (f : a -> b -> c) (mx : m a) (my : m b) : m c =
+    x <- mx;
+    y <- my;
+    return (f x y)
