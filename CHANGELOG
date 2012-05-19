@@ -1,4 +1,14 @@
 ========
+20120519
+========
+
+- Compatibility fixes for new Automake and GCC versions
+- Allow synchronous RPC's in 'onunload' code
+- Start of special cases for parsing CSS class names: interpret "table" as identifier 'tabl'
+  (since 'table' is an Ur/Web keyword)
+- Bug fixes and improvements to type inference and optimization
+
+========
 20120512
 ========
 
