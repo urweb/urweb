@@ -905,6 +905,8 @@ end
 structure SS = BinarySetFn(SK)
 structure SM = BinaryMapFn(SK)
 
+exception MissingFile of string
+
 val parse = {
     func = fn {database, sources = fnames, ffi, onError, ...} : job =>
               let
@@ -949,6 +951,11 @@ val parse = {
                           val mname = nameOf fname
                           val ur = OS.Path.joinBaseExt {base = fname, ext = SOME "ur"}
                           val urs = OS.Path.joinBaseExt {base = fname, ext = SOME "urs"}
+
+                          val () = if Posix.FileSys.access (ur, []) then
+                                       ()
+                                   else
+                                       raise MissingFile ur
 
                           val sgnO =
                               if Posix.FileSys.access (urs, []) then
@@ -1062,7 +1069,8 @@ val parse = {
                       in
                           checkErrors ();
                           d
-                      end
+                      end handle MissingFile fname => (ErrorMsg.error ("Missing source file: " ^ fname);
+                                                       (Source.DSequence "", ErrorMsg.dummySpan))
 
                   val dsFfi = map parseFfi ffi
                   val ds = map parseOne fnames
