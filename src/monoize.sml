@@ -299,6 +299,8 @@ fun monoType env =
                     (L'.TRecord [], loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_maxable"), _), _) =>
                     (L'.TRecord [], loc)
+                  | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_partition"), _), _), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_window"), _), _), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_arith"), _), _) =>
@@ -2744,10 +2746,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
                        (L'.ERecord [], loc)), loc),
              fm)
-          | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_avg"), _), _), _), _) =>
-            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun ((L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc)), loc),
-                       (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                                 (L'.EPrim (Prim.String "AVG"), loc)), loc)), loc),
+          | L.ECApp ((L.EFfi ("Basis", "sql_avg"), _), _) =>
+            ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EPrim (Prim.String "AVG"), loc)), loc),
              fm)
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_sum"), _), _), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun ((L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc)), loc),
@@ -2783,6 +2784,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
+               (L.EFfi ("Basis", "sql_no_partition"), _),
+               _), _),
+             _), _),
+            _) => ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_partition"), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("e", s, s, strcat [(L'.EPrim (Prim.String "PARTITION BY "), loc), (L'.ERel 0, loc)]), loc),
+                 fm)
+            end
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
               (L.ECApp (
                (L.EFfi ("Basis", "sql_window"), _),
                _), _),
@@ -2790,13 +2814,31 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              _), _),
             _) =>
             let
+                val () = if #windowFunctions (Settings.currentDbms ()) then
+                             ()
+                         else
+                             ErrorMsg.errorAt loc "The DBMS you've selected doesn't support window functions."
+
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
 
-                val main = strcat [(L'.ERel 0, loc),
-                                   sc " OVER ()"]
+                val main = strcat [(L'.ERel 2, loc),
+                                   sc " OVER (",
+                                   (L'.ERel 1, loc),
+                                   (L'.ECase ((L'.ERel 0, loc),
+                                              [((L'.PPrim (Prim.String ""), loc),
+                                                sc ""),
+                                               ((L'.PWild, loc),
+                                                strcat [sc " ORDER BY ",
+                                                        (L'.ERel 0, loc)])],
+                                              {disc = s,
+                                               result = s}), loc),
+                                   sc ")"]
             in
-                ((L'.EAbs ("w", s, s, main), loc),
+                ((L'.EAbs ("w", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("p", s, (L'.TFun (s, s), loc),
+                                     (L'.EAbs ("o", s, s,
+                                               main), loc)), loc)), loc),
                  fm)
             end
 

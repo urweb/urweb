@@ -303,6 +303,19 @@ fun parseStyle s pos =
         foldl (fn (s, e) => (EApp ((EApp ((EVar (["Basis"], "oneProperty", Infer), pos), e), pos), parseProperty s pos), pos))
                 (EVar (["Basis"], "noStyle", Infer), pos) props
 
+fun applyWindow loc e window =
+    let
+        val (pb, ob) = getOpt (window, ((EVar (["Basis"], "sql_no_partition", Infer), dummy),
+                                        (ECApp ((EVar (["Basis"], "sql_order_by_Nil", Infer), dummy),
+                                                (CWild (KRecord (KType, dummy), dummy), dummy)),
+                                         dummy)))
+        val e' = (EVar (["Basis"], "sql_window", Infer), loc)
+        val e' = (EApp (e', e), loc)
+        val e' = (EApp (e', pb), loc)
+    in
+        (EApp (e', ob), loc)
+    end
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -456,7 +469,8 @@ fun parseStyle s pos =
  | selis of select_item list
  | select of select
  | sqlexp of exp
- | window of unit option
+ | window of (exp * exp) option
+ | pbopt of exp
  | wopt of exp
  | groupi of group_item
  | groupis of group_item list
@@ -2036,14 +2050,14 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                   let
                                                       val e = (EVar (["Basis"], "sql_window_count", Infer), loc)
                                                   in
-                                                      (EApp ((EVar (["Basis"], "sql_window", Infer), loc), e), loc)
+                                                      applyWindow loc e window
                                                   end
                                           end)
        | RANK UNIT window                (let
                                               val loc = s (RANKleft, windowright)
                                               val e = (EVar (["Basis"], "sql_window_rank", Infer), loc)
                                           in
-                                              (EApp ((EVar (["Basis"], "sql_window", Infer), loc), e), loc)
+                                              applyWindow loc e window
                                           end)
        | COUNT LPAREN sqlexp RPAREN window (let
                                                 val loc = s (COUNTleft, windowright)
@@ -2064,7 +2078,7 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                                        e), loc)
                                                         val e = (EApp (e, sqlexp), loc)
                                                     in
-                                                        (EApp ((EVar (["Basis"], "sql_window", Infer), loc), e), loc)
+                                                        applyWindow loc e window
                                                     end
                                             end)
        | sqlagg LPAREN sqlexp RPAREN window (let
@@ -2086,7 +2100,7 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                                         e), loc)
                                                          val e = (EApp (e, sqlexp), loc)
                                                      in
-                                                         (EApp ((EVar (["Basis"], "sql_window", Infer), loc), e), loc)
+                                                         applyWindow loc e window
                                                      end
                                              end)
        | COALESCE LPAREN sqlexp COMMA sqlexp RPAREN
@@ -2114,7 +2128,16 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                          end)
 
 window :                                (NONE)
-       | OVER LPAREN RPAREN             (SOME ())
+       | OVER LPAREN pbopt obopt RPAREN (SOME (pbopt, obopt))
+
+pbopt  :                                ((EVar (["Basis"], "sql_no_partition", Infer), dummy))
+       | PARTITION BY sqlexp            (let
+                                             val loc = s (PARTITIONleft, sqlexpright)
+
+                                             val e = (EVar (["Basis"], "sql_partition", Infer), loc)
+                                         in
+                                             (EApp (e, sqlexp), loc)
+                                         end)
 
 fname  : SYMBOL                         (EVar (["Basis"], "sql_" ^ SYMBOL, Infer), s (SYMBOLleft, SYMBOLright))
        | LBRACE eexp RBRACE             (eexp)

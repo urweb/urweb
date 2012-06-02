@@ -199,7 +199,8 @@ signature SETTINGS = sig
          trueString : string,
          falseString : string,
          onlyUnion : bool,
-         nestedRelops : bool
+         nestedRelops : bool,
+         windowFunctions : bool
     }
 
     val addDbms : dbms -> unit

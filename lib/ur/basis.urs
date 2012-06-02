@@ -552,7 +552,7 @@ class sql_summable
 val sql_summable_int : sql_summable int
 val sql_summable_float : sql_summable float
 val sql_summable_option : t ::: Type -> sql_summable t -> sql_summable (option t)
-val sql_avg : t ::: Type -> nt ::: Type -> sql_summable t -> nullify t nt -> sql_aggregate t nt
+val sql_avg : t ::: Type -> sql_summable t -> sql_aggregate t (option float)
 val sql_sum : t ::: Type -> nt ::: Type -> sql_summable t -> nullify t nt -> sql_aggregate t nt
 
 class sql_maxable
@@ -564,16 +564,25 @@ val sql_maxable_option : t ::: Type -> sql_maxable t -> sql_maxable (option t)
 val sql_max : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 val sql_min : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 
+con sql_partition :: {{Type}} -> {{Type}} -> {Type} -> Type
+val sql_no_partition : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                       -> sql_partition tables agg exps
+val sql_partition : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+                    -> sql_exp tables agg exps disallow_window t
+                    -> sql_partition tables agg exps
+
 con sql_window :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
 val sql_window : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                  -> t ::: Type
                  -> sql_window tables agg exps t
+                 -> sql_partition tables agg exps
+                 -> sql_order_by tables exps
                  -> sql_exp tables agg exps allow_window t
 
 val sql_window_aggregate : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                            -> t ::: Type -> nt ::: Type
                            -> sql_aggregate t nt
-                           -> sql_exp tables agg exps allow_window t
+                           -> sql_exp tables agg exps disallow_window t
                            -> sql_window tables agg exps nt
 val sql_window_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                        -> sql_window tables agg exps int

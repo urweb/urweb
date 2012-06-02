@@ -1554,6 +1554,7 @@ val () = addDbms {name = "mysql",
                   trueString = "TRUE",
                   falseString = "FALSE",
                   onlyUnion = true,
-                  nestedRelops = false}
+                  nestedRelops = false,
+                  windowFunctions = false}
 
 end

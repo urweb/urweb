@@ -1805,7 +1805,7 @@ $$\begin{array}{l}
   \mt{class} \; \mt{sql\_summable} \\
   \mt{val} \; \mt{sql\_summable\_int} : \mt{sql\_summable} \; \mt{int} \\
   \mt{val} \; \mt{sql\_summable\_float} : \mt{sql\_summable} \; \mt{float} \\
-  \mt{val} \; \mt{sql\_avg} : \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{nt} \\
+  \mt{val} \; \mt{sql\_avg} : \mt{t} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{sql\_aggregate} \; \mt{t} \; (\mt{option} \; \mt{float}) \\
   \mt{val} \; \mt{sql\_sum} : \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \to \mt{sql\_summable} \; \mt{t} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{nt}
 \end{array}$$
 
@@ -1819,11 +1819,33 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_min} : \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \to \mt{sql\_maxable} \; \mt{t} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_aggregate} \; \mt{t} \; \mt{nt}
 \end{array}$$
 
+There is a fancier class of aggregates called \emph{window functions}, defined in the SQL standard but currently only supported by Postgres, among the DBMSes that Ur/Web supports.  Here are the type family and associated combinator for creating a window function expression:
+
+$$\begin{array}{l}
+\mt{con} \; \mt{sql\_window} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \to \mt{Type} \\
+\mt{val} \; \mt{sql\_window} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \\
+\hspace{.1in} \to \mt{t} ::: \mt{Type} \\
+\hspace{.1in} \to \mt{sql\_window} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \\
+\hspace{.1in} \to \mt{sql\_partition} \; \mt{tables} \; \mt{agg} \; \mt{exps} \\
+\hspace{.1in} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
+\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{allow\_window} \; \mt{t}
+\end{array}$$
+
+The function argument for an SQL \cd{PARTITION BY} clause uses the following type family and combinators:
+$$\begin{array}{l}
+\mt{con} \; \mt{sql\_partition} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
+\mt{val} \; \mt{sql\_no\_partition} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \\
+\hspace{.1in} \to \mt{sql\_partition} \; \mt{tables} \; \mt{agg} \; \mt{exps} \\
+\mt{val} \; \mt{sql\_partition} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
+\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{disallow\_window} \; \mt{t} \\
+\hspace{.1in} \to \mt{sql\_partition} \; \mt{tables} \; \mt{agg} \; \mt{exps}
+\end{array}$$
+
 Any SQL query that returns single columns may be turned into a subquery expression.
 
 $$\begin{array}{l}
 \mt{val} \; \mt{sql\_subquery} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{nm} ::: \mt{Name} \\
-\hspace{.1in} \to \mt{aw} ::: \mt{Type} \to \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \\
+\hspace{.1in} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \\
 \hspace{.1in} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_query} \; \mt{tables} \; \mt{agg} \; [\mt{nm} = \mt{t}] \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{nt}
 \end{array}$$
 
@@ -2194,7 +2216,8 @@ $$\begin{array}{rrcll}
   \textrm{SQL expressions} & E &::=& t.f & \textrm{column references} \\
   &&& X & \textrm{named expression references} \\
   &&& \{[e]\} & \textrm{injected native Ur expressions} \\
-  &&& \{e\} & \textrm{computed expressions, probably using $\mt{sql\_exp}$ directly} \\
+  &&& \{e\} & \textrm{computed expressions, probably using} \\
+    &&&& \hspace{.1in} \textrm{$\mt{sql\_exp}$ directly} \\
   &&& \mt{TRUE} \mid \mt{FALSE} & \textrm{boolean constants} \\
   &&& \ell & \textrm{primitive type literals} \\
   &&& \mt{NULL} & \textrm{null value (injection of $\mt{None}$)} \\
@@ -2203,10 +2226,12 @@ $$\begin{array}{rrcll}
   &&& n & \textrm{nullary operators} \\
   &&& u \; E & \textrm{unary operators} \\
   &&& E \; b \; E & \textrm{binary operators} \\
-  &&& \mt{COUNT}(\ast) & \textrm{count number of rows} \\
-  &&& a(E) & \textrm{other aggregate function} \\
+  &&& \mt{COUNT}(\ast) \; [w] & \textrm{count number of rows} \\
+  &&& \mt{RANK}() \; [w] & \textrm{rank in sequence (Postgres only)} \\
+  &&& a(E) \; [w] & \textrm{other aggregate function} \\
   &&& \mt{IF} \; E \; \mt{THEN} \; E \; \mt{ELSE} \; E & \textrm{conditional} \\
-  &&& (Q) & \textrm{subquery (must return a single expression column)} \\
+  &&& (Q) & \textrm{subquery (must return a single} \\
+  &&&& \hspace{.1in} \textrm{expression column)} \\
   &&& (E) & \textrm{explicit precedence} \\
   \textrm{Nullary operators} & n &::=& \mt{CURRENT\_TIMESTAMP} \\
   \textrm{Unary operators} & u &::=& \mt{NOT} \\
@@ -2214,6 +2239,7 @@ $$\begin{array}{rrcll}
   \textrm{Aggregate functions} & a &::=& \mt{COUNT} \mid \mt{AVG} \mid \mt{SUM} \mid \mt{MIN} \mid \mt{MAX} \\
   \textrm{Directions} & o &::=& \mt{ASC} \mid \mt{DESC} \mid \{e\} \\
   \textrm{SQL integer} & N &::=& n \mid \{e\} \\
+  \textrm{Window} & w &::=& \mt{OVER} \; ([\mt{PARTITION} \; \mt{BY} \; E] \; [\mt{ORDER} \; \mt{BY} \; O]) & \textrm{(Postgres only)}
 \end{array}$$
 
 Additionally, an SQL expression may be inserted into normal Ur code with the syntax $(\mt{SQL} \; E)$ or $(\mt{WHERE} \; E)$.  Similar shorthands exist for other nonterminals, with the prefix $\mt{FROM}$ for $\mt{FROM}$ items and $\mt{SELECT1}$ for pre-queries.

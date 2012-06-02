@@ -537,7 +537,8 @@ type dbms = {
      trueString : string,
      falseString : string,
      onlyUnion : bool,
-     nestedRelops : bool
+     nestedRelops : bool,
+     windowFunctions : bool
 }
 
 val dbmses = ref ([] : dbms list)
@@ -568,7 +569,8 @@ val curDb = ref ({name = "",
                   trueString = "",
                   falseString = "",
                   onlyUnion = false,
-                  nestedRelops = false} : dbms)
+                  nestedRelops = false,
+                  windowFunctions = false} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =
