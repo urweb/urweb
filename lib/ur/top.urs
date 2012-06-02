@@ -269,15 +269,15 @@ val nonempty : fs ::: {Type} -> us ::: {{Unit}} -> sql_table fs us
                -> transaction bool
 
 val eqNullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                 -> t ::: Type -> sql_injectable (option t)
-                 -> sql_exp tables agg exps (option t)
-                 -> sql_exp tables agg exps (option t)
-                 -> sql_exp tables agg exps bool
+                 -> aw ::: {Unit} -> t ::: Type -> sql_injectable (option t)
+                 -> sql_exp tables agg exps aw (option t)
+                 -> sql_exp tables agg exps aw (option t)
+                 -> sql_exp tables agg exps aw bool
 
 val eqNullable' : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                  -> t ::: Type -> sql_injectable (option t)
-                  -> sql_exp tables agg exps (option t)
+                  -> aw ::: {Unit} -> t ::: Type -> sql_injectable (option t)
+                  -> sql_exp tables agg exps aw (option t)
                   -> option t
-                  -> sql_exp tables agg exps bool
+                  -> sql_exp tables agg exps aw bool
 
 val mkRead' : t ::: Type -> (string -> option t) -> string -> read t

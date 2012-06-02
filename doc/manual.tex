@@ -1595,7 +1595,7 @@ $$\begin{array}{l}
 
 The last kind of constraint is a \texttt{CHECK} constraint, which attaches a boolean invariant over a row's contents.  It is defined using the $\mt{sql\_exp}$ type family, which we discuss in more detail below.
 $$\begin{array}{l}
-  \mt{val} \; \mt{check} : \mt{fs} ::: \{\mt{Type}\} \to \mt{sql\_exp} \; [] \; [] \; \mt{fs} \; \mt{bool} \to \mt{sql\_constraint} \; \mt{fs} \; []
+  \mt{val} \; \mt{check} : \mt{fs} ::: \{\mt{Type}\} \to \mt{sql\_exp} \; [] \; [] \; \mt{fs} \; \mt{disallow\_window} \; \mt{bool} \to \mt{sql\_constraint} \; \mt{fs} \; []
 \end{array}$$
 
 Section \ref{tables} shows the expanded syntax of the $\mt{table}$ declaration and signature item that includes constraints.  There is no other way to use constraints with SQL in Ur/Web.
@@ -1662,11 +1662,11 @@ $$\begin{array}{l}
   \hspace{.1in} \Rightarrow [\mt{empties} \sim \mt{selectedFields}] \\
   \hspace{.1in} \Rightarrow \{\mt{Distinct} : \mt{bool}, \\
   \hspace{.2in} \mt{From} : \mt{sql\_from\_items} \; \mt{free} \; \mt{tables}, \\
-  \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; (\mt{free} \rc \mt{tables}) \; \mt{afree} \; [] \; \mt{bool}, \\
+  \hspace{.2in} \mt{Where} : \mt{sql\_exp} \; (\mt{free} \rc \mt{tables}) \; \mt{afree} \; [] \; \mt{disallow\_window} \; \mt{bool}, \\
   \hspace{.2in} \mt{GroupBy} : \mt{sql\_subset} \; \mt{tables} \; \mt{grouped}, \\
-  \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; (\mt{afree} \rc \mt{tables}) \; [] \; \mt{bool}, \\
+  \hspace{.2in} \mt{Having} : \mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; (\mt{afree} \rc \mt{tables}) \; [] \; \mt{disallow\_window} \; \mt{bool}, \\
   \hspace{.2in} \mt{SelectFields} : \mt{sql\_subset} \; \mt{grouped} \; (\mt{map} \; (\lambda \_ \Rightarrow []) \; \mt{empties} \rc \mt{selectedFields}), \\
-  \hspace{.2in} \mt {SelectExps} : \$(\mt{map} \; (\mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; (\mt{afree} \rc \mt{tables}) \; []) \; \mt{selectedExps}) \} \\
+  \hspace{.2in} \mt {SelectExps} : \$(\mt{map} \; (\mt{sql\_exp} \; (\mt{free} \rc \mt{grouped}) \; (\mt{afree} \rc \mt{tables}) \; [] \; \mt{allow\_window}) \; \mt{selectedExps}) \} \\
   \hspace{.1in} \to \mt{sql\_query1} \; \mt{free} \; \mt{afree} \; \mt{tables} \; \mt{selectedFields} \; \mt{selectedExps}
 \end{array}$$
 
@@ -1680,24 +1680,26 @@ $$\begin{array}{l}
 \mt{val} \; \mt{sql\_subset\_all} : \mt{tables} :: \{\{\mt{Type}\}\} \to \mt{sql\_subset} \; \mt{tables} \; \mt{tables}
 \end{array}$$
 
-SQL expressions are used in several places, including $\mt{SELECT}$, $\mt{WHERE}$, $\mt{HAVING}$, and $\mt{ORDER} \; \mt{BY}$ clauses.  They reify a fragment of the standard SQL expression language, while making it possible to inject ``native'' Ur values in some places.  The arguments to the $\mt{sql\_exp}$ type family respectively give the unrestricted-availability table fields, the table fields that may only be used in arguments to aggregate functions, the available selected expressions, and the type of the expression.
+SQL expressions are used in several places, including $\mt{SELECT}$, $\mt{WHERE}$, $\mt{HAVING}$, and $\mt{ORDER} \; \mt{BY}$ clauses.  They reify a fragment of the standard SQL expression language, while making it possible to inject ``native'' Ur values in some places.  The arguments to the $\mt{sql\_exp}$ type family respectively give the unrestricted-availability table fields, the table fields that may only be used in arguments to aggregate functions, the available selected expressions, whether window functions are allowed, and the type of the expression.  Two abstract constructors are declared to use to specify window function allowedness.
 $$\begin{array}{l}
-  \mt{con} \; \mt{sql\_exp} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \to \mt{Type}
+  \mt{con} \; \mt{sql\_exp} :: \{\{\mt{Type}\}\} \to \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \to \{\mt{Unit}\} \to \mt{Type} \\
+  \mt{con} \; \mt{disallow\_window} :: \{\mt{Unit}\} \\
+  \mt{con} \; \mt{allow\_window} :: \{\mt{Unit}\}
 \end{array}$$
 
 Any field in scope may be converted to an expression.
 $$\begin{array}{l}
   \mt{val} \; \mt{sql\_field} : \mt{otherTabs} ::: \{\{\mt{Type}\}\} \to \mt{otherFields} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \mt{fieldType} ::: \mt{Type} \to \mt{agg} ::: \{\{\mt{Type}\}\} \\
+  \hspace{.1in} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{fieldType} ::: \mt{Type} \to \mt{agg} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to \mt{exps} ::: \{\mt{Type}\} \\
   \hspace{.1in} \to \mt{tab} :: \mt{Name} \to \mt{field} :: \mt{Name} \\
-  \hspace{.1in} \to \mt{sql\_exp} \; ([\mt{tab} = [\mt{field} = \mt{fieldType}] \rc \mt{otherFields}] \rc \mt{otherTabs}) \; \mt{agg} \; \mt{exps} \; \mt{fieldType}
+  \hspace{.1in} \to \mt{sql\_exp} \; ([\mt{tab} = [\mt{field} = \mt{fieldType}] \rc \mt{otherFields}] \rc \mt{otherTabs}) \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{fieldType}
 \end{array}$$
 
 There is an analogous function for referencing named expressions.
 $$\begin{array}{l}
-  \mt{val} \; \mt{sql\_exp} : \mt{tabs} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{t} ::: \mt{Type} \to \mt{rest} ::: \{\mt{Type}\} \to \mt{nm} :: \mt{Name} \\
-  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tabs} \; \mt{agg} \; ([\mt{nm} = \mt{t}] \rc \mt{rest}) \; \mt{t}
+  \mt{val} \; \mt{sql\_exp} : \mt{tabs} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{t} ::: \mt{Type} \to \mt{rest} ::: \{\mt{Type}\} \to \mt{nm} :: \mt{Name} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tabs} \; \mt{agg} \; ([\mt{nm} = \mt{t}] \rc \mt{rest}) \; \mt{aw} \; \mt{t}
 \end{array}$$
 
 Ur values of appropriate types may be injected into SQL expressions.
@@ -1716,8 +1718,8 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_prim} : \mt{t} ::: \mt{Type} \to \mt{sql\_injectable\_prim} \; \mt{t} \to \mt{sql\_injectable} \; \mt{t} \\
   \mt{val} \; \mt{sql\_option\_prim} : \mt{t} ::: \mt{Type} \to \mt{sql\_injectable\_prim} \; \mt{t} \to \mt{sql\_injectable} \; (\mt{option} \; \mt{t}) \\
   \\
-  \mt{val} \; \mt{sql\_inject} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \to \mt{sql\_injectable} \; \mt{t} \\
-  \hspace{.1in} \to \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+  \mt{val} \; \mt{sql\_inject} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{t} ::: \mt{Type} \to \mt{sql\_injectable} \; \mt{t} \\
+  \hspace{.1in} \to \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{t}
 \end{array}$$
 
 Additionally, most function-free types may be injected safely, via the $\mt{serialized}$ type family.
@@ -1730,39 +1732,44 @@ $$\begin{array}{l}
 
 We have the SQL nullness test, which is necessary because of the strange SQL semantics of equality in the presence of null values.
 $$\begin{array}{l}
-  \mt{val} \; \mt{sql\_is\_null} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; (\mt{option} \; \mt{t}) \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{bool}
+  \mt{val} \; \mt{sql\_is\_null} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; (\mt{option} \; \mt{aw} \; \mt{t}) \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{bool}
 \end{array}$$
 
 As another way of dealing with null values, there is also a restricted form of the standard \cd{COALESCE} function.
 $$\begin{array}{l}
   \mt{val} \; \mt{sql\_coalesce} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \\
-  \hspace{.1in} \to \mt{t} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; (\mt{option} \; \mt{t}) \\
-  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \\
-  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+  \hspace{.1in} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; (\mt{option} \; \mt{t}) \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{t} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{t}
 \end{array}$$
 
 We have generic nullary, unary, and binary operators.
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_nfunc} :: \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_current\_timestamp} : \mt{sql\_nfunc} \; \mt{time} \\
-  \mt{val} \; \mt{sql\_nfunc} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_nfunc} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \\\end{array}$$
+  \mt{val} \; \mt{sql\_nfunc} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{t} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_nfunc} \; \mt{t} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{t}
+\end{array}$$
 
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_unary} :: \mt{Type} \to \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_not} : \mt{sql\_unary} \; \mt{bool} \; \mt{bool} \\
-  \mt{val} \; \mt{sql\_unary} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{arg} ::: \mt{Type} \to \mt{res} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_unary} \; \mt{arg} \; \mt{res} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{arg} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{res} \\
+  \mt{val} \; \mt{sql\_unary} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{arg} ::: \mt{Type} \to \mt{res} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_unary} \; \mt{arg} \; \mt{res} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{arg} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{res}
 \end{array}$$
 
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_binary} :: \mt{Type} \to \mt{Type} \to \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_and} : \mt{sql\_binary} \; \mt{bool} \; \mt{bool} \; \mt{bool} \\
   \mt{val} \; \mt{sql\_or} : \mt{sql\_binary} \; \mt{bool} \; \mt{bool} \; \mt{bool} \\
-  \mt{val} \; \mt{sql\_binary} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{arg_1} ::: \mt{Type} \to \mt{arg_2} ::: \mt{Type} \to \mt{res} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_binary} \; \mt{arg_1} \; \mt{arg_2} \; \mt{res} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{arg_1} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{arg_2} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{res}
+  \mt{val} \; \mt{sql\_binary} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \\
+  \hspace{.1in} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{arg_1} ::: \mt{Type} \to \mt{arg_2} ::: \mt{Type} \to \mt{res} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_binary} \; \mt{arg_1} \; \mt{arg_2} \; \mt{res} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{arg_1} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{arg_2} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{res}
 \end{array}$$
 
 $$\begin{array}{l}
@@ -1779,13 +1786,13 @@ $$\begin{array}{l}
 
 Finally, we have aggregate functions.  The $\mt{COUNT(\ast)}$ syntax is handled specially, since it takes no real argument.  The other aggregate functions are placed into a general type family, using constructor classes to restrict usage to properly-typed arguments.  The key aspect of the $\mt{sql\_aggregate}$ function's type is the shift of aggregate-function-only fields into unrestricted fields.
 $$\begin{array}{l}
-  \mt{val} \; \mt{sql\_count} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{int}
+  \mt{val} \; \mt{sql\_count} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \mt{aw} ::: \{\mt{Unit}\} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{int}
 \end{array}$$
 
 $$\begin{array}{l}
   \mt{con} \; \mt{sql\_aggregate} :: \mt{Type} \to \mt{Type} \to \mt{Type} \\
-  \mt{val} \; \mt{sql\_aggregate} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{dom} ::: \mt{Type} \to \mt{ran} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_aggregate} \; \mt{dom} \; \mt{ran} \to \mt{sql\_exp} \; \mt{agg} \; \mt{agg} \; \mt{exps} \; \mt{dom} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{ran}
+  \mt{val} \; \mt{sql\_aggregate} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{aw} ::: \{\mt{Type}\} \mt{dom} ::: \mt{Type} \to \mt{ran} ::: \mt{Type} \\
+  \hspace{.1in} \to \mt{sql\_aggregate} \; \mt{dom} \; \mt{ran} \to \mt{sql\_exp} \; \mt{agg} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{dom} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{ran}
 \end{array}$$
 
 $$\begin{array}{l}
@@ -1815,17 +1822,18 @@ $$\begin{array}{l}
 Any SQL query that returns single columns may be turned into a subquery expression.
 
 $$\begin{array}{l}
-\mt{val} \; \mt{sql\_subquery} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{nm} ::: \mt{Name} \to \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \\
-\hspace{.1in} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_query} \; \mt{tables} \; \mt{agg} \; [\mt{nm} = \mt{t}] \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{nt}
+\mt{val} \; \mt{sql\_subquery} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{nm} ::: \mt{Name} \\
+\hspace{.1in} \to \mt{aw} ::: \mt{Type} \to \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \\
+\hspace{.1in} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_query} \; \mt{tables} \; \mt{agg} \; [\mt{nm} = \mt{t}] \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{nt}
 \end{array}$$
 
 There is also an \cd{IF..THEN..ELSE..} construct that is compiled into standard SQL \cd{CASE} expressions.
 $$\begin{array}{l}
-\mt{val} \; \mt{sql\_if\_then\_else} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
-\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{bool} \\
-\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \\
-\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t} \\
-\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{t}
+\mt{val} \; \mt{sql\_if\_then\_else} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{aw} ::: \{\mt{Unit}\} \to \mt{t} ::: \mt{Type} \\
+\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{bool} \\
+\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{t} \\
+\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{t} \\
+\hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{aw} \; \mt{t}
 \end{array}$$
 
 \texttt{FROM} clauses are specified using a type family, whose arguments are the free table variables and the table variables bound by this clause.
@@ -1840,7 +1848,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_inner\_join} : \mt{free} ::: \{\{\mt{Type}\}\} \to \mt{tabs1} ::: \{\{\mt{Type}\}\} \to \mt{tabs2} ::: \{\{\mt{Type}\}\} \\
   \hspace{.1in} \to [\mt{free} \sim \mt{tabs1}] \Rightarrow [\mt{free} \sim \mt{tabs2}] \Rightarrow [\mt{tabs1} \sim \mt{tabs2}] \\
   \hspace{.1in} \Rightarrow \mt{sql\_from\_items} \; \mt{free} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{free} \; \mt{tabs2} \\
-  \hspace{.1in} \to \mt{sql\_exp} \; (\mt{free} \rc \mt{tabs1} \rc \mt{tabs2}) \; [] \; [] \; \mt{bool} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; (\mt{free} \rc \mt{tabs1} \rc \mt{tabs2}) \; [] \; [] \; \mt{disallow\_window} \; \mt{bool} \\
   \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{free} \; (\mt{tabs1} \rc \mt{tabs2})
 \end{array}$$
 
@@ -1858,7 +1866,7 @@ $$\begin{array}{l}
   \hspace{.1in} \to [\mt{free} \sim \mt{tabs1}] \Rightarrow [\mt{free} \sim \mt{tabs2}] \Rightarrow [\mt{tabs1} \sim \mt{tabs2}] \\
  \hspace{.1in} \Rightarrow \$(\mt{map} \; (\lambda \mt{r} \Rightarrow \$(\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{nullify} \; \mt{p}.1 \; \mt{p}.2) \; \mt{r})) \; \mt{tabs2}) \\
  \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{free} \; \mt{tabs1} \to \mt{sql\_from\_items} \; \mt{free} \; (\mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \\
- \hspace{.1in} \to \mt{sql\_exp} \; (\mt{free} \rc \mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \; [] \; [] \; \mt{bool} \\
+ \hspace{.1in} \to \mt{sql\_exp} \; (\mt{free} \rc \mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.1)) \; \mt{tabs2}) \; [] \; [] \; \mt{disallow\_window} \; \mt{bool} \\
  \hspace{.1in} \to \mt{sql\_from\_items} \; \mt{free} \; (\mt{tabs1} \rc \mt{map} \; (\mt{map} \; (\lambda \mt{p} :: (\mt{Type} \times \mt{Type}) \Rightarrow \mt{p}.2)) \; \mt{tabs2})
 \end{array}$$
 
@@ -1871,7 +1879,7 @@ $$\begin{array}{l}
   \mt{con} \; \mt{sql\_order\_by} :: \{\{\mt{Type}\}\} \to \{\mt{Type}\} \to \mt{Type} \\
   \mt{val} \; \mt{sql\_order\_by\_Nil} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} :: \{\mt{Type}\} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
   \mt{val} \; \mt{sql\_order\_by\_Cons} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{t} ::: \mt{Type} \\
-  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; [] \; \mt{exps} \; \mt{t} \to \mt{sql\_direction} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
+  \hspace{.1in} \to \mt{sql\_exp} \; \mt{tables} \; [] \; \mt{exps} \; \mt{allow\_window} \; \mt{t} \to \mt{sql\_direction} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
   \mt{val} \; \mt{sql\_order\_by\_random} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{sql\_order\_by} \; \mt{tables} \; \mt{exps} \\
   \\
   \mt{type} \; \mt{sql\_limit} \\
@@ -1902,19 +1910,19 @@ $$\begin{array}{l}
 Properly-typed records may be used to form $\mt{INSERT}$ commands.
 $$\begin{array}{l}
   \mt{val} \; \mt{insert} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \\
-  \hspace{.1in} \to \$(\mt{map} \; (\mt{sql\_exp} \; [] \; [] \; []) \; \mt{fields}) \to \mt{dml}
+  \hspace{.1in} \to \$(\mt{map} \; (\mt{sql\_exp} \; [] \; [] \; [] \; \mt{disallow\_window}) \; \mt{fields}) \to \mt{dml}
 \end{array}$$
 
 An $\mt{UPDATE}$ command is formed from a choice of which table fields to leave alone and which to change, along with an expression to use to compute the new value of each changed field and a $\mt{WHERE}$ clause.  Note that, in the table environment applied to expressions, the table being updated is hardcoded at the name $\mt{T}$.  The parsing extension for $\mt{UPDATE}$ will elaborate all table-free field references to use table variable $\mt{T}$.
 $$\begin{array}{l}
   \mt{val} \; \mt{update} : \mt{unchanged} ::: \{\mt{Type}\} \to \mt{changed} :: \{\mt{Type}\} \to [\mt{changed} \sim \mt{unchanged}] \\
-  \hspace{.1in} \Rightarrow \$(\mt{map} \; (\mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; []) \; \mt{changed}) \\
-  \hspace{.1in} \to \mt{sql\_table} \; (\mt{changed} \rc \mt{unchanged}) \to \mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{bool} \to \mt{dml}
+  \hspace{.1in} \Rightarrow \$(\mt{map} \; (\mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{disallow\_window}) \; \mt{changed}) \\
+  \hspace{.1in} \to \mt{sql\_table} \; (\mt{changed} \rc \mt{unchanged}) \to \mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; [] \; \mt{disallow\_window} \; \mt{bool} \to \mt{dml}
 \end{array}$$
 
 A $\mt{DELETE}$ command is formed from a table and a $\mt{WHERE}$ clause.  The above use of $\mt{T}$ is repeated.
 $$\begin{array}{l}
-  \mt{val} \; \mt{delete} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \to \mt{sql\_exp} \; [\mt{T} = \mt{fields}] \; [] \; [] \; \mt{bool} \to \mt{dml}
+  \mt{val} \; \mt{delete} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \to \mt{sql\_exp} \; [\mt{T} = \mt{fields}] \; [] \; [] \; \mt{disallow\_window} \; \mt{bool} \to \mt{dml}
 \end{array}$$
 
 \subsubsection{Sequences}

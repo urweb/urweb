@@ -249,7 +249,7 @@ fun monoType env =
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_from_items"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
-                  | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_exp"), _), _), _), _), _), _), _), _) =>
+                  | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_exp"), _), _), _), _), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "primary_key"), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
@@ -2107,7 +2107,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             (L.ECApp (
              (L.ECApp (
               (L.ECApp (
-               (L.EFfi ("Basis", "sql_inject"), _),
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_inject"), _),
+                _), _),
                _), _),
               _), _),
              _), _),
@@ -2506,8 +2508,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
+                (L.ECApp (
                  (L.EFfi ("Basis", "sql_unary"), _),
                  _), _),
+                _), _),
                _), _),
               _), _),
              _), _),
@@ -2536,7 +2540,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               (L.ECApp (
                (L.ECApp (
                 (L.ECApp (
-                 (L.EFfi ("Basis", "sql_binary"), _),
+                 (L.ECApp (
+                  (L.EFfi ("Basis", "sql_binary"), _),
+                  _), _),
                  _), _),
                 _), _),
                _), _),
@@ -2569,7 +2575,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                (L.ECApp (
                 (L.ECApp (
                  (L.ECApp (
-                  (L.EFfi ("Basis", "sql_field"), _),
+                  (L.ECApp (
+                   (L.EFfi ("Basis", "sql_field"), _),
+                   _), _),
                   _), _),
                  _), _),
                 _), _),
@@ -2583,7 +2591,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "sql_exp"), _),
+                (L.ECApp (
+                 (L.EFfi ("Basis", "sql_exp"), _),
+                 _), _),
                 _), _),
                _), _),
               _), _),
@@ -2687,7 +2697,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
-              (L.EFfi ("Basis", "sql_count"), _),
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_count"), _),
+               _), _),
               _), _),
              _), _),
             _) => ((L'.EPrim (Prim.String "COUNT(*)"), loc),
@@ -2698,7 +2710,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "sql_aggregate"), _),
+                (L.ECApp (
+                 (L.EFfi ("Basis", "sql_aggregate"), _),
+                 _), _),
                 _), _),
                _), _),
               _), _),
@@ -2770,11 +2784,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             (L.ECApp (
              (L.ECApp (
               (L.ECApp (
-               (L.EFfi ("Basis", "sql_nfunc"), _),
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_nfunc"), _),
+                _), _),
                _), _),
               _), _),
              _), _),
-           _) =>
+            _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun sc s = (L'.EPrim (Prim.String s), loc)
@@ -2789,7 +2805,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "sql_ufunc"), _),
+                (L.ECApp (
+                 (L.EFfi ("Basis", "sql_ufunc"), _),
+                 _), _),
                 _), _),
                _), _),
               _), _),
@@ -2823,7 +2841,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "sql_is_null"), _), _),
+                (L.ECApp (
+                 (L.EFfi ("Basis", "sql_is_null"), _), _),
+                 _), _),
                 _), _),
                _), _),
               _), _)) =>
@@ -2864,7 +2884,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              (L.ECApp (
               (L.ECApp (
                (L.ECApp (
-                (L.EFfi ("Basis", "sql_if_then_else"), _), _),
+                (L.ECApp (
+                 (L.ECApp (
+                  (L.EFfi ("Basis", "sql_if_then_else"), _), _),
+                  _), _),
+                 _), _),
                 _), _),
                _), _),
               _), _)) =>
@@ -2889,7 +2913,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             (L.ECApp (
              (L.ECApp (
               (L.ECApp (
-               (L.EFfi ("Basis", "sql_nullable"), _),
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_nullable"), _),
+                _), _),
                _), _),
               _), _),
              _), _),
@@ -2910,7 +2936,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               (L.ECApp (
                (L.ECApp (
                 (L.ECApp (
-                 (L.EFfi ("Basis", "sql_subquery"), _),
+                 (L.ECApp (
+                  (L.EFfi ("Basis", "sql_subquery"), _),
+                  _), _),
                  _), _),
                 _), _),
                _), _),

@@ -376,14 +376,14 @@ fun nonempty [fs] [us] (t : sql_table fs us) =
     oneRowE1 (SELECT COUNT( * ) > 0 AS B FROM t)
 
 fun eqNullable [tables ::: {{Type}}] [agg ::: {{Type}}] [exps ::: {Type}]
-    [t ::: Type] (_ : sql_injectable (option t))
-    (e1 : sql_exp tables agg exps (option t))
-    (e2 : sql_exp tables agg exps (option t)) =
+    [aw ::: {Unit}] [t ::: Type] (_ : sql_injectable (option t))
+    (e1 : sql_exp tables agg exps aw (option t))
+    (e2 : sql_exp tables agg exps aw (option t)) =
     (SQL ({e1} IS NULL AND {e2} IS NULL) OR {e1} = {e2})
 
 fun eqNullable' [tables ::: {{Type}}] [agg ::: {{Type}}] [exps ::: {Type}]
-    [t ::: Type] (_ : sql_injectable (option t))
-    (e1 : sql_exp tables agg exps (option t))
+    [aw ::: {Unit}] [t ::: Type] (_ : sql_injectable (option t))
+    (e1 : sql_exp tables agg exps aw (option t))
     (e2 : option t) =
     case e2 of
         None => (SQL {e1} IS NULL)
