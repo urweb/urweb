@@ -564,6 +564,22 @@ val sql_maxable_option : t ::: Type -> sql_maxable t -> sql_maxable (option t)
 val sql_max : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 val sql_min : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 
+con sql_window :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
+val sql_window : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                 -> t ::: Type
+                 -> sql_window tables agg exps t
+                 -> sql_exp tables agg exps allow_window t
+
+val sql_window_aggregate : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                           -> t ::: Type -> nt ::: Type
+                           -> sql_aggregate t nt
+                           -> sql_exp tables agg exps allow_window t
+                           -> sql_window tables agg exps nt
+val sql_window_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                       -> sql_window tables agg exps int
+val sql_window_rank : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                      -> sql_window tables agg exps int
+
 con sql_nfunc :: Type -> Type
 val sql_nfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> aw ::: {Unit} -> t ::: Type

@@ -1,0 +1,6 @@
+debug
+database dbname=test
+sql window.sql
+rewrite url Window/*
+
+window

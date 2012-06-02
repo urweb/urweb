@@ -299,6 +299,8 @@ fun monoType env =
                     (L'.TRecord [], loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_maxable"), _), _) =>
                     (L'.TRecord [], loc)
+                  | L.CApp ((L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_window"), _), _), _), _), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_arith"), _), _) =>
                     (L'.TRecord [], loc)
                   | L.CApp ((L.CFfi ("Basis", "sql_nfunc"), _), _) =>
@@ -2728,7 +2730,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                    sc ")"]
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
-                           (L'.EAbs ("e1", s, (L'.TFun (s, s), loc), main), loc)), loc),
+                           (L'.EAbs ("e1", s, s, main), loc)), loc),
                  fm)
             end
 
@@ -2777,6 +2779,56 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
                                  (L'.EPrim (Prim.String "MIN"), loc)), loc)), loc),
              fm)
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.EFfi ("Basis", "sql_window"), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+
+                val main = strcat [(L'.ERel 0, loc),
+                                   sc " OVER ()"]
+            in
+                ((L'.EAbs ("w", s, s, main), loc),
+                 fm)
+            end
+
+          | L.ECApp (
+            (L.ECApp (
+             (L.ECApp (
+              (L.ECApp (
+               (L.ECApp (
+                (L.EFfi ("Basis", "sql_window_aggregate"), _),
+                _), _),
+               _), _),
+              _), _),
+             _), _),
+            _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+                fun sc s = (L'.EPrim (Prim.String s), loc)
+
+                val main = strcat [(L'.ERel 1, loc),
+                                   sc "(",
+                                   (L'.ERel 0, loc),
+                                   sc ")"]
+            in
+                ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                           (L'.EAbs ("e1", s, s, main), loc)), loc),
+                 fm)
+            end
+
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_window_count"), _), _), _), _), _), _) =>
+            ((L'.EPrim (Prim.String "COUNT(*)"), loc), fm)
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_window_rank"), _), _), _), _), _), _) =>
+            ((L'.EPrim (Prim.String "RANK()"), loc), fm)
 
           | L.EFfi ("Basis", "sql_asc") => ((L'.EPrim (Prim.String ""), loc), fm)
           | L.EFfi ("Basis", "sql_desc") => ((L'.EPrim (Prim.String " DESC"), loc), fm)
