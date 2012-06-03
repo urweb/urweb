@@ -93,7 +93,7 @@ functor Make(M : sig
         id <- nextval seq;
         dml (insert tab
                     (@foldR2 [snd] [colMeta]
-                      [fn cols => $(map (fn t => sql_exp [] [] [] disallow_window t.1) cols)]
+                      [fn cols => $(map (fn t => sql_exp [] [] [] t.1) cols)]
                       (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] =>
                        fn input col acc => acc ++ {nm = @sql_inject col.Inject (col.Parse input)})
                       {} M.fl inputs M.cols
@@ -110,7 +110,7 @@ functor Make(M : sig
             fun save (inputs : $(map snd M.cols)) =
                 dml (update [map fst M.cols]
                             (@foldR2 [snd] [colMeta]
-                              [fn cols => $(map (fn t => sql_exp [T = [Id = int] ++ map fst M.cols] [] [] disallow_window t.1) cols)]
+                              [fn cols => $(map (fn t => sql_exp [T = [Id = int] ++ map fst M.cols] [] [] t.1) cols)]
                               (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] =>
                                fn input col acc => acc ++ {nm =
                                                            @sql_inject col.Inject (col.Parse input)})

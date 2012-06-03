@@ -32,8 +32,8 @@ functor Table(M : sig
     val id = {Link = fn id => resultOut (SELECT * FROM t WHERE t.Id = {[id]}),
               Inj = inj}
 
-    fun ensql [avail ::_] (r : row') : $(map (sql_exp avail [] [] disallow_window) fs') =
-        @map2 [meta] [fst] [fn ts :: (Type * Type) => sql_exp avail [] [] disallow_window ts.1]
+    fun ensql [avail ::_] (r : row') : $(map (sql_exp avail [] []) fs') =
+        @map2 [meta] [fst] [fn ts :: (Type * Type) => sql_exp avail [] [] ts.1]
          (fn [ts] meta v => @sql_inject meta.Inj v)
          M.folder M.cols r
 
@@ -53,11 +53,11 @@ functor Table(M : sig
 
     val list = resultsOut (SELECT * FROM t)
 
-    con col = fn t => {Exp : sql_exp [T = fs] [] [] disallow_window t,
+    con col = fn t => {Exp : sql_exp [T = fs] [] [] t,
                        Inj : sql_injectable t}
     val idCol = {Exp = sql_field [#T] [#Id], Inj = _}
     con meta' = fn (fs :: {Type}) (col :: Type, parent :: Type) =>
-                   {Col : {Exp : sql_exp [T = fs] [] [] disallow_window col,
+                   {Col : {Exp : sql_exp [T = fs] [] [] col,
                            Inj : sql_injectable col},
                     Parent : $fs -> transaction (option parent)}
     val cols = @foldR [meta] [fn before => after :: {(Type * Type)} -> [before ~ after] =>
@@ -75,7 +75,7 @@ functor Table(M : sig
                 M.folder M.cols
                 [[Id = (id, row)]] !
 
-    type filter = sql_exp [T = fs] [] [] disallow_window bool
+    type filter = sql_exp [T = fs] [] [] bool
     fun find (f : filter) = resultOut (SELECT * FROM t WHERE {f})
     fun search (f : filter) = resultsOut (SELECT * FROM t WHERE {f})
 

@@ -463,8 +463,6 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "OFFSET"    => (Tokens.OFFSET (pos yypos, pos yypos + size yytext));
 <INITIAL> "ALL"       => (Tokens.ALL (pos yypos, pos yypos + size yytext));
 <INITIAL> "SELECT1"   => (Tokens.SELECT1 (pos yypos, pos yypos + size yytext));
-<INITIAL> "OVER"      => (Tokens.OVER (pos yypos, pos yypos + size yytext));
-<INITIAL> "PARTITION" => (Tokens.PARTITION (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "JOIN"      => (Tokens.JOIN (pos yypos, pos yypos + size yytext));
 <INITIAL> "INNER"     => (Tokens.INNER (pos yypos, pos yypos + size yytext));
@@ -490,6 +488,8 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "MIN"       => (Tokens.MIN (pos yypos, pos yypos + size yytext));
 <INITIAL> "MAX"       => (Tokens.MAX (pos yypos, pos yypos + size yytext));
 <INITIAL> "RANK"      => (Tokens.RANK (pos yypos, pos yypos + size yytext));
+<INITIAL> "PARTITION" => (Tokens.PARTITION (pos yypos, pos yypos + size yytext));
+<INITIAL> "OVER"      => (Tokens.OVER (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "IF"        => (Tokens.CIF (pos yypos, pos yypos + size yytext));
 <INITIAL> "THEN"      => (Tokens.CTHEN (pos yypos, pos yypos + size yytext));

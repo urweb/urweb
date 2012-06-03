@@ -309,7 +309,7 @@ fun applyWindow loc e window =
                                         (ECApp ((EVar (["Basis"], "sql_order_by_Nil", Infer), dummy),
                                                 (CWild (KRecord (KType, dummy), dummy), dummy)),
                                          dummy)))
-        val e' = (EVar (["Basis"], "sql_window", Infer), loc)
+        val e' = (EVar (["Basis"], "sql_window_function", Infer), loc)
         val e' = (EApp (e', e), loc)
         val e' = (EApp (e', pb), loc)
     in
@@ -345,7 +345,7 @@ fun applyWindow loc e window =
  | UNION | INTERSECT | EXCEPT
  | LIMIT | OFFSET | ALL
  | TRUE | FALSE | CAND | OR | NOT
- | COUNT | AVG | SUM | MIN | MAX | RANK
+ | COUNT | AVG | SUM | MIN | MAX | RANK | PARTITION | OVER
  | ASC | DESC | RANDOM
  | INSERT | INTO | VALUES | UPDATE | SET | DELETE | NULL | IS | COALESCE | LIKE
  | CURRENT_TIMESTAMP
@@ -353,7 +353,6 @@ fun applyWindow loc e window =
  | CCONSTRAINT | UNIQUE | CHECK | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
  | JOIN | INNER | CROSS | OUTER | LEFT | RIGHT | FULL
  | CIF | CTHEN | CELSE
- | OVER | PARTITION
 
 %nonterm
    file of decl list
@@ -1755,6 +1754,8 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                                           exps)
                                                      end
 
+                                             val exps = map (fn (c, e) => (c, (EApp ((EVar (["Basis"], "sql_window", Infer), loc), e), loc))) exps
+
                                              val sel = (CRecord sel, loc)
 
                                              val grp = case gopt of
@@ -2041,49 +2042,37 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
        | NULL                           (sql_inject ((EVar (["Basis"], "None", Infer), 
                                                       s (NULLleft, NULLright))))
 
-       | COUNT LPAREN STAR RPAREN window (let
-                                              val loc = s (COUNTleft, windowright)
-                                          in
-                                              case window of
-                                                  NONE => (EVar (["Basis"], "sql_count", Infer), loc)
-                                                | SOME _ =>
-                                                  let
-                                                      val e = (EVar (["Basis"], "sql_window_count", Infer), loc)
-                                                  in
-                                                      applyWindow loc e window
-                                                  end
-                                          end)
-       | RANK UNIT window                (let
-                                              val loc = s (RANKleft, windowright)
-                                              val e = (EVar (["Basis"], "sql_window_rank", Infer), loc)
-                                          in
-                                              applyWindow loc e window
-                                          end)
-       | COUNT LPAREN sqlexp RPAREN window (let
-                                                val loc = s (COUNTleft, windowright)
-                                                          
-                                                val e = (EVar (["Basis"], "sql_count_col", Infer), loc)
-                                            in
-                                                case window of
-                                                    NONE =>
-                                                    let
-                                                        val e = (EApp ((EVar (["Basis"], "sql_aggregate", Infer), loc),
-                                                                       e), loc)
-                                                    in
-                                                        (EApp (e, sqlexp), loc)
-                                                    end
-                                                  | SOME _ =>
-                                                    let
-                                                        val e = (EApp ((EVar (["Basis"], "sql_window_aggregate", Infer), loc),
-                                                                       e), loc)
-                                                        val e = (EApp (e, sqlexp), loc)
-                                                    in
-                                                        applyWindow loc e window
-                                                    end
-                                            end)
+       | COUNT LPAREN STAR RPAREN window(let
+                                             val loc = s (COUNTleft, windowright)
+                                         in
+                                             case window of
+                                                 NONE => (EVar (["Basis"], "sql_count", Infer), loc)
+                                               | SOME _ => applyWindow loc (EVar (["Basis"], "sql_window_count", Infer), loc) window
+                                         end)
+       | COUNT LPAREN sqlexp RPAREN window(let
+                                               val loc = s (COUNTleft, RPARENright)
+                                               val e = (EVar (["Basis"], "sql_count_col", Infer), loc)
+                                           in
+                                               case window of
+                                                   NONE =>
+                                                   let
+                                                       val e = (EApp ((EVar (["Basis"], "sql_aggregate", Infer), loc),
+                                                                      e), loc)
+                                                   in
+                                                       (EApp (e, sqlexp), loc)
+                                                   end
+                                                 | SOME _ =>
+                                                   let
+                                                       val e = (EVar (["Basis"], "sql_count_col", Infer), loc)
+                                                       val e = (EApp ((EVar (["Basis"], "sql_window_aggregate", Infer), loc),
+                                                                      e), loc)
+                                                   in
+                                                       applyWindow loc (EApp (e, sqlexp), loc) window
+                                                   end
+                                           end)
        | sqlagg LPAREN sqlexp RPAREN window (let
-                                                 val loc = s (sqlaggleft, windowright)
-
+                                                 val loc = s (sqlaggleft, RPARENright)
+                                                           
                                                  val e = (EVar (["Basis"], "sql_" ^ sqlagg, Infer), loc)
                                              in
                                                  case window of
@@ -2098,11 +2087,15 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                      let
                                                          val e = (EApp ((EVar (["Basis"], "sql_window_aggregate", Infer), loc),
                                                                         e), loc)
-                                                         val e = (EApp (e, sqlexp), loc)
                                                      in
-                                                         applyWindow loc e window
+                                                         applyWindow loc (EApp (e, sqlexp), loc) window
                                                      end
                                              end)
+       | RANK UNIT window               (let
+                                             val loc = s (RANKleft, windowright)
+                                         in
+                                             applyWindow loc (EVar (["Basis"], "sql_rank", Infer), loc) window
+                                         end)
        | COALESCE LPAREN sqlexp COMMA sqlexp RPAREN
                                         (let
                                              val loc = s (COALESCEright, sqlexp2right)

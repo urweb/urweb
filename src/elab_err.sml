@@ -242,7 +242,11 @@ fun expError env err =
          eprefaces' ([("Class constraint", p_con env c)]
                      @ (case E.resolveFailureCause () of
                             NONE => []
-                          | SOME c' => [("Reduced to unresolvable", p_con env c')])))
+                          | SOME c' => [("Reduced to unresolvable", p_con env c')]))(*;
+         app (fn (c, rs) => (eprefaces' [("CLASS", p_con env c)];
+                             app (fn (c, e) => eprefaces' [("RULE", p_con env c),
+                                                           ("IMPL", p_exp env e)]) rs))
+             (E.listClasses env)*))
       | IllegalRec (x, e) =>
         (ErrorMsg.errorAt (#2 e) "Illegal 'val rec' righthand side (must be a function abstraction)";
          eprefaces' [("Variable", PD.string x),

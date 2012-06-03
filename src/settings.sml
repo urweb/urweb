@@ -538,7 +538,7 @@ type dbms = {
      falseString : string,
      onlyUnion : bool,
      nestedRelops : bool,
-     windowFunctions : bool
+     windowFunctions: bool
 }
 
 val dbmses = ref ([] : dbms list)

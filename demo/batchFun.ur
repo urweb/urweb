@@ -46,7 +46,7 @@ functor Make(M : sig
     fun add r =
         dml (insert t
                     (@foldR2 [fst] [colMeta]
-                      [fn cols => $(map (fn t => sql_exp [] [] [] disallow_window t.1) cols)]
+                      [fn cols => $(map (fn t => sql_exp [] [] [] t.1) cols)]
                       (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] input col acc =>
                           acc ++ {nm = @sql_inject col.Inject input})
                       {} M.fl (r -- #Id) M.cols

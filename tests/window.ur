@@ -1,6 +1,6 @@
 table empsalary : { Depname : string,
-                   Empno : int,
-                   Salary : int }
+                    Empno : int,
+                    Salary : int }
 
 fun main () : transaction page =
     x <- queryX (SELECT empsalary.Depname, empsalary.Empno, empsalary.Salary,

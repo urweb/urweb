@@ -385,7 +385,7 @@ functor Make(M : sig
                        val wholeRow = @Folder.concat ! M.keyFolder M.rowFolder
 
                        fun ensql [env] (r : $(M.key ++ M.row)) =
-                           @map2 [rawMeta] [ident] [sql_exp env [] [] disallow_window]
+                           @map2 [rawMeta] [ident] [sql_exp env [] []]
                             (fn [t] meta v => @sql_inject meta.Inj v)
                             wholeRow M.raw r
 
@@ -396,12 +396,12 @@ functor Make(M : sig
                            dml (insert M.tab (ensql row));
                            return row
 
-                       fun selector (r : $M.key) : sql_exp [T = M.key ++ M.row] [] [] disallow_window bool =
+                       fun selector (r : $M.key) : sql_exp [T = M.key ++ M.row] [] [] bool =
                          @foldR2 [rawMeta] [ident]
-                          [fn key => rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] disallow_window bool]
+                          [fn key => rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] bool]
                           (fn [nm :: Name] [t :: Type] [key :: {Type}] [[nm] ~ key]
                                            (meta : rawMeta t) (v : t)
-                                           (exp : rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] disallow_window bool)
+                                           (exp : rest :: {Type} -> [rest ~ key] => sql_exp [T = key ++ rest] [] [] bool)
                                            [rest :: {Type}] [rest ~ [nm = t] ++ key] =>
                               (WHERE T.{nm} = {@sql_inject meta.Inj v} AND {exp [[nm = t] ++ rest]}))
                           (fn [rest :: {Type}] [rest ~ []] => (WHERE TRUE))

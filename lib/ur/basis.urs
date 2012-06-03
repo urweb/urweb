@@ -305,23 +305,15 @@ val foreign_key : mine1 ::: Name -> t ::: Type -> mine ::: {Type} -> munused :::
            OnUpdate : propagation_mode ([mine1 = t] ++ mine)}
        -> sql_constraint ([mine1 = t] ++ mine ++ munused) []
 
-con allow_window :: {Unit}
-con disallow_window :: {Unit}
-
-con sql_exp :: {{Type}} (* Free tables, for normal use *)
-    -> {{Type}}         (* Free tables, for use in arguments to aggregate functions *)
-    -> {Type}           (* Free ad-hoc variables *)
-    -> {Unit}           (* Allow window functions here?  ([allow_window] indicates yes.) *)
-    -> Type             (* SQL type of this expression *)
-    -> Type
-val sql_exp_weaken : fs ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> aw ::: {Unit} -> t ::: Type
+con sql_exp :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
+val sql_exp_weaken : fs ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                      -> fs' ::: {{Type}} -> agg' ::: {{Type}} -> exps' ::: {Type}
                      -> [fs ~ fs'] => [agg ~ agg'] => [exps ~ exps'] =>
-                     sql_exp fs agg exps aw t
-                     -> sql_exp (fs ++ fs') (agg ++ agg') (exps ++ exps') aw t
+                     sql_exp fs agg exps t
+                     -> sql_exp (fs ++ fs') (agg ++ agg') (exps ++ exps') t
 
 val check : fs ::: {Type}
-            -> sql_exp [] [] fs disallow_window bool
+            -> sql_exp [] [] fs bool
             -> sql_constraint fs []
 
 
@@ -359,7 +351,7 @@ val sql_from_comma : free ::: {{Type}} -> tabs1 ::: {{Type}} -> tabs2 ::: {{Type
 val sql_inner_join : free ::: {{Type}} -> tabs1 ::: {{Type}} -> tabs2 ::: {{Type}}
                      -> [free ~ tabs1] => [free ~ tabs2] => [tabs1 ~ tabs2]
     => sql_from_items free tabs1 -> sql_from_items free tabs2
-       -> sql_exp (free ++ tabs1 ++ tabs2) [] [] disallow_window bool
+       -> sql_exp (free ++ tabs1 ++ tabs2) [] [] bool
        -> sql_from_items free (tabs1 ++ tabs2)
 
 class nullify :: Type -> Type -> Type
@@ -370,14 +362,14 @@ val sql_left_join : free ::: {{Type}} -> tabs1 ::: {{Type}} -> tabs2 ::: {{(Type
                      -> [free ~ tabs1] => [free ~ tabs2] => [tabs1 ~ tabs2]
     => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) tabs2)
        -> sql_from_items free tabs1 -> sql_from_items free (map (map (fn p :: (Type * Type) => p.1)) tabs2)
-       -> sql_exp (free ++ tabs1 ++ map (map (fn p :: (Type * Type) => p.1)) tabs2) [] [] disallow_window bool
+       -> sql_exp (free ++ tabs1 ++ map (map (fn p :: (Type * Type) => p.1)) tabs2) [] [] bool
        -> sql_from_items free (tabs1 ++ map (map (fn p :: (Type * Type) => p.2)) tabs2)
 
 val sql_right_join : free ::: {{Type}} -> tabs1 ::: {{(Type * Type)}} -> tabs2 ::: {{Type}}
                      -> [free ~ tabs1] => [free ~ tabs2] => [tabs1 ~ tabs2]
     => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) tabs1)
        -> sql_from_items free (map (map (fn p :: (Type * Type) => p.1)) tabs1) -> sql_from_items free tabs2
-       -> sql_exp (free ++ map (map (fn p :: (Type * Type) => p.1)) tabs1 ++ tabs2) [] [] disallow_window bool
+       -> sql_exp (free ++ map (map (fn p :: (Type * Type) => p.1)) tabs1 ++ tabs2) [] [] bool
        -> sql_from_items free (map (map (fn p :: (Type * Type) => p.2)) tabs1 ++ tabs2)
 
 val sql_full_join : free ::: {{Type}} -> tabs1 ::: {{(Type * Type)}} -> tabs2 ::: {{(Type * Type)}}
@@ -385,8 +377,11 @@ val sql_full_join : free ::: {{Type}} -> tabs1 ::: {{(Type * Type)}} -> tabs2 ::
     => $(map (fn r => $(map (fn p :: (Type * Type) => nullify p.1 p.2) r)) (tabs1 ++ tabs2))
        -> sql_from_items free (map (map (fn p :: (Type * Type) => p.1)) tabs1)
        -> sql_from_items free (map (map (fn p :: (Type * Type) => p.1)) tabs2)
-       -> sql_exp (free ++ map (map (fn p :: (Type * Type) => p.1)) (tabs1 ++ tabs2)) [] [] disallow_window bool
+       -> sql_exp (free ++ map (map (fn p :: (Type * Type) => p.1)) (tabs1 ++ tabs2)) [] [] bool
        -> sql_from_items free (map (map (fn p :: (Type * Type) => p.2)) (tabs1 ++ tabs2))
+
+(** [ORDER BY] and [SELECT] expressions may use window functions, so we introduce a type family for such expressions. *)
+con sql_expw :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
 
 val sql_query1 : free ::: {{Type}}
                  -> afree ::: {{Type}}
@@ -401,11 +396,11 @@ val sql_query1 : free ::: {{Type}}
                  => [empties ~ selectedFields]
                  => {Distinct : bool,
                      From : sql_from_items free tables,
-                     Where : sql_exp (free ++ tables) afree [] disallow_window bool,
+                     Where : sql_exp (free ++ tables) afree [] bool,
                      GroupBy : sql_subset tables grouped,
-                     Having : sql_exp (free ++ grouped) (afree ++ tables) [] disallow_window bool,
+                     Having : sql_exp (free ++ grouped) (afree ++ tables) [] bool,
                      SelectFields : sql_subset grouped (map (fn _ => []) empties ++ selectedFields),
-                     SelectExps : $(map (sql_exp (free ++ grouped) (afree ++ tables) [] allow_window)
+                     SelectExps : $(map (sql_expw (free ++ grouped) (afree ++ tables) [])
                                             selectedExps) }
                  -> sql_query1 free afree tables selectedFields selectedExps
 
@@ -432,10 +427,21 @@ type sql_direction
 val sql_asc : sql_direction
 val sql_desc : sql_direction
 
+(** This type class supports automatic injection of either regular or window expressions into [sql_expw]. *)
+class sql_window :: ({{Type}} -> {{Type}} -> {Type} -> Type -> Type) -> Type
+val sql_window_normal : sql_window sql_exp
+val sql_window_fancy : sql_window sql_expw
+val sql_window : tf ::: ({{Type}} -> {{Type}} -> {Type} -> Type -> Type)
+                 -> tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+                 -> sql_window tf
+                 -> tf tables agg exps t
+                 -> sql_expw tables agg exps t
+
 con sql_order_by :: {{Type}} -> {Type} -> Type
 val sql_order_by_Nil : tables ::: {{Type}} -> exps :: {Type} -> sql_order_by tables exps
-val sql_order_by_Cons : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
-                        -> sql_exp tables [] exps allow_window t -> sql_direction
+val sql_order_by_Cons : tf ::: ({{Type}} -> {{Type}} -> {Type} -> Type -> Type) -> tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+                        -> sql_window tf
+                        -> tf tables [] exps t -> sql_direction
                         -> sql_order_by tables exps
                         -> sql_order_by tables exps
 val sql_order_by_random : tables ::: {{Type}} -> exps ::: {Type}
@@ -462,42 +468,42 @@ val sql_query : free ::: {{Type}}
                 -> sql_query free afree selectedFields selectedExps
 
 val sql_field : otherTabs ::: {{Type}} -> otherFields ::: {Type}
-                -> aw ::: {Unit} -> fieldType ::: Type -> agg ::: {{Type}}
+                -> fieldType ::: Type -> agg ::: {{Type}}
                 -> exps ::: {Type}
                 -> tab :: Name -> field :: Name
                 -> sql_exp
                        ([tab = [field = fieldType] ++ otherFields] ++ otherTabs)
-                       agg exps aw fieldType
+                       agg exps fieldType
 
-val sql_exp : tabs ::: {{Type}} -> agg ::: {{Type}} -> aw ::: {Unit} -> t ::: Type -> rest ::: {Type}
+val sql_exp : tabs ::: {{Type}} -> agg ::: {{Type}} -> t ::: Type -> rest ::: {Type}
               -> nm :: Name
-              -> sql_exp tabs agg ([nm = t] ++ rest) aw t
+              -> sql_exp tabs agg ([nm = t] ++ rest) t
 
 class sql_injectable
 val sql_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable t
 val sql_option_prim : t ::: Type -> sql_injectable_prim t -> sql_injectable (option t)
 
 val sql_inject : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                 -> aw ::: {Unit} -> t ::: Type
-                 -> sql_injectable t -> t -> sql_exp tables agg exps aw t
+                 -> t ::: Type
+                 -> sql_injectable t -> t -> sql_exp tables agg exps t
 
 val sql_is_null : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                  -> aw ::: {Unit} -> t ::: Type
-                  -> sql_exp tables agg exps aw (option t)
-                  -> sql_exp tables agg exps aw bool
+                  -> t ::: Type
+                  -> sql_exp tables agg exps (option t)
+                  -> sql_exp tables agg exps bool
 
 val sql_coalesce : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                  -> aw ::: {Unit} -> t ::: Type
-                  -> sql_exp tables agg exps aw (option t)
-                  -> sql_exp tables agg exps aw t
-                  -> sql_exp tables agg exps aw t
+                  -> t ::: Type
+                  -> sql_exp tables agg exps (option t)
+                  -> sql_exp tables agg exps t
+                  -> sql_exp tables agg exps t
 
 val sql_if_then_else : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                       -> aw ::: {Unit} -> t ::: Type
-                       -> sql_exp tables agg exps aw bool
-                       -> sql_exp tables agg exps aw t
-                       -> sql_exp tables agg exps aw t
-                       -> sql_exp tables agg exps aw t
+                       -> t ::: Type
+                       -> sql_exp tables agg exps bool
+                       -> sql_exp tables agg exps t
+                       -> sql_exp tables agg exps t
+                       -> sql_exp tables agg exps t
 
 class sql_arith
 val sql_arith_int : sql_arith int
@@ -507,9 +513,9 @@ val sql_arith_option : t ::: Type -> sql_arith t -> sql_arith (option t)
 con sql_unary :: Type -> Type -> Type
 val sql_not : sql_unary bool bool
 val sql_unary : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                -> aw ::: {Unit} -> arg ::: Type -> res ::: Type
-                -> sql_unary arg res -> sql_exp tables agg exps aw arg
-                -> sql_exp tables agg exps aw res
+                -> arg ::: Type -> res ::: Type
+                -> sql_unary arg res -> sql_exp tables agg exps arg
+                -> sql_exp tables agg exps res
 
 val sql_neg : t ::: Type -> sql_arith t -> sql_unary t t
 
@@ -517,10 +523,10 @@ con sql_binary :: Type -> Type -> Type -> Type
 val sql_and : sql_binary bool bool bool
 val sql_or : sql_binary bool bool bool
 val sql_binary : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                 -> aw ::: {Unit} -> arg1 ::: Type -> arg2 ::: Type -> res ::: Type
-                 -> sql_binary arg1 arg2 res -> sql_exp tables agg exps aw arg1
-                 -> sql_exp tables agg exps aw arg2
-                 -> sql_exp tables agg exps aw res
+                 -> arg1 ::: Type -> arg2 ::: Type -> res ::: Type
+                 -> sql_binary arg1 arg2 res -> sql_exp tables agg exps arg1
+                 -> sql_exp tables agg exps arg2
+                 -> sql_exp tables agg exps res
 
 val sql_plus : t ::: Type -> sql_arith t -> sql_binary t t t
 val sql_minus : t ::: Type -> sql_arith t -> sql_binary t t t
@@ -537,14 +543,14 @@ val sql_ge : t ::: Type -> sql_binary t t bool
 
 val sql_like : sql_binary string string bool
 
-val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> aw ::: {Unit}
-                -> sql_exp tables agg exps aw int
+val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                -> sql_exp tables agg exps int
 
 con sql_aggregate :: Type -> Type -> Type
 val sql_aggregate : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                    -> aw ::: {Unit} -> dom ::: Type -> ran ::: Type
-                    -> sql_aggregate dom ran -> sql_exp agg agg exps aw dom
-                    -> sql_exp tables agg exps aw ran
+                    -> dom ::: Type -> ran ::: Type
+                    -> sql_aggregate dom ran -> sql_exp agg agg exps dom
+                    -> sql_exp tables agg exps ran
 
 val sql_count_col : t ::: Type -> sql_aggregate (option t) int
 
@@ -564,56 +570,59 @@ val sql_maxable_option : t ::: Type -> sql_maxable t -> sql_maxable (option t)
 val sql_max : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 val sql_min : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 
-con sql_partition :: {{Type}} -> {{Type}} -> {Type} -> Type
-val sql_no_partition : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                       -> sql_partition tables agg exps
-val sql_partition : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
-                    -> sql_exp tables agg exps disallow_window t
-                    -> sql_partition tables agg exps
-
-con sql_window :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
-val sql_window : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                 -> t ::: Type
-                 -> sql_window tables agg exps t
-                 -> sql_partition tables agg exps
-                 -> sql_order_by tables exps
-                 -> sql_exp tables agg exps allow_window t
-
-val sql_window_aggregate : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                           -> t ::: Type -> nt ::: Type
-                           -> sql_aggregate t nt
-                           -> sql_exp tables agg exps disallow_window t
-                           -> sql_window tables agg exps nt
-val sql_window_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                       -> sql_window tables agg exps int
-val sql_window_rank : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                      -> sql_window tables agg exps int
-
 con sql_nfunc :: Type -> Type
 val sql_nfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                -> aw ::: {Unit} -> t ::: Type
-                -> sql_nfunc t -> sql_exp tables agg exps aw t
+                -> t ::: Type
+                -> sql_nfunc t -> sql_exp tables agg exps t
 val sql_current_timestamp : sql_nfunc time
 
 con sql_ufunc :: Type -> Type -> Type
 val sql_ufunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                -> aw ::: {Unit} -> dom ::: Type -> ran ::: Type
-                -> sql_ufunc dom ran -> sql_exp tables agg exps aw dom
-                -> sql_exp tables agg exps aw ran
+                -> dom ::: Type -> ran ::: Type
+                -> sql_ufunc dom ran -> sql_exp tables agg exps dom
+                -> sql_exp tables agg exps ran
 val sql_octet_length : sql_ufunc blob int
 val sql_known : t ::: Type -> sql_ufunc t bool
 val sql_lower : sql_ufunc string string
 val sql_upper : sql_ufunc string string
 
-val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> aw ::: {Unit} -> t ::: Type
+val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                    -> sql_injectable_prim t
-                   -> sql_exp tables agg exps aw t
-                   -> sql_exp tables agg exps aw (option t)
+                   -> sql_exp tables agg exps t
+                   -> sql_exp tables agg exps (option t)
 
-val sql_subquery : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> nm ::: Name -> aw ::: {Unit} -> t ::: Type -> nt ::: Type
+val sql_subquery : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> nm ::: Name -> t ::: Type -> nt ::: Type
                    -> nullify t nt
                    -> sql_query tables agg [] [nm = t]
-                   -> sql_exp tables agg exps aw nt
+                   -> sql_exp tables agg exps nt
+
+(** Window function expressions *)
+
+con sql_partition :: {{Type}} -> {{Type}} -> {Type} -> Type
+val sql_no_partition : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                       -> sql_partition tables agg exps
+val sql_partition : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
+                    -> sql_exp tables agg exps t
+                    -> sql_partition tables agg exps
+
+con sql_window_function :: {{Type}} -> {{Type}} -> {Type} -> Type -> Type
+val sql_window_function : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                          -> t ::: Type
+                          -> sql_window_function tables agg exps t
+                          -> sql_partition tables agg exps
+                          -> sql_order_by tables exps
+                          -> sql_expw tables agg exps t
+
+val sql_window_aggregate : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                           -> t ::: Type -> nt ::: Type
+                           -> sql_aggregate t nt
+                           -> sql_exp tables agg exps t
+                           -> sql_window_function tables agg exps nt
+val sql_window_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                       -> sql_window_function tables agg exps int
+val sql_rank : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+               -> sql_window_function tables agg exps int
+
 
 (*** Executing queries *)
 
@@ -637,19 +646,19 @@ val tryDml : dml -> transaction (option string)
 
 val insert : fields ::: {Type} -> uniques ::: {{Unit}}
              -> sql_table fields uniques
-             -> $(map (fn t :: Type => sql_exp [] [] [] disallow_window t) fields)
+             -> $(map (fn t :: Type => sql_exp [] [] [] t) fields)
              -> dml
 
 val update : unchanged ::: {Type} -> uniques ::: {{Unit}} -> changed :: {Type} ->
              [changed ~ unchanged] =>
-                $(map (fn t :: Type => sql_exp [T = changed ++ unchanged] [] [] disallow_window t) changed)
+                $(map (fn t :: Type => sql_exp [T = changed ++ unchanged] [] [] t) changed)
                 -> sql_table (changed ++ unchanged) uniques
-                -> sql_exp [T = changed ++ unchanged] [] [] disallow_window bool
+                -> sql_exp [T = changed ++ unchanged] [] [] bool
                 -> dml
 
 val delete : fields ::: {Type} -> uniques ::: {{Unit}}
              -> sql_table fields uniques
-             -> sql_exp [T = fields] [] [] disallow_window bool
+             -> sql_exp [T = fields] [] [] bool
              -> dml
 
 (*** Sequences *)
