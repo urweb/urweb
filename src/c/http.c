@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -217,7 +218,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-p <port>] [-t <thread-count>]\n", cmd);
+  printf("Usage: %s [-p <port>] [-a <IP address>] [-t <thread count>]\n", cmd);
 }
 
 static void sigint(int signum) {
@@ -238,7 +239,10 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, sigint);
   signal(SIGPIPE, SIG_IGN); 
 
-  while ((opt = getopt(argc, argv, "hp:t:")) != -1) {
+  my_addr.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
+  memset(my_addr.sin_zero, '\0', sizeof my_addr.sin_zero);
+
+  while ((opt = getopt(argc, argv, "hp:a:t:")) != -1) {
     switch (opt) {
     case '?':
       fprintf(stderr, "Unknown command-line option");
@@ -253,6 +257,14 @@ int main(int argc, char *argv[]) {
       uw_port = atoi(optarg);
       if (uw_port <= 0) {
         fprintf(stderr, "Invalid port number\n");
+        help(argv[0]);
+        return 1;
+      }
+      break;
+
+    case 'a':
+      if (!inet_pton(AF_INET, optarg, &my_addr.sin_addr)) {
+        fprintf(stderr, "Invalid IP address\n");
         help(argv[0]);
         return 1;
       }
@@ -291,8 +303,6 @@ int main(int argc, char *argv[]) {
 
   my_addr.sin_family = AF_INET;         // host byte order
   my_addr.sin_port = htons(uw_port);    // short, network byte order
-  my_addr.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
-  memset(my_addr.sin_zero, '\0', sizeof my_addr.sin_zero);
 
   if (bind(sockfd, (struct sockaddr *)&my_addr, sizeof my_addr) < 0) {
     fprintf(stderr, "Listener socket bind failed\n");
