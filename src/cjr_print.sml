@@ -2320,6 +2320,8 @@ fun p_fun isRec env (fx, n, args, ran, e) =
              string "}"]
     end
 
+val global_initializers : Print.PD.pp_desc list ref = ref []
+
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DStruct (n, xts) =>
@@ -2414,14 +2416,15 @@ fun p_decl env (dAll as (d, _) : decl) =
       | DDatatypeForward _ => box []
 
       | DVal (x, n, t, e) =>
-        box [p_typ env t,
-             space,
-             string ("__uwn_" ^ ident x ^ "_" ^ Int.toString n),
-             space,
-             string "=",
-             space,
-             p_exp env e,
-             string ";"]
+        (global_initializers := box [string ("__uwn_" ^ ident x ^ "_" ^ Int.toString n),
+                                     space,
+                                     string "=",
+                                     space,
+                                     p_exp env e,
+                                     string ";"] :: !global_initializers;
+         box [p_typ env t,
+              space,
+              string ("__uwn_" ^ ident x ^ "_" ^ Int.toString n ^ ";")])
       | DFun vi => p_fun false env vi
       | DFunRec vis =>
         let
@@ -2565,7 +2568,8 @@ fun p_file env (ds, ps) =
                   unurlifies := IS.empty;
                   urlifies := IS.empty;
                   urlifiesL := IS.empty;
-                  self := NONE)
+                  self := NONE;
+                  global_initializers := [])
 
         val (pds, env) = ListUtil.foldlMap (fn (d, env) =>
                                                let
@@ -3474,7 +3478,12 @@ fun p_file env (ds, ps) =
              newline,
              string "static void uw_initializer(uw_context ctx) {",
              newline,
-             box [p_list_sep (box []) (fn (x1, x2, e) => box [string "({",
+             box [string "uw_begin_initializing(ctx);",
+                  newline,
+                  p_list_sep newline (fn x => x) (rev (!global_initializers)),
+                  string "uw_end_initializing(ctx);",
+                  newline,
+                  p_list_sep (box []) (fn (x1, x2, e) => box [string "({",
                                                               newline,
                                                               string "uw_unit __uwr_",
                                                               string x1,

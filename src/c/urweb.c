@@ -465,6 +465,8 @@ struct uw_context {
 
   unsigned nextId;
 
+  int amInitializing;
+
   char error_message[ERROR_BUF_LEN];
 };
 
@@ -535,6 +537,8 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->queryString = NULL;
 
   ctx->nextId = 0;
+
+  ctx->amInitializing = 0;
 
   return ctx;
 }
@@ -613,6 +617,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->script_header = "";
   ctx->queryString = NULL;
   ctx->nextId = 0;
+  ctx->amInitializing = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -1204,14 +1209,31 @@ void uw_set_heap_front(uw_context ctx, char *fr) {
   ctx->heap.front = fr;
 }
 
+void uw_begin_initializing(uw_context ctx) {
+  ctx->amInitializing = 1;
+}
+
+void uw_end_initializing(uw_context ctx) {
+  ctx->amInitializing = 0;
+}
+
 void *uw_malloc(uw_context ctx, size_t len) {
   void *result;
 
-  uw_check_heap(ctx, len);
+  if (ctx->amInitializing) {
+    result = malloc(len);
 
-  result = ctx->heap.front;
-  ctx->heap.front += len;
-  return result;
+    if (result)
+      return result;
+    else
+      uw_error(ctx, FATAL, "uw_malloc: malloc() returns 0");
+  } else {
+    uw_check_heap(ctx, len);
+
+    result = ctx->heap.front;
+    ctx->heap.front += len;
+    return result;
+  }
 }
 
 void uw_begin_region(uw_context ctx) {

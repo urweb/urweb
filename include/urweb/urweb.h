@@ -360,4 +360,7 @@ uw_Basis_string uw_Basis_atom(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_css_url(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_property(uw_context, uw_Basis_string);
 
+void uw_begin_initializing(uw_context);
+void uw_end_initializing(uw_context);
+
 #endif
