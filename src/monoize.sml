@@ -3234,7 +3234,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (style, fm) = monoExp (env, st, fm) style
                 val (dynStyle, fm) = monoExp (env, st, fm) dynStyle
 
-                val dynamics = ["dyn", "ctextbox", "ccheckbox", "cselect", "coption", "ctextarea"]
+                val dynamics = ["dyn", "ctextbox", "ccheckbox", "cselect", "coption", "ctextarea", "active"]
 
                 fun isSome (e, _) =
                     case e of
@@ -3541,8 +3541,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                        (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
                                                     (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
 				 fm)
-                              | _ => raise Fail "Monoize: Bad dyn attributes"
+                              | _ => raise Fail "Monoize: Bad <dyn> attributes"
 			end
+
+                      | "active" =>
+                        (case attrs of
+			     [("Code", e, _)] =>
+			     ((L'.EStrcat
+                                   ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">active(execD(")), loc),
+                                    (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
+                                                 (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
+			      fm)
+                           | _ => raise Fail "Monoize: Bad <active> attributes")
 
                       | "submit" => normal ("input type=\"submit\"", NONE)
                       | "image" => normal ("input type=\"image\"", NONE)

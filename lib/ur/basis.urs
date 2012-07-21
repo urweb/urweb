@@ -767,6 +767,9 @@ val giveFocus : id -> transaction unit
 val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ [Dyn]] => unit
           -> tag [Signal = signal (xml ([Dyn] ++ ctx) use bind)] ([Dyn] ++ ctx) [] use bind
 
+val active : unit
+             -> tag [Code = transaction xbody] body [] [] []
+
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
 val link : unit -> tag [Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []

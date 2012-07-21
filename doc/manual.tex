@@ -2136,7 +2136,11 @@ The semantics of \cd{<dyn>} tags is somewhat subtle.  When the signal associated
 
 Currently, the only way to avoid undesired resets is to avoid regeneration of containing subtrees.  There are two main strategies for achieving that goal.  First, when changes to a subtree can be confined to CSS classes of tags, the \texttt{dynClass} pseudo-attribute may be used instead (see Section \ref{xml}), as it does not regenerate subtrees.  Second, a single \cd{<dyn>} tag may be broken into multiple tags, in a way that makes finer-grained dependency structure explicit.  This latter strategy can avoid ``spurious'' regenerations that are not actually required to achieve the intended semantics.
 
-Transactions can be run on the client by including them in attributes like the $\mt{Onclick}$ attribute of $\mt{button}$, and GUI widgets like $\mt{ctextbox}$ have $\mt{Source}$ attributes that can be used to connect them to sources, so that their values can be read by code running because of, e.g., an $\mt{Onclick}$ event.
+Transactions can be run on the client by including them in attributes like the $\mt{Onclick}$ attribute of $\mt{button}$, and GUI widgets like $\mt{ctextbox}$ have $\mt{Source}$ attributes that can be used to connect them to sources, so that their values can be read by code running because of, e.g., an $\mt{Onclick}$ event.  It is also possible to create an ``active'' HTML fragment that runs a $\mt{transaction}$ to determine its content, possibly allocating some sources in the process:
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{active} : \mt{unit} \to \mt{tag} \; [\mt{Code} = \mt{transaction} \; \mt{xbody}] \; \mt{body} \; [] \; [] \; []
+\end{array}$$
 
 \subsubsection{Remote Procedure Calls}
 
