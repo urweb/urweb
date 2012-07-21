@@ -177,7 +177,8 @@ val benignBase = basis ["get_cookie",
                         "onMouseup",
                         "preventDefault",
                         "stopPropagation",
-                        "fresh"]
+                        "fresh",
+                        "giveFocus"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
@@ -205,7 +206,8 @@ val clientBase = basis ["get_client_source",
                         "onMousedown",
                         "onMouseup",
                         "preventDefault",
-                        "stopPropagation"]
+                        "stopPropagation",
+                        "giveFocus"]
 val client = ref clientBase
 fun setClientOnly ls = client := S.addList (clientBase, ls)
 fun isClientOnly x = S.member (!client, x)
@@ -322,7 +324,8 @@ val jsFuncsBase = basisM [("alert", "alert"),
 
                           ("atom", "atom"),
                           ("css_url", "css_url"),
-                          ("property", "property")]
+                          ("property", "property"),
+                          ("giveFocus", "giveFocus")]
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)

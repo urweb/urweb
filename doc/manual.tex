@@ -2093,7 +2093,13 @@ $$\begin{array}{l}
   \mt{val} \; \mt{fresh} : \mt{transaction} \; \mt{id}
 \end{array}$$
 
-The \cd{fresh} function is allowed on both server and client, but there is no other way to create IDs, which includes lack of a way to force an ID to match a particular string.  The only semantic importance of IDs within Ur/Web is in uses of the HTML \cd{<label>} tag.  IDs play a much more central role in mainstream JavaScript programming, but Ur/Web uses a very different model to enable changes to particular nodes of a page tree, as the next manual subsection explains.  IDs may still be useful in interfacing with JavaScript code (for instance, through Ur/Web's FFI).
+The \cd{fresh} function is allowed on both server and client, but there is no other way to create IDs, which includes lack of a way to force an ID to match a particular string.  The main semantic importance of IDs within Ur/Web is in uses of the HTML \cd{<label>} tag.  IDs play a much more central role in mainstream JavaScript programming, but Ur/Web uses a very different model to enable changes to particular nodes of a page tree, as the next manual subsection explains.  IDs may still be useful in interfacing with JavaScript code (for instance, through Ur/Web's FFI).
+
+One further use of IDs is as handles for requesting that \emph{focus} be given to specific tags.
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{giveFocus} : \mt{id} \to \mt{transaction} \; \mt{unit}
+\end{array}$$
 
 \subsubsection{\label{signals}Functional-Reactive Page Generation}
 
