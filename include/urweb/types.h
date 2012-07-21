@@ -47,6 +47,7 @@ typedef struct uw_Basis_file {
 
 typedef struct uw_Basis_postBody {
   uw_Basis_string type, data;
+  size_t len;
 } uw_Basis_postBody;
 
 typedef uw_Basis_string uw_Basis_queryString;

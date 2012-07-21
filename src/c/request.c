@@ -246,7 +246,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
   char *inputs;
   const char *prefix = uw_get_url_prefix(ctx);
   char *s;
-  int had_error = 0;
+  int had_error = 0, is_fancy = 0;
   char errmsg[ERROR_BUF_LEN];
 
   uw_reset(ctx);
@@ -284,6 +284,10 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
     uw_isPost(ctx);
 
     clen_s = uw_Basis_requestHeader(ctx, "Content-type");
+
+    if (!clen_s || strcasecmp(clen_s, "application/x-www-form-urlencoded"))
+      is_fancy = 1;
+
     if (clen_s && !strncasecmp(clen_s, "multipart/form-data", 19)) {
       if (strncasecmp(clen_s + 19, "; boundary=", 11)) {
         log_error(logger_data, "Bad multipart boundary spec");
@@ -295,7 +299,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       boundary[1] = '-';
       boundary_len = strlen(boundary);
     } else if (clen_s) {
-      uw_Basis_postBody pb = {clen_s, body};
+      uw_Basis_postBody pb = {clen_s, body, body_len};
       uw_postBody(ctx, pb);
     }
   } else if (strcmp(method, "GET")) {
@@ -430,7 +434,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       }
     }
   }
-  else if (!uw_hasPostBody(ctx)) {
+  else if (!is_fancy) {
     inputs = is_post ? body : query_string;
 
     if (inputs) {
