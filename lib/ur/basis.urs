@@ -898,6 +898,12 @@ type postBody
 val postType : postBody -> string
 val postData : postBody -> string
 
+type postField
+val firstFormField : string -> option postField
+val fieldName : postField -> string
+val fieldValue : postField -> string
+val remainingFields : postField -> string
+
 con radio = [Body, Radio]
 val radio : formTag (option string) radio [Id = id]
 val radioOption : unit -> tag ([Value = string, Checked = bool] ++ boxAttrs) radio [] [] []

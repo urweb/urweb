@@ -363,4 +363,9 @@ uw_Basis_string uw_Basis_property(uw_context, uw_Basis_string);
 void uw_begin_initializing(uw_context);
 void uw_end_initializing(uw_context);
 
+uw_Basis_string uw_Basis_fieldName(uw_context, uw_Basis_postField);
+uw_Basis_string uw_Basis_fieldValue(uw_context, uw_Basis_postField);
+uw_Basis_string uw_Basis_remainingFields(uw_context, uw_Basis_postField);
+uw_Basis_postField *uw_Basis_firstFormField(uw_context, uw_Basis_string);
+
 #endif

@@ -4086,3 +4086,43 @@ uw_Basis_string uw_Basis_property(uw_context ctx, uw_Basis_string s) {
 
   return s;
 }
+
+uw_Basis_string uw_Basis_fieldName(uw_context ctx, uw_Basis_postField f) {
+  return f.name;
+}
+
+uw_Basis_string uw_Basis_fieldValue(uw_context ctx, uw_Basis_postField f) {
+  return f.value;
+}
+
+uw_Basis_string uw_Basis_remainingFields(uw_context ctx, uw_Basis_postField f) {
+  return f.remaining;
+}
+
+uw_Basis_postField *uw_Basis_firstFormField(uw_context ctx, uw_Basis_string s) {
+  char *amp, *eq, *unurl, *copy;
+  uw_Basis_postField *f;
+
+  if (s[0] == 0)
+    return NULL;
+
+  amp = strchr(s, '&');
+  copy = uw_malloc(ctx, amp ? amp - s + 1 : strlen(s) + 1);
+  if (amp) {
+    strncpy(copy, s, amp - s);
+    copy[amp - s] = 0;
+  } else
+    strcpy(copy, s);
+
+  eq = strchr(copy, '=');
+  if (eq)
+    *eq++ = 0;
+
+  f = uw_malloc(ctx, sizeof(uw_Basis_postField));
+  unurl = copy;
+  f->name = uw_Basis_unurlifyString(ctx, &unurl);
+  f->value = eq ? (unurl = eq, uw_Basis_unurlifyString(ctx, &unurl)) : "";
+  f->remaining = amp ? amp+1 : "";
+
+  return f;
+}

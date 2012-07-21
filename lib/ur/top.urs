@@ -281,3 +281,5 @@ val eqNullable' : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                   -> sql_exp tables agg exps bool
 
 val mkRead' : t ::: Type -> (string -> option t) -> string -> read t
+
+val postFields : postBody -> list (string * string)

@@ -218,7 +218,11 @@ val serverBase = basis ["requestHeader",
                         "nextval",
                         "setval",
                         "channel",
-                        "send"]
+                        "send",
+                        "fieldName",
+                        "fieldValue",
+                        "remainingFields",
+                        "firstFormField"]
 val server = ref serverBase
 fun setServerOnly ls = server := S.addList (serverBase, ls)
 fun isServerOnly x = S.member (!server, x)

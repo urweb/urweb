@@ -294,7 +294,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       boundary[0] = '-';
       boundary[1] = '-';
       boundary_len = strlen(boundary);
-    } else if (clen_s && strcasecmp(clen_s, "application/x-www-form-urlencoded")) {
+    } else if (clen_s) {
       uw_Basis_postBody pb = {clen_s, body};
       uw_postBody(ctx, pb);
     }

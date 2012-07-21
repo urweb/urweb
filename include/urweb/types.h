@@ -51,6 +51,10 @@ typedef struct uw_Basis_postBody {
 
 typedef uw_Basis_string uw_Basis_queryString;
 
+typedef struct {
+  uw_Basis_string name, value, remaining;
+} uw_Basis_postField;
+
 typedef enum { SUCCESS, FATAL, BOUNDED_RETRY, UNLIMITED_RETRY, RETURN_INDIRECTLY } failure_kind;
 
 typedef enum { SERVED, KEEP_OPEN, FAILED } request_result;

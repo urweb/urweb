@@ -393,3 +393,15 @@ fun mkRead' [t ::: Type] (f : string -> option t) (name : string) : read t =
     mkRead (fn s => case f s of
                         None => error <xml>Invalid {txt name}: {txt s}</xml>
                       | Some v => v) f
+
+fun postFields pb =
+    let
+        fun postFields' s =
+            case firstFormField s of
+                None => []
+              | Some f => (fieldName f, fieldValue f) :: postFields' (remainingFields f)
+    in
+        case postType pb of
+            "application/x-www-form-urlencoded" => postFields' (postData pb)
+          | _ => error <xml>Tried to get POST fields, but MIME type is not "application/x-www-form-urlencoded"</xml>
+    end
