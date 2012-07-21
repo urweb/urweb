@@ -32,12 +32,12 @@ fun main () =
     idDel <- source "";
 
     return <xml><body>
-      <button value="Check values of 1, 2, and 3" onclick={check (Cons (1, Cons (2, Cons (3, Nil))))}/><br/>
+      <button value="Check values of 1, 2, and 3" onclick={fn _ => check (Cons (1, Cons (2, Cons (3, Nil))))}/><br/>
       <br/>
-      <button value="Add" onclick={id <- get idAdd; a <- get aAdd; rpc (add (readError id) a)}/>
+      <button value="Add" onclick={fn _ => id <- get idAdd; a <- get aAdd; rpc (add (readError id) a)}/>
       <ctextbox source={idAdd}/>
       <ctextbox source={aAdd}/><br/>
       <br/>
-      <button value="Delete" onclick={id <- get idDel; rpc (del (readError id))}/>
+      <button value="Delete" onclick={fn _ => id <- get idDel; rpc (del (readError id))}/>
       <ctextbox source={idDel}/>
     </body></xml>

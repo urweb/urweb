@@ -15,7 +15,7 @@ and show' rl =
         Nil => return <xml/>
       | Cons {Data = ss, NewData = ss', Tail = rls} => return <xml>
         <dyn signal={showString ss}/>
-        <button value="Change to:" onclick={s <- get ss'; set ss s}/>
+        <button value="Change to:" onclick={fn _ => s <- get ss'; set ss s}/>
         <ctextbox source={ss'}/><br/>
         <dyn signal={show rls}/>
       </xml>
@@ -46,7 +46,7 @@ fun main () =
             end
     in
         return <xml><body>
-          <ctextbox source={data}/> <button value="Add" onclick={add ()}/><br/>
+          <ctextbox source={data}/> <button value="Add" onclick={fn _ => add ()}/><br/>
           <br/>
 
           <dyn signal={show head}/>

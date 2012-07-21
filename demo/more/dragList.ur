@@ -5,16 +5,16 @@ fun draggableList title items =
       <h2>Great {[title]}</h2>
       <ul>
         {List.mapX (fn itemSource => <xml>
-          <li onmousedown={set draggingItem (Some itemSource)}
-              onmouseup={set draggingItem None}
-              onmouseover={di <- get draggingItem;
-                           case di of
-                               None => return ()
-                             | Some di => original <- get di;
-                               movedOver <- get itemSource;
-                               set di movedOver;
-                               set itemSource original;
-                               set draggingItem (Some itemSource)}>
+          <li onmousedown={fn _ => set draggingItem (Some itemSource)}
+              onmouseup={fn _ => set draggingItem None}
+              onmouseover={fn _ => di <- get draggingItem;
+                              case di of
+                                  None => return ()
+                                | Some di => original <- get di;
+                                  movedOver <- get itemSource;
+                                  set di movedOver;
+                                  set itemSource original;
+                                  set draggingItem (Some itemSource)}>
               <dyn signal={Monad.mp cdata (signal itemSource)}/>
          </li></xml>) itemSources}
       </ul>

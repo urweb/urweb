@@ -1,3 +1,3 @@
 fun main () = return <xml><body>
-  <button value="Click me!" onclick={alert "You clicked me!"}/>
+  <button value="Click me!" onclick={fn _ => alert "You clicked me!"}/>
 </body></xml>

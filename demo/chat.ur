@@ -40,7 +40,7 @@ fun chat id () =
         return <xml><body onload={onload ()}>
           <h1>{[r.T.Title]}</h1>
 
-          <button value="Send:" onclick={doSpeak ()}/> <ctextbox source={newLine}/>
+          <button value="Send:" onclick={fn _ => doSpeak ()}/> <ctextbox source={newLine}/>
 
           <h2>Messages</h2>
 

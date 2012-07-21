@@ -43,17 +43,17 @@ fun main () =
                      {[kr.Key]}:
                      <ctextbox source={kr.Nam}/>
                      <ctextbox size={5} source={kr.ShoeSize}/>
-                     <button value="Latest" onclick={ro <- rpc (current {Id = kr.Key});
-                                                     case ro of
-                                                         None => alert "Can't get it!"
-                                                       | Some r =>
-                                                         set kr.Nam r.Nam;
-                                                         set kr.ShoeSize (show r.ShoeSize)}/>
-                     <button value="Update" onclick={name <- get kr.Nam;
-                                                     shoeSize <- get kr.ShoeSize;
-                                                     rpc (update {Id = kr.Key,
-                                                                  Nam = name,
-                                                                  ShoeSize = readError shoeSize})
+                     <button value="Latest" onclick={fn _ => ro <- rpc (current {Id = kr.Key});
+                                                        case ro of
+                                                            None => alert "Can't get it!"
+                                                          | Some r =>
+                                                            set kr.Nam r.Nam;
+                                                            set kr.ShoeSize (show r.ShoeSize)}/>
+                     <button value="Update" onclick={fn _ => name <- get kr.Nam;
+                                                        shoeSize <- get kr.ShoeSize;
+                                                        rpc (update {Id = kr.Key,
+                                                                     Nam = name,
+                                                                     ShoeSize = readError shoeSize})
                                                     }/>
                    </div></xml>) ks)}/>
 
@@ -63,15 +63,15 @@ fun main () =
         <tr><th>Id:</th> <td><ctextbox size={5} source={id}/></td></tr>
         <tr><th>Name:</th> <td><ctextbox source={name}/></td></tr>
         <tr><th>Shoe size:</th> <td><ctextbox size={5} source={shoeSize}/></td></tr>
-        <tr><th><button value="Add" onclick={id <- get id;
-                                             name <- get name;
-                                             shoeSize <- get shoeSize;
-                                             rpc (insert {Id = readError id, Nam = name,
-                                                          ShoeSize = readError shoeSize});
+        <tr><th><button value="Add" onclick={fn _ => id <- get id;
+                                                name <- get name;
+                                                shoeSize <- get shoeSize;
+                                                rpc (insert {Id = readError id, Nam = name,
+                                                             ShoeSize = readError shoeSize});
 
-                                             cur <- get ks;
-                                             kr <- expandKey (readError id);
-                                             set ks (kr :: cur)}/></th></tr>
+                                                cur <- get ks;
+                                                kr <- expandKey (readError id);
+                                                set ks (kr :: cur)}/></th></tr>
       </table>
 
       <h2>Archive</h2>

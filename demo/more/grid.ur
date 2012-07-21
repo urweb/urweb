@@ -124,7 +124,7 @@ functor Make(M : sig
     fun render (grid : grid) = <xml>
       <table class={tabl}>
         <tr class={tr}>
-          <th/> <th/> <th><button value="No sort" onclick={set grid.Sort None}/></th>
+          <th/> <th/> <th><button value="No sort" onclick={fn _ => set grid.Sort None}/></th>
           {@mapX2 [fst3] [colMeta M.row] [tr]
             (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
                              data (meta : colMeta M.row p) =>
@@ -132,7 +132,7 @@ functor Make(M : sig
                   {case (meta.Handlers data).Sort of
                        None => txt (meta.Handlers data).Header
                      | sort => <xml><button value={(meta.Handlers data).Header}
-                                                      onclick={set grid.Sort sort}/></xml>}
+                                            onclick={fn _ => set grid.Sort sort}/></xml>}
                 </th></xml>)
             M.folder grid.Cols M.cols}
         </tr>
@@ -197,16 +197,16 @@ functor Make(M : sig
                                 <td>
                                   <dyn signal={b <- signal ud;
                                                return (if b then
-                                                           <xml><button value="Save" onclick={save}/></xml>
+                                                           <xml><button value="Save" onclick={fn _ => save}/></xml>
                                                        else
-                                                           <xml><button value="Update" onclick={update}/></xml>)}/>
+                                                           <xml><button value="Update" onclick={fn _ => update}/></xml>)}/>
                                 </td>
 
                                 <td><dyn signal={b <- signal ud;
                                                  return (if b then
-                                                             <xml><button value="Cancel" onclick={cancel}/></xml>
+                                                             <xml><button value="Cancel" onclick={fn _ => cancel}/></xml>
                                                          else
-                                                             <xml><button value="Delete" onclick={delete}/></xml>)}/>
+                                                             <xml><button value="Delete" onclick={fn _ => delete}/></xml>)}/>
                                 </td>
 
                                 <dyn signal={cols <- signal colsS;
@@ -302,8 +302,8 @@ functor Make(M : sig
                                                                            else
                                                                                <xml>
                                                                                  <button value={show (n + 1)}
-                                                                                         onclick={set grid.Position
-                                                                                                      (n * plen)
+                                                                                         onclick={fn _ => set grid.Position
+                                                                                                              (n * plen)
                                                                                                  }/></xml>)}/>
                                                       {if (n + 1) * plen >= avail then <xml/> else <xml>|</xml>}
                                                       {pages (n + 1)}
@@ -313,9 +313,9 @@ functor Make(M : sig
                                         end)}/>
                </xml>}
           
-          <button value="New row" onclick={row <- rpc M.new;
-                                           addRow grid.Cols grid.Rows row}/>
-          <button value="Refresh" onclick={sync grid}/>
+          <button value="New row" onclick={fn _ => row <- rpc M.new;
+                                              addRow grid.Cols grid.Rows row}/>
+          <button value="Refresh" onclick={fn _ => sync grid}/>
     </xml>
 
     fun showSelection grid = grid.Selection
