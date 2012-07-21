@@ -784,12 +784,22 @@ con bodyTagStandalone = fn (attrs :: {Type}) =>
 val br : bodyTagStandalone [Id = id]
 
 con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
-con mouseEvents = [Onclick = transaction unit, Ondblclick = transaction unit,
-                   Onmousedown = transaction unit, Onmousemove = transaction unit,
-                   Onmouseout = transaction unit, Onmouseover = transaction unit,
-                   Onmouseup = transaction unit]
-con keyEvents = [Onkeydown = int -> transaction unit, Onkeypress = int -> transaction unit,
-                 Onkeyup = int -> transaction unit]
+
+datatype mouseButton = Left | Right | Middle
+
+type mouseEvent = { ScreenX : int, ScreenY : int, ClientX : int, ClientY : int,
+                    CtrlKey : bool, ShiftKey : bool, AltKey : bool, MetaKey : bool,
+                    Button : mouseButton }
+
+con mouseEvents = map (fn _ :: Unit => mouseEvent -> transaction unit)
+                          [Onclick, Ondblclick, Onmousedown, Onmousemove, Onmouseout, Onmouseover, Onmouseup]
+
+type keyEvent = { KeyCode : int,
+                  CtrlKey : bool, ShiftKey : bool, AltKey : bool, MetaKey : bool }
+
+con keyEvents = map (fn _ :: Unit => keyEvent -> transaction unit)
+                        [Onkeydown, Onkeypress, Onkeyup]
+
 (* Key arguments are character codes. *)
 con resizeEvents = [Onresize = transaction unit]
 con scrollEvents = [Onscroll = transaction unit]
@@ -955,13 +965,13 @@ val onDisconnect : transaction unit -> transaction unit
 val onServerError : (string -> transaction unit) -> transaction unit
 
 (* More standard document-level JavaScript handlers *)
-val onClick : transaction unit -> transaction unit
-val onDblclick : transaction unit -> transaction unit
-val onKeydown : (int -> transaction unit) -> transaction unit
-val onKeypress : (int -> transaction unit) -> transaction unit
-val onKeyup : (int -> transaction unit) -> transaction unit
-val onMousedown : transaction unit -> transaction unit
-val onMouseup : transaction unit -> transaction unit
+val onClick : (mouseEvent -> transaction unit) -> transaction unit
+val onDblclick : (mouseEvent -> transaction unit) -> transaction unit
+val onKeydown : (keyEvent -> transaction unit) -> transaction unit
+val onKeypress : (keyEvent -> transaction unit) -> transaction unit
+val onKeyup : (keyEvent -> transaction unit) -> transaction unit
+val onMousedown : (mouseEvent -> transaction unit) -> transaction unit
+val onMouseup : (mouseEvent -> transaction unit) -> transaction unit
 
 (* Prevents default handling of current event *)
 val preventDefault : transaction unit

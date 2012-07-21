@@ -3311,8 +3311,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                         val e =
                                                             case #1 dom of
                                                                 L'.TRecord [] => (L'.EApp (e, (L'.ERecord [], loc)), loc)
-                                                              | _ => (L'.EApp ((L'.EApp (e, (L'.EFfiApp ("Basis", "kc", []), loc)),
-                                                                                 loc), (L'.ERecord [], loc)), loc)
+                                                              | _ =>
+                                                                if String.isPrefix "Onkey" x then
+                                                                    (L'.EApp ((L'.EApp (e, (L'.EFfiApp ("Basis", "keyEvent", []), loc)),
+                                                                               loc), (L'.ERecord [], loc)), loc)
+                                                                else
+                                                                    (L'.EApp ((L'.EApp (e, (L'.EFfiApp ("Basis", "mouseEvent", []), loc)),
+                                                                               loc), (L'.ERecord [], loc)), loc)
+
                                                         val s' = " " ^ lowercaseFirst x ^ "='uw_event=event;exec("
                                                     in
                                                         ((L'.EStrcat (s,

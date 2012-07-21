@@ -2068,13 +2068,13 @@ $$\begin{array}{l}
 There are also functions to register standard document-level event handlers.
 
 $$\begin{array}{l}
- \mt{val} \; \mt{onClick} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit} \\
- \mt{val} \; \mt{onDblclick} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit} \\
- \mt{val} \; \mt{onKeydown} : (\mt{int} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
- \mt{val} \; \mt{onKeypress} : (\mt{int} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
- \mt{val} \; \mt{onKeyup} : (\mt{int} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
- \mt{val} \; \mt{onMousedown} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit} \\
- \mt{val} \; \mt{onMouseup} : \mt{transaction} \; \mt{unit} \to \mt{transaction} \; \mt{unit}
+ \mt{val} \; \mt{onClick} : (\mt{mouseEvent} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onDblclick} : (\mt{mouseEvent} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onKeydown} : (\mt{keyEvent} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onKeypress} : (\mt{keyEvent} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onKeyup} : (\mt{keyEvent} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onMousedown} : (\mt{mouseEvent} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit} \\
+ \mt{val} \; \mt{onMouseup} : (\mt{mouseEvent} \to \mt{transaction} \; \mt{unit}) \to \mt{transaction} \; \mt{unit}
 \end{array}$$
 
 Versions of standard JavaScript functions are provided that event handlers may call to mask default handling or prevent bubbling of events up to parent DOM nodes, respectively.
