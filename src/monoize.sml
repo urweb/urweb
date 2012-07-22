@@ -3441,10 +3441,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                        | (x, e, _) =>
                                          if String.isPrefix "On" x then
                                              let
+                                                 val arg = if String.isPrefix "Onkey" x then
+                                                               SOME (L'.EFfiApp ("Basis", "keyEvent", []), loc)
+                                                           else if String.isSuffix "click" x orelse String.isPrefix "Onmouse" x then
+                                                               SOME (L'.EFfiApp ("Basis", "mouseEvent", []), loc)
+                                                           else
+                                                               NONE
+
+                                                 val e = liftExpInExp 0 e
+
+                                                 val e = case arg of
+                                                             NONE => e
+                                                           | SOME arg => (L'.EApp (e, arg), loc)
+
                                                  val e = (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TRecord [], loc),
-                                                                   (L'.EApp ((L'.EApp (liftExpInExp 0 e,
-                                                                                       (L'.EFfiApp ("Basis", "kc", []), loc)),
-                                                                              loc), (L'.ERecord [], loc)), loc)), loc)
+                                                                   (L'.EApp (e, (L'.ERecord [], loc)), loc)), loc)
                                              in
                                                  case x of
                                                      "Onkeyup" =>
