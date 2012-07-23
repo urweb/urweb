@@ -981,6 +981,9 @@ val onKeydown : (keyEvent -> transaction unit) -> transaction unit
 val onKeypress : (keyEvent -> transaction unit) -> transaction unit
 val onKeyup : (keyEvent -> transaction unit) -> transaction unit
 val onMousedown : (mouseEvent -> transaction unit) -> transaction unit
+val onMousemove : (mouseEvent -> transaction unit) -> transaction unit
+val onMouseout : (mouseEvent -> transaction unit) -> transaction unit
+val onMouseover : (mouseEvent -> transaction unit) -> transaction unit
 val onMouseup : (mouseEvent -> transaction unit) -> transaction unit
 
 (* Prevents default handling of current event *)
