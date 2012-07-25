@@ -568,6 +568,26 @@ fun mapfold {kind = fk, con = fc, exp = fe} =
               exp = fn () => fe,
               bind = fn ((), _) => ()} ()
 
+fun existsB {kind, con, exp, bind} ctx e =
+    case mapfoldB {kind = fn ctx => fn k => fn () =>
+                                               if kind (ctx, k) then
+                                                   S.Return ()
+                                               else
+                                                   S.Continue (k, ()),
+                   con = fn ctx => fn c => fn () =>
+                                              if con (ctx, c) then
+                                                  S.Return ()
+                                              else
+                                                  S.Continue (c, ()),
+                   exp = fn ctx => fn e => fn () =>
+                                              if exp (ctx, e) then
+                                                  S.Return ()
+                                              else
+                                                  S.Continue (e, ()),
+                   bind = bind} ctx e () of
+        S.Return _ => true
+      | S.Continue _ => false
+
 fun exists {kind, con, exp} k =
     case mapfold {kind = fn k => fn () =>
                                     if kind k then

@@ -112,6 +112,11 @@ structure Exp : sig
     val exists : {kind : Elab.kind' -> bool,
                   con : Elab.con' -> bool,
                   exp : Elab.exp' -> bool} -> Elab.exp -> bool
+    val existsB : {kind : 'context * Elab.kind' -> bool,
+                   con : 'context * Elab.con' -> bool,
+                   exp : 'context * Elab.exp' -> bool,
+                   bind : 'context * binder -> 'context}
+                  -> 'context -> Elab.exp -> bool
 
     val foldB : {kind : 'context * Elab.kind' * 'state -> 'state,
                  con : 'context * Elab.con' * 'state -> 'state,
