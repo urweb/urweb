@@ -163,22 +163,6 @@ val subExpInExp =
                         | ((xn, rep), U.Exp.RelC _) => (xn, liftConInExp 0 rep)
                         | (ctx, _) => ctx}
 
-val openCon =
-    U.Con.existsB {kind = fn ((nk, _), k) =>
-                             case k of
-                                 KRel n => n >= nk
-                               | _ => false,
-                   con = fn ((_, nc), c) =>
-                            case c of
-                                CRel n => n >= nc
-                              | _ => false,
-                   bind = fn (all as (nk, nc), b) =>
-                             case b of
-                                 U.Con.RelK _ => (nk+1, nc)
-                               | U.Con.RelC _ => (nk, nc+1)
-                               | _ => all}
-    (0, 0)
-
 (* Back to environments *)
 
 datatype 'a var' =
@@ -855,13 +839,8 @@ fun pushERel (env : env) x t =
                               let
                                   val rule = (nvs, cs, c, (ERel 0, #2 t))
 
-                                  val class =
-                                      if openCon t then
-                                          {openRules = rule :: #openRules class,
-                                           closedRules = #closedRules class}
-                                      else
-                                          {closedRules = rule :: #closedRules class,
-                                           openRules = #openRules class}
+                                  val class = {openRules = rule :: #openRules class,
+                                               closedRules = #closedRules class}
                               in
                                   CM.insert (classes, f, class)
                               end
