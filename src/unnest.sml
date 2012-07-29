@@ -428,7 +428,6 @@ fun unnest file =
                   | DTable _ => default ()
                   | DSequence _ => default ()
                   | DView _ => default ()
-                  | DClass _ => default ()
                   | DDatabase _ => default ()
                   | DCookie _ => default ()
                   | DStyle _ => default ()

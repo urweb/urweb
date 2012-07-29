@@ -919,8 +919,6 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                    in
                                                        bind (ctx, NamedE (x, ct))
                                                    end
-                                                 | DClass (x, n, k, c) =>
-                                                   bind (ctx, NamedC (x, n, (KArrow (k, (KType, loc)), loc), SOME c))
                                                  | DDatabase _ => ctx
                                                  | DCookie (tn, x, n, c) =>
                                                    bind (ctx, NamedE (x, (CApp ((CModProj (n, [], "cookie"), loc),
@@ -1039,13 +1037,6 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                            S.map2 (mfc ctx c,
                                    fn c' =>
                                       (DView (tn, x, n, e', c'), loc)))
-
-              | DClass (x, n, k, c) =>
-                S.bind2 (mfk ctx k,
-                         fn k' =>
-                            S.map2 (mfc ctx c,
-                                 fn c' =>
-                                    (DClass (x, n, k', c'), loc)))
 
               | DDatabase _ => S.return2 dAll
 
@@ -1233,7 +1224,6 @@ and maxNameDecl (d, _) =
       | DSgn (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | DFfiStr (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | DConstraint _ => 0
-      | DClass (_, n, _, _) => n
       | DExport _ => 0
       | DTable (n1, _, n2, _, _, _, _, _) => Int.max (n1, n2)
       | DSequence (n1, _, n2) => Int.max (n1, n2)

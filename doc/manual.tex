@@ -21,7 +21,7 @@
 
 \section{Introduction}
 
-\emph{Ur} is a programming language designed to introduce richer type system features into functional programming in the tradition of ML and Haskell.  Ur is functional, pure, statically-typed, and strict.  Ur supports a powerful kind of \emph{metaprogramming} based on \emph{type-level computation with type-level records}.
+\emph{Ur} is a programming language designed to introduce richer type system features into functional programming in the tradition of ML and Haskell.  Ur is functional, pure, statically typed, and strict.  Ur supports a powerful kind of \emph{metaprogramming} based on \emph{type-level computation with type-level records}.
 
 \emph{Ur/Web} is Ur plus a special standard library and associated rules for parsing and optimization.  Ur/Web supports construction of dynamic web applications backed by SQL databases.  The signature of the standard library is such that well-typed Ur/Web programs ``don't go wrong'' in a very broad sense.  Not only do they not crash during particular page generations, but they also may not:
 
@@ -155,7 +155,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
   \item \texttt{deltas}: maximum number of messages sendable in a single request handler with \texttt{Basis.send}
   \item \texttt{globals}: maximum number of global variables that FFI libraries may set in a single request context
   \item \texttt{headers}: maximum size (in bytes) of per-request buffer used to hold HTTP headers for generated pages
-  \item \texttt{heap}: maximum size (in bytes) of per-request heap for dynamically-allocated data
+  \item \texttt{heap}: maximum size (in bytes) of per-request heap for dynamically allocated data
   \item \texttt{inputs}: maximum number of top-level form fields per request
   \item \texttt{messages}: maximum size (in bytes) of per-request buffer used to hold a single outgoing message sent with \texttt{Basis.send}
   \item \texttt{page}: maximum size (in bytes) of per-request buffer used to hold HTML content of generated pages
@@ -522,7 +522,7 @@ $$\begin{array}{rrcll}
   &&& (e) & \textrm{explicit precedence} \\
   \\
   \textrm{Local declarations} & ed &::=& \cd{val} \; x : \tau = e & \textrm{non-recursive value} \\
-  &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually-recursive values} \\
+  &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually recursive values} \\
 \end{array}$$
 
 As with constructors, we include both abstraction and application for kind polymorphism, but applications are only inferred internally.
@@ -533,7 +533,7 @@ $$\begin{array}{rrcll}
   &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype definition} \\
   &&& \mt{datatype} \; x = \mt{datatype} \; M.x & \textrm{algebraic datatype import} \\
   &&& \mt{val} \; x : \tau = e & \textrm{value} \\
-  &&& \mt{val} \; \cd{rec} \; (x : \tau = e \; \mt{and})^+ & \textrm{mutually-recursive values} \\
+  &&& \mt{val} \; \cd{rec} \; (x : \tau = e \; \mt{and})^+ & \textrm{mutually recursive values} \\
   &&& \mt{structure} \; X : S = M & \textrm{module definition} \\
   &&& \mt{signature} \; X = S & \textrm{signature definition} \\
   &&& \mt{open} \; M & \textrm{module inclusion} \\
@@ -544,7 +544,6 @@ $$\begin{array}{rrcll}
   &&& \mt{sequence} \; x & \textrm{SQL sequence} \\
   &&& \mt{cookie} \; x : \tau & \textrm{HTTP cookie} \\
   &&& \mt{style} \; x : \tau & \textrm{CSS class} \\
-  &&& \mt{class} \; x :: \kappa = c & \textrm{concrete constructor class} \\
   &&& \mt{task} \; e = e & \textrm{recurring task} \\
   \\
   \textrm{Modules} & M &::=& \mt{struct} \; d^* \; \mt{end} & \textrm{constant} \\
@@ -590,7 +589,7 @@ At the expression level, an analogue is available of the composite $\lambda$ for
 
 A local $\mt{val}$ declaration may bind a pattern instead of just a plain variable.  As for function arguments, only irrefutable patterns are legal.
 
-The keyword $\mt{fun}$ is a shorthand for $\mt{val} \; \mt{rec}$ that allows arguments to be specified before the equal sign in the definition of each mutually-recursive function, as in SML.  Each curried argument must follow the grammar of the $b$ non-terminal introduced two paragraphs ago.  A $\mt{fun}$ declaration is elaborated into a version that adds additional $\lambda$s to the fronts of the righthand sides, as appropriate.
+The keyword $\mt{fun}$ is a shorthand for $\mt{val} \; \mt{rec}$ that allows arguments to be specified before the equal sign in the definition of each mutually recursive function, as in SML.  Each curried argument must follow the grammar of the $b$ non-terminal introduced two paragraphs ago.  A $\mt{fun}$ declaration is elaborated into a version that adds additional $\lambda$s to the fronts of the righthand sides, as appropriate.
 
 A signature item $\mt{functor} \; X_1 \; (X_2 : S_1) : S_2$ is elaborated into $\mt{structure} \; X_1 : \mt{functor}(X_2 : S_1) : S_2$.  A declaration $\mt{functor} \; X_1 \; (X_2 : S_1) : S_2 = M$ is elaborated into $\mt{structure} \; X_1 : \mt{functor}(X_2 : S_1) : S_2 = \mt{functor}(X_2 : S_1) : S_2 = M$.
 
@@ -949,8 +948,6 @@ $$\infer{\Gamma \vdash p : \tau \leadsto \Gamma'; \tau}{
 
 We use an auxiliary judgment $\overline{y}; x; \Gamma \vdash \overline{dc} \leadsto \Gamma'$, expressing the enrichment of $\Gamma$ with the types of the datatype constructors $\overline{dc}$, when they are known to belong to datatype $x$ with type parameters $\overline{y}$.
 
-This is the first judgment where we deal with constructor classes, for the $\mt{class}$ declaration form.  We will omit their special handling in this formal specification.  Section \ref{typeclasses} gives an informal description of how constructor classes influence type inference.
-
 We presuppose the existence of a function $\mathcal O$, where $\mathcal O(M, \overline{s})$ implements the $\mt{open}$ declaration by producing a context with the appropriate entry for each available component of module $M$ with signature items $\overline{s}$.  Where possible, $\mathcal O$ uses ``transparent'' entries (e.g., an abstract type $M.x$ is mapped to $x :: \mt{Type} = M.x$), so that the relationship with $M$ is maintained.  A related function $\mathcal O_c$ builds a context containing the disjointness constraints found in $\overline s$.
 We write $\kappa_1^n \to \kappa$ as a shorthand, where $\kappa_1^0 \to \kappa = \kappa$ and $\kappa_1^{n+1} \to \kappa_2 = \kappa_1 \to (\kappa_1^n \to \kappa_2)$.  We write $\mt{len}(\overline{y})$ for the length of vector $\overline{y}$ of variables.
 
@@ -1026,10 +1023,6 @@ $$\infer{\Gamma \vdash \mt{task} \; e_1 = e_2 \leadsto \Gamma}{
   & \Gamma \vdash e_2 :: \tau \to \mt{Basis}.\mt{transaction} \; \{\}
 }$$
 
-$$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kappa = c}{
-  \Gamma \vdash c :: \kappa
-}$$
-
 $$\infer{\overline{y}; x; \Gamma \vdash \cdot \leadsto \Gamma}{}
 \quad \infer{\overline{y}; x; \Gamma \vdash X \mid \overline{dc} \leadsto \Gamma', X : \overline{y ::: \mt{Type}} \to x \; \overline{y}}{
   \overline{y}; x; \Gamma \vdash \overline{dc} \leadsto \Gamma'
@@ -1041,6 +1034,8 @@ $$\infer{\overline{y}; x; \Gamma \vdash \cdot \leadsto \Gamma}{}
 \subsection{Signature Item Typing}
 
 We appeal to a signature item analogue of the $\mathcal O$ function from the last subsection.
+
+This is the first judgment where we deal with constructor classes, for the $\mt{class}$ forms.  We will omit their special handling in this formal specification.  Section \ref{typeclasses} gives an informal description of how constructor classes influence type inference.
 
 $$\infer{\Gamma \vdash \cdot \leadsto \Gamma}{}
 \quad \infer{\Gamma \vdash s, \overline{s} \leadsto \Gamma''}{
@@ -1090,7 +1085,7 @@ $$\infer{\Gamma \vdash \mt{class} \; x :: \kappa = c \leadsto \Gamma, x :: \kapp
 
 \subsection{Signature Compatibility}
 
-To simplify the judgments in this section, we assume that all signatures are alpha-varied as necessary to avoid including multiple bindings for the same identifier.  This is in addition to the usual alpha-variation of locally-bound variables.
+To simplify the judgments in this section, we assume that all signatures are alpha-varied as necessary to avoid including multiple bindings for the same identifier.  This is in addition to the usual alpha-variation of locally bound variables.
 
 We rely on a judgment $\Gamma \vdash \overline{s} \leq s'$, which expresses the occurrence in signature items $\overline{s}$ of an item compatible with $s'$.  We also use a judgment $\Gamma \vdash \overline{dc} \leq \overline{dc}$, which expresses compatibility of datatype definitions.
 
@@ -1201,6 +1196,12 @@ $$\infer{\Gamma \vdash \mt{class} \; x :: \kappa \leq \mt{class} \; x :: \kappa}
   \Gamma \vdash c_1 \equiv c_2
 }$$
 
+$$\infer{\Gamma \vdash \mt{con} \; x :: \kappa \leq \mt{class} \; x :: \kappa}{}
+\quad \infer{\Gamma \vdash \mt{con} \; x :: \kappa = c \leq \mt{class} \; x :: \kappa}{}
+\quad \infer{\Gamma \vdash \mt{con} \; x :: \kappa = c_1 \leq \mt{class} \; x :: \kappa = c_2}{
+  \Gamma \vdash c_1 \equiv c_2
+}$$
+
 \subsection{Module Typing}
 
 We use a helper function $\mt{sigOf}$, which converts declarations and sequences of declarations into their principal signature items and sequences of signature items, respectively.
@@ -1249,8 +1250,7 @@ $$\infer{\Gamma \vdash M_1(M_2) : [X \mapsto M_2]S_2}{
   \mt{sigOf}(\mt{view} \; x = e) &=& \mt{view} \; x : c \textrm{ (where $\Gamma \vdash e : \mt{Basis}.\mt{sql\_query} \; [] \; [] \; (\mt{map} \; (\lambda \_ \Rightarrow []) \; c') \; c$)} \\
   \mt{sigOf}(\mt{sequence} \; x) &=& \mt{sequence} \; x \\
   \mt{sigOf}(\mt{cookie} \; x : \tau) &=& \mt{cookie} \; x : \tau \\
-  \mt{sigOf}(\mt{style} \; x) &=& \mt{style} \; x \\
-  \mt{sigOf}(\mt{class} \; x :: \kappa = c) &=& \mt{class} \; x :: \kappa = c \\
+  \mt{sigOf}(\mt{style} \; x) &=& \mt{style} \; x
 \end{eqnarray*}
 \begin{eqnarray*}
   \mt{selfify}(M, \cdot) &=& \cdot \\
@@ -1329,11 +1329,11 @@ The type inference engine tries to take advantage of the algebraic rules governi
 
 Ur includes a constructor class facility inspired by Haskell's.  The current version is experimental, with very general Prolog-like facilities that can lead to compile-time non-termination.
 
-Constructor classes are integrated with the module system.  A constructor class of kind $\kappa$ is just a constructor of kind $\kappa$.  By marking such a constructor $c$ as a constructor class, the programmer instructs the type inference engine to, in each scope, record all values of types $c \; c_1 \; \ldots \; c_n$ as \emph{instances}.  Any function argument whose type is of such a form is treated as implicit, to be determined by examining the current instance database.
+Constructor classes are integrated with the module system.  A constructor class of kind $\kappa$ is just a constructor of kind $\kappa$.  By marking such a constructor $c$ as a constructor class, the programmer instructs the type inference engine to, in each scope, record all values of types $c \; c_1 \; \ldots \; c_n$ as \emph{instances}.  Any function argument whose type is of such a form is treated as implicit, to be determined by examining the current instance database.  Any suitably kinded constructor within a module may be exposed as a constructor class from outside the module, simply by using a $\mt{class}$ signature item instead of a $\mt{con}$ signature item in the module's signature.
 
-The ``dictionary encoding'' often used in Haskell implementations is made explicit in Ur.  Constructor class instances are just properly-typed values, and they can also be considered as ``proofs'' of membership in the class.  In some cases, it is useful to pass these proofs around explicitly.  An underscore written where a proof is expected will also be inferred, if possible, from the current instance database.
+The ``dictionary encoding'' often used in Haskell implementations is made explicit in Ur.  Constructor class instances are just properly typed values, and they can also be considered as ``proofs'' of membership in the class.  In some cases, it is useful to pass these proofs around explicitly.  An underscore written where a proof is expected will also be inferred, if possible, from the current instance database.
 
-Just as for constructors, constructors classes may be exported from modules, and they may be exported as concrete or abstract.  Concrete constructor classes have their ``real'' definitions exposed, so that client code may add new instances freely.  Abstract constructor classes are useful as ``predicates'' that can be used to enforce invariants, as we will see in some definitions of SQL syntax in the Ur/Web standard library.
+Just as for constructors, constructors classes may be exported from modules, and they may be exported as concrete or abstract.  Concrete constructor classes have their ``real'' definitions exposed, so that client code may add new instances freely.  Automatic inference of concrete class instances will not generally work, so abstract classes are almost always the right choice.  They are useful as ``predicates'' that can be used to enforce invariants, as we will see in some definitions of SQL syntax in the Ur/Web standard library.  Free extension of a concrete class is easily supported by exporting a constructor function from a module, since the class implementation will be concrete within the module.
 
 \subsection{Reverse-Engineering Record Types}
 
@@ -1434,7 +1434,7 @@ $$\begin{array}{l}
 
 \subsection{HTTP}
 
-There are transactions for reading an HTTP header by name and for getting and setting strongly-typed cookies.  Cookies may only be created by the $\mt{cookie}$ declaration form, ensuring that they be named consistently based on module structure.  For now, cookie operations are server-side only.
+There are transactions for reading an HTTP header by name and for getting and setting strongly typed cookies.  Cookies may only be created by the $\mt{cookie}$ declaration form, ensuring that they be named consistently based on module structure.  For now, cookie operations are server-side only.
 $$\begin{array}{l}
   \mt{con} \; \mt{http\_cookie} :: \mt{Type} \to \mt{Type} \\
   \mt{val} \; \mt{getCookie} : \mt{t} ::: \mt{Type} \to \mt{http\_cookie} \; \mt{t} \to \mt{transaction} \; (\mt{option} \; \mt{t}) \\
@@ -1777,7 +1777,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{sql\_mod} : \mt{sql\_binary} \; \mt{int} \; \mt{int} \; \mt{int}
 \end{array}$$
 
-Finally, we have aggregate functions.  The $\mt{COUNT(\ast)}$ syntax is handled specially, since it takes no real argument.  The other aggregate functions are placed into a general type family, using constructor classes to restrict usage to properly-typed arguments.  The key aspect of the $\mt{sql\_aggregate}$ function's type is the shift of aggregate-function-only fields into unrestricted fields.
+Finally, we have aggregate functions.  The $\mt{COUNT(\ast)}$ syntax is handled specially, since it takes no real argument.  The other aggregate functions are placed into a general type family, using constructor classes to restrict usage to properly typed arguments.  The key aspect of the $\mt{sql\_aggregate}$ function's type is the shift of aggregate-function-only fields into unrestricted fields.
 $$\begin{array}{l}
   \mt{val} \; \mt{sql\_count} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{int}
 \end{array}$$
@@ -1939,7 +1939,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{tryDml} : \mt{dml} \to \mt{transaction} \; (\mt{option} \; \mt{string})
 \end{array}$$
 
-Properly-typed records may be used to form $\mt{INSERT}$ commands.
+Properly typed records may be used to form $\mt{INSERT}$ commands.
 $$\begin{array}{l}
   \mt{val} \; \mt{insert} : \mt{fields} ::: \{\mt{Type}\} \to \mt{sql\_table} \; \mt{fields} \\
   \hspace{.1in} \to \$(\mt{map} \; (\mt{sql\_exp} \; [] \; [] \; []) \; \mt{fields}) \to \mt{dml}
@@ -2306,7 +2306,7 @@ Similar support is provided for \cd{style} attributes.  Normal CSS syntax may be
 
 \section{\label{structure}The Structure of Web Applications}
 
-A web application is built from a series of modules, with one module, the last one appearing in the \texttt{.urp} file, designated as the main module.  The signature of the main module determines the URL entry points to the application.  Such an entry point should have type $\mt{t1} \to \ldots \to \mt{tn} \to \mt{transaction} \; \mt{page}$, for any integer $n \geq 0$, where $\mt{page}$ is a type synonym for top-level HTML pages, defined in $\mt{Basis}$.  If such a function is at the top level of main module $M$, with $n = 0$, it will be accessible at URI \texttt{/M/f}, and so on for more deeply-nested functions, as described in Section \ref{tag} below.  See Section \ref{cl} for information on the \texttt{prefix} and \texttt{rewrite url} directives, which can be used to rewrite the default URIs of different entry point functions.  The final URL of a function is its default module-based URI, with \texttt{rewrite url} rules applied, and with the \texttt{prefix} prepended.  Arguments to an entry-point function are deserialized from the part of the URI following \texttt{f}.
+A web application is built from a series of modules, with one module, the last one appearing in the \texttt{.urp} file, designated as the main module.  The signature of the main module determines the URL entry points to the application.  Such an entry point should have type $\mt{t1} \to \ldots \to \mt{tn} \to \mt{transaction} \; \mt{page}$, for any integer $n \geq 0$, where $\mt{page}$ is a type synonym for top-level HTML pages, defined in $\mt{Basis}$.  If such a function is at the top level of main module $M$, with $n = 0$, it will be accessible at URI \texttt{/M/f}, and so on for more deeply nested functions, as described in Section \ref{tag} below.  See Section \ref{cl} for information on the \texttt{prefix} and \texttt{rewrite url} directives, which can be used to rewrite the default URIs of different entry point functions.  The final URL of a function is its default module-based URI, with \texttt{rewrite url} rules applied, and with the \texttt{prefix} prepended.  Arguments to an entry-point function are deserialized from the part of the URI following \texttt{f}.
 
 Elements of modules beside the main module, including page handlers, will only be included in the final application if they are transitive dependencies of the handlers in the main module.
 
@@ -2506,7 +2506,7 @@ Functions are specialized to particular argument patterns.  This is an important
 
 \subsection{Untangle}
 
-Remove unnecessary mutual recursion, splitting recursive groups into strongly-connected components.
+Remove unnecessary mutual recursion, splitting recursive groups into strongly connected components.
 
 \subsection{Shake}
 

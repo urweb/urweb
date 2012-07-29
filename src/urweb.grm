@@ -602,25 +602,6 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                            s (VIEWleft, queryright))])
        | VIEW SYMBOL EQ LBRACE eexp RBRACE ([(DView (SYMBOL, eexp),
                                            s (VIEWleft, RBRACEright))])
-       | CLASS SYMBOL EQ cexp           (let
-                                             val loc = s (CLASSleft, cexpright)
-                                         in
-                                             [(DClass (SYMBOL, (KWild, loc), cexp), loc)]
-                                         end)
-       | CLASS SYMBOL DCOLON kind EQ cexp ([(DClass (SYMBOL, kind, cexp), s (CLASSleft, cexpright))])
-       | CLASS SYMBOL SYMBOL EQ cexp    (let
-                                             val loc = s (CLASSleft, cexpright)
-                                             val k = (KWild, loc)
-                                             val c = (CAbs (SYMBOL2, SOME k, cexp), loc)
-                                         in
-                                             [(DClass (SYMBOL1, k, c), s (CLASSleft, cexpright))]
-                                         end)
-       | CLASS SYMBOL LPAREN SYMBOL DCOLON kind RPAREN EQ cexp (let
-                                             val loc = s (CLASSleft, cexpright)
-                                             val c = (CAbs (SYMBOL2, SOME kind, cexp), loc)
-                                         in
-                                             [(DClass (SYMBOL1, kind, c), s (CLASSleft, cexpright))]
-                                         end)
        | COOKIE SYMBOL COLON cexp       ([(DCookie (SYMBOL, cexp), s (COOKIEleft, cexpright))])
        | STYLE SYMBOL                   ([(DStyle SYMBOL, s (STYLEleft, SYMBOLright))])
        | TASK eapps EQ eexp             ([(DTask (eapps, eexp), s (TASKleft, eexpright))])

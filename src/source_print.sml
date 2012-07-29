@@ -640,13 +640,6 @@ fun p_decl ((d, _) : decl) =
                              string "=",
                              space,
                              p_exp e]
-      | DClass (x, k, c) => box [string "class",
-                                 space,
-                                 string x,
-                                 space,
-                                 string "=",
-                                 space,
-                                 p_con c]
 
       | DDatabase s => box [string "database",
                             space,

@@ -1647,13 +1647,6 @@ fun declBinds env (d, loc) =
         in
             pushENamedAs env x n ct
         end
-      | DClass (x, n, k, c) =>
-        let
-            val k = (KArrow (k, (KType, loc)), loc)
-            val env = pushCNamedAs env x n k (SOME c)
-        in
-            pushClass env n
-        end
       | DDatabase _ => env
       | DCookie (tn, x, n, c) =>
         let

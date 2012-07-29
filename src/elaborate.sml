@@ -2982,7 +2982,6 @@ and sgiOfDecl (d, loc) =
       | L'.DSequence (tn, x, n) => [(L'.SgiVal (x, n, sequenceOf ()), loc)]
       | L'.DView (tn, x, n, _, c) =>
         [(L'.SgiVal (x, n, (L'.CApp (viewOf (), c), loc)), loc)]
-      | L'.DClass (x, n, k, c) => [(L'.SgiClass (x, n, k, c), loc)]
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
       | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
@@ -3362,6 +3361,8 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                      case sgi1 of
                                          L'.SgiClassAbs (x', n1, k1) => found (x', n1, k1, NONE)
                                        | L'.SgiClass (x', n1, k1, c) => found (x', n1, k1, SOME c)
+                                       | L'.SgiConAbs (x', n1, k1) => found (x', n1, k1, NONE)
+                                       | L'.SgiCon (x', n1, k1, c) => found (x', n1, k1, SOME c)
                                        | _ => NONE
                                  end)
                       | L'.SgiClass (x, n2, k2, c2) =>
@@ -3401,6 +3402,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                  in
                                      case sgi1 of
                                          L'.SgiClass (x', n1, k1, c1) => found (x', n1, k1, c1)
+                                       | L'.SgiCon (x', n1, k1, c1) => found (x', n1, k1, c1)
                                        | _ => NONE
                                  end)
                 end
@@ -3508,7 +3510,6 @@ and wildifyStr env (str, sgn) =
                  fun dname (d, _) =
                      case d of
                          L.DCon (x, _, _) => SOME x
-                       | L.DClass (x, _, _) => SOME x
                        | _ => NONE
                                                      
                  fun decompileKind (k, loc) =
@@ -3641,7 +3642,6 @@ and wildifyStr env (str, sgn) =
                      foldl (fn ((d, _), nd) =>
                                case d of
                                    L.DCon (x, _, _) => ndelCon (nd, x)
-                                 | L.DClass (x, _, _) => ndelCon (nd, x)
                                  | L.DVal (x, _, _) => ndelVal (nd, x)
                                  | L.DOpen _ => nempty
                                  | L.DStr (x, _, _, (L.StrConst ds', _)) =>
@@ -3666,7 +3666,6 @@ and wildifyStr env (str, sgn) =
                                             | L.DDatatypeImp _ => true
                                             | L.DStr _ => true
                                             | L.DConstraint _ => true
-                                            | L.DClass _ => true
                                             | _ => false
                          in
                              if isCony then
@@ -4182,17 +4181,6 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     checkCon env e' t ct;
                     ([(L'.DView (!basis_r, x, n, e', fs), loc)],
                      (env', denv, gs' @ gs))
-                end
-
-              | L.DClass (x, k, c) =>
-                let
-                    val k = elabKind env k
-                    val (c', ck, gs') = elabCon (env, denv) c
-                    val (env, n) = E.pushCNamed env x k (SOME c')
-                    val env = E.pushClass env n
-                in
-                    checkKind env c' ck k;
-                    ([(L'.DClass (x, n, k, c'), loc)], (env, denv, enD gs' @ gs))
                 end
 
               | L.DDatabase s => ([(L'.DDatabase s, loc)], (env, denv, gs))

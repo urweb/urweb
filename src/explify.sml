@@ -192,8 +192,6 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DView (nt, x, n, e, c) =>
         SOME (L'.DView (nt, x, n, explifyExp e, explifyCon c), loc)
       | L.DSequence (nt, x, n) => SOME (L'.DSequence (nt, x, n), loc)
-      | L.DClass (x, n, k, c) => SOME (L'.DCon (x, n,
-                                                (L'.KArrow (explifyKind k, (L'.KType, loc)), loc), explifyCon c), loc)
       | L.DDatabase s => SOME (L'.DDatabase s, loc)
       | L.DCookie (nt, x, n, c) => SOME (L'.DCookie (nt, x, n, explifyCon c), loc)
       | L.DStyle (nt, x, n) => SOME (L'.DStyle (nt, x, n), loc)
