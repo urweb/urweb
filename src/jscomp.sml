@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -658,7 +658,7 @@ fun process file =
                                                         end)
                                               (str "null", st) args
                             in
-                                (strcat [str ("{c:\"f\",f:\"" ^ name ^ "\",a:"),
+                                (strcat [str ("{c:\"f\",f:" ^ name ^ ",a:"),
                                          e,
                                          str "}"],
                                  st)
@@ -693,7 +693,7 @@ fun process file =
 
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str ("{c:\"f\",f:\"" ^ name ^ "\",a:cons("),
+                                (strcat [str ("{c:\"f\",f:" ^ name ^ ",a:cons("),
                                          e,
                                          str ",null)}"],
                                  st)
@@ -718,7 +718,7 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str ("{c:\"f\",f:\"" ^ name ^ "\",a:cons("),
+                                (strcat [str ("{c:\"f\",f:" ^ name ^ ",a:cons("),
                                          e1,
                                          str ",cons(",
                                          e2,
@@ -822,14 +822,14 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str "{c:\"f\",f:\"cat\",a:cons(", e1, str ",cons(", e2, str ",null))}"], st)
+                                (strcat [str "{c:\"f\",f:cat,a:cons(", e1, str ",cons(", e2, str ",null))}"], st)
                             end
 
                           | EError (e, _) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "{c:\"f\",f:\"er\",a:cons(", e, str ",null)}"],
+                                (strcat [str "{c:\"f\",f:er,a:cons(", e, str ",null)}"],
                                  st)
                             end
 
@@ -878,7 +878,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "{c:\"f\",f:\"redirect\",a:cons(",
+                                (strcat [str "{c:\"f\",f:redirect,a:cons(",
                                          e,
                                          str ",null)}"],
                                  st)
@@ -891,7 +891,7 @@ fun process file =
                                 val (e, st) = jsE inner (e, st)
                                 val (e', st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str ("{c:\"f\",f:\"unurlify\",a:cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
+                                (strcat [str ("{c:\"f\",f:unurlify,a:cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ e' ^ "}},cons("),
                                          e,
                                          str ",null))}"],
@@ -902,7 +902,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "{c:\"f\",f:\"sr\",a:cons(",
+                                (strcat [str "{c:\"f\",f:sr,a:cons(",
                                          e,
                                          str ",null)}"],
                                  st)
@@ -912,7 +912,7 @@ fun process file =
                                 val (e1, st) = jsE inner (e1, st)
                                 val (e2, st) = jsE inner (e2, st)
                             in
-                                (strcat [str "{c:\"f\",f:\"sb\",a:cons(",
+                                (strcat [str "{c:\"f\",f:sb,a:cons(",
                                          e1,
                                          str ",cons(",
                                          e2,
@@ -923,7 +923,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "{c:\"f\",f:\"ss\",a:cons(",
+                                (strcat [str "{c:\"f\",f:ss,a:cons(",
                                          e,
                                          str ",null)}"],
                                  st)
@@ -934,7 +934,7 @@ fun process file =
                                 val (e, st) = jsE inner (e, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str ("{c:\"f\",f:\"rc\",a:cons({c:\"c\",v:\""
+                                (strcat [str ("{c:\"f\",f:rc,a:cons({c:\"c\",v:\""
                                               ^ Settings.getUrlPrefix ()
                                               ^ "\"},cons("),
                                          e,
@@ -952,7 +952,7 @@ fun process file =
                                 val (e, st) = jsE inner (e, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
                             in
-                                (strcat [str ("{c:\"f\",f:\"rv\",a:cons("),
+                                (strcat [str ("{c:\"f\",f:rv,a:cons("),
                                          e,
                                          str (",cons({c:\"c\",v:function(s){var t=s.split(\"/\");var i=0;return "
                                               ^ unurl ^ "}},cons({c:\"K\"},null)))}")],
@@ -963,7 +963,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "{c:\"f\",f:\"sl\",a:cons(",
+                                (strcat [str "{c:\"f\",f:sl,a:cons(",
                                          e,
                                          str ",cons({c:\"K\"},null))}"],
                                  st)
@@ -973,7 +973,7 @@ fun process file =
                             let
                                 val (e, st) = jsE inner (e, st)
                             in
-                                (strcat [str "{c:\"f\",f:\"sp\",a:cons(",
+                                (strcat [str "{c:\"f\",f:sp,a:cons(",
                                          e,
                                          str ",null)}"],
                                  st)
