@@ -107,6 +107,11 @@ structure Decl : sig
                decl : Mono.decl' -> Mono.decl'}
               -> Mono.decl -> Mono.decl
 
+    val foldMap : {typ : Mono.typ' * 'state -> Mono.typ' * 'state,
+                   exp : Mono.exp' * 'state -> Mono.exp' * 'state,
+                   decl : Mono.decl' * 'state -> Mono.decl' * 'state}
+                  -> 'state -> Mono.decl -> Mono.decl * 'state
+
     val foldMapB : {typ : Mono.typ' * 'state -> Mono.typ' * 'state,
                     exp : 'context * Mono.exp' * 'state -> Mono.exp' * 'state,
                     decl : 'context * Mono.decl' * 'state -> Mono.decl' * 'state,

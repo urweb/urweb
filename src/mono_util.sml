@@ -639,6 +639,13 @@ fun map {typ, exp, decl} e =
         S.Return () => raise Fail "MonoUtil.Decl.map: Impossible"
       | S.Continue (e, ()) => e
 
+fun foldMap {typ, exp, decl} s d =
+    case mapfold {typ = fn c => fn s => S.Continue (typ (c, s)),
+                  exp = fn e => fn s => S.Continue (exp (e, s)),
+                  decl = fn d => fn s => S.Continue (decl (d, s))} d s of
+        S.Continue v => v
+      | S.Return _ => raise Fail "MonoUtil.Decl.foldMap: Impossible"
+
 fun foldMapB {typ, exp, decl, bind} ctx s d =
     case mapfoldB {typ = fn c => fn s => S.Continue (typ (c, s)),
                    exp = fn ctx => fn e => fn s => S.Continue (exp (ctx, e, s)),

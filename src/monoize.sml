@@ -3478,9 +3478,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                         val t = (L'.TFfi ("Basis", "string"), loc)
                         val setClass = (L'.ECase (class,
-                                                  [((L'.PNone t, loc),
+                                                  [((L'.PPrim (Prim.String ""), loc),
                                                     str ""),
-                                                   ((L'.PSome (t, (L'.PVar ("x", t), loc)), loc),
+                                                   ((L'.PVar ("x", t), loc),
                                                     (L'.EStrcat ((L'.EPrim (Prim.String "d.className=\""), loc),
                                                                  (L'.EStrcat ((L'.ERel 0, loc),
                                                                               (L'.EPrim (Prim.String "\";"), loc)), loc)),

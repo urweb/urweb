@@ -188,6 +188,9 @@ sql.sml
 iflow.sig
 iflow.sml
 
+name_js.sig
+name_js.sml
+
 jscomp.sig
 jscomp.sml
 

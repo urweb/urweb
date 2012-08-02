@@ -1346,12 +1346,21 @@ val iflow = {
 
 val toIflow = transform iflow "iflow" o toMono_opt2
 
+val namejs = {
+    func = NameJS.rewrite,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toNamejs = transform namejs "namejs" o toIflow
+
+val toNamejs_untangle = transform untangle "namejs_untangle" o toNamejs
+
 val jscomp = {
     func = JsComp.process,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toJscomp = transform jscomp "jscomp" o toIflow
+val toJscomp = transform jscomp "jscomp" o toNamejs_untangle
 
 val toMono_opt3 = transform mono_opt "mono_opt3" o toJscomp
 
