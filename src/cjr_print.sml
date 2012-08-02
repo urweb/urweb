@@ -3380,6 +3380,9 @@ fun p_file env (ds, ps) =
 
              makeChecker ("uw_check_responseHeader", Settings.getResponseHeaderRules ()),
              newline,
+
+             makeChecker ("uw_check_envVar", Settings.getEnvVarRules ()),
+             newline,
              
              string "extern void uw_sign(const char *in, char *out);",
              newline,
@@ -3537,7 +3540,7 @@ fun p_file env (ds, ps) =
                          "uw_client_init", "uw_initializer", "uw_expunger",
                          "uw_db_init", "uw_db_begin", "uw_db_commit", "uw_db_rollback", "uw_db_close",
                          "uw_handle",
-                         "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader",
+                         "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader", "uw_check_envVar",
                          case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
                          "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\""],
              string "};",

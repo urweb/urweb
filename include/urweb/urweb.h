@@ -35,6 +35,7 @@ char *uw_get_url_prefix(uw_context);
 failure_kind uw_begin_init(uw_context);
 void uw_set_on_success(char *);
 void uw_set_headers(uw_context, char *(*get_header)(void *, const char *), void *get_header_data);
+void uw_set_env(uw_context, char *(*get_env)(void *, const char *), void *get_env_data);
 failure_kind uw_begin(uw_context, char *path);
 failure_kind uw_begin_onError(uw_context, char *msg);
 void uw_login(uw_context);
@@ -220,14 +221,17 @@ uw_Basis_string uw_Basis_bless(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_blessMime(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_blessRequestHeader(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_blessResponseHeader(uw_context, uw_Basis_string);
+uw_Basis_string uw_Basis_blessEnvVar(uw_context, uw_Basis_string);
 
 uw_Basis_string uw_Basis_checkUrl(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_checkMime(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_checkRequestHeader(uw_context, uw_Basis_string);
 uw_Basis_string uw_Basis_checkResponseHeader(uw_context, uw_Basis_string);
+uw_Basis_string uw_Basis_checkEnvVar(uw_context, uw_Basis_string);
 
 uw_Basis_string uw_Basis_getHeader(uw_context, uw_Basis_string name);
 uw_unit uw_Basis_setHeader(uw_context, uw_Basis_string name, uw_Basis_string value);
+uw_Basis_string uw_Basis_getenv(uw_context, uw_Basis_string name);
 
 uw_Basis_string uw_unnull(uw_Basis_string);
 uw_Basis_string uw_Basis_makeSigString(uw_context, uw_Basis_string);

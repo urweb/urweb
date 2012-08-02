@@ -40,6 +40,10 @@ static char *get_header(void *data, const char *h) {
   return NULL;
 }
 
+static char *get_env(void *data, const char *name) {
+  return getenv(name);
+}
+
 static void on_success(uw_context ctx) {
   uw_write_header(ctx, "HTTP/1.1 200 OK\r\n");
 }
@@ -193,6 +197,7 @@ static void *worker(void *data) {
         }
 
         uw_set_headers(ctx, get_header, headers);
+        uw_set_env(ctx, get_env, NULL);
 
         printf("Serving URI %s....\n", path);
         rr = uw_request(rc, ctx, method, path, query_string, body, back - body,

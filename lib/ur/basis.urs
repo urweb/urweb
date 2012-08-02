@@ -191,6 +191,11 @@ val blessResponseHeader : string -> responseHeader
 val checkResponseHeader : string -> option responseHeader
 val setHeader : responseHeader -> string -> transaction unit
 
+type envVar
+val blessEnvVar : string -> envVar
+val checkEnvVar : string -> option envVar
+val getenv : envVar -> transaction (option string)
+
 
 (** JavaScript-y gadgets *)
 

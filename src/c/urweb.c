@@ -420,6 +420,9 @@ struct uw_context {
   char *(*get_header)(void *, const char *);
   void *get_header_data;
 
+  char *(*get_env)(void *, const char *);
+  void *get_env_data;
+
   uw_buffer outHeaders, page, heap, script;
   int allowed_to_return_indirectly, returning_indirectly;
   input *inputs, *subinputs, *cur_container;
@@ -483,6 +486,9 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
 
   ctx->get_header = NULL;
   ctx->get_header_data = NULL;
+
+  ctx->get_env = NULL;
+  ctx->get_env_data = NULL;
 
   uw_buffer_init(uw_headers_max, &ctx->outHeaders, 1);
   ctx->outHeaders.start[0] = 0;
@@ -653,6 +659,11 @@ uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
 void uw_set_headers(uw_context ctx, char *(*get_header)(void *, const char *), void *get_header_data) {
   ctx->get_header = get_header;
   ctx->get_header_data = get_header_data;
+}
+
+void uw_set_env(uw_context ctx, char *(*get_env)(void *, const char *), void *get_env_data) {
+  ctx->get_env = get_env;
+  ctx->get_env_data = get_env_data;
 }
 
 static void uw_set_error(uw_context ctx, const char *fmt, ...) {
@@ -3476,11 +3487,39 @@ uw_Basis_string uw_Basis_blessResponseHeader(uw_context ctx, uw_Basis_string s) 
     uw_error(ctx, FATAL, "Disallowed response header %s", uw_Basis_htmlifyString(ctx, s));
 }
 
+static int envVar_format(const char *s) {
+  for (; *s; ++s)
+    if (!isalnum((int)*s) && *s != '_' && *s != '.')
+      return 0;
+
+  return 1;
+}
+
 uw_Basis_string uw_Basis_checkResponseHeader(uw_context ctx, uw_Basis_string s) {
-  if (!mime_format(s))
+  if (!envVar_format(s))
     return NULL;
 
   if (ctx->app->check_responseHeader(s))
+    return s;
+  else
+    return NULL;
+}
+
+uw_Basis_string uw_Basis_blessEnvVar(uw_context ctx, uw_Basis_string s) {
+  if (!envVar_format(s))
+    uw_error(ctx, FATAL, "Environment variable \"%s\" contains invalid character", uw_Basis_htmlifyString(ctx, s));
+
+  if (ctx->app->check_envVar(s))
+    return s;
+  else
+    uw_error(ctx, FATAL, "Disallowed environment variable %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_string uw_Basis_checkEnvVar(uw_context ctx, uw_Basis_string s) {
+  if (!mime_format(s))
+    return NULL;
+
+  if (ctx->app->check_envVar(s))
     return s;
   else
     return NULL;
@@ -3508,6 +3547,10 @@ uw_unit uw_Basis_setHeader(uw_context ctx, uw_Basis_string name, uw_Basis_string
   uw_write_header(ctx, "\r\n");
 
   return uw_unit_v;
+}
+
+uw_Basis_string uw_Basis_getenv(uw_context ctx, uw_Basis_string name) {
+  return ctx->get_env(ctx->get_env_data, name);
 }
 
 uw_Basis_string uw_unnull(uw_Basis_string s) {

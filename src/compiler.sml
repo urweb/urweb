@@ -58,6 +58,7 @@ type job = {
      filterMime : Settings.rule list,
      filterRequest : Settings.rule list,
      filterResponse : Settings.rule list,
+     filterEnv : Settings.rule list,
      protocol : string option,
      dbms : string option,
      sigFile : string option,
@@ -365,6 +366,7 @@ fun institutionalizeJob (job : job) =
      Settings.setMimeRules (#filterMime job);
      Settings.setRequestHeaderRules (#filterRequest job);
      Settings.setResponseHeaderRules (#filterResponse job);
+     Settings.setEnvVarRules (#filterEnv job);
      Option.app Settings.setProtocol (#protocol job);
      Option.app Settings.setDbms (#dbms job);
      Settings.setSafeGets (#safeGets job);
@@ -439,6 +441,7 @@ fun parseUrp' accLibs fname =
                         filterMime = [],
                         filterRequest = [],
                         filterResponse = [],
+                        filterEnv = [],
                         protocol = NONE,
                         dbms = NONE,
                         sigFile = NONE,
@@ -557,6 +560,7 @@ fun parseUrp' accLibs fname =
                      val mime = ref []
                      val request = ref []
                      val response = ref []
+                     val env = ref []
                      val libs = ref []
                      val protocol = ref NONE
                      val dbms = ref NONE
@@ -592,6 +596,7 @@ fun parseUrp' accLibs fname =
                                  filterMime = rev (!mime),
                                  filterRequest = rev (!request),
                                  filterResponse = rev (!response),
+                                 filterEnv = rev (!env),
                                  sources = sources,
                                  protocol = !protocol,
                                  dbms = !dbms,
@@ -648,6 +653,7 @@ fun parseUrp' accLibs fname =
                                  filterMime = #filterMime old @ #filterMime new,
                                  filterRequest = #filterRequest old @ #filterRequest new,
                                  filterResponse = #filterResponse old @ #filterResponse new,
+                                 filterEnv = #filterEnv old @ #filterEnv new,
                                  sources = #sources new
                                            @ List.filter (fn s => List.all (fn s' => s' <> s) (#sources new))
                                                          (#sources old),
@@ -690,6 +696,7 @@ fun parseUrp' accLibs fname =
                            | "mime" => mime
                            | "requestHeader" => request
                            | "responseHeader" => response
+                           | "env" => env
                            | _ => (ErrorMsg.error "Bad filter kind";
                                    url)
 

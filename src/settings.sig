@@ -120,6 +120,10 @@ signature SETTINGS = sig
     val getResponseHeaderRules : unit -> rule list
     val checkResponseHeader : string -> bool
 
+    val setEnvVarRules : rule list -> unit
+    val getEnvVarRules : unit -> rule list
+    val checkEnvVar : string -> bool
+
     (* Web protocols that generated programs may speak *)
     type protocol = {
         name : string,       (* Call it this on the command line *)

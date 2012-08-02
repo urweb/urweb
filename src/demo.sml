@@ -117,6 +117,7 @@ fun make' {prefix, dirname, guided} =
             filterMime = #filterMime combined @ #filterMime urp,
             filterRequest = #filterRequest combined @ #filterRequest urp,
             filterResponse = #filterResponse combined @ #filterResponse urp,
+            filterEnv = #filterEnv combined @ #filterEnv urp,
             protocol = mergeWith #2 (#protocol combined, #protocol urp),
             dbms = mergeWith #2 (#dbms combined, #dbms urp),
             sigFile = mergeWith #2 (#sigFile combined, #sigFile urp),

@@ -97,6 +97,7 @@ typedef struct {
   int (*check_mime)(const char *);
   int (*check_requestHeader)(const char *);
   int (*check_responseHeader)(const char *);
+  int (*check_envVar)(const char *);
 
   void (*on_error)(uw_context, char *);
 

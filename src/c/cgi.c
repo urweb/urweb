@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
@@ -37,6 +38,10 @@ static char *get_header(void *data, const char *h) {
     return getenv(uppercased + 5);
   else
     return NULL;
+}
+
+static char *get_env(void *data, const char *name) {
+  return getenv(name);
 }
 
 static void on_success(uw_context ctx) { }
@@ -102,6 +107,7 @@ int main(int argc, char *argv[]) {
 
   uw_set_on_success("");
   uw_set_headers(ctx, get_header, NULL);
+  uw_set_env(ctx, get_env, NULL);
   uw_request_init(&uw_application, NULL, log_error, log_debug);
 
   body[body_pos] = 0;

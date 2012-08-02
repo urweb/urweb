@@ -504,6 +504,17 @@ fun exp e =
              ESome ((TFfi ("Basis", "string"), loc), (se, loc))
          else
              ENone (TFfi ("Basis", "string"), loc))
+      | EFfiApp ("Basis", "blessEnvVar", [((se as EPrim (Prim.String s), loc), _)]) =>
+        (if Settings.checkEnvVar s then
+             ()
+         else
+             ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessEnvVar'");
+         se)
+      | EFfiApp ("Basis", "checkEnvVar", [((se as EPrim (Prim.String s), loc), _)]) =>
+        (if Settings.checkEnvVar s then
+             ESome ((TFfi ("Basis", "string"), loc), (se, loc))
+         else
+             ENone (TFfi ("Basis", "string"), loc))
 
       | EFfiApp ("Basis", "checkString", [((EPrim (Prim.String s), loc), _)]) => 
         let

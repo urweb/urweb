@@ -225,6 +225,9 @@ fun monoType env =
                   | L.CFfi ("Basis", "css_property") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "css_style") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "id") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "requestHeader") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "responseHeader") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "envVar") => (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "serialized"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)

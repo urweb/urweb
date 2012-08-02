@@ -229,6 +229,12 @@ static char *get_header(void *data, const char *h) {
   return search_nvps(hs->nvps, hs->uppercased);
 }
 
+static char *get_env(void *data, const char *h) {
+  headers *hs = (headers *)data;
+  
+  return search_nvps(hs->nvps, h);
+}
+
 static int read_funny_len(unsigned char **buf, int *len) {
   if (*len <= 0)
     return -1;
@@ -471,6 +477,7 @@ static void *worker(void *data) {
       query_string = "";
 
     uw_set_headers(ctx, get_header, &hs);
+    uw_set_env(ctx, get_env, &hs);
 
     {
       request_result rr;
