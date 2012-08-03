@@ -4092,7 +4092,7 @@ uw_Basis_string uw_Basis_atom(uw_context ctx, uw_Basis_string s) {
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!isalnum(c) && c != '+' && c != '-' && c != '.' && c != '%' && c != '#')
+    if (!isalnum((int)c) && c != '+' && c != '-' && c != '.' && c != '%' && c != '#')
       uw_error(ctx, FATAL, "Disallowed character in CSS atom");
   }
 
@@ -4104,7 +4104,7 @@ uw_Basis_string uw_Basis_css_url(uw_context ctx, uw_Basis_string s) {
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!isalnum(c) && c != ':' && c != '/' && c != '.' && c != '_' && c != '+'
+    if (!isalnum((int)c) && c != ':' && c != '/' && c != '.' && c != '_' && c != '+'
         && c != '-' && c != '%' && c != '?' && c != '&' && c != '=' && c != '#')
       uw_error(ctx, FATAL, "Disallowed character in CSS URL");
   }
@@ -4118,12 +4118,12 @@ uw_Basis_string uw_Basis_property(uw_context ctx, uw_Basis_string s) {
   if (!*s)
     uw_error(ctx, FATAL, "Empty CSS property");
 
-  if (!islower(s[0]) && s[0] != '_')
+  if (!islower((int)s[0]) && s[0] != '_')
     uw_error(ctx, FATAL, "Bad initial character in CSS property");
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!islower(c) && !isdigit(c) && c != '_' && c != '-')
+    if (!islower((int)c) && !isdigit((int)c) && c != '_' && c != '-')
       uw_error(ctx, FATAL, "Disallowed character in CSS property");
   }
 
