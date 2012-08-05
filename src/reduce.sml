@@ -232,21 +232,6 @@ fun monadRecord m loc =
                         ((CName "Bind", loc),
                          bindType m loc)]), loc), loc)
 
-fun passive (e : exp) =
-    case #1 e of
-        EPrim _ => true
-      | ERel _ => true
-      | ENamed _ => true
-      | ECon (_, _, _, NONE) => true
-      | ECon (_, _, _, SOME e) => passive e
-      | EFfi _ => true
-      | EAbs _ => true
-      | ECAbs _ => true
-      | EKAbs _ => true
-      | ERecord xes => List.all (passive o #2) xes
-      | EField (e, _, _) => passive e
-      | _ => false
-
 fun kindConAndExp (namedC, namedE) =
     let
         fun kind env (all as (k, loc)) =
@@ -549,30 +534,16 @@ fun kindConAndExp (namedC, namedE) =
                                 val e2 = exp env e2
                             in
                                 case #1 e1 of
-                                    ELet (x, t, e1', e2') =>
-                                    (ELet (x, t, e1', exp (UnknownE :: env') (EApp (e2', E.liftExpInExp 0 e2), loc)), loc)
-
-                                  | EAbs (x, dom, _, b) =>
-                                    if count b <= 1 orelse passive e2 orelse ESpecialize.functionInside dom then
-                                        let
-                                            val r = exp (KnownE e2 :: env') b
-                                        in
-                                            (*Print.prefaces "eapp" [("b", CorePrint.p_exp CoreEnv.empty b),
-                                                                     ("env", Print.PD.string (e2s env')),
-                                                                     ("e2", CorePrint.p_exp CoreEnv.empty e2),
-                                                                     ("r", CorePrint.p_exp CoreEnv.empty r)];*)
-                                            r
-                                        end
-                                    else
-                                        let
-                                            val dom = con env' dom
-                                            val r = exp (UnknownE :: env') b
-                                        in
-                                            (*Print.prefaces "El skippo" [("x", Print.PD.string x),
-                                                                        ("e2", CorePrint.p_exp CoreEnv.empty e2)];*)
-                                            (ELet (x, dom, e2, r), loc)
-                                        end
-
+                                    EAbs (_, _, _, b) =>
+                                    let
+                                        val r = exp (KnownE e2 :: env') b
+                                    in
+                                        (*Print.prefaces "eapp" [("b", CorePrint.p_exp CoreEnv.empty b),
+                                                               ("env", Print.PD.string (e2s env')),
+                                                               ("e2", CorePrint.p_exp CoreEnv.empty e2),
+                                                               ("r", CorePrint.p_exp CoreEnv.empty r)];*)
+                                        r
+                                    end
                                   | ECase (e, pes, cc as {disc, result = res as (TFun (_, c2), _)}) =>
                                     let
                                         val pes' = map (fn (p, body) =>
@@ -789,14 +760,12 @@ fun kindConAndExp (namedC, namedE) =
 
                           | ELet (x, t, e1, e2) =>
                             let
-                                val e1' = exp env e1
-
                                 val t = con env t
                             in
-                                if passive e1' orelse count e2 <= 1 orelse ESpecialize.functionInside t then
+                                if ESpecialize.functionInside t then
                                     exp (KnownE e1 :: env) e2
                                 else
-                                    (ELet (x, t, e1', exp (UnknownE :: env) e2), loc)
+                                    (ELet (x, t, exp env e1, exp (UnknownE :: env) e2), loc)
                             end
 
                           | EServerCall (n, es, t) => (EServerCall (n, map (exp env) es, con env t), loc)

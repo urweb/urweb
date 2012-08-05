@@ -179,12 +179,12 @@ val swapExpVarsPat =
                 bind = fn ((lower, len), U.Exp.RelE _) => (lower+1, len)
                         | (st, _) => st}
 
-datatype result = Yes of (string * typ * exp) list | No | Maybe
+datatype result = Yes of exp list | No | Maybe
 
 fun match (env, p : pat, e : exp) =
     case (#1 p, #1 e) of
         (PWild, _) => Yes env
-      | (PVar (x, t), _) => Yes ((x, t, e) :: env)
+      | (PVar (x, t), _) => Yes (e :: env)
 
       | (PPrim (Prim.String s), EStrcat ((EPrim (Prim.String s'), _), _)) =>
         if String.isPrefix s' s then
@@ -519,17 +519,6 @@ fun reduce file =
 
                 fun doLet (x, t, e', b) =
                     let
-                        val notValue = U.Exp.exists {typ = fn _ => false,
-                                                     exp = fn e =>
-                                                              case e of
-                                                                  EPrim _ => false
-                                                                | ECon _ => false
-                                                                | ENone _ => false
-                                                                | ESome _ => false
-                                                                | ERecord _ => false
-                                                                | _ => true}
-
-
                         fun doSub () =
                             let
                                 val r = subExpInExp (0, e') b
@@ -608,8 +597,6 @@ fun reduce file =
                                 else
                                     e
                             end
-                        else if countFree 0 0 b > 1 andalso notValue e' then
-                            e
                         else
                             trySub ()
                     end
@@ -672,11 +659,8 @@ fun reduce file =
                                       | Yes subs =>
                                         let
                                             val (body, remaining) =
-                                                foldl (fn ((x, t, e), (body, remaining)) =>
-                                                          (if countFree 0 0 body > 1 then
-                                                               (ELet (x, t, multiLift remaining e, body), #2 e')
-                                                           else
-                                                               subExpInExp (0, multiLift remaining e) body, remaining - 1))
+                                                foldl (fn (e, (body, remaining)) =>
+                                                          (subExpInExp (0, multiLift remaining e) body, remaining - 1))
                                                       (body, length subs - 1) subs
                                             val r = reduceExp (E.patBinds env p) body
                                         in

@@ -124,7 +124,6 @@ fun default (_, x, st) = (x, st)
 
 val functionInside = U.Con.exists {kind = fn _ => false,
                                    con = fn TFun _ => true
-                                          | TCFun _ => true
                                           | CFfi ("Basis", "transaction") => true
                                           | CFfi ("Basis", "eq") => true
                                           | CFfi ("Basis", "num") => true
