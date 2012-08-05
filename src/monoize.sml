@@ -3257,29 +3257,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         val t = (L'.TFfi ("Basis", "string"), loc)
                         val s = (L'.EPrim (Prim.String (String.concat ["<", tag'])), loc)
 
-                        val s = (L'.ECase (class,
-                                           [((L'.PPrim (Prim.String ""), loc),
-                                             s),
-                                            ((L'.PVar ("x", t), loc),
-                                             (L'.EStrcat (s,
-                                                         (L'.EStrcat ((L'.EPrim (Prim.String " class=\""), loc),
-                                                                      (L'.EStrcat ((L'.ERel 0, loc),
-                                                                                   (L'.EPrim (Prim.String "\""), loc)),
-                                                                       loc)), loc)), loc))],
-                                           {disc = t,
-                                            result = t}), loc)
+                        val s = (L'.EStrcat (s,
+                                             (L'.ECase (class,
+                                                        [((L'.PPrim (Prim.String ""), loc),
+                                                          (L'.EPrim (Prim.String ""), loc)),
+                                                         ((L'.PVar ("x", t), loc),
+                                                          (L'.EStrcat ((L'.EPrim (Prim.String " class=\""), loc),
+                                                                       (L'.EStrcat ((L'.ERel 0, loc),
+                                                                                    (L'.EPrim (Prim.String "\""), loc)),
+                                                                        loc)), loc))],
+                                                        {disc = t,
+                                                         result = t}), loc)), loc)
 
-                        val s = (L'.ECase (style,
-                                           [((L'.PPrim (Prim.String ""), loc),
-                                             s),
-                                            ((L'.PVar ("x", t), loc),
-                                             (L'.EStrcat (s,
-                                                         (L'.EStrcat ((L'.EPrim (Prim.String " style=\""), loc),
-                                                                      (L'.EStrcat ((L'.ERel 0, loc),
-                                                                                   (L'.EPrim (Prim.String "\""), loc)),
-                                                                       loc)), loc)), loc))],
-                                           {disc = t,
-                                            result = t}), loc)
+                        val s = (L'.EStrcat (s,
+                                             (L'.ECase (style,
+                                                        [((L'.PPrim (Prim.String ""), loc),
+                                                          (L'.EPrim (Prim.String ""), loc)),
+                                                         ((L'.PVar ("x", t), loc),
+                                                          (L'.EStrcat ((L'.EPrim (Prim.String " style=\""), loc),
+                                                                       (L'.EStrcat ((L'.ERel 0, loc),
+                                                                                    (L'.EPrim (Prim.String "\""), loc)),
+                                                                        loc)), loc))],
+                                                        {disc = t,
+                                                         result = t}), loc)), loc)
 
                         val (s, fm) = foldl (fn (("Action", _, _), acc) => acc
                                               | (("Source", _, _), acc) => acc
