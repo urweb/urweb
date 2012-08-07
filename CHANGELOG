@@ -1,4 +1,19 @@
 ========
+20120807
+========
+
+- Client-side mouse and keyboard event handlers are now functions over records.
+- More flexibility in local type class instances
+- Remove 'class' declaration; use 'con' instead now.
+- SQL window functions
+- New HTML pseudo-tag: <active>
+- New Basis members: getenv (and associated functions), giveFocus
+- New Top member: postFields (to process POST form data when called by some external script)
+- HTTP daemons take '-a' option to set IP address to listen on
+- More global mouse event hooks
+- Bug fixes and performance improvements
+
+========
 20120519
 ========
 
