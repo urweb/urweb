@@ -169,9 +169,10 @@ fun oneRun args =
         val job =
             case !sources of
                 [file] => file
-              | _ =>
+              | files =>
                 if List.exists (fn s => s <> "-version") args then
-                    raise Fail "Zero or multiple input files specified; only one is allowed."
+                    raise Fail ("Zero or multiple input files specified; only one is allowed.\nFiles: "
+                                ^ String.concatWith ", " files)
                 else
                     printVersion ()
     in
