@@ -641,6 +641,9 @@ val query : tables ::: {{Type}} -> exps ::: {Type}
                   -> state
                   -> transaction state
 
+val show_sql_query : freeTables ::: {{Type}} -> freeAggs ::: {{Type}} -> tables ::: {{Type}} -> exps ::: {Type}
+                     -> show (sql_query freeTables freeAggs tables exps)
+
 
 (*** Database mutators *)
 

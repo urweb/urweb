@@ -1257,6 +1257,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
             end
+          | L.ECApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "show_sql_query"), _), _), _), _), _), _), _), _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc), fm)
+            end
           | L.ECApp ((L.EFfi ("Basis", "mkShow"), _), t) =>
             let
                 val t = monoType env t
