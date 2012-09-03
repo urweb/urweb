@@ -853,6 +853,14 @@ fun parseUrp' accLibs fname =
                                      (case Int.fromString arg of
                                           NONE => ErrorMsg.error ("invalid min heap '" ^ arg ^ "'")
                                         | SOME n => minHeap := n)
+                                   | "coreInline" =>
+                                     (case Int.fromString arg of
+                                          NONE => ErrorMsg.error ("invalid core inline level '" ^ arg ^ "'")
+                                        | SOME n => Settings.setCoreInline n)
+                                   | "monoInline" =>
+                                     (case Int.fromString arg of
+                                          NONE => ErrorMsg.error ("invalid mono inline level '" ^ arg ^ "'")
+                                        | SOME n => Settings.setMonoInline n)
                                    | "alwaysInline" => Settings.addAlwaysInline arg
                                    | "noXsrfProtection" => Settings.addNoXsrfProtection arg
                                    | "timeFormat" => Settings.setTimeFormat arg
