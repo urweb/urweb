@@ -25,6 +25,7 @@ int main(int argc, char *argv[]) {
  
   ctx = uw_init(0, NULL, log_debug);
   uw_set_app(ctx, &uw_application);
+  uw_initialize(ctx);
 
   while (1) {
     fk = uw_begin(ctx, argv[1]);

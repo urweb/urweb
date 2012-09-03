@@ -385,7 +385,7 @@ signature DOUBLE = sig
 end
 
 structure Double : DOUBLE = struct
-    class double a = a -> a
+    con double a = a -> a
 
     fun double [a] (f : double a) (x : a) : a = f x
     fun mkDouble [a] (f : a -> a) : double a = f
@@ -420,7 +420,7 @@ signature OK_TYPE = sig
 end
 
 structure OkType : OK_TYPE = struct
-    class ok a = unit
+    con ok a = unit
     fun importantOperation [a] (_ : ok a) (_ : a) = "You found an OK value!"
     val ok_int = ()
     val ok_float = ()

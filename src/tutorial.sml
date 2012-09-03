@@ -251,13 +251,13 @@ fun doUr fname =
                 val s = readAll inf
                 val _ = Unix.reap proc
 
-                val (befor, after) = Substring.position "<sc>" s
+                val (befor, after) = Substring.position "<body>" s
             in
                 if Substring.isEmpty after then
                     print ("Bad output for " ^ fname ^ "! [1]\n")
                 else
                     let
-                        val after = Substring.slice (after, 4, NONE)
+                        val after = Substring.slice (after, 6, NONE)
                         val (befor, after) = Substring.position "</body>" after
                     in
                         if Substring.isEmpty after then
