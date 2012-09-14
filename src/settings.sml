@@ -615,11 +615,11 @@ val sql = ref (NONE : string option)
 fun setSql so = sql := so
 fun getSql () = !sql
 
-val coreInline = ref 20
+val coreInline = ref 5
 fun setCoreInline n = coreInline := n
 fun getCoreInline () = !coreInline
 
-val monoInline = ref 100
+val monoInline = ref 5
 fun setMonoInline n = monoInline := n
 fun getMonoInline () = !monoInline
 
