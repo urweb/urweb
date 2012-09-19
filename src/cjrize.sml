@@ -162,7 +162,9 @@ fun cifyTyp x =
                     ((L'.TList (t', si), loc), sm)
                 end
               | L.TSource => ((L'.TFfi ("Basis", "source"), loc), sm)
-              | L.TSignal _ => raise Fail "Cjrize: TSignal remains"
+              | L.TSignal _ => (ErrorMsg.errorAt loc "TSignal remains";
+                                Print.epreface ("Full type", MonoPrint.p_typ MonoEnv.empty (#1 x));
+                                ((L'.TFfi ("Basis", "bogus"), loc), sm))
     in
         cify IM.empty x
     end

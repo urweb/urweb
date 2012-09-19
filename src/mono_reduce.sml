@@ -313,10 +313,28 @@ fun reduce file =
         val (timpures, impures, absCounts) =
             foldl (fn ((d, _), (timpures, impures, absCounts)) =>
                       let
-                          fun countAbs (e, _) =
-                              case e of
-                                  EAbs (_, _, _, e) => 1 + countAbs e
-                                | _ => 0
+                          fun countAbs env e =
+                              case #1 e of
+                                  EAbs (x, t, _, e) => 1 + countAbs (E.pushERel env x t NONE) e
+                                | _ =>
+                                  let
+                                      fun remaining e =
+                                          case #1 e of
+                                              ENamed n => IM.find (absCounts, n)
+                                            | EApp (e, arg) =>
+                                              if simpleImpure (timpures, impures) env arg then
+                                                  NONE
+                                              else
+                                                  (case remaining e of
+                                                       NONE => NONE
+                                                     | SOME n => if n > 0 then
+                                                                     SOME (n - 1)
+                                                                 else
+                                                                     NONE)
+                                            | _ => NONE
+                                  in
+                                      getOpt (remaining e, 0)
+                                  end
                       in
                           case d of
                               DDatatype dts =>
@@ -335,7 +353,7 @@ fun reduce file =
                                    IS.add (impures, n)
                                else
                                    impures,
-                               IM.insert (absCounts, n, countAbs e))
+                               IM.insert (absCounts, n, countAbs E.empty e))
                             | DValRec vis =>
                               (timpures,
                                if List.exists (fn (_, _, _, e, _) => simpleImpure (timpures, impures) E.empty e) vis then
@@ -344,7 +362,7 @@ fun reduce file =
                                else
                                    impures,
                                foldl (fn ((x, n, _, e, _), absCounts) =>
-                                         IM.insert (absCounts, n, countAbs e))
+                                         IM.insert (absCounts, n, countAbs E.empty e))
                                      absCounts vis)
                             | _ => (timpures, impures, absCounts)
                       end)

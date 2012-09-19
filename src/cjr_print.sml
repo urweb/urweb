@@ -3239,7 +3239,7 @@ fun p_file env (ds, ps) =
 
         val now = Time.now ()
         val nowD = Date.fromTimeUniv now
-        val rfcFmt = "%a, %d %b %Y %H:%M:%S"
+        val rfcFmt = "%a, %d %b %Y %H:%M:%S GMT"
     in
         box [string "#include \"",
              string (OS.Path.joinDirFile {dir = !Settings.configInclude,
@@ -3429,6 +3429,8 @@ fun p_file env (ds, ps) =
                   string "uw_write_header(ctx, \"Content-type: text/javascript\\r\\n\");",
                   newline,
                   string ("uw_write_header(ctx, \"Last-modified: " ^ Date.fmt rfcFmt nowD ^ "\\r\\n\");"),
+                  newline,
+                  string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),                  
                   newline,
                   string "uw_write(ctx, jslib);",
                   newline,
