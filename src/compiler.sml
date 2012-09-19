@@ -1442,6 +1442,11 @@ val escapeFilename = String.translate (fn #" " => "\\ " | #"\"" => "\\\"" | #"'"
 
 val beforeC = ref (fn () => ())
 
+structure StringSet = BinarySetFn(struct
+                                  type ord_key = string
+                                  val compare = String.compare
+                                  end)
+
 fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
     let
         val proto = Settings.currentProtocol ()
@@ -1478,7 +1483,14 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
             else
                 (compile, link)
 
-        val link = foldl (fn (s, link) => link ^ " " ^ s) link link'
+        val link = #1 (foldl
+            (fn (s, (link, set)) =>
+              if StringSet.member (set, s) then
+                (link, set)
+              else
+                ((link ^ " " ^ s), StringSet.add (set, s)))
+            (link, StringSet.empty)
+            link')
 
         fun system s =
             (if debug then
